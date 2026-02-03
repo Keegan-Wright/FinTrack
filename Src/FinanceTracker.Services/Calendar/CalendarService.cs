@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Security.Claims;
 using FinanceTracker.Data;
 using FinanceTracker.Models.Response.Calendar;
@@ -11,7 +12,7 @@ public class CalendarService : ServiceBase, ICalendarService
     {
     }
 
-    public async IAsyncEnumerable<CalendarItemsResponse> GetMonthItemsAsync(int month, int year, CancellationToken cancellationToken)
+    public async IAsyncEnumerable<CalendarItemsResponse> GetMonthItemsAsync(int month, int year, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var daysInMonth = DateTime.DaysInMonth(year, month);
         var startDate = new DateTime(year, month, 1).ToUniversalTime();
