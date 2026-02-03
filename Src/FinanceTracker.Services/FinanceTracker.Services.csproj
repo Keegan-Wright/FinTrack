@@ -13,6 +13,7 @@
       <ProjectReference Include="..\FinanceTracker.Models.External\FinanceTracker.Models.External.csproj" />
       <ProjectReference Include="..\FinanceTracker.Models.Request\FinanceTracker.Models.Request.csproj" />
       <ProjectReference Include="..\FinanceTracker.Models.Response\FinanceTracker.Models.Response.csproj" />
+      <ProjectReference Include="..\FinanceTracker.Services.External\FinanceTracker.Services.External.csproj" />
     </ItemGroup>
 
     <ItemGroup>

@@ -12,4 +12,5 @@ public class FinanceTrackerUser : IdentityUser<Guid>
     public ICollection<HouseholdMember> HouseholdMembers { get; set; }
     public ICollection<Debt> Debts { get; set; }
     public ICollection<BudgetCategory> BudgetCategories { get; set; }
+    public ICollection<OpenBankingAccessToken> OpenBankingAccessTokens { get; set; }
 }
