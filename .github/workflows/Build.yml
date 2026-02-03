@@ -20,7 +20,7 @@ jobs:
       - ubuntu-latest
 
     env:
-      Solution_Name: FinanceTracker 
+      Solution_Name: FinanceTracker.slnx
     
     steps:
     - name: Checkout Latest
