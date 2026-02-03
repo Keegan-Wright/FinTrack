@@ -35,7 +35,7 @@ jobs:
       run: dotnet workload restore 
 
     - name: Restore the application
-      run: dotnet restore $env:Solution_Name
+      run: dotnet restore
 
     - name: Build Solution
       run: dotnet build -c=release
