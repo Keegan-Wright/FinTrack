@@ -160,7 +160,7 @@ namespace FinanceTracker.Data.Migrations.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "BudgetCategory",
+                name: "BudgetCategories",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -176,16 +176,16 @@ namespace FinanceTracker.Data.Migrations.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_BudgetCategory", x => x.Id);
+                    table.PrimaryKey("PK_BudgetCategories", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_BudgetCategory_AspNetUsers_FinanceTrackerUserId",
+                        name: "FK_BudgetCategories_AspNetUsers_FinanceTrackerUserId",
                         column: x => x.FinanceTrackerUserId,
                         principalTable: "AspNetUsers",
                         principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
-                name: "CustomClassification",
+                name: "CustomClassifications",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -197,16 +197,16 @@ namespace FinanceTracker.Data.Migrations.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_CustomClassification", x => x.Id);
+                    table.PrimaryKey("PK_CustomClassifications", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_CustomClassification_AspNetUsers_FinanceTrackerUserId",
+                        name: "FK_CustomClassifications_AspNetUsers_FinanceTrackerUserId",
                         column: x => x.FinanceTrackerUserId,
                         principalTable: "AspNetUsers",
                         principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
-                name: "Debt",
+                name: "Debts",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -221,16 +221,16 @@ namespace FinanceTracker.Data.Migrations.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Debt", x => x.Id);
+                    table.PrimaryKey("PK_Debts", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Debt_AspNetUsers_FinanceTrackerUserId",
+                        name: "FK_Debts_AspNetUsers_FinanceTrackerUserId",
                         column: x => x.FinanceTrackerUserId,
                         principalTable: "AspNetUsers",
                         principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
-                name: "HouseholdMember",
+                name: "HouseholdMembers",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -244,16 +244,40 @@ namespace FinanceTracker.Data.Migrations.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_HouseholdMember", x => x.Id);
+                    table.PrimaryKey("PK_HouseholdMembers", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_HouseholdMember_AspNetUsers_FinanceTrackerUserId",
+                        name: "FK_HouseholdMembers_AspNetUsers_FinanceTrackerUserId",
                         column: x => x.FinanceTrackerUserId,
                         principalTable: "AspNetUsers",
                         principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
-                name: "OpenBankingProvider",
+                name: "OpenBankingAccessTokens",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    ProviderId = table.Column<Guid>(type: "uuid", nullable: false),
+                    AccessToken = table.Column<string>(type: "text", nullable: false),
+                    ExpiresIn = table.Column<int>(type: "integer", nullable: false),
+                    RefreshToken = table.Column<string>(type: "text", nullable: false),
+                    FinanceTrackerUserId = table.Column<Guid>(type: "uuid", nullable: true),
+                    Created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    Updated = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    RowVersion = table.Column<byte[]>(type: "bytea", rowVersion: true, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_OpenBankingAccessTokens", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_OpenBankingAccessTokens_AspNetUsers_FinanceTrackerUserId",
+                        column: x => x.FinanceTrackerUserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "OpenBankingProviders",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -268,16 +292,16 @@ namespace FinanceTracker.Data.Migrations.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_OpenBankingProvider", x => x.Id);
+                    table.PrimaryKey("PK_OpenBankingProviders", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_OpenBankingProvider_AspNetUsers_FinanceTrackerUserId",
+                        name: "FK_OpenBankingProviders_AspNetUsers_FinanceTrackerUserId",
                         column: x => x.FinanceTrackerUserId,
                         principalTable: "AspNetUsers",
                         principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
-                name: "OpenBankingAccount",
+                name: "OpenBankingAccounts",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -292,11 +316,11 @@ namespace FinanceTracker.Data.Migrations.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_OpenBankingAccount", x => x.Id);
+                    table.PrimaryKey("PK_OpenBankingAccounts", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_OpenBankingAccount_OpenBankingProvider_ProviderId",
+                        name: "FK_OpenBankingAccounts_OpenBankingProviders_ProviderId",
                         column: x => x.ProviderId,
-                        principalTable: "OpenBankingProvider",
+                        principalTable: "OpenBankingProviders",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -316,15 +340,15 @@ namespace FinanceTracker.Data.Migrations.Migrations
                 {
                     table.PrimaryKey("PK_OpenBankingProviderScopes", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_OpenBankingProviderScopes_OpenBankingProvider_ProviderId",
+                        name: "FK_OpenBankingProviderScopes_OpenBankingProviders_ProviderId",
                         column: x => x.ProviderId,
-                        principalTable: "OpenBankingProvider",
+                        principalTable: "OpenBankingProviders",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "OpenBankingAccountBalance",
+                name: "OpenBankingAccountBalances",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -338,17 +362,17 @@ namespace FinanceTracker.Data.Migrations.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_OpenBankingAccountBalance", x => x.Id);
+                    table.PrimaryKey("PK_OpenBankingAccountBalances", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_OpenBankingAccountBalance_OpenBankingAccount_AccountId",
+                        name: "FK_OpenBankingAccountBalances_OpenBankingAccounts_AccountId",
                         column: x => x.AccountId,
-                        principalTable: "OpenBankingAccount",
+                        principalTable: "OpenBankingAccounts",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "OpenBankingDirectDebit",
+                name: "OpenBankingDirectDebits",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -366,17 +390,17 @@ namespace FinanceTracker.Data.Migrations.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_OpenBankingDirectDebit", x => x.Id);
+                    table.PrimaryKey("PK_OpenBankingDirectDebits", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_OpenBankingDirectDebit_OpenBankingAccount_AccountId",
+                        name: "FK_OpenBankingDirectDebits_OpenBankingAccounts_AccountId",
                         column: x => x.AccountId,
-                        principalTable: "OpenBankingAccount",
+                        principalTable: "OpenBankingAccounts",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "OpenBankingStandingOrder",
+                name: "OpenBankingStandingOrders",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -399,17 +423,17 @@ namespace FinanceTracker.Data.Migrations.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_OpenBankingStandingOrder", x => x.Id);
+                    table.PrimaryKey("PK_OpenBankingStandingOrders", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_OpenBankingStandingOrder_OpenBankingAccount_AccountId",
+                        name: "FK_OpenBankingStandingOrders_OpenBankingAccounts_AccountId",
                         column: x => x.AccountId,
-                        principalTable: "OpenBankingAccount",
+                        principalTable: "OpenBankingAccounts",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "OpenBankingSynchronization",
+                name: "OpenBankingSynchronizations",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -424,23 +448,23 @@ namespace FinanceTracker.Data.Migrations.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_OpenBankingSynronisation", x => x.Id);
+                    table.PrimaryKey("PK_OpenBankingSynchronizations", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_OpenBankingSynronisation_OpenBankingAccount_AccountId",
+                        name: "FK_OpenBankingSynchronizations_OpenBankingAccounts_AccountId",
                         column: x => x.AccountId,
-                        principalTable: "OpenBankingAccount",
+                        principalTable: "OpenBankingAccounts",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_OpenBankingSynronisation_OpenBankingProvider_ProviderId",
+                        name: "FK_OpenBankingSynchronizations_OpenBankingProviders_ProviderId",
                         column: x => x.ProviderId,
-                        principalTable: "OpenBankingProvider",
+                        principalTable: "OpenBankingProviders",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "OpenBankingTransaction",
+                name: "OpenBankingTransactions",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -460,17 +484,17 @@ namespace FinanceTracker.Data.Migrations.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_OpenBankingTransaction", x => x.Id);
+                    table.PrimaryKey("PK_OpenBankingTransactions", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_OpenBankingTransaction_OpenBankingAccount_AccountId",
+                        name: "FK_OpenBankingTransactions_OpenBankingAccounts_AccountId",
                         column: x => x.AccountId,
-                        principalTable: "OpenBankingAccount",
+                        principalTable: "OpenBankingAccounts",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_OpenBankingTransaction_OpenBankingProvider_ProviderId",
+                        name: "FK_OpenBankingTransactions_OpenBankingProviders_ProviderId",
                         column: x => x.ProviderId,
-                        principalTable: "OpenBankingProvider",
+                        principalTable: "OpenBankingProviders",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -493,7 +517,7 @@ namespace FinanceTracker.Data.Migrations.Migrations
                     table.ForeignKey(
                         name: "FK_OpenBankingTransactionClassifications_OpenBankingTransactio~",
                         column: x => x.TransactionId,
-                        principalTable: "OpenBankingTransaction",
+                        principalTable: "OpenBankingTransactions",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -536,44 +560,49 @@ namespace FinanceTracker.Data.Migrations.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_BudgetCategory_FinanceTrackerUserId",
-                table: "BudgetCategory",
+                name: "IX_BudgetCategories_FinanceTrackerUserId",
+                table: "BudgetCategories",
                 column: "FinanceTrackerUserId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_CustomClassification_FinanceTrackerUserId",
-                table: "CustomClassification",
+                name: "IX_CustomClassifications_FinanceTrackerUserId",
+                table: "CustomClassifications",
                 column: "FinanceTrackerUserId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Debt_FinanceTrackerUserId",
-                table: "Debt",
+                name: "IX_Debts_FinanceTrackerUserId",
+                table: "Debts",
                 column: "FinanceTrackerUserId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_HouseholdMember_FinanceTrackerUserId",
-                table: "HouseholdMember",
+                name: "IX_HouseholdMembers_FinanceTrackerUserId",
+                table: "HouseholdMembers",
                 column: "FinanceTrackerUserId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_OpenBankingAccount_ProviderId",
-                table: "OpenBankingAccount",
-                column: "ProviderId");
+                name: "IX_OpenBankingAccessTokens_FinanceTrackerUserId",
+                table: "OpenBankingAccessTokens",
+                column: "FinanceTrackerUserId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_OpenBankingAccountBalance_AccountId",
-                table: "OpenBankingAccountBalance",
+                name: "IX_OpenBankingAccountBalances_AccountId",
+                table: "OpenBankingAccountBalances",
                 column: "AccountId",
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_OpenBankingDirectDebit_AccountId",
-                table: "OpenBankingDirectDebit",
+                name: "IX_OpenBankingAccounts_ProviderId",
+                table: "OpenBankingAccounts",
+                column: "ProviderId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_OpenBankingDirectDebits_AccountId",
+                table: "OpenBankingDirectDebits",
                 column: "AccountId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_OpenBankingProvider_FinanceTrackerUserId",
-                table: "OpenBankingProvider",
+                name: "IX_OpenBankingProviders_FinanceTrackerUserId",
+                table: "OpenBankingProviders",
                 column: "FinanceTrackerUserId");
 
             migrationBuilder.CreateIndex(
@@ -582,34 +611,34 @@ namespace FinanceTracker.Data.Migrations.Migrations
                 column: "ProviderId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_OpenBankingStandingOrder_AccountId",
-                table: "OpenBankingStandingOrder",
+                name: "IX_OpenBankingStandingOrders_AccountId",
+                table: "OpenBankingStandingOrders",
                 column: "AccountId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_OpenBankingSynronisation_AccountId",
-                table: "OpenBankingSynchronization",
+                name: "IX_OpenBankingSynchronizations_AccountId",
+                table: "OpenBankingSynchronizations",
                 column: "AccountId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_OpenBankingSynronisation_ProviderId",
-                table: "OpenBankingSynchronization",
-                column: "ProviderId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_OpenBankingTransaction_AccountId",
-                table: "OpenBankingTransaction",
-                column: "AccountId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_OpenBankingTransaction_ProviderId",
-                table: "OpenBankingTransaction",
+                name: "IX_OpenBankingSynchronizations_ProviderId",
+                table: "OpenBankingSynchronizations",
                 column: "ProviderId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_OpenBankingTransactionClassifications_TransactionId",
                 table: "OpenBankingTransactionClassifications",
                 column: "TransactionId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_OpenBankingTransactions_AccountId",
+                table: "OpenBankingTransactions",
+                column: "AccountId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_OpenBankingTransactions_ProviderId",
+                table: "OpenBankingTransactions",
+                column: "ProviderId");
         }
 
         /// <inheritdoc />
@@ -631,31 +660,34 @@ namespace FinanceTracker.Data.Migrations.Migrations
                 name: "AspNetUserTokens");
 
             migrationBuilder.DropTable(
-                name: "BudgetCategory");
+                name: "BudgetCategories");
 
             migrationBuilder.DropTable(
-                name: "CustomClassification");
+                name: "CustomClassifications");
 
             migrationBuilder.DropTable(
-                name: "Debt");
+                name: "Debts");
 
             migrationBuilder.DropTable(
-                name: "HouseholdMember");
+                name: "HouseholdMembers");
 
             migrationBuilder.DropTable(
-                name: "OpenBankingAccountBalance");
+                name: "OpenBankingAccessTokens");
 
             migrationBuilder.DropTable(
-                name: "OpenBankingDirectDebit");
+                name: "OpenBankingAccountBalances");
+
+            migrationBuilder.DropTable(
+                name: "OpenBankingDirectDebits");
 
             migrationBuilder.DropTable(
                 name: "OpenBankingProviderScopes");
 
             migrationBuilder.DropTable(
-                name: "OpenBankingStandingOrder");
+                name: "OpenBankingStandingOrders");
 
             migrationBuilder.DropTable(
-                name: "OpenBankingSynchronization");
+                name: "OpenBankingSynchronizations");
 
             migrationBuilder.DropTable(
                 name: "OpenBankingTransactionClassifications");
@@ -664,13 +696,13 @@ namespace FinanceTracker.Data.Migrations.Migrations
                 name: "AspNetRoles");
 
             migrationBuilder.DropTable(
-                name: "OpenBankingTransaction");
+                name: "OpenBankingTransactions");
 
             migrationBuilder.DropTable(
-                name: "OpenBankingAccount");
+                name: "OpenBankingAccounts");
 
             migrationBuilder.DropTable(
-                name: "OpenBankingProvider");
+                name: "OpenBankingProviders");
 
             migrationBuilder.DropTable(
                 name: "AspNetUsers");

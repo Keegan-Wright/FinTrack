@@ -63,7 +63,7 @@ namespace FinanceTracker.Data.Migrations.Migrations
 
                     b.HasIndex("FinanceTrackerUserId");
 
-                    b.ToTable("BudgetCategory");
+                    b.ToTable("BudgetCategories");
                 });
 
             modelBuilder.Entity("FinanceTracker.Data.Models.CustomClassification", b =>
@@ -95,7 +95,7 @@ namespace FinanceTracker.Data.Migrations.Migrations
 
                     b.HasIndex("FinanceTrackerUserId");
 
-                    b.ToTable("CustomClassification");
+                    b.ToTable("CustomClassifications");
                 });
 
             modelBuilder.Entity("FinanceTracker.Data.Models.Debt", b =>
@@ -136,7 +136,7 @@ namespace FinanceTracker.Data.Migrations.Migrations
 
                     b.HasIndex("FinanceTrackerUserId");
 
-                    b.ToTable("Debt");
+                    b.ToTable("Debts");
                 });
 
             modelBuilder.Entity("FinanceTracker.Data.Models.FinanceTrackerRole", b =>
@@ -275,7 +275,49 @@ namespace FinanceTracker.Data.Migrations.Migrations
 
                     b.HasIndex("FinanceTrackerUserId");
 
-                    b.ToTable("HouseholdMember");
+                    b.ToTable("HouseholdMembers");
+                });
+
+            modelBuilder.Entity("FinanceTracker.Data.Models.OpenBankingAccessToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AccessToken")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("ExpiresIn")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("FinanceTrackerUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ProviderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("RefreshToken")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("bytea");
+
+                    b.Property<DateTime?>("Updated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FinanceTrackerUserId");
+
+                    b.ToTable("OpenBankingAccessTokens");
                 });
 
             modelBuilder.Entity("FinanceTracker.Data.Models.OpenBankingAccount", b =>
@@ -319,7 +361,7 @@ namespace FinanceTracker.Data.Migrations.Migrations
 
                     b.HasIndex("ProviderId");
 
-                    b.ToTable("OpenBankingAccount");
+                    b.ToTable("OpenBankingAccounts");
                 });
 
             modelBuilder.Entity("FinanceTracker.Data.Models.OpenBankingAccountBalance", b =>
@@ -358,7 +400,7 @@ namespace FinanceTracker.Data.Migrations.Migrations
                     b.HasIndex("AccountId")
                         .IsUnique();
 
-                    b.ToTable("OpenBankingAccountBalance");
+                    b.ToTable("OpenBankingAccountBalances");
                 });
 
             modelBuilder.Entity("FinanceTracker.Data.Models.OpenBankingDirectDebit", b =>
@@ -411,7 +453,7 @@ namespace FinanceTracker.Data.Migrations.Migrations
 
                     b.HasIndex("AccountId");
 
-                    b.ToTable("OpenBankingDirectDebit");
+                    b.ToTable("OpenBankingDirectDebits");
                 });
 
             modelBuilder.Entity("FinanceTracker.Data.Models.OpenBankingProvider", b =>
@@ -455,7 +497,7 @@ namespace FinanceTracker.Data.Migrations.Migrations
 
                     b.HasIndex("FinanceTrackerUserId");
 
-                    b.ToTable("OpenBankingProvider");
+                    b.ToTable("OpenBankingProviders");
                 });
 
             modelBuilder.Entity("FinanceTracker.Data.Models.OpenBankingProviderScopes", b =>
@@ -556,7 +598,7 @@ namespace FinanceTracker.Data.Migrations.Migrations
 
                     b.HasIndex("AccountId");
 
-                    b.ToTable("OpenBankingStandingOrder");
+                    b.ToTable("OpenBankingStandingOrders");
                 });
 
             modelBuilder.Entity("FinanceTracker.Data.Models.OpenBankingSynchronization", b =>
@@ -599,7 +641,7 @@ namespace FinanceTracker.Data.Migrations.Migrations
 
                     b.HasIndex("ProviderId");
 
-                    b.ToTable("OpenBankingSynchronization");
+                    b.ToTable("OpenBankingSynchronizations");
                 });
 
             modelBuilder.Entity("FinanceTracker.Data.Models.OpenBankingTransaction", b =>
@@ -661,7 +703,7 @@ namespace FinanceTracker.Data.Migrations.Migrations
 
                     b.HasIndex("ProviderId");
 
-                    b.ToTable("OpenBankingTransaction");
+                    b.ToTable("OpenBankingTransactions");
                 });
 
             modelBuilder.Entity("FinanceTracker.Data.Models.OpenBankingTransactionClassifications", b =>
@@ -827,6 +869,13 @@ namespace FinanceTracker.Data.Migrations.Migrations
                 {
                     b.HasOne("FinanceTracker.Data.Models.FinanceTrackerUser", null)
                         .WithMany("HouseholdMembers")
+                        .HasForeignKey("FinanceTrackerUserId");
+                });
+
+            modelBuilder.Entity("FinanceTracker.Data.Models.OpenBankingAccessToken", b =>
+                {
+                    b.HasOne("FinanceTracker.Data.Models.FinanceTrackerUser", null)
+                        .WithMany("OpenBankingAccessTokens")
                         .HasForeignKey("FinanceTrackerUserId");
                 });
 
@@ -1001,6 +1050,8 @@ namespace FinanceTracker.Data.Migrations.Migrations
                     b.Navigation("Debts");
 
                     b.Navigation("HouseholdMembers");
+
+                    b.Navigation("OpenBankingAccessTokens");
 
                     b.Navigation("Providers");
                 });
