@@ -39,3 +39,6 @@ jobs:
 
     - name: Build Solution
       run: dotnet build -c=release
+
+    - name: Test Solution
+      run: dotnet test -c=release
