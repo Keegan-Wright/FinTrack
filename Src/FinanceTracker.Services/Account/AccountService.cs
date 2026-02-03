@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Security.Claims;
 using FinanceTracker.Data;
 using FinanceTracker.Enums;
@@ -17,7 +18,7 @@ public class AccountService : ServiceBase, IAccountService
     }
 
     public async IAsyncEnumerable<AccountAndTransactionsResponse> GetAccountsAndMostRecentTransactionsAsync(int transactionsToReturn, SyncTypes syncFlags,
-        CancellationToken cancellationToken)
+        [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await _openBankingService.PerformSyncAsync(syncFlags, cancellationToken);
 

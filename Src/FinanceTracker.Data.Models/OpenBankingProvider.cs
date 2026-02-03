@@ -10,6 +10,6 @@ public class OpenBankingProvider : BaseEntity
     public ICollection<OpenBankingProviderScopes> Scopes { get; set; }
     public ICollection<OpenBankingAccount> Accounts { get; set; }
     public ICollection<OpenBankingTransaction> Transactions { get; set; }
-    public ICollection<OpenBankingSynronisation> Syncronisations { get; set; }
+    public ICollection<OpenBankingSynchronization> Syncronisations { get; set; }
 
 }

@@ -1,6 +1,6 @@
 namespace FinanceTracker.Data.Models;
 
-public class OpenBankingSynronisation : BaseEntity
+public class OpenBankingSynchronization : BaseEntity
 {
     public required int SyncronisationType { get; set; }
     public required DateTime SyncronisationTime { get; set; }
