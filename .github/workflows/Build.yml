@@ -1,0 +1,44 @@
+name: FinTrack Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build
+
+    strategy:
+      matrix:
+        configuration: [Release]
+
+    runs-on:
+      - ubuntu-latest
+
+    env:
+      Solution_Name: FinanceTracker.slnx
+    
+    steps:
+    - name: Checkout Latest
+      uses: actions/checkout@v4.1.7
+
+    - name: Install .NET Core
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 10.0.x
+        
+    - name: Restore workloads
+      run: dotnet workload restore 
+
+    - name: Restore the application
+      run: dotnet restore
+
+    - name: Build Solution
+      run: dotnet build -c=release
+
+    - name: Test Solution
+      run: dotnet test -c=release
