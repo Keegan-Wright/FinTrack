@@ -23,7 +23,7 @@ public class CalendarService : ServiceBase, ICalendarService
             .Where(x => x.TransactionTime >= startDate && x.TransactionTime < endDate)
             .Select(x => new CalendarTransactionItemResponse(){ Description = x.Description, Amount = x.Amount, TransactionType = x.TransactionType, TransactionTime = x.TransactionTime })
             .GroupBy(x => x.TransactionTime)
-            .ToListAsync();
+            .ToListAsync(cancellationToken: cancellationToken);
         
         var goals = await _financeTrackerContext.IsolateToUser(UserId)
             .Include(x => x.BudgetCategories)
@@ -31,7 +31,7 @@ public class CalendarService : ServiceBase, ICalendarService
             .Where(x => x.GoalCompletionDate >= startDate && x.GoalCompletionDate < endDate)
             .Select(x => new CalendarGoalItemResponse(){ Name = x.Name, GoalCompletionDate = x.GoalCompletionDate})
             .GroupBy(x => x.GoalCompletionDate)
-            .ToListAsync();
+            .ToListAsync(cancellationToken: cancellationToken);
 
         for (int i = 0; i < daysInMonth; i++)
         {
