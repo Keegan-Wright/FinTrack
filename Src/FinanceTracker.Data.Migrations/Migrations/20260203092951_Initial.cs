@@ -409,7 +409,7 @@ namespace FinanceTracker.Data.Migrations.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "OpenBankingSynronisation",
+                name: "OpenBankingSynchronization",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -588,12 +588,12 @@ namespace FinanceTracker.Data.Migrations.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "IX_OpenBankingSynronisation_AccountId",
-                table: "OpenBankingSynronisation",
+                table: "OpenBankingSynchronization",
                 column: "AccountId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_OpenBankingSynronisation_ProviderId",
-                table: "OpenBankingSynronisation",
+                table: "OpenBankingSynchronization",
                 column: "ProviderId");
 
             migrationBuilder.CreateIndex(
@@ -655,7 +655,7 @@ namespace FinanceTracker.Data.Migrations.Migrations
                 name: "OpenBankingStandingOrder");
 
             migrationBuilder.DropTable(
-                name: "OpenBankingSynronisation");
+                name: "OpenBankingSynchronization");
 
             migrationBuilder.DropTable(
                 name: "OpenBankingTransactionClassifications");

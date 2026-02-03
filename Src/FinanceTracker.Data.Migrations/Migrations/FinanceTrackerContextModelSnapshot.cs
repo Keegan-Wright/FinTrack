@@ -559,7 +559,7 @@ namespace FinanceTracker.Data.Migrations.Migrations
                     b.ToTable("OpenBankingStandingOrder");
                 });
 
-            modelBuilder.Entity("FinanceTracker.Data.Models.OpenBankingSynronisation", b =>
+            modelBuilder.Entity("FinanceTracker.Data.Models.OpenBankingSynchronization", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -599,7 +599,7 @@ namespace FinanceTracker.Data.Migrations.Migrations
 
                     b.HasIndex("ProviderId");
 
-                    b.ToTable("OpenBankingSynronisation");
+                    b.ToTable("OpenBankingSynchronization");
                 });
 
             modelBuilder.Entity("FinanceTracker.Data.Models.OpenBankingTransaction", b =>
@@ -892,7 +892,7 @@ namespace FinanceTracker.Data.Migrations.Migrations
                     b.Navigation("Account");
                 });
 
-            modelBuilder.Entity("FinanceTracker.Data.Models.OpenBankingSynronisation", b =>
+            modelBuilder.Entity("FinanceTracker.Data.Models.OpenBankingSynchronization", b =>
                 {
                     b.HasOne("FinanceTracker.Data.Models.OpenBankingAccount", "Account")
                         .WithMany("Syncronisations")

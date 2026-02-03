@@ -17,5 +17,5 @@ public class OpenBankingAccount : BaseEntity
     public ICollection<OpenBankingStandingOrder> StandingOrders { get; set; }
     public ICollection<OpenBankingDirectDebit> DirectDebits { get; set; }
 
-    public ICollection<OpenBankingSynronisation> Syncronisations { get; set; }
+    public ICollection<OpenBankingSynchronization> Syncronisations { get; set; }
 }
