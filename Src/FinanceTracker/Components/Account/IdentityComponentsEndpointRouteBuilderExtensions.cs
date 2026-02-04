@@ -6,9 +6,6 @@ using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
-using FinanceTracker.Components.Account.Pages;
-using FinanceTracker.Components.Account.Pages.Manage;
-using FinanceTracker.Data;
 using FinanceTracker.Data.Models;
 
 namespace Microsoft.AspNetCore.Routing;
@@ -63,8 +60,7 @@ internal static class IdentityComponentsEndpointRouteBuilderExtensions
 
             var redirectUrl = UriHelper.BuildRelative(
                 context.Request.PathBase,
-                "/Account/Manage/ExternalLogins",
-                QueryString.Create("Action", ExternalLogins.LinkLoginCallbackAction));
+                "/Account/Manage/ExternalLogins");
 
             var properties = signInManager.ConfigureExternalAuthenticationProperties(provider, redirectUrl,
                 signInManager.UserManager.GetUserId(context.User));

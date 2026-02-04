@@ -16,5 +16,6 @@
   <Project Path="Src/FinanceTracker.Configurations/FinanceTracker.Configurations.csproj" />
   <Project Path="Src/FinanceTracker.Enums/FinanceTracker.Enums.csproj" />
   <Project Path="Src/FinanceTracker.Services/FinanceTracker.Services.csproj" />
+  <Project Path="Src/FinanceTracker.Validators.Models/FinanceTracker.Validators.Models.csproj" />
   <Project Path="Src/FinanceTracker/FinanceTracker.csproj" />
 </Solution>

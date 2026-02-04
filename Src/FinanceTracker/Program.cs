@@ -7,6 +7,9 @@ using FinanceTracker.Components;
 using FinanceTracker.Components.Account;
 using FinanceTracker.Data;
 using FinanceTracker.Data.Models;
+using FinanceTracker.Models.Request.Auth;
+using FinanceTracker.Validators.Models;
+using FluentValidation;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -47,6 +50,8 @@ builder.Services.AddIdentityCore<FinanceTrackerUser>(options => options.SignIn.R
     .AddEntityFrameworkStores<FinanceTrackerContext>()
     .AddSignInManager()
     .AddDefaultTokenProviders();
+
+builder.Services.AddScoped<IValidator<RegisterRequest>, RegisterRequestValidator>();
 
 builder.Services.AddSingleton<IEmailSender<FinanceTrackerUser>, IdentityNoOpEmailSender>();
 
