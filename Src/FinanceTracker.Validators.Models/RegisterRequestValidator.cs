@@ -17,3 +17,12 @@ public class RegisterRequestValidator : AbstractValidator<RegisterRequest>
         RuleFor(x => x.ConfirmPassword).Equal(x => x.Password).WithMessage("Passwords do not match");
     }
 }
+
+public class LoginRequestValidator : AbstractValidator<LoginRequest>
+{
+    public LoginRequestValidator()
+    {
+        RuleFor(x => x.Username).NotEmpty().WithMessage("Username is required");
+        RuleFor(x => x.Password).NotEmpty().WithMessage("Password is required");
+    }
+}

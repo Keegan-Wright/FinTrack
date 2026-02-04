@@ -1,25 +1,16 @@
 ﻿@page "/Account/Register"
-
-@using System.ComponentModel.DataAnnotations
-@using System.Text
-@using System.Text.Encodings.Web
 @using Blazilla
 @using Microsoft.AspNetCore.Identity
-@using Microsoft.AspNetCore.WebUtilities
-@using FinanceTracker.Data
 @using FinanceTracker.Data.Models
 @using FinanceTracker.Models.Request.Auth
-@using FinanceTracker.Validators.Models
 @using FluentValidation
 
 @inject UserManager<FinanceTrackerUser> UserManager
 @inject IUserStore<FinanceTrackerUser> UserStore
 @inject SignInManager<FinanceTrackerUser> SignInManager
-@inject IEmailSender<FinanceTrackerUser> EmailSender
 @inject ILogger<Register> Logger
-@inject NavigationManager NavigationManager
 @inject IdentityRedirectManager RedirectManager
-
+@inject NavigationManager NavigationManager
 @inject IValidator<RegisterRequest> Validator
 
 <PageTitle>Register</PageTitle>
@@ -28,53 +19,90 @@
 
 <MudGrid>
     <MudItem md="6">
-        <EditForm Model="@Input" asp-route-returnUrl="@ReturnUrl" method="post" OnValidSubmit="@RegisterUser" FormName="register">
+        <EditForm Model="@RegisterRequest" asp-route-returnUrl="@ReturnUrl" method="post" OnValidSubmit="@RegisterUser" FormName="register">
             <FluentValidator />
             <MudText Typo="Typo.body1" GutterBottom="true">Create a new account.</MudText>
 
             <MudGrid>
                 <MudItem md="12">
-                    <MudStaticTextField For="@(() => Input.Email)" @bind-Value="Input.Email"
-                                        Label="Email" Placeholder="name@example.com"
+                    <MudStaticTextField For="@(() => RegisterRequest.Username)" @bind-Value="RegisterRequest.Username"
+                                        Label="Username" Placeholder="Username"
                                         UserAttributes="@(new() { { "autocomplete", "username" }, { "aria-required", "true" } })"/>
-                    <ValidationMessage For="@(() => Input.Email)"/>
+                    <ValidationMessage For="@(() => RegisterRequest.Username)"/>
                 </MudItem>
                 <MudItem md="12">
-                    <MudStaticTextField For="@(() => Input.Password)" @bind-Value="Input.Password"
-                                        Label="Password" InputType="InputType.Password" Placeholder="password"
+                    <MudStaticTextField For="@(() => RegisterRequest.FirstName)" @bind-Value="RegisterRequest.FirstName"
+                                        Label="FirstName" Placeholder="FirstName"
+                                        UserAttributes="@(new() { { "autocomplete", "firstname" }, { "aria-required", "true" } })"/>
+                    <ValidationMessage For="@(() => RegisterRequest.FirstName)"/>
+                </MudItem>
+                <MudItem md="12">
+                    <MudStaticTextField For="@(() => RegisterRequest.LastName)" @bind-Value="RegisterRequest.LastName"
+                                        Label="LastName" Placeholder="LastName"
+                                        UserAttributes="@(new() { { "autocomplete", "LastName" }, { "aria-required", "true" } })"/>
+                    <ValidationMessage For="@(() => RegisterRequest.LastName)"/>
+                </MudItem>
+                <MudItem md="12">
+                    <MudStaticTextField For="@(() => RegisterRequest.Email)" @bind-Value="RegisterRequest.Email"
+                                        Label="Email" Placeholder="name@example.com"
+                                        UserAttributes="@(new() { { "autocomplete", "email" }, { "aria-required", "true" } })"/>
+                    <ValidationMessage For="@(() => RegisterRequest.Email)"/>
+                </MudItem>
+                <MudItem md="12">
+                    <MudStaticTextField For="@(() => RegisterRequest.Password)" @bind-Value="RegisterRequest.Password"
+                                        Label="Password" InputType="InputType.Password" Placeholder="Password"
                                         UserAttributes="@(new() { { "autocomplete", "new-password" }, { "aria-required", "true" } })"/>
                 </MudItem>
                 <MudItem md="12">
-                    <MudStaticTextField For="@(() => Input.ConfirmPassword)" @bind-Value="Input.ConfirmPassword"
-                                        Label="Confirm Password" InputType="InputType.Password" Placeholder="confirm password"
-                                        UserAttributes="@(new() { { "autocomplete", "new-password" }, { "aria-required", "true" } })"/>
+                    <MudStaticTextField For="@(() => RegisterRequest.ConfirmPassword)" @bind-Value="RegisterRequest.ConfirmPassword"
+                                        Label="Confirm Password" InputType="InputType.Password" Placeholder="Confirm password"
+                                        UserAttributes="@(new() { { "aria-required", "true" } })"/>
                 </MudItem>
                 <MudItem md="12">
                     <MudStaticButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" FormAction="FormAction.Submit">Register</MudStaticButton>
                 </MudItem>
             </MudGrid>
         </EditForm>
+        @if (identityErrors != null)
+        {
+            foreach (var error in identityErrors)
+            {
+                <MudText Typo="Typo.body2" GutterBottom="true">@error</MudText>
+            }
+        }
+        
+        <MudGrid Class="mt-4">
+            <MudItem md="12">
+                <MudLink Href="@(NavigationManager.GetUriWithQueryParameters("Account/Login", new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))">Already a user?</MudLink>
+            </MudItem>
+        </MudGrid>
     </MudItem>
 </MudGrid>
 
 @code {
     private IEnumerable<IdentityError>? identityErrors;
 
-    [SupplyParameterFromForm]private RegisterRequest Input { get; set; } = new();
+    [SupplyParameterFromForm]private RegisterRequest RegisterRequest { get; set; } = new();
 
     [SupplyParameterFromQuery] private string? ReturnUrl { get; set; }
 
-    private string? Message => identityErrors is null ? null : $"Error: {string.Join(", ", identityErrors.Select(error => error.Description))}";
-
-    public async Task RegisterUser(EditContext editContext)
+    private async Task RegisterUser(EditContext editContext)
     {
-        
-        var user = CreateUser();
+        var validationResult = await Validator.ValidateAsync(RegisterRequest);
+        if(!validationResult.IsValid)
+            return;
 
-        await UserStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
-        var emailStore = GetEmailStore();
-        await emailStore.SetEmailAsync(user, Input.Email, CancellationToken.None);
-        var result = await UserManager.CreateAsync(user, Input.Password);
+        var user = new FinanceTrackerUser()
+        {
+            UserName = RegisterRequest.Username,
+            FirstName = RegisterRequest.FirstName!,
+            LastName = RegisterRequest.LastName!,
+            Email = RegisterRequest.Email
+        };
+
+        await UserStore.SetUserNameAsync(user, RegisterRequest.Username, CancellationToken.None);
+        
+        var result = await UserManager.CreateAsync(user, RegisterRequest.Password!);
 
         if (!result.Succeeded)
         {
@@ -83,67 +111,8 @@
         }
 
         Logger.LogInformation("User created a new account with password.");
-
-        var userId = await UserManager.GetUserIdAsync(user);
-        var code = await UserManager.GenerateEmailConfirmationTokenAsync(user);
-        code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
-        var callbackUrl = NavigationManager.GetUriWithQueryParameters(
-            NavigationManager.ToAbsoluteUri("Account/ConfirmEmail").AbsoluteUri,
-            new Dictionary<string, object?> { ["userId"] = userId, ["code"] = code, ["returnUrl"] = ReturnUrl });
-
-        await EmailSender.SendConfirmationLinkAsync(user, Input.Email, HtmlEncoder.Default.Encode(callbackUrl));
-
-        if (UserManager.Options.SignIn.RequireConfirmedAccount)
-        {
-            RedirectManager.RedirectTo(
-                "Account/RegisterConfirmation",
-                new() { ["email"] = Input.Email, ["returnUrl"] = ReturnUrl });
-        }
-
+        
         await SignInManager.SignInAsync(user, isPersistent: false);
         RedirectManager.RedirectTo(ReturnUrl);
     }
-
-    private static FinanceTrackerUser CreateUser()
-    {
-        try
-        {
-            return Activator.CreateInstance<FinanceTrackerUser>();
-        }
-        catch
-        {
-            throw new InvalidOperationException($"Can't create an instance of '{nameof(FinanceTrackerUser)}'. " +
-                                                $"Ensure that '{nameof(FinanceTrackerUser)}' is not an abstract class and has a parameterless constructor.");
-        }
-    }
-
-    private IUserEmailStore<FinanceTrackerUser> GetEmailStore()
-    {
-        if (!UserManager.SupportsUserEmail)
-        {
-            throw new NotSupportedException("The default UI requires a user store with email support.");
-        }
-
-        return (IUserEmailStore<FinanceTrackerUser>)UserStore;
-    }
-
-    private sealed class InputModel
-    {
-        [Required]
-        [EmailAddress]
-        [Display(Name = "Email")]
-        public string Email { get; set; } = "";
-
-        [Required]
-        [StringLength(100, ErrorMessage = "The {0} must be at least {2} and at max {1} characters long.", MinimumLength = 6)]
-        [DataType(DataType.Password)]
-        [Display(Name = "Password")]
-        public string Password { get; set; } = "";
-
-        [DataType(DataType.Password)]
-        [Display(Name = "Confirm password")]
-        [Compare("Password", ErrorMessage = "The password and confirmation password do not match.")]
-        public string ConfirmPassword { get; set; } = "";
-    }
-
 }

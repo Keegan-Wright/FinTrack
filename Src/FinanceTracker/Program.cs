@@ -46,12 +46,19 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ClaimsPrincipal>(s => s.GetRequiredService<IHttpContextAccessor>().HttpContext.User);
 
-builder.Services.AddIdentityCore<FinanceTrackerUser>(options => options.SignIn.RequireConfirmedAccount = true)
+builder.Services.AddIdentityCore<FinanceTrackerUser>(options =>
+    {
+        options.SignIn.RequireConfirmedAccount = false;
+        options.SignIn.RequireConfirmedEmail = false;
+        options.SignIn.RequireConfirmedPhoneNumber = false;
+        options.User.RequireUniqueEmail = true;
+    })
     .AddEntityFrameworkStores<FinanceTrackerContext>()
     .AddSignInManager()
     .AddDefaultTokenProviders();
 
 builder.Services.AddScoped<IValidator<RegisterRequest>, RegisterRequestValidator>();
+builder.Services.AddScoped<IValidator<LoginRequest>, LoginRequestValidator>();
 
 builder.Services.AddSingleton<IEmailSender<FinanceTrackerUser>, IdentityNoOpEmailSender>();
 
@@ -82,6 +89,9 @@ app.MapRazorComponents<App>()
 app.MapAdditionalIdentityEndpoints();
 
 using var scope = app.Services.CreateScope();
-scope.ServiceProvider.GetRequiredService<IDbContextFactory<FinanceTrackerContext>>().CreateDbContext().Database.Migrate();
+var db = scope.ServiceProvider.GetRequiredService<IDbContextFactory<FinanceTrackerContext>>().CreateDbContext();
+await db.Database.MigrateAsync();
 
-app.Run();
+var users = await db.Users.ToListAsync();
+
+await app.RunAsync();
