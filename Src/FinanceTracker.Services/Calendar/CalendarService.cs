@@ -8,7 +8,7 @@ namespace FinanceTracker.Services.Calendar;
 
 public class CalendarService : ServiceBase, ICalendarService
 {
-    public CalendarService(ClaimsPrincipal user, FinanceTrackerContext financeTrackerContext) : base(user, financeTrackerContext)
+    public CalendarService(ClaimsPrincipal user, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory) : base(user, financeTrackerContextFactory)
     {
     }
 
@@ -17,8 +17,8 @@ public class CalendarService : ServiceBase, ICalendarService
         var daysInMonth = DateTime.DaysInMonth(year, month);
         var startDate = new DateTime(year, month, 1).ToUniversalTime();
         var endDate = new DateTime(year, month, daysInMonth).ToUniversalTime();
-        
-        var transactions = await _financeTrackerContext.IsolateToUser(UserId)
+        await using var context = await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+        var transactions = await context.IsolateToUser(UserId)
             .Include(x => x.Providers).ThenInclude(x => x.Accounts).ThenInclude(x => x.Transactions)
             .SelectMany(x => x.Providers.SelectMany(c => c.Accounts.SelectMany(c => c.Transactions)))
             .Where(x => x.TransactionTime >= startDate && x.TransactionTime < endDate)
@@ -26,7 +26,7 @@ public class CalendarService : ServiceBase, ICalendarService
             .GroupBy(x => x.TransactionTime)
             .ToListAsync(cancellationToken: cancellationToken);
         
-        var goals = await _financeTrackerContext.IsolateToUser(UserId)
+        var goals = await context.IsolateToUser(UserId)
             .Include(x => x.BudgetCategories)
             .SelectMany(x => x.BudgetCategories)
             .Where(x => x.GoalCompletionDate >= startDate && x.GoalCompletionDate < endDate)

@@ -11,15 +11,16 @@ namespace FinanceTracker.Services.Classification;
 
 public class ClassificationService : ServiceBase, IClassificationService
 {
-    public ClassificationService(ClaimsPrincipal user, FinanceTrackerContext financeTrackerContext) : base(user,
-        financeTrackerContext)
+    public ClassificationService(ClaimsPrincipal user, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory) : base(user,
+        financeTrackerContextFactory)
     {
     }
 
     public async IAsyncEnumerable<ClassificationsResponse> GetAllCustomClassificationsAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var classifications = _financeTrackerContext.IsolateToUser(UserId)
+        await using var context = await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+        var classifications = context.IsolateToUser(UserId)
             .Include(x => x.CustomClassifications)
             .SelectMany(x => x.CustomClassifications).AsAsyncEnumerable();
 
@@ -33,7 +34,8 @@ public class ClassificationService : ServiceBase, IClassificationService
 
     public async Task<GetClassificationResponse> GetClassificationAsync(Guid id, CancellationToken cancellationToken)
     {
-        var classification = await _financeTrackerContext.IsolateToUser(UserId)
+        await using var context = await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+        var classification = await context.IsolateToUser(UserId)
             .Include(x => x.CustomClassifications)
             .SelectMany(x => x.CustomClassifications)
             .SingleAsync(x => x.Id == id, cancellationToken);
@@ -49,13 +51,13 @@ public class ClassificationService : ServiceBase, IClassificationService
         CancellationToken cancellationToken)
     {
         var newClassification = new CustomClassification { Tag = classification.Tag };
-
-        var user = await _financeTrackerContext.IsolateToUser(UserId).Include(x => x.CustomClassifications)
+        await using var context = await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+        var user = await context.IsolateToUser(UserId).Include(x => x.CustomClassifications)
             .SingleAsync(cancellationToken);
 
         user.CustomClassifications.Add(newClassification);
 
-        await _financeTrackerContext.SaveChangesAsync(cancellationToken);
+        await context.SaveChangesAsync(cancellationToken);
 
         return new ClassificationsResponse
         {
@@ -68,7 +70,8 @@ public class ClassificationService : ServiceBase, IClassificationService
         AddCustomClassificationsToTransactionRequest requestModel,
         CancellationToken cancellationToken)
     {
-        var query = _financeTrackerContext.IsolateToUser(UserId);
+        await using var context = await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+        var query = context.IsolateToUser(UserId);
 
 
         var transaction = await query
@@ -97,12 +100,13 @@ public class ClassificationService : ServiceBase, IClassificationService
         }
 
         foreach (var classification in newClassifications) transaction.Classifications.Add(classification);
-        await _financeTrackerContext.SaveChangesAsync(cancellationToken);
+        await context.SaveChangesAsync(cancellationToken);
     }
 
     public async Task RemoveCustomClassificationAsync(Guid id, CancellationToken cancellationToken)
     {
-        var query = _financeTrackerContext.IsolateToUser(UserId);
+        await using var context = await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+        var query = context.IsolateToUser(UserId);
 
 
         var classificationToRemove =
@@ -122,7 +126,7 @@ public class ClassificationService : ServiceBase, IClassificationService
             .Where(x => x.IsCustomClassification == true && x.Classification == classificationToRemove.Tag)
             .ToListAsync(cancellationToken);
 
-        await _financeTrackerContext.BulkDeleteAsync(transactionClassifications, cancellationToken: cancellationToken);
-        await _financeTrackerContext.BulkDeleteAsync([classificationToRemove], cancellationToken: cancellationToken);
+        await context.BulkDeleteAsync(transactionClassifications, cancellationToken: cancellationToken);
+        await context.BulkDeleteAsync([classificationToRemove], cancellationToken: cancellationToken);
     }
 }
