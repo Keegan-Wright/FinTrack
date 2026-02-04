@@ -1,8 +1,12 @@
+using FinanceTracker.Generated.Attributes;
+using FinanceTracker.Generated.Enums;
 using FinanceTracker.Models.Request.Auth;
 using FluentValidation;
 
 namespace FinanceTracker.Validators.Models;
 
+[Scoped<IValidator<RegisterRequest>>]
+[InjectionCategory(InjectionCategoryType.Validator)]
 public class RegisterRequestValidator : AbstractValidator<RegisterRequest>
 {
     public RegisterRequestValidator()
