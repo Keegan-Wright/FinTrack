@@ -36,8 +36,8 @@ public class TransactionsService : ServiceBase, ITransactionsService
 {
     private readonly IOpenBankingService _openBankingService;
 
-    public TransactionsService(ClaimsPrincipal user, FinanceTrackerContext financeTrackerContext,
-        IOpenBankingService openBankingService) : base(user, financeTrackerContext)
+    public TransactionsService(ClaimsPrincipal user, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
+        IOpenBankingService openBankingService) : base(user, financeTrackerContextFactory)
     {
         _openBankingService = openBankingService;
     }
@@ -46,9 +46,10 @@ public class TransactionsService : ServiceBase, ITransactionsService
         FilteredTransactionsRequest filteredTransactionsRequest, SyncTypes syncTypes,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
+        
         await _openBankingService.PerformSyncAsync(syncTypes, cancellationToken);
-
-        var transactionsQuery = _financeTrackerContext.IsolateToUser(UserId)
+        await using var context = await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+        var transactionsQuery = context.IsolateToUser(UserId)
             .Include(x => x.Providers).ThenInclude(x => x.Accounts).ThenInclude(x => x.Transactions)
             .ThenInclude(x => x.Classifications)
             .SelectMany(x => x.Providers.SelectMany(c => c.Accounts).SelectMany(r => r.Transactions))
@@ -67,7 +68,10 @@ public class TransactionsService : ServiceBase, ITransactionsService
         SyncTypes syncTypes, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await _openBankingService.PerformSyncAsync(syncTypes, cancellationToken);
-        var query = _financeTrackerContext.IsolateToUser(UserId).Include(x => x.Providers).ThenInclude(x => x.Accounts)
+        
+        await using var context = await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+        
+        var query = context.IsolateToUser(UserId).Include(x => x.Providers).ThenInclude(x => x.Accounts)
             .SelectMany(x => x.Providers.SelectMany(c => c.Accounts))
             .AsNoTracking()
             .Select(x => new TransactionAccountFilterResponse { AccountId = x.Id, AccountName = x.DisplayName });
@@ -80,7 +84,8 @@ public class TransactionsService : ServiceBase, ITransactionsService
     public async IAsyncEnumerable<TransactionProviderFilterResponse> GetProvidersForTransactionFiltersAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var query = _financeTrackerContext.IsolateToUser(UserId)
+        await using var context = await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+        var query = context.IsolateToUser(UserId)
             .Include(x => x.Providers).ThenInclude(x => x.Accounts)
             .SelectMany(x => x.Providers)
             .Select(x => new TransactionProviderFilterResponse { ProviderId = x.Id, ProviderName = x.Name }).Distinct();
@@ -92,7 +97,8 @@ public class TransactionsService : ServiceBase, ITransactionsService
     public async IAsyncEnumerable<TransactionTypeFilterResponse> GetTypesForTransactionFiltersAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var query = _financeTrackerContext.IsolateToUser(UserId)
+        await using var context = await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+        var query = context.IsolateToUser(UserId)
             .Include(x => x.Providers).ThenInclude(x => x.Accounts).ThenInclude(x => x.Transactions)
             .SelectMany(x => x.Providers.SelectMany(x => x.Accounts).SelectMany(c => c.Transactions))
             .Select(x => new TransactionTypeFilterResponse { TransactionType = x.TransactionType })
@@ -104,7 +110,8 @@ public class TransactionsService : ServiceBase, ITransactionsService
     public async IAsyncEnumerable<TransactionCategoryFilterResponse> GetCategoriesForTransactionFiltersAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var query = _financeTrackerContext.IsolateToUser(UserId)
+        await using var context = await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+        var query = context.IsolateToUser(UserId)
             .Include(x => x.Providers).ThenInclude(x => x.Accounts).ThenInclude(x => x.Transactions)
             .SelectMany(x => x.Providers.SelectMany(c => c.Accounts).SelectMany(r => r.Transactions))
             .Select(x => x.TransactionCategory).Distinct();
@@ -116,7 +123,8 @@ public class TransactionsService : ServiceBase, ITransactionsService
     public async IAsyncEnumerable<TransactionTagFilterResponse> GetTagsForTransactionFiltersAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var query = _financeTrackerContext.IsolateToUser(UserId)
+        await using var context = await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+        var query = context.IsolateToUser(UserId)
             .Include(x => x.Providers).ThenInclude(x => x.Accounts).ThenInclude(x => x.Transactions)
             .ThenInclude(x => x.Classifications)
             .SelectMany(x =>

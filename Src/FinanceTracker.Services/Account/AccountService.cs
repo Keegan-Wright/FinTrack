@@ -12,7 +12,7 @@ public class AccountService : ServiceBase, IAccountService
 {
     private readonly IOpenBankingService _openBankingService;
     
-    public AccountService(ClaimsPrincipal user, FinanceTrackerContext financeTrackerContext, IOpenBankingService openBankingService) : base(user, financeTrackerContext)
+    public AccountService(ClaimsPrincipal user, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, IOpenBankingService openBankingService) : base(user, financeTrackerContextFactory)
     {
         _openBankingService = openBankingService;
     }
@@ -20,9 +20,10 @@ public class AccountService : ServiceBase, IAccountService
     public async IAsyncEnumerable<AccountAndTransactionsResponse> GetAccountsAndMostRecentTransactionsAsync(int transactionsToReturn, SyncTypes syncFlags,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
+        
         await _openBankingService.PerformSyncAsync(syncFlags, cancellationToken);
-
-        var query = _financeTrackerContext
+        await using var context = await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+        var query = context
             .IsolateToUser(UserId)
             .Include(x => x.Providers).ThenInclude(x => x.Accounts).ThenInclude(x => x.Provider)
             .Include(x => x.Providers).ThenInclude(a => a.Accounts).ThenInclude(x => x.AccountBalance)

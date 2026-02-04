@@ -10,13 +10,14 @@ namespace FinanceTracker.Services.HouseholdMembers;
 
 public class HouseholdMemberService : ServiceBase, IHouseholdMemberService
 {
-    public HouseholdMemberService(ClaimsPrincipal user, FinanceTrackerContext financeTrackerContext) : base(user, financeTrackerContext)
+    public HouseholdMemberService(ClaimsPrincipal user, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory) : base(user, financeTrackerContextFactory)
     {
     }
 
     public async IAsyncEnumerable<HouseholdMemberResponse> GetHouseholdMembersAsync([EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        await foreach(var householdMember in _financeTrackerContext.IsolateToUser(UserId)
+        await using var context = await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+        await foreach(var householdMember in context.IsolateToUser(UserId)
                           .Include(x => x.HouseholdMembers)
                           .SelectMany(x => x.HouseholdMembers)
                           .AsAsyncEnumerable().WithCancellation(cancellationToken))
@@ -32,7 +33,8 @@ public class HouseholdMemberService : ServiceBase, IHouseholdMemberService
 
     public async Task<HouseholdMemberResponse> AddHouseholdMemberAsync(AddHouseholdMemberRequest categoryToAdd, CancellationToken cancellationToken)
     {
-        var user = await _financeTrackerContext.IsolateToUser(UserId)
+        await using var context = await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+        var user = await context.IsolateToUser(UserId)
             .Include(x => x.HouseholdMembers)
             .SingleAsync(cancellationToken: cancellationToken);
             
@@ -45,7 +47,7 @@ public class HouseholdMemberService : ServiceBase, IHouseholdMemberService
         };
 
         user.HouseholdMembers.Add(householdMember);
-        await _financeTrackerContext.SaveChangesAsync(cancellationToken);
+        await context.SaveChangesAsync(cancellationToken);
 
         return new HouseholdMemberResponse()
         {
@@ -57,15 +59,16 @@ public class HouseholdMemberService : ServiceBase, IHouseholdMemberService
 
     public async Task<bool> DeleteHouseholdMemberAsync(Guid id, CancellationToken cancellationToken)
     {
-        var user = await _financeTrackerContext.IsolateToUser(UserId)
+        await using var context = await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+        var user = await context.IsolateToUser(UserId)
             .Include(x => x.HouseholdMembers).SingleAsync(cancellationToken);
             
         var householdMember = user.HouseholdMembers.FirstOrDefault(x => x.Id == id);
 
         if (householdMember != null)
         {
-            _financeTrackerContext.HouseholdMembers.Remove(householdMember);
-            await _financeTrackerContext.SaveChangesAsync(cancellationToken);
+            context.HouseholdMembers.Remove(householdMember);
+            await context.SaveChangesAsync(cancellationToken);
             return true;
         }
 

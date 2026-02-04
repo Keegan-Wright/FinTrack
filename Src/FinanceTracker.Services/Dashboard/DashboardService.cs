@@ -8,13 +8,14 @@ namespace FinanceTracker.Services.Dashboard;
 
 public class DashboardService : ServiceBase, IDashboardService
 {
-    public DashboardService(ClaimsPrincipal user, FinanceTrackerContext financeTrackerContext) : base(user, financeTrackerContext)
+    public DashboardService(ClaimsPrincipal user, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory) : base(user, financeTrackerContextFactory)
     {
     }
 
     public async Task<SpentInTimePeriodResponse> GetSpentInTimePeriod(DateTime from, DateTime to, CancellationToken cancellationToken)
     {
-        var query = _financeTrackerContext.IsolateToUser(UserId)
+        await using var context = await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+        var query = context.IsolateToUser(UserId)
             .Include(x => x.Providers).ThenInclude(x => x.Accounts).ThenInclude(x => x.Transactions)
             .SelectMany(x => x.Providers.SelectMany(c => c.Accounts).SelectMany(r => r.Transactions))
             .AsNoTracking().Where(x => (x.TransactionTime >= from.AddDays(-1).ToUniversalTime() && x.TransactionTime <= to.AddDays(1).ToUniversalTime()) && x.TransactionCategory != "TRANSFER");
@@ -30,8 +31,8 @@ public class DashboardService : ServiceBase, IDashboardService
     public async IAsyncEnumerable<UpcomingPaymentsResponse> GetUpcomingPaymentsAsync(int numberToFetch, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var upcomingPayments = new List<UpcomingPaymentsResponse>();
-
-        upcomingPayments.AddRange(await _financeTrackerContext.IsolateToUser(UserId)
+        await using var context = await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+        upcomingPayments.AddRange(await context.IsolateToUser(UserId)
             .Include(x=> x.Providers).ThenInclude(x => x.Accounts).ThenInclude(x => x.StandingOrders)
             .SelectMany(x => x.Providers.SelectMany(c => c.Accounts).SelectMany(r => r.StandingOrders))
             .AsNoTracking()
@@ -45,7 +46,7 @@ public class DashboardService : ServiceBase, IDashboardService
             }).ToListAsync(cancellationToken: cancellationToken));
 
 
-        upcomingPayments.AddRange(await _financeTrackerContext.IsolateToUser(UserId)
+        upcomingPayments.AddRange(await context.IsolateToUser(UserId)
             .Include(x => x.Providers).ThenInclude(x => x.Accounts).ThenInclude(x => x.DirectDebits)
             .SelectMany(x => x.Providers.SelectMany(c => c.Accounts).SelectMany(r => r.DirectDebits))
             .AsNoTracking()

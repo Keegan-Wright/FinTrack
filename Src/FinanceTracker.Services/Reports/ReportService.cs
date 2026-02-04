@@ -16,7 +16,7 @@ public class ReportService : ServiceBase, IReportService
 {
     private readonly IOpenBankingService _openBankingService;
     
-    public ReportService(ClaimsPrincipal user, FinanceTrackerContext financeTrackerContext, IOpenBankingService openBankingService) : base(user, financeTrackerContext)
+    public ReportService(ClaimsPrincipal user, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, IOpenBankingService openBankingService) : base(user, financeTrackerContextFactory)
     {
         _openBankingService = openBankingService;
     }
@@ -24,8 +24,8 @@ public class ReportService : ServiceBase, IReportService
     public async IAsyncEnumerable<SpentInTimePeriodReportResponse> GetSpentInTimePeriodReportAsync(BaseReportRequest request, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await _openBankingService.PerformSyncAsync(request.SyncTypes, cancellationToken);
-
-        var query = GetQueryByBaseReportRequest(request);
+        await using var context = await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+        var query = GetQueryByBaseReportRequest(request, context);
 
         var openBankingTransactions = new List<OpenBankingTransaction>();
         
@@ -94,8 +94,8 @@ public class ReportService : ServiceBase, IReportService
     public async IAsyncEnumerable<SpentInCategoryReportResponse> GetCategoryBreakdownReportAsync(BaseReportRequest request, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await _openBankingService.PerformSyncAsync(request.SyncTypes, cancellationToken);
-
-        var query = GetQueryByBaseReportRequest(request);
+        await using var context = await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+        var query = GetQueryByBaseReportRequest(request, context);
 
         var openBankingTransactions = new List<OpenBankingTransaction>();
         
@@ -173,8 +173,8 @@ public class ReportService : ServiceBase, IReportService
     public async IAsyncEnumerable<SpentInAccountReportResponse> GetAccountBreakdownReportAsync(BaseReportRequest request, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await _openBankingService.PerformSyncAsync(request.SyncTypes, cancellationToken);
-
-        var query = GetQueryByBaseReportRequest(request);
+        await using var context = await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+        var query = GetQueryByBaseReportRequest(request, context);
 
         var openBankingTransactions = new List<OpenBankingTransaction>();
         
@@ -243,9 +243,10 @@ public class ReportService : ServiceBase, IReportService
         }
     }
     
-    private IQueryable<OpenBankingTransaction> GetQueryByBaseReportRequest(BaseReportRequest request)
+    private IQueryable<OpenBankingTransaction> GetQueryByBaseReportRequest(BaseReportRequest request, FinanceTrackerContext context)
     {
-        var query = _financeTrackerContext.IsolateToUser(UserId)
+        
+        var query = context.IsolateToUser(UserId)
             .Include(x => x.Providers)
             .ThenInclude(x => x.Accounts)
             .ThenInclude(x => x.Transactions)
