@@ -4,7 +4,6 @@ using System.Linq;
 using System.Text;
 using FinanceTracker.Generated.Helpers;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
 
 
@@ -16,67 +15,127 @@ public class ServiceInjectionGenerator : IIncrementalGenerator
 {
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        var generationCandidates = context.SyntaxProvider
-            .CreateSyntaxProvider(
-                (s, _) => s is ClassDeclarationSyntax,
-                (ctx, _) => GetClassDeclarationForSourceGen(ctx))
-            .Where(t => t.ValidForGeneration);
+        var compilationProvider = context.CompilationProvider;
 
-        var compilationAndClasses = context.CompilationProvider.Combine(generationCandidates.Collect());
-
-        context.RegisterSourceOutput(compilationAndClasses, static (spc, pair) =>
+        context.RegisterSourceOutput(compilationProvider, static (spc, compilation) =>
         {
-            var (compilation, classModels) = pair;
-
             var serviceList = new List<string>();
             var validatorList = new List<string>();
+            var externalServiceList = new List<string>();
             var namespaces = new HashSet<string>();
 
-            foreach (var model in classModels.OrderBy(x => x.ServiceType))
+            // Collect types with attributes from referenced FinanceTracker assemblies
+            var typesToInject = new List<(INamedTypeSymbol Type, string ServiceLevel, string ServiceType, string Category)>();
+
+            // Get all referenced assemblies
+            var debugInfo = new StringBuilder();
+            var scannedAssemblies = new List<string>();
+            
+            foreach (var reference in compilation.References)
             {
-                if (string.Equals(model.ServiceCategory, "Service", StringComparison.OrdinalIgnoreCase))
+                var symbol = compilation.GetAssemblyOrModuleSymbol(reference) as IAssemblySymbol;
+                if (symbol == null)
+                    continue;
+
+                // Scan all FinanceTracker assemblies
+                if (symbol.Name.StartsWith("FinanceTracker"))
                 {
-                    serviceList.Add($"services.TryAdd{model.DiscoveredAttribute}<{model.ServiceType}, {model.ClassName}>();");
-                    if (!string.IsNullOrWhiteSpace(model.ClassNamespace)) namespaces.Add(model.ClassNamespace!);
-                    if (!string.IsNullOrWhiteSpace(model.ServiceNamespace)) namespaces.Add(model.ServiceNamespace!);
-                }
-                else if (string.Equals(model.ServiceCategory, "Validator", StringComparison.OrdinalIgnoreCase))
-                {
-                    validatorList.Add($"services.TryAdd{model.DiscoveredAttribute}<{model.ServiceType}, {model.ClassName}>();");
-                    if (!string.IsNullOrWhiteSpace(model.ClassNamespace)) namespaces.Add(model.ClassNamespace!);
-                    if (!string.IsNullOrWhiteSpace(model.ServiceNamespace)) namespaces.Add(model.ServiceNamespace!);
+                    scannedAssemblies.Add(symbol.Name);
+                    CollectTypesWithAttributes(symbol.GlobalNamespace, typesToInject);
                 }
             }
 
+            // Process collected types
+            foreach (var (typeSymbol, serviceLevel, serviceType, category) in typesToInject.OrderBy(x => x.ServiceType))
+            {
+                var className = typeSymbol.ToDisplayString();
+                var classNamespace = typeSymbol.ContainingNamespace?.ToDisplayString();
+                var serviceNamespace = ExtractNamespace(serviceType);
+
+                if (string.Equals(category, "Service", StringComparison.OrdinalIgnoreCase))
+                {
+                    serviceList.Add($"services.TryAdd{serviceLevel}<{serviceType}, {className}>();");
+                    if (!string.IsNullOrWhiteSpace(classNamespace)) namespaces.Add(classNamespace!);
+                    if (!string.IsNullOrWhiteSpace(serviceNamespace)) namespaces.Add(serviceNamespace!);
+                }
+                else if (string.Equals(category, "Validator", StringComparison.OrdinalIgnoreCase))
+                {
+                    validatorList.Add($"services.TryAdd{serviceLevel}<{serviceType}, {className}>();");
+                    if (!string.IsNullOrWhiteSpace(classNamespace)) namespaces.Add(classNamespace!);
+                    if (!string.IsNullOrWhiteSpace(serviceNamespace)) namespaces.Add(serviceNamespace!);
+                }
+                else if (string.Equals(category, "External", StringComparison.OrdinalIgnoreCase))
+                {
+                    externalServiceList.Add($"services.TryAdd{serviceLevel}<{serviceType}, {className}>();");
+                    if (!string.IsNullOrWhiteSpace(classNamespace)) namespaces.Add(classNamespace!);
+                    if (!string.IsNullOrWhiteSpace(serviceNamespace)) namespaces.Add(serviceNamespace!);
+                }
+            }
 
             var serviceBody = new StringBuilder();
+            bool isFirstService = true;
             foreach (var serviceModel in serviceList)
             {
-                serviceBody.AppendLine(serviceModel);
-            }
-            
-            var validatorBody = new StringBuilder();
-            foreach (var validatorModel in validatorList)
-            {
-                validatorBody.AppendLine(validatorModel);
+                if (isFirstService)
+                {
+                    serviceBody.AppendLine(serviceModel);
+                    isFirstService = false;
+                }
+                else
+                {
+                    serviceBody.AppendLine("            " + serviceModel);
+                }
             }
 
+            var validatorBody = new StringBuilder();
+            bool isFirstValidator = true;
+            foreach (var validatorModel in validatorList)
+            {
+                if (isFirstValidator)
+                {
+                    validatorBody.AppendLine(validatorModel);
+                    isFirstValidator = false;
+                }
+                else
+                {
+                    validatorBody.AppendLine("            " + validatorModel);
+                }
+            }
+
+            var externalServiceBody = new StringBuilder();
+            bool isFirstExternalService = true;
+            foreach (var externalServiceModel in externalServiceList)
+            {
+                if (isFirstExternalService)
+                {
+                    externalServiceBody.AppendLine(externalServiceModel);
+                    isFirstExternalService = false;
+                }
+                else
+                {
+                    externalServiceBody.AppendLine("            " + externalServiceModel);
+                }
+            }
 
             var usingBuilder = new StringBuilder();
             // Always include DI and extension usings
             usingBuilder.AppendLine("using Microsoft.Extensions.DependencyInjection;");
             usingBuilder.AppendLine("using Microsoft.Extensions.DependencyInjection.Extensions;");
+            usingBuilder.AppendLine("using FluentValidation;");
+            
             // Include discovered namespaces
             foreach (var ns in namespaces.Distinct().OrderBy(s => s))
             {
                 if (string.IsNullOrWhiteSpace(ns)) continue;
-                if (ns == "Microsoft.Extensions.DependencyInjection" || ns == "Microsoft.Extensions.DependencyInjection.Extensions") continue;
+                if (ns == "Microsoft.Extensions.DependencyInjection" || ns == "Microsoft.Extensions.DependencyInjection.Extensions" || ns == "FluentValidation") continue;
                 usingBuilder.AppendLine($"using {ns};");
             }
-            // FluentValidation may be required for validator interfaces
-            usingBuilder.AppendLine("using FluentValidation;");
+
+            // Debug info comment
+            var debugComment = $"// Scanned assemblies: {string.Join(", ", scannedAssemblies)}\n// Found types: {typesToInject.Count}";
 
             var codeToGenerate = $@"// <auto-generated/>
+{debugComment}
 {usingBuilder}
 namespace FinanceTracker
 {{
@@ -92,93 +151,141 @@ namespace FinanceTracker
             {validatorBody}
         }}
 
+        public static void AddFinanceTrackerExternalServices(IServiceCollection services)
+        {{
+            {externalServiceBody}
+        }}
+
     }}
 }}";
-            
+
             spc.AddSource("Program.g.cs", SourceText.From(codeToGenerate, Encoding.UTF8));
         });
-        ;
     }
 
-    private static (ClassDeclarationSyntax, bool ValidForGeneration, string? ClassName, string? DiscoveredAttribute, string? ServiceType, string?
-        ServiceCategory, string? ClassNamespace, string? ServiceNamespace) GetClassDeclarationForSourceGen(
-            GeneratorSyntaxContext context)
+    private static void CollectTypesWithAttributes(
+        INamespaceSymbol? namespaceSymbol,
+        List<(INamedTypeSymbol Type, string ServiceLevel, string ServiceType, string Category)> typesToInject)
     {
-        var classDeclarationSyntax = (ClassDeclarationSyntax)context.Node;
-        var classSymbol = context.SemanticModel.GetDeclaredSymbol(classDeclarationSyntax) as INamedTypeSymbol;
-        var className = classSymbol?.ToDisplayString() ?? classDeclarationSyntax.Identifier.Text;
-        var classNamespace = classSymbol?.ContainingNamespace?.ToDisplayString();
+        if (namespaceSymbol == null)
+            return;
 
-        var hasServiceLevelAttribute = false;
-        var serviceInterface = string.Empty;
-        var hasCategoryAttribute = false;
-        var category = string.Empty;
-        var discoveredAttribute = string.Empty;
-        string? serviceNamespace = null;
-
-
-        foreach (AttributeListSyntax attributeListSyntax in classDeclarationSyntax.AttributeLists)
+        // Process types in current namespace
+        foreach (var member in namespaceSymbol.GetMembers())
         {
-            foreach (AttributeSyntax attributeSyntax in attributeListSyntax.Attributes)
+            if (member is INamedTypeSymbol typeSymbol && typeSymbol.TypeKind == TypeKind.Class && !typeSymbol.IsAbstract)
             {
-                var symbolInfo = context.SemanticModel.GetSymbolInfo(attributeSyntax);
-                if (symbolInfo.Symbol is not IMethodSymbol attributeCtor)
-                    continue;
+                var (hasServiceLevel, serviceLevel, serviceType) = GetServiceLevelAttribute(typeSymbol);
+                var (hasCategory, category) = GetCategoryAttribute(typeSymbol);
 
-                var attributeType = attributeCtor.ContainingType;
-                var attributeTypeName = attributeType.Name;
-
-                if (!hasServiceLevelAttribute && (
-                        attributeTypeName.StartsWith(SourceGeneratorConstants.ScopedAttributeName) ||
-                        attributeTypeName.StartsWith(SourceGeneratorConstants.TransientAttributeName) ||
-                        attributeTypeName.StartsWith(SourceGeneratorConstants.SingletonAttributeName)))
+                if (hasServiceLevel && hasCategory && !string.IsNullOrWhiteSpace(serviceType))
                 {
-                    hasServiceLevelAttribute = true;
-
-                    if (attributeSyntax.Name is GenericNameSyntax gname && gname.TypeArgumentList.Arguments.Count > 0)
-                    {
-                        var ta = gname.TypeArgumentList.Arguments[0];
-                        var tinfo = context.SemanticModel.GetTypeInfo(ta).Type;
-                        serviceInterface = tinfo?.ToDisplayString() ?? ta.ToString();
-                        serviceNamespace = tinfo?.ContainingNamespace?.ToDisplayString();
-                    }
-                    else
-                    {
-                        var typeArg = attributeType.TypeArguments.FirstOrDefault();
-                        if (typeArg != null)
-                        {
-                            serviceInterface = typeArg.ToDisplayString();
-                            serviceNamespace = typeArg.ContainingNamespace?.ToDisplayString();
-                        }
-                    }
-
-                    if (attributeTypeName.StartsWith(SourceGeneratorConstants.ScopedAttributeName))
-                        discoveredAttribute = SourceGeneratorConstants.ScopedAttributeName.Replace("Attribute", string.Empty);
-                    else if (attributeTypeName.StartsWith(SourceGeneratorConstants.TransientAttributeName))
-                        discoveredAttribute = SourceGeneratorConstants.TransientAttributeName.Replace("Attribute", string.Empty);
-                    else if (attributeTypeName.StartsWith(SourceGeneratorConstants.SingletonAttributeName))
-                        discoveredAttribute = SourceGeneratorConstants.SingletonAttributeName.Replace("Attribute", string.Empty);
+                    typesToInject.Add((typeSymbol, serviceLevel, serviceType, category));
                 }
+            }
+            else if (member is INamespaceSymbol nestedNamespace)
+            {
+                // Recursively process nested namespaces
+                CollectTypesWithAttributes(nestedNamespace, typesToInject);
+            }
+        }
+    }
 
-                if (!hasCategoryAttribute && attributeTypeName.StartsWith(SourceGeneratorConstants.InjectionCategoryAttributeName))
+    private static (bool HasAttribute, string ServiceLevel, string ServiceType) GetServiceLevelAttribute(INamedTypeSymbol typeSymbol)
+    {
+        foreach (var attribute in typeSymbol.GetAttributes())
+        {
+            var attributeName = attribute.AttributeClass?.Name ?? string.Empty;
+
+            if (attributeName.StartsWith(SourceGeneratorConstants.ScopedAttributeName))
+            {
+                var serviceType = GetGenericArgumentFromAttribute(attribute);
+                return (true, "Scoped", serviceType);
+            }
+            else if (attributeName.StartsWith(SourceGeneratorConstants.TransientAttributeName))
+            {
+                var serviceType = GetGenericArgumentFromAttribute(attribute);
+                return (true, "Transient", serviceType);
+            }
+            else if (attributeName.StartsWith(SourceGeneratorConstants.SingletonAttributeName))
+            {
+                var serviceType = GetGenericArgumentFromAttribute(attribute);
+                return (true, "Singleton", serviceType);
+            }
+        }
+
+        return (false, string.Empty, string.Empty);
+    }
+
+    private static (bool HasAttribute, string Category) GetCategoryAttribute(INamedTypeSymbol typeSymbol)
+    {
+        foreach (var attribute in typeSymbol.GetAttributes())
+        {
+            var attributeName = attribute.AttributeClass?.Name ?? string.Empty;
+
+            if (attributeName.StartsWith(SourceGeneratorConstants.InjectionCategoryAttributeName))
+            {
+                if (attribute.ConstructorArguments.Length > 0)
                 {
-                    hasCategoryAttribute = true;
+                    var categoryValue = attribute.ConstructorArguments[0];
 
-                    var argExpr = attributeSyntax.ArgumentList?.Arguments.FirstOrDefault()?.Expression;
-                    if (argExpr != null)
+                    // The constructor argument is an enum value, resolve the name
+                    if (categoryValue.Value is int enumValue)
                     {
-                        var txt = argExpr.ToString();
-                        if (txt.Contains('.'))
-                            category = txt.Split('.').Last();
-                        else
-                            category = txt;
+                        var enumType = categoryValue.Type as INamedTypeSymbol;
+                        if (enumType != null && enumType.TypeKind == TypeKind.Enum)
+                        {
+                            // Get the enum member name for this value
+                            var enumMember = enumType.GetMembers()
+                                .OfType<IFieldSymbol>()
+                                .FirstOrDefault(f => f.ConstantValue != null && (int)f.ConstantValue == enumValue);
+
+                            if (enumMember != null)
+                            {
+                                return (true, enumMember.Name);
+                            }
+                        }
                     }
                 }
             }
         }
 
-        if (hasServiceLevelAttribute && hasCategoryAttribute)
-            return (classDeclarationSyntax, true, className, discoveredAttribute, serviceInterface, category, classNamespace, serviceNamespace);
-        return (classDeclarationSyntax, false, null, null, null, null, null, null);
+        return (false, string.Empty);
+    }
+
+    private static string GetGenericArgumentFromAttribute(AttributeData attribute)
+    {
+        // The generic argument is in the attribute class's type arguments
+        // For [Scoped<IValidator<LoginRequest>>], the IValidator<LoginRequest> will be in TypeArguments[0]
+        if (attribute.AttributeClass != null && attribute.AttributeClass.TypeArguments.Length > 0)
+        {
+            var typeArg = attribute.AttributeClass.TypeArguments[0];
+            return typeArg.ToDisplayString();
+        }
+
+        return string.Empty;
+    }
+
+    private static string? ExtractNamespace(string fullyQualifiedType)
+    {
+        // Extract namespace from fully qualified type name
+        // Handle generic types like "FluentValidation.IValidator<FinanceTracker.Models.Request.Auth.LoginRequest>"
+        if (fullyQualifiedType.Contains('.'))
+        {
+            // Remove generic type parameters first
+            var nonGenericType = fullyQualifiedType;
+            if (fullyQualifiedType.Contains('<'))
+            {
+                nonGenericType = fullyQualifiedType.Substring(0, fullyQualifiedType.IndexOf('<'));
+            }
+
+            var parts = nonGenericType.Split('.');
+            if (parts.Length > 1)
+            {
+                return string.Join(".", parts.Take(parts.Length - 1));
+            }
+        }
+
+        return null;
     }
 }

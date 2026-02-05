@@ -3,6 +3,8 @@ using System.Runtime.CompilerServices;
 using System.Security.Claims;
 using FinanceTracker.Data;
 using FinanceTracker.Data.Models;
+using FinanceTracker.Generated.Attributes;
+using FinanceTracker.Generated.Enums;
 using FinanceTracker.Models.Request.Reports;
 using FinanceTracker.Models.Response.Reports.Account;
 using FinanceTracker.Models.Response.Reports.Category;
@@ -12,6 +14,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.Services.Reports;
 
+[InjectionCategory(InjectionCategoryType.Service)]
+[Scoped<IReportService>]
 public class ReportService : ServiceBase, IReportService
 {
     private readonly IOpenBankingService _openBankingService;

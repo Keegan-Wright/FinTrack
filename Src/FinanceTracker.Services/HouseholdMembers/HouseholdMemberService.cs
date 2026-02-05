@@ -2,12 +2,16 @@ using System.Runtime.CompilerServices;
 using System.Security.Claims;
 using FinanceTracker.Data;
 using FinanceTracker.Data.Models;
+using FinanceTracker.Generated.Attributes;
+using FinanceTracker.Generated.Enums;
 using FinanceTracker.Models.Request.HouseholdMember;
 using FinanceTracker.Models.Response.HouseholdMember;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.Services.HouseholdMembers;
 
+[InjectionCategory(InjectionCategoryType.Service)]
+[Scoped<IHouseholdMemberService>]
 public class HouseholdMemberService : ServiceBase, IHouseholdMemberService
 {
     public HouseholdMemberService(ClaimsPrincipal user, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory) : base(user, financeTrackerContextFactory)

@@ -16,6 +16,7 @@ namespace {SourceGeneratorConstants.GeneratedNamespace}.Enums
     {{
         Service,
         Validator,
+        External,
     }}
 }}";
 

@@ -5,6 +5,8 @@ using EFCore.BulkExtensions;
 using FinanceTracker.Data;
 using FinanceTracker.Data.Models;
 using FinanceTracker.Enums;
+using FinanceTracker.Generated.Attributes;
+using FinanceTracker.Generated.Enums;
 using FinanceTracker.Models.External;
 using FinanceTracker.Models.Request.OpenBanking;
 using FinanceTracker.Services.External.OpenBanking;
@@ -12,6 +14,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.Services.OpenBanking;
 
+[InjectionCategory(InjectionCategoryType.Service)]
+[Scoped<IOpenBankingService>]
 public class OpenBankingService : ServiceBase, IOpenBankingService
 {
     private readonly IOpenBankingApiService _openBankingApiService;

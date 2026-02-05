@@ -4,10 +4,14 @@ using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Text;
 using FinanceTracker.Configurations;
+using FinanceTracker.Generated.Attributes;
+using FinanceTracker.Generated.Enums;
 using FinanceTracker.Models.External;
 
 namespace FinanceTracker.Services.External.OpenBanking;
 
+[InjectionCategory(InjectionCategoryType.External)]
+[Scoped<IOpenBankingApiService>]
 public class TrueLayerOpenBankingApiService : IOpenBankingApiService
 {
     private readonly TrueLayerOpenBankingConfiguration _trueLayerOpenBankingConfiguration;

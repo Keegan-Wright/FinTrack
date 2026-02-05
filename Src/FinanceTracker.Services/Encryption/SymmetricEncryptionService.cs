@@ -1,9 +1,13 @@
 using System.Security.Cryptography;
 using System.Text;
 using FinanceTracker.Configurations;
+using FinanceTracker.Generated.Attributes;
+using FinanceTracker.Generated.Enums;
 
 namespace FinanceTracker.Services.Encryption;
 
+[InjectionCategory(InjectionCategoryType.Service)]
+[Scoped<ISymmetricEncryptionService>]
 public class SymmetricEncryptionService : ISymmetricEncryptionService
 {
  
