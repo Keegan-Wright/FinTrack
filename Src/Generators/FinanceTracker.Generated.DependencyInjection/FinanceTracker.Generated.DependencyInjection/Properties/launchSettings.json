@@ -3,7 +3,7 @@
   "profiles": {
     "DebugRoslynSourceGenerator": {
       "commandName": "DebugRoslynComponent",
-      "targetProject": "../../../FinanceTracker/FinanceTracker.csproj"
+      "targetProject": "../../../FinanceTracker.Validators.Models/FinanceTracker.Validators.Models.csproj"
     }
   }
 }

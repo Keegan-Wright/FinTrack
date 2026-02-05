@@ -63,9 +63,6 @@ public partial class Program
             .AddSignInManager()
             .AddDefaultTokenProviders();
 
-        builder.Services.AddScoped<IValidator<RegisterRequest>, RegisterRequestValidator>();
-        builder.Services.AddScoped<IValidator<LoginRequest>, LoginRequestValidator>();
-
         builder.Services.AddSingleton<IEmailSender<FinanceTrackerUser>, IdentityNoOpEmailSender>();
 
         AddFinanceTrackerServices(builder.Services);
