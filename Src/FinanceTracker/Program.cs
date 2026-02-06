@@ -1,11 +1,9 @@
 using System.Security.Claims;
 using FinanceTracker.Components;
 using FinanceTracker.Components.Account;
+using FinanceTracker.Configurations;
 using FinanceTracker.Data;
 using FinanceTracker.Data.Models;
-using FinanceTracker.Models.Request.Auth;
-using FinanceTracker.Validators.Models;
-using FluentValidation;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -52,6 +50,7 @@ public partial class Program
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddScoped<ClaimsPrincipal>(s => s.GetRequiredService<IHttpContextAccessor>().HttpContext.User);
 
+        
         builder.Services.AddIdentityCore<FinanceTrackerUser>(options =>
             {
                 options.SignIn.RequireConfirmedAccount = false;
@@ -65,9 +64,26 @@ public partial class Program
 
         builder.Services.AddSingleton<IEmailSender<FinanceTrackerUser>, IdentityNoOpEmailSender>();
 
+        
+        var trueLayerConfig = new TrueLayerOpenBankingConfiguration();
+        trueLayerConfig.BaseAuthUrl = builder.Configuration.GetValue<string>("OPEN_BANKING_TRUELAYER_BASE_AUTH_URL");
+        trueLayerConfig.BaseDataUrl = builder.Configuration.GetValue<string>("OPEN_BANKING_TRUELAYER_BASE_DATA_URL");
+        trueLayerConfig.AuthRedirectUrl = builder.Configuration.GetValue<string>("OPEN_BANKING_TRUELAYER_AUTH_REDIRECT_URL");
+        trueLayerConfig.ClientId = builder.Configuration.GetValue<string>("OPEN_BANKING_TRUELAYER_CLIENT_ID");
+        trueLayerConfig.ClientSecret = builder.Configuration.GetValue<Guid>("OPEN_BANKING_TRUELAYER_CLIENT_SECRET");   
+        builder.Services.AddSingleton(trueLayerConfig);
+
+        var encryptionConfig = new EncryptionSettings();
+        encryptionConfig.SymmetricKey = builder.Configuration.GetValue<string>("ENCRYPTION_KEY");
+        encryptionConfig.SymmetricSalt = builder.Configuration.GetValue<string>("ENCRYPTION_SALT");
+        encryptionConfig.Iterations = builder.Configuration.GetValue<int>("ENCRYPTION_ITERATIONS");
+        builder.Services.AddSingleton(encryptionConfig);
+        
+        
+        
         AddFinanceTrackerServices(builder.Services);
         AddFinanceTrackerValidators(builder.Services);
-        
+        AddFinanceTrackerExternalServices(builder.Services);
 
         var app = builder.Build();
 

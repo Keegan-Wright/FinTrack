@@ -1,6 +1,19 @@
 @page "/ProviderSetup"
+@using FinanceTracker.Services.External.OpenBanking
+@inherits PageComponent
+
+@inject IOpenBankingApiService OpenBankingService
 <h3>ProviderSetup</h3>
 
 @code {
-    
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        await foreach (var provider in OpenBankingService.GetAvailableProvidersAsync(Cts.Token))
+        {
+            var a = 1;
+        }
+    }
+
 }
