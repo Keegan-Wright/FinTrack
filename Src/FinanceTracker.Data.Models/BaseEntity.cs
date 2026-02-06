@@ -8,5 +8,5 @@ public class BaseEntity
     public DateTime Created { get; set; }
     public DateTime? Updated { get; set; }
 
-    [Timestamp] public byte[] RowVersion { get; set; }
+    [Timestamp] public uint RowVersion { get; set; }
 }

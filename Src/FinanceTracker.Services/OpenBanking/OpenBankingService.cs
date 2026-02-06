@@ -117,6 +117,7 @@ public class OpenBankingService : ServiceBase, IOpenBankingService
             user.Providers ??= [];
 
             user.Providers.Add(provider);
+            
 
             await context.SaveChangesAsync(cancellationToken);
 
@@ -141,7 +142,8 @@ public class OpenBankingService : ServiceBase, IOpenBankingService
                 provider.Scopes.Add(providerScope);
             }
 
-            await context.AddAsync(accessToken, cancellationToken);
+            user.OpenBankingAccessTokens ??= [];
+            user.OpenBankingAccessTokens.Add(accessToken);
             await context.SaveChangesAsync(cancellationToken);
 
 

@@ -8,6 +8,7 @@ var authConfig = builder.Configuration.GetSection("Auth");
 var encryptionConfig = builder.Configuration.GetSection("Encryption");
 
 var postgres = builder.AddPostgres("financeTrackerPostgres")
+    .WithPgWeb()
     .WithDataVolume(isReadOnly: false);
 
 var postgresDb = postgres.AddDatabase("financeTrackerPostgresDb");

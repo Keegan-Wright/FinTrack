@@ -1,19 +1,113 @@
 @page "/ProviderSetup"
+@using System.Globalization
+@using FinanceTracker.Enums
+@using FinanceTracker.Models.External
+@using FinanceTracker.Models.Request.OpenBanking
 @using FinanceTracker.Services.External.OpenBanking
+@using FinanceTracker.Services.OpenBanking
 @inherits PageComponent
 
-@inject IOpenBankingApiService OpenBankingService
-<h3>ProviderSetup</h3>
+@inject ISnackbar Snackbar
+@inject IOpenBankingService OpenBankingService
+
+<MudDataGrid T="ExternalOpenBankingProvider" Items="OpenBankingProviders" 
+             MultiSelection="true"
+             SortMode="SortMode.Multiple"
+             Filterable="true" 
+             QuickFilter="@_quickFilter"
+             Hideable="true"
+             Hover="true"
+             RowsPerPage="10"
+             SelectedItemsChanged="SelectedItemsChanged">
+    <ToolBarContent>
+        <MudText Typo="Typo.h6">Providers</MudText>
+        <MudSpacer />
+        <MudTextField @bind-Value="_searchString" Placeholder="Search" Adornment="Adornment.Start" Immediate="true"
+                      AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+    </ToolBarContent>
+    <Columns>
+        <SelectColumn Class="col-1" T="ExternalOpenBankingProvider" HeaderStyle="width: 2rem"/>
+        <PropertyColumn Property="x => x.DisplayName" Title="Name" Sortable="true" Filterable="true" />
+        <PropertyColumn Property="x => x.Country.ToUpper()" Title="Country" Sortable="true" Filterable="true"/>
+    </Columns>
+    <PagerContent>
+        <MudDataGridPager T="ExternalOpenBankingProvider" />
+    </PagerContent>
+</MudDataGrid>
+
+@if (!string.IsNullOrEmpty(_openBankingAuthUrl))
+{
+    <MudStack>
+        <MudText Typo="Typo.body1">Open the below link to add your providers</MudText>
+        <MudLink Href="@_openBankingAuthUrl" Typo="Typo.body2" Target="_blank">Provider Setup</MudLink>
+    </MudStack>
+    
+    <MudStack>
+        <MudTextField T="string" Placeholder="Access Code" @bind-Value="_vendorAccessToken"/>
+        <MudButton Variant="Variant.Filled" onClick="@AddProviderAsync">Add Provider</MudButton>
+    </MudStack>
+}
 
 @code {
 
+    private List<ExternalOpenBankingProvider> OpenBankingProviders { get; set; } = [];
+    private string _searchString;
+    private string _openBankingAuthUrl;
+    private string _vendorAccessToken;
+    
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
-        await foreach (var provider in OpenBankingService.GetAvailableProvidersAsync(Cts.Token))
+        await OpenBankingService.PerformSyncAsync(SyncTypes.All, Cts.Token);
+        await foreach (var provider in OpenBankingService.GetOpenBankingProvidersForClientAsync(Cts.Token))
         {
-            var a = 1;
+            OpenBankingProviders.Add(provider);
         }
     }
 
+    private Func<ExternalOpenBankingProvider, bool> _quickFilter => x =>
+    {
+        if (string.IsNullOrWhiteSpace(_searchString))
+            return true;
+
+        if (x.DisplayName.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+            return true; 
+        
+        return false;
+    };
+
+    async Task SelectedItemsChanged(HashSet<ExternalOpenBankingProvider> selectedProviders)
+    {
+        var scopes = new List<string>();
+        var providerIds = selectedProviders.Select(x => x.ProviderId);
+        
+        var scopesList = selectedProviders.Select(x => x.Scopes).ToList();
+        foreach (var scope in scopesList)
+        {
+            await foreach (var providerScope in scope)
+            {
+                scopes.Add(providerScope);
+            }
+        }
+        
+        var requestModel = new GetProviderSetupUrlRequestModel();
+        requestModel.ProviderIds = selectedProviders.Select(x => x.ProviderId);
+        requestModel.Scopes = scopes;
+
+        _openBankingAuthUrl = OpenBankingService.BuildAuthUrl(requestModel, Cts.Token);
+    }
+
+    async Task AddProviderAsync()
+    {
+        var response = await OpenBankingService.AddVendorViaAccessCodeAsync(_vendorAccessToken, Cts.Token);
+
+        if (response)
+        {
+            Snackbar.Add("Provider Added", Severity.Success);
+        }
+        else
+        {
+            Snackbar.Add("Error occured", Severity.Error);
+        }
+    }
 }

@@ -16,5 +16,5 @@ public class ServiceBase
     }
     
     protected string Username => _user.Identity.Name;
-    protected Guid UserId => Guid.Parse(_user.Claims.FirstOrDefault(x => x.Type == ClaimTypes.Sid).Value);
+    protected Guid UserId => Guid.Parse(_user.Claims.FirstOrDefault(x => x.Type == ClaimTypes.NameIdentifier).Value);
 }
