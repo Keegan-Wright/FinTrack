@@ -522,9 +522,10 @@ public class OpenBankingService : ServiceBase, IOpenBankingService
         {
             await using var context = await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
             // User hasn't authenticated yet
-            if (await context.OpenBankingAccessTokens
+            if (await context.IsolateToUser(UserId)
                 .AsNoTracking()
-                .Where(x => x.ProviderId == provider.Id)
+                .Include(x => x.OpenBankingAccessTokens)
+                .Where(x => x.OpenBankingAccessTokens.Any(c => c.ProviderId == provider.Id))
                 .CountAsync(cancellationToken: cancellationToken) == 0)
             {
                 var response = await _openBankingApiService.ExchangeCodeForAccessTokenAsync(provider.AccessCode, cancellationToken);

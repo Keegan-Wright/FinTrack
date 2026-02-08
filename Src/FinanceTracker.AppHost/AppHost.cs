@@ -7,6 +7,9 @@ var openBankingConfig = builder.Configuration.GetSection("OpenBanking");
 var authConfig = builder.Configuration.GetSection("Auth");
 var encryptionConfig = builder.Configuration.GetSection("Encryption");
 
+var redis = builder.AddRedis("financeTrackerRedis")
+    .WithDataVolume(isReadOnly: false);
+
 var postgres = builder.AddPostgres("financeTrackerPostgres")
     .WithPgWeb()
     .WithDataVolume(isReadOnly: false);
@@ -18,6 +21,8 @@ builder.AddProject<Projects.FinanceTracker>("FinanceTracker")
     .AddAuth(authConfig)
     .AddEncryption(encryptionConfig)
     .AddOpenBanking(openBankingConfig)
+    .WithReference(redis)
+    .WaitFor(redis)
     .WithReference(postgresDb)
     .WaitFor(postgresDb);
 

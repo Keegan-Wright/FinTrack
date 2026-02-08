@@ -10,6 +10,9 @@
 
     <ItemGroup>
         <PackageReference Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="13.1.0" />
+        <PackageReference Include="Aspire.StackExchange.Redis" Version="13.1.0" />
+        <PackageReference Include="Aspire.StackExchange.Redis.DistributedCaching" Version="13.1.0" />
+        <PackageReference Include="Aspire.StackExchange.Redis.OutputCaching" Version="13.1.0" />
         <PackageReference Include="Blazilla" Version="2.2.2" />
         <PackageReference Include="FluentValidation" Version="12.1.1" />
         <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="10.0.2" />

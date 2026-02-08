@@ -63,7 +63,9 @@ public partial class Program
             .AddDefaultTokenProviders();
 
         builder.Services.AddSingleton<IEmailSender<FinanceTrackerUser>, IdentityNoOpEmailSender>();
-
+        builder.AddRedisClient("financeTrackerRedis");
+        builder.AddRedisDistributedCache("financeTrackerRedis");
+        builder.AddRedisOutputCache("financeTrackerRedis");
         
         var trueLayerConfig = new TrueLayerOpenBankingConfiguration();
         trueLayerConfig.BaseAuthUrl = builder.Configuration.GetValue<string>("OPEN_BANKING_TRUELAYER_BASE_AUTH_URL");
