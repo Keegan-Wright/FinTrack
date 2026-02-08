@@ -9,6 +9,7 @@ using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using FinanceTracker.Models.External;
 using FinanceTracker.Models.Request.OpenBanking;
+using FinanceTracker.Services.Encryption;
 using FinanceTracker.Services.External.OpenBanking;
 using Microsoft.EntityFrameworkCore;
 
@@ -19,12 +20,14 @@ namespace FinanceTracker.Services.OpenBanking;
 public class OpenBankingService : ServiceBase, IOpenBankingService
 {
     private readonly IOpenBankingApiService _openBankingApiService;
+    private readonly ISymmetricEncryptionService  _encryptionService;
     private readonly int _syncMins = 5;
     
     public OpenBankingService(ClaimsPrincipal user, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
-        IOpenBankingApiService openBankingApiService) : base(user, financeTrackerContextFactory)
+        IOpenBankingApiService openBankingApiService, ISymmetricEncryptionService encryptionService) : base(user, financeTrackerContextFactory)
     {
         _openBankingApiService = openBankingApiService;
+        _encryptionService = encryptionService;
     }
 
     public async IAsyncEnumerable<ExternalOpenBankingProvider> GetOpenBankingProvidersForClientAsync(
@@ -106,7 +109,7 @@ public class OpenBankingService : ServiceBase, IOpenBankingService
 
             var provider = new OpenBankingProvider
             {
-                AccessCode = accessCode,
+                AccessCode = await _encryptionService.EncryptAsync(accessCode),
                 Name = externalProvider.Provider.DisplayName,
                 OpenBankingProviderId = externalProvider.Provider.ProviderId,
                 Created = DateTime.Now.ToUniversalTime(),
@@ -123,10 +126,10 @@ public class OpenBankingService : ServiceBase, IOpenBankingService
 
             var accessToken = new OpenBankingAccessToken
             {
-                AccessToken = providerAccessToken.AccessToken,
+                AccessToken = await _encryptionService.EncryptAsync(providerAccessToken.AccessToken),
                 ProviderId = provider.Id,
                 ExpiresIn = providerAccessToken.ExpiresIn,
-                RefreshToken = providerAccessToken.RefreshToken,
+                RefreshToken = await _encryptionService.EncryptAsync(providerAccessToken.RefreshToken),
                 Created = DateTime.Now.ToUniversalTime()
             };
 
@@ -410,7 +413,8 @@ public class OpenBankingService : ServiceBase, IOpenBankingService
             if (ShouldSynchronise(syncFlags, relevantSyncs, SyncTypes.StandingOrders))
             {
                 var standingOrders = await _openBankingApiService.GetAccountStandingOrdersAsync(account.AccountId, authToken, cancellationToken);
-                performedSyncs.Add(CreateSyncLog(provider, account.AccountId, SyncTypes.StandingOrders));
+                if (standingOrders.Results != null && (await standingOrders.Results.ToListAsync(cancellationToken)).Count != 0)
+                    performedSyncs.Add(CreateSyncLog(provider, account.AccountId, SyncTypes.StandingOrders));
                 return standingOrders;
             }
 
@@ -422,7 +426,8 @@ public class OpenBankingService : ServiceBase, IOpenBankingService
             if (ShouldSynchronise(syncFlags, relevantSyncs, SyncTypes.DirectDebits))
             {
                 var directDebits = await _openBankingApiService.GetAccountDirectDebitsAsync(account.AccountId, authToken, cancellationToken);
-                performedSyncs.Add(CreateSyncLog(provider, account.AccountId, SyncTypes.DirectDebits));
+                if (directDebits.Results != null && (await directDebits.Results.ToListAsync(cancellationToken)).Count != 0)
+                    performedSyncs.Add(CreateSyncLog(provider, account.AccountId, SyncTypes.DirectDebits));
                 return directDebits;
             }
 
@@ -435,7 +440,8 @@ public class OpenBankingService : ServiceBase, IOpenBankingService
             if (ShouldSynchronise(syncFlags, relevantSyncs, SyncTypes.Balance))
             {
                 var balance = await _openBankingApiService.GetAccountBalanceAsync(account.AccountId, authToken, cancellationToken);
-                performedSyncs.Add(CreateSyncLog(provider, account.AccountId, SyncTypes.Balance));
+                if (balance.Results != null && (await balance.Results.ToListAsync(cancellationToken)).Count != 0)
+                    performedSyncs.Add(CreateSyncLog(provider, account.AccountId, SyncTypes.Balance));
                 return balance;
             }
 
@@ -447,7 +453,8 @@ public class OpenBankingService : ServiceBase, IOpenBankingService
             if (ShouldSynchronise(syncFlags, relevantSyncs, SyncTypes.Transactions))
             {
                 var transactions = await _openBankingApiService.GetAccountTransactionsAsync(account.AccountId, authToken, latestTransactionForAccount?.TransactionTime, cancellationToken);
-                performedSyncs.Add(CreateSyncLog(provider, account.AccountId, SyncTypes.Transactions));
+                if (transactions.Results != null && (await transactions.Results.ToListAsync(cancellationToken)).Count != 0)
+                    performedSyncs.Add(CreateSyncLog(provider, account.AccountId, SyncTypes.Transactions));
                 return transactions;
             }
             return null;
@@ -458,7 +465,8 @@ public class OpenBankingService : ServiceBase, IOpenBankingService
             if (ShouldSynchronise(syncFlags, relevantSyncs, SyncTypes.Transactions))
             {
                 var transactions = await _openBankingApiService.GetAccountPendingTransactionsAsync(account.AccountId, authToken, latestTransactionForAccount?.TransactionTime, cancellationToken);
-                performedSyncs.Add(CreateSyncLog(provider, account.AccountId, SyncTypes.PendingTransactions));
+                if (transactions.Results != null && (await transactions.Results.ToListAsync(cancellationToken)).Count != 0)
+                    performedSyncs.Add(CreateSyncLog(provider, account.AccountId, SyncTypes.PendingTransactions));
                 return transactions;
             }
             return null;
@@ -496,25 +504,25 @@ public class OpenBankingService : ServiceBase, IOpenBankingService
 
                 if (accessToken.Created.AddSeconds(accessToken.ExpiresIn) > DateTime.Now.ToUniversalTime())
                 {
-                    return accessToken.AccessToken;
+                    return  await _encryptionService.DecryptAsync(accessToken.AccessToken);
                 }
                 else
                 {
-                    var refreshTokenResponse = await _openBankingApiService.GetAccessTokenByRefreshTokenAsync(accessToken.RefreshToken, cancellationToken);
+                    var refreshTokenResponse = await _openBankingApiService.GetAccessTokenByRefreshTokenAsync(await _encryptionService.DecryptAsync(accessToken.RefreshToken), cancellationToken);
 
                     var newAccessToken = new OpenBankingAccessToken()
                     {
-                        AccessToken = refreshTokenResponse.AccessToken,
+                        AccessToken = await _encryptionService.EncryptAsync(refreshTokenResponse.AccessToken),
                         ExpiresIn = refreshTokenResponse.ExpiresIn,
                         ProviderId = provider.Id,
-                        RefreshToken = refreshTokenResponse.RefreshToken,
+                        RefreshToken = await _encryptionService.EncryptAsync(refreshTokenResponse.RefreshToken),
                         Created = DateTime.Now.ToUniversalTime()
                     };
 
                     await context.AddAsync(newAccessToken, cancellationToken);
                     await context.SaveChangesAsync(cancellationToken);
 
-                    return newAccessToken.AccessToken;
+                    return refreshTokenResponse.AccessToken;
                 }
         }
 
@@ -528,14 +536,14 @@ public class OpenBankingService : ServiceBase, IOpenBankingService
                 .Where(x => x.OpenBankingAccessTokens.Any(c => c.ProviderId == provider.Id))
                 .CountAsync(cancellationToken: cancellationToken) == 0)
             {
-                var response = await _openBankingApiService.ExchangeCodeForAccessTokenAsync(provider.AccessCode, cancellationToken);
+                var response = await _openBankingApiService.ExchangeCodeForAccessTokenAsync(await _encryptionService.DecryptAsync(provider.AccessCode), cancellationToken);
 
                 var accessToken = new OpenBankingAccessToken()
                 {
-                    AccessToken = response.AccessToken,
+                    AccessToken = await _encryptionService.EncryptAsync(response.AccessToken),
                     ExpiresIn = response.ExpiresIn,
                     ProviderId = provider.Id,
-                    RefreshToken = response.RefreshToken,
+                    RefreshToken = await _encryptionService.EncryptAsync(response.RefreshToken),
                     Created = DateTime.Now.ToUniversalTime()
                 };
 

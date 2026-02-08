@@ -1,0 +1,43 @@
+@page "/YourAccounts"
+@using System.Globalization
+@using FinanceTracker.Enums
+@using FinanceTracker.Models.External
+@using FinanceTracker.Models.Request.OpenBanking
+@using FinanceTracker.Models.Response.Account
+@using FinanceTracker.Services.Account
+@using FinanceTracker.Services.External.OpenBanking
+@using FinanceTracker.Services.OpenBanking
+@inherits PageComponent
+
+@inject ISnackbar Snackbar
+@inject IAccountService AccountService
+
+@foreach (var account in Accounts)
+{
+    <MudCard>
+        <MudCardContent>
+            <MudStack>
+                <MudText>@account.AccountName - (@account.AccountType)</MudText>
+                <MudText>Balance @account.AccountBalance</MudText>
+                <MudText>Available @account.AvailableBalance</MudText>
+            </MudStack>
+        </MudCardContent>
+    </MudCard>
+}
+
+@code {
+
+    private List<AccountAndTransactionsResponse> Accounts { get; set; } = [];
+    private string _searchString;
+    private string _openBankingAuthUrl;
+    private string _vendorAccessToken;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        await foreach (var account in AccountService.GetAccountsAndMostRecentTransactionsAsync(5, SyncTypes.Account | SyncTypes.Balance | SyncTypes.Transactions, Cts.Token))
+        {
+            Accounts.Add(account);
+        }
+    }
+}

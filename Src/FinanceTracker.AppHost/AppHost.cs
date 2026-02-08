@@ -12,6 +12,7 @@ var redis = builder.AddRedis("financeTrackerRedis")
 
 var postgres = builder.AddPostgres("financeTrackerPostgres")
     .WithPgWeb()
+    .WithPgAdmin()
     .WithDataVolume(isReadOnly: false);
 
 var postgresDb = postgres.AddDatabase("financeTrackerPostgresDb");

@@ -38,7 +38,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         HttpContent content = new FormUrlEncodedContent(formData);
 
         var response = await httpClient.PostAsync("connect/token", content, cancellationToken);
-
+        
         var responseBody = await response.Content.ReadFromJsonAsync<ExternalOpenBankingAccessResponse>(cancellationToken: cancellationToken);
 
         return responseBody;
@@ -70,7 +70,9 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         using var httpClient = await BuildHttpClient(_trueLayerOpenBankingConfiguration.BaseDataUrl, authToken);
 
         var response = await httpClient.GetAsync("v1/accounts", cancellationToken);
-
+        if (!response.IsSuccessStatusCode)
+            return new  ();
+        
         var responseBody = await response.Content.ReadFromJsonAsync<ExternalOpenBankingListAllAccountsResponse>(cancellationToken: cancellationToken);
 
         return responseBody;
@@ -80,7 +82,8 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
     {
         using var httpClient = await BuildHttpClient(_trueLayerOpenBankingConfiguration.BaseDataUrl, authToken);
         var response = await httpClient.GetAsync($"v1/accounts/{accountId}/balance", cancellationToken);
-
+        if (!response.IsSuccessStatusCode)
+            return new ();
         var responseBody = await response.Content.ReadFromJsonAsync<ExternalOpenBankingGetAccountBalanceResponse>(cancellationToken: cancellationToken);
 
         return responseBody;
@@ -100,7 +103,8 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         }
 
         var response = await httpClient.GetAsync(urlBuilder.ToString(), cancellationToken);
-
+        if (!response.IsSuccessStatusCode)
+            return new ();
         var responseBody = await response.Content.ReadFromJsonAsync<ExternalOpenBankingAccountTransactionsResponse>(cancellationToken: cancellationToken);
 
         return responseBody;
@@ -120,7 +124,8 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         }
 
         var response = await httpClient.GetAsync(urlBuilder.ToString(), cancellationToken);
-
+        if (!response.IsSuccessStatusCode)
+            return new ();
         var responseBody = await response.Content.ReadFromJsonAsync<ExternalOpenBankingAccountTransactionsResponse>(cancellationToken: cancellationToken);
 
         return responseBody;
@@ -131,6 +136,8 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         using var httpClient = await BuildHttpClient(_trueLayerOpenBankingConfiguration.BaseDataUrl, authToken);
 
         var response = await httpClient.GetAsync($"v1/accounts/{accountId}/standing_orders", cancellationToken);
+        if (!response.IsSuccessStatusCode)
+            return new ();
         if (response.IsSuccessStatusCode)
         {
             var responseBody = await response.Content.ReadFromJsonAsync<ExternalOpenBankingAccountStandingOrdersResponse>(cancellationToken: cancellationToken);
@@ -149,6 +156,8 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         using var httpClient = await BuildHttpClient(_trueLayerOpenBankingConfiguration.BaseDataUrl, authToken);
 
         var response = await httpClient.GetAsync($"v1/accounts/{accountId}/direct_debits", cancellationToken);
+        if (!response.IsSuccessStatusCode)
+            return new ();
         if (response.IsSuccessStatusCode)
         {
             var responseBody = await response.Content.ReadFromJsonAsync<ExternalOpenBankingAccountDirectDebitsResponse>(cancellationToken: cancellationToken);
@@ -199,7 +208,8 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         using var httpClient = await BuildHttpClient(_trueLayerOpenBankingConfiguration.BaseDataUrl, accessToken);
 
         var response = await httpClient.GetAsync("v1/me", cancellationToken);
-
+        if (!response.IsSuccessStatusCode)
+            return new ();
         var responseBody = await response.Content.ReadFromJsonAsync<ExternalOpenBankingAccountConnectionResponse>(cancellationToken: cancellationToken);
 
         return responseBody;

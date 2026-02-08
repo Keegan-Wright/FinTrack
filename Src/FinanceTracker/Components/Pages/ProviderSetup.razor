@@ -27,6 +27,14 @@
     </ToolBarContent>
     <Columns>
         <SelectColumn Class="col-1" T="ExternalOpenBankingProvider" HeaderStyle="width: 2rem"/>
+        <TemplateColumn HeaderStyle="width: 10rem">
+            <HeaderTemplate>
+                <MudText>Logo</MudText>
+            </HeaderTemplate>
+            <CellTemplate>
+                <MudImage Src="@context.Item?.LogoUrl"></MudImage>
+            </CellTemplate>
+        </TemplateColumn>
         <PropertyColumn Property="x => x.DisplayName" Title="Name" Sortable="true" Filterable="true" />
         <PropertyColumn Property="x => x.Country.ToUpper()" Title="Country" Sortable="true" Filterable="true"/>
     </Columns>
@@ -58,7 +66,6 @@
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
-        await OpenBankingService.PerformSyncAsync(SyncTypes.All, Cts.Token);
         await foreach (var provider in OpenBankingService.GetOpenBankingProvidersForClientAsync(Cts.Token))
         {
             OpenBankingProviders.Add(provider);
@@ -79,8 +86,6 @@
     async Task SelectedItemsChanged(HashSet<ExternalOpenBankingProvider> selectedProviders)
     {
         var scopes = new List<string>();
-        var providerIds = selectedProviders.Select(x => x.ProviderId);
-        
         var scopesList = selectedProviders.Select(x => x.Scopes).ToList();
         foreach (var scope in scopesList)
         {
