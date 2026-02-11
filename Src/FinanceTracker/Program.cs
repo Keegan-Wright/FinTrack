@@ -80,8 +80,9 @@ public partial class Program
         encryptionConfig.SymmetricSalt = builder.Configuration.GetValue<string>("ENCRYPTION_SALT");
         encryptionConfig.Iterations = builder.Configuration.GetValue<int>("ENCRYPTION_ITERATIONS");
         builder.Services.AddSingleton(encryptionConfig);
-        
-        
+
+
+        builder.Services.AddCascadingValue(sp => new ApplicationState());
         
         AddFinanceTrackerServices(builder.Services);
         AddFinanceTrackerValidators(builder.Services);

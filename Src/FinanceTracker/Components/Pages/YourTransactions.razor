@@ -171,7 +171,9 @@
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
+        SetLoadingState(true, "Loading filters");
         await LoadFilterItems();
+        SetLoadingState(false, null);
     }
 
     private async Task LoadFilterItems()
@@ -204,6 +206,7 @@
 
     private async Task SearchTransactionsAsync()
     {
+        SetLoadingState(true, "Loading transactions");
         _transactions.Clear();
         var transactionRequest = new FilteredTransactionsRequest
         {
@@ -221,6 +224,7 @@
         {
             _transactions.Add(transaction);
         }
+        SetLoadingState(false, null);
     }
 
     private string GetProviderMultiSelectText(List<string?>? list)

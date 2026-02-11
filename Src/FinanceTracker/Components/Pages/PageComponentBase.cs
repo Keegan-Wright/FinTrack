@@ -6,17 +6,20 @@ public class PageComponent : ComponentBase, IDisposable
 {
     internal readonly CancellationTokenSource Cts = new();
     
-    internal bool Loading {get; private set; }
-    internal string? LoadingMessage { get; private set; }
+    [CascadingParameter]
+    private ApplicationState ApplicationState { get; set; }
 
     internal void SetLoadingState(bool loading, string? message)
     {
-        Loading = loading;
-        LoadingMessage = message;
+        ApplicationState.Loading = loading;
+        ApplicationState.LoadingMessage = message;
+        StateHasChanged();
     }
     
     public void Dispose()
     {
+        ApplicationState.Loading = false;
+        ApplicationState.LoadingMessage = null;
         Cts.Cancel();
         Cts.Dispose();
     }

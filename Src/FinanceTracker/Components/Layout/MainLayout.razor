@@ -1,9 +1,12 @@
 ﻿@inherits LayoutComponentBase
+@using System.ComponentModel
+@implements IDisposable
 
 <MudThemeProvider IsDarkMode="true"/>
 <MudPopoverProvider/>
 <MudDialogProvider/>
 <MudSnackbarProvider/>
+
 <MudLayout>
     <MudAppBar Elevation="1">
         <MudStaticNavDrawerToggle DrawerId="nav-drawer" Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start"/>
@@ -15,7 +18,13 @@
         <NavMenu/>
     </MudDrawer>
     <MudMainContent Class="pt-16 pa-4">
-        @Body
+        <CascadingValue Value=@ApplicationState.Loading>
+            <MudOverlay Visible="ApplicationState.Loading" DarkBackground="true" AutoClose="false">
+                <MudProgressCircular Color="Color.Primary" Indeterminate="true"/>
+                <MudText>@ApplicationState.LoadingMessage</MudText>
+            </MudOverlay>
+            @Body
+        </CascadingValue>
     </MudMainContent>
 </MudLayout>
 
@@ -27,5 +36,28 @@
 </div>
 
 @code {
+    
+    
+    [CascadingParameter]
+    private ApplicationState ApplicationState { get; set; }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        ApplicationState.PropertyChanged += ApplicationStateOnPropertyChanged;
+    }
+
+    private void ApplicationStateOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    { 
+        StateHasChanged();
+    }
+
+
     private bool _drawerOpen = true;
+
+    public void Dispose()
+    {
+        ApplicationState.PropertyChanged -= ApplicationStateOnPropertyChanged;
+    }
+
 }
