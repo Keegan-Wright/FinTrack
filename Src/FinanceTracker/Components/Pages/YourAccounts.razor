@@ -7,11 +7,10 @@
 
 
 @attribute [Authorize]
-@inject ISnackbar Snackbar
 @inject IAccountService AccountService
 
         <MudGrid Class="my-2">
-            @foreach (var account in Accounts)
+            @foreach (var account in _accounts)
             {
                 <MudItem xs="12" md="12" lg="6" xl="4" Class="d-flex">
                     
@@ -69,17 +68,15 @@
         </MudGrid>
 @code {
 
-    private List<AccountAndTransactionsResponse> Accounts { get; } = [];
-    private string _searchString;
-    private string _openBankingAuthUrl;
-    private string _vendorAccessToken;
+    private readonly List<AccountAndTransactionsResponse> _accounts  = [];
 
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
+        
         await foreach (var account in AccountService.GetAccountsAndMostRecentTransactionsAsync(5, SyncTypes.Account | SyncTypes.Balance | SyncTypes.Transactions, Cts.Token))
         {
-            Accounts.Add(account);
+            _accounts.Add(account);
         }
     }
 }

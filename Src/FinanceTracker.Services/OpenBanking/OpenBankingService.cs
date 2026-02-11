@@ -259,7 +259,7 @@ public class OpenBankingService : ServiceBase, IOpenBankingService
                         UpdateOrCreateAccountStandingOrder(standingOrder.StandingOrders, accountToUse));
                 }
 
-                await context.BulkInsertOrUpdateAsync(standingOrderEdits, cancellationToken: cancellationToken);
+                    await context.BulkInsertOrUpdateAsync(standingOrderEdits, cancellationToken: cancellationToken);
 
                 var directDebitEdits = new List<OpenBankingDirectDebit>();
                 await foreach (var directDebit in providerDirectDebits.ToAsyncEnumerable().WithCancellation(cancellationToken))
@@ -270,7 +270,7 @@ public class OpenBankingService : ServiceBase, IOpenBankingService
                         UpdateOrCreateAccountDirectDebit(directDebit.DirectDebits, accountToUse));
                 }
 
-                await context.BulkInsertOrUpdateAsync(directDebitEdits, cancellationToken: cancellationToken);
+                    await context.BulkInsertOrUpdateAsync(directDebitEdits, cancellationToken: cancellationToken);   
 
 
                 var transactionsEdits = new List<OpenBankingTransaction>();

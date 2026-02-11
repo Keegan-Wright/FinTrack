@@ -1,9 +1,6 @@
 @page "/ProviderSetup"
-@using System.Globalization
-@using FinanceTracker.Enums
 @using FinanceTracker.Models.External
 @using FinanceTracker.Models.Request.OpenBanking
-@using FinanceTracker.Services.External.OpenBanking
 @using FinanceTracker.Services.OpenBanking
 @using Microsoft.AspNetCore.Authorization
 @inherits PageComponent
@@ -55,7 +52,7 @@
     
     <MudStack>
         <MudTextField T="string" Placeholder="Access Code" @bind-Value="_vendorAccessToken"/>
-        <MudButton Variant="Variant.Filled" onClick="@AddProviderAsync">Add Provider</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" onClick="@AddProviderAsync">Add Provider</MudButton>
     </MudStack>
 }
 
