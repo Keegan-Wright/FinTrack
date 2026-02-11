@@ -50,7 +50,7 @@ public class AccountService : ServiceBase, IAccountService
                     Description = transaction.Description,
                     Status = transaction.Pending ? "Pending" : "Complete",
                     Time = transaction.TransactionTime
-                }).ToAsyncEnumerable()
+                })
             };
 
             yield return response;

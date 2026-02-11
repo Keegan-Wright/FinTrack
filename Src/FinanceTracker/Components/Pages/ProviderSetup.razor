@@ -5,7 +5,10 @@
 @using FinanceTracker.Models.Request.OpenBanking
 @using FinanceTracker.Services.External.OpenBanking
 @using FinanceTracker.Services.OpenBanking
+@using Microsoft.AspNetCore.Authorization
 @inherits PageComponent
+
+@attribute [Authorize]
 
 @inject ISnackbar Snackbar
 @inject IOpenBankingService OpenBankingService
@@ -32,7 +35,7 @@
                 <MudText>Logo</MudText>
             </HeaderTemplate>
             <CellTemplate>
-                <MudImage Src="@context.Item?.LogoUrl"></MudImage>
+                <MudImage Src="@context.Item?.LogoUrl" Fluid="true" ></MudImage>
             </CellTemplate>
         </TemplateColumn>
         <PropertyColumn Property="x => x.DisplayName" Title="Name" Sortable="true" Filterable="true" />
