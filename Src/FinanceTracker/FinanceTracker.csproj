@@ -24,6 +24,7 @@
         <PackageReference Include="MudBlazor" Version="9.0.0-preview.2" />
         <PackageReference Include="Extensions.MudBlazor.StaticInput" Version="4.0.0-beta.2" />
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
+        <PackageReference Include="OpenTelemetry.Instrumentation.EntityFrameworkCore" Version="1.15.0-beta.1" />
         <PackageReference Include="TickerQ" Version="10.1.1" />
         <PackageReference Include="TickerQ.EntityFrameworkCore" Version="10.1.1" />
         <PackageReference Include="TickerQ.Instrumentation.OpenTelemetry" Version="10.1.1" />
@@ -32,6 +33,7 @@
 
 
     <ItemGroup>
+      <ProjectReference Include="..\FinanceTracker.AppHost.ServiceDefaults\FinanceTracker.AppHost.ServiceDefaults.csproj" />
       <ProjectReference Include="..\FinanceTracker.Data.Migrations\FinanceTracker.Data.Migrations.csproj" />
       <ProjectReference Include="..\FinanceTracker.Data\FinanceTracker.Data.csproj" />
       <ProjectReference Include="..\FinanceTracker.Models.Request\FinanceTracker.Models.Request.csproj" />

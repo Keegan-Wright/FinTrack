@@ -1,4 +1,3 @@
-using System.Reflection;
 using System.Security.Claims;
 using FinanceTracker.Components;
 using FinanceTracker.Components.Account;
@@ -12,8 +11,7 @@ using MudBlazor.Services;
 using TickerQ.DependencyInjection;
 using TickerQ.EntityFrameworkCore.Customizer;
 using TickerQ.EntityFrameworkCore.DependencyInjection;
-using TickerQ.Utilities.Enums;
-using TickerQ.Utilities.Interfaces;
+using TickerQ.Instrumentation.OpenTelemetry;
 
 namespace FinanceTracker;
 
@@ -23,6 +21,7 @@ public partial class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
+        builder.AddServiceDefaults();
 // Add MudBlazor services
         builder.Services.AddMudServices();
 
@@ -41,14 +40,14 @@ public partial class Program
                 options.DefaultSignInScheme = IdentityConstants.ExternalScheme;
             })
             .AddIdentityCookies();
-
-
+        
         builder.Services.AddDbContextFactory<FinanceTrackerContext>(options =>
             options.UseNpgsql(builder.Configuration.GetConnectionString("financeTrackerPostgresDb"), options =>
             {
                 options.MigrationsAssembly("FinanceTracker.Data.Migrations");
                 options.EnableRetryOnFailure();
                 options.CommandTimeout(0);
+                
             }));
 
         builder.Services.AddDatabaseDeveloperPageExceptionFilter();
@@ -89,7 +88,13 @@ public partial class Program
 
         builder.Services.AddTickerQ(options =>
         {
-            options.SetExceptionHandler<TickerQExceptionHandler>();
+            options.AddOpenTelemetryInstrumentation();
+            
+            options.ConfigureScheduler(schedulerOptions =>
+            {
+                schedulerOptions.SchedulerTimeZone = TimeZoneInfo.Utc;
+            });
+            
             options.AddOperationalStore(efOptions =>
             {
                 efOptions.UseApplicationDbContext<FinanceTrackerContext>(ConfigurationType.UseModelCustomizer);
@@ -135,18 +140,5 @@ public partial class Program
         var users = await db.Users.ToListAsync();
 
         await app.RunAsync();
-    }
-    
-    public class  TickerQExceptionHandler : ITickerExceptionHandler
-    {
-        public async Task HandleExceptionAsync(Exception exception, Guid tickerId, TickerType tickerType)
-        {
-            throw new NotImplementedException();
-        }
-
-        public async Task HandleCanceledExceptionAsync(Exception exception, Guid tickerId, TickerType tickerType)
-        {
-            throw new NotImplementedException();
-        }
     }
 }

@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.ServiceDiscovery;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
 namespace Microsoft.Extensions.Hosting;
@@ -49,14 +50,26 @@ public static class Extensions
         });
 
         builder.Services.AddOpenTelemetry()
+            .ConfigureResource(x => 
+            x.AddService("FinanceTracker")
+            .AddProcessDetector()
+            .AddProcessRuntimeDetector()
+            .AddOperatingSystemDetector()
+            .AddHostDetector()
+            .AddContainerDetector())
             .WithMetrics(metrics =>
             {
                 metrics.AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
                     .AddRuntimeInstrumentation();
+
+                metrics.AddMeter("Npgsql");
             })
             .WithTracing(tracing =>
             {
+                tracing.AddSource("TickerQ");
+                tracing.AddSource("Npgsql");
+                
                 tracing.AddSource(builder.Environment.ApplicationName)
                     .AddAspNetCoreInstrumentation(tracing =>
                         // Exclude health check requests from tracing
