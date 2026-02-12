@@ -25,18 +25,26 @@ public class BackgroundSyncAutomatedJobs
         context.CronOccurrenceOperations.SkipIfAlreadyRunning();
         
         await using var dbContext = await  _dbContextFactory.CreateDbContextAsync(cancellationToken);
-        var providerQueryable = dbContext.OpenBankingProviders
-            .Include(x => x.Accounts)
-            .ThenInclude(x => x.Transactions)
-            .Include(x => x.Accounts).ThenInclude(x => x.AccountBalance)
-            .Include(x => x.Scopes)
-            .Include(x => x.Syncronisations)
-            .AsSplitQuery()
-            .AsAsyncEnumerable().WithCancellation(cancellationToken);
+        var userQuery = dbContext.Users
+                .Include(x => x.Providers)
+                .ThenInclude(x => x.Accounts)
+                .ThenInclude(x => x.Transactions)
+                .Include(x => x.Providers).ThenInclude(x => x.Accounts).ThenInclude(x => x.AccountBalance)
+                .Include(x => x.Providers).ThenInclude(x => x.Scopes)
+                .Include(x => x.Providers).ThenInclude(x => x.Syncronisations)
+                .AsSplitQuery()
+                .AsAsyncEnumerable().WithCancellation(cancellationToken);
 
-        await foreach (var provider in providerQueryable)
+        await foreach (var user in userQuery)
         {
-            await _openBankingService.BulkLoadProviderAsync(provider, SyncTypes.All, cancellationToken);
+            await _openBankingService.RunFunctionAsUser(user.Id, async () =>
+            {
+                foreach (var provider in user.Providers)
+                {
+                    await _openBankingService.BulkLoadProviderAsync(provider, SyncTypes.All, cancellationToken);   
+                }
+            }, cancellationToken);
+            
         }
     }
 }

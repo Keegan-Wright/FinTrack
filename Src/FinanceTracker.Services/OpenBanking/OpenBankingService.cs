@@ -156,7 +156,6 @@ public class OpenBankingService : ServiceBase, IOpenBankingService
     
     public async Task BulkLoadProviderAsync(OpenBankingProvider provider, SyncTypes syncFlags, CancellationToken cancellationToken)
         {
-            await using var context = await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
             var providerScopes = provider.Scopes ?? [];
             
             var providerSyncs = provider.Syncronisations?.Where(x =>
@@ -223,6 +222,8 @@ public class OpenBankingService : ServiceBase, IOpenBankingService
 
             });
 
+            
+            await using var context = await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
             var strategy = context.Database.CreateExecutionStrategy();
 
             await strategy.ExecuteAsync(async () =>
@@ -330,7 +331,8 @@ public class OpenBankingService : ServiceBase, IOpenBankingService
 
         }
 
-        private async Task CollateAccountPendingTransactionsAsync(ExternalOpenBankingAccountTransactionsResponse? pendingTransactionsResults, string accountId, ConcurrentBag<(string, ExternalOpenBankingAccountTransaction)> providerPendingTransactions)
+
+    private async Task CollateAccountPendingTransactionsAsync(ExternalOpenBankingAccountTransactionsResponse? pendingTransactionsResults, string accountId, ConcurrentBag<(string, ExternalOpenBankingAccountTransaction)> providerPendingTransactions)
         {
             if (pendingTransactionsResults == null)
             {

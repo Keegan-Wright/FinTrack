@@ -12,6 +12,8 @@ using MudBlazor.Services;
 using TickerQ.DependencyInjection;
 using TickerQ.EntityFrameworkCore.Customizer;
 using TickerQ.EntityFrameworkCore.DependencyInjection;
+using TickerQ.Utilities.Enums;
+using TickerQ.Utilities.Interfaces;
 
 namespace FinanceTracker;
 
@@ -52,7 +54,7 @@ public partial class Program
         builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
         builder.Services.AddHttpContextAccessor();
-        builder.Services.AddScoped<ClaimsPrincipal>(s => s.GetRequiredService<IHttpContextAccessor>().HttpContext.User);
+        builder.Services.AddScoped<ClaimsPrincipal?>(s => s.GetService<IHttpContextAccessor>()?.HttpContext?.User ?? null);
 
         
         builder.Services.AddIdentityCore<FinanceTrackerUser>(options =>
@@ -87,6 +89,7 @@ public partial class Program
 
         builder.Services.AddTickerQ(options =>
         {
+            options.SetExceptionHandler<TickerQExceptionHandler>();
             options.AddOperationalStore(efOptions =>
             {
                 efOptions.UseApplicationDbContext<FinanceTrackerContext>(ConfigurationType.UseModelCustomizer);
@@ -132,5 +135,18 @@ public partial class Program
         var users = await db.Users.ToListAsync();
 
         await app.RunAsync();
+    }
+    
+    public class  TickerQExceptionHandler : ITickerExceptionHandler
+    {
+        public async Task HandleExceptionAsync(Exception exception, Guid tickerId, TickerType tickerType)
+        {
+            throw new NotImplementedException();
+        }
+
+        public async Task HandleCanceledExceptionAsync(Exception exception, Guid tickerId, TickerType tickerType)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
