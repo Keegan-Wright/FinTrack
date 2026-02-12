@@ -8,7 +8,8 @@ var authConfig = builder.Configuration.GetSection("Auth");
 var encryptionConfig = builder.Configuration.GetSection("Encryption");
 
 var redis = builder.AddRedis("financeTrackerRedis")
-    .WithDataVolume(isReadOnly: false);
+    .WithDataVolume(isReadOnly: false)
+    .WithPersistence(interval: TimeSpan.FromMinutes(5));
 
 var postgres = builder.AddPostgres("financeTrackerPostgres")
     .WithPgWeb()

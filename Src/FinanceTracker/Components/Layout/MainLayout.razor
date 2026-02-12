@@ -19,9 +19,11 @@
     </MudDrawer>
     <MudMainContent Class="pt-16 pa-4">
         <CascadingValue Value=@ApplicationState.Loading>
-            <MudOverlay Visible="ApplicationState.Loading" DarkBackground="true" AutoClose="false">
-                <MudProgressCircular Color="Color.Primary" Indeterminate="true"/>
-                <MudText>@ApplicationState.LoadingMessage</MudText>
+            <MudOverlay Visible="@ApplicationState.Loading" DarkBackground="true" AutoClose="false">
+                <MudItem Class="d-flex flex-column align-center" >
+                    <MudProgressCircular Color="Color.Primary" Indeterminate="true"/>
+                    <MudText Typo="Typo.h6">@ApplicationState.LoadingMessage</MudText>
+                </MudItem>
             </MudOverlay>
             @Body
         </CascadingValue>

@@ -5,11 +5,11 @@
 @using Microsoft.AspNetCore.Authorization
 @inherits PageComponent
 
-
 @attribute [Authorize]
 @inject IAccountService AccountService
 
-        <MudGrid Class="my-2">
+<PageTitle>Accounts</PageTitle>
+<MudGrid Class="my-2">
             @foreach (var account in _accounts)
             {
                 <MudItem xs="12" md="12" lg="6" xl="4" Class="d-flex">
@@ -73,10 +73,11 @@
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
-        
+        SetLoadingState(true, "Loading your accounts");
         await foreach (var account in AccountService.GetAccountsAndMostRecentTransactionsAsync(5, SyncTypes.Account | SyncTypes.Balance | SyncTypes.Transactions, Cts.Token))
         {
             _accounts.Add(account);
         }
+        SetLoadingState(false);
     }
 }

@@ -13,6 +13,8 @@
 @attribute [Authorize]
 @inject ITransactionsService TransactionsService
 
+<PageTitle>Transactions</PageTitle>
+
 <MudGrid Class="my-2">
     <MudItem xs="12" md="4" lg="3">
         <MudSelect T="Guid"
@@ -173,7 +175,7 @@
         await base.OnInitializedAsync();
         SetLoadingState(true, "Loading filters");
         await LoadFilterItems();
-        SetLoadingState(false, null);
+        SetLoadingState(false);
     }
 
     private async Task LoadFilterItems()
@@ -224,7 +226,7 @@
         {
             _transactions.Add(transaction);
         }
-        SetLoadingState(false, null);
+        SetLoadingState(false);
     }
 
     private string GetProviderMultiSelectText(List<string?>? list)

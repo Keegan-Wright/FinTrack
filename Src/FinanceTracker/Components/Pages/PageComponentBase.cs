@@ -9,7 +9,7 @@ public class PageComponent : ComponentBase, IDisposable
     [CascadingParameter]
     private ApplicationState ApplicationState { get; set; }
 
-    internal void SetLoadingState(bool loading, string? message)
+    internal void SetLoadingState(bool loading, string? message = null)
     {
         ApplicationState.Loading = loading;
         ApplicationState.LoadingMessage = message;

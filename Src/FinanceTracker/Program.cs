@@ -33,7 +33,10 @@ public partial class Program
         builder.Services.AddScoped<IdentityUserAccessor>();
         builder.Services.AddScoped<IdentityRedirectManager>();
         builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
-
+        
+        builder.AddRedisOutputCache("financeTrackerRedis");
+        builder.AddRedisDistributedCache("financeTrackerRedis");
+        
         builder.Services.AddAuthentication(options =>
             {
                 options.DefaultScheme = IdentityConstants.ApplicationScheme;
@@ -130,6 +133,7 @@ public partial class Program
         app.MapRazorComponents<App>()
             .AddInteractiveServerRenderMode();
 
+        app.UseOutputCache();
 // Add additional endpoints required by the Identity /Account Razor components.
         app.MapAdditionalIdentityEndpoints();
 
