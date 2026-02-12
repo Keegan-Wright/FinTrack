@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Security.Claims;
 using FinanceTracker.Components;
 using FinanceTracker.Components.Account;
@@ -8,6 +9,9 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using MudBlazor.Services;
+using TickerQ.DependencyInjection;
+using TickerQ.EntityFrameworkCore.Customizer;
+using TickerQ.EntityFrameworkCore.DependencyInjection;
 
 namespace FinanceTracker;
 
@@ -81,6 +85,13 @@ public partial class Program
         encryptionConfig.Iterations = builder.Configuration.GetValue<int>("ENCRYPTION_ITERATIONS");
         builder.Services.AddSingleton(encryptionConfig);
 
+        builder.Services.AddTickerQ(options =>
+        {
+            options.AddOperationalStore(efOptions =>
+            {
+                efOptions.UseApplicationDbContext<FinanceTrackerContext>(ConfigurationType.UseModelCustomizer);
+            });
+        });
 
         builder.Services.AddCascadingValue(sp => new ApplicationState());
         
@@ -106,7 +117,7 @@ public partial class Program
 
 
         app.UseAntiforgery();
-
+        app.UseTickerQ();
         app.MapStaticAssets();
         app.MapRazorComponents<App>()
             .AddInteractiveServerRenderMode();

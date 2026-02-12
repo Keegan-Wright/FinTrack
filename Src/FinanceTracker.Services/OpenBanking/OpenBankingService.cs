@@ -154,7 +154,7 @@ public class OpenBankingService : ServiceBase, IOpenBankingService
         }
     }
     
-    private async Task BulkLoadProviderAsync(OpenBankingProvider provider, SyncTypes syncFlags, CancellationToken cancellationToken)
+    public async Task BulkLoadProviderAsync(OpenBankingProvider provider, SyncTypes syncFlags, CancellationToken cancellationToken)
         {
             await using var context = await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
             var providerScopes = provider.Scopes ?? [];
