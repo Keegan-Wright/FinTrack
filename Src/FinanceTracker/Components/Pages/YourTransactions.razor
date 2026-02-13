@@ -140,7 +140,10 @@
                 <MudText>Tags</MudText>
             </HeaderTemplate>
             <CellTemplate>
-                <MudText>@string.Join(", ", context.Item?.Tags ?? Array.Empty<string>())</MudText>
+                @foreach (var tag in context.Item!.Tags)
+                {
+                    <MudChip>@tag</MudChip>
+                }
             </CellTemplate>
         </TemplateColumn>
     </Columns>
