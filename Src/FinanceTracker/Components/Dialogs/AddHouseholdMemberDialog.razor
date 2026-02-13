@@ -1,7 +1,7 @@
 @using FinanceTracker.Models.Request.HouseholdMember
-<MudDialog>
-    <TitleContent>Add Household Member</TitleContent>
-    <DialogContent>
+
+<DialogBase TResponse="AddHouseholdMemberRequest" Title="Add Household member" ResponseConstructor="BuildResponseModel">
+    <Content>
         <MudGrid>
             <MudItem xs="6">
                 <MudTextField @bind-Value="_firstName" Label="First Name" Placeholder="First Name"></MudTextField>
@@ -13,27 +13,22 @@
                 <MudTextField T="decimal" @bind-Value="_income" Label="Income" Placeholder="Income"></MudTextField>
             </MudItem>
         </MudGrid>
-    </DialogContent>
-    <DialogActions>
-        <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Submit">OK</MudButton>
-    </DialogActions>
-</MudDialog>
+    </Content>
+</DialogBase>
 
 @code {
-    [CascadingParameter]
-    private IMudDialogInstance MudDialog { get; set; }
     
     public string _firstName { get; set; }
     public string _lastname { get; set; }
     public decimal _income { get; set; }
     
-    private void Submit() => MudDialog.Close(DialogResult.Ok(new AddHouseholdMemberRequest()
+    private  AddHouseholdMemberRequest BuildResponseModel()
     {
-        FirstName = _firstName,
-        LastName = _lastname,
-        Income = _income
-    }));
-
-    private void Cancel() => MudDialog.Cancel();
+        return new AddHouseholdMemberRequest()
+        {
+            FirstName = _firstName,
+            LastName = _lastname,
+            Income = _income
+        };
+    }
 }
