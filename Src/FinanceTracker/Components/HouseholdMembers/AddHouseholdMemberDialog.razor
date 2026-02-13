@@ -1,0 +1,39 @@
+@using FinanceTracker.Models.Request.HouseholdMember
+<MudDialog>
+    <TitleContent>Add Household Member</TitleContent>
+    <DialogContent>
+        <MudGrid>
+            <MudItem xs="6">
+                <MudTextField @bind-Value="_firstName" Label="First Name" Placeholder="First Name"></MudTextField>
+            </MudItem>
+            <MudItem xs="6">
+                <MudTextField @bind-Value="_lastname" Label="Last Name" Placeholder="Last Name"></MudTextField>
+            </MudItem>
+            <MudItem xs="6">
+                <MudTextField T="decimal" @bind-Value="_income" Label="Income" Placeholder="Income"></MudTextField>
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Submit">OK</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; }
+    
+    public string _firstName { get; set; }
+    public string _lastname { get; set; }
+    public decimal _income { get; set; }
+    
+    private void Submit() => MudDialog.Close(DialogResult.Ok(new AddHouseholdMemberRequest()
+    {
+        FirstName = _firstName,
+        LastName = _lastname,
+        Income = _income
+    }));
+
+    private void Cancel() => MudDialog.Cancel();
+}
