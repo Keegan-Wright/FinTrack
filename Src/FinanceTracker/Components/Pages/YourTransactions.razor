@@ -1,10 +1,11 @@
 @page "/YourTransactions"
+@using FinanceTracker.Components.Dialogs
 @using FinanceTracker.Enums
-@using FinanceTracker.Models.External
+@using FinanceTracker.Models.Request.Classifications
 @using FinanceTracker.Models.Request.Transaction
-@using FinanceTracker.Models.Response.Account
+@using FinanceTracker.Models.Response.Classifications
 @using FinanceTracker.Models.Response.Transaction
-@using FinanceTracker.Services.Account
+@using FinanceTracker.Services.Classification
 @using FinanceTracker.Services.Transactions
 @using Microsoft.AspNetCore.Authorization
 @inherits PageComponent
@@ -12,6 +13,9 @@
 
 @attribute [Authorize]
 @inject ITransactionsService TransactionsService
+@inject IClassificationService ClassificationsService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
 
 <PageTitle>Transactions</PageTitle>
 
@@ -122,7 +126,9 @@
              QuickFilter="@_transactionsQuickFilter"
              Hideable="true"
              Hover="true"
-             RowsPerPage="50">
+             RowsPerPage="50"
+             RowContextMenuClick="OpenContextMenu"
+             RowClick="OpenContextMenu">
     <ToolBarContent>
         <MudText Typo="Typo.h6">Transactions</MudText>
         <MudSpacer />
@@ -151,7 +157,11 @@
         <MudDataGridPager T="TransactionResponse" />
     </PagerContent>
 </MudDataGrid>
-
+<MudMenu PositionAtCursor="true" @ref="_contextMenu" id="_contextMenu">
+    <MudMenuItem Icon="@Icons.Material.Filled.Add" OnClick="AddClassifications">
+        Add Custom Classifications
+    </MudMenuItem>
+</MudMenu>
 
 
 @code {
@@ -171,8 +181,9 @@
     private DateRange? _selectedDateRange = null;
     private string? _searchTerm;
     private string? _transactionsSearchTerm;
+    private TransactionResponse? _contextMenuRow;
+    private MudMenu _contextMenu = null!;
     
-
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
@@ -282,4 +293,65 @@
         
         return false;
     };
+    
+    
+    private async Task OpenContextMenu(DataGridRowClickEventArgs<TransactionResponse> row)
+    {
+        _contextMenuRow = row.Item;
+        await _contextMenu.OpenMenuAsync(row.MouseEventArgs);
+    }
+
+    private async Task AddClassifications()
+    {
+        var classifications = new List<ClassificationsResponse>();
+        await foreach (var classification in ClassificationsService.GetAllCustomClassificationsAsync(Cts.Token))
+        {
+            classifications.Add(classification);
+        }
+        
+        
+        var dialogParameters = new DialogParameters<AddClassificationsToTransactionDialog>
+        {
+            { x => x.TransactionId, _contextMenuRow.TransactionId },
+            { x => x.Classifications, classifications }
+        };
+        
+        var dialogRef = await DialogService.ShowAsync<AddClassificationsToTransactionDialog>(null ,dialogParameters);
+        var dialogActionResult = await dialogRef.Result;
+
+        if(dialogActionResult is null)
+            return;
+        
+        if (dialogActionResult.Canceled)
+        {
+            Snackbar.Add("Add classifications cancelled");
+        }
+        else
+        {
+            try
+            {
+                SetLoadingState(true, "Adding classifications");
+                var classificationsToAdd = (AddCustomClassificationsToTransactionRequest)dialogActionResult.Data!;
+                await ClassificationsService.AddCustomClassificationsToTransactionAsync(classificationsToAdd, Cts.Token);
+                var rebuiltTags = new List<string>();
+                rebuiltTags.AddRange(_contextMenuRow.Tags);
+                
+                rebuiltTags.AddRange(classifications.Where(x => classificationsToAdd.Classifications.Select(c => c.ClassificationId)
+                        .Contains(x.ClassificationId))
+                    .Select(v => v.Tag));
+
+                _contextMenuRow.Tags = rebuiltTags;
+            }
+            catch (Exception _)
+            {
+                Snackbar.Add("Error occured adding classifications");
+            }
+            finally
+            {
+                SetLoadingState(false);
+            }
+        }
+        
+        
+    }
 }
