@@ -63,6 +63,9 @@
         var dialogRef = await DialogService.ShowAsync<AddHouseholdMemberDialog>();
         var dialogActionResult = await dialogRef.Result;
 
+        if(dialogActionResult is null)
+            return;
+        
         if (dialogActionResult.Canceled)
         {
             Snackbar.Add("Household member creation cancelled");
@@ -72,7 +75,7 @@
             try
             {
                 SetLoadingState(true, "Adding member");
-                var householdMember = await HouseholdMemberService.AddHouseholdMemberAsync((AddHouseholdMemberRequest)dialogActionResult.Data, Cts.Token);
+                var householdMember = await HouseholdMemberService.AddHouseholdMemberAsync((AddHouseholdMemberRequest)dialogActionResult.Data!, Cts.Token);
                 _houseHoldMembers.Add(householdMember);
             }
             catch (Exception _)
