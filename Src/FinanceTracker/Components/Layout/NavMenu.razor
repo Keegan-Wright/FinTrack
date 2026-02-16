@@ -9,6 +9,11 @@
     <MudNavLink Href="YourTransactions" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Money">Your Transactions</MudNavLink>
     <MudNavLink Href="HouseholdMembers" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.House">Your Household</MudNavLink>
     <MudNavLink Href="Classifications" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Tag">Classifications / Tags</MudNavLink>
+    <MudNavGroup Icon="@Icons.Material.Filled.Report" Title="Reports">
+        <MudNavLink Href="Report/ByAccount" Match="NavLinkMatch.All">Spent By Account</MudNavLink>
+        <MudNavLink Href="Report/ByCategory" Match="NavLinkMatch.All">Spent By Category</MudNavLink>
+        <MudNavLink Href="Report/InTimePeriod" Match="NavLinkMatch.All">Spent In Time Period</MudNavLink>
+    </MudNavGroup>
 </MudNavMenu>
 @code {
     private string? currentUrl;
