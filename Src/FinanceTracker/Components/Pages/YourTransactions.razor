@@ -93,7 +93,7 @@
     {
         await base.OnInitializedAsync();
         SetLoadingState(true, "Loading filters");
-        await LoadFilterItems();
+        await LoadFilterItemsAsync();
         SetLoadingState(false);
     }
 
@@ -120,7 +120,7 @@
         SetLoadingState(false);
     }
     
-    private async Task LoadFilterItems()
+    private async Task LoadFilterItemsAsync()
     {
         await foreach (var account in TransactionsService.GetAccountsForTransactionFiltersAsync(SyncTypes.All, Cts.Token))
         {
