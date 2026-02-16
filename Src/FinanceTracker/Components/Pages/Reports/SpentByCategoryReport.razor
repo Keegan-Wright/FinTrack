@@ -1,5 +1,16 @@
 @page "/Report/ByCategory"
-@inherits ReportPageBase
+@using FinanceTracker.Components.Transactions
+@using FinanceTracker.Enums
+@inherits ReportPageBase<SpentByCategoryReport>
 
 <PageTitle>Spent By Category Report</PageTitle>
 
+<TransactionFilters
+    AccountFilterItems="@_accountFilterItems"
+    CategoryFilterItems="@_categoryFilterItems"
+    ProviderFilterItems="@_providerFilterItems"
+    TransactionTagFilterItems="@_transactionTagFilterItems"
+    TransactionTypeFilterItems="@_transactionTypeFilterItems"
+    SearchTransactions="@(filters => LoadReportAsync(filters, ReportType.CategoryBreakdown))"
+    SearchTerm="@_searchTerm"
+></TransactionFilters>
