@@ -2,10 +2,14 @@ using FinanceTracker.Components.Transactions;
 using FinanceTracker.Enums;
 using FinanceTracker.Models.Request.Reports;
 using FinanceTracker.Models.Request.Transaction;
+using FinanceTracker.Models.Response.Reports.Account;
 using FinanceTracker.Models.Response.Transaction;
 using FinanceTracker.Services.Reports;
 using FinanceTracker.Services.Transactions;
 using Microsoft.AspNetCore.Components;
+using MudBlazor;
+using System.Globalization;
+using MudBlazor.Charts;
 
 namespace FinanceTracker.Components.Pages.Reports;
 
@@ -22,14 +26,14 @@ public class ReportPageBase<TReportResponse> : PageComponent
     internal readonly List<TransactionTagFilterResponse> _transactionTagFilterItems = [];
     
     private IAsyncEnumerable<TReportResponse> ReportResponseEnumerable { get; set; }
-    internal List<TReportResponse> ReportItems { get; set; }
+    internal List<TReportResponse> ReportItems { get; set; } = [];
     
     internal readonly string _searchTerm;
     
     internal async Task LoadReportAsync(TransactionFilters.ActiveTransactionFilters filters, ReportType reportType)
     {
         SetLoadingState(true, "Loading Report");
-
+        ReportItems.Clear();
         // Placeholder for reports
         var reportRequest = new BaseReportRequest
         {
@@ -96,11 +100,56 @@ public class ReportPageBase<TReportResponse> : PageComponent
         }
     }
 
-    protected async override Task OnAfterRenderAsync(bool firstRender)
+    internal List<ChartSeries<double>> GetMonthlyGraphSeries(SpentInAccountReportYearlyBreakdownResponse report)
+    {
+
+        var totalIn = new ChartSeries<double>()
+            { Name = "Total In", Data = report.MonthlyBreakdown.Select(x => Convert.ToDouble(x.TotalIn)).ToArray() };
+        var totalOut = new ChartSeries<double>()
+            { Name = "Total Out", Data = report.MonthlyBreakdown.Select(x => Convert.ToDouble(x.TotalOut)).ToArray() };
+        var totalDif = new ChartSeries<double>()
+            { Name = "Total Dif", Data = report.MonthlyBreakdown.Select(x => Convert.ToDouble(x.TotalOut) + Convert.ToDouble(x.TotalIn)).ToArray() };
+        var transactions = new ChartSeries<double>()
+            { Name = "Transactions Made", Data = report.MonthlyBreakdown.Select(x => Convert.ToDouble(x.TotalTransactions)).ToArray() };
+        
+        return [totalIn, totalOut, totalDif, transactions];
+    }
+    
+    internal List<ChartSeries<double>> GetDailyGraphSeries(SpentInAccountReportMonthlyBreakdownResponse report)
+    {
+
+        var totalIn = new ChartSeries<double>()
+            { Name = "Total In", Data = report.DailyBreakdown.Select(x => Convert.ToDouble(x.TotalIn)).ToArray() };
+        var totalOut = new ChartSeries<double>()
+            { Name = "Total Out", Data = report.DailyBreakdown.Select(x => Convert.ToDouble(x.TotalOut)).ToArray() };
+        var totalDif = new ChartSeries<double>()
+            { Name = "Total Dif", Data = report.DailyBreakdown.Select(x => Convert.ToDouble(x.TotalOut) + Convert.ToDouble(x.TotalIn)).ToArray() };
+        var transactions = new ChartSeries<double>()
+            { Name = "Transactions Made", Data = report.DailyBreakdown.Select(x => Convert.ToDouble(x.TotalTransactions)).ToArray() };
+        
+        return [totalIn, totalOut, totalDif, transactions];
+    }
+
+    internal string[] GetMonthlyGraphAxis()
+    { 
+        return DateTimeFormatInfo.CurrentInfo.MonthNames;
+    }
+    
+    internal string[] GetDailyGraphAxis(int year, int month)
+    { 
+        var days =  DateTime.DaysInMonth(year, month);
+        
+        var enumerable = Enumerable.Range(1, days + 1).Select(x => x.ToString()).ToArray();
+        return enumerable;
+    }
+    
+    protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
         SetLoadingState(true, "Loading filters");
         await LoadFilterItemsAsync();
         SetLoadingState(false);
     }
+    
+    
 }

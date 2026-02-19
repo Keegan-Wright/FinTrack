@@ -1,7 +1,8 @@
 @page "/Report/ByAccount"
 @using FinanceTracker.Components.Transactions
+@using FinanceTracker.Models.Response.Reports.Account
 @using FinanceTracker.Enums
-@inherits ReportPageBase<SpentByAccountReport>
+@inherits ReportPageBase<SpentInAccountReportResponse>
 
 <PageTitle>Spent By Account Report</PageTitle>
 
@@ -13,4 +14,60 @@
     TransactionTypeFilterItems="@_transactionTypeFilterItems"
     SearchTransactions="@(filters => LoadReportAsync(filters, ReportType.AccountBreakdown))"
     SearchTerm="@_searchTerm"
-    ></TransactionFilters>
+></TransactionFilters>
+
+<MudStack>
+    @foreach (var reportItem in ReportItems)
+    {
+        <MudCard>
+            <MudCardContent>
+                <SpentInTimePeriodOverview
+                    Title="@($"Overview - {reportItem.AccountName}")"
+                    TotalIn="@reportItem.TotalIn"
+                    TotalOut="@reportItem.TotalOut"
+                    Normalised="@Decimal.Add(reportItem.TotalOut, reportItem.TotalIn)">
+                </SpentInTimePeriodOverview>
+        
+                <MudExpansionPanels MultiExpansion="true">
+                    @foreach (var yearlyBreakdown in reportItem.YearlyBreakdown)
+                    {
+                        <MudExpansionPanel Text="@yearlyBreakdown.Year.ToString()">
+                    
+                            <SpentInTimePeriodOverview
+                                Title="Overview"
+                                TotalIn="@yearlyBreakdown.TotalIn"
+                                TotalOut="@yearlyBreakdown.TotalOut"
+                                Normalised="@Decimal.Add(yearlyBreakdown.TotalOut, yearlyBreakdown.TotalIn)">
+                            </SpentInTimePeriodOverview>
+                            
+                            <MudChart ChartType="ChartType.Line"
+                                      ChartSeries="@GetMonthlyGraphSeries(yearlyBreakdown)"
+                                      ChartLabels="@GetMonthlyGraphAxis()"
+                                      ></MudChart>
+
+                            <MudExpansionPanels MultiExpansion="true">
+                                @foreach (var monthlyBreakdown in yearlyBreakdown.MonthlyBreakdown)
+                                {
+                                    <MudExpansionPanel Text="@monthlyBreakdown.Month">
+                                        <SpentInTimePeriodOverview
+                                            Title="Overview"
+                                            TotalIn="@monthlyBreakdown.TotalIn"
+                                            TotalOut="@monthlyBreakdown.TotalOut"
+                                            Normalised="@Decimal.Add(monthlyBreakdown.TotalOut, monthlyBreakdown.TotalIn)">
+                                        </SpentInTimePeriodOverview>
+
+                                        <MudChart ChartType="ChartType.Line"
+                                                  ChartSeries="@GetDailyGraphSeries(monthlyBreakdown)"
+                                        ></MudChart>
+                                        
+                                    </MudExpansionPanel>
+                                }
+                            </MudExpansionPanels>
+                    
+                        </MudExpansionPanel>
+                    }
+                </MudExpansionPanels>
+            </MudCardContent>
+        </MudCard>
+    }
+</MudStack>
