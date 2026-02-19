@@ -2,12 +2,16 @@ using System.Runtime.CompilerServices;
 using System.Security.Claims;
 using FinanceTracker.Data;
 using FinanceTracker.Data.Models;
+using FinanceTracker.Generated.Attributes;
+using FinanceTracker.Generated.Enums;
 using FinanceTracker.Models.Request.Budget;
 using FinanceTracker.Models.Response.Budget;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.Services.Budget;
 
+[InjectionCategory(InjectionCategoryType.Service)]
+[Scoped<IBudgetCategoriesService>]
 public class BudgetCategoriesService : ServiceBase, IBudgetCategoriesService
 {
     public BudgetCategoriesService(ClaimsPrincipal user, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory) : base(user, financeTrackerContextFactory)

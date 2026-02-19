@@ -3,12 +3,16 @@ using System.Security.Claims;
 using EFCore.BulkExtensions;
 using FinanceTracker.Data;
 using FinanceTracker.Data.Models;
+using FinanceTracker.Generated.Attributes;
+using FinanceTracker.Generated.Enums;
 using FinanceTracker.Models.Request.Classifications;
 using FinanceTracker.Models.Response.Classifications;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.Services.Classification;
 
+[InjectionCategory(InjectionCategoryType.Service)]
+[Scoped<IClassificationService>]
 public class ClassificationService : ServiceBase, IClassificationService
 {
     public ClassificationService(ClaimsPrincipal user, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory) : base(user,

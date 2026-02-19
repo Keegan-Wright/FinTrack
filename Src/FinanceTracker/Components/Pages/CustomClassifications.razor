@@ -1,0 +1,103 @@
+@page "/Classifications"
+@using FinanceTracker.Components.Dialogs
+@using FinanceTracker.Models.Request.Classifications
+@using FinanceTracker.Models.Response.Classifications
+@using FinanceTracker.Services.Classification
+@using Microsoft.AspNetCore.Authorization
+@inherits PageComponent
+
+
+@attribute [Authorize]
+@inject IClassificationService ClassificationService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Classifications</PageTitle>
+
+<MudIconButton Icon="@Icons.Material.Filled.Tag" Variant="Variant.Filled" Color="Color.Primary" OnClick="@AddClassification">Add Classification / Tag</MudIconButton>
+
+<MudDataGrid T="ClassificationsResponse" Items="_classifications" 
+             MultiSelection="true"
+             SortMode="SortMode.Multiple"
+             Filterable="true" 
+             QuickFilter="@_classificationsQuickFilter"
+             Hideable="true"
+             Hover="true"
+             RowsPerPage="50">
+    <ToolBarContent>
+        <MudText Typo="Typo.h6">Classifications / Tags</MudText>
+        <MudSpacer />
+        <MudTextField @bind-Value="_classificationsSearchTerm" Placeholder="Search" Adornment="Adornment.Start" Immediate="true"
+                      AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+    </ToolBarContent>
+    <Columns>
+        <PropertyColumn Property="x => x.Tag" Title="Classification / Tag" Sortable="true" Filterable="true"/>
+    </Columns>
+    <PagerContent>
+        <MudDataGridPager T="ClassificationsResponse" />
+    </PagerContent>
+</MudDataGrid>
+
+
+
+@code {
+
+    private readonly List<ClassificationsResponse> _classifications = [];
+    private string? _classificationsSearchTerm;
+    
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        SetLoadingState(true, "Loading classifications");
+        await foreach(var classification in  ClassificationService.GetAllCustomClassificationsAsync(Cts.Token))
+        {
+            _classifications.Add(classification);
+        }
+        SetLoadingState(false);
+    }
+
+    
+    private Func<ClassificationsResponse, bool> _classificationsQuickFilter => x =>
+    {
+        if (string.IsNullOrWhiteSpace(_classificationsSearchTerm))
+            return true;
+
+        if (x.Tag.Contains(_classificationsSearchTerm, StringComparison.OrdinalIgnoreCase))
+            return true; 
+        
+        return false;
+    };
+    
+    private async Task AddClassification()
+    {
+        var dialogRef = await DialogService.ShowAsync<AddClassificationDialog>();
+        var dialogActionResult = await dialogRef.Result;
+
+        if(dialogActionResult is null)
+            return;
+        
+        if (dialogActionResult.Canceled)
+        {
+            Snackbar.Add("Classification / Tag creation cancelled");
+        }
+        else
+        {
+            try
+            {
+                SetLoadingState(true, "Adding Classification / Tag");
+                var classification = await ClassificationService.AddCustomClassificationAsync((AddClassificationsRequest)dialogActionResult.Data!, Cts.Token);
+                _classifications.Add(classification);
+            }
+            catch (Exception _)
+            {
+                Snackbar.Add("Error occured adding classification / tag");
+            }
+            finally
+            {
+                SetLoadingState(false);
+            }
+        }
+    }
+    
+}

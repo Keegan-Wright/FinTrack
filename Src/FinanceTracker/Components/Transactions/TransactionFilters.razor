@@ -1,0 +1,187 @@
+@using FinanceTracker.Models.Response.Transaction
+<MudGrid Class="my-2">
+    <MudItem xs="12" md="4" lg="3">
+        <MudSelect T="Guid"
+                   Label="Providers" 
+                   MultiSelection="true" 
+                   SelectAll="true"
+                   SelectAllText="Select all providers"
+                   MultiSelectionTextFunc="GetProviderMultiSelectText"
+                   @bind-SelectedValues="_selectedProviderIds" Clearable="true">
+            @foreach (var providerFilterItem in ProviderFilterItems)
+            {
+                <MudSelectItem T="Guid" Value="@providerFilterItem.ProviderId">@providerFilterItem.ProviderName</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+    
+    <MudItem xs="12" md="4" lg="3">
+        <MudSelect T="Guid"
+                   Label="Accounts" 
+                   MultiSelection="true"
+                   SelectAll="true"
+                   SelectAllText="Select all accounts"
+                   MultiSelectionTextFunc="GetAccountMultiSelectText"
+                   @bind-SelectedValues="_selectedAccountIds"
+                   Clearable="true">
+            @foreach (var accountFilterItem in AccountFilterItems)
+            {
+                <MudSelectItem T="Guid" Value="@accountFilterItem.AccountId">@accountFilterItem.AccountName</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+    
+    <MudItem xs="12" md="4" lg="3">
+        <MudSelect T="string"
+                   Label="Categories" 
+                   MultiSelection="true"
+                   SelectAll="true"
+                   SelectAllText="Select all categories"
+                   MultiSelectionTextFunc="GetCategoriesMultiSelectText"
+                   @bind-SelectedValues="_selectedCategoryIds"
+                   Clearable="true">
+            @foreach (var categoryFilterItem in CategoryFilterItems)
+            {
+                <MudSelectItem T="string" Value="@categoryFilterItem.TransactionCategory">@categoryFilterItem.TransactionCategory</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+    
+    <MudItem xs="12" md="4" lg="3">
+        <MudSelect 
+            T="string" 
+            Label="Types"
+            SelectAll="true"
+            SelectAllText="Select all types"
+            MultiSelectionTextFunc="GetTypesMultiSelectText"
+            MultiSelection="true"
+            @bind-SelectedValues="_selectedTransactionTypes"
+            Clearable="true">
+            @foreach (var typeFilterItem in TransactionTypeFilterItems)
+            {
+                <MudSelectItem T="string" Value="@typeFilterItem.TransactionType">@typeFilterItem.TransactionType</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+    
+    <MudItem xs="12" md="4" lg="3">
+        <MudSelect
+            T="string"
+            Label="Tags"
+            MultiSelection="true" 
+            SelectAll="true"
+            SelectAllText="Select all tags"
+            MultiSelectionTextFunc="GetTagsMultiSelectText"
+            @bind-SelectedValues="_selectedTransactionTags" 
+            Clearable="true">
+            @foreach (var tagFilterItem in TransactionTagFilterItems)
+            {
+                <MudSelectItem T="string" Value="@tagFilterItem.Tag">@tagFilterItem.Tag</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+    
+    <MudItem xs="12" md="4" lg="3">
+        <MudDateRangePicker PickerVariant="PickerVariant.Inline" Modal="false"
+                            PlaceholderStart="Date From"
+                            PlaceholderEnd="Date To"
+                            Label="Date Range" Clearable="true"
+                            @bind-DateRange="_selectedDateRange"/>
+    </MudItem>
+    
+    
+    <MudItem xs="1" md="4" lg="3">
+        <MudTextField T="string" Placeholder="Search Term" Label="Search Term" Clearable="true" @bind-Value="SearchTerm"></MudTextField>
+    </MudItem>
+    
+    <MudItem xs="1" md="4" lg="3">
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" onClick="@InvokeSearchTransactions">Search</MudButton>
+    </MudItem>
+</MudGrid>
+
+@code {
+
+    [Parameter, EditorRequired]
+    public List<TransactionAccountFilterResponse> AccountFilterItems { get; set; }
+    
+    [Parameter, EditorRequired]
+    public List<TransactionCategoryFilterResponse> CategoryFilterItems { get; set; }
+        
+    [Parameter, EditorRequired]
+    public List<TransactionProviderFilterResponse> ProviderFilterItems { get; set; }
+        
+    [Parameter, EditorRequired]
+    public List<TransactionTypeFilterResponse> TransactionTypeFilterItems { get; set; }
+        
+    [Parameter, EditorRequired]
+    public List<TransactionTagFilterResponse> TransactionTagFilterItems { get; set; }
+    
+    [Parameter, EditorRequired]
+    public string? SearchTerm { get; set; }
+
+    [Parameter, EditorRequired] 
+    public required EventCallback<ActiveTransactionFilters> SearchTransactions { get; set; }
+
+    private IEnumerable<Guid> _selectedProviderIds = [];
+    private IEnumerable<Guid> _selectedAccountIds = [];
+    private IEnumerable<string> _selectedCategoryIds = [];
+    private IEnumerable<string> _selectedTransactionTypes = [];
+    private IEnumerable<string> _selectedTransactionTags = [];
+    private DateRange? _selectedDateRange = null;
+
+    private string? _transactionsSearchTerm;
+
+    private string GetProviderMultiSelectText(List<string?>? list)
+    {
+        if (list != null && list.Count != 0)
+            return $"Selected {list.Count} {(list.Count == 1 ? "provider" : "providers")}";
+        else
+            return "";
+    }
+
+    private string GetAccountMultiSelectText(List<string?>? list)
+    {
+        if (list != null && list.Count != 0)
+            return $"Selected {list.Count} {(list.Count == 1 ? "account" : "accounts")}";
+        else
+            return "";
+    }
+
+    private string GetCategoriesMultiSelectText(List<string?>? list)
+    {
+        if (list != null && list.Count != 0)
+            return $"Selected {list.Count} {(list.Count == 1 ? "category" : "categories")}";
+        else
+            return "";
+    }
+
+    private string GetTypesMultiSelectText(List<string?>? list)
+    {
+        if (list != null && list.Count != 0)
+            return $"Selected {list.Count} {(list.Count == 1 ? "type" : "types")}";
+        else
+            return "";    }
+
+    private string GetTagsMultiSelectText(List<string?>? list)
+    {
+        if (list != null && list.Count != 0)
+            return $"Selected {list.Count} {(list.Count == 1 ? "tag" : "tags")}";
+        else
+            return "";
+    }
+
+    private async Task InvokeSearchTransactions()
+    {
+        await SearchTransactions.InvokeAsync(new ActiveTransactionFilters(_selectedProviderIds, _selectedAccountIds, _selectedCategoryIds, _selectedTransactionTypes, _selectedTransactionTags, _selectedDateRange, SearchTerm));
+    }
+
+    public record ActiveTransactionFilters(
+        IEnumerable<Guid> ProviderIds,
+        IEnumerable<Guid> AccountIds,
+        IEnumerable<string> Categories,
+        IEnumerable<string> TransactionTypes,
+        IEnumerable<string> TransactionTags,
+        DateRange? DateRange,
+        string SearchTerm);
+
+}

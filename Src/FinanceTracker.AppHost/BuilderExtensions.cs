@@ -48,4 +48,17 @@ static class BuilderExtensions
             authConfig["SigningKey"]);
         return resourceBuilder;
     }
+    
+    public static IResourceBuilder<T> AddEncryption<T>(this IResourceBuilder<T> resourceBuilder,
+        IConfigurationSection encryptionConfig)
+        where T : IResourceWithEnvironment
+    {
+        resourceBuilder.WithEnvironment("ENCRYPTION_KEY",
+            encryptionConfig["SymmetricKey"]);
+        resourceBuilder.WithEnvironment("ENCRYPTION_SALT",
+            encryptionConfig["SymmetricSalt"]);
+        resourceBuilder.WithEnvironment("ENCRYPTION_ITERATIONS",
+            encryptionConfig["Iterations"]);
+        return resourceBuilder;
+    }
 }

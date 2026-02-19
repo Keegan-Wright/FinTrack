@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="FluentValidation" Version="12.1.1" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\FinanceTracker.Models.Request\FinanceTracker.Models.Request.csproj" />
+      <ProjectReference Include="..\Generators\FinanceTracker.Generated.Attributes\FinanceTracker.Generated.Attributes\FinanceTracker.Generated.Attributes.csproj" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+      <ProjectReference Include="..\Generators\FinanceTracker.Generated.Enums\FinanceTracker.Generated.Enums\FinanceTracker.Generated.Enums.csproj" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    </ItemGroup>
+    
+    
+
+</Project>

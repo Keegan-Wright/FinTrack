@@ -3,31 +3,18 @@
 @inject NavigationManager NavigationManager
 
 <MudNavMenu>
-    <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Home</MudNavLink>
-    <MudNavLink Href="counter" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Add">Counter</MudNavLink>
-
-    <MudNavLink Href="weather" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.List">Weather</MudNavLink>
-
-    <MudNavLink Href="auth" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Lock">Auth Required</MudNavLink>
-    <AuthorizeView>
-        <Authorized>
-            <MudNavLink Href="Account/Manage" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Person">@context.User.Identity?.Name</MudNavLink>
-            <form action="Account/Logout" method="post">
-                <AntiforgeryToken/>
-                <input type="hidden" name="ReturnUrl" value="@currentUrl"/>
-                <button type="submit" class="mud-nav-link mud-ripple">
-                    <MudIcon Icon="@Icons.Material.Filled.Logout" Color="Color.Info" Class="mr-3"></MudIcon> Logout
-                </button>
-            </form>
-        </Authorized>
-        <NotAuthorized>
-            <MudNavLink Href="Account/Register" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Person">Register</MudNavLink>
-            <MudNavLink Href="Account/Login" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Password">Login</MudNavLink>
-        </NotAuthorized>
-    </AuthorizeView>
+    <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">Dashboard</MudNavLink>
+    <MudNavLink Href="ProviderSetup" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.AccountBox">Setup Provider</MudNavLink>
+    <MudNavLink Href="YourAccounts" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.AccountBalance">Your Accounts</MudNavLink>
+    <MudNavLink Href="YourTransactions" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Money">Your Transactions</MudNavLink>
+    <MudNavLink Href="HouseholdMembers" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.House">Your Household</MudNavLink>
+    <MudNavLink Href="Classifications" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Tag">Classifications / Tags</MudNavLink>
+    <MudNavGroup Icon="@Icons.Material.Filled.Report" Title="Reports">
+        <MudNavLink Href="Report/ByAccount" Match="NavLinkMatch.All">Spent By Account</MudNavLink>
+        <MudNavLink Href="Report/ByCategory" Match="NavLinkMatch.All">Spent By Category</MudNavLink>
+        <MudNavLink Href="Report/InTimePeriod" Match="NavLinkMatch.All">Spent In Time Period</MudNavLink>
+    </MudNavGroup>
 </MudNavMenu>
-
-
 @code {
     private string? currentUrl;
 

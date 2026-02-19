@@ -1,0 +1,61 @@
+<MudCard Outlined="true" Elevation="5">
+    <MudCardHeader>
+        <MudText>@Title</MudText>
+    </MudCardHeader>
+    <MudCardContent>
+        
+        <MudGrid>
+            <MudItem xs="4">
+                <MudCard>
+                    <MudCardContent>
+                        <MudStack>
+                            <MudText>Total In</MudText>
+                            <MudText>@TotalIn</MudText>
+                        </MudStack>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+            
+            <MudItem xs="4">
+                <MudCard>
+                    <MudCardContent>
+                        <MudStack>
+                            <MudText>Total Out</MudText>
+                            <MudText>@TotalOut</MudText>
+                        </MudStack>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+            
+            <MudItem xs="4">
+                <MudCard>
+                    <MudCardContent>
+                        <MudStack>
+                            <MudText>Difference</MudText>
+                            <MudText>@Normalised</MudText>
+                        </MudStack>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+        
+    </MudCardContent>
+</MudCard>
+
+
+
+@code{
+    [Parameter, EditorRequired]
+    public string Title { get; set; }
+    
+    
+    [Parameter, EditorRequired]
+    public decimal TotalIn { get; set; }
+    
+    
+    [Parameter, EditorRequired]
+    public decimal TotalOut { get; set; }
+    
+    [Parameter, EditorRequired]
+    public decimal Normalised { get; set; }
+}

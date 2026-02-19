@@ -1,13 +1,18 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Text;
 using FinanceTracker.Configurations;
+using FinanceTracker.Generated.Attributes;
+using FinanceTracker.Generated.Enums;
 using FinanceTracker.Models.External;
 
 namespace FinanceTracker.Services.External.OpenBanking;
 
+[InjectionCategory(InjectionCategoryType.External)]
+[Scoped<IOpenBankingApiService>]
 public class TrueLayerOpenBankingApiService : IOpenBankingApiService
 {
     private readonly TrueLayerOpenBankingConfiguration _trueLayerOpenBankingConfiguration;
@@ -33,7 +38,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         HttpContent content = new FormUrlEncodedContent(formData);
 
         var response = await httpClient.PostAsync("connect/token", content, cancellationToken);
-
+        
         var responseBody = await response.Content.ReadFromJsonAsync<ExternalOpenBankingAccessResponse>(cancellationToken: cancellationToken);
 
         return responseBody;
@@ -65,7 +70,9 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         using var httpClient = await BuildHttpClient(_trueLayerOpenBankingConfiguration.BaseDataUrl, authToken);
 
         var response = await httpClient.GetAsync("v1/accounts", cancellationToken);
-
+        if (!response.IsSuccessStatusCode)
+            return new  ();
+        
         var responseBody = await response.Content.ReadFromJsonAsync<ExternalOpenBankingListAllAccountsResponse>(cancellationToken: cancellationToken);
 
         return responseBody;
@@ -75,7 +82,8 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
     {
         using var httpClient = await BuildHttpClient(_trueLayerOpenBankingConfiguration.BaseDataUrl, authToken);
         var response = await httpClient.GetAsync($"v1/accounts/{accountId}/balance", cancellationToken);
-
+        if (!response.IsSuccessStatusCode)
+            return new ();
         var responseBody = await response.Content.ReadFromJsonAsync<ExternalOpenBankingGetAccountBalanceResponse>(cancellationToken: cancellationToken);
 
         return responseBody;
@@ -95,7 +103,8 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         }
 
         var response = await httpClient.GetAsync(urlBuilder.ToString(), cancellationToken);
-
+        if (!response.IsSuccessStatusCode)
+            return new ();
         var responseBody = await response.Content.ReadFromJsonAsync<ExternalOpenBankingAccountTransactionsResponse>(cancellationToken: cancellationToken);
 
         return responseBody;
@@ -115,7 +124,8 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         }
 
         var response = await httpClient.GetAsync(urlBuilder.ToString(), cancellationToken);
-
+        if (!response.IsSuccessStatusCode)
+            return new ();
         var responseBody = await response.Content.ReadFromJsonAsync<ExternalOpenBankingAccountTransactionsResponse>(cancellationToken: cancellationToken);
 
         return responseBody;
@@ -126,10 +136,19 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         using var httpClient = await BuildHttpClient(_trueLayerOpenBankingConfiguration.BaseDataUrl, authToken);
 
         var response = await httpClient.GetAsync($"v1/accounts/{accountId}/standing_orders", cancellationToken);
+        if (!response.IsSuccessStatusCode)
+            return new ();
+        if (response.IsSuccessStatusCode)
+        {
+            var responseBody = await response.Content.ReadFromJsonAsync<ExternalOpenBankingAccountStandingOrdersResponse>(cancellationToken: cancellationToken);
 
-        var responseBody = await response.Content.ReadFromJsonAsync<ExternalOpenBankingAccountStandingOrdersResponse>(cancellationToken: cancellationToken);
+            return responseBody;
+        }
+        else
+        {
+            return new ExternalOpenBankingAccountStandingOrdersResponse();
+        }
 
-        return responseBody;
     }
 
     public async Task<ExternalOpenBankingAccountDirectDebitsResponse> GetAccountDirectDebitsAsync(string accountId, string authToken, CancellationToken cancellationToken)
@@ -137,10 +156,18 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         using var httpClient = await BuildHttpClient(_trueLayerOpenBankingConfiguration.BaseDataUrl, authToken);
 
         var response = await httpClient.GetAsync($"v1/accounts/{accountId}/direct_debits", cancellationToken);
+        if (!response.IsSuccessStatusCode)
+            return new ();
+        if (response.IsSuccessStatusCode)
+        {
+            var responseBody = await response.Content.ReadFromJsonAsync<ExternalOpenBankingAccountDirectDebitsResponse>(cancellationToken: cancellationToken);
+            return responseBody;
+        }
+        else
+        {
+            return new ExternalOpenBankingAccountDirectDebitsResponse();
+        }
 
-        var responseBody = await response.Content.ReadFromJsonAsync<ExternalOpenBankingAccountDirectDebitsResponse>(cancellationToken: cancellationToken);
-
-        return responseBody;
     }
 
     public async IAsyncEnumerable<ExternalOpenBankingProvider> GetAvailableProvidersAsync([EnumeratorCancellation] CancellationToken cancellationToken)
@@ -181,7 +208,8 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         using var httpClient = await BuildHttpClient(_trueLayerOpenBankingConfiguration.BaseDataUrl, accessToken);
 
         var response = await httpClient.GetAsync("v1/me", cancellationToken);
-
+        if (!response.IsSuccessStatusCode)
+            return new ();
         var responseBody = await response.Content.ReadFromJsonAsync<ExternalOpenBankingAccountConnectionResponse>(cancellationToken: cancellationToken);
 
         return responseBody;
@@ -199,7 +227,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         }
 
         var dnsEntries = await Dns.GetHostEntryAsync(Dns.GetHostName());
-        httpClient.DefaultRequestHeaders.Add("x-PSU-IP", dnsEntries.AddressList.FirstOrDefault(x => x.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork).ToString());
+        httpClient.DefaultRequestHeaders.Add("x-PSU-IP", dnsEntries.AddressList.FirstOrDefault(x => x.AddressFamily == AddressFamily.InterNetwork && x.MapToIPv4().ToString() != "127.0.1.1").ToString());
 
         httpClient.Timeout = TimeSpan.FromMinutes(5);
 

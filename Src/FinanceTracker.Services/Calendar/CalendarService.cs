@@ -1,11 +1,15 @@
 using System.Runtime.CompilerServices;
 using System.Security.Claims;
 using FinanceTracker.Data;
+using FinanceTracker.Generated.Attributes;
+using FinanceTracker.Generated.Enums;
 using FinanceTracker.Models.Response.Calendar;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.Services.Calendar;
 
+[InjectionCategory(InjectionCategoryType.Service)]
+[Scoped<ICalendarService>]
 public class CalendarService : ServiceBase, ICalendarService
 {
     public CalendarService(ClaimsPrincipal user, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory) : base(user, financeTrackerContextFactory)

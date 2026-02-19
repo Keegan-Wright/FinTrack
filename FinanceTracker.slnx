@@ -13,8 +13,15 @@
   <Project Path="Src/FinanceTracker.Services.External/FinanceTracker.Services.External.csproj" />
   <Project Path="Src/FinanceTracker.Models.External/FinanceTracker.Models.External.csproj" />
   <Project Path="Src/FinanceTracker.Models.Request/FinanceTracker.Models.Request.csproj" />
+  <Folder Name="/SourceGenerators/">
+    <Project Path="Src/Generators/FinanceTracker.Generated.Helpers/FinanceTracker.Generated.Helpers.csproj" />
+    <Project Path="Src/Generators/FinanceTracker.Generated.Attributes/FinanceTracker.Generated.Attributes/FinanceTracker.Generated.Attributes.csproj" />
+    <Project Path="Src/Generators/FinanceTracker.Generated.DependencyInjection/FinanceTracker.Generated.DependencyInjection/FinanceTracker.Generated.DependencyInjection.csproj" />
+    <Project Path="Src/Generators/FinanceTracker.Generated.Enums/FinanceTracker.Generated.Enums/FinanceTracker.Generated.Enums.csproj" />
+  </Folder>
   <Project Path="Src/FinanceTracker.Configurations/FinanceTracker.Configurations.csproj" />
   <Project Path="Src/FinanceTracker.Enums/FinanceTracker.Enums.csproj" />
   <Project Path="Src/FinanceTracker.Services/FinanceTracker.Services.csproj" />
+  <Project Path="Src/FinanceTracker.Validators.Models/FinanceTracker.Validators.Models.csproj" />
   <Project Path="Src/FinanceTracker/FinanceTracker.csproj" />
 </Solution>

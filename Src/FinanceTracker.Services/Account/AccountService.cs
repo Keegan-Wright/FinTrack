@@ -2,12 +2,16 @@ using System.Runtime.CompilerServices;
 using System.Security.Claims;
 using FinanceTracker.Data;
 using FinanceTracker.Enums;
+using FinanceTracker.Generated.Attributes;
+using FinanceTracker.Generated.Enums;
 using FinanceTracker.Models.Response.Account;
 using FinanceTracker.Services.OpenBanking;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.Services.Account;
 
+[InjectionCategory(InjectionCategoryType.Service)]
+[Scoped<IAccountService>]
 public class AccountService : ServiceBase, IAccountService
 {
     private readonly IOpenBankingService _openBankingService;
@@ -46,7 +50,7 @@ public class AccountService : ServiceBase, IAccountService
                     Description = transaction.Description,
                     Status = transaction.Pending ? "Pending" : "Complete",
                     Time = transaction.TransactionTime
-                }).ToAsyncEnumerable()
+                })
             };
 
             yield return response;

@@ -21,8 +21,4 @@ public class FilteredTransactionsRequest
     public DateTime? ToDate { get; set; }
     [Description("List of tags to filter transactions")]
     public IList<string>? Tags { get; set; } = [];
-        
-    [Description("Type of synchronization to perform")]
-    public SyncTypes SyncType { get; set; }
-        
 }

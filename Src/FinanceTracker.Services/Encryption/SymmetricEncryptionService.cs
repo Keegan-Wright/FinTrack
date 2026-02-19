@@ -1,9 +1,13 @@
 using System.Security.Cryptography;
 using System.Text;
 using FinanceTracker.Configurations;
+using FinanceTracker.Generated.Attributes;
+using FinanceTracker.Generated.Enums;
 
 namespace FinanceTracker.Services.Encryption;
 
+[InjectionCategory(InjectionCategoryType.Service)]
+[Scoped<ISymmetricEncryptionService>]
 public class SymmetricEncryptionService : ISymmetricEncryptionService
 {
  
@@ -20,8 +24,9 @@ public class SymmetricEncryptionService : ISymmetricEncryptionService
     private Aes CreateAes(EncryptionSettings encryptionSettings, HashAlgorithmName hashAlgorithm)
     {
         var saltBytes = Encoding.ASCII.GetBytes(encryptionSettings.SymmetricSalt);
-        var generator = new Span<byte>();
-        Rfc2898DeriveBytes.Pbkdf2(encryptionSettings.SymmetricKey, saltBytes, generator, encryptionSettings.Iterations, hashAlgorithm);
+        var key = Encoding.ASCII.GetBytes(encryptionSettings.SymmetricKey);
+        var generator = new byte[256].AsSpan();
+        Rfc2898DeriveBytes.Pbkdf2(password: encryptionSettings.SymmetricKey, salt: saltBytes, destination: generator, encryptionSettings.Iterations, hashAlgorithm);
 
         var aes = Aes.Create();
         aes.Key = generator.Slice(0, KeySize / 8).ToArray();
@@ -32,7 +37,7 @@ public class SymmetricEncryptionService : ISymmetricEncryptionService
         return aes;
     }
 
-    public async Task<string> Encrypt(string plainText)
+    public async Task<string> EncryptAsync(string plainText)
     {
         if(string.IsNullOrEmpty(plainText))
             return plainText;
@@ -52,7 +57,7 @@ public class SymmetricEncryptionService : ISymmetricEncryptionService
         
     }
 
-    public async Task<string> Decrypt(string cipherText)
+    public async Task<string> DecryptAsync(string cipherText)
     {
         if(string.IsNullOrEmpty(cipherText))
             return cipherText;

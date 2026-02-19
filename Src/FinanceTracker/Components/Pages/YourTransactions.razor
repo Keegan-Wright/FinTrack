@@ -1,0 +1,224 @@
+@page "/YourTransactions"
+@using FinanceTracker.Components.Dialogs
+@using FinanceTracker.Components.Transactions
+@using FinanceTracker.Enums
+@using FinanceTracker.Models.Request.Classifications
+@using FinanceTracker.Models.Request.Transaction
+@using FinanceTracker.Models.Response.Classifications
+@using FinanceTracker.Models.Response.Transaction
+@using FinanceTracker.Services.Classification
+@using FinanceTracker.Services.Transactions
+@using Microsoft.AspNetCore.Authorization
+@inherits PageComponent
+
+
+@attribute [Authorize]
+@inject ITransactionsService TransactionsService
+@inject IClassificationService ClassificationsService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Transactions</PageTitle>
+
+<TransactionFilters
+    TransactionTagFilterItems="@_transactionTagFilterItems"
+    AccountFilterItems="@_accountFilterItems"
+    CategoryFilterItems="@_categoryFilterItems"
+    ProviderFilterItems="@_providerFilterItems"
+    TransactionTypeFilterItems="@_transactionTypeFilterItems"
+    SearchTerm="@_searchTerm"
+    SearchTransactions="SearchTransactionsAsync"></TransactionFilters>
+
+<MudDataGrid T="TransactionResponse" Items="_transactions" 
+             MultiSelection="true"
+             SortMode="SortMode.Multiple"
+             Filterable="true" 
+             QuickFilter="@_transactionsQuickFilter"
+             Hideable="true"
+             Hover="true"
+             RowsPerPage="50"
+             RowContextMenuClick="OpenContextMenu"
+             RowClick="OpenContextMenu">
+    <ToolBarContent>
+        <MudText Typo="Typo.h6">Transactions</MudText>
+        <MudSpacer />
+        <MudTextField @bind-Value="_transactionsSearchTerm" Placeholder="Search" Adornment="Adornment.Start" Immediate="true"
+                      AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+    </ToolBarContent>
+    <Columns>
+        <PropertyColumn Property="x => x.Description" Title="Description" Sortable="true" Filterable="true"/>
+        <PropertyColumn Property="x => x.Amount" Format="c" Title="Amount" Sortable="true" Filterable="true"/>
+        <PropertyColumn Property="x => x.TransactionCategory" Title="Category" Sortable="true" Filterable="true"/>
+        <PropertyColumn Property="x => x.TransactionType" Title="Type" Sortable="true" Filterable="true"/>
+        <PropertyColumn Property="x => x.TransactionTime" Title="Date" Sortable="true" Filterable="true"/>
+        <TemplateColumn>
+            <HeaderTemplate>
+                <MudText>Tags</MudText>
+            </HeaderTemplate>
+            <CellTemplate>
+                @foreach (var tag in context.Item!.Tags)
+                {
+                    <MudChip>@tag</MudChip>
+                }
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+    <PagerContent>
+        <MudDataGridPager T="TransactionResponse" />
+    </PagerContent>
+</MudDataGrid>
+<MudMenu PositionAtCursor="true" @ref="_contextMenu" id="_contextMenu">
+    <MudMenuItem Icon="@Icons.Material.Filled.Add" OnClick="AddClassifications">
+        Add Custom Classifications
+    </MudMenuItem>
+</MudMenu>
+
+
+@code {
+
+    private readonly List<TransactionAccountFilterResponse> _accountFilterItems = [];
+    private readonly List<TransactionCategoryFilterResponse> _categoryFilterItems = [];
+    private readonly List<TransactionProviderFilterResponse> _providerFilterItems = [];
+    private readonly List<TransactionTypeFilterResponse> _transactionTypeFilterItems = [];
+    private readonly List<TransactionTagFilterResponse> _transactionTagFilterItems = [];
+    private readonly List<TransactionResponse> _transactions = [];
+    private readonly string _searchTerm;
+    
+
+    private TransactionResponse? _contextMenuRow;
+    private MudMenu _contextMenu = null!;
+    private string _transactionsSearchTerm = string.Empty;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        SetLoadingState(true, "Loading filters");
+        await LoadFilterItemsAsync();
+        SetLoadingState(false);
+    }
+
+    private async Task SearchTransactionsAsync(TransactionFilters.ActiveTransactionFilters filters)
+    {
+        SetLoadingState(true, "Loading transactions");
+        _transactions.Clear();
+        var transactionRequest = new FilteredTransactionsRequest
+        {
+            AccountIds = filters.AccountIds.ToList(),
+            ProviderIds = filters.ProviderIds.ToList(),
+            Categories = filters.Categories.ToList(),
+            Types = filters.TransactionTypes.ToList(),
+            SearchTerm = filters.SearchTerm,
+            FromDate = filters.DateRange?.Start,
+            ToDate = filters.DateRange?.End,
+            Tags = filters.TransactionTags.ToList()
+        };
+        
+        await foreach (var transaction in TransactionsService.GetAllTransactionsAsync(transactionRequest, SyncTypes.All, Cts.Token))
+        {
+            _transactions.Add(transaction);
+        }
+        SetLoadingState(false);
+    }
+    
+    private async Task LoadFilterItemsAsync()
+    {
+        await foreach (var account in TransactionsService.GetAccountsForTransactionFiltersAsync(SyncTypes.All, Cts.Token))
+        {
+            _accountFilterItems.Add(account);
+        }
+
+        await foreach (var category in TransactionsService.GetCategoriesForTransactionFiltersAsync(Cts.Token))
+        {
+            _categoryFilterItems.Add(category);
+        }
+
+        await foreach (var provider in TransactionsService.GetProvidersForTransactionFiltersAsync(Cts.Token))
+        {
+            _providerFilterItems.Add(provider);
+        }
+        
+        await foreach (var type in TransactionsService.GetTypesForTransactionFiltersAsync(Cts.Token))
+        {
+            _transactionTypeFilterItems.Add(type);
+        }    
+        
+        await foreach (var tag in TransactionsService.GetTagsForTransactionFiltersAsync(Cts.Token))
+        {
+            _transactionTagFilterItems.Add(tag);
+        }
+    }
+
+
+    
+    private Func<TransactionResponse, bool> _transactionsQuickFilter => x =>
+    {
+        if (string.IsNullOrWhiteSpace(_transactionsSearchTerm))
+            return true;
+
+        if (x.Description.Contains(_transactionsSearchTerm, StringComparison.OrdinalIgnoreCase))
+            return true; 
+        
+        return false;
+    };
+    
+    
+    private async Task OpenContextMenu(DataGridRowClickEventArgs<TransactionResponse> row)
+    {
+        _contextMenuRow = row.Item;
+        await _contextMenu.OpenMenuAsync(row.MouseEventArgs);
+    }
+
+    private async Task AddClassifications()
+    {
+        var classifications = new List<ClassificationsResponse>();
+        await foreach (var classification in ClassificationsService.GetAllCustomClassificationsAsync(Cts.Token))
+        {
+            classifications.Add(classification);
+        }
+        
+        
+        var dialogParameters = new DialogParameters<AddClassificationsToTransactionDialog>
+        {
+            { x => x.TransactionId, _contextMenuRow.TransactionId },
+            { x => x.Classifications, classifications }
+        };
+        
+        var dialogRef = await DialogService.ShowAsync<AddClassificationsToTransactionDialog>(null ,dialogParameters);
+        var dialogActionResult = await dialogRef.Result;
+
+        if(dialogActionResult is null)
+            return;
+        
+        if (dialogActionResult.Canceled)
+        {
+            Snackbar.Add("Add classifications cancelled");
+        }
+        else
+        {
+            try
+            {
+                SetLoadingState(true, "Adding classifications");
+                var classificationsToAdd = (AddCustomClassificationsToTransactionRequest)dialogActionResult.Data!;
+                await ClassificationsService.AddCustomClassificationsToTransactionAsync(classificationsToAdd, Cts.Token);
+                var rebuiltTags = new List<string>();
+                rebuiltTags.AddRange(_contextMenuRow.Tags);
+                
+                rebuiltTags.AddRange(classifications.Where(x => classificationsToAdd.Classifications.Select(c => c.ClassificationId)
+                        .Contains(x.ClassificationId))
+                    .Select(v => v.Tag));
+
+                _contextMenuRow.Tags = rebuiltTags;
+            }
+            catch (Exception _)
+            {
+                Snackbar.Add("Error occured adding classifications");
+            }
+            finally
+            {
+                SetLoadingState(false);
+            }
+        }
+        
+        
+    }
+}

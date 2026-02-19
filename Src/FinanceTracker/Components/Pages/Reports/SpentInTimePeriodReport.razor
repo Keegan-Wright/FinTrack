@@ -1,0 +1,17 @@
+@page "/Report/InTimePeriod"
+@using FinanceTracker.Components.Transactions
+@using FinanceTracker.Enums
+@using FinanceTracker.Models.Response.Reports.SpentInTimePeriod
+@inherits ReportPageBase<SpentInTimePeriodReportResponse>
+
+<PageTitle>Spent By In Time Period Report</PageTitle>
+
+<TransactionFilters
+    AccountFilterItems="@_accountFilterItems"
+    CategoryFilterItems="@_categoryFilterItems"
+    ProviderFilterItems="@_providerFilterItems"
+    TransactionTagFilterItems="@_transactionTagFilterItems"
+    TransactionTypeFilterItems="@_transactionTypeFilterItems"
+    SearchTransactions="@(filters => LoadReportAsync(filters, ReportType.SpentInTimePeriod))"
+    SearchTerm="@_searchTerm"
+></TransactionFilters>

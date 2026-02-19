@@ -1,0 +1,24 @@
+@using FinanceTracker.Models.Request.Classifications;
+
+<DialogBase TResponse="AddClassificationsRequest" Title="Add Classification / Tag" ResponseConstructor="BuildResponseModel">
+    <Content>
+        <MudGrid>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="_classification" Label="Classification / Tag" Placeholder="Classification / Tag"></MudTextField>
+            </MudItem>
+        </MudGrid>
+    </Content>
+</DialogBase>
+
+@code {
+
+    private string _classification = string.Empty;
+    
+    private AddClassificationsRequest BuildResponseModel()
+    {
+        return new AddClassificationsRequest()
+        {
+            Tag = _classification
+        };
+    }
+}

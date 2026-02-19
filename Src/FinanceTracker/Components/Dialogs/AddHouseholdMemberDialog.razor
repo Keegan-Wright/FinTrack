@@ -1,0 +1,34 @@
+@using FinanceTracker.Models.Request.HouseholdMember
+
+<DialogBase TResponse="AddHouseholdMemberRequest" Title="Add Household member" ResponseConstructor="BuildResponseModel">
+    <Content>
+        <MudGrid>
+            <MudItem xs="6">
+                <MudTextField @bind-Value="_firstName" Label="First Name" Placeholder="First Name"></MudTextField>
+            </MudItem>
+            <MudItem xs="6">
+                <MudTextField @bind-Value="_lastname" Label="Last Name" Placeholder="Last Name"></MudTextField>
+            </MudItem>
+            <MudItem xs="6">
+                <MudTextField T="decimal" @bind-Value="_income" Label="Income" Placeholder="Income"></MudTextField>
+            </MudItem>
+        </MudGrid>
+    </Content>
+</DialogBase>
+
+@code {
+    
+    public string _firstName { get; set; }
+    public string _lastname { get; set; }
+    public decimal _income { get; set; }
+    
+    private  AddHouseholdMemberRequest BuildResponseModel()
+    {
+        return new AddHouseholdMemberRequest()
+        {
+            FirstName = _firstName,
+            LastName = _lastname,
+            Income = _income
+        };
+    }
+}

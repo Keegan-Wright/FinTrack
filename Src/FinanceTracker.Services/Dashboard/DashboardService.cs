@@ -1,11 +1,15 @@
 using System.Runtime.CompilerServices;
 using System.Security.Claims;
 using FinanceTracker.Data;
+using FinanceTracker.Generated.Attributes;
+using FinanceTracker.Generated.Enums;
 using FinanceTracker.Models.Response.Dashboard;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.Services.Dashboard;
 
+[InjectionCategory(InjectionCategoryType.Service)]
+[Scoped<IDashboardService>]
 public class DashboardService : ServiceBase, IDashboardService
 {
     public DashboardService(ClaimsPrincipal user, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory) : base(user, financeTrackerContextFactory)

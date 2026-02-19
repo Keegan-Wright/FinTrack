@@ -20,5 +20,5 @@ public class AccountAndTransactionsResponse
     public decimal AvailableBalance { get; set; }
 
     [Description("List of transactions for the account")]
-    public IAsyncEnumerable<AccountTransactionResponse>? Transactions { get; set; }
+    public IEnumerable<AccountTransactionResponse>? Transactions { get; set; }
 }
