@@ -37,44 +37,75 @@ public class SymmetricEncryptionService : ISymmetricEncryptionService
         return aes;
     }
 
-    public async Task<string> EncryptAsync(string plainText)
+    public string Encrypt<T>(T value)
     {
-        if(string.IsNullOrEmpty(plainText))
+        if (value == null)
+            return null;
+
+        string? plainText;
+        if (value is byte[] byteArray)
+        {
+            plainText = Convert.ToBase64String(byteArray);
+        }
+        else
+        {
+            plainText = value.ToString();
+        }
+
+        if (string.IsNullOrEmpty(plainText))
             return plainText;
-        
+
         var bytes = Encoding.Unicode.GetBytes(plainText);
-        
+
         using var aes = CreateAes(_encryptionSettings, HashAlgorithmName.SHA3_256);
         using var encryptor = aes.CreateEncryptor();
         using var memoryStream = new MemoryStream();
-        
-        using(var cryptoStream = new CryptoStream(memoryStream, encryptor, CryptoStreamMode.Write))
+
+        using (var cryptoStream = new CryptoStream(memoryStream, encryptor, CryptoStreamMode.Write))
         {
-            await cryptoStream.WriteAsync(bytes, 0, bytes.Length);
+             cryptoStream.Write(bytes, 0, bytes.Length);
         }
-        
+
         var encryptedBytes = memoryStream.ToArray();
         return Convert.ToBase64String(encryptedBytes);
-        
+
     }
 
-    public async Task<string> DecryptAsync(string cipherText)
+    public T Decrypt<T>(string cipherText)
     {
-        if(string.IsNullOrEmpty(cipherText))
-            return cipherText;
+        if (string.IsNullOrEmpty(cipherText))
+            return default;
 
         var bytes = Convert.FromBase64String(cipherText);
-        
+
         using var aes = CreateAes(_encryptionSettings, HashAlgorithmName.SHA3_256);
         using var decryptor = aes.CreateDecryptor();
         using var memoryStram = new MemoryStream();
 
         using (var cryptoStream = new CryptoStream(memoryStram, decryptor, CryptoStreamMode.Write))
         {
-            await cryptoStream.WriteAsync(bytes, 0, bytes.Length);
+            cryptoStream.Write(bytes, 0, bytes.Length);
         }
-        
+
         var decryptedBytes = memoryStram.ToArray();
-        return Encoding.Unicode.GetString(decryptedBytes);
+        var plainText = Encoding.Unicode.GetString(decryptedBytes);
+
+        if (typeof(T) == typeof(byte[]))
+        {
+            return (T)(object)Convert.FromBase64String(plainText);
+        }
+
+        if (typeof(T) == typeof(string))
+            return (T)(object)plainText;
+
+        var targetType = typeof(T);
+        if (targetType.IsGenericType && targetType.GetGenericTypeDefinition() == typeof(Nullable<>))
+        {
+            if (string.IsNullOrEmpty(plainText))
+                return default;
+            targetType = Nullable.GetUnderlyingType(targetType)!;
+        }
+
+        return (T)Convert.ChangeType(plainText, targetType);
     }
 }

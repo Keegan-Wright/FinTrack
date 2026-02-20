@@ -31,7 +31,6 @@ public class AccountService : ServiceBase, IAccountService
             .IsolateToUser(UserId)
             .Include(x => x.Providers).ThenInclude(x => x.Accounts).ThenInclude(x => x.Provider)
             .Include(x => x.Providers).ThenInclude(a => a.Accounts).ThenInclude(x => x.AccountBalance)
-            .Include(x => x.Providers).ThenInclude(x => x.Accounts).ThenInclude(x => x.Transactions)
             .SelectMany(x => x.Providers.SelectMany(c => c.Accounts))
             .AsNoTracking();
 

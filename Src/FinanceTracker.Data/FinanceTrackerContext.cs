@@ -19,7 +19,6 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
-        var encryptionConverter = new EncryptionConverter(_symmetricEncryptionService);
         foreach (var entityType in builder.Model.GetEntityTypes())
         {
             var clrType = entityType.ClrType;
@@ -27,8 +26,9 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
             {
                 if (Attribute.IsDefined(property, typeof(EncryptAttribute)))
                 {
-                    var propBuilder = builder.Entity(clrType).Property(property.Name);
-                    propBuilder.HasConversion(encryptionConverter);
+                    var converterType = typeof(EncryptionConverter<>).MakeGenericType(property.PropertyType);
+                    var converter = (ValueConverter)Activator.CreateInstance(converterType, _symmetricEncryptionService);
+                    builder.Entity(clrType).Property(property.Name).HasConversion(converter);
                 }
             }
         }
@@ -55,11 +55,11 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
     public DbSet<HouseholdMember> HouseholdMembers { get; set; }
 }
 
-public class EncryptionConverter : ValueConverter<string, string>
+public class EncryptionConverter<TModel> : ValueConverter<TModel, string>
 {
     public EncryptionConverter(ISymmetricEncryptionService symmetricEncryptionService) : base(
-        v => symmetricEncryptionService.EncryptAsync(v).GetAwaiter().GetResult(),
-        v => symmetricEncryptionService.DecryptAsync(v).GetAwaiter().GetResult())
+        v => symmetricEncryptionService.Encrypt(v),
+        v => symmetricEncryptionService.Decrypt<TModel>(v))
     {
     }
 

@@ -28,8 +28,9 @@ namespace FinanceTracker.Data.Migrations.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<decimal>("AvailableFunds")
-                        .HasColumnType("numeric");
+                    b.Property<string>("AvailableFunds")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<DateTime>("Created")
                         .HasColumnType("timestamp with time zone");
@@ -37,11 +38,12 @@ namespace FinanceTracker.Data.Migrations.Migrations
                     b.Property<Guid?>("FinanceTrackerUserId")
                         .HasColumnType("uuid");
 
-                    b.Property<DateTime?>("GoalCompletionDate")
-                        .HasColumnType("timestamp with time zone");
+                    b.Property<string>("GoalCompletionDate")
+                        .HasColumnType("text");
 
-                    b.Property<decimal>("MonthlyStart")
-                        .HasColumnType("numeric");
+                    b.Property<string>("MonthlyStart")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -53,8 +55,9 @@ namespace FinanceTracker.Data.Migrations.Migrations
                         .HasColumnType("xid")
                         .HasColumnName("xmin");
 
-                    b.Property<decimal>("SavingsGoal")
-                        .HasColumnType("numeric");
+                    b.Property<string>("SavingsGoal")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<DateTime?>("Updated")
                         .HasColumnType("timestamp with time zone");
@@ -107,21 +110,22 @@ namespace FinanceTracker.Data.Migrations.Migrations
                     b.Property<DateTime>("Created")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<DateTime?>("FinalPaymentDate")
-                        .HasColumnType("timestamp with time zone");
+                    b.Property<string>("FinalPaymentDate")
+                        .HasColumnType("text");
 
                     b.Property<Guid?>("FinanceTrackerUserId")
                         .HasColumnType("uuid");
 
-                    b.Property<decimal>("MonthlyPayment")
-                        .HasColumnType("numeric");
+                    b.Property<string>("MonthlyPayment")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<DateTime?>("PayOffGoal")
-                        .HasColumnType("timestamp with time zone");
+                    b.Property<string>("PayOffGoal")
+                        .HasColumnType("text");
 
                     b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
@@ -255,8 +259,8 @@ namespace FinanceTracker.Data.Migrations.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<decimal?>("Income")
-                        .HasColumnType("numeric");
+                    b.Property<string>("Income")
+                        .HasColumnType("text");
 
                     b.Property<string>("LastName")
                         .IsRequired()
@@ -291,8 +295,9 @@ namespace FinanceTracker.Data.Migrations.Migrations
                     b.Property<DateTime>("Created")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<int>("ExpiresIn")
-                        .HasColumnType("integer");
+                    b.Property<string>("ExpiresIn")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<Guid?>("FinanceTrackerUserId")
                         .HasColumnType("uuid");
@@ -373,8 +378,9 @@ namespace FinanceTracker.Data.Migrations.Migrations
                     b.Property<Guid>("AccountId")
                         .HasColumnType("uuid");
 
-                    b.Property<decimal>("Available")
-                        .HasColumnType("numeric");
+                    b.Property<string>("Available")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<DateTime>("Created")
                         .HasColumnType("timestamp with time zone");
@@ -383,8 +389,9 @@ namespace FinanceTracker.Data.Migrations.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<decimal>("Current")
-                        .HasColumnType("numeric");
+                    b.Property<string>("Current")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
@@ -426,11 +433,13 @@ namespace FinanceTracker.Data.Migrations.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<decimal>("PreviousPaymentAmount")
-                        .HasColumnType("numeric");
+                    b.Property<string>("PreviousPaymentAmount")
+                        .IsRequired()
+                        .HasColumnType("text");
 
-                    b.Property<DateTime>("PreviousPaymentTimeStamp")
-                        .HasColumnType("timestamp with time zone");
+                    b.Property<string>("PreviousPaymentTimeStamp")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
@@ -442,8 +451,9 @@ namespace FinanceTracker.Data.Migrations.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<DateTime>("TimeStamp")
-                        .HasColumnType("timestamp with time zone");
+                    b.Property<string>("TimeStamp")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<DateTime?>("Updated")
                         .HasColumnType("timestamp with time zone");
@@ -471,9 +481,9 @@ namespace FinanceTracker.Data.Migrations.Migrations
                     b.Property<Guid?>("FinanceTrackerUserId")
                         .HasColumnType("uuid");
 
-                    b.Property<byte[]>("Logo")
+                    b.Property<string>("Logo")
                         .IsRequired()
-                        .HasColumnType("bytea");
+                        .HasColumnType("text");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -547,27 +557,33 @@ namespace FinanceTracker.Data.Migrations.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<decimal>("FinalPaymentAmount")
-                        .HasColumnType("numeric");
+                    b.Property<string>("FinalPaymentAmount")
+                        .IsRequired()
+                        .HasColumnType("text");
 
-                    b.Property<DateTime>("FinalPaymentDate")
-                        .HasColumnType("timestamp with time zone");
+                    b.Property<string>("FinalPaymentDate")
+                        .IsRequired()
+                        .HasColumnType("text");
 
-                    b.Property<decimal>("FirstPaymentAmount")
-                        .HasColumnType("numeric");
+                    b.Property<string>("FirstPaymentAmount")
+                        .IsRequired()
+                        .HasColumnType("text");
 
-                    b.Property<DateTime>("FirstPaymentDate")
-                        .HasColumnType("timestamp with time zone");
+                    b.Property<string>("FirstPaymentDate")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<string>("Frequency")
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<decimal>("NextPaymentAmount")
-                        .HasColumnType("numeric");
+                    b.Property<string>("NextPaymentAmount")
+                        .IsRequired()
+                        .HasColumnType("text");
 
-                    b.Property<DateTime>("NextPaymentDate")
-                        .HasColumnType("timestamp with time zone");
+                    b.Property<string>("NextPaymentDate")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<string>("Payee")
                         .IsRequired()
@@ -587,8 +603,9 @@ namespace FinanceTracker.Data.Migrations.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<DateTime>("Timestamp")
-                        .HasColumnType("timestamp with time zone");
+                    b.Property<string>("Timestamp")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<DateTime?>("Updated")
                         .HasColumnType("timestamp with time zone");
@@ -652,8 +669,9 @@ namespace FinanceTracker.Data.Migrations.Migrations
                     b.Property<Guid>("AccountId")
                         .HasColumnType("uuid");
 
-                    b.Property<decimal>("Amount")
-                        .HasColumnType("numeric");
+                    b.Property<string>("Amount")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<DateTime>("Created")
                         .HasColumnType("timestamp with time zone");
@@ -666,8 +684,9 @@ namespace FinanceTracker.Data.Migrations.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<bool>("Pending")
-                        .HasColumnType("boolean");
+                    b.Property<string>("Pending")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<Guid>("ProviderId")
                         .HasColumnType("uuid");
@@ -686,8 +705,9 @@ namespace FinanceTracker.Data.Migrations.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<DateTime>("TransactionTime")
-                        .HasColumnType("timestamp with time zone");
+                    b.Property<string>("TransactionTime")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<string>("TransactionType")
                         .IsRequired()

@@ -7,7 +7,11 @@ public class OpenBankingAccount : BaseEntity
     public required string OpenBankingAccountId { get; set; }
     [Encrypt]
     public required string AccountType { get; set; }
+    
+    [Encrypt]
     public required string DisplayName { get; set; }
+    
+    [Encrypt]
     public required string Currency { get; set; }
 
     public required Guid ProviderId { get; set; }
