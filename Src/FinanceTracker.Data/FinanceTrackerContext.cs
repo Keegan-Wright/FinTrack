@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using System.Reflection;
 using System.Reflection.Emit;
+using FinanceTracker.Data.Models.Utility;
 
 namespace FinanceTracker.Data;
 
@@ -22,7 +23,7 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
         foreach (var entityType in builder.Model.GetEntityTypes())
         {
             var clrType = entityType.ClrType;
-            foreach (var property in clrType.GetProperties(BindingFlags.Public))
+            foreach (var property in clrType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
             {
                 if (Attribute.IsDefined(property, typeof(EncryptAttribute)))
                 {
@@ -31,18 +32,13 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
                 }
             }
         }
-
-
-
+        
         base.OnModelCreating(builder);
-
     }
 
 
     public DbSet<FinanceTrackerUser> FinanceTrackerUsers { get; set; }
     public DbSet<FinanceTrackerRole> FinanceTrackerRoles { get; set; }
-    
-    public DbSet<HouseholdMember> HouseholdMembers { get; set; }
     public DbSet<BudgetCategory> BudgetCategories { get; set; }
     public DbSet<Debt> Debts { get; set; }
     public DbSet<OpenBankingProvider> OpenBankingProviders { get; set; }
@@ -56,6 +52,7 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
     public DbSet<OpenBankingDirectDebit> OpenBankingDirectDebits { get; set; }
     public DbSet<OpenBankingTransactionClassifications> OpenBankingTransactionClassifications { get; set; }
     public DbSet<CustomClassification> CustomClassifications { get; set; }
+    public DbSet<HouseholdMember> HouseholdMembers { get; set; }
 }
 
 public class EncryptionConverter : ValueConverter<string, string>
@@ -66,9 +63,4 @@ public class EncryptionConverter : ValueConverter<string, string>
     {
     }
 
-}
-
-public class EncryptAttribute : Attribute
-{
-    
 }

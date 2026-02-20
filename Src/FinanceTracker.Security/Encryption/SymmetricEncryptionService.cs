@@ -7,18 +7,18 @@ using FinanceTracker.Generated.Enums;
 namespace FinanceTracker.Security.Encryption;
 
 [InjectionCategory(InjectionCategoryType.Service)]
-[Scoped<ISymmetricEncryptionService>]
+[Singleton<ISymmetricEncryptionService>]
 public class SymmetricEncryptionService : ISymmetricEncryptionService
 {
  
     private const int KeySize = 256;
     private const int BlockSize = 128;
     
-    private readonly Aes _aes;
+    private readonly EncryptionSettings _encryptionSettings;
 
     public SymmetricEncryptionService(EncryptionSettings encryptionSettings)
     {
-        _aes = CreateAes(encryptionSettings, HashAlgorithmName.SHA3_256);
+        _encryptionSettings = encryptionSettings;
     }
 
     private Aes CreateAes(EncryptionSettings encryptionSettings, HashAlgorithmName hashAlgorithm)
@@ -44,7 +44,8 @@ public class SymmetricEncryptionService : ISymmetricEncryptionService
         
         var bytes = Encoding.Unicode.GetBytes(plainText);
         
-        using var encryptor = _aes.CreateEncryptor();
+        using var aes = CreateAes(_encryptionSettings, HashAlgorithmName.SHA3_256);
+        using var encryptor = aes.CreateEncryptor();
         using var memoryStream = new MemoryStream();
         
         using(var cryptoStream = new CryptoStream(memoryStream, encryptor, CryptoStreamMode.Write))
@@ -64,7 +65,8 @@ public class SymmetricEncryptionService : ISymmetricEncryptionService
 
         var bytes = Convert.FromBase64String(cipherText);
         
-        using var decryptor = _aes.CreateDecryptor();
+        using var aes = CreateAes(_encryptionSettings, HashAlgorithmName.SHA3_256);
+        using var decryptor = aes.CreateDecryptor();
         using var memoryStram = new MemoryStream();
 
         using (var cryptoStream = new CryptoStream(memoryStram, decryptor, CryptoStreamMode.Write))
