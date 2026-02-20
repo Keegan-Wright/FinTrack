@@ -1,4 +1,4 @@
-namespace FinanceTracker.Services.Encryption;
+namespace FinanceTracker.Security.Encryption;
 
 public interface ISymmetricEncryptionService
 {

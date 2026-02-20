@@ -4,7 +4,7 @@ using FinanceTracker.Configurations;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 
-namespace FinanceTracker.Services.Encryption;
+namespace FinanceTracker.Security.Encryption;
 
 [InjectionCategory(InjectionCategoryType.Service)]
 [Scoped<ISymmetricEncryptionService>]

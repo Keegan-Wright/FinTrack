@@ -1,16 +1,44 @@
 using FinanceTracker.Data.Models;
+using FinanceTracker.Security.Encryption;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using System.Reflection;
+using System.Reflection.Emit;
 
 namespace FinanceTracker.Data;
 
 public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, FinanceTrackerRole, Guid>
 {
-    public FinanceTrackerContext(DbContextOptions<FinanceTrackerContext> options) : base(options)
+    private readonly ISymmetricEncryptionService _symmetricEncryptionService;
+    public FinanceTrackerContext(DbContextOptions<FinanceTrackerContext> options, ISymmetricEncryptionService symmetricEncryptionService) : base(options)
     {
-        
+        _symmetricEncryptionService = symmetricEncryptionService;
     }
-    
+
+    protected override void OnModelCreating(ModelBuilder builder)
+    {
+        var encryptionConverter = new EncryptionConverter(_symmetricEncryptionService);
+        foreach (var entityType in builder.Model.GetEntityTypes())
+        {
+            var clrType = entityType.ClrType;
+            foreach (var property in clrType.GetProperties(BindingFlags.Public))
+            {
+                if (Attribute.IsDefined(property, typeof(EncryptAttribute)))
+                {
+                    var propBuilder = builder.Entity(clrType).Property(property.Name);
+                    propBuilder.HasConversion(encryptionConverter);
+                }
+            }
+        }
+
+
+
+        base.OnModelCreating(builder);
+
+    }
+
+
     public DbSet<FinanceTrackerUser> FinanceTrackerUsers { get; set; }
     public DbSet<FinanceTrackerRole> FinanceTrackerRoles { get; set; }
     
@@ -28,4 +56,19 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
     public DbSet<OpenBankingDirectDebit> OpenBankingDirectDebits { get; set; }
     public DbSet<OpenBankingTransactionClassifications> OpenBankingTransactionClassifications { get; set; }
     public DbSet<CustomClassification> CustomClassifications { get; set; }
+}
+
+public class EncryptionConverter : ValueConverter<string, string>
+{
+    public EncryptionConverter(ISymmetricEncryptionService symmetricEncryptionService) : base(
+        v => symmetricEncryptionService.EncryptAsync(v).GetAwaiter().GetResult(),
+        v => symmetricEncryptionService.DecryptAsync(v).GetAwaiter().GetResult())
+    {
+    }
+
+}
+
+public class EncryptAttribute : Attribute
+{
+    
 }

@@ -9,7 +9,7 @@ using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using FinanceTracker.Models.External;
 using FinanceTracker.Models.Request.OpenBanking;
-using FinanceTracker.Services.Encryption;
+using FinanceTracker.Security.Encryption;
 using FinanceTracker.Services.External.OpenBanking;
 using Microsoft.EntityFrameworkCore;
 

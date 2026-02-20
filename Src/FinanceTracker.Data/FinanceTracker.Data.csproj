@@ -13,6 +13,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\FinanceTracker.Data.Models\FinanceTracker.Data.Models.csproj" />
+      <ProjectReference Include="..\FinanceTracker.Security\FinanceTracker.Security.csproj" />
     </ItemGroup>
 
 </Project>
