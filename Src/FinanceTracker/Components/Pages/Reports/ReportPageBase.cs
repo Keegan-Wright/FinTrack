@@ -2,14 +2,15 @@ using FinanceTracker.Components.Transactions;
 using FinanceTracker.Enums;
 using FinanceTracker.Models.Request.Reports;
 using FinanceTracker.Models.Request.Transaction;
+using FinanceTracker.Models.Response.Reports;
 using FinanceTracker.Models.Response.Reports.Account;
 using FinanceTracker.Models.Response.Transaction;
 using FinanceTracker.Services.Reports;
 using FinanceTracker.Services.Transactions;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
-using System.Globalization;
 using MudBlazor.Charts;
+using System.Globalization;
 
 namespace FinanceTracker.Components.Pages.Reports;
 
@@ -100,32 +101,32 @@ public class ReportPageBase<TReportResponse> : PageComponent
         }
     }
 
-    internal List<ChartSeries<double>> GetMonthlyGraphSeries(SpentInAccountReportYearlyBreakdownResponse report)
+    internal List<ChartSeries<double>> GetMonthlyGraphSeries(List<SharedReportResponse> reportItems)
     {
 
         var totalIn = new ChartSeries<double>()
-            { Name = "Total In", Data = report.MonthlyBreakdown.Select(x => Convert.ToDouble(x.TotalIn)).ToArray() };
+            { Name = "Total In", Data = reportItems.Select(x => Convert.ToDouble(x.TotalIn)).ToArray() };
         var totalOut = new ChartSeries<double>()
-            { Name = "Total Out", Data = report.MonthlyBreakdown.Select(x => Convert.ToDouble(x.TotalOut)).ToArray() };
+            { Name = "Total Out", Data = reportItems.Select(x => Convert.ToDouble(x.TotalOut)).ToArray() };
         var totalDif = new ChartSeries<double>()
-            { Name = "Total Dif", Data = report.MonthlyBreakdown.Select(x => Convert.ToDouble(x.TotalOut) + Convert.ToDouble(x.TotalIn)).ToArray() };
+            { Name = "Total Dif", Data = reportItems.Select(x => Convert.ToDouble(x.TotalOut) + Convert.ToDouble(x.TotalIn)).ToArray() };
         var transactions = new ChartSeries<double>()
-            { Name = "Transactions Made", Data = report.MonthlyBreakdown.Select(x => Convert.ToDouble(x.TotalTransactions)).ToArray() };
+            { Name = "Transactions Made", Data = reportItems.Select(x => Convert.ToDouble(x.TotalTransactions)).ToArray() };
         
         return [totalIn, totalOut, totalDif, transactions];
     }
     
-    internal List<ChartSeries<double>> GetDailyGraphSeries(SpentInAccountReportMonthlyBreakdownResponse report)
+    internal List<ChartSeries<double>> GetDailyGraphSeries(List<SharedReportResponse> reportItems)
     {
 
         var totalIn = new ChartSeries<double>()
-            { Name = "Total In", Data = report.DailyBreakdown.Select(x => Convert.ToDouble(x.TotalIn)).ToArray() };
+            { Name = "Total In", Data = reportItems.Select(x => Convert.ToDouble(x.TotalIn)).ToArray() };
         var totalOut = new ChartSeries<double>()
-            { Name = "Total Out", Data = report.DailyBreakdown.Select(x => Convert.ToDouble(x.TotalOut)).ToArray() };
+            { Name = "Total Out", Data = reportItems.Select(x => Convert.ToDouble(x.TotalOut)).ToArray() };
         var totalDif = new ChartSeries<double>()
-            { Name = "Total Dif", Data = report.DailyBreakdown.Select(x => Convert.ToDouble(x.TotalOut) + Convert.ToDouble(x.TotalIn)).ToArray() };
+            { Name = "Total Dif", Data = reportItems.Select(x => Convert.ToDouble(x.TotalOut) + Convert.ToDouble(x.TotalIn)).ToArray() };
         var transactions = new ChartSeries<double>()
-            { Name = "Transactions Made", Data = report.DailyBreakdown.Select(x => Convert.ToDouble(x.TotalTransactions)).ToArray() };
+            { Name = "Transactions Made", Data = reportItems.Select(x => Convert.ToDouble(x.TotalTransactions)).ToArray() };
         
         return [totalIn, totalOut, totalDif, transactions];
     }
@@ -142,7 +143,65 @@ public class ReportPageBase<TReportResponse> : PageComponent
         var enumerable = Enumerable.Range(1, days + 1).Select(x => x.ToString()).ToArray();
         return enumerable;
     }
-    
+
+    internal decimal CalculatePerDayAverage(decimal total, int daysInPeriod)
+    {
+        return daysInPeriod > 0 ? total / daysInPeriod : 0;
+    }
+
+    internal decimal? CalculateTrendComparison(decimal current, decimal previous)
+    {
+        if (previous == 0)
+            return current > 0 ? 1 : (current < 0 ? -1 : 0);
+
+        return current - previous;
+    }
+
+    internal decimal? CalculateTrendPercentage(decimal current, decimal previous)
+    {
+        if (previous == 0)
+            return null;
+
+        return (current - previous) / Math.Abs(previous);
+    }
+
+    internal int GetDaysInMonth(int year, int month)
+    {
+        return DateTime.DaysInMonth(year, month);
+    }
+
+    internal int GetDaysInYear(int year)
+    {
+        return DateTime.IsLeapYear(year) ? 366 : 365;
+    }
+
+    internal (decimal TotalIn, decimal TotalOut) GetPreviousPeriodTotals(
+        List<SharedReportResponse> previous,
+        int currentMonthIndex)
+    {
+        if (currentMonthIndex <= 0)
+            return (0, 0);
+
+        var previousMonth = previous[currentMonthIndex - 1];
+        return (previousMonth.TotalIn, previousMonth.TotalOut);
+    }
+
+    internal string GetYearTabLabel(int year, int totalTransactions)
+    {
+        return $"{year} ({totalTransactions} transactions)";
+    }
+
+    internal string GetMonthPanelLabel(string month, int totalTransactions, int daysInMonth)
+    {
+        return $"{month} ({totalTransactions} transactions, {daysInMonth} days)";
+    }
+
+    internal int GetMonthIndex(string monthName)
+    {
+        var monthIndex = Array.IndexOf(DateTimeFormatInfo.CurrentInfo.MonthNames, monthName);
+        return monthIndex >= 0 ? monthIndex + 1 : 1;
+    }
+
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();

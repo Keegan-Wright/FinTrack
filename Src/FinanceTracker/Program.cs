@@ -126,6 +126,11 @@ public partial class Program
 
         app.UseHttpsRedirection();
 
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<IDbContextFactory<FinanceTrackerContext>>().CreateDbContext();
+        await db.Database.MigrateAsync();
+
+        var users = await db.Users.ToListAsync();
 
         app.UseAntiforgery();
         app.UseTickerQ();
@@ -137,11 +142,7 @@ public partial class Program
 // Add additional endpoints required by the Identity /Account Razor components.
         app.MapAdditionalIdentityEndpoints();
 
-        using var scope = app.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<IDbContextFactory<FinanceTrackerContext>>().CreateDbContext();
-        await db.Database.MigrateAsync();
 
-        var users = await db.Users.ToListAsync();
 
         await app.RunAsync();
     }
