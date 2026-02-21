@@ -6,7 +6,7 @@
         
         <MudGrid>
             <MudItem xs="12" sm="6" md="3">
-                <MudCard Outlined="true">
+                <MudCard Outlined="true" Class="h-100">
                     <MudCardContent>
                         <MudStack Spacing="1">
                             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
@@ -24,7 +24,7 @@
             </MudItem>
             
             <MudItem xs="12" sm="6" md="3">
-                <MudCard Outlined="true">
+                <MudCard Outlined="true" Class="h-100">
                     <MudCardContent>
                         <MudStack Spacing="1">
                             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
@@ -42,7 +42,7 @@
             </MudItem>
             
             <MudItem xs="12" sm="6" md="3">
-                <MudCard Outlined="true">
+                <MudCard Outlined="true" Class="h-100">
                     <MudCardContent>
                         <MudStack Spacing="1">
                             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
@@ -56,7 +56,7 @@
             </MudItem>
 
             <MudItem xs="12" sm="6" md="3">
-                <MudCard Outlined="true">
+                <MudCard Outlined="true" Class="h-100">
                     <MudCardContent>
                         <MudStack Spacing="1">
                             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
@@ -125,7 +125,7 @@
         if (TrendValue == null)
             return "N/A";
 
-        return TrendValue > 0 ? "? Increased" : "? Decreased";
+        return TrendValue > 0 ? "Increased" : "Decreased";
     }
 
     private Color GetTrendColor()

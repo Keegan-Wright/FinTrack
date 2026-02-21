@@ -50,7 +50,6 @@
                                 <MudChart ChartType="ChartType.Bar"
                                           ChartSeries="@GetMonthlyGraphSeries(yearlyBreakdown.MonthlyBreakdown.ToList<SharedReportResponse>())"
                                           ChartLabels="@GetMonthlyGraphAxis()"
-                                          Height="400px"
                                           Class="mt-4">
                                 </MudChart>
 
@@ -85,7 +84,6 @@
                                                     <MudChart ChartType="ChartType.Bar"
                                                               ChartSeries="@GetDailyGraphSeries(monthlyBreakdown.DailyBreakdown.ToList<SharedReportResponse>())"
                                                               ChartLabels="@GetDailyGraphAxis(yearlyBreakdown.Year, GetMonthIndex(monthlyBreakdown.Month))"
-                                                              Height="350px"
                                                               Class="mt-4">
                                                     </MudChart>
                                                 }
