@@ -9,7 +9,7 @@ using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using FinanceTracker.Models.External;
 using FinanceTracker.Models.Request.OpenBanking;
-using FinanceTracker.Services.Encryption;
+using FinanceTracker.Security.Encryption;
 using FinanceTracker.Services.External.OpenBanking;
 using Microsoft.EntityFrameworkCore;
 
@@ -20,16 +20,14 @@ namespace FinanceTracker.Services.OpenBanking;
 public class OpenBankingService : ServiceBase, IOpenBankingService
 {
     private readonly IOpenBankingApiService _openBankingApiService;
-    private readonly ISymmetricEncryptionService _encryptionService;
     private readonly int _syncMins = 5;
 
     public OpenBankingService(ClaimsPrincipal user,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
-        IOpenBankingApiService openBankingApiService, ISymmetricEncryptionService encryptionService) : base(user,
+        IOpenBankingApiService openBankingApiService) : base(user,
         financeTrackerContextFactory)
     {
         _openBankingApiService = openBankingApiService;
-        _encryptionService = encryptionService;
     }
 
     public async IAsyncEnumerable<ExternalOpenBankingProvider> GetOpenBankingProvidersForClientAsync(
@@ -111,7 +109,7 @@ public class OpenBankingService : ServiceBase, IOpenBankingService
 
             var provider = new OpenBankingProvider
             {
-                AccessCode = await _encryptionService.EncryptAsync(accessCode),
+                AccessCode = accessCode,
                 Name = externalProvider.Provider.DisplayName,
                 OpenBankingProviderId = externalProvider.Provider.ProviderId,
                 Created = DateTime.Now.ToUniversalTime(),
@@ -128,10 +126,10 @@ public class OpenBankingService : ServiceBase, IOpenBankingService
 
             var accessToken = new OpenBankingAccessToken
             {
-                AccessToken = await _encryptionService.EncryptAsync(providerAccessToken.AccessToken),
+                AccessToken = providerAccessToken.AccessToken,
                 ProviderId = provider.Id,
                 ExpiresIn = providerAccessToken.ExpiresIn,
-                RefreshToken = await _encryptionService.EncryptAsync(providerAccessToken.RefreshToken),
+                RefreshToken = providerAccessToken.RefreshToken,
                 Created = DateTime.Now.ToUniversalTime()
             };
 
@@ -544,18 +542,18 @@ public class OpenBankingService : ServiceBase, IOpenBankingService
             .FirstOrDefaultAsync(cancellationToken);
 
         if (accessToken.Created.AddSeconds(accessToken.ExpiresIn) > DateTime.Now.ToUniversalTime())
-            return await _encryptionService.DecryptAsync(accessToken.AccessToken);
+            return accessToken.AccessToken;
 
         var refreshTokenResponse =
             await _openBankingApiService.GetAccessTokenByRefreshTokenAsync(
-                await _encryptionService.DecryptAsync(accessToken.RefreshToken), cancellationToken);
+                accessToken.RefreshToken, cancellationToken);
 
         var newAccessToken = new OpenBankingAccessToken
         {
-            AccessToken = await _encryptionService.EncryptAsync(refreshTokenResponse.AccessToken),
+            AccessToken = refreshTokenResponse.AccessToken,
             ExpiresIn = refreshTokenResponse.ExpiresIn,
             ProviderId = provider.Id,
-            RefreshToken = await _encryptionService.EncryptAsync(refreshTokenResponse.RefreshToken),
+            RefreshToken = refreshTokenResponse.RefreshToken,
             Created = DateTime.Now.ToUniversalTime()
         };
 
@@ -577,14 +575,14 @@ public class OpenBankingService : ServiceBase, IOpenBankingService
         {
             var response =
                 await _openBankingApiService.ExchangeCodeForAccessTokenAsync(
-                    await _encryptionService.DecryptAsync(provider.AccessCode), cancellationToken);
+                    provider.AccessCode, cancellationToken);
 
             var accessToken = new OpenBankingAccessToken
             {
-                AccessToken = await _encryptionService.EncryptAsync(response.AccessToken),
+                AccessToken = response.AccessToken,
                 ExpiresIn = response.ExpiresIn,
                 ProviderId = provider.Id,
-                RefreshToken = await _encryptionService.EncryptAsync(response.RefreshToken),
+                RefreshToken = response.RefreshToken,
                 Created = DateTime.Now.ToUniversalTime()
             };
 

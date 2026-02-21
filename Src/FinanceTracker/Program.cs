@@ -130,7 +130,6 @@ public partial class Program
         var db = scope.ServiceProvider.GetRequiredService<IDbContextFactory<FinanceTrackerContext>>().CreateDbContext();
         await db.Database.MigrateAsync();
 
-        var users = await db.Users.ToListAsync();
 
         app.UseAntiforgery();
         app.UseTickerQ();
@@ -139,9 +138,7 @@ public partial class Program
             .AddInteractiveServerRenderMode();
 
         app.UseOutputCache();
-// Add additional endpoints required by the Identity /Account Razor components.
         app.MapAdditionalIdentityEndpoints();
-
 
 
         await app.RunAsync();

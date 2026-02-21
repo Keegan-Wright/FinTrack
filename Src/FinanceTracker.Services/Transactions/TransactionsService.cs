@@ -43,7 +43,35 @@ public class TransactionsService : ServiceBase, ITransactionsService
         await foreach (var transaction in GetTransactionsSelect(transactionsQuery)
                            .OrderByDescending(x => x.TransactionTime)
                            .AsAsyncEnumerable().WithCancellation(cancellationToken))
+        {
+            
+            // Few Client filters due to encryption limiting ability
+            if (filteredTransactionsRequest.SearchTerm is not null)
+            {
+                var containsSearchTerm = transaction.Description.ToLower().Contains(filteredTransactionsRequest.SearchTerm.ToLower());
+                if(!containsSearchTerm)
+                    continue;
+            }
+
+
+            if (filteredTransactionsRequest.FromDate is not null)
+            {
+                var containsFromDate = transaction.TransactionTime >=  filteredTransactionsRequest.FromDate;
+                if (!containsFromDate)
+                    continue;
+            }
+            
+            if (filteredTransactionsRequest.ToDate is not null)
+            {
+                var containsFromDate = transaction.TransactionTime <=  filteredTransactionsRequest.ToDate;
+                if (!containsFromDate)
+                    continue;
+            }
+
+
             yield return transaction;
+        }
+
     }
 
     public async IAsyncEnumerable<TransactionAccountFilterResponse> GetAccountsForTransactionFiltersAsync(
@@ -143,17 +171,6 @@ public class TransactionsService : ServiceBase, ITransactionsService
             transactionsQuery = transactionsQuery
                 .Where(x => filteredTransactionsRequest.ProviderIds.Contains(x.Provider.Id))
                 .Select(x => x);
-
-        if (filteredTransactionsRequest.SearchTerm is not null)
-            transactionsQuery = transactionsQuery.Where(x =>
-                EF.Functions.Like(x.Description.ToLower(), $"%{filteredTransactionsRequest.SearchTerm.ToLower()}%"));
-
-        if (filteredTransactionsRequest.FromDate is not null)
-            transactionsQuery = transactionsQuery.Where(x => x.TransactionTime >= filteredTransactionsRequest.FromDate);
-
-        if (filteredTransactionsRequest.ToDate is not null)
-            transactionsQuery = transactionsQuery.Where(x => x.TransactionTime <= filteredTransactionsRequest.ToDate);
-
 
         return transactionsQuery;
     }

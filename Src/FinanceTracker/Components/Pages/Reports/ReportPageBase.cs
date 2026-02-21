@@ -35,7 +35,6 @@ public class ReportPageBase<TReportResponse> : PageComponent
     {
         SetLoadingState(true, "Loading Report");
         ReportItems.Clear();
-        // Placeholder for reports
         var reportRequest = new BaseReportRequest
         {
             AccountIds = filters.AccountIds.ToList(),
