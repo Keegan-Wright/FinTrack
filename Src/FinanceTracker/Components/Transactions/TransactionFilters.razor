@@ -1,6 +1,7 @@
 @using FinanceTracker.Models.Response.Transaction
-<MudGrid Class="my-2">
-    <MudItem xs="12" md="4" lg="3">
+<MudPaper Elevation="1" Class="pa-4 mb-4">
+    <MudGrid Class="my-2">
+    <MudItem xs="12" sm="6" md="4" lg="3">
         <MudSelect T="Guid"
                    Label="Providers" 
                    MultiSelection="true" 
@@ -15,7 +16,7 @@
         </MudSelect>
     </MudItem>
     
-    <MudItem xs="12" md="4" lg="3">
+    <MudItem xs="12" sm="6" md="4" lg="3">
         <MudSelect T="Guid"
                    Label="Accounts" 
                    MultiSelection="true"
@@ -31,7 +32,7 @@
         </MudSelect>
     </MudItem>
     
-    <MudItem xs="12" md="4" lg="3">
+    <MudItem xs="12" sm="6" md="4" lg="3">
         <MudSelect T="string"
                    Label="Categories" 
                    MultiSelection="true"
@@ -47,7 +48,7 @@
         </MudSelect>
     </MudItem>
     
-    <MudItem xs="12" md="4" lg="3">
+    <MudItem xs="12" sm="6" md="4" lg="3">
         <MudSelect 
             T="string" 
             Label="Types"
@@ -64,7 +65,7 @@
         </MudSelect>
     </MudItem>
     
-    <MudItem xs="12" md="4" lg="3">
+    <MudItem xs="12" sm="6" md="4" lg="3">
         <MudSelect
             T="string"
             Label="Tags"
@@ -81,7 +82,7 @@
         </MudSelect>
     </MudItem>
     
-    <MudItem xs="12" md="4" lg="3">
+    <MudItem xs="12" sm="6" md="4" lg="3">
         <MudDateRangePicker PickerVariant="PickerVariant.Inline" Modal="false"
                             PlaceholderStart="Date From"
                             PlaceholderEnd="Date To"
@@ -90,14 +91,15 @@
     </MudItem>
     
     
-    <MudItem xs="1" md="4" lg="3">
+    <MudItem xs="12" sm="6" md="4" lg="3">
         <MudTextField T="string" Placeholder="Search Term" Label="Search Term" Clearable="true" @bind-Value="SearchTerm"></MudTextField>
     </MudItem>
     
-    <MudItem xs="1" md="4" lg="3">
-        <MudButton Color="Color.Primary" Variant="Variant.Filled" onClick="@InvokeSearchTransactions">Search</MudButton>
+    <MudItem xs="12" sm="6" md="4" lg="3" Class="d-flex align-end justify-center">
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" onClick="@InvokeSearchTransactions" FullWidth="true">Search</MudButton>
     </MudItem>
 </MudGrid>
+</MudPaper>
 
 @code {
 

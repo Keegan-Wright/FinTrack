@@ -19,15 +19,17 @@
         <NavMenu/>
     </MudDrawer>
     <MudMainContent Class="pt-16 pa-4 mt-4">
-        <CascadingValue Value=@ApplicationState.Loading>
-            <MudOverlay Visible="@ApplicationState.Loading" DarkBackground="true" AutoClose="false">
-                <MudItem Class="d-flex flex-column align-center" >
-                    <MudProgressCircular Color="Color.Primary" Indeterminate="true"/>
-                    <MudText Typo="Typo.h6">@ApplicationState.LoadingMessage</MudText>
-                </MudItem>
-            </MudOverlay>
-            @Body
-        </CascadingValue>
+        <MudContainer MaxWidth="MaxWidth.ExtraExtraLarge">
+            <CascadingValue Value=@ApplicationState.Loading>
+                <MudOverlay Visible="@ApplicationState.Loading" DarkBackground="@(_isDarkMode)" LightBackground="@(!_isDarkMode)" AutoClose="false">
+                    <MudItem Class="d-flex flex-column align-center" >
+                        <MudProgressCircular Color="Color.Primary" Indeterminate="true"/>
+                        <MudText Typo="Typo.h6">@ApplicationState.LoadingMessage</MudText>
+                    </MudItem>
+                </MudOverlay>
+                @Body
+            </CascadingValue>
+        </MudContainer>
     </MudMainContent>
 </MudLayout>
 
@@ -40,9 +42,9 @@
     {
         PaletteLight = new PaletteLight
         {
-            Primary = "#2E7D32", // Success Green - Finance growth
-            Secondary = "#1976D2", // Professional Blue
-            Tertiary = "#FFB300", // Gold/Amber - Highlights
+            Primary = "#2E7D32",
+            Secondary = "#1976D2",
+            Tertiary = "#FFB300",
             AppbarBackground = "#FFFFFF",
             AppbarText = "#212121",
             Background = "#F8F9FA",
@@ -64,12 +66,12 @@
         },
         PaletteDark = new PaletteDark
         {
-            Primary = "#4CAF50", // Slightly lighter green for dark mode
-            Secondary = "#42A5F5", // Lighter blue
+            Primary = "#4CAF50",
+            Secondary = "#42A5F5",
             Tertiary = "#FFCA28",
-            AppbarBackground = "#121212", // Matching background for a more seamless look
-            Background = "#0A0A0A", // Deeper black for more "richness"
-            Surface = "#161616", // Slightly darker surface
+            AppbarBackground = "#121212",
+            Background = "#0A0A0A",
+            Surface = "#161616",
             DrawerBackground = "#121212",
             DrawerText = "#E0E0E0",
             DrawerIcon = "#B0B0B0",

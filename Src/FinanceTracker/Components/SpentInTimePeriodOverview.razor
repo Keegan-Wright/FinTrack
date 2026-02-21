@@ -1,84 +1,67 @@
-<MudCard Outlined="true" Elevation="5">
-    <MudCardHeader>
-        <MudText>@Title</MudText>
-    </MudCardHeader>
-    <MudCardContent>
+<MudCard Elevation="0" Class="pa-4">
+    <MudText Typo="Typo.subtitle1" Class="mb-4 font-bold">@Title</MudText>
+    <MudGrid Spacing="3">
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Outlined="true" Class="pa-4 h-100" Elevation="0">
+                <MudStack Spacing="1">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudIcon Icon="@Icons.Material.Filled.TrendingUp" Size="Size.Small" Color="Color.Success"></MudIcon>
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary">Total In</MudText>
+                    </MudStack>
+                    <MudText Typo="Typo.h6" Color="Color.Success">@TotalIn.ToString("C")</MudText>
+                    @if (PerDayAverageIn.HasValue && DaysInPeriod > 0)
+                    {
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary">Avg/day: @PerDayAverageIn.Value.ToString("C")</MudText>
+                    }
+                </MudStack>
+            </MudPaper>
+        </MudItem>
         
-        <MudGrid>
-            <MudItem xs="12" sm="6" md="3">
-                <MudCard Outlined="true" Class="h-100">
-                    <MudCardContent>
-                        <MudStack Spacing="1">
-                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                                <MudIcon Icon="@Icons.Material.Filled.TrendingUp" Size="Size.Small" Color="Color.Success"></MudIcon>
-                                <MudText Typo="Typo.caption">Total In</MudText>
-                            </MudStack>
-                            <MudText Typo="Typo.h6" Color="Color.Success">@TotalIn.ToString("C")</MudText>
-                            @if (PerDayAverageIn.HasValue && DaysInPeriod > 0)
-                            {
-                                <MudText Typo="Typo.caption">Avg/day: @PerDayAverageIn.Value.ToString("C")</MudText>
-                            }
-                        </MudStack>
-                    </MudCardContent>
-                </MudCard>
-            </MudItem>
-            
-            <MudItem xs="12" sm="6" md="3">
-                <MudCard Outlined="true" Class="h-100">
-                    <MudCardContent>
-                        <MudStack Spacing="1">
-                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                                <MudIcon Icon="@Icons.Material.Filled.TrendingDown" Size="Size.Small" Color="Color.Error"></MudIcon>
-                                <MudText Typo="Typo.caption">Total Out</MudText>
-                            </MudStack>
-                            <MudText Typo="Typo.h6" Color="Color.Error">@TotalOut.ToString("C")</MudText>
-                            @if (PerDayAverageOut.HasValue && DaysInPeriod > 0)
-                            {
-                                <MudText Typo="Typo.caption">Avg/day: @PerDayAverageOut.Value.ToString("C")</MudText>
-                            }
-                        </MudStack>
-                    </MudCardContent>
-                </MudCard>
-            </MudItem>
-            
-            <MudItem xs="12" sm="6" md="3">
-                <MudCard Outlined="true" Class="h-100">
-                    <MudCardContent>
-                        <MudStack Spacing="1">
-                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                                <MudIcon Icon="@Icons.Material.Filled.Calculate" Size="Size.Small" Color="Color.Tertiary"></MudIcon>
-                                <MudText Typo="Typo.caption">Difference</MudText>
-                            </MudStack>
-                            <MudText Typo="Typo.h6" Color="Color.Tertiary">@Normalised.ToString("C")</MudText>
-                        </MudStack>
-                    </MudCardContent>
-                </MudCard>
-            </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Outlined="true" Class="pa-4 h-100" Elevation="0">
+                <MudStack Spacing="1">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudIcon Icon="@Icons.Material.Filled.TrendingDown" Size="Size.Small" Color="Color.Error"></MudIcon>
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary">Total Out</MudText>
+                    </MudStack>
+                    <MudText Typo="Typo.h6" Color="Color.Error">@TotalOut.ToString("C")</MudText>
+                    @if (PerDayAverageOut.HasValue && DaysInPeriod > 0)
+                    {
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary">Avg/day: @PerDayAverageOut.Value.ToString("C")</MudText>
+                    }
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+        
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Outlined="true" Class="pa-4 h-100" Elevation="0">
+                <MudStack Spacing="1">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudIcon Icon="@Icons.Material.Filled.Calculate" Size="Size.Small" Color="Color.Tertiary"></MudIcon>
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary">Difference</MudText>
+                    </MudStack>
+                    <MudText Typo="Typo.h6" Color="Color.Tertiary">@Normalised.ToString("C")</MudText>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
 
-            <MudItem xs="12" sm="6" md="3">
-                <MudCard Outlined="true" Class="h-100">
-                    <MudCardContent>
-                        <MudStack Spacing="1">
-                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                                <MudIcon Icon="@GetTrendIcon()" Size="Size.Small" Color="@GetTrendColor()"></MudIcon>
-                                <MudText Typo="Typo.caption">Trend</MudText>
-                            </MudStack>
-                            @{
-                                var trendColor = GetTrendColor();
-                                var trendIndicator = GetTrendIndicator();
-                            }
-                            <MudText Typo="Typo.h6" Color="@GetTrendColor()">@trendIndicator</MudText>
-                            @if (TrendPercentage.HasValue)
-                            {
-                                <MudText Typo="Typo.caption" Color="Color.Tertiary">@TrendPercentage.Value.ToString("P2")</MudText>
-                            }
-                        </MudStack>
-                    </MudCardContent>
-                </MudCard>
-            </MudItem>
-        </MudGrid>
-        
-    </MudCardContent>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Outlined="true" Class="pa-4 h-100" Elevation="0">
+                <MudStack Spacing="1">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudIcon Icon="@GetTrendIcon()" Size="Size.Small" Color="@GetTrendColor()"></MudIcon>
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary">Trend</MudText>
+                    </MudStack>
+                    @{
+                        var trendColor = GetTrendColor();
+                        var trendIndicator = GetTrendIndicator();
+                    }
+                    <MudText Typo="Typo.h6" Color="@trendColor">@trendIndicator</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Info">@(TrendPercentage?.ToString("P2") ?? "N/A")</MudText>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
 </MudCard>
 
 @code{
