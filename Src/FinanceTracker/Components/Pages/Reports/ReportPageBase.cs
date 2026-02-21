@@ -30,6 +30,12 @@ public class ReportPageBase<TReportResponse> : PageComponent
     internal List<TReportResponse> ReportItems { get; set; } = [];
     
     internal readonly string _searchTerm;
+
+    internal readonly ChartOptions _chartOptions = new ChartOptions()
+    {
+    };
+        
+        
     
     internal async Task LoadReportAsync(TransactionFilters.ActiveTransactionFilters filters, ReportType reportType)
     {
@@ -99,6 +105,8 @@ public class ReportPageBase<TReportResponse> : PageComponent
             _transactionTagFilterItems.Add(tag);
         }
     }
+
+
 
     internal List<ChartSeries<double>> GetMonthlyGraphSeries(List<SharedReportResponse> reportItems)
     {
