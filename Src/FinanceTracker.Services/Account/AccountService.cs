@@ -31,7 +31,7 @@ public class AccountService : ServiceBase, IAccountService
             .IsolateToUser(UserId)
             .Include(x => x.Providers).ThenInclude(x => x.Accounts).ThenInclude(x => x.Provider)
             .Include(x => x.Providers).ThenInclude(a => a.Accounts).ThenInclude(x => x.AccountBalance)
-            .Include(x => x.Providers).ThenInclude(x => x.Accounts).ThenInclude(x => x.Transactions)
+            .Include(x => x.Providers).ThenInclude(x => x.Accounts).ThenInclude(x => x.Transactions.OrderByDescending(c => c.TransactionTime).Take(transactionsToReturn))
             .SelectMany(x => x.Providers.SelectMany(c => c.Accounts))
             .AsNoTracking();
 
@@ -44,7 +44,7 @@ public class AccountService : ServiceBase, IAccountService
                 AccountType = account.AccountType,
                 AvailableBalance = account.AccountBalance?.Available ?? 0,
                 Logo = account.Provider.Logo,
-                Transactions = account.Transactions?.OrderByDescending(x => x.TransactionTime).Take(transactionsToReturn).Select(transaction => new AccountTransactionResponse()
+                Transactions = account.Transactions?.Select(transaction => new AccountTransactionResponse()
                 {
                     Amount = transaction.Amount,
                     Description = transaction.Description,

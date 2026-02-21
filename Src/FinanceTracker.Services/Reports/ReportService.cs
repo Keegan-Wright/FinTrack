@@ -36,6 +36,8 @@ public class ReportService : ServiceBase, IReportService
         await foreach (var transaction in query.OrderByDescending(x => x.TransactionTime)
                            .ToAsyncEnumerable().WithCancellation(cancellationToken))
         {
+
+            
             openBankingTransactions.Add(transaction);
         }
         
@@ -185,6 +187,10 @@ public class ReportService : ServiceBase, IReportService
         await foreach (var transaction in query.OrderByDescending(x => x.TransactionTime)
                            .ToAsyncEnumerable().WithCancellation(cancellationToken))
         {
+            var blocked = BlockedByClientFilters(request, transaction);
+            if (blocked)
+                continue;
+            
             openBankingTransactions.Add(transaction);
         }
 
@@ -247,6 +253,7 @@ public class ReportService : ServiceBase, IReportService
         }
     }
     
+
     private IQueryable<OpenBankingTransaction> GetQueryByBaseReportRequest(BaseReportRequest request, FinanceTrackerContext context)
     {
         
@@ -286,26 +293,38 @@ public class ReportService : ServiceBase, IReportService
             query = query.Where(x => request.ProviderIds.Contains(x.Provider.Id))
                 .Select(x => x);
         }
-
-        if (request.SearchTerm is not null)
-        {
-            query = query.Where(x => EF.Functions.Like(x.Description.ToLower(), $"%{request.SearchTerm.ToLower()}%"));
-
-        }
-
-        if (request.FromDate is not null)
-        {
-            query = query.Where(x => x.TransactionTime >= request.FromDate);
-        }
-
-        if (request.ToDate is not null)
-        {
-            query = query.Where(x => x.TransactionTime <= request.ToDate);
-        }
-            
+        
         query = query.Where(x => x.TransactionCategory != "TRANSFER");
             
         
         return query;
+    }
+
+    private bool BlockedByClientFilters(BaseReportRequest request, OpenBankingTransaction transaction)
+    {
+        // Few Client filters due to encryption limiting ability
+        if (request.SearchTerm is not null)
+        {
+            var containsSearchTerm = transaction.Description.ToLower().Contains(request.SearchTerm.ToLower());
+            if(!containsSearchTerm)
+                return true;
+        }
+
+
+        if (request.FromDate is not null)
+        {
+            var containsFromDate = transaction.TransactionTime >=  request.FromDate;
+            if (!containsFromDate)
+                return true;;
+        }
+            
+        if (request.ToDate is not null)
+        {
+            var containsFromDate = transaction.TransactionTime <=  request.ToDate;
+            if (!containsFromDate)
+                return true;;
+        }
+        
+        return false;
     }
 }

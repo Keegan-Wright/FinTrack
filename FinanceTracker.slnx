@@ -19,6 +19,7 @@
     <Project Path="Src/Generators/FinanceTracker.Generated.DependencyInjection/FinanceTracker.Generated.DependencyInjection/FinanceTracker.Generated.DependencyInjection.csproj" />
     <Project Path="Src/Generators/FinanceTracker.Generated.Enums/FinanceTracker.Generated.Enums/FinanceTracker.Generated.Enums.csproj" />
   </Folder>
+  <Project Path="Src/FinanceTracker.Security/FinanceTracker.Security.csproj" />
   <Project Path="Src/FinanceTracker.Configurations/FinanceTracker.Configurations.csproj" />
   <Project Path="Src/FinanceTracker.Enums/FinanceTracker.Enums.csproj" />
   <Project Path="Src/FinanceTracker.Services/FinanceTracker.Services.csproj" />
