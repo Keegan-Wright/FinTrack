@@ -1,0 +1,150 @@
+@inherits LayoutComponentBase
+@using System.ComponentModel
+@implements IDisposable
+
+<MudThemeProvider @ref="@_mudThemeProvider" Theme="_theme" @bind-IsDarkMode="_isDarkMode" DefaultScrollbar="true" />
+<MudPopoverProvider/>
+<MudDialogProvider/>
+<MudSnackbarProvider/>
+
+<MudLayout>
+    <MudAppBar Elevation="@(_isDarkMode ? 0 : 1)">
+        <MudText Typo="Typo.h6" Color="Color.Primary" Class="ml-3 font-bold" Style="letter-spacing: 0.5px;">FinTrack</MudText>
+        <MudSpacer/>
+    </MudAppBar>
+    <MudMainContent Class="pt-16 pa-4 mt-4">
+        <MudContainer MaxWidth="MaxWidth.Small">
+            <CascadingValue Value=@ApplicationState.Loading>
+                <MudCard Elevation="4" Class="pa-4">
+                    <MudCardContent>
+                        <MudOverlay Visible="@ApplicationState.Loading" DarkBackground="@(_isDarkMode)" LightBackground="@(!_isDarkMode)" AutoClose="false" Absolute="true">
+                            <MudItem Class="d-flex flex-column align-center" >
+                                <MudProgressCircular Color="Color.Primary" Indeterminate="true"/>
+                                <MudText Typo="Typo.h6">@ApplicationState.LoadingMessage</MudText>
+                            </MudItem>
+                        </MudOverlay>
+                        @Body
+                    </MudCardContent>
+                </MudCard>
+            </CascadingValue>
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private MudThemeProvider _mudThemeProvider = null!;
+    private bool _isDarkMode = true;
+
+    private readonly MudTheme _theme = new()
+    {
+        PaletteLight = new PaletteLight
+        {
+            Primary = "#2E7D32",
+            Secondary = "#1976D2",
+            Tertiary = "#FFB300",
+            AppbarBackground = "#FFFFFF",
+            AppbarText = "#212121",
+            Background = "#F8F9FA",
+            Surface = "#FFFFFF",
+            DrawerBackground = "#FFFFFF",
+            DrawerText = "#424242",
+            DrawerIcon = "#616161",
+            TextPrimary = "#212121",
+            TextSecondary = "#757575",
+            ActionDefault = "#546E7A",
+            ActionDisabled = "#BDBDBD",
+            Divider = "#E0E0E0",
+            TableLines = "#F5F5F5",
+            LinesDefault = "#EEEEEE",
+            Success = "#43A047",
+            Error = "#E53935",
+            Warning = "#FB8C00",
+            Info = "#1E88E5",
+        },
+        PaletteDark = new PaletteDark
+        {
+            Primary = "#4CAF50",
+            Secondary = "#42A5F5",
+            Tertiary = "#FFCA28",
+            AppbarBackground = "#121212",
+            Background = "#0A0A0A",
+            Surface = "#161616",
+            DrawerBackground = "#121212",
+            DrawerText = "#E0E0E0",
+            DrawerIcon = "#B0B0B0",
+            TextPrimary = "#F5F5F5",
+            TextSecondary = "#B0B0B0",
+            ActionDefault = "#90A4AE",
+            ActionDisabled = "#424242",
+            Divider = "#212121",
+            TableLines = "#1A1A1A",
+            LinesDefault = "#212121",
+            Success = "#66BB6A",
+            Error = "#EF5350",
+            Warning = "#FFA726",
+            Info = "#42A5F5",
+        },
+        LayoutProperties = new LayoutProperties
+        {
+            DefaultBorderRadius = "8px"
+        },
+        Typography = new Typography
+        {
+            Default = new DefaultTypography
+            {
+                FontFamily = new[] { "Inter", "Roboto", "Helvetica", "Arial", "sans-serif" },
+                FontSize = ".875rem",
+                FontWeight = "400",
+                LineHeight = "1.43",
+                LetterSpacing = ".01071em"
+            },
+            H1 = new H1Typography { FontWeight = "700", FontSize = "3rem" },
+            H2 = new H2Typography { FontWeight = "700", FontSize = "2.5rem" },
+            H3 = new H3Typography { FontWeight = "700", FontSize = "2rem" },
+            H4 = new H4Typography { FontWeight = "700", FontSize = "1.5rem" },
+            H5 = new H5Typography { FontWeight = "700", FontSize = "1.25rem" },
+            H6 = new H6Typography { FontWeight = "700", FontSize = "1rem" },
+            Button = new ButtonTypography { FontWeight = "600", TextTransform = "none" },
+            Subtitle1 = new Subtitle1Typography { FontWeight = "500" },
+            Subtitle2 = new Subtitle2Typography { FontWeight = "500" }
+        }
+    };
+    
+    [CascadingParameter]
+    private ApplicationState ApplicationState { get; set; }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        ApplicationState.PropertyChanged += ApplicationStateOnPropertyChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _isDarkMode = await _mudThemeProvider.GetSystemDarkModeAsync();
+            await _mudThemeProvider.WatchSystemDarkModeAsync(OnSystemPreferenceChanged);
+            StateHasChanged();
+        }
+    }
+    
+    private Task OnSystemPreferenceChanged(bool newValue)
+    {
+        _isDarkMode = newValue;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private void ApplicationStateOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    { 
+        StateHasChanged();
+    }
+
+
+    public void Dispose()
+    {
+        ApplicationState.PropertyChanged -= ApplicationStateOnPropertyChanged;
+    }
+
+}
