@@ -1,64 +1,66 @@
-@using FinanceTracker.Models.Request.Classifications;
+@using FinanceTracker.Models.Request.Classifications
 @using FinanceTracker.Models.Response.Classifications
-
-<DialogBase TResponse="AddCustomClassificationsToTransactionRequest" Title="Add Classification / Tag To Transaction" ResponseConstructor="BuildResponseModel">
+<DialogBase TResponse="AddCustomClassificationsToTransactionRequest" Title="Add Classification / Tag To Transaction"
+            ResponseConstructor="BuildResponseModel">
     <Content>
 
-        <MudDataGrid T="ClassificationsResponse" MultiSelection="true" Items="@Classifications" SortMode="SortMode.Multiple" Filterable="true" QuickFilter="@_quickFilter"
+        <MudDataGrid T="ClassificationsResponse" MultiSelection="true" Items="@Classifications"
+                     SortMode="SortMode.Multiple" Filterable="true" QuickFilter="@_quickFilter"
                      Hideable="false"
                      SelectedItemsChanged="@SelectedItemsChanged">
             <ToolBarContent>
                 <MudText Typo="Typo.h6">Classifications / Tags</MudText>
-                <MudSpacer />
-                <MudTextField @bind-Value="_searchString" Placeholder="Search classifications / tags" Adornment="Adornment.Start" Immediate="true"
-                              AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+                <MudSpacer/>
+                <MudTextField @bind-Value="_searchString" Placeholder="Search classifications / tags"
+                              Adornment="Adornment.Start" Immediate="true"
+                              AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium"
+                              Class="mt-0"></MudTextField>
             </ToolBarContent>
             <Columns>
-                <SelectColumn T="ClassificationsResponse" />
-                <PropertyColumn Property="x => x.Tag" Title="Classification / Tag" Sortable="true" Filterable="true" />
+                <SelectColumn T="ClassificationsResponse"/>
+                <PropertyColumn Property="x => x.Tag" Title="Classification / Tag" Sortable="true" Filterable="true"/>
             </Columns>
             <PagerContent>
-                <MudDataGridPager T="ClassificationsResponse" />
+                <MudDataGridPager T="ClassificationsResponse"/>
             </PagerContent>
         </MudDataGrid>
     </Content>
 </DialogBase>
 
 @code {
-    
-    [Parameter]
-    public Guid TransactionId { get; set; }
-    
-    [Parameter]
-    public IEnumerable<ClassificationsResponse> Classifications { get; set; }
-    
+
+    [Parameter] public Guid TransactionId { get; set; }
+
+    [Parameter] public IEnumerable<ClassificationsResponse> Classifications { get; set; }
+
     private List<ClassificationsResponse> SelectedItems { get; set; }
     private string _searchString = string.Empty;
-    
-    
+
+
     private Func<ClassificationsResponse, bool> _quickFilter => x =>
     {
         if (string.IsNullOrWhiteSpace(_searchString))
             return true;
 
         if (x.Tag.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
-            return true; 
-        
+            return true;
+
         return false;
     };
-    
-    
+
+
     private AddCustomClassificationsToTransactionRequest BuildResponseModel()
     {
-        return new AddCustomClassificationsToTransactionRequest()
+        return new AddCustomClassificationsToTransactionRequest
         {
             TransactionId = TransactionId,
-            Classifications = SelectedItems.Select(x => new SelectedCustomClassificationsRequest(){ ClassificationId =  x.ClassificationId})
+            Classifications = SelectedItems.Select(x => new SelectedCustomClassificationsRequest { ClassificationId = x.ClassificationId })
         };
     }
-    
+
     void SelectedItemsChanged(HashSet<ClassificationsResponse> items)
     {
         SelectedItems = items.ToList();
     }
+
 }

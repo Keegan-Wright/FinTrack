@@ -18,20 +18,19 @@ public class TransactionsService : ServiceBase, ITransactionsService
 {
     private readonly IOpenBankingService _openBankingService;
 
-    public TransactionsService(ClaimsPrincipal user, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
-        IOpenBankingService openBankingService) : base(user, financeTrackerContextFactory)
-    {
+    public TransactionsService(ClaimsPrincipal user,
+        IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
+        IOpenBankingService openBankingService) : base(user, financeTrackerContextFactory) =>
         _openBankingService = openBankingService;
-    }
 
     public async IAsyncEnumerable<TransactionResponse> GetAllTransactionsAsync(
         FilteredTransactionsRequest filteredTransactionsRequest, SyncTypes syncTypes,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        
         await _openBankingService.PerformSyncAsync(syncTypes, cancellationToken);
-        await using var context = await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
-        var transactionsQuery = context.IsolateToUser(UserId)
+        await using FinanceTrackerContext context =
+            await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+        IQueryable<OpenBankingTransaction> transactionsQuery = context.IsolateToUser(UserId)
             .Include(x => x.Providers).ThenInclude(x => x.Accounts).ThenInclude(x => x.Transactions)
             .ThenInclude(x => x.Classifications)
             .SelectMany(x => x.Providers.SelectMany(c => c.Accounts).SelectMany(r => r.Transactions))
@@ -40,101 +39,124 @@ public class TransactionsService : ServiceBase, ITransactionsService
         transactionsQuery = ApplyTransactionRequestFiltering(filteredTransactionsRequest, transactionsQuery);
 
 
-        await foreach (var transaction in GetTransactionsSelect(transactionsQuery)
+        await foreach (TransactionResponse transaction in GetTransactionsSelect(transactionsQuery)
                            .OrderByDescending(x => x.TransactionTime)
                            .AsAsyncEnumerable().WithCancellation(cancellationToken))
         {
-            
             // Few Client filters due to encryption limiting ability
             if (filteredTransactionsRequest.SearchTerm is not null)
             {
-                var containsSearchTerm = transaction.Description.ToLower().Contains(filteredTransactionsRequest.SearchTerm.ToLower());
-                if(!containsSearchTerm)
+                bool containsSearchTerm = transaction.Description.ToLower()
+                    .Contains(filteredTransactionsRequest.SearchTerm.ToLower());
+                if (!containsSearchTerm)
+                {
                     continue;
+                }
             }
 
 
             if (filteredTransactionsRequest.FromDate is not null)
             {
-                var containsFromDate = transaction.TransactionTime >=  filteredTransactionsRequest.FromDate;
+                bool containsFromDate = transaction.TransactionTime >= filteredTransactionsRequest.FromDate;
                 if (!containsFromDate)
+                {
                     continue;
+                }
             }
-            
+
             if (filteredTransactionsRequest.ToDate is not null)
             {
-                var containsFromDate = transaction.TransactionTime <=  filteredTransactionsRequest.ToDate;
+                bool containsFromDate = transaction.TransactionTime <= filteredTransactionsRequest.ToDate;
                 if (!containsFromDate)
+                {
                     continue;
+                }
             }
 
 
             yield return transaction;
         }
-
     }
 
     public async IAsyncEnumerable<TransactionAccountFilterResponse> GetAccountsForTransactionFiltersAsync(
         SyncTypes syncTypes, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await _openBankingService.PerformSyncAsync(syncTypes, cancellationToken);
-        
-        await using var context = await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
-        
-        var query = context.IsolateToUser(UserId).Include(x => x.Providers).ThenInclude(x => x.Accounts)
+
+        await using FinanceTrackerContext context =
+            await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+
+        IQueryable<TransactionAccountFilterResponse> query = context.IsolateToUser(UserId).Include(x => x.Providers)
+            .ThenInclude(x => x.Accounts)
             .SelectMany(x => x.Providers.SelectMany(c => c.Accounts))
             .AsNoTracking()
             .Select(x => new TransactionAccountFilterResponse { AccountId = x.Id, AccountName = x.DisplayName });
 
-        var accounts = query.AsAsyncEnumerable();
+        IAsyncEnumerable<TransactionAccountFilterResponse> accounts = query.AsAsyncEnumerable();
 
-        await foreach (var account in accounts.WithCancellation(cancellationToken)) yield return account;
+        await foreach (TransactionAccountFilterResponse account in accounts.WithCancellation(cancellationToken))
+        {
+            yield return account;
+        }
     }
 
     public async IAsyncEnumerable<TransactionProviderFilterResponse> GetProvidersForTransactionFiltersAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        await using var context = await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
-        var query = context.IsolateToUser(UserId)
+        await using FinanceTrackerContext context =
+            await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+        IQueryable<TransactionProviderFilterResponse> query = context.IsolateToUser(UserId)
             .Include(x => x.Providers).ThenInclude(x => x.Accounts)
             .SelectMany(x => x.Providers)
             .Select(x => new TransactionProviderFilterResponse { ProviderId = x.Id, ProviderName = x.Name }).Distinct();
 
-        await foreach (var provider in query.AsAsyncEnumerable().WithCancellation(cancellationToken))
+        await foreach (TransactionProviderFilterResponse provider in query.AsAsyncEnumerable()
+                           .WithCancellation(cancellationToken))
+        {
             yield return provider;
+        }
     }
 
     public async IAsyncEnumerable<TransactionTypeFilterResponse> GetTypesForTransactionFiltersAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        await using var context = await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
-        var query = context.IsolateToUser(UserId)
+        await using FinanceTrackerContext context =
+            await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+        IQueryable<TransactionTypeFilterResponse> query = context.IsolateToUser(UserId)
             .Include(x => x.Providers).ThenInclude(x => x.Accounts).ThenInclude(x => x.Transactions)
             .SelectMany(x => x.Providers.SelectMany(x => x.Accounts).SelectMany(c => c.Transactions))
             .Select(x => new TransactionTypeFilterResponse { TransactionType = x.TransactionType })
             .Distinct();
 
-        await foreach (var type in query.AsAsyncEnumerable().WithCancellation(cancellationToken)) yield return type;
+        await foreach (TransactionTypeFilterResponse type in query.AsAsyncEnumerable()
+                           .WithCancellation(cancellationToken))
+        {
+            yield return type;
+        }
     }
 
     public async IAsyncEnumerable<TransactionCategoryFilterResponse> GetCategoriesForTransactionFiltersAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        await using var context = await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
-        var query = context.IsolateToUser(UserId)
+        await using FinanceTrackerContext context =
+            await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+        IQueryable<string> query = context.IsolateToUser(UserId)
             .Include(x => x.Providers).ThenInclude(x => x.Accounts).ThenInclude(x => x.Transactions)
             .SelectMany(x => x.Providers.SelectMany(c => c.Accounts).SelectMany(r => r.Transactions))
             .Select(x => x.TransactionCategory).Distinct();
 
-        await foreach (var category in query.AsAsyncEnumerable().WithCancellation(cancellationToken))
+        await foreach (string category in query.AsAsyncEnumerable().WithCancellation(cancellationToken))
+        {
             yield return new TransactionCategoryFilterResponse { TransactionCategory = category };
+        }
     }
 
     public async IAsyncEnumerable<TransactionTagFilterResponse> GetTagsForTransactionFiltersAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        await using var context = await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
-        var query = context.IsolateToUser(UserId)
+        await using FinanceTrackerContext context =
+            await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+        IQueryable<TransactionTagFilterResponse> query = context.IsolateToUser(UserId)
             .Include(x => x.Providers).ThenInclude(x => x.Accounts).ThenInclude(x => x.Transactions)
             .ThenInclude(x => x.Classifications)
             .SelectMany(x =>
@@ -143,8 +165,11 @@ public class TransactionsService : ServiceBase, ITransactionsService
             .Select(x => new TransactionTagFilterResponse { Tag = x.Classification })
             .Distinct();
 
-        await foreach (var type in query.AsAsyncEnumerable().WithCancellation(cancellationToken)) 
+        await foreach (TransactionTagFilterResponse type in query.AsAsyncEnumerable()
+                           .WithCancellation(cancellationToken))
+        {
             yield return type;
+        }
     }
 
 
@@ -152,32 +177,41 @@ public class TransactionsService : ServiceBase, ITransactionsService
         FilteredTransactionsRequest filteredTransactionsRequest, IQueryable<OpenBankingTransaction> transactionsQuery)
     {
         if (filteredTransactionsRequest.AccountIds is not null && filteredTransactionsRequest.AccountIds.Any())
+        {
             transactionsQuery =
                 transactionsQuery.Where(x => filteredTransactionsRequest.AccountIds.Contains(x.Account.Id));
+        }
 
         if (filteredTransactionsRequest.Types is not null && filteredTransactionsRequest.Types.Any())
+        {
             transactionsQuery =
                 transactionsQuery.Where(x => filteredTransactionsRequest.Types.Contains(x.TransactionType));
+        }
 
         if (filteredTransactionsRequest.Categories is not null && filteredTransactionsRequest.Categories.Any())
+        {
             transactionsQuery =
                 transactionsQuery.Where(x => filteredTransactionsRequest.Categories.Contains(x.TransactionCategory));
+        }
 
         if (filteredTransactionsRequest.Tags is not null && filteredTransactionsRequest.Tags.Any())
+        {
             transactionsQuery = transactionsQuery.Where(x =>
                 filteredTransactionsRequest.Tags.Any(y => x.Classifications.Any(c => c.Classification == y)));
+        }
 
         if (filteredTransactionsRequest.ProviderIds is not null && filteredTransactionsRequest.ProviderIds.Any())
+        {
             transactionsQuery = transactionsQuery
                 .Where(x => filteredTransactionsRequest.ProviderIds.Contains(x.Provider.Id))
                 .Select(x => x);
+        }
 
         return transactionsQuery;
     }
 
-    private IQueryable<TransactionResponse> GetTransactionsSelect(IQueryable<OpenBankingTransaction> query)
-    {
-        return query.Select(transaction => new TransactionResponse
+    private IQueryable<TransactionResponse> GetTransactionsSelect(IQueryable<OpenBankingTransaction> query) =>
+        query.Select(transaction => new TransactionResponse
         {
             Amount = transaction.Amount,
             Currency = transaction.Currency,
@@ -189,5 +223,4 @@ public class TransactionsService : ServiceBase, ITransactionsService
             TransactionType = transaction.TransactionType,
             Tags = transaction.Classifications.Select(x => x.Classification)
         });
-    }
 }

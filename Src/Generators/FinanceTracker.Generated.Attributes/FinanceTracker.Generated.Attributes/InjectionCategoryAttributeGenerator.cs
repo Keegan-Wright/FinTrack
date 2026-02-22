@@ -18,10 +18,8 @@ namespace {SourceGeneratorConstants.GeneratedNamespace}.Attributes
     }}
 }}";
 
-    public void Initialize(IncrementalGeneratorInitializationContext context)
-    {
+    public void Initialize(IncrementalGeneratorInitializationContext context) =>
         context.RegisterPostInitializationOutput(ctx => ctx.AddSource(
             $"{SourceGeneratorConstants.InjectionCategoryAttributeName}.g.cs",
             SourceText.From(AttributeSourceCode, Encoding.UTF8)));
-    }
 }

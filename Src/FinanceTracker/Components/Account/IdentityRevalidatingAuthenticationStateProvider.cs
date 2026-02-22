@@ -1,10 +1,9 @@
 using System.Security.Claims;
+using FinanceTracker.Data.Models;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Server;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
-using FinanceTracker.Data;
-using FinanceTracker.Data.Models;
 
 namespace FinanceTracker.Components.Account;
 
@@ -22,28 +21,28 @@ internal sealed class IdentityRevalidatingAuthenticationStateProvider(
         AuthenticationState authenticationState, CancellationToken cancellationToken)
     {
         // Get the user manager from a new scope to ensure it fetches fresh data
-        await using var scope = scopeFactory.CreateAsyncScope();
-        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<FinanceTrackerUser>>();
+        await using AsyncServiceScope scope = scopeFactory.CreateAsyncScope();
+        UserManager<FinanceTrackerUser> userManager =
+            scope.ServiceProvider.GetRequiredService<UserManager<FinanceTrackerUser>>();
         return await ValidateSecurityStampAsync(userManager, authenticationState.User);
     }
 
     private async Task<bool> ValidateSecurityStampAsync(UserManager<FinanceTrackerUser> userManager,
         ClaimsPrincipal principal)
     {
-        var user = await userManager.GetUserAsync(principal);
+        FinanceTrackerUser? user = await userManager.GetUserAsync(principal);
         if (user is null)
         {
             return false;
         }
-        else if (!userManager.SupportsUserSecurityStamp)
+
+        if (!userManager.SupportsUserSecurityStamp)
         {
             return true;
         }
-        else
-        {
-            var principalStamp = principal.FindFirstValue(options.Value.ClaimsIdentity.SecurityStampClaimType);
-            var userStamp = await userManager.GetSecurityStampAsync(user);
-            return principalStamp == userStamp;
-        }
+
+        string? principalStamp = principal.FindFirstValue(options.Value.ClaimsIdentity.SecurityStampClaimType);
+        string userStamp = await userManager.GetSecurityStampAsync(user);
+        return principalStamp == userStamp;
     }
 }

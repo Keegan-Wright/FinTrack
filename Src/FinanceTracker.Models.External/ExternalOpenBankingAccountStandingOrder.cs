@@ -27,6 +27,7 @@ public class ExternalOpenBankingAccountStandingOrder
 
     [JsonPropertyName("final_payment_amount")]
     public int FinalPaymentAmount { get; set; }
+
     public string Reference { get; set; }
     public string Payee { get; set; }
 }

@@ -1,21 +1,22 @@
 using FinanceTracker.AppHost;
+using Microsoft.Extensions.Configuration;
 
-var builder = DistributedApplication.CreateBuilder(args);
+IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
 
-var sentryConfig = builder.Configuration.GetSection("Sentry");
-var openBankingConfig = builder.Configuration.GetSection("OpenBanking");
-var authConfig = builder.Configuration.GetSection("Auth");
-var encryptionConfig = builder.Configuration.GetSection("Encryption");
+IConfigurationSection sentryConfig = builder.Configuration.GetSection("Sentry");
+IConfigurationSection openBankingConfig = builder.Configuration.GetSection("OpenBanking");
+IConfigurationSection authConfig = builder.Configuration.GetSection("Auth");
+IConfigurationSection encryptionConfig = builder.Configuration.GetSection("Encryption");
 
-var redis = builder.AddRedis("financeTrackerRedis")
+IResourceBuilder<RedisResource> redis = builder.AddRedis("financeTrackerRedis")
     .WithDataVolume(isReadOnly: false)
-    .WithPersistence(interval: TimeSpan.FromMinutes(5));
+    .WithPersistence(TimeSpan.FromMinutes(5));
 
-var postgres = builder.AddPostgres("financeTrackerPostgres")
+IResourceBuilder<PostgresServerResource> postgres = builder.AddPostgres("financeTrackerPostgres")
     .WithPgWeb()
     .WithDataVolume(isReadOnly: false);
 
-var postgresDb = postgres.AddDatabase("financeTrackerPostgresDb");
+IResourceBuilder<PostgresDatabaseResource> postgresDb = postgres.AddDatabase("financeTrackerPostgresDb");
 
 builder.AddProject<Projects.FinanceTracker>("FinanceTracker")
     .AddSentry(sentryConfig)

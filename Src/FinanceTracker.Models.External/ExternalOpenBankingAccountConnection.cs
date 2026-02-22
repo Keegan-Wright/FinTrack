@@ -21,6 +21,7 @@ public class ExternalOpenBankingAccountConnection
 
     [JsonPropertyName("consent_expires_at")]
     public DateTime ConsentExpiresAt { get; set; }
+
     public ExternalOpenBankingAccountConnectionProvider Provider { get; set; }
     public IAsyncEnumerable<string> Scopes { get; set; }
 

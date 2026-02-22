@@ -9,13 +9,16 @@ public class ExternalOpenBankingProvider
 
     [JsonPropertyName("display_name")]
     public string DisplayName { get; set; }
+
     public string Country { get; set; }
 
     [JsonPropertyName("logo_url")]
     public string LogoUrl { get; set; }
+
     public IAsyncEnumerable<string> Scopes { get; set; }
 
     [JsonPropertyName("provider_scope_mappings")]
     public ExternalOpenBankingProviderScopeMappings ProviderScopeMappings { get; set; }
+
     public ExternalOpenBankingProviderStep[] steps { get; set; }
 }

@@ -2,6 +2,7 @@ using System.Text;
 using FinanceTracker.Generated.Helpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
+
 namespace FinanceTracker.Generated.Attributes;
 
 [Generator]
@@ -17,10 +18,8 @@ namespace {SourceGeneratorConstants.GeneratedNamespace}
     }}
 }}";
 
-    public void Initialize(IncrementalGeneratorInitializationContext context)
-    {
+    public void Initialize(IncrementalGeneratorInitializationContext context) =>
         context.RegisterPostInitializationOutput(ctx => ctx.AddSource(
             $"{SourceGeneratorConstants.TransientAttributeName}.g.cs",
             SourceText.From(AttributeSourceCode, Encoding.UTF8)));
-    }
 }

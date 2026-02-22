@@ -2,7 +2,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace FinanceTracker.AppHost;
 
-static class BuilderExtensions
+internal static class BuilderExtensions
 {
     public static IResourceBuilder<T> AddSentry<T>(this IResourceBuilder<T> resourceBuilder,
         IConfigurationSection sentryConfig)
@@ -18,7 +18,7 @@ static class BuilderExtensions
 
         return resourceBuilder;
     }
-    
+
     public static IResourceBuilder<T> AddOpenBanking<T>(this IResourceBuilder<T> resourceBuilder,
         IConfigurationSection openBankingConfig)
         where T : IResourceWithEnvironment
@@ -35,7 +35,7 @@ static class BuilderExtensions
             openBankingConfig["TrueLayer:ClientSecret"]);
         return resourceBuilder;
     }
-    
+
     public static IResourceBuilder<T> AddAuth<T>(this IResourceBuilder<T> resourceBuilder,
         IConfigurationSection authConfig)
         where T : IResourceWithEnvironment
@@ -48,7 +48,7 @@ static class BuilderExtensions
             authConfig["SigningKey"]);
         return resourceBuilder;
     }
-    
+
     public static IResourceBuilder<T> AddEncryption<T>(this IResourceBuilder<T> resourceBuilder,
         IConfigurationSection encryptionConfig)
         where T : IResourceWithEnvironment

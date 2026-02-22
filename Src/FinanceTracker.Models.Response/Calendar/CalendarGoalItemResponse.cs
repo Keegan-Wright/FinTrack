@@ -8,5 +8,5 @@ public class CalendarGoalItemResponse
     public string Name { get; set; }
 
     [Description("Target date for completing the financial goal")]
-    public DateTime? GoalCompletionDate { get; set; } 
+    public DateTime? GoalCompletionDate { get; set; }
 }

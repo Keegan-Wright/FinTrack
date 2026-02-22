@@ -26,10 +26,10 @@ public class BaseReportRequest
 
     [Description("Type of synchronization to perform")]
     public required SyncTypes SyncTypes { get; set; }
-    
+
     [Description("List of tags to filter the report")]
     public IList<string>? Tags { get; set; } = [];
-    
+
     [Description("Search term to filter transactions by description or other text fields")]
     public string? SearchTerm { get; set; }
 }

@@ -18,6 +18,7 @@ public class ExternalOpenBankingProviderScopeMappings
 
     [JsonPropertyName("standing_orders")]
     public IAsyncEnumerable<string> StandingOrders { get; set; }
+
     public IAsyncEnumerable<string> Beneficiaries { get; set; }
 
     [JsonPropertyName("scheduled_payments")]

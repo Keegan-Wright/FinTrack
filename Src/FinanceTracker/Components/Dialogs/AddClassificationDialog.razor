@@ -1,10 +1,11 @@
-@using FinanceTracker.Models.Request.Classifications;
-
-<DialogBase TResponse="AddClassificationsRequest" Title="Add Classification / Tag" ResponseConstructor="BuildResponseModel">
+@using FinanceTracker.Models.Request.Classifications
+<DialogBase TResponse="AddClassificationsRequest" Title="Add Classification / Tag"
+            ResponseConstructor="BuildResponseModel">
     <Content>
         <MudGrid>
             <MudItem xs="12">
-                <MudTextField @bind-Value="_classification" Label="Classification / Tag" Placeholder="Classification / Tag"></MudTextField>
+                <MudTextField @bind-Value="_classification" Label="Classification / Tag"
+                              Placeholder="Classification / Tag"></MudTextField>
             </MudItem>
         </MudGrid>
     </Content>
@@ -13,12 +14,13 @@
 @code {
 
     private string _classification = string.Empty;
-    
+
     private AddClassificationsRequest BuildResponseModel()
     {
-        return new AddClassificationsRequest()
+        return new AddClassificationsRequest
         {
             Tag = _classification
         };
     }
+
 }

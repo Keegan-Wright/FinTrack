@@ -14,54 +14,60 @@ namespace FinanceTracker.Services.Budget;
 [Scoped<IBudgetCategoriesService>]
 public class BudgetCategoriesService : ServiceBase, IBudgetCategoriesService
 {
-    public BudgetCategoriesService(ClaimsPrincipal user, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory) : base(user, financeTrackerContextFactory)
+    public BudgetCategoriesService(ClaimsPrincipal user,
+        IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory) : base(user,
+        financeTrackerContextFactory)
     {
     }
 
-    public async IAsyncEnumerable<BudgetCategoryResponse> GetBudgetItemsAsync([EnumeratorCancellation] CancellationToken cancellationToken)
+    public async IAsyncEnumerable<BudgetCategoryResponse> GetBudgetItemsAsync(
+        [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        await using var context = await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
-        await foreach(var budgetCategory in context.IsolateToUser(UserId)
-                          .Include(x => x.BudgetCategories)
-                          .SelectMany(x => x.BudgetCategories)
-                          .AsAsyncEnumerable().WithCancellation(cancellationToken))
+        await using FinanceTrackerContext context =
+            await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+        await foreach (BudgetCategory budgetCategory in context.IsolateToUser(UserId)
+                           .Include(x => x.BudgetCategories)
+                           .SelectMany(x => x.BudgetCategories)
+                           .AsAsyncEnumerable().WithCancellation(cancellationToken))
         {
-            yield return new BudgetCategoryResponse()
+            yield return new BudgetCategoryResponse
             {
-                Name =  budgetCategory.Name,
+                Name = budgetCategory.Name,
                 AvailableFunds = budgetCategory.AvailableFunds,
-                MonthlyStart =  budgetCategory.MonthlyStart,
+                MonthlyStart = budgetCategory.MonthlyStart,
                 SavingsGoal = budgetCategory.SavingsGoal,
                 GoalCompletionDate = budgetCategory.GoalCompletionDate
             };
         }
     }
 
-    public async Task<BudgetCategoryResponse> AddBudgetCategoryAsync(AddBudgetCategoryRequest categoryToAdd, CancellationToken cancellationToken)
+    public async Task<BudgetCategoryResponse> AddBudgetCategoryAsync(AddBudgetCategoryRequest categoryToAdd,
+        CancellationToken cancellationToken)
     {
-        await using var context = await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
-        var user = await context.IsolateToUser(UserId)
+        await using FinanceTrackerContext context =
+            await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+        FinanceTrackerUser user = await context.IsolateToUser(UserId)
             .Include(x => x.BudgetCategories).FirstAsync(cancellationToken);
-        
-        var budgetCategory = new BudgetCategory()
+
+        BudgetCategory budgetCategory = new()
         {
             Name = categoryToAdd.Name,
             AvailableFunds = categoryToAdd.AvailableFunds,
             Created = DateTime.Now.ToUniversalTime(),
             GoalCompletionDate = categoryToAdd.GoalCompletionDate,
             MonthlyStart = categoryToAdd.MonthlyStart,
-            SavingsGoal = categoryToAdd.SavingsGoal,
+            SavingsGoal = categoryToAdd.SavingsGoal
         };
-            
+
         user.BudgetCategories.Add(budgetCategory);
 
         await context.SaveChangesAsync(cancellationToken);
 
-        return new BudgetCategoryResponse()
+        return new BudgetCategoryResponse
         {
-            Name =  budgetCategory.Name,
+            Name = budgetCategory.Name,
             AvailableFunds = budgetCategory.AvailableFunds,
-            MonthlyStart =  budgetCategory.MonthlyStart,
+            MonthlyStart = budgetCategory.MonthlyStart,
             SavingsGoal = budgetCategory.SavingsGoal,
             GoalCompletionDate = budgetCategory.GoalCompletionDate
         };
@@ -69,11 +75,12 @@ public class BudgetCategoriesService : ServiceBase, IBudgetCategoriesService
 
     public async Task<bool> DeleteBudgetCategoryAsync(Guid id, CancellationToken cancellationToken)
     {
-        await using var context = await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
-        var user = await context.IsolateToUser(UserId)
-            .Include(x => x.BudgetCategories).SingleAsync(cancellationToken: cancellationToken);
-            
-        var budgetCategory = user.BudgetCategories.FirstOrDefault(x => x.Id == id);
+        await using FinanceTrackerContext context =
+            await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+        FinanceTrackerUser user = await context.IsolateToUser(UserId)
+            .Include(x => x.BudgetCategories).SingleAsync(cancellationToken);
+
+        BudgetCategory? budgetCategory = user.BudgetCategories.FirstOrDefault(x => x.Id == id);
 
         if (budgetCategory != null)
         {

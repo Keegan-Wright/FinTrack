@@ -1,27 +1,27 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-    <PropertyGroup>
-        <TargetFramework>net10.0</TargetFramework>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
-    </PropertyGroup>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
 
-    <ItemGroup>
-      <ProjectReference Include="..\FinanceTracker.Configurations\FinanceTracker.Configurations.csproj" />
-      <ProjectReference Include="..\FinanceTracker.Data\FinanceTracker.Data.csproj" />
-      <ProjectReference Include="..\FinanceTracker.Enums\FinanceTracker.Enums.csproj" />
-      <ProjectReference Include="..\FinanceTracker.Models.External\FinanceTracker.Models.External.csproj" />
-      <ProjectReference Include="..\FinanceTracker.Models.Request\FinanceTracker.Models.Request.csproj" />
-      <ProjectReference Include="..\FinanceTracker.Models.Response\FinanceTracker.Models.Response.csproj" />
-      <ProjectReference Include="..\FinanceTracker.Security\FinanceTracker.Security.csproj" />
-      <ProjectReference Include="..\FinanceTracker.Services.External\FinanceTracker.Services.External.csproj" />
-      <ProjectReference Include="..\FinanceTracker.Validators.Models\FinanceTracker.Validators.Models.csproj" />
-      <ProjectReference Include="..\Generators\FinanceTracker.Generated.Attributes\FinanceTracker.Generated.Attributes\FinanceTracker.Generated.Attributes.csproj" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-      <ProjectReference Include="..\Generators\FinanceTracker.Generated.Enums\FinanceTracker.Generated.Enums\FinanceTracker.Generated.Enums.csproj" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-    </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\FinanceTracker.Configurations\FinanceTracker.Configurations.csproj"/>
+    <ProjectReference Include="..\FinanceTracker.Data\FinanceTracker.Data.csproj"/>
+    <ProjectReference Include="..\FinanceTracker.Enums\FinanceTracker.Enums.csproj"/>
+    <ProjectReference Include="..\FinanceTracker.Models.External\FinanceTracker.Models.External.csproj"/>
+    <ProjectReference Include="..\FinanceTracker.Models.Request\FinanceTracker.Models.Request.csproj"/>
+    <ProjectReference Include="..\FinanceTracker.Models.Response\FinanceTracker.Models.Response.csproj"/>
+    <ProjectReference Include="..\FinanceTracker.Security\FinanceTracker.Security.csproj"/>
+    <ProjectReference Include="..\FinanceTracker.Services.External\FinanceTracker.Services.External.csproj"/>
+    <ProjectReference Include="..\FinanceTracker.Validators.Models\FinanceTracker.Validators.Models.csproj"/>
+    <ProjectReference Include="..\Generators\FinanceTracker.Generated.Attributes\FinanceTracker.Generated.Attributes\FinanceTracker.Generated.Attributes.csproj" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false"/>
+    <ProjectReference Include="..\Generators\FinanceTracker.Generated.Enums\FinanceTracker.Generated.Enums\FinanceTracker.Generated.Enums.csproj" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false"/>
+  </ItemGroup>
 
-    <ItemGroup>
-      <PackageReference Include="EFCore.BulkExtensions.PostgreSql" Version="10.0.0" />
-    </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="EFCore.BulkExtensions.PostgreSql" Version="10.0.0"/>
+  </ItemGroup>
 
 </Project>

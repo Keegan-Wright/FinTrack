@@ -1,5 +1,5 @@
-using FinanceTracker.Generated.Enums;
 using FinanceTracker.Generated.Attributes;
+using FinanceTracker.Generated.Enums;
 using FinanceTracker.Models.Request.Auth;
 using FluentValidation;
 

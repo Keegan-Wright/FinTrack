@@ -1,4 +1,4 @@
-@page "/YourTransactions"
+@page "/Transactions"
 @using FinanceTracker.Components.Dialogs
 @using FinanceTracker.Components.Transactions
 @using FinanceTracker.Enums
@@ -29,10 +29,10 @@
     SearchTerm="@_searchTerm"
     SearchTransactions="SearchTransactionsAsync"></TransactionFilters>
 
-<MudDataGrid T="TransactionResponse" Items="_transactions" 
+<MudDataGrid T="TransactionResponse" Items="_transactions"
              MultiSelection="true"
              SortMode="SortMode.Multiple"
-             Filterable="true" 
+             Filterable="true"
              QuickFilter="@_transactionsQuickFilter"
              Hideable="true"
              Hover="true"
@@ -41,8 +41,9 @@
              RowClick="OpenContextMenu">
     <ToolBarContent>
         <MudText Typo="Typo.h6">Transactions</MudText>
-        <MudSpacer />
-        <MudTextField @bind-Value="_transactionsSearchTerm" Placeholder="Search" Adornment="Adornment.Start" Immediate="true"
+        <MudSpacer/>
+        <MudTextField @bind-Value="_transactionsSearchTerm" Placeholder="Search" Adornment="Adornment.Start"
+                      Immediate="true"
                       AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
     </ToolBarContent>
     <Columns>
@@ -64,7 +65,7 @@
         </TemplateColumn>
     </Columns>
     <PagerContent>
-        <MudDataGridPager T="TransactionResponse" />
+        <MudDataGridPager T="TransactionResponse"/>
     </PagerContent>
 </MudDataGrid>
 <MudMenu PositionAtCursor="true" @ref="_contextMenu" id="_contextMenu">
@@ -83,12 +84,12 @@
     private readonly List<TransactionTagFilterResponse> _transactionTagFilterItems = [];
     private readonly List<TransactionResponse> _transactions = [];
     private readonly string _searchTerm;
-    
+
 
     private TransactionResponse? _contextMenuRow;
     private MudMenu _contextMenu = null!;
     private string _transactionsSearchTerm = string.Empty;
-    
+
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
@@ -112,14 +113,15 @@
             ToDate = filters.DateRange?.End,
             Tags = filters.TransactionTags.ToList()
         };
-        
+
         await foreach (var transaction in TransactionsService.GetAllTransactionsAsync(transactionRequest, SyncTypes.All, Cts.Token))
         {
             _transactions.Add(transaction);
         }
+
         SetLoadingState(false);
     }
-    
+
     private async Task LoadFilterItemsAsync()
     {
         await foreach (var account in TransactionsService.GetAccountsForTransactionFiltersAsync(SyncTypes.All, Cts.Token))
@@ -136,12 +138,12 @@
         {
             _providerFilterItems.Add(provider);
         }
-        
+
         await foreach (var type in TransactionsService.GetTypesForTransactionFiltersAsync(Cts.Token))
         {
             _transactionTypeFilterItems.Add(type);
-        }    
-        
+        }
+
         await foreach (var tag in TransactionsService.GetTagsForTransactionFiltersAsync(Cts.Token))
         {
             _transactionTagFilterItems.Add(tag);
@@ -149,19 +151,18 @@
     }
 
 
-    
     private Func<TransactionResponse, bool> _transactionsQuickFilter => x =>
     {
         if (string.IsNullOrWhiteSpace(_transactionsSearchTerm))
             return true;
 
         if (x.Description.Contains(_transactionsSearchTerm, StringComparison.OrdinalIgnoreCase))
-            return true; 
-        
+            return true;
+
         return false;
     };
-    
-    
+
+
     private async Task OpenContextMenu(DataGridRowClickEventArgs<TransactionResponse> row)
     {
         _contextMenuRow = row.Item;
@@ -175,20 +176,20 @@
         {
             classifications.Add(classification);
         }
-        
-        
+
+
         var dialogParameters = new DialogParameters<AddClassificationsToTransactionDialog>
         {
             { x => x.TransactionId, _contextMenuRow.TransactionId },
             { x => x.Classifications, classifications }
         };
-        
-        var dialogRef = await DialogService.ShowAsync<AddClassificationsToTransactionDialog>(null ,dialogParameters);
+
+        var dialogRef = await DialogService.ShowAsync<AddClassificationsToTransactionDialog>(null, dialogParameters);
         var dialogActionResult = await dialogRef.Result;
 
-        if(dialogActionResult is null)
+        if (dialogActionResult is null)
             return;
-        
+
         if (dialogActionResult.Canceled)
         {
             Snackbar.Add("Add classifications cancelled");
@@ -202,7 +203,7 @@
                 await ClassificationsService.AddCustomClassificationsToTransactionAsync(classificationsToAdd, Cts.Token);
                 var rebuiltTags = new List<string>();
                 rebuiltTags.AddRange(_contextMenuRow.Tags);
-                
+
                 rebuiltTags.AddRange(classifications.Where(x => classificationsToAdd.Classifications.Select(c => c.ClassificationId)
                         .Contains(x.ClassificationId))
                     .Select(v => v.Tag));
@@ -218,7 +219,6 @@
                 SetLoadingState(false);
             }
         }
-        
-        
     }
+
 }

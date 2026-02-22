@@ -4,6 +4,9 @@ namespace FinanceTracker.Services.Dashboard;
 
 public interface IDashboardService
 {
-    Task<SpentInTimePeriodResponse> GetSpentInTimePeriod(DateTime from, DateTime to, CancellationToken cancellationToken);
-    IAsyncEnumerable<UpcomingPaymentsResponse> GetUpcomingPaymentsAsync(int numberToFetch, CancellationToken cancellationToken);
+    Task<SpentInTimePeriodResponse> GetSpentInTimePeriod(DateTime from, DateTime to,
+        CancellationToken cancellationToken);
+
+    IAsyncEnumerable<UpcomingPaymentsResponse> GetUpcomingPaymentsAsync(int numberToFetch,
+        CancellationToken cancellationToken);
 }

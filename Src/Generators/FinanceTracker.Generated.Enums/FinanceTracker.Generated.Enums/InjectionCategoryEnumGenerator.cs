@@ -20,10 +20,8 @@ namespace {SourceGeneratorConstants.GeneratedNamespace}.Enums
     }}
 }}";
 
-    public void Initialize(IncrementalGeneratorInitializationContext context)
-    {
+    public void Initialize(IncrementalGeneratorInitializationContext context) =>
         context.RegisterPostInitializationOutput(ctx => ctx.AddSource(
             $"{SourceGeneratorConstants.InjectionCategoryEnumName}Enum.g.cs",
             SourceText.From(EnumSourceCode, Encoding.UTF8)));
-    }
 }

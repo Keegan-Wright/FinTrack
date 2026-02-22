@@ -8,6 +8,7 @@ public class ExternalOpenBankingAccountNumber
 
     [JsonPropertyName("swift_bic")]
     public string SwiftBic { get; set; }
+
     public string Number { get; set; }
 
     [JsonPropertyName("sort_code")]

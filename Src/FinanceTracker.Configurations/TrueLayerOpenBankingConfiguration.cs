@@ -7,5 +7,4 @@ public sealed class TrueLayerOpenBankingConfiguration
     public string AuthRedirectUrl { get; set; }
     public string ClientId { get; set; }
     public Guid ClientSecret { get; set; }
-
 }

@@ -1,19 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Text;
+﻿using System.ComponentModel;
 
-namespace FinanceTracker.Models.Response.Reports
+namespace FinanceTracker.Models.Response.Reports;
+
+public class SharedReportResponse
 {
-    public class SharedReportResponse
-    {
-        [Description("Total number of transactions")]
-        public int TotalTransactions { get; set; }
+    [Description("Total number of transactions")]
+    public int TotalTransactions { get; set; }
 
-        [Description("Total amount incoming")]
-        public decimal TotalIn { get; set; }
+    [Description("Total amount incoming")]
+    public decimal TotalIn { get; set; }
 
-        [Description("Total amount outgoing")]
-        public decimal TotalOut { get; set; }
-    }
+    [Description("Total amount outgoing")]
+    public decimal TotalOut { get; set; }
 }

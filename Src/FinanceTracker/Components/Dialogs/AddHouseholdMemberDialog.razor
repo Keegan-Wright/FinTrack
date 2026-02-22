@@ -1,5 +1,4 @@
 @using FinanceTracker.Models.Request.HouseholdMember
-
 <DialogBase TResponse="AddHouseholdMemberRequest" Title="Add Household member" ResponseConstructor="BuildResponseModel">
     <Content>
         <MudGrid>
@@ -17,18 +16,19 @@
 </DialogBase>
 
 @code {
-    
+
     public string _firstName { get; set; }
     public string _lastname { get; set; }
     public decimal _income { get; set; }
-    
-    private  AddHouseholdMemberRequest BuildResponseModel()
+
+    private AddHouseholdMemberRequest BuildResponseModel()
     {
-        return new AddHouseholdMemberRequest()
+        return new AddHouseholdMemberRequest
         {
             FirstName = _firstName,
             LastName = _lastname,
             Income = _income
         };
     }
+
 }

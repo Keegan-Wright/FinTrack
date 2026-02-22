@@ -1,40 +1,21 @@
+using System.Reflection;
 using FinanceTracker.Data.Models;
+using FinanceTracker.Data.Models.Utility;
 using FinanceTracker.Security.Encryption;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using System.Reflection;
-using System.Reflection.Emit;
-using FinanceTracker.Data.Models.Utility;
 
 namespace FinanceTracker.Data;
 
 public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, FinanceTrackerRole, Guid>
 {
     private readonly ISymmetricEncryptionService _symmetricEncryptionService;
-    public FinanceTrackerContext(DbContextOptions<FinanceTrackerContext> options, ISymmetricEncryptionService symmetricEncryptionService) : base(options)
-    {
-        _symmetricEncryptionService = symmetricEncryptionService;
-    }
 
-    protected override void OnModelCreating(ModelBuilder builder)
-    {
-        foreach (var entityType in builder.Model.GetEntityTypes())
-        {
-            var clrType = entityType.ClrType;
-            foreach (var property in clrType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
-            {
-                if (Attribute.IsDefined(property, typeof(EncryptAttribute)))
-                {
-                    var converterType = typeof(EncryptionConverter<>).MakeGenericType(property.PropertyType);
-                    var converter = (ValueConverter)Activator.CreateInstance(converterType, _symmetricEncryptionService);
-                    builder.Entity(clrType).Property(property.Name).HasConversion(converter);
-                }
-            }
-        }
-        
-        base.OnModelCreating(builder);
-    }
+    public FinanceTrackerContext(DbContextOptions<FinanceTrackerContext> options,
+        ISymmetricEncryptionService symmetricEncryptionService) : base(options) =>
+        _symmetricEncryptionService = symmetricEncryptionService;
 
 
     public DbSet<FinanceTrackerUser> FinanceTrackerUsers { get; set; }
@@ -53,6 +34,26 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
     public DbSet<OpenBankingTransactionClassifications> OpenBankingTransactionClassifications { get; set; }
     public DbSet<CustomClassification> CustomClassifications { get; set; }
     public DbSet<HouseholdMember> HouseholdMembers { get; set; }
+
+    protected override void OnModelCreating(ModelBuilder builder)
+    {
+        foreach (IMutableEntityType entityType in builder.Model.GetEntityTypes())
+        {
+            Type clrType = entityType.ClrType;
+            foreach (PropertyInfo property in clrType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+            {
+                if (Attribute.IsDefined(property, typeof(EncryptAttribute)))
+                {
+                    Type converterType = typeof(EncryptionConverter<>).MakeGenericType(property.PropertyType);
+                    ValueConverter? converter =
+                        (ValueConverter)Activator.CreateInstance(converterType, _symmetricEncryptionService);
+                    builder.Entity(clrType).Property(property.Name).HasConversion(converter);
+                }
+            }
+        }
+
+        base.OnModelCreating(builder);
+    }
 }
 
 public class EncryptionConverter<TModel> : ValueConverter<TModel, string>
@@ -62,5 +63,4 @@ public class EncryptionConverter<TModel> : ValueConverter<TModel, string>
         v => symmetricEncryptionService.Decrypt<TModel>(v))
     {
     }
-
 }

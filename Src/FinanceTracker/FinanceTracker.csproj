@@ -1,63 +1,62 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
-    <PropertyGroup>
-        <TargetFramework>net10.0</TargetFramework>
-        <Nullable>enable</Nullable>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <UserSecretsId>aspnet-FinanceTracker-9a9b6489-4fce-4066-805b-f87a60ca0ad2</UserSecretsId>
-    </PropertyGroup>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>aspnet-FinanceTracker-9a9b6489-4fce-4066-805b-f87a60ca0ad2</UserSecretsId>
+  </PropertyGroup>
 
 
-    <ItemGroup>
-        <PackageReference Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="13.1.0" />
-        <PackageReference Include="Aspire.StackExchange.Redis" Version="13.1.0" />
-        <PackageReference Include="Aspire.StackExchange.Redis.DistributedCaching" Version="13.1.0" />
-        <PackageReference Include="Aspire.StackExchange.Redis.OutputCaching" Version="13.1.0" />
-        <PackageReference Include="Blazilla" Version="2.2.2" />
-        <PackageReference Include="FluentValidation" Version="12.1.1" />
-        <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="10.0.2" />
-        <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.2" />
-        <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.2">
-          <PrivateAssets>all</PrivateAssets>
-          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-        </PackageReference>
-        <PackageReference Include="MudBlazor" Version="9.0.0-preview.2" />
-        <PackageReference Include="Extensions.MudBlazor.StaticInput" Version="4.0.0-beta.2" />
-        <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
-        <PackageReference Include="OpenTelemetry.Instrumentation.EntityFrameworkCore" Version="1.15.0-beta.1" />
-        <PackageReference Include="TickerQ" Version="10.1.1" />
-        <PackageReference Include="TickerQ.EntityFrameworkCore" Version="10.1.1" />
-        <PackageReference Include="TickerQ.Instrumentation.OpenTelemetry" Version="10.1.1" />
-    </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="13.1.0"/>
+    <PackageReference Include="Aspire.StackExchange.Redis" Version="13.1.0"/>
+    <PackageReference Include="Aspire.StackExchange.Redis.DistributedCaching" Version="13.1.0"/>
+    <PackageReference Include="Aspire.StackExchange.Redis.OutputCaching" Version="13.1.0"/>
+    <PackageReference Include="Blazilla" Version="2.2.2"/>
+    <PackageReference Include="FluentValidation" Version="12.1.1"/>
+    <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="10.0.2"/>
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.2"/>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="MudBlazor" Version="9.0.0-preview.2"/>
+    <PackageReference Include="Extensions.MudBlazor.StaticInput" Version="4.0.0-beta.2"/>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0"/>
+    <PackageReference Include="OpenTelemetry.Instrumentation.EntityFrameworkCore" Version="1.15.0-beta.1"/>
+    <PackageReference Include="TickerQ" Version="10.1.1"/>
+    <PackageReference Include="TickerQ.EntityFrameworkCore" Version="10.1.1"/>
+    <PackageReference Include="TickerQ.Instrumentation.OpenTelemetry" Version="10.1.1"/>
+  </ItemGroup>
 
 
+  <ItemGroup>
+    <ProjectReference Include="..\FinanceTracker.AppHost.ServiceDefaults\FinanceTracker.AppHost.ServiceDefaults.csproj"/>
+    <ProjectReference Include="..\FinanceTracker.Data.Migrations\FinanceTracker.Data.Migrations.csproj"/>
+    <ProjectReference Include="..\FinanceTracker.Data\FinanceTracker.Data.csproj"/>
+    <ProjectReference Include="..\FinanceTracker.Models.Request\FinanceTracker.Models.Request.csproj"/>
+    <ProjectReference Include="..\FinanceTracker.Models.Response\FinanceTracker.Models.Response.csproj"/>
+    <ProjectReference Include="..\FinanceTracker.Services\FinanceTracker.Services.csproj"/>
+    <ProjectReference Include="..\FinanceTracker.Validators.Models\FinanceTracker.Validators.Models.csproj"/>
+    <ProjectReference Include="..\Generators\FinanceTracker.Generated.DependencyInjection\FinanceTracker.Generated.DependencyInjection\FinanceTracker.Generated.DependencyInjection.csproj" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false"/>
+  </ItemGroup>
 
-    <ItemGroup>
-      <ProjectReference Include="..\FinanceTracker.AppHost.ServiceDefaults\FinanceTracker.AppHost.ServiceDefaults.csproj" />
-      <ProjectReference Include="..\FinanceTracker.Data.Migrations\FinanceTracker.Data.Migrations.csproj" />
-      <ProjectReference Include="..\FinanceTracker.Data\FinanceTracker.Data.csproj" />
-      <ProjectReference Include="..\FinanceTracker.Models.Request\FinanceTracker.Models.Request.csproj" />
-      <ProjectReference Include="..\FinanceTracker.Models.Response\FinanceTracker.Models.Response.csproj" />
-      <ProjectReference Include="..\FinanceTracker.Services\FinanceTracker.Services.csproj" />
-      <ProjectReference Include="..\FinanceTracker.Validators.Models\FinanceTracker.Validators.Models.csproj" />
-      <ProjectReference Include="..\Generators\FinanceTracker.Generated.DependencyInjection\FinanceTracker.Generated.DependencyInjection\FinanceTracker.Generated.DependencyInjection.csproj"  PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false"/>
-    </ItemGroup>
 
-
-    <ItemGroup>
-      <_ContentIncludedByDefault Remove="Components\Account\Pages\Manage\ChangePassword.razor" />
-      <_ContentIncludedByDefault Remove="Components\Account\Pages\Manage\DeletePersonalData.razor" />
-      <_ContentIncludedByDefault Remove="Components\Account\Pages\Manage\Disable2fa.razor" />
-      <_ContentIncludedByDefault Remove="Components\Account\Pages\Manage\Email.razor" />
-      <_ContentIncludedByDefault Remove="Components\Account\Pages\Manage\EnableAuthenticator.razor" />
-      <_ContentIncludedByDefault Remove="Components\Account\Pages\Manage\ExternalLogins.razor" />
-      <_ContentIncludedByDefault Remove="Components\Account\Pages\Manage\GenerateRecoveryCodes.razor" />
-      <_ContentIncludedByDefault Remove="Components\Account\Pages\Manage\Index.razor" />
-      <_ContentIncludedByDefault Remove="Components\Account\Pages\Manage\PersonalData.razor" />
-      <_ContentIncludedByDefault Remove="Components\Account\Pages\Manage\ResetAuthenticator.razor" />
-      <_ContentIncludedByDefault Remove="Components\Account\Pages\Manage\SetPassword.razor" />
-      <_ContentIncludedByDefault Remove="Components\Account\Pages\Manage\TwoFactorAuthentication.razor" />
-      <_ContentIncludedByDefault Remove="Components\Account\Pages\Manage\_Imports.razor" />
-    </ItemGroup>
+  <ItemGroup>
+    <_ContentIncludedByDefault Remove="Components\Account\Pages\Manage\ChangePassword.razor"/>
+    <_ContentIncludedByDefault Remove="Components\Account\Pages\Manage\DeletePersonalData.razor"/>
+    <_ContentIncludedByDefault Remove="Components\Account\Pages\Manage\Disable2fa.razor"/>
+    <_ContentIncludedByDefault Remove="Components\Account\Pages\Manage\Email.razor"/>
+    <_ContentIncludedByDefault Remove="Components\Account\Pages\Manage\EnableAuthenticator.razor"/>
+    <_ContentIncludedByDefault Remove="Components\Account\Pages\Manage\ExternalLogins.razor"/>
+    <_ContentIncludedByDefault Remove="Components\Account\Pages\Manage\GenerateRecoveryCodes.razor"/>
+    <_ContentIncludedByDefault Remove="Components\Account\Pages\Manage\Index.razor"/>
+    <_ContentIncludedByDefault Remove="Components\Account\Pages\Manage\PersonalData.razor"/>
+    <_ContentIncludedByDefault Remove="Components\Account\Pages\Manage\ResetAuthenticator.razor"/>
+    <_ContentIncludedByDefault Remove="Components\Account\Pages\Manage\SetPassword.razor"/>
+    <_ContentIncludedByDefault Remove="Components\Account\Pages\Manage\TwoFactorAuthentication.razor"/>
+    <_ContentIncludedByDefault Remove="Components\Account\Pages\Manage\_Imports.razor"/>
+  </ItemGroup>
 
 </Project>
