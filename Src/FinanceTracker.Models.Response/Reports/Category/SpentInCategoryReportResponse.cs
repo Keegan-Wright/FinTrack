@@ -2,7 +2,7 @@ using System.ComponentModel;
 
 namespace FinanceTracker.Models.Response.Reports.Category;
 
-public class SpentInCategoryReportResponse : SpentInCategoryReportSharedResponse
+public class SpentInCategoryReportResponse : SharedReportResponse
 {
     
     public string Category { get; set; }

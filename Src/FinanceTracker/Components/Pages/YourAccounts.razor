@@ -9,63 +9,62 @@
 @inject IAccountService AccountService
 
 <PageTitle>Accounts</PageTitle>
-<MudGrid Class="my-2">
-            @foreach (var account in _accounts)
-            {
-                <MudItem xs="12" md="12" lg="6" xl="4" Class="d-flex">
-                    
-                    <MudCard Elevation="1">
-                        <MudCardContent Class="my-2">
-                            
-                            <MudGrid>
-                                <MudItem xs="1">
-                                    <MudImage Fluid="true" Width="80"
-                                              Src="@($"data:image/svg+xml;base64, {Convert.ToBase64String(account.Logo)}")"></MudImage>
-                                </MudItem>
-                                <MudItem xs="11">
-                                    <MudText Typo="Typo.h6">
-                                        @account.AccountName
-                                    </MudText>
-                                    <MudText Typo="Typo.caption">
-                                        @account.AccountType
-                                    </MudText>
-                                </MudItem>
-                                <MudItem xs="12">
-                                    <MudGrid Justify="Justify.Center">
-                                        <MudItem>
-                                            <MudStack Spacing="10" Row="true">
-                                                <MudStack AlignItems="AlignItems.Center">
-                                                    <MudText>Current Balance</MudText>
-                                                    <MudText>@account.AccountBalance.ToString("c")</MudText>
-                                                </MudStack>
-                                                <MudStack AlignItems="AlignItems.Center">
-                                                    <MudText>Available Balance</MudText>
-                                                    <MudText>@account.AvailableBalance.ToString("c")</MudText>
-                                                </MudStack>
-                                            </MudStack>
-                                        </MudItem>
-                                    </MudGrid>
-                                </MudItem>
-                                <MudItem sm="12">
-                                    <MudDataGrid T="AccountTransactionResponse" Items="account.Transactions"
-                                                 SortMode="SortMode.None"
-                                                 Filterable="false"
-                                                 Hideable="false"
-                                                 Hover="true">
-                                        <Columns>
-                                            <PropertyColumn Property="x => x.Description" Title="Description"  />
-                                            <PropertyColumn Format="c" Property="x => x.Amount" Title="Amount"  />
-                                            <PropertyColumn Property="x => x.Time" Title="Time"  />
-                                            <PropertyColumn Property="x => x.Status" Title="Status"  />
-                                        </Columns>
-                                    </MudDataGrid>
-                                </MudItem>
-                            </MudGrid>
-                        </MudCardContent>
-                    </MudCard>
-                </MudItem>
-            }
-        </MudGrid>
+<MudGrid Spacing="4">
+    @foreach (var account in _accounts)
+    {
+            <MudItem xs="12" md="12" lg="6" xl="4">
+                <MudCard Elevation="2" Class="h-100">
+                    <MudCardHeader>
+                        <CardHeaderAvatar>
+                            <MudAvatar Square="true" Style="width: 48px; height: 48px; background-color: transparent;">
+                                <MudImage Src="@($"data:image/svg+xml;base64, {Convert.ToBase64String(account.Logo)}")" />
+                            </MudAvatar>
+                        </CardHeaderAvatar>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">@account.AccountName</MudText>
+                            <MudText Typo="Typo.caption">@account.AccountType</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudGrid Justify="Justify.SpaceEvenly" Class="mb-4">
+                            <MudItem>
+                                <MudStack AlignItems="AlignItems.Center" Spacing="0">
+                                    <MudText Typo="Typo.caption">Current Balance</MudText>
+                                    <MudText Typo="Typo.h6" Color="Color.Primary">@account.AccountBalance.ToString("c")</MudText>
+                                </MudStack>
+                            </MudItem>
+                            <MudItem>
+                                <MudStack AlignItems="AlignItems.Center" Spacing="0">
+                                    <MudText Typo="Typo.caption">Available Balance</MudText>
+                                    <MudText Typo="Typo.h6" Color="Color.Secondary">@account.AvailableBalance.ToString("c")</MudText>
+                                </MudStack>
+                            </MudItem>
+                        </MudGrid>
+
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">Recent Transactions</MudText>
+                        <MudDataGrid T="AccountTransactionResponse" Items="account.Transactions"
+                                     SortMode="SortMode.None"
+                                     Filterable="false"
+                                     Hideable="false"
+                                     Hover="true"
+                                     Dense="true">
+                            <Columns>
+                                <PropertyColumn Property="x => x.Description" Title="Description" />
+                                <PropertyColumn Format="c" Property="x => x.Amount" Title="Amount">
+                                    <CellTemplate>
+                                        <MudText Color="@(context.Item.Amount < 0 ? Color.Error : Color.Success)" Typo="Typo.body2">
+                                            @context.Item.Amount.ToString("c")
+                                        </MudText>
+                                    </CellTemplate>
+                                </PropertyColumn>
+                                <PropertyColumn Property="x => x.Time" Title="Date" Format="dd/MM/yyyy" />
+                            </Columns>
+                        </MudDataGrid>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        }
+    </MudGrid>
 @code {
 
     private readonly List<AccountAndTransactionsResponse> _accounts  = [];

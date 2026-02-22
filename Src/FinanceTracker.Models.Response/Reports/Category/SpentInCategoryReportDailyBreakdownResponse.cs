@@ -1,6 +1,6 @@
 namespace FinanceTracker.Models.Response.Reports.Category;
 
-public class SpentInCategoryReportDailyBreakdownResponse : SpentInCategoryReportSharedResponse
+public class SpentInCategoryReportDailyBreakdownResponse : SharedReportResponse
 {
     public int Day { get; set; }
 }

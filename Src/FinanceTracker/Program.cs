@@ -138,9 +138,7 @@ public partial class Program
             .AddInteractiveServerRenderMode();
 
         app.UseOutputCache();
-// Add additional endpoints required by the Identity /Account Razor components.
         app.MapAdditionalIdentityEndpoints();
-
 
 
         await app.RunAsync();
