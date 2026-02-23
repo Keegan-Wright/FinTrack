@@ -42,13 +42,15 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
             Type clrType = entityType.ClrType;
             foreach (PropertyInfo property in clrType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
             {
-                if (Attribute.IsDefined(property, typeof(EncryptAttribute)))
+                if (!Attribute.IsDefined(property, typeof(EncryptAttribute)))
                 {
-                    Type converterType = typeof(EncryptionConverter<>).MakeGenericType(property.PropertyType);
-                    ValueConverter? converter =
-                        (ValueConverter)Activator.CreateInstance(converterType, _symmetricEncryptionService);
-                    builder.Entity(clrType).Property(property.Name).HasConversion(converter);
+                    continue;
                 }
+
+                Type converterType = typeof(EncryptionConverter<>).MakeGenericType(property.PropertyType);
+                ValueConverter? converter =
+                    Activator.CreateInstance(converterType, _symmetricEncryptionService) as ValueConverter;
+                builder.Entity(clrType).Property(property.Name).HasConversion(converter);
             }
         }
 
@@ -60,7 +62,7 @@ public class EncryptionConverter<TModel> : ValueConverter<TModel, string>
 {
     public EncryptionConverter(ISymmetricEncryptionService symmetricEncryptionService) : base(
         v => symmetricEncryptionService.Encrypt(v),
-        v => symmetricEncryptionService.Decrypt<TModel>(v))
+        v => symmetricEncryptionService.Decrypt<TModel>(v)!)
     {
     }
 }

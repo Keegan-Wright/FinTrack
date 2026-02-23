@@ -3,13 +3,13 @@
     <Content>
         <MudGrid>
             <MudItem xs="6">
-                <MudTextField @bind-Value="_firstName" Label="First Name" Placeholder="First Name"></MudTextField>
+                <MudTextField @bind-Value="FirstName" Label="First Name" Placeholder="First Name"></MudTextField>
             </MudItem>
             <MudItem xs="6">
-                <MudTextField @bind-Value="_lastname" Label="Last Name" Placeholder="Last Name"></MudTextField>
+                <MudTextField @bind-Value="Lastname" Label="Last Name" Placeholder="Last Name"></MudTextField>
             </MudItem>
             <MudItem xs="6">
-                <MudTextField T="decimal" @bind-Value="_income" Label="Income" Placeholder="Income"></MudTextField>
+                <MudTextField T="decimal" @bind-Value="Income" Label="Income" Placeholder="Income"></MudTextField>
             </MudItem>
         </MudGrid>
     </Content>
@@ -17,17 +17,17 @@
 
 @code {
 
-    public string _firstName { get; set; }
-    public string _lastname { get; set; }
-    public decimal _income { get; set; }
+    private string FirstName { get; set; } = string.Empty;
+    private string Lastname { get; set; } = string.Empty;
+    private decimal Income { get; set; }
 
     private AddHouseholdMemberRequest BuildResponseModel()
     {
         return new AddHouseholdMemberRequest
         {
-            FirstName = _firstName,
-            LastName = _lastname,
-            Income = _income
+            FirstName = FirstName,
+            LastName = Lastname,
+            Income = Income
         };
     }
 

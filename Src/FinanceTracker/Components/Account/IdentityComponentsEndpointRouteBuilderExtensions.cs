@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 
-namespace Microsoft.AspNetCore.Routing;
+namespace FinanceTracker.Components.Account;
 
 internal static class IdentityComponentsEndpointRouteBuilderExtensions
 {

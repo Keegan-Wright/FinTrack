@@ -5,17 +5,17 @@ namespace FinanceTracker.Models.Request.Budget;
 public class AddBudgetCategoryRequest
 {
     [Description("Name of the budget category")]
-    public required string Name { get; set; }
+    public required string Name { get; init; }
 
     [Description("Current available funds in the budget category")]
-    public decimal AvailableFunds { get; set; }
+    public required decimal AvailableFunds { get; init; }
 
     [Description("Starting amount for the monthly budget")]
-    public decimal MonthlyStart { get; set; }
+    public required decimal MonthlyStart { get; init; }
 
     [Description("Target savings goal for the budget category")]
-    public decimal SavingsGoal { get; set; }
+    public required decimal SavingsGoal { get; init; }
 
     [Description("Target date for achieving the savings goal")]
-    public DateTime? GoalCompletionDate { get; set; }
+    public required DateTime? GoalCompletionDate { get; init; }
 }

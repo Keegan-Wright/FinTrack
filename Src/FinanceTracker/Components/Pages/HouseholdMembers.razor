@@ -1,7 +1,7 @@
 @page "/HouseholdMembers"
 @using FinanceTracker.Components.Dialogs
 @using FinanceTracker.Models.Request.HouseholdMember
-@using FinanceTracker.Models.Response.HouseholdMember
+@using FinanceTracker.Models.Response.HouseholdMembers
 @using FinanceTracker.Services.HouseholdMembers
 @using Microsoft.AspNetCore.Authorization
 @inherits PageComponent
@@ -51,7 +51,7 @@
     {
         await base.OnInitializedAsync();
         SetLoadingState(true, "Loading your household");
-        await foreach (var members in HouseholdMemberService.GetHouseholdMembersAsync(Cts.Token))
+        await foreach (var members in HouseholdMemberService.GetHouseholdMembersAsync(_cts.Token))
         {
             _houseHoldMembers.Add(members);
         }
@@ -76,10 +76,10 @@
             try
             {
                 SetLoadingState(true, "Adding member");
-                var householdMember = await HouseholdMemberService.AddHouseholdMemberAsync((AddHouseholdMemberRequest)dialogActionResult.Data!, Cts.Token);
+                var householdMember = await HouseholdMemberService.AddHouseholdMemberAsync((AddHouseholdMemberRequest)dialogActionResult.Data!, _cts.Token);
                 _houseHoldMembers.Add(householdMember);
             }
-            catch (Exception _)
+            catch (Exception)
             {
                 Snackbar.Add("Error occured adding household member");
             }

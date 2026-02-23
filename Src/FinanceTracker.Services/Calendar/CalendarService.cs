@@ -24,10 +24,10 @@ public class CalendarService : ServiceBase, ICalendarService
         DateTime startDate = new DateTime(year, month, 1).ToUniversalTime();
         DateTime endDate = new DateTime(year, month, daysInMonth).ToUniversalTime();
         await using FinanceTrackerContext context =
-            await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+            await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
         List<IGrouping<DateTime, CalendarTransactionItemResponse>> transactions = await context.IsolateToUser(UserId)
-            .Include(x => x.Providers).ThenInclude(x => x.Accounts).ThenInclude(x => x.Transactions)
-            .SelectMany(x => x.Providers.SelectMany(c => c.Accounts.SelectMany(c => c.Transactions)))
+            .Include(x => x.Providers)!.ThenInclude(x => x.Accounts)!.ThenInclude(x => x.Transactions)
+            .SelectMany(x => x.Providers!.SelectMany(c => c.Accounts!.SelectMany(v => v.Transactions!)))
             .Where(x => x.TransactionTime >= startDate && x.TransactionTime < endDate)
             .Select(x => new CalendarTransactionItemResponse
             {
@@ -41,7 +41,7 @@ public class CalendarService : ServiceBase, ICalendarService
 
         List<IGrouping<DateTime?, CalendarGoalItemResponse>> goals = await context.IsolateToUser(UserId)
             .Include(x => x.BudgetCategories)
-            .SelectMany(x => x.BudgetCategories)
+            .SelectMany(x => x.BudgetCategories!)
             .Where(x => x.GoalCompletionDate >= startDate && x.GoalCompletionDate < endDate)
             .Select(x => new CalendarGoalItemResponse { Name = x.Name, GoalCompletionDate = x.GoalCompletionDate })
             .GroupBy(x => x.GoalCompletionDate)

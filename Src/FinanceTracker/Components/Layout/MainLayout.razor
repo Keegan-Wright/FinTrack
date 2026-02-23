@@ -1,8 +1,6 @@
 ﻿@inherits LayoutBase
 @implements IDisposable
 
-@inject NavigationManager NavigationManager
-
 <MudThemeProvider @ref="@_mudThemeProvider" Theme="_theme" @bind-IsDarkMode="_isDarkMode" DefaultScrollbar="true"/>
 <MudPopoverProvider/>
 <MudDialogProvider/>
@@ -19,6 +17,7 @@
                        Color="Color.Inherit" OnClick="@DarkModeToggle"/>
         <MudMenu Icon="@Icons.Material.Filled.MoreVert" Style="align-self: auto;" Color="Color.Inherit">
             <MudMenuItem>
+                @* ReSharper disable once Html.PathError *@
                 <form action="Account/Logout" method="post">
                     <AntiforgeryToken/>
                     <input type="hidden" name="ReturnUrl"/>
@@ -55,11 +54,6 @@
     private void DarkModeToggle()
     {
         _isDarkMode = !_isDarkMode;
-    }
-
-    private async Task LogoutAsync()
-    {
-        NavigationManager.NavigateTo("Account/Login", true);
     }
 
     public void Dispose()

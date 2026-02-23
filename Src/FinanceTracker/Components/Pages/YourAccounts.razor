@@ -77,7 +77,7 @@
     {
         await base.OnInitializedAsync();
         SetLoadingState(true, "Loading your accounts");
-        await foreach (var account in AccountService.GetAccountsAndMostRecentTransactionsAsync(5, SyncTypes.Account | SyncTypes.Balance | SyncTypes.Transactions, Cts.Token))
+        await foreach (var account in AccountService.GetAccountsAndMostRecentTransactionsAsync(5, SyncTypes.Account | SyncTypes.Balance | SyncTypes.Transactions, _cts.Token))
         {
             _accounts.Add(account);
         }

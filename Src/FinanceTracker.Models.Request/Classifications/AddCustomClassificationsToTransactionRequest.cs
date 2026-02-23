@@ -5,8 +5,8 @@ namespace FinanceTracker.Models.Request.Classifications;
 public class AddCustomClassificationsToTransactionRequest
 {
     [Description("Unique identifier of the transaction to classify")]
-    public required Guid TransactionId { get; set; }
+    public required Guid TransactionId { get; init; }
 
     [Description("Collection of classifications to apply to the transaction")]
-    public IEnumerable<SelectedCustomClassificationsRequest> Classifications { get; set; }
+    public required IEnumerable<SelectedCustomClassificationsRequest> Classifications { get; init; }
 }

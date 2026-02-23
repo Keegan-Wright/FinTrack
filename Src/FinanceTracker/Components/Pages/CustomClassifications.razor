@@ -22,7 +22,7 @@
              MultiSelection="true"
              SortMode="SortMode.Multiple"
              Filterable="true"
-             QuickFilter="@_classificationsQuickFilter"
+             QuickFilter="@ClassificationsQuickFilter"
              Hideable="true"
              Hover="true"
              RowsPerPage="50">
@@ -53,7 +53,7 @@
     {
         await base.OnInitializedAsync();
         SetLoadingState(true, "Loading classifications");
-        await foreach (var classification in ClassificationService.GetAllCustomClassificationsAsync(Cts.Token))
+        await foreach (var classification in ClassificationService.GetAllCustomClassificationsAsync(_cts.Token))
         {
             _classifications.Add(classification);
         }
@@ -62,15 +62,12 @@
     }
 
 
-    private Func<ClassificationsResponse, bool> _classificationsQuickFilter => x =>
+    private Func<ClassificationsResponse, bool> ClassificationsQuickFilter => x =>
     {
         if (string.IsNullOrWhiteSpace(_classificationsSearchTerm))
             return true;
 
-        if (x.Tag.Contains(_classificationsSearchTerm, StringComparison.OrdinalIgnoreCase))
-            return true;
-
-        return false;
+        return x.Tag != null && x.Tag.Contains(_classificationsSearchTerm, StringComparison.OrdinalIgnoreCase);
     };
 
     private async Task AddClassification()
@@ -90,10 +87,10 @@
             try
             {
                 SetLoadingState(true, "Adding Classification / Tag");
-                var classification = await ClassificationService.AddCustomClassificationAsync((AddClassificationsRequest)dialogActionResult.Data!, Cts.Token);
+                var classification = await ClassificationService.AddCustomClassificationAsync((AddClassificationsRequest)dialogActionResult.Data!, _cts.Token);
                 _classifications.Add(classification);
             }
-            catch (Exception _)
+            catch (Exception)
             {
                 Snackbar.Add("Error occured adding classification / tag");
             }

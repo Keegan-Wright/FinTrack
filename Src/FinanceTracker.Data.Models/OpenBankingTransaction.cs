@@ -28,11 +28,11 @@ public class OpenBankingTransaction : BaseEntity
     [Encrypt]
     public required bool Pending { get; set; }
 
-    public Guid ProviderId { get; set; }
-    public OpenBankingProvider Provider { get; set; }
+    public Guid ProviderId { get; init; }
+    public OpenBankingProvider? Provider { get; init; }
 
-    public Guid AccountId { get; set; }
-    public OpenBankingAccount Account { get; set; }
+    public Guid AccountId { get; init; }
+    public OpenBankingAccount? Account { get; init; }
 
-    public ICollection<OpenBankingTransactionClassifications> Classifications { get; set; }
+    public ICollection<OpenBankingTransactionClassifications>? Classifications { get; set; }
 }

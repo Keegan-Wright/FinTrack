@@ -1,4 +1,5 @@
 @page "/Transactions"
+@using System.Collections.Immutable
 @using FinanceTracker.Components.Dialogs
 @using FinanceTracker.Components.Transactions
 @using FinanceTracker.Enums
@@ -33,7 +34,7 @@
              MultiSelection="true"
              SortMode="SortMode.Multiple"
              Filterable="true"
-             QuickFilter="@_transactionsQuickFilter"
+             QuickFilter="@TransactionsQuickFilter"
              Hideable="true"
              Hover="true"
              RowsPerPage="50"
@@ -57,7 +58,7 @@
                 <MudText>Tags</MudText>
             </HeaderTemplate>
             <CellTemplate>
-                @foreach (var tag in context.Item!.Tags)
+                @foreach (var tag in context.Item.Tags)
                 {
                     <MudChip>@tag</MudChip>
                 }
@@ -83,7 +84,7 @@
     private readonly List<TransactionTypeFilterResponse> _transactionTypeFilterItems = [];
     private readonly List<TransactionTagFilterResponse> _transactionTagFilterItems = [];
     private readonly List<TransactionResponse> _transactions = [];
-    private readonly string _searchTerm;
+    private readonly string _searchTerm = string.Empty;
 
 
     private TransactionResponse? _contextMenuRow;
@@ -104,17 +105,17 @@
         _transactions.Clear();
         var transactionRequest = new FilteredTransactionsRequest
         {
-            AccountIds = filters.AccountIds.ToList(),
-            ProviderIds = filters.ProviderIds.ToList(),
-            Categories = filters.Categories.ToList(),
-            Types = filters.TransactionTypes.ToList(),
+            AccountIds = filters.AccountIds.ToImmutableList(),
+            ProviderIds = filters.ProviderIds.ToImmutableList(),
+            Categories = filters.Categories.ToImmutableList(),
+            Types = filters.TransactionTypes.ToImmutableList(),
             SearchTerm = filters.SearchTerm,
             FromDate = filters.DateRange?.Start,
             ToDate = filters.DateRange?.End,
-            Tags = filters.TransactionTags.ToList()
+            Tags = filters.TransactionTags.ToImmutableList()
         };
 
-        await foreach (var transaction in TransactionsService.GetAllTransactionsAsync(transactionRequest, SyncTypes.All, Cts.Token))
+        await foreach (var transaction in TransactionsService.GetAllTransactionsAsync(transactionRequest, SyncTypes.All, _cts.Token))
         {
             _transactions.Add(transaction);
         }
@@ -124,43 +125,35 @@
 
     private async Task LoadFilterItemsAsync()
     {
-        await foreach (var account in TransactionsService.GetAccountsForTransactionFiltersAsync(SyncTypes.All, Cts.Token))
+        await foreach (var account in TransactionsService.GetAccountsForTransactionFiltersAsync(SyncTypes.All, _cts.Token))
         {
             _accountFilterItems.Add(account);
         }
 
-        await foreach (var category in TransactionsService.GetCategoriesForTransactionFiltersAsync(Cts.Token))
+        await foreach (var category in TransactionsService.GetCategoriesForTransactionFiltersAsync(_cts.Token))
         {
             _categoryFilterItems.Add(category);
         }
 
-        await foreach (var provider in TransactionsService.GetProvidersForTransactionFiltersAsync(Cts.Token))
+        await foreach (var provider in TransactionsService.GetProvidersForTransactionFiltersAsync(_cts.Token))
         {
             _providerFilterItems.Add(provider);
         }
 
-        await foreach (var type in TransactionsService.GetTypesForTransactionFiltersAsync(Cts.Token))
+        await foreach (var type in TransactionsService.GetTypesForTransactionFiltersAsync(_cts.Token))
         {
             _transactionTypeFilterItems.Add(type);
         }
 
-        await foreach (var tag in TransactionsService.GetTagsForTransactionFiltersAsync(Cts.Token))
+        await foreach (var tag in TransactionsService.GetTagsForTransactionFiltersAsync(_cts.Token))
         {
             _transactionTagFilterItems.Add(tag);
         }
     }
 
 
-    private Func<TransactionResponse, bool> _transactionsQuickFilter => x =>
-    {
-        if (string.IsNullOrWhiteSpace(_transactionsSearchTerm))
-            return true;
-
-        if (x.Description.Contains(_transactionsSearchTerm, StringComparison.OrdinalIgnoreCase))
-            return true;
-
-        return false;
-    };
+    private Func<TransactionResponse, bool> TransactionsQuickFilter =>
+        x => string.IsNullOrWhiteSpace(_transactionsSearchTerm) || x.Description.Contains(_transactionsSearchTerm, StringComparison.OrdinalIgnoreCase);
 
 
     private async Task OpenContextMenu(DataGridRowClickEventArgs<TransactionResponse> row)
@@ -171,8 +164,11 @@
 
     private async Task AddClassifications()
     {
+        if(_contextMenuRow is null)
+            return;
+
         var classifications = new List<ClassificationsResponse>();
-        await foreach (var classification in ClassificationsService.GetAllCustomClassificationsAsync(Cts.Token))
+        await foreach (var classification in ClassificationsService.GetAllCustomClassificationsAsync(_cts.Token))
         {
             classifications.Add(classification);
         }
@@ -200,17 +196,17 @@
             {
                 SetLoadingState(true, "Adding classifications");
                 var classificationsToAdd = (AddCustomClassificationsToTransactionRequest)dialogActionResult.Data!;
-                await ClassificationsService.AddCustomClassificationsToTransactionAsync(classificationsToAdd, Cts.Token);
+                await ClassificationsService.AddCustomClassificationsToTransactionAsync(classificationsToAdd, _cts.Token);
                 var rebuiltTags = new List<string>();
                 rebuiltTags.AddRange(_contextMenuRow.Tags);
 
                 rebuiltTags.AddRange(classifications.Where(x => classificationsToAdd.Classifications.Select(c => c.ClassificationId)
                         .Contains(x.ClassificationId))
-                    .Select(v => v.Tag));
+                    .Select(v => v.Tag)!);
 
                 _contextMenuRow.Tags = rebuiltTags;
             }
-            catch (Exception _)
+            catch (Exception)
             {
                 Snackbar.Add("Error occured adding classifications");
             }

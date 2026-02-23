@@ -120,48 +120,46 @@
 
     [Parameter] [EditorRequired] public List<TransactionTagFilterResponse> TransactionTagFilterItems { get; set; }
 
-    [Parameter] [EditorRequired] public string? SearchTerm { get; set; }
+    [Parameter] [EditorRequired] public string SearchTerm { get; set; }
 
     [Parameter] [EditorRequired] public required EventCallback<ActiveTransactionFilters> SearchTransactions { get; set; }
 
-    private IEnumerable<Guid> _selectedProviderIds = [];
-    private IEnumerable<Guid> _selectedAccountIds = [];
-    private IEnumerable<string> _selectedCategoryIds = [];
-    private IEnumerable<string> _selectedTransactionTypes = [];
-    private IEnumerable<string> _selectedTransactionTags = [];
+    private IReadOnlyCollection<Guid> _selectedProviderIds = [];
+    private IReadOnlyCollection<Guid> _selectedAccountIds = [];
+    private IReadOnlyCollection<string> _selectedCategoryIds = [];
+    private IReadOnlyCollection<string> _selectedTransactionTypes = [];
+    private IReadOnlyCollection<string> _selectedTransactionTags = [];
     private DateRange? _selectedDateRange;
 
-    private string? _transactionsSearchTerm;
-
-    private string GetProviderMultiSelectText(List<string?>? list)
+    private static string GetProviderMultiSelectText(IReadOnlyList<string?>? list)
     {
         if (list != null && list.Count != 0)
             return $"Selected {list.Count} {(list.Count == 1 ? "provider" : "providers")}";
         return "";
     }
 
-    private string GetAccountMultiSelectText(List<string?>? list)
+    private static string GetAccountMultiSelectText(IReadOnlyList<string?>? list)
     {
         if (list != null && list.Count != 0)
             return $"Selected {list.Count} {(list.Count == 1 ? "account" : "accounts")}";
         return "";
     }
 
-    private string GetCategoriesMultiSelectText(List<string?>? list)
+    private static string GetCategoriesMultiSelectText(IReadOnlyList<string?>? list)
     {
         if (list != null && list.Count != 0)
             return $"Selected {list.Count} {(list.Count == 1 ? "category" : "categories")}";
         return "";
     }
 
-    private string GetTypesMultiSelectText(List<string?>? list)
+    private static string GetTypesMultiSelectText(IReadOnlyList<string?>? list)
     {
         if (list != null && list.Count != 0)
             return $"Selected {list.Count} {(list.Count == 1 ? "type" : "types")}";
         return "";
     }
 
-    private string GetTagsMultiSelectText(List<string?>? list)
+    private static string GetTagsMultiSelectText(IReadOnlyList<string?>? list)
     {
         if (list != null && list.Count != 0)
             return $"Selected {list.Count} {(list.Count == 1 ? "tag" : "tags")}";

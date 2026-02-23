@@ -18,35 +18,36 @@ public class DashboardService : ServiceBase, IDashboardService
     {
     }
 
-    public async Task<SpentInTimePeriodResponse> GetSpentInTimePeriod(DateTime from, DateTime to,
+    public async Task<SpentInTimePeriodResponse> GetSpentInTimePeriod(DateTime fromDate, DateTime toDate,
         CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
-            await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+            await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+
         IQueryable<OpenBankingTransaction> query = context.IsolateToUser(UserId)
-            .Include(x => x.Providers).ThenInclude(x => x.Accounts).ThenInclude(x => x.Transactions)
-            .SelectMany(x => x.Providers.SelectMany(c => c.Accounts).SelectMany(r => r.Transactions))
+            .Include(x => x.Providers)!.ThenInclude(x => x.Accounts)!.ThenInclude(x => x.Transactions)
+            .SelectMany(x => x.Providers!.SelectMany(c => c.Accounts!).SelectMany(r => r.Transactions!))
             .AsNoTracking().Where(x =>
-                x.TransactionTime >= from.AddDays(-1).ToUniversalTime() &&
-                x.TransactionTime <= to.AddDays(1).ToUniversalTime() && x.TransactionCategory != "TRANSFER");
+                x.TransactionTime >= fromDate.AddDays(-1).ToUniversalTime() &&
+                x.TransactionTime <= toDate.AddDays(1).ToUniversalTime() && x.TransactionCategory != "TRANSFER");
         List<decimal> items = await query.Select(x => x.Amount).ToListAsync(cancellationToken);
 
         return new SpentInTimePeriodResponse
         {
             TotalIn = items.Where(x => !decimal.IsNegative(x)).Sum(),
-            TotalOut = items.Where(x => decimal.IsNegative(x)).Sum()
+            TotalOut = items.Where(decimal.IsNegative).Sum()
         };
     }
 
     public async IAsyncEnumerable<UpcomingPaymentsResponse> GetUpcomingPaymentsAsync(int numberToFetch,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        List<UpcomingPaymentsResponse> upcomingPayments = new();
+        List<UpcomingPaymentsResponse> upcomingPayments = [];
         await using FinanceTrackerContext context =
-            await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+            await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
         upcomingPayments.AddRange(await context.IsolateToUser(UserId)
-            .Include(x => x.Providers).ThenInclude(x => x.Accounts).ThenInclude(x => x.StandingOrders)
-            .SelectMany(x => x.Providers.SelectMany(c => c.Accounts).SelectMany(r => r.StandingOrders))
+            .Include(x => x.Providers)!.ThenInclude(x => x.Accounts)!.ThenInclude(x => x.StandingOrders)
+            .SelectMany(x => x.Providers!.SelectMany(c => c.Accounts!).SelectMany(r => r.StandingOrders!))
             .AsNoTracking()
             .Where(x => x.NextPaymentDate > DateTime.Now.ToUniversalTime())
             .Select(x => new UpcomingPaymentsResponse
@@ -59,8 +60,8 @@ public class DashboardService : ServiceBase, IDashboardService
 
 
         upcomingPayments.AddRange(await context.IsolateToUser(UserId)
-            .Include(x => x.Providers).ThenInclude(x => x.Accounts).ThenInclude(x => x.DirectDebits)
-            .SelectMany(x => x.Providers.SelectMany(c => c.Accounts).SelectMany(r => r.DirectDebits))
+            .Include(x => x.Providers)!.ThenInclude(x => x.Accounts)!.ThenInclude(x => x.DirectDebits)
+            .SelectMany(x => x.Providers!.SelectMany(c => c.Accounts!).SelectMany(r => r.DirectDebits!))
             .AsNoTracking()
             .Where(x => x.PreviousPaymentAmount != 0)
             .Where(x => x.PreviousPaymentTimeStamp < DateTime.Now.ToUniversalTime())

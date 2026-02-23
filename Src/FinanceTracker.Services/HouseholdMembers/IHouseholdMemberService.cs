@@ -1,5 +1,5 @@
 using FinanceTracker.Models.Request.HouseholdMember;
-using FinanceTracker.Models.Response.HouseholdMember;
+using FinanceTracker.Models.Response.HouseholdMembers;
 
 namespace FinanceTracker.Services.HouseholdMembers;
 

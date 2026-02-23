@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 using System.Security.Claims;
 using FinanceTracker.Data;
@@ -27,14 +28,14 @@ public class AccountService : ServiceBase, IAccountService
     {
         await _openBankingService.PerformSyncAsync(syncFlags, cancellationToken);
         await using FinanceTrackerContext context =
-            await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+            await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
         IQueryable<OpenBankingAccount> query = context
             .IsolateToUser(UserId)
-            .Include(x => x.Providers).ThenInclude(x => x.Accounts).ThenInclude(x => x.Provider)
-            .Include(x => x.Providers).ThenInclude(a => a.Accounts).ThenInclude(x => x.AccountBalance)
-            .Include(x => x.Providers).ThenInclude(x => x.Accounts).ThenInclude(x =>
-                x.Transactions.OrderByDescending(c => c.TransactionTime).Take(transactionsToReturn))
-            .SelectMany(x => x.Providers.SelectMany(c => c.Accounts))
+            .Include(x => x.Providers)!.ThenInclude(x => x.Accounts)!.ThenInclude(x => x.Provider)
+            .Include(x => x.Providers)!.ThenInclude(a => a.Accounts)!.ThenInclude(x => x.AccountBalance)
+            .Include(x => x.Providers)!.ThenInclude(x => x.Accounts)!.ThenInclude(x =>
+                x.Transactions!.OrderByDescending(c => c.TransactionTime).Take(transactionsToReturn))
+            .SelectMany(x => x.Providers!.SelectMany(c => c.Accounts!))
             .AsNoTracking();
 
         await foreach (OpenBankingAccount account in query.AsAsyncEnumerable().WithCancellation(cancellationToken))
@@ -45,14 +46,14 @@ public class AccountService : ServiceBase, IAccountService
                 AccountName = account.DisplayName,
                 AccountType = account.AccountType,
                 AvailableBalance = account.AccountBalance?.Available ?? 0,
-                Logo = account.Provider.Logo,
+                Logo = account.Provider!.Logo,
                 Transactions = account.Transactions?.Select(transaction => new AccountTransactionResponse
                 {
                     Amount = transaction.Amount,
                     Description = transaction.Description,
                     Status = transaction.Pending ? "Pending" : "Complete",
                     Time = transaction.TransactionTime
-                })
+                }).ToImmutableList()
             };
 
             yield return response;

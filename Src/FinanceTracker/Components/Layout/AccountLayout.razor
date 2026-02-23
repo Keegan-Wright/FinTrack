@@ -94,7 +94,7 @@
         {
             Default = new DefaultTypography
             {
-                FontFamily = new[] { "Inter", "Roboto", "Helvetica", "Arial", "sans-serif" },
+                FontFamily = ["Inter", "Roboto", "Helvetica", "Arial", "sans-serif"],
                 FontSize = ".875rem",
                 FontWeight = "400",
                 LineHeight = "1.43",
@@ -112,7 +112,7 @@
         }
     };
 
-    [CascadingParameter] private ApplicationState ApplicationState { get; set; }
+    [CascadingParameter] private ApplicationState ApplicationState { get; set; } = null!;
 
     protected override void OnInitialized()
     {

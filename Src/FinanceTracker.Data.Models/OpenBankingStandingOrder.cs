@@ -40,6 +40,6 @@ public class OpenBankingStandingOrder : BaseEntity
     [Encrypt]
     public required DateTime Timestamp { get; set; }
 
-    public Guid AccountId { get; set; }
-    public OpenBankingAccount Account { get; set; }
+    public Guid AccountId { get; init; }
+    public OpenBankingAccount? Account { get; init; }
 }

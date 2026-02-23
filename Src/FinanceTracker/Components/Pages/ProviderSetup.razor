@@ -1,4 +1,5 @@
 @page "/ProviderSetup"
+@using System.Collections.Immutable
 @using FinanceTracker.Models.External
 @using FinanceTracker.Models.Request.OpenBanking
 @using FinanceTracker.Services.OpenBanking
@@ -16,7 +17,7 @@
              MultiSelection="true"
              SortMode="SortMode.Multiple"
              Filterable="true"
-             QuickFilter="@_quickFilter"
+             QuickFilter="@QuickFilter"
              Hideable="true"
              Hover="true"
              RowsPerPage="10"
@@ -61,15 +62,15 @@
 @code {
 
     private List<ExternalOpenBankingProvider> OpenBankingProviders { get; } = [];
-    private string _searchString;
-    private string _openBankingAuthUrl;
-    private string _vendorAccessToken;
+    private string _searchString = string.Empty;
+    private string _openBankingAuthUrl = string.Empty;
+    private string _vendorAccessToken = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
         SetLoadingState(true, "Loading Providers");
-        await foreach (var provider in OpenBankingService.GetOpenBankingProvidersForClientAsync(Cts.Token))
+        await foreach (var provider in OpenBankingService.GetOpenBankingProvidersForClientAsync(_cts.Token))
         {
             OpenBankingProviders.Add(provider);
         }
@@ -77,40 +78,46 @@
         SetLoadingState(false);
     }
 
-    private Func<ExternalOpenBankingProvider, bool> _quickFilter => x =>
-    {
-        if (string.IsNullOrWhiteSpace(_searchString))
-            return true;
-
-        if (x.DisplayName.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
-            return true;
-
-        return false;
-    };
+    private Func<ExternalOpenBankingProvider, bool> QuickFilter =>
+        x => string.IsNullOrWhiteSpace(_searchString) || x.DisplayName.Contains(_searchString, StringComparison.OrdinalIgnoreCase);
 
     async Task SelectedItemsChanged(HashSet<ExternalOpenBankingProvider> selectedProviders)
     {
         var scopes = new List<string>();
         var scopesList = selectedProviders.Select(x => x.Scopes).ToList();
+
+        // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
         foreach (var scope in scopesList)
         {
+            if (scope == null)
+                continue;
+
             await foreach (var providerScope in scope)
             {
                 scopes.Add(providerScope);
             }
         }
 
-        var requestModel = new GetProviderSetupUrlRequestModel();
-        requestModel.ProviderIds = selectedProviders.Select(x => x.ProviderId);
-        requestModel.Scopes = scopes;
+        var requestModel = new GetProviderSetupUrlRequestModel
+        {
+            ProviderIds = selectedProviders.Select(x => x.ProviderId).ToImmutableList(),
+            Scopes = scopes.ToImmutableList()
+        };
 
-        _openBankingAuthUrl = OpenBankingService.BuildAuthUrl(requestModel, Cts.Token);
+        _openBankingAuthUrl = OpenBankingService.BuildAuthUrl(requestModel);
     }
 
     async Task AddProviderAsync()
     {
         SetLoadingState(true, "Adding Provider");
-        var response = await OpenBankingService.AddVendorViaAccessCodeAsync(_vendorAccessToken, Cts.Token);
+
+        var requestModel = new AddVendorRequestModel
+        {
+            AccessCode = _vendorAccessToken
+        };
+
+        var response = await OpenBankingService.AddVendorViaAccessCodeAsync(requestModel ,_cts.Token);
+
         SetLoadingState(false);
         if (response)
         {

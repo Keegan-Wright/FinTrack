@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -26,15 +27,17 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
     {
         using HttpClient httpClient = await BuildHttpClient(_trueLayerOpenBankingConfiguration.BaseAuthUrl);
 
-        List<KeyValuePair<string, string>> formData = new()
-        {
-            new KeyValuePair<string, string>("grant_type", "authorization_code"),
-            new KeyValuePair<string, string>("client_id", _trueLayerOpenBankingConfiguration.ClientId),
-            new KeyValuePair<string, string>("client_secret",
+        List<KeyValuePair<string, string>> formData =
+        [
+            new("grant_type", "authorization_code"),
+            new("client_id", _trueLayerOpenBankingConfiguration.ClientId),
+            new("client_secret",
                 _trueLayerOpenBankingConfiguration.ClientSecret.ToString()),
-            new KeyValuePair<string, string>("redirect_uri", _trueLayerOpenBankingConfiguration.AuthRedirectUrl),
-            new KeyValuePair<string, string>("code", vendorAccessCode)
-        };
+
+            new("redirect_uri",
+                _trueLayerOpenBankingConfiguration.AuthRedirectUrl.ToString()),
+            new("code", vendorAccessCode)
+        ];
 
         HttpContent content = new FormUrlEncodedContent(formData);
 
@@ -43,7 +46,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         ExternalOpenBankingAccessResponse? responseBody =
             await response.Content.ReadFromJsonAsync<ExternalOpenBankingAccessResponse>(cancellationToken);
 
-        return responseBody;
+        return responseBody!;
     }
 
     public async Task<ExternalOpenBankingAccessResponse> GetAccessTokenByRefreshTokenAsync(string refreshToken,
@@ -51,14 +54,14 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
     {
         using HttpClient httpClient = await BuildHttpClient(_trueLayerOpenBankingConfiguration.BaseAuthUrl);
 
-        List<KeyValuePair<string, string>> formData = new()
-        {
-            new KeyValuePair<string, string>("grant_type", "refresh_token"),
-            new KeyValuePair<string, string>("client_id", _trueLayerOpenBankingConfiguration.ClientId),
-            new KeyValuePair<string, string>("client_secret",
+        List<KeyValuePair<string, string>> formData =
+        [
+            new("grant_type", "refresh_token"),
+            new("client_id", _trueLayerOpenBankingConfiguration.ClientId),
+            new("client_secret",
                 _trueLayerOpenBankingConfiguration.ClientSecret.ToString()),
-            new KeyValuePair<string, string>("refresh_token", refreshToken)
-        };
+            new("refresh_token", refreshToken)
+        ];
 
         HttpContent content = new FormUrlEncodedContent(formData);
 
@@ -67,7 +70,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         ExternalOpenBankingAccessResponse? responseBody =
             await response.Content.ReadFromJsonAsync<ExternalOpenBankingAccessResponse>(cancellationToken);
 
-        return responseBody;
+        return responseBody!;
     }
 
     public async Task<ExternalOpenBankingListAllAccountsResponse> GetAllAccountsAsync(string authToken,
@@ -84,7 +87,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         ExternalOpenBankingListAllAccountsResponse? responseBody =
             await response.Content.ReadFromJsonAsync<ExternalOpenBankingListAllAccountsResponse>(cancellationToken);
 
-        return responseBody;
+        return responseBody!;
     }
 
     public async Task<ExternalOpenBankingGetAccountBalanceResponse> GetAccountBalanceAsync(string accountId,
@@ -100,7 +103,9 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         ExternalOpenBankingGetAccountBalanceResponse? responseBody =
             await response.Content.ReadFromJsonAsync<ExternalOpenBankingGetAccountBalanceResponse>(cancellationToken);
 
-        return responseBody;
+
+
+        return responseBody!;
     }
 
     public async Task<ExternalOpenBankingAccountTransactionsResponse> GetAccountTransactionsAsync(string accountId,
@@ -110,11 +115,11 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         using HttpClient httpClient = await BuildHttpClient(_trueLayerOpenBankingConfiguration.BaseDataUrl, authToken);
 
         StringBuilder urlBuilder = new();
-        urlBuilder.Append($"v1/accounts/{accountId}/transactions");
+        urlBuilder.Append(CultureInfo.CurrentCulture, $"v1/accounts/{accountId}/transactions");
 
         if (transactionsStartingDate.HasValue)
         {
-            urlBuilder.Append($"?from={transactionsStartingDate:yyyy-MM-dd}&to={DateTime.Now:yyyy-MM-dd}");
+            urlBuilder.Append(CultureInfo.CurrentCulture, $"?from={transactionsStartingDate:yyyy-MM-dd}&to={DateTime.Now:yyyy-MM-dd}");
         }
 
         HttpResponseMessage response = await httpClient.GetAsync(urlBuilder.ToString(), cancellationToken);
@@ -126,7 +131,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         ExternalOpenBankingAccountTransactionsResponse? responseBody =
             await response.Content.ReadFromJsonAsync<ExternalOpenBankingAccountTransactionsResponse>(cancellationToken);
 
-        return responseBody;
+        return responseBody!;
     }
 
     public async Task<ExternalOpenBankingAccountTransactionsResponse> GetAccountPendingTransactionsAsync(
@@ -136,11 +141,11 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         using HttpClient httpClient = await BuildHttpClient(_trueLayerOpenBankingConfiguration.BaseDataUrl, authToken);
 
         StringBuilder urlBuilder = new();
-        urlBuilder.Append($"v1/accounts/{accountId}/transactions/pending");
+        urlBuilder.Append(CultureInfo.CurrentCulture, $"v1/accounts/{accountId}/transactions/pending");
 
         if (transactionsStartingDate.HasValue)
         {
-            urlBuilder.Append($"?from={transactionsStartingDate:yyyy-MM-dd}&to={DateTime.Now:yyyy-MM-dd}");
+            urlBuilder.Append(CultureInfo.CurrentCulture, $"?from={transactionsStartingDate:yyyy-MM-dd}&to={DateTime.Now:yyyy-MM-dd}");
         }
 
         HttpResponseMessage response = await httpClient.GetAsync(urlBuilder.ToString(), cancellationToken);
@@ -152,7 +157,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         ExternalOpenBankingAccountTransactionsResponse? responseBody =
             await response.Content.ReadFromJsonAsync<ExternalOpenBankingAccountTransactionsResponse>(cancellationToken);
 
-        return responseBody;
+        return responseBody!;
     }
 
     public async Task<ExternalOpenBankingAccountStandingOrdersResponse> GetAccountStandingOrdersAsync(string accountId,
@@ -162,21 +167,19 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
 
         HttpResponseMessage response =
             await httpClient.GetAsync($"v1/accounts/{accountId}/standing_orders", cancellationToken);
-        if (!response.IsSuccessStatusCode)
+        switch (response.IsSuccessStatusCode)
         {
-            return new ExternalOpenBankingAccountStandingOrdersResponse();
+            case false:
+                return new ExternalOpenBankingAccountStandingOrdersResponse();
+            case true:
+            {
+                ExternalOpenBankingAccountStandingOrdersResponse? responseBody =
+                    await response.Content.ReadFromJsonAsync<ExternalOpenBankingAccountStandingOrdersResponse>(
+                        cancellationToken);
+
+                return responseBody!;
+            }
         }
-
-        if (response.IsSuccessStatusCode)
-        {
-            ExternalOpenBankingAccountStandingOrdersResponse? responseBody =
-                await response.Content.ReadFromJsonAsync<ExternalOpenBankingAccountStandingOrdersResponse>(
-                    cancellationToken);
-
-            return responseBody;
-        }
-
-        return new ExternalOpenBankingAccountStandingOrdersResponse();
     }
 
     public async Task<ExternalOpenBankingAccountDirectDebitsResponse> GetAccountDirectDebitsAsync(string accountId,
@@ -186,20 +189,19 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
 
         HttpResponseMessage response =
             await httpClient.GetAsync($"v1/accounts/{accountId}/direct_debits", cancellationToken);
-        if (!response.IsSuccessStatusCode)
+        switch (response.IsSuccessStatusCode)
         {
-            return new ExternalOpenBankingAccountDirectDebitsResponse();
-        }
+            case false:
+                return new ExternalOpenBankingAccountDirectDebitsResponse();
+            case true:
+            {
+                ExternalOpenBankingAccountDirectDebitsResponse? responseBody =
+                    await response.Content.ReadFromJsonAsync<ExternalOpenBankingAccountDirectDebitsResponse>(
+                        cancellationToken);
 
-        if (response.IsSuccessStatusCode)
-        {
-            ExternalOpenBankingAccountDirectDebitsResponse? responseBody =
-                await response.Content.ReadFromJsonAsync<ExternalOpenBankingAccountDirectDebitsResponse>(
-                    cancellationToken);
-            return responseBody;
+                return responseBody!;
+            }
         }
-
-        return new ExternalOpenBankingAccountDirectDebitsResponse();
     }
 
     public async IAsyncEnumerable<ExternalOpenBankingProvider> GetAvailableProvidersAsync(
@@ -214,6 +216,9 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         await foreach (ExternalOpenBankingProvider? provider in response.Content
                            .ReadFromJsonAsAsyncEnumerable<ExternalOpenBankingProvider>(cancellationToken))
         {
+            if(provider is null)
+                continue;
+
             yield return provider;
         }
     }
@@ -223,14 +228,14 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         StringBuilder sb = new();
 
         sb.Append(_trueLayerOpenBankingConfiguration.BaseAuthUrl);
-        sb.Append($"?response_type=code&client_id={_trueLayerOpenBankingConfiguration.ClientId}");
-        sb.Append("&");
-        sb.Append($"scope={Uri.EscapeDataString(string.Join(" ", scopes))}");
+        sb.Append(CultureInfo.CurrentCulture, $"?response_type=code&client_id={_trueLayerOpenBankingConfiguration.ClientId}");
+        sb.Append('&');
+        sb.Append(CultureInfo.CurrentCulture, $"scope={Uri.EscapeDataString(string.Join(" ", scopes))}");
         sb.Append(Uri.EscapeDataString(" "));
 
 
-        sb.Append($"&redirect_uri={_trueLayerOpenBankingConfiguration.AuthRedirectUrl}");
-        sb.Append($"&providers={Uri.EscapeDataString(string.Join(" ", providerIds))}");
+        sb.Append(CultureInfo.CurrentCulture, $"&redirect_uri={_trueLayerOpenBankingConfiguration.AuthRedirectUrl}");
+        sb.Append(CultureInfo.CurrentCulture, $"&providers={Uri.EscapeDataString(string.Join(" ", providerIds))}");
 
         sb.Append(Uri.EscapeDataString(" "));
 
@@ -254,14 +259,14 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         ExternalOpenBankingAccountConnectionResponse? responseBody =
             await response.Content.ReadFromJsonAsync<ExternalOpenBankingAccountConnectionResponse>(cancellationToken);
 
-        return responseBody;
+        return responseBody!;
     }
 
-    private async Task<HttpClient> BuildHttpClient(string baseUrl, string? authHeader = null)
+    private static async Task<HttpClient> BuildHttpClient(Uri baseUrl, string? authHeader = null)
     {
         //var httpHandler = new SentryHttpMessageHandler();
         HttpClient httpClient = new();
-        httpClient.BaseAddress = new Uri(baseUrl);
+        httpClient.BaseAddress = baseUrl;
 
         if (!string.IsNullOrEmpty(authHeader))
         {
@@ -269,9 +274,10 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         }
 
         IPHostEntry dnsEntries = await Dns.GetHostEntryAsync(Dns.GetHostName());
+
         httpClient.DefaultRequestHeaders.Add("x-PSU-IP",
             dnsEntries.AddressList.FirstOrDefault(x =>
-                x.AddressFamily == AddressFamily.InterNetwork && x.MapToIPv4().ToString() != "127.0.1.1").ToString());
+                x.AddressFamily == AddressFamily.InterNetwork && x.MapToIPv4().ToString() != "127.0.1.1")!.ToString());
 
         httpClient.Timeout = TimeSpan.FromMinutes(5);
 

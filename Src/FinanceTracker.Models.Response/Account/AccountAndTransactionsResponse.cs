@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.ComponentModel;
 
 namespace FinanceTracker.Models.Response.Account;
@@ -5,20 +6,20 @@ namespace FinanceTracker.Models.Response.Account;
 public class AccountAndTransactionsResponse
 {
     [Description("Name of the account")]
-    public string AccountName { get; set; }
+    public required string AccountName { get; init; }
 
     [Description("Account logo in byte array format")]
-    public byte[] Logo { get; set; }
+    public required byte[] Logo { get; init; }
 
     [Description("Type of the account")]
-    public string AccountType { get; set; }
+    public required string AccountType { get; init; }
 
     [Description("Current balance of the account")]
-    public decimal AccountBalance { get; set; }
+    public required decimal AccountBalance { get; init; }
 
     [Description("Available balance in the account")]
-    public decimal AvailableBalance { get; set; }
+    public required decimal AvailableBalance { get; init; }
 
     [Description("List of transactions for the account")]
-    public IEnumerable<AccountTransactionResponse>? Transactions { get; set; }
+    public IImmutableList<AccountTransactionResponse>? Transactions { get; init; }
 }

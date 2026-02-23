@@ -5,8 +5,8 @@ namespace FinanceTracker.Models.Response.Classifications;
 public class GetClassificationResponse
 {
     [Description("Unique identifier for the classification")]
-    public Guid ClassificationId { get; set; }
+    public required Guid ClassificationId { get; init; }
 
     [Description("Tag or label associated with the classification")]
-    public string Tag { get; set; }
+    public required string Tag { get; init; }
 }

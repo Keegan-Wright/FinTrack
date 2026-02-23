@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using FinanceTracker.AppHost.ServiceDefaults;
 using FinanceTracker.Components;
 using FinanceTracker.Components.Account;
 using FinanceTracker.Configurations;
@@ -45,11 +46,11 @@ public partial class Program
             .AddIdentityCookies();
 
         builder.Services.AddDbContextFactory<FinanceTrackerContext>(options =>
-            options.UseNpgsql(builder.Configuration.GetConnectionString("financeTrackerPostgresDb"), options =>
+            options.UseNpgsql(builder.Configuration.GetConnectionString("financeTrackerPostgresDb"), npgsqlDbContextOptionsBuilder =>
             {
-                options.MigrationsAssembly("FinanceTracker.Data.Migrations");
-                options.EnableRetryOnFailure();
-                options.CommandTimeout(0);
+                npgsqlDbContextOptionsBuilder.MigrationsAssembly("FinanceTracker.Data.Migrations");
+                npgsqlDbContextOptionsBuilder.EnableRetryOnFailure();
+                npgsqlDbContextOptionsBuilder.CommandTimeout(0);
             }));
 
         builder.Services.AddDatabaseDeveloperPageExceptionFilter();
@@ -75,19 +76,24 @@ public partial class Program
         builder.AddRedisDistributedCache("financeTrackerRedis");
         builder.AddRedisOutputCache("financeTrackerRedis");
 
-        TrueLayerOpenBankingConfiguration trueLayerConfig = new();
-        trueLayerConfig.BaseAuthUrl = builder.Configuration.GetValue<string>("OPEN_BANKING_TRUELAYER_BASE_AUTH_URL");
-        trueLayerConfig.BaseDataUrl = builder.Configuration.GetValue<string>("OPEN_BANKING_TRUELAYER_BASE_DATA_URL");
-        trueLayerConfig.AuthRedirectUrl =
-            builder.Configuration.GetValue<string>("OPEN_BANKING_TRUELAYER_AUTH_REDIRECT_URL");
-        trueLayerConfig.ClientId = builder.Configuration.GetValue<string>("OPEN_BANKING_TRUELAYER_CLIENT_ID");
-        trueLayerConfig.ClientSecret = builder.Configuration.GetValue<Guid>("OPEN_BANKING_TRUELAYER_CLIENT_SECRET");
+        TrueLayerOpenBankingConfiguration trueLayerConfig = new()
+        {
+            BaseAuthUrl = builder.Configuration.GetValue<Uri>("OPEN_BANKING_TRUELAYER_BASE_AUTH_URL")!,
+            BaseDataUrl = builder.Configuration.GetValue<Uri>("OPEN_BANKING_TRUELAYER_BASE_DATA_URL")!,
+            AuthRedirectUrl = builder.Configuration.GetValue<Uri>("OPEN_BANKING_TRUELAYER_AUTH_REDIRECT_URL")!,
+            ClientId = builder.Configuration.GetValue<string>("OPEN_BANKING_TRUELAYER_CLIENT_ID")!,
+            ClientSecret = builder.Configuration.GetValue<Guid>("OPEN_BANKING_TRUELAYER_CLIENT_SECRET")
+        };
+
         builder.Services.AddSingleton(trueLayerConfig);
 
-        EncryptionSettings encryptionConfig = new();
-        encryptionConfig.SymmetricKey = builder.Configuration.GetValue<string>("ENCRYPTION_KEY");
-        encryptionConfig.SymmetricSalt = builder.Configuration.GetValue<string>("ENCRYPTION_SALT");
-        encryptionConfig.Iterations = builder.Configuration.GetValue<int>("ENCRYPTION_ITERATIONS");
+        EncryptionSettings encryptionConfig = new()
+        {
+            SymmetricKey = builder.Configuration.GetValue<string>("ENCRYPTION_KEY")!,
+            SymmetricSalt = builder.Configuration.GetValue<string>("ENCRYPTION_SALT")!,
+            Iterations = builder.Configuration.GetValue<int>("ENCRYPTION_ITERATIONS")
+        };
+
         builder.Services.AddSingleton(encryptionConfig);
 
         builder.Services.AddTickerQ(options =>
@@ -102,7 +108,7 @@ public partial class Program
             });
         });
 
-        builder.Services.AddCascadingValue(sp => new ApplicationState());
+        builder.Services.AddCascadingValue(_ => new ApplicationState());
 
         AddFinanceTrackerServices(builder.Services);
         AddFinanceTrackerValidators(builder.Services);
@@ -125,8 +131,8 @@ public partial class Program
         app.UseHttpsRedirection();
 
         using IServiceScope scope = app.Services.CreateScope();
-        FinanceTrackerContext db = scope.ServiceProvider.GetRequiredService<IDbContextFactory<FinanceTrackerContext>>()
-            .CreateDbContext();
+        FinanceTrackerContext db = await scope.ServiceProvider.GetRequiredService<IDbContextFactory<FinanceTrackerContext>>()
+            .CreateDbContextAsync();
         await db.Database.MigrateAsync();
 
 

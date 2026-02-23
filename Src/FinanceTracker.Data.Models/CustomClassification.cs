@@ -5,5 +5,5 @@ namespace FinanceTracker.Data.Models;
 public class CustomClassification : BaseEntity
 {
     [Encrypt]
-    public required string Tag { get; set; }
+    public required string Tag { get; init; }
 }

@@ -4,7 +4,7 @@ namespace FinanceTracker.Data.Models;
 
 public class BaseEntity
 {
-    public Guid Id { get; set; }
+    public Guid Id { get; init; }
     public DateTime Created { get; set; }
     public DateTime? Updated { get; set; }
 

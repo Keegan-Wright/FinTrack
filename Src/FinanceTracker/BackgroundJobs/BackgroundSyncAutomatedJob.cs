@@ -29,12 +29,12 @@ public class BackgroundSyncAutomatedJobs
 
         await using FinanceTrackerContext dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
         ConfiguredCancelableAsyncEnumerable<FinanceTrackerUser> userQuery = dbContext.Users
-            .Include(x => x.Providers)
-            .ThenInclude(x => x.Accounts)
+            .Include(x => x.Providers)!
+            .ThenInclude(x => x.Accounts)!
             .ThenInclude(x => x.Transactions)
-            .Include(x => x.Providers).ThenInclude(x => x.Accounts).ThenInclude(x => x.AccountBalance)
-            .Include(x => x.Providers).ThenInclude(x => x.Scopes)
-            .Include(x => x.Providers).ThenInclude(x => x.Syncronisations)
+            .Include(x => x.Providers)!.ThenInclude(x => x.Accounts)!.ThenInclude(x => x.AccountBalance)
+            .Include(x => x.Providers)!.ThenInclude(x => x.Scopes)
+            .Include(x => x.Providers)!.ThenInclude(x => x.Syncronisations)
             .AsSplitQuery()
             .AsAsyncEnumerable().WithCancellation(cancellationToken);
 
@@ -42,11 +42,11 @@ public class BackgroundSyncAutomatedJobs
         {
             await _openBankingService.RunFunctionAsUser(user.Id, async () =>
             {
-                foreach (OpenBankingProvider provider in user.Providers)
+                foreach (OpenBankingProvider provider in user.Providers!)
                 {
                     await _openBankingService.BulkLoadProviderAsync(provider, SyncTypes.All, cancellationToken);
                 }
-            }, cancellationToken);
+            });
         }
     }
 }

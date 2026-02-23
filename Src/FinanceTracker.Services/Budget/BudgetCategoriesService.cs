@@ -24,10 +24,10 @@ public class BudgetCategoriesService : ServiceBase, IBudgetCategoriesService
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
-            await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+            await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
         await foreach (BudgetCategory budgetCategory in context.IsolateToUser(UserId)
                            .Include(x => x.BudgetCategories)
-                           .SelectMany(x => x.BudgetCategories)
+                           .SelectMany(x => x.BudgetCategories!)
                            .AsAsyncEnumerable().WithCancellation(cancellationToken))
         {
             yield return new BudgetCategoryResponse
@@ -45,7 +45,7 @@ public class BudgetCategoriesService : ServiceBase, IBudgetCategoriesService
         CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
-            await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+            await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
         FinanceTrackerUser user = await context.IsolateToUser(UserId)
             .Include(x => x.BudgetCategories).FirstAsync(cancellationToken);
 
@@ -59,7 +59,7 @@ public class BudgetCategoriesService : ServiceBase, IBudgetCategoriesService
             SavingsGoal = categoryToAdd.SavingsGoal
         };
 
-        user.BudgetCategories.Add(budgetCategory);
+        user.BudgetCategories!.Add(budgetCategory);
 
         await context.SaveChangesAsync(cancellationToken);
 
@@ -76,19 +76,20 @@ public class BudgetCategoriesService : ServiceBase, IBudgetCategoriesService
     public async Task<bool> DeleteBudgetCategoryAsync(Guid id, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
-            await _financeTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+            await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
         FinanceTrackerUser user = await context.IsolateToUser(UserId)
             .Include(x => x.BudgetCategories).SingleAsync(cancellationToken);
 
-        BudgetCategory? budgetCategory = user.BudgetCategories.FirstOrDefault(x => x.Id == id);
+        BudgetCategory? budgetCategory = user.BudgetCategories!.FirstOrDefault(x => x.Id == id);
 
-        if (budgetCategory != null)
+        if (budgetCategory == null)
         {
-            context.BudgetCategories.Remove(budgetCategory);
-            await context.SaveChangesAsync(cancellationToken);
-            return true;
+            return false;
         }
 
-        return false;
+        context.BudgetCategories.Remove(budgetCategory);
+        await context.SaveChangesAsync(cancellationToken);
+        return true;
+
     }
 }

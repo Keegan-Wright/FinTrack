@@ -37,7 +37,7 @@
     private async Task LoadSelectedCalendarMonthAsync()
     {
         SetLoadingState(true, "Loading your calendar");
-        await foreach (var monthItem in CalendarService.GetMonthItemsAsync(_selectedMonthYear.Month, _selectedMonthYear.Year, Cts.Token))
+        await foreach (var monthItem in CalendarService.GetMonthItemsAsync(_selectedMonthYear.Month, _selectedMonthYear.Year, _cts.Token))
         {
             _calendarItems.Add(monthItem);
         }

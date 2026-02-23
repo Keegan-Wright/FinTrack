@@ -63,7 +63,7 @@ public class LayoutBase : LayoutComponentBase
             Default =
                 new DefaultTypography
                 {
-                    FontFamily = new[] { "Inter", "Roboto", "Helvetica", "Arial", "sans-serif" },
+                    FontFamily = ["Inter", "Roboto", "Helvetica", "Arial", "sans-serif"],
                     FontSize = ".875rem",
                     FontWeight = "400",
                     LineHeight = "1.43",
@@ -86,7 +86,7 @@ public class LayoutBase : LayoutComponentBase
     internal MudThemeProvider _mudThemeProvider = null!;
 
     [CascadingParameter]
-    internal ApplicationState ApplicationState { get; set; }
+    internal ApplicationState ApplicationState { get; set; } = null!;
 
     protected override void OnInitialized()
     {
@@ -104,7 +104,7 @@ public class LayoutBase : LayoutComponentBase
         }
     }
 
-    internal Task OnSystemPreferenceChanged(bool newValue)
+    private Task OnSystemPreferenceChanged(bool newValue)
     {
         _isDarkMode = newValue;
         StateHasChanged();

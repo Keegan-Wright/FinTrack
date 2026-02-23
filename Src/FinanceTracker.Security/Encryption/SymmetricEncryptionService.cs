@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using FinanceTracker.Configurations;
@@ -23,7 +24,7 @@ public class SymmetricEncryptionService : ISymmetricEncryptionService
     {
         if (value == null)
         {
-            return null;
+            return string.Empty;
         }
 
         string? plainText;
@@ -38,7 +39,7 @@ public class SymmetricEncryptionService : ISymmetricEncryptionService
 
         if (string.IsNullOrEmpty(plainText))
         {
-            return plainText;
+            return string.Empty;
         }
 
         byte[] bytes = Encoding.Unicode.GetBytes(plainText);
@@ -56,7 +57,7 @@ public class SymmetricEncryptionService : ISymmetricEncryptionService
         return Convert.ToBase64String(encryptedBytes);
     }
 
-    public T Decrypt<T>(string cipherText)
+    public T? Decrypt<T>(string cipherText)
     {
         if (string.IsNullOrEmpty(cipherText))
         {
@@ -88,20 +89,22 @@ public class SymmetricEncryptionService : ISymmetricEncryptionService
         }
 
         Type targetType = typeof(T);
-        if (targetType.IsGenericType && targetType.GetGenericTypeDefinition() == typeof(Nullable<>))
+        if (!targetType.IsGenericType || targetType.GetGenericTypeDefinition() != typeof(Nullable<>))
         {
-            if (string.IsNullOrEmpty(plainText))
-            {
-                return default;
-            }
-
-            targetType = Nullable.GetUnderlyingType(targetType)!;
+            return (T)Convert.ChangeType(plainText, targetType, CultureInfo.CurrentCulture);
         }
 
-        return (T)Convert.ChangeType(plainText, targetType);
+        if (string.IsNullOrEmpty(plainText))
+        {
+            return default;
+        }
+
+        targetType = Nullable.GetUnderlyingType(targetType)!;
+
+        return (T)Convert.ChangeType(plainText, targetType, CultureInfo.CurrentCulture);
     }
 
-    private (byte[] Key, byte[] Iv) DeriveKeyAndIv(EncryptionSettings encryptionSettings,
+    private static (byte[] Key, byte[] Iv) DeriveKeyAndIv(EncryptionSettings encryptionSettings,
         HashAlgorithmName hashAlgorithm)
     {
         byte[] saltBytes = Encoding.ASCII.GetBytes(encryptionSettings.SymmetricSalt);
@@ -109,7 +112,7 @@ public class SymmetricEncryptionService : ISymmetricEncryptionService
         Rfc2898DeriveBytes.Pbkdf2(encryptionSettings.SymmetricKey, saltBytes, generator, encryptionSettings.Iterations,
             hashAlgorithm);
 
-        return (generator.Slice(0, KeySize / 8).ToArray(), generator.Slice(0, BlockSize / 8).ToArray());
+        return (generator[..(KeySize / 8)].ToArray(), generator[..(BlockSize / 8)].ToArray());
     }
 
     private Aes CreateAes()

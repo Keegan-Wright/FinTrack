@@ -5,7 +5,7 @@
     <Content>
 
         <MudDataGrid T="ClassificationsResponse" MultiSelection="true" Items="@Classifications"
-                     SortMode="SortMode.Multiple" Filterable="true" QuickFilter="@_quickFilter"
+                     SortMode="SortMode.Multiple" Filterable="true" QuickFilter="@QuickFilter"
                      Hideable="false"
                      SelectedItemsChanged="@SelectedItemsChanged">
             <ToolBarContent>
@@ -31,26 +31,26 @@
 
     [Parameter] public Guid TransactionId { get; set; }
 
-    [Parameter] public IEnumerable<ClassificationsResponse> Classifications { get; set; }
+    [Parameter] public IEnumerable<ClassificationsResponse> Classifications { get; set; } = null!;
 
-    private List<ClassificationsResponse> SelectedItems { get; set; }
+    private List<ClassificationsResponse>? SelectedItems { get; set; }
     private string _searchString = string.Empty;
 
 
-    private Func<ClassificationsResponse, bool> _quickFilter => x =>
+    private Func<ClassificationsResponse, bool> QuickFilter => x =>
     {
         if (string.IsNullOrWhiteSpace(_searchString))
             return true;
 
-        if (x.Tag.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
-            return true;
-
-        return false;
+        return x.Tag != null && x.Tag.Contains(_searchString, StringComparison.OrdinalIgnoreCase);
     };
 
 
     private AddCustomClassificationsToTransactionRequest BuildResponseModel()
     {
+        if (SelectedItems is null)
+            throw new InvalidOperationException();
+
         return new AddCustomClassificationsToTransactionRequest
         {
             TransactionId = TransactionId,
