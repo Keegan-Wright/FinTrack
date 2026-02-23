@@ -4,7 +4,7 @@ namespace FinanceTracker.Models.External;
 
 public class ExternalOpenBankingAccountBalance
 {
-    public string Currency { get; set; }
+    public string Currency { get; set; } = string.Empty;
     public decimal Available { get; set; }
     public decimal Current { get; set; }
 

@@ -6,31 +6,33 @@
         @Content
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel">@_cancelButtonText</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Submit">@_submitButtonText</MudButton>
+        <MudButton OnClick="Cancel">@CancelButtonText</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Submit">@SubmitButtonText</MudButton>
     </DialogActions>
 </MudDialog>
 
 @code {
 
-    [CascadingParameter]
-    private IMudDialogInstance MudDialog { get; set; }
-    
-    [Parameter, EditorRequired]
-    public required string Title { get; set; }
-    
-    [Parameter, EditorRequired]
-    public required RenderFragment Content { get; set; }
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
 
-    [Parameter, EditorRequired] 
-    public required Func<TResponse> ResponseConstructor { get; set; }
-    
-    private readonly string _submitButtonText = "OK";
-    private readonly string _cancelButtonText = "Cancel";
-    
-    internal void Submit() => MudDialog.Close(DialogResult.Ok(ResponseConstructor.Invoke()));
+    [Parameter] [EditorRequired] public required string Title { get; set; }
 
-    internal void Cancel() => MudDialog.Cancel();
+    [Parameter] [EditorRequired] public required RenderFragment Content { get; set; }
+
+    [Parameter] [EditorRequired] public required Func<TResponse> ResponseConstructor { get; set; }
+
+    private const string SubmitButtonText = "OK";
+    private const string    CancelButtonText = "Cancel";
+
+    internal void Submit()
+    {
+        MudDialog.Close(DialogResult.Ok(ResponseConstructor.Invoke()));
+    }
+
+    internal void Cancel()
+    {
+        MudDialog.Cancel();
+    }
 
 
 }

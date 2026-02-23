@@ -1,13 +1,13 @@
 ﻿using System.ComponentModel;
 using FinanceTracker.Enums;
 
-namespace FinanceTracker.Models.Request;
+namespace FinanceTracker.Models.Request.Dashboard;
 
 public class AccountAndTransactionsRequest
 {
     [Description("Number of transactions to retrieve")]
-    public int TransactionsCount { get; set; }
+    public required int TransactionsCount { get; init; }
 
     [Description("Type of synchronization to perform")]
-    public SyncTypes SyncTypes { get; set; }
+    public required SyncTypes SyncTypes { get; init; }
 }

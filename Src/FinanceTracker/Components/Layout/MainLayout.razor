@@ -1,24 +1,23 @@
 ﻿@inherits LayoutBase
-@using FinanceTracker.Data.Models
-@using Microsoft.AspNetCore.Authentication
-@using Microsoft.AspNetCore.Identity
 @implements IDisposable
 
-@inject NavigationManager NavigationManager
-
-<MudThemeProvider @ref="@_mudThemeProvider" Theme="_theme" @bind-IsDarkMode="_isDarkMode" DefaultScrollbar="true" />
+<MudThemeProvider @ref="@_mudThemeProvider" Theme="_theme" @bind-IsDarkMode="_isDarkMode" DefaultScrollbar="true"/>
 <MudPopoverProvider/>
 <MudDialogProvider/>
 <MudSnackbarProvider/>
 
 <MudLayout>
     <MudAppBar Elevation="@(_isDarkMode ? 0 : 1)">
-        <MudStaticNavDrawerToggle DrawerId="nav-drawer" Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start"/>
-        <MudText Typo="Typo.h6" Color="Color.Primary" Class="ml-3 font-bold" Style="letter-spacing: 0.5px;">FinTrack</MudText>
+        <MudStaticNavDrawerToggle DrawerId="nav-drawer" Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit"
+                                  Edge="Edge.Start"/>
+        <MudText Typo="Typo.h6" Color="Color.Primary" Class="ml-3 font-bold" Style="letter-spacing: 0.5px;">FinTrack
+        </MudText>
         <MudSpacer/>
-        <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)" Color="Color.Inherit" OnClick="@DarkModeToggle" />
+        <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+                       Color="Color.Inherit" OnClick="@DarkModeToggle"/>
         <MudMenu Icon="@Icons.Material.Filled.MoreVert" Style="align-self: auto;" Color="Color.Inherit">
             <MudMenuItem>
+                @* ReSharper disable once Html.PathError *@
                 <form action="Account/Logout" method="post">
                     <AntiforgeryToken/>
                     <input type="hidden" name="ReturnUrl"/>
@@ -34,9 +33,10 @@
     </MudDrawer>
     <MudMainContent Class="pt-16 pa-4 mt-4">
         <MudContainer MaxWidth="MaxWidth.ExtraExtraLarge">
-            <CascadingValue Value=@ApplicationState.Loading>
-                <MudOverlay Visible="@ApplicationState.Loading" DarkBackground="@(_isDarkMode)" LightBackground="@(!_isDarkMode)" AutoClose="false">
-                    <MudItem Class="d-flex flex-column align-center" >
+            <CascadingValue Value="@ApplicationState.Loading">
+                <MudOverlay Visible="@ApplicationState.Loading" DarkBackground="@(_isDarkMode)"
+                            LightBackground="@(!_isDarkMode)" AutoClose="false">
+                    <MudItem Class="d-flex flex-column align-center">
                         <MudProgressCircular Color="Color.Primary" Indeterminate="true"/>
                         <MudText Typo="Typo.h6">@ApplicationState.LoadingMessage</MudText>
                     </MudItem>
@@ -49,17 +49,11 @@
 
 @code {
 
-    [CascadingParameter]
-    public IHttpContextAccessor? HttpContext { get; set; }
-    
+    [CascadingParameter] public IHttpContextAccessor? HttpContext { get; set; }
+
     private void DarkModeToggle()
     {
         _isDarkMode = !_isDarkMode;
-    }
-
-    private async Task LogoutAsync()
-    {
-        NavigationManager.NavigateTo("Account/Login", true);
     }
 
     public void Dispose()

@@ -1,7 +1,6 @@
+using FinanceTracker.Data.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
-using FinanceTracker.Data;
-using FinanceTracker.Data.Models;
 
 namespace FinanceTracker.Components.Account;
 

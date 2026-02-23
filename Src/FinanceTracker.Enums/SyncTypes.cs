@@ -2,7 +2,8 @@ using System.Text.Json.Serialization;
 
 namespace FinanceTracker.Enums;
 
-[Flags, JsonConverter(typeof(JsonStringEnumConverter<SyncTypes>))]
+[Flags]
+[JsonConverter(typeof(JsonStringEnumConverter<SyncTypes>))]
 public enum SyncTypes
 {
     Account = 1,
@@ -11,5 +12,5 @@ public enum SyncTypes
     StandingOrders = 8,
     Transactions = 16,
     PendingTransactions = 32,
-    All = 64,
+    All = 64
 }

@@ -1,10 +1,8 @@
 @page "/Report/ByAccount"
 @using FinanceTracker.Components.Transactions
-@using FinanceTracker.Models.Response.Reports
-@using FinanceTracker.Models.Response.Reports.Account
 @using FinanceTracker.Enums
-@using System.Globalization
-@inherits ReportPageBase<SpentInAccountReportResponse>
+@using FinanceTracker.Models.Response.Reports
+@inherits ReportPageBase<FinanceTracker.Models.Response.Reports.Account.SpentInAccountReportResponse>
 
 <PageTitle>Spent By Account Report</PageTitle>
 
@@ -27,26 +25,27 @@
                     Title="@($"Overview - {reportItem.AccountName}")"
                     TotalIn="@reportItem.TotalIn"
                     TotalOut="@reportItem.TotalOut"
-                    Normalised="@Decimal.Add(reportItem.TotalOut, reportItem.TotalIn)">
+                    Normalised="@decimal.Add(reportItem.TotalOut, reportItem.TotalIn)">
                 </SpentInTimePeriodOverview>
-        
+
                 @if (reportItem.YearlyBreakdown.Any())
                 {
-                    <MudTabs ApplyEffectsToContainer="true" Elevation="4" Rounded="true" PanelClass="pa-6" Class="mt-6">
+                    <MudTabs ApplyEffectsToContainer="true" Elevation="4" Rounded="true" Class="mt-6">
                         @foreach (var yearlyBreakdown in reportItem.YearlyBreakdown)
                         {
-                            <MudTabPanel Text="@GetYearTabLabel(yearlyBreakdown.Year, yearlyBreakdown.TotalTransactions)">
-                        
-                <SpentInTimePeriodOverview
-                    Title="Overview"
-                    TotalIn="@yearlyBreakdown.TotalIn"
-                    TotalOut="@yearlyBreakdown.TotalOut"
-                    Normalised="@Decimal.Add(yearlyBreakdown.TotalOut, yearlyBreakdown.TotalIn)"
-                    PerDayAverageIn="@CalculatePerDayAverage(yearlyBreakdown.TotalIn, GetDaysInYear(yearlyBreakdown.Year))"
-                    PerDayAverageOut="@CalculatePerDayAverage(yearlyBreakdown.TotalOut, GetDaysInYear(yearlyBreakdown.Year))"
-                    DaysInPeriod="@GetDaysInYear(yearlyBreakdown.Year)">
-                </SpentInTimePeriodOverview>
-                            
+                            <MudTabPanel Class="pa-6"
+                                         Text="@GetYearTabLabel(yearlyBreakdown.Year, yearlyBreakdown.TotalTransactions)">
+
+                                <SpentInTimePeriodOverview
+                                    Title="Overview"
+                                    TotalIn="@yearlyBreakdown.TotalIn"
+                                    TotalOut="@yearlyBreakdown.TotalOut"
+                                    Normalised="@decimal.Add(yearlyBreakdown.TotalOut, yearlyBreakdown.TotalIn)"
+                                    PerDayAverageIn="@CalculatePerDayAverage(yearlyBreakdown.TotalIn, GetDaysInYear(yearlyBreakdown.Year))"
+                                    PerDayAverageOut="@CalculatePerDayAverage(yearlyBreakdown.TotalOut, GetDaysInYear(yearlyBreakdown.Year))"
+                                    DaysInPeriod="@GetDaysInYear(yearlyBreakdown.Year)">
+                                </SpentInTimePeriodOverview>
+
                                 <MudChart ChartType="ChartType.Bar"
                                           ChartSeries="@GetMonthlyGraphSeries(yearlyBreakdown.MonthlyBreakdown.ToList<SharedReportResponse>())"
                                           ChartLabels="@GetMonthlyGraphAxis()"
@@ -60,19 +59,20 @@
                                         @foreach (var monthlyBreakdown in yearlyBreakdown.MonthlyBreakdown)
                                         {
                                             var monthIndex = Array.IndexOf(yearlyBreakdown.MonthlyBreakdown.ToArray(), monthlyBreakdown);
-                                            var (prevTotalIn, prevTotalOut) = monthIndex > 0 
+                                            var (prevTotalIn, prevTotalOut) = monthIndex > 0
                                                 ? GetPreviousPeriodTotals(yearlyBreakdown.MonthlyBreakdown.ToList<SharedReportResponse>(), monthIndex)
                                                 : (0m, 0m);
                                             var outTrend = CalculateTrendComparison(monthlyBreakdown.TotalOut, prevTotalOut);
                                             var outTrendPercent = CalculateTrendPercentage(monthlyBreakdown.TotalOut, prevTotalOut);
                                             var daysInMonth = GetDaysInMonth(yearlyBreakdown.Year, GetMonthIndex(monthlyBreakdown.Month));
 
-                                            <MudExpansionPanel Text="@GetMonthPanelLabel(monthlyBreakdown.Month, monthlyBreakdown.TotalTransactions, daysInMonth)">
+                                            <MudExpansionPanel
+                                                Text="@GetMonthPanelLabel(monthlyBreakdown.Month, monthlyBreakdown.TotalTransactions, daysInMonth)">
                                                 <SpentInTimePeriodOverview
                                                     Title="Overview"
                                                     TotalIn="@monthlyBreakdown.TotalIn"
                                                     TotalOut="@monthlyBreakdown.TotalOut"
-                                                    Normalised="@Decimal.Add(monthlyBreakdown.TotalOut, monthlyBreakdown.TotalIn)"
+                                                    Normalised="@decimal.Add(monthlyBreakdown.TotalOut, monthlyBreakdown.TotalIn)"
                                                     PerDayAverageIn="@CalculatePerDayAverage(monthlyBreakdown.TotalIn, daysInMonth)"
                                                     PerDayAverageOut="@CalculatePerDayAverage(monthlyBreakdown.TotalOut, daysInMonth)"
                                                     DaysInPeriod="@daysInMonth"
@@ -89,12 +89,12 @@
                                                               Class="mt-4">
                                                     </MudChart>
                                                 }
-                                        
+
                                             </MudExpansionPanel>
                                         }
                                     </MudExpansionPanels>
                                 }
-                    
+
                             </MudTabPanel>
                         }
                     </MudTabs>

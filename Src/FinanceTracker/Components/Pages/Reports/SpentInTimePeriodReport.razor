@@ -2,8 +2,7 @@
 @using FinanceTracker.Components.Transactions
 @using FinanceTracker.Enums
 @using FinanceTracker.Models.Response.Reports
-@using FinanceTracker.Models.Response.Reports.SpentInTimePeriod
-@inherits ReportPageBase<SpentInTimePeriodReportResponse>
+@inherits ReportPageBase<FinanceTracker.Models.Response.Reports.SpentInTimePeriod.SpentInTimePeriodReportResponse>
 
 <PageTitle>Spent By In Time Period Report</PageTitle>
 
@@ -18,92 +17,97 @@
 ></TransactionFilters>
 
 <MudStack Spacing="4">
-        @foreach (var reportItem in ReportItems)
-        {
-            <MudCard Elevation="2">
-                <MudCardContent>
-                    <SpentInTimePeriodOverview Title="@($"Overview")"
-                                               TotalIn="@reportItem.TotalIn"
-                                               TotalOut="@reportItem.TotalOut"
-                                               Normalised="@Decimal.Add(reportItem.TotalOut, reportItem.TotalIn)">
-                    </SpentInTimePeriodOverview>
+    @foreach (var reportItem in ReportItems)
+    {
+        <MudCard Elevation="2">
+            <MudCardContent>
+                <SpentInTimePeriodOverview Title="@("Overview")"
+                                           TotalIn="@reportItem.TotalIn"
+                                           TotalOut="@reportItem.TotalOut"
+                                           Normalised="@decimal.Add(reportItem.TotalOut, reportItem.TotalIn)">
+                </SpentInTimePeriodOverview>
 
-                    @if (reportItem.YearlyBreakdown.Any())
-                    {
-                        <MudTabs ApplyEffectsToContainer="true" Elevation="0" Rounded="true" PanelClass="pa-6" Class="mt-6">
-                            @foreach (var yearlyBreakdown in reportItem.YearlyBreakdown)
-                            {
-                                <MudTabPanel Text="@GetYearTabLabel(yearlyBreakdown.Year, yearlyBreakdown.TotalTransactions)">
-                                    <MudStack Spacing="6">
-                                        <SpentInTimePeriodOverview Title="Yearly Overview"
-                                                                   TotalIn="@yearlyBreakdown.TotalIn"
-                                                                   TotalOut="@yearlyBreakdown.TotalOut"
-                                                                   Normalised="@Decimal.Add(yearlyBreakdown.TotalOut, yearlyBreakdown.TotalIn)"
-                                                                   PerDayAverageIn="@CalculatePerDayAverage(yearlyBreakdown.TotalIn, GetDaysInYear(yearlyBreakdown.Year))"
-                                                                   PerDayAverageOut="@CalculatePerDayAverage(yearlyBreakdown.TotalOut, GetDaysInYear(yearlyBreakdown.Year))"
-                                                                   DaysInPeriod="@GetDaysInYear(yearlyBreakdown.Year)">
-                                        </SpentInTimePeriodOverview>
+                @if (reportItem.YearlyBreakdown.Any())
+                {
+                    <MudTabs ApplyEffectsToContainer="true" Elevation="0" Rounded="true" Class="mt-6">
+                        @foreach (var yearlyBreakdown in reportItem.YearlyBreakdown)
+                        {
+                            <MudTabPanel Class="pa-6"
+                                         Text="@GetYearTabLabel(yearlyBreakdown.Year, yearlyBreakdown.TotalTransactions)">
+                                <MudStack Spacing="6">
+                                    <SpentInTimePeriodOverview Title="Yearly Overview"
+                                                               TotalIn="@yearlyBreakdown.TotalIn"
+                                                               TotalOut="@yearlyBreakdown.TotalOut"
+                                                               Normalised="@decimal.Add(yearlyBreakdown.TotalOut, yearlyBreakdown.TotalIn)"
+                                                               PerDayAverageIn="@CalculatePerDayAverage(yearlyBreakdown.TotalIn, GetDaysInYear(yearlyBreakdown.Year))"
+                                                               PerDayAverageOut="@CalculatePerDayAverage(yearlyBreakdown.TotalOut, GetDaysInYear(yearlyBreakdown.Year))"
+                                                               DaysInPeriod="@GetDaysInYear(yearlyBreakdown.Year)">
+                                    </SpentInTimePeriodOverview>
 
-                                        <MudPaper Outlined="true" Class="pa-4" Elevation="0">
-                                            <MudText Typo="Typo.subtitle1" Class="mb-2 font-bold">Monthly Breakdown</MudText>
-                                            <MudChart ChartType="ChartType.Bar"
-                                                      ChartSeries="@GetMonthlyGraphSeries(yearlyBreakdown.MonthlyBreakdown.ToList<SharedReportResponse>())"
-                                                      ChartLabels="@GetMonthlyGraphAxis()"
-                                                      ChartOptions="_chartOptions"
-                                                      Height="300px">
-                                            </MudChart>
-                                        </MudPaper>
+                                    <MudPaper Outlined="true" Class="pa-4" Elevation="0">
+                                        <MudText Typo="Typo.subtitle1" Class="mb-2 font-bold">Monthly Breakdown
+                                        </MudText>
+                                        <MudChart ChartType="ChartType.Bar"
+                                                  ChartSeries="@GetMonthlyGraphSeries(yearlyBreakdown.MonthlyBreakdown.ToList<SharedReportResponse>())"
+                                                  ChartLabels="@GetMonthlyGraphAxis()"
+                                                  ChartOptions="_chartOptions"
+                                                  Height="300px">
+                                        </MudChart>
+                                    </MudPaper>
 
-                                        @if (yearlyBreakdown.MonthlyBreakdown.Any())
-                                        {
-                                            <MudExpansionPanels MultiExpansion="true">
-                                                @foreach (var monthlyBreakdown in yearlyBreakdown.MonthlyBreakdown)
-                                                {
-                                                    var monthIndex = Array.IndexOf(yearlyBreakdown.MonthlyBreakdown.ToArray(), monthlyBreakdown);
-                                                    var (prevTotalIn, prevTotalOut) = monthIndex > 0
+                                    @if (yearlyBreakdown.MonthlyBreakdown.Any())
+                                    {
+                                        <MudExpansionPanels MultiExpansion="true">
+                                            @foreach (var monthlyBreakdown in yearlyBreakdown.MonthlyBreakdown)
+                                            {
+                                                var monthIndex = Array.IndexOf(yearlyBreakdown.MonthlyBreakdown.ToArray(), monthlyBreakdown);
+                                                var (prevTotalIn, prevTotalOut) = monthIndex > 0
                                                     ? GetPreviousPeriodTotals(yearlyBreakdown.MonthlyBreakdown.ToList<SharedReportResponse>(), monthIndex)
                                                     : (0m, 0m);
-                                                    var outTrend = CalculateTrendComparison(monthlyBreakdown.TotalOut, prevTotalOut);
-                                                    var outTrendPercent = CalculateTrendPercentage(monthlyBreakdown.TotalOut, prevTotalOut);
-                                                    var daysInMonth = GetDaysInMonth(yearlyBreakdown.Year, GetMonthIndex(monthlyBreakdown.Month));
+                                                var outTrend = CalculateTrendComparison(monthlyBreakdown.TotalOut, prevTotalOut);
+                                                var outTrendPercent = CalculateTrendPercentage(monthlyBreakdown.TotalOut, prevTotalOut);
+                                                var daysInMonth = GetDaysInMonth(yearlyBreakdown.Year, GetMonthIndex(monthlyBreakdown.Month));
 
-                                                    <MudExpansionPanel Text="@GetMonthPanelLabel(monthlyBreakdown.Month, monthlyBreakdown.TotalTransactions, daysInMonth)">
-                                                        <MudStack Spacing="4">
-                                                            <SpentInTimePeriodOverview Title="Monthly Overview"
-                                                                                       TotalIn="@monthlyBreakdown.TotalIn"
-                                                                                       TotalOut="@monthlyBreakdown.TotalOut"
-                                                                                       Normalised="@Decimal.Add(monthlyBreakdown.TotalOut, monthlyBreakdown.TotalIn)"
-                                                                                       PerDayAverageIn="@CalculatePerDayAverage(monthlyBreakdown.TotalIn, daysInMonth)"
-                                                                                       PerDayAverageOut="@CalculatePerDayAverage(monthlyBreakdown.TotalOut, daysInMonth)"
-                                                                                       DaysInPeriod="@daysInMonth"
-                                                                                       TrendValue="@outTrend"
-                                                                                       TrendPercentage="@outTrendPercent">
-                                                            </SpentInTimePeriodOverview>
+                                                <MudExpansionPanel
+                                                    Text="@GetMonthPanelLabel(monthlyBreakdown.Month, monthlyBreakdown.TotalTransactions, daysInMonth)">
+                                                    <MudStack Spacing="4">
+                                                        <SpentInTimePeriodOverview Title="Monthly Overview"
+                                                                                   TotalIn="@monthlyBreakdown.TotalIn"
+                                                                                   TotalOut="@monthlyBreakdown.TotalOut"
+                                                                                   Normalised="@decimal.Add(monthlyBreakdown.TotalOut, monthlyBreakdown.TotalIn)"
+                                                                                   PerDayAverageIn="@CalculatePerDayAverage(monthlyBreakdown.TotalIn, daysInMonth)"
+                                                                                   PerDayAverageOut="@CalculatePerDayAverage(monthlyBreakdown.TotalOut, daysInMonth)"
+                                                                                   DaysInPeriod="@daysInMonth"
+                                                                                   TrendValue="@outTrend"
+                                                                                   TrendPercentage="@outTrendPercent">
+                                                        </SpentInTimePeriodOverview>
 
-                                                            @if (monthlyBreakdown.DailyBreakdown.Any())
-                                                            {
-                                                                <MudPaper Outlined="true" Class="pa-4" Elevation="0">
-                                                                    <MudText Typo="Typo.subtitle1" Class="mb-2 font-bold">Daily Breakdown</MudText>
-                                                                    <MudChart ChartType="ChartType.Bar"
-                                                                              ChartSeries="@GetDailyGraphSeries(monthlyBreakdown.DailyBreakdown.ToList<SharedReportResponse>())"
-                                                                              ChartLabels="@GetDailyGraphAxis(yearlyBreakdown.Year, GetMonthIndex(monthlyBreakdown.Month))"
-                                                                              ChartOptions="_chartOptions"
-                                                                              Height="250px">
-                                                                    </MudChart>
-                                                                </MudPaper>
-                                                            }
-                                                        </MudStack>
-                                                    </MudExpansionPanel>
-                                                }
-                                            </MudExpansionPanels>
-                                        }
-                                    </MudStack>
-                                </MudTabPanel>
-                            }
-                        </MudTabs>
-                    }
-                </MudCardContent>
-            </MudCard>
-        }
-    </MudStack>
+                                                        @if (monthlyBreakdown.DailyBreakdown.Any())
+                                                        {
+                                                            <MudPaper Outlined="true" Class="pa-4" Elevation="0">
+                                                                <MudText Typo="Typo.subtitle1" Class="mb-2 font-bold">
+                                                                    Daily Breakdown
+                                                                </MudText>
+                                                                <MudChart ChartType="ChartType.Bar"
+                                                                          ChartSeries="@GetDailyGraphSeries(monthlyBreakdown.DailyBreakdown.ToList<SharedReportResponse>())"
+                                                                          ChartLabels="@GetDailyGraphAxis(yearlyBreakdown.Year, GetMonthIndex(monthlyBreakdown.Month))"
+                                                                          ChartOptions="_chartOptions"
+                                                                          Height="250px">
+                                                                </MudChart>
+                                                            </MudPaper>
+                                                        }
+                                                    </MudStack>
+                                                </MudExpansionPanel>
+                                            }
+                                        </MudExpansionPanels>
+                                    }
+                                </MudStack>
+                            </MudTabPanel>
+                        }
+                    </MudTabs>
+                }
+            </MudCardContent>
+        </MudCard>
+    }
+</MudStack>
 

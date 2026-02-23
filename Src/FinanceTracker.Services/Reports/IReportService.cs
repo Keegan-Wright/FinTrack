@@ -7,7 +7,12 @@ namespace FinanceTracker.Services.Reports;
 
 public interface IReportService
 {
-    IAsyncEnumerable<SpentInTimePeriodReportResponse> GetSpentInTimePeriodReportAsync(BaseReportRequest request, CancellationToken cancellationToken);
-    IAsyncEnumerable<SpentInCategoryReportResponse> GetCategoryBreakdownReportAsync(BaseReportRequest request, CancellationToken cancellationToken);
-    IAsyncEnumerable<SpentInAccountReportResponse> GetAccountBreakdownReportAsync(BaseReportRequest request, CancellationToken cancellationToken);
+    IAsyncEnumerable<SpentInTimePeriodReportResponse> GetSpentInTimePeriodReportAsync(BaseReportRequest request,
+        CancellationToken cancellationToken);
+
+    IAsyncEnumerable<SpentInCategoryReportResponse> GetCategoryBreakdownReportAsync(BaseReportRequest request,
+        CancellationToken cancellationToken);
+
+    IAsyncEnumerable<SpentInAccountReportResponse> GetAccountBreakdownReportAsync(BaseReportRequest request,
+        CancellationToken cancellationToken);
 }

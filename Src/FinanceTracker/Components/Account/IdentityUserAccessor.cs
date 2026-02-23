@@ -1,6 +1,5 @@
-using Microsoft.AspNetCore.Identity;
-using FinanceTracker.Data;
 using FinanceTracker.Data.Models;
+using Microsoft.AspNetCore.Identity;
 
 namespace FinanceTracker.Components.Account;
 
@@ -10,7 +9,7 @@ internal sealed class IdentityUserAccessor(
 {
     public async Task<FinanceTrackerUser> GetRequiredUserAsync(HttpContext context)
     {
-        var user = await userManager.GetUserAsync(context.User);
+        FinanceTrackerUser? user = await userManager.GetUserAsync(context.User);
 
         if (user is null)
         {

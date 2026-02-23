@@ -5,14 +5,14 @@ namespace FinanceTracker.Models.Response.Calendar;
 public class CalendarTransactionItemResponse
 {
     [Description("Amount of the scheduled transaction")]
-    public decimal Amount { get; set; }
+    public required decimal Amount { get; init; }
 
     [Description("Description of the scheduled transaction")]
-    public string Description { get; set; }
+    public required string Description { get; init; }
 
     [Description("Type of the scheduled transaction")]
-    public string TransactionType { get; set; }
+    public required string TransactionType { get; init; }
 
     [Description("Scheduled date and time of the transaction")]
-    public DateTime TransactionTime { get; set; }
+    public required DateTime TransactionTime { get; init; }
 }

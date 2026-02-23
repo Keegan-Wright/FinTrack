@@ -6,70 +6,90 @@ using FinanceTracker.Generated.Helpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
 
-
 namespace FinanceTracker.Generated.DependencyInjection;
-
 
 [Generator]
 public class ServiceInjectionGenerator : IIncrementalGenerator
 {
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        var compilationProvider = context.CompilationProvider;
+        IncrementalValueProvider<Compilation> compilationProvider = context.CompilationProvider;
 
         context.RegisterSourceOutput(compilationProvider, static (spc, compilation) =>
         {
-            var serviceList = new List<string>();
-            var validatorList = new List<string>();
-            var externalServiceList = new List<string>();
-            var namespaces = new HashSet<string>();
+            List<string> serviceList = [];
+            List<string> validatorList = [];
+            List<string> externalServiceList = [];
+            HashSet<string> namespaces = [];
 
-            var typesToInject = new List<(INamedTypeSymbol Type, string ServiceLevel, string ServiceType, string Category)>();
+            List<(INamedTypeSymbol Type, string ServiceLevel, string ServiceType, string Category)> typesToInject =
+                [];
 
-            var scannedAssemblies = new List<string>();
-            
-            foreach (var reference in compilation.References)
+
+            foreach (MetadataReference? reference in compilation.References)
             {
-                var symbol = compilation.GetAssemblyOrModuleSymbol(reference) as IAssemblySymbol;
-                if (symbol == null)
+                if (compilation.GetAssemblyOrModuleSymbol(reference) is not IAssemblySymbol symbol)
+                {
                     continue;
+                }
 
                 if (symbol.Name.StartsWith("FinanceTracker"))
                 {
-                    scannedAssemblies.Add(symbol.Name);
                     CollectTypesWithAttributes(symbol.GlobalNamespace, typesToInject);
                 }
             }
 
-            foreach (var (typeSymbol, serviceLevel, serviceType, category) in typesToInject.OrderBy(x => x.ServiceType))
+            foreach ((INamedTypeSymbol typeSymbol, string serviceLevel, string serviceType, string category) in
+                     typesToInject.OrderBy(x => x.ServiceType))
             {
-                var className = typeSymbol.ToDisplayString();
-                var classNamespace = typeSymbol.ContainingNamespace?.ToDisplayString();
-                var serviceNamespace = ExtractNamespace(serviceType);
+                string className = typeSymbol.ToDisplayString();
+                string? classNamespace = typeSymbol.ContainingNamespace?.ToDisplayString();
+                string? serviceNamespace = ExtractNamespace(serviceType);
 
                 if (string.Equals(category, "Service", StringComparison.OrdinalIgnoreCase))
                 {
                     serviceList.Add($"services.TryAdd{serviceLevel}<{serviceType}, {className}>();");
-                    if (!string.IsNullOrWhiteSpace(classNamespace)) namespaces.Add(classNamespace!);
-                    if (!string.IsNullOrWhiteSpace(serviceNamespace)) namespaces.Add(serviceNamespace!);
+                    if (!string.IsNullOrWhiteSpace(classNamespace))
+                    {
+                        namespaces.Add(classNamespace!);
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(serviceNamespace))
+                    {
+                        namespaces.Add(serviceNamespace!);
+                    }
                 }
                 else if (string.Equals(category, "Validator", StringComparison.OrdinalIgnoreCase))
                 {
                     validatorList.Add($"services.TryAdd{serviceLevel}<{serviceType}, {className}>();");
-                    if (!string.IsNullOrWhiteSpace(classNamespace)) namespaces.Add(classNamespace!);
-                    if (!string.IsNullOrWhiteSpace(serviceNamespace)) namespaces.Add(serviceNamespace!);
+                    if (!string.IsNullOrWhiteSpace(classNamespace))
+                    {
+                        namespaces.Add(classNamespace!);
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(serviceNamespace))
+                    {
+                        namespaces.Add(serviceNamespace!);
+                    }
                 }
                 else if (string.Equals(category, "External", StringComparison.OrdinalIgnoreCase))
                 {
                     externalServiceList.Add($"services.TryAdd{serviceLevel}<{serviceType}, {className}>();");
-                    if (!string.IsNullOrWhiteSpace(classNamespace)) namespaces.Add(classNamespace!);
-                    if (!string.IsNullOrWhiteSpace(serviceNamespace)) namespaces.Add(serviceNamespace!);
+                    if (!string.IsNullOrWhiteSpace(classNamespace))
+                    {
+                        namespaces.Add(classNamespace!);
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(serviceNamespace))
+                    {
+                        namespaces.Add(serviceNamespace!);
+                    }
                 }
             }
 
-            var serviceBody = new StringBuilder();
+            StringBuilder serviceBody = new();
             bool isFirstService = true;
-            foreach (var serviceModel in serviceList)
+            foreach (string? serviceModel in serviceList)
             {
                 if (isFirstService)
                 {
@@ -82,9 +102,9 @@ public class ServiceInjectionGenerator : IIncrementalGenerator
                 }
             }
 
-            var validatorBody = new StringBuilder();
+            StringBuilder validatorBody = new();
             bool isFirstValidator = true;
-            foreach (var validatorModel in validatorList)
+            foreach (string? validatorModel in validatorList)
             {
                 if (isFirstValidator)
                 {
@@ -97,9 +117,9 @@ public class ServiceInjectionGenerator : IIncrementalGenerator
                 }
             }
 
-            var externalServiceBody = new StringBuilder();
+            StringBuilder externalServiceBody = new();
             bool isFirstExternalService = true;
-            foreach (var externalServiceModel in externalServiceList)
+            foreach (string? externalServiceModel in externalServiceList)
             {
                 if (isFirstExternalService)
                 {
@@ -112,44 +132,53 @@ public class ServiceInjectionGenerator : IIncrementalGenerator
                 }
             }
 
-            var usingBuilder = new StringBuilder();
+            StringBuilder usingBuilder = new();
 
             usingBuilder.AppendLine("using Microsoft.Extensions.DependencyInjection;");
             usingBuilder.AppendLine("using Microsoft.Extensions.DependencyInjection.Extensions;");
             usingBuilder.AppendLine("using FluentValidation;");
-            
-            foreach (var ns in namespaces.Distinct().OrderBy(s => s))
+
+            foreach (string? ns in namespaces.Distinct().OrderBy(s => s))
             {
-                if (string.IsNullOrWhiteSpace(ns)) continue;
-                if (ns == "Microsoft.Extensions.DependencyInjection" || ns == "Microsoft.Extensions.DependencyInjection.Extensions" || ns == "FluentValidation") continue;
+                if (string.IsNullOrWhiteSpace(ns))
+                {
+                    continue;
+                }
+
+                if (ns is "Microsoft.Extensions.DependencyInjection" or "Microsoft.Extensions.DependencyInjection.Extensions" or "FluentValidation")
+                {
+                    continue;
+                }
+
                 usingBuilder.AppendLine($"using {ns};");
             }
 
 
+            string codeToGenerate = $$"""
+                                      // <auto-generated/>
+                                      {{usingBuilder}}
+                                      namespace FinanceTracker
+                                      {
+                                          public partial class Program
+                                          {
+                                              public static void AddFinanceTrackerServices(IServiceCollection services)
+                                              {
+                                                  {{serviceBody}}
+                                              }
 
-            var codeToGenerate = $@"// <auto-generated/>
-{usingBuilder}
-namespace FinanceTracker
-{{
-    public partial class Program 
-    {{
-        public static void AddFinanceTrackerServices(IServiceCollection services)
-        {{
-            {serviceBody}
-        }}
+                                              public static void AddFinanceTrackerValidators(IServiceCollection services)
+                                              {
+                                                  {{validatorBody}}
+                                              }
 
-        public static void AddFinanceTrackerValidators(IServiceCollection services)
-        {{
-            {validatorBody}
-        }}
+                                              public static void AddFinanceTrackerExternalServices(IServiceCollection services)
+                                              {
+                                                  {{externalServiceBody}}
+                                              }
 
-        public static void AddFinanceTrackerExternalServices(IServiceCollection services)
-        {{
-            {externalServiceBody}
-        }}
-
-    }}
-}}";
+                                          }
+                                      }
+                                      """;
 
             spc.AddSource("Program.g.cs", SourceText.From(codeToGenerate, Encoding.UTF8));
         });
@@ -160,46 +189,59 @@ namespace FinanceTracker
         List<(INamedTypeSymbol Type, string ServiceLevel, string ServiceType, string Category)> typesToInject)
     {
         if (namespaceSymbol == null)
-            return;
-
-        foreach (var member in namespaceSymbol.GetMembers())
         {
-            if (member is INamedTypeSymbol typeSymbol && typeSymbol.TypeKind == TypeKind.Class && !typeSymbol.IsAbstract)
-            {
-                var (hasServiceLevel, serviceLevel, serviceType) = GetServiceLevelAttribute(typeSymbol);
-                var (hasCategory, category) = GetCategoryAttribute(typeSymbol);
+            return;
+        }
 
-                if (hasServiceLevel && hasCategory && !string.IsNullOrWhiteSpace(serviceType))
-                {
-                    typesToInject.Add((typeSymbol, serviceLevel, serviceType, category));
-                }
-            }
-            else if (member is INamespaceSymbol nestedNamespace)
+        foreach (INamespaceOrTypeSymbol? member in namespaceSymbol.GetMembers())
+        {
+            switch (member)
             {
-                CollectTypesWithAttributes(nestedNamespace, typesToInject);
+                case INamedTypeSymbol { TypeKind: TypeKind.Class, IsAbstract: false } typeSymbol:
+                {
+                    (bool hasServiceLevel, string serviceLevel, string serviceType) = GetServiceLevelAttribute(typeSymbol);
+                    (bool hasCategory, string category) = GetCategoryAttribute(typeSymbol);
+
+                    if (hasServiceLevel && hasCategory && !string.IsNullOrWhiteSpace(serviceType))
+                    {
+                        typesToInject.Add((typeSymbol, serviceLevel, serviceType, category));
+                    }
+
+                    break;
+                }
+                case INamespaceSymbol nestedNamespace:
+                    CollectTypesWithAttributes(nestedNamespace, typesToInject);
+                    break;
             }
         }
     }
 
-    private static (bool HasAttribute, string ServiceLevel, string ServiceType) GetServiceLevelAttribute(INamedTypeSymbol typeSymbol)
+    private static (bool HasAttribute, string ServiceLevel, string ServiceType) GetServiceLevelAttribute(
+        INamedTypeSymbol typeSymbol)
     {
-        foreach (var attribute in typeSymbol.GetAttributes())
+        foreach (AttributeData? attribute in typeSymbol.GetAttributes())
         {
-            var attributeName = attribute.AttributeClass?.Name ?? string.Empty;
+            string attributeName = attribute.AttributeClass?.Name ?? string.Empty;
 
             if (attributeName.StartsWith(SourceGeneratorConstants.ScopedAttributeName))
             {
-                var serviceType = GetGenericArgumentFromAttribute(attribute);
+                string serviceType = GetGenericArgumentFromAttribute(attribute);
                 return (true, "Scoped", serviceType);
             }
-            else if (attributeName.StartsWith(SourceGeneratorConstants.TransientAttributeName))
+
+            if (attributeName.StartsWith(SourceGeneratorConstants.TransientAttributeName))
             {
-                var serviceType = GetGenericArgumentFromAttribute(attribute);
+                string serviceType = GetGenericArgumentFromAttribute(attribute);
                 return (true, "Transient", serviceType);
             }
-            else if (attributeName.StartsWith(SourceGeneratorConstants.SingletonAttributeName))
+
+            if (!attributeName.StartsWith(SourceGeneratorConstants.SingletonAttributeName))
             {
-                var serviceType = GetGenericArgumentFromAttribute(attribute);
+                continue;
+            }
+
+            {
+                string serviceType = GetGenericArgumentFromAttribute(attribute);
                 return (true, "Singleton", serviceType);
             }
         }
@@ -209,32 +251,37 @@ namespace FinanceTracker
 
     private static (bool HasAttribute, string Category) GetCategoryAttribute(INamedTypeSymbol typeSymbol)
     {
-        foreach (var attribute in typeSymbol.GetAttributes())
+        // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
+        // This is easier to understand
+        foreach (AttributeData? attribute in typeSymbol.GetAttributes())
         {
-            var attributeName = attribute.AttributeClass?.Name ?? string.Empty;
+            string attributeName = attribute.AttributeClass?.Name ?? string.Empty;
 
-            if (attributeName.StartsWith(SourceGeneratorConstants.InjectionCategoryAttributeName))
+            if (!attributeName.StartsWith(SourceGeneratorConstants.InjectionCategoryAttributeName))
             {
-                if (attribute.ConstructorArguments.Length > 0)
-                {
-                    var categoryValue = attribute.ConstructorArguments[0];
+                continue;
+            }
 
-                    if (categoryValue.Value is int enumValue)
-                    {
-                        var enumType = categoryValue.Type as INamedTypeSymbol;
-                        if (enumType != null && enumType.TypeKind == TypeKind.Enum)
-                        {
-                            var enumMember = enumType.GetMembers()
-                                .OfType<IFieldSymbol>()
-                                .FirstOrDefault(f => f.ConstantValue != null && (int)f.ConstantValue == enumValue);
+            if (attribute.ConstructorArguments.Length <= 0)
+            {
+                continue;
+            }
 
-                            if (enumMember != null)
-                            {
-                                return (true, enumMember.Name);
-                            }
-                        }
-                    }
-                }
+            TypedConstant categoryValue = attribute.ConstructorArguments[0];
+
+            if (categoryValue is not
+                { Value: int enumValue, Type: INamedTypeSymbol { TypeKind: TypeKind.Enum } enumType })
+            {
+                continue;
+            }
+
+            IFieldSymbol? enumMember = enumType.GetMembers()
+                .OfType<IFieldSymbol>()
+                .FirstOrDefault(f => f.ConstantValue != null && (int)f.ConstantValue == enumValue);
+
+            if (enumMember != null)
+            {
+                return (true, enumMember.Name);
             }
         }
 
@@ -243,32 +290,32 @@ namespace FinanceTracker
 
     private static string GetGenericArgumentFromAttribute(AttributeData attribute)
     {
-        if (attribute.AttributeClass != null && attribute.AttributeClass.TypeArguments.Length > 0)
+        if (attribute.AttributeClass is not { TypeArguments.Length: > 0 })
         {
-            var typeArg = attribute.AttributeClass.TypeArguments[0];
-            return typeArg.ToDisplayString();
+            return string.Empty;
         }
 
-        return string.Empty;
+        ITypeSymbol typeArg = attribute.AttributeClass.TypeArguments[0];
+        return typeArg.ToDisplayString();
+
     }
 
     private static string? ExtractNamespace(string fullyQualifiedType)
     {
-        if (fullyQualifiedType.Contains('.'))
+        if (!fullyQualifiedType.Contains('.'))
         {
-            var nonGenericType = fullyQualifiedType;
-            if (fullyQualifiedType.Contains('<'))
-            {
-                nonGenericType = fullyQualifiedType.Substring(0, fullyQualifiedType.IndexOf('<'));
-            }
-
-            var parts = nonGenericType.Split('.');
-            if (parts.Length > 1)
-            {
-                return string.Join(".", parts.Take(parts.Length - 1));
-            }
+            return null;
         }
 
-        return null;
+        string nonGenericType = fullyQualifiedType;
+        if (fullyQualifiedType.Contains('<'))
+        {
+            nonGenericType = fullyQualifiedType.Substring(0, fullyQualifiedType.IndexOf('<'));
+        }
+
+        string[] parts = nonGenericType.Split('.');
+
+
+        return parts.Length > 1 ? string.Join(".", parts.Take(parts.Length - 1)) : null;
     }
 }

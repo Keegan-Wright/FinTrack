@@ -2,7 +2,7 @@ namespace FinanceTracker.Configurations;
 
 public sealed class EncryptionSettings
 {
-    public string SymmetricKey { get; set; }
-    public string SymmetricSalt { get; set; }
-    public int Iterations { get; set; } = 600000;
+    public required string SymmetricKey { get; init; }
+    public required string SymmetricSalt { get; init; }
+    public int Iterations { get; init; } = 600000;
 }

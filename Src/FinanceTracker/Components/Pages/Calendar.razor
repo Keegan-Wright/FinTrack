@@ -1,0 +1,48 @@
+@page "/Calendar"
+@using FinanceTracker.Models.Response.Calendar
+@using FinanceTracker.Services.Calendar
+@using Microsoft.AspNetCore.Authorization
+@inherits PageComponent
+
+@attribute [Authorize]
+@inject ICalendarService CalendarService
+
+<PageTitle>Accounts</PageTitle>
+
+<MudGrid Spacing="4">
+    <MudDatePicker bind-Date="" DateChanged="@SelectedDateUpdatedAsync"></MudDatePicker>
+
+</MudGrid>
+
+@code {
+
+    private readonly List<CalendarItemsResponse> _calendarItems = [];
+    private DateTime _selectedMonthYear = DateTime.UtcNow;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        await LoadSelectedCalendarMonthAsync();
+    }
+
+    private async Task SelectedDateUpdatedAsync(DateTime? obj)
+    {
+        if (obj is null)
+            return;
+
+        _selectedMonthYear = obj.Value;
+        await LoadSelectedCalendarMonthAsync();
+    }
+
+    private async Task LoadSelectedCalendarMonthAsync()
+    {
+        SetLoadingState(true, "Loading your calendar");
+        await foreach (var monthItem in CalendarService.GetMonthItemsAsync(_selectedMonthYear.Month, _selectedMonthYear.Year, _cts.Token))
+        {
+            _calendarItems.Add(monthItem);
+        }
+
+        SetLoadingState(false);
+    }
+
+}

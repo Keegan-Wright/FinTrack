@@ -1,7 +1,7 @@
 @page "/HouseholdMembers"
 @using FinanceTracker.Components.Dialogs
 @using FinanceTracker.Models.Request.HouseholdMember
-@using FinanceTracker.Models.Response.HouseholdMember
+@using FinanceTracker.Models.Response.HouseholdMembers
 @using FinanceTracker.Services.HouseholdMembers
 @using Microsoft.AspNetCore.Authorization
 @inherits PageComponent
@@ -12,46 +12,50 @@
 @inject ISnackbar Snackbar
 
 <PageTitle>Household</PageTitle>
-<MudIconButton Icon="@Icons.Material.Filled.PersonAdd" Variant="Variant.Filled" Color="Color.Primary" OnClick="@AddHouseholdMember">Add Member</MudIconButton>
+<MudIconButton Icon="@Icons.Material.Filled.PersonAdd" Variant="Variant.Filled" Color="Color.Primary"
+               OnClick="@AddHouseholdMember">Add Member
+</MudIconButton>
 
 <MudGrid Class="my-2">
-            @foreach (var member in _houseHoldMembers)
-            {
-                <MudItem xs="12" md="12" lg="6" xl="4" Class="d-flex">
-                    
-                    <MudCard Elevation="1">
-                        <MudCardContent Class="my-2">
-                            
-                            <MudGrid>
-                                <MudItem xs="1">
-                                    <MudIcon Icon="@Icons.Material.Filled.Person"></MudIcon>
-                                </MudItem>
-                                <MudItem xs="11">
-                                    <MudText Typo="Typo.h6">
-                                        @member.FirstName @member.LastName
-                                    </MudText>
-                                    <MudText Typo="Typo.caption">
-                                        @member.Income?.ToString("c")
-                                    </MudText>
-                                </MudItem>
-                            </MudGrid>
-                        </MudCardContent>
-                    </MudCard>
-                </MudItem>
-            }
-        </MudGrid>
+    @foreach (var member in _houseHoldMembers)
+    {
+        <MudItem xs="12" md="12" lg="6" xl="4" Class="d-flex">
+
+            <MudCard Elevation="1">
+                <MudCardContent Class="my-2">
+
+                    <MudGrid>
+                        <MudItem xs="1">
+                            <MudIcon Icon="@Icons.Material.Filled.Person"></MudIcon>
+                        </MudItem>
+                        <MudItem xs="11">
+                            <MudText Typo="Typo.h6">
+                                @member.FirstName @member.LastName
+                            </MudText>
+                            <MudText Typo="Typo.caption">
+                                @member.Income?.ToString("c")
+                            </MudText>
+                        </MudItem>
+                    </MudGrid>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    }
+</MudGrid>
+
 @code {
 
-    private readonly List<HouseholdMemberResponse> _houseHoldMembers  = [];
+    private readonly List<HouseholdMemberResponse> _houseHoldMembers = [];
 
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
         SetLoadingState(true, "Loading your household");
-        await foreach (var members in HouseholdMemberService.GetHouseholdMembersAsync(Cts.Token))
+        await foreach (var members in HouseholdMemberService.GetHouseholdMembersAsync(_cts.Token))
         {
             _houseHoldMembers.Add(members);
         }
+
         SetLoadingState(false);
     }
 
@@ -60,9 +64,9 @@
         var dialogRef = await DialogService.ShowAsync<AddHouseholdMemberDialog>();
         var dialogActionResult = await dialogRef.Result;
 
-        if(dialogActionResult is null)
+        if (dialogActionResult is null)
             return;
-        
+
         if (dialogActionResult.Canceled)
         {
             Snackbar.Add("Household member creation cancelled");
@@ -72,10 +76,10 @@
             try
             {
                 SetLoadingState(true, "Adding member");
-                var householdMember = await HouseholdMemberService.AddHouseholdMemberAsync((AddHouseholdMemberRequest)dialogActionResult.Data!, Cts.Token);
+                var householdMember = await HouseholdMemberService.AddHouseholdMemberAsync((AddHouseholdMemberRequest)dialogActionResult.Data!, _cts.Token);
                 _houseHoldMembers.Add(householdMember);
             }
-            catch (Exception _)
+            catch (Exception)
             {
                 Snackbar.Add("Error occured adding household member");
             }
@@ -85,4 +89,5 @@
             }
         }
     }
+
 }

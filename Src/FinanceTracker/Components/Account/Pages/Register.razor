@@ -1,9 +1,9 @@
 ﻿@page "/Account/Register"
 @using Blazilla
-@using Microsoft.AspNetCore.Identity
 @using FinanceTracker.Data.Models
 @using FinanceTracker.Models.Request.Auth
 @using FluentValidation
+@using Microsoft.AspNetCore.Identity
 
 @inject UserManager<FinanceTrackerUser> UserManager
 @inject IUserStore<FinanceTrackerUser> UserStore
@@ -17,47 +17,51 @@
 
 <MudText Typo="Typo.h3" GutterBottom="true" Align="Align.Center">Register</MudText>
 
-<EditForm Model="@RegisterRequest" asp-route-returnUrl="@ReturnUrl" method="post" OnValidSubmit="@RegisterUser" FormName="register">
-    <FluentValidator />
+<EditForm Model="@RegisterRequest" asp-route-returnUrl="@ReturnUrl" method="post" OnValidSubmit="@RegisterUser"
+          FormName="register">
+    <FluentValidator/>
     <MudText Typo="Typo.body1" GutterBottom="true">Create a new account.</MudText>
 
     <MudGrid>
         <MudItem xs="12">
             <MudStaticTextField For="@(() => RegisterRequest.Username)" @bind-Value="RegisterRequest.Username"
                                 Label="Username" Placeholder="Username"
-                                UserAttributes="@(new() { { "autocomplete", "username" }, { "aria-required", "true" } })"/>
+                                UserAttributes="@(new Dictionary<string, object?> { { "autocomplete", "username" }, { "aria-required", "true" } })"/>
             <ValidationMessage For="@(() => RegisterRequest.Username)"/>
         </MudItem>
         <MudItem xs="12">
             <MudStaticTextField For="@(() => RegisterRequest.FirstName)" @bind-Value="RegisterRequest.FirstName"
                                 Label="FirstName" Placeholder="FirstName"
-                                UserAttributes="@(new() { { "autocomplete", "firstname" }, { "aria-required", "true" } })"/>
+                                UserAttributes="@(new Dictionary<string, object?> { { "autocomplete", "firstname" }, { "aria-required", "true" } })"/>
             <ValidationMessage For="@(() => RegisterRequest.FirstName)"/>
         </MudItem>
         <MudItem xs="12">
             <MudStaticTextField For="@(() => RegisterRequest.LastName)" @bind-Value="RegisterRequest.LastName"
                                 Label="LastName" Placeholder="LastName"
-                                UserAttributes="@(new() { { "autocomplete", "LastName" }, { "aria-required", "true" } })"/>
+                                UserAttributes="@(new Dictionary<string, object?> { { "autocomplete", "LastName" }, { "aria-required", "true" } })"/>
             <ValidationMessage For="@(() => RegisterRequest.LastName)"/>
         </MudItem>
         <MudItem xs="12">
             <MudStaticTextField For="@(() => RegisterRequest.Email)" @bind-Value="RegisterRequest.Email"
                                 Label="Email" Placeholder="name@example.com"
-                                UserAttributes="@(new() { { "autocomplete", "email" }, { "aria-required", "true" } })"/>
+                                UserAttributes="@(new Dictionary<string, object?> { { "autocomplete", "email" }, { "aria-required", "true" } })"/>
             <ValidationMessage For="@(() => RegisterRequest.Email)"/>
         </MudItem>
         <MudItem xs="12">
             <MudStaticTextField For="@(() => RegisterRequest.Password)" @bind-Value="RegisterRequest.Password"
                                 Label="Password" InputType="InputType.Password" Placeholder="Password"
-                                UserAttributes="@(new() { { "autocomplete", "new-password" }, { "aria-required", "true" } })"/>
+                                UserAttributes="@(new Dictionary<string, object?> { { "autocomplete", "new-password" }, { "aria-required", "true" } })"/>
         </MudItem>
         <MudItem xs="12">
-            <MudStaticTextField For="@(() => RegisterRequest.ConfirmPassword)" @bind-Value="RegisterRequest.ConfirmPassword"
+            <MudStaticTextField For="@(() => RegisterRequest.ConfirmPassword)"
+                                @bind-Value="RegisterRequest.ConfirmPassword"
                                 Label="Confirm Password" InputType="InputType.Password" Placeholder="Confirm password"
-                                UserAttributes="@(new() { { "aria-required", "true" } })"/>
+                                UserAttributes="@(new Dictionary<string, object?> { { "aria-required", "true" } })"/>
         </MudItem>
         <MudItem xs="12">
-            <MudStaticButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" FormAction="FormAction.Submit">Register</MudStaticButton>
+            <MudStaticButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                             FormAction="FormAction.Submit">Register
+            </MudStaticButton>
         </MudItem>
     </MudGrid>
 </EditForm>
@@ -71,24 +75,27 @@
 
 <MudGrid Class="mt-4">
     <MudItem xs="12">
-        <MudLink Href="@(NavigationManager.GetUriWithQueryParameters("Account/Login", new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))">Already a user?</MudLink>
+        <MudLink
+            Href="@(NavigationManager.GetUriWithQueryParameters("Account/Login", new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))">
+            Already a user?
+        </MudLink>
     </MudItem>
 </MudGrid>
 
 @code {
     private IEnumerable<IdentityError>? identityErrors;
 
-    [SupplyParameterFromForm]private RegisterRequest RegisterRequest { get; set; } = new();
+    [SupplyParameterFromForm] private RegisterRequest RegisterRequest { get; set; } = new();
 
     [SupplyParameterFromQuery] private string? ReturnUrl { get; set; }
 
     private async Task RegisterUser(EditContext editContext)
     {
         var validationResult = await Validator.ValidateAsync(RegisterRequest);
-        if(!validationResult.IsValid)
+        if (!validationResult.IsValid)
             return;
 
-        var user = new FinanceTrackerUser()
+        var user = new FinanceTrackerUser
         {
             UserName = RegisterRequest.Username,
             FirstName = RegisterRequest.FirstName!,
@@ -97,7 +104,7 @@
         };
 
         await UserStore.SetUserNameAsync(user, RegisterRequest.Username, CancellationToken.None);
-        
+
         var result = await UserManager.CreateAsync(user, RegisterRequest.Password!);
 
         if (!result.Succeeded)
@@ -107,8 +114,9 @@
         }
 
         Logger.LogInformation("User created a new account with password.");
-        
-        await SignInManager.SignInAsync(user, isPersistent: false);
+
+        await SignInManager.SignInAsync(user, false);
         RedirectManager.RedirectTo(ReturnUrl);
     }
+
 }

@@ -4,11 +4,11 @@ namespace FinanceTracker.Models.External;
 
 public class ExternalOpenBankingAccountStandingOrder
 {
-    public string Frequency { get; set; }
-    public string Status { get; set; }
+    public string Frequency { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
     public DateTime Timestamp { get; set; }
-    public string Currency { get; set; }
-    public ExternalOpenBankingStandingOrderMetadata Meta { get; set; }
+    public string Currency { get; set; } = string.Empty;
+    public ExternalOpenBankingStandingOrderMetadata? Meta { get; set; }
 
     [JsonPropertyName("next_payment_date")]
     public DateTime NextPaymentDate { get; set; }
@@ -27,6 +27,7 @@ public class ExternalOpenBankingAccountStandingOrder
 
     [JsonPropertyName("final_payment_amount")]
     public int FinalPaymentAmount { get; set; }
-    public string Reference { get; set; }
-    public string Payee { get; set; }
+
+    public string Reference { get; set; } = string.Empty;
+    public string Payee { get; set; } = string.Empty;
 }

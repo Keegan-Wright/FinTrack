@@ -5,8 +5,8 @@ namespace FinanceTracker.Models.Response.Reports.Account;
 public class SpentInAccountReportYearlyBreakdownResponse : SharedReportResponse
 {
     [Description("Year for which the spending breakdown is provided")]
-    public int Year { get; set; }
+    public int Year { get; init; }
 
     [Description("Monthly breakdown of spending for the specified year")]
-    public IList<SpentInAccountReportMonthlyBreakdownResponse> MonthlyBreakdown { get; set; } = [];
+    public IList<SpentInAccountReportMonthlyBreakdownResponse> MonthlyBreakdown { get; } = [];
 }

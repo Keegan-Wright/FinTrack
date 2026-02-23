@@ -1,10 +1,9 @@
 ﻿@page "/Account/Login"
 @using Blazilla
-@using Microsoft.AspNetCore.Authentication
-@using Microsoft.AspNetCore.Identity
 @using FinanceTracker.Data.Models
 @using FinanceTracker.Models.Request.Auth
 @using FluentValidation
+@using Microsoft.AspNetCore.Identity
 
 @inject SignInManager<FinanceTrackerUser> SignInManager
 @inject ILogger<Login> Logger
@@ -17,34 +16,42 @@
 <MudText Typo="Typo.h3" GutterBottom="true" Align="Align.Center">Log in</MudText>
 
 <EditForm Model="LoginRequest" method="post" OnValidSubmit="LoginUser" FormName="login">
-    <FluentValidator />
-    
+    <FluentValidator/>
+
     <MudText GutterBottom="true" Typo="Typo.body1">Use a local account to log in.</MudText>
 
     <MudGrid>
         <MudItem xs="12">
             <MudStaticTextField For="@(() => LoginRequest.Username)" @bind-Value="LoginRequest.Username"
                                 Label="Username" Placeholder="Username"
-                                UserAttributes="@(new() { { "autocomplete", "username" }, { "aria-required", "true" } })"/>
+                                UserAttributes="@(new Dictionary<string, object?> { { "autocomplete", "username" }, { "aria-required", "true" } })"/>
         </MudItem>
         <MudItem xs="12">
             <MudStaticTextField For="@(() => LoginRequest.Password)" @bind-Value="LoginRequest.Password"
                                 Label="Password" InputType="InputType.Password" Placeholder="password"
-                                UserAttributes="@(new() { { "autocomplete", "current-password" }, { "aria-required", "true" } })"/>
+                                UserAttributes="@(new Dictionary<string, object?> { { "autocomplete", "current-password" }, { "aria-required", "true" } })"/>
         </MudItem>
         <MudItem xs="12">
-            <MudStaticCheckBox For="@(() => LoginRequest.RememberMe)" @bind-Value="LoginRequest.RememberMe">Remember me</MudStaticCheckBox>
+            <MudStaticCheckBox For="@(() => LoginRequest.RememberMe)" @bind-Value="LoginRequest.RememberMe">Remember
+                me
+            </MudStaticCheckBox>
         </MudItem>
         <MudItem xs="12">
-            <MudStaticButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" FormAction="FormAction.Submit">Log in</MudStaticButton>
+            <MudStaticButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                             FormAction="FormAction.Submit">Log in
+            </MudStaticButton>
         </MudItem>
     </MudGrid>
 </EditForm>
 
 <MudGrid Class="mt-4">
     <MudItem xs="12">
-        <MudLink Href="Account/ForgotPassword">Forgot your password?</MudLink><br/>
-        <MudLink Href="@(NavigationManager.GetUriWithQueryParameters("Account/Register", new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))">Register as a new user</MudLink>
+        <MudLink Href="Account/ForgotPassword">Forgot your password?</MudLink>
+        <br/>
+        <MudLink
+            Href="@(NavigationManager.GetUriWithQueryParameters("Account/Register", new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))">
+            Register as a new user
+        </MudLink>
     </MudItem>
 </MudGrid>
 
@@ -56,12 +63,12 @@
     [SupplyParameterFromForm] private LoginRequest LoginRequest { get; set; } = new();
 
     [SupplyParameterFromQuery] private string? ReturnUrl { get; set; }
-    
+
     public async Task LoginUser()
     {
         // This doesn't count login failures towards account lockout
         // To enable password failures to trigger account lockout, set lockoutOnFailure: true
-        var result = await SignInManager.PasswordSignInAsync(LoginRequest.Username, LoginRequest.Password, LoginRequest.RememberMe, lockoutOnFailure: true);
+        var result = await SignInManager.PasswordSignInAsync(LoginRequest.Username, LoginRequest.Password, LoginRequest.RememberMe, true);
         if (result.Succeeded)
         {
             Logger.LogInformation("User logged in.");
@@ -77,4 +84,5 @@
             errorMessage = "Error: Invalid login attempt.";
         }
     }
+
 }

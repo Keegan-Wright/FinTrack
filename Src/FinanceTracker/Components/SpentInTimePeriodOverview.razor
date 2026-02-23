@@ -5,39 +5,44 @@
             <MudPaper Outlined="true" Class="pa-4 h-100" Elevation="0">
                 <MudStack Spacing="1">
                     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                        <MudIcon Icon="@Icons.Material.Filled.TrendingUp" Size="Size.Small" Color="Color.Success"></MudIcon>
+                        <MudIcon Icon="@Icons.Material.Filled.TrendingUp" Size="Size.Small"
+                                 Color="Color.Success"></MudIcon>
                         <MudText Typo="Typo.caption" Class="mud-text-secondary">Total In</MudText>
                     </MudStack>
                     <MudText Typo="Typo.h6" Color="Color.Success">@TotalIn.ToString("C")</MudText>
                     @if (PerDayAverageIn.HasValue && DaysInPeriod > 0)
                     {
-                        <MudText Typo="Typo.caption" Class="mud-text-secondary">Avg/day: @PerDayAverageIn.Value.ToString("C")</MudText>
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                            Avg/day: @PerDayAverageIn.Value.ToString("C")</MudText>
                     }
                 </MudStack>
             </MudPaper>
         </MudItem>
-        
+
         <MudItem xs="12" sm="6" md="3">
             <MudPaper Outlined="true" Class="pa-4 h-100" Elevation="0">
                 <MudStack Spacing="1">
                     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                        <MudIcon Icon="@Icons.Material.Filled.TrendingDown" Size="Size.Small" Color="Color.Error"></MudIcon>
+                        <MudIcon Icon="@Icons.Material.Filled.TrendingDown" Size="Size.Small"
+                                 Color="Color.Error"></MudIcon>
                         <MudText Typo="Typo.caption" Class="mud-text-secondary">Total Out</MudText>
                     </MudStack>
                     <MudText Typo="Typo.h6" Color="Color.Error">@TotalOut.ToString("C")</MudText>
                     @if (PerDayAverageOut.HasValue && DaysInPeriod > 0)
                     {
-                        <MudText Typo="Typo.caption" Class="mud-text-secondary">Avg/day: @PerDayAverageOut.Value.ToString("C")</MudText>
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                            Avg/day: @PerDayAverageOut.Value.ToString("C")</MudText>
                     }
                 </MudStack>
             </MudPaper>
         </MudItem>
-        
+
         <MudItem xs="12" sm="6" md="3">
             <MudPaper Outlined="true" Class="pa-4 h-100" Elevation="0">
                 <MudStack Spacing="1">
                     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                        <MudIcon Icon="@Icons.Material.Filled.Calculate" Size="Size.Small" Color="Color.Tertiary"></MudIcon>
+                        <MudIcon Icon="@Icons.Material.Filled.Calculate" Size="Size.Small"
+                                 Color="Color.Tertiary"></MudIcon>
                         <MudText Typo="Typo.caption" Class="mud-text-secondary">Difference</MudText>
                     </MudStack>
                     <MudText Typo="Typo.h6" Color="Color.Tertiary">@Normalised.ToString("C")</MudText>
@@ -57,7 +62,8 @@
                         var trendIndicator = GetTrendIndicator();
                     }
                     <MudText Typo="Typo.h6" Color="@trendColor">@trendIndicator</MudText>
-                    <MudText Typo="Typo.caption" Color="Color.Info">@(TrendPercentage?.ToString("P2") ?? "N/A")</MudText>
+                    <MudText Typo="Typo.caption"
+                             Color="Color.Info">@(TrendPercentage?.ToString("P2") ?? "N/A")</MudText>
                 </MudStack>
             </MudPaper>
         </MudItem>
@@ -66,40 +72,31 @@
 
 @code{
 
-    [Parameter, EditorRequired]
-    public string Title { get; set; }
+    [Parameter] [EditorRequired] public string Title { get; set; }
 
-    [Parameter, EditorRequired]
-    public decimal TotalIn { get; set; }
+    [Parameter] [EditorRequired] public decimal TotalIn { get; set; }
 
-    [Parameter, EditorRequired]
-    public decimal TotalOut { get; set; }
+    [Parameter] [EditorRequired] public decimal TotalOut { get; set; }
 
-    [Parameter, EditorRequired]
-    public decimal Normalised { get; set; }
+    [Parameter] [EditorRequired] public decimal Normalised { get; set; }
 
-    [Parameter]
-    public decimal? PerDayAverageIn { get; set; }
+    [Parameter] public decimal? PerDayAverageIn { get; set; }
 
-    [Parameter]
-    public decimal? PerDayAverageOut { get; set; }
+    [Parameter] public decimal? PerDayAverageOut { get; set; }
 
-    [Parameter]
-    public int DaysInPeriod { get; set; }
+    [Parameter] public int DaysInPeriod { get; set; }
 
-    [Parameter]
-    public decimal? TrendValue { get; set; }
+    [Parameter] public decimal? TrendValue { get; set; }
 
-    [Parameter]
-    public decimal? TrendPercentage { get; set; }
+    [Parameter] public decimal? TrendPercentage { get; set; }
 
     private string GetTrendIcon()
     {
         if (TrendValue == null)
             return Icons.Material.Filled.Remove;
 
-        return TrendValue > 0 
-            ? Icons.Material.Filled.TrendingUp 
+        return TrendValue > 0
+            ? Icons.Material.Filled.TrendingUp
             : Icons.Material.Filled.TrendingDown;
     }
 
@@ -113,12 +110,12 @@
 
     private Color GetTrendColor()
     {
-
         if (TrendValue == null)
             return Color.Primary;
 
-        return TrendValue > 0 
+        return TrendValue > 0
             ? Color.Error
             : Color.Success;
     }
+
 }

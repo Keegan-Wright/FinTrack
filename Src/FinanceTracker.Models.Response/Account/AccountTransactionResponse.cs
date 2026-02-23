@@ -5,14 +5,14 @@ namespace FinanceTracker.Models.Response.Account;
 public class AccountTransactionResponse
 {
     [Description("Description of the transaction")]
-    public string Description { get; set; }
+    public required string Description { get; init; }
 
     [Description("Amount of the transaction")]
-    public decimal Amount { get; set; }
+    public required decimal Amount { get; init; }
 
     [Description("Time when the transaction occurred")]
-    public DateTime Time { get; set; }
+    public required DateTime Time { get; init; }
 
     [Description("Status of the transaction")]
-    public string Status { get; set; }
+    public required string Status { get; init; }
 }
