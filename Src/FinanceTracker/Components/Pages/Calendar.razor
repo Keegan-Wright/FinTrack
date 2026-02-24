@@ -10,7 +10,45 @@
 <PageTitle>Accounts</PageTitle>
 
 <MudGrid Spacing="4">
-    <MudDatePicker bind-Date="" DateChanged="@SelectedDateUpdatedAsync"></MudDatePicker>
+    <MudItem xs="4">
+        <MudDatePicker bind-Date="_selectedMonthYear" DateChanged="@SelectedDateUpdatedAsync"></MudDatePicker>
+    </MudItem>
+
+    <MudFlexBreak/>
+
+    @foreach (var calenderItem in _calendarItems)
+    {
+        <MudItem>
+            <MudCard>
+                <MudCardHeader>
+                    <MudText Typo="Typo.body1">@calenderItem.Date.ToShortDateString()</MudText>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudExpansionPanels>
+                        <MudExpansionPanel Text="Transactions">
+                            @foreach (var transaction in calenderItem.Transactions)
+                            {
+                                <MudText>@transaction.Description @transaction.Amount.ToString("C")</MudText>
+                            }
+                        </MudExpansionPanel>
+
+                        <MudExpansionPanel Text="Goals">
+                            @foreach (var goal in calenderItem.Goals)
+                            {
+                                <MudText>@goal.Name</MudText>
+                            }
+                        </MudExpansionPanel>
+
+                        <MudExpansionPanel Text="Events">
+                            @foreach (var userEvent in calenderItem.Events)
+                            {
+                            }
+                        </MudExpansionPanel>
+                    </MudExpansionPanels>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    }
 
 </MudGrid>
 
