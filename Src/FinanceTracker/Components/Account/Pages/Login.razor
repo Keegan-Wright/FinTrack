@@ -44,6 +44,15 @@
     </MudGrid>
 </EditForm>
 
+@if (errorMessage is not null)
+{
+    <MudGrid Class="mt-4">
+        <MudItem xs="12">
+            <MudText Align="Align.Center" Color="Color.Error">@errorMessage</MudText>
+        </MudItem>
+    </MudGrid>
+}
+
 <MudGrid Class="mt-4">
     <MudItem xs="12">
         <MudLink Href="Account/ForgotPassword">Forgot your password?</MudLink>
@@ -81,7 +90,7 @@
         }
         else
         {
-            errorMessage = "Error: Invalid login attempt.";
+            errorMessage = "Invalid login attempt.";
         }
     }
 
