@@ -35,8 +35,8 @@ public partial class Program
         builder.Services.AddScoped<IdentityRedirectManager>();
         builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
 
-        builder.AddRedisOutputCache("financeTrackerRedis");
-        builder.AddRedisDistributedCache("financeTrackerRedis");
+        builder.AddRedisOutputCache("FinTrack-Redis");
+        builder.AddRedisDistributedCache("FinTrack-Redis");
 
         builder.Services.AddAuthentication(options =>
             {
@@ -46,7 +46,7 @@ public partial class Program
             .AddIdentityCookies();
 
         builder.Services.AddDbContextFactory<FinanceTrackerContext>(options =>
-            options.UseNpgsql(builder.Configuration.GetConnectionString("financeTrackerPostgresDb"), npgsqlDbContextOptionsBuilder =>
+            options.UseNpgsql(builder.Configuration.GetConnectionString("FinTrackDb"), npgsqlDbContextOptionsBuilder =>
             {
                 npgsqlDbContextOptionsBuilder.MigrationsAssembly("FinanceTracker.Data.Migrations");
                 npgsqlDbContextOptionsBuilder.EnableRetryOnFailure();

@@ -6,7 +6,7 @@ IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(ar
 var registry = builder.AddContainerRegistry(
     "docker-hub",                              // Registry name
     "docker.io",                           // Registry endpoint
-    "keeganwright12/fintrack"     // Repository path
+   "keeganwright12"     // Repository path
 );
 
 IConfigurationSection openBankingConfig = builder.Configuration.GetSection("OpenBanking");
@@ -22,29 +22,16 @@ var openBankingAuthRedirectUrl = builder.AddParameter("OpenBanking-Auth-Redirect
 var openBankingClientId = builder.AddParameter("OpenBanking-Client-Id", openBankingConfig["TrueLayer:ClientId"] ?? string.Empty);
 var openBankingClientSecret = builder.AddParameter("OpenBanking-Client-Secret", openBankingConfig["TrueLayer:ClientSecret"] ?? string.Empty);
 
-builder.AddDockerComposeEnvironment("compose")
-    .WithDashboard(dashboard =>
-    {
-        dashboard.WithContainerName("FinTrack-Dashboard");
-        dashboard.WithHostPort(8080)
-            .WithForwardedHeaders();
-    });
 
 IResourceBuilder<RedisResource> redis = builder.AddRedis("FinTrack-Redis")
     .WithDataVolume(isReadOnly: false)
-    .WithPersistence(TimeSpan.FromMinutes(5))
-    .PublishAsDockerComposeService((resource, service) =>
-    {
-        service.Name = "FinTrack-Redis";
-    });
+    .WithPersistence(TimeSpan.FromMinutes(5));
+
 
 IResourceBuilder<PostgresServerResource> postgres = builder.AddPostgres("FinTrack-Postgres")
     .WithPgWeb()
-    .WithDataVolume(isReadOnly: false)
-    .PublishAsDockerComposeService((resource, service) =>
-    {
-        service.Name = "FinTrack-Postgres";
-    });
+    .WithDataVolume(isReadOnly: false);
+
 
 IResourceBuilder<PostgresDatabaseResource> postgresDb = postgres.AddDatabase("FinTrackDb");
 
@@ -62,11 +49,6 @@ builder.AddProject<Projects.FinanceTracker>("FinTrack")
     .WithReference(redis)
     .WithReference(postgresDb)
     .WaitFor(redis)
-    .WaitFor(postgresDb)
-    .PublishAsDockerComposeService((resource, service) =>
-    {
-        service.Name = "FinTrack";
-    })
-    .WithContainerRegistry(registry);
+    .WaitFor(postgresDb);
 
 await builder.Build().RunAsync();
