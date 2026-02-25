@@ -33,7 +33,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./Dockerfile
+          file: ./Src/Dockerfile
           push: true
           tags: | 
             keeganwright12/fintrackweb:echo ${{steps.tag.outputs.tag}}
