@@ -1,7 +1,6 @@
 name: Fintrack Build and Push Docker Images
 
 on:
-  workflow_dispatch: 
   push:
     tags:
       - 'v*'
