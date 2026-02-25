@@ -305,7 +305,7 @@ public class OpenBankingService : ServiceBase, IOpenBankingService
         await foreach (OpenBankingProvider provider in context.IsolateToUser(UserId)
                            .Include(x => x.Providers)!
                            .ThenInclude(x => x.Accounts)!
-                           .ThenInclude(x => x.Transactions)
+                           .ThenInclude(x => x.Transactions)!.ThenInclude(x => x.Classifications)
                            .Include(x => x.Providers)!.ThenInclude(x => x.Accounts)!.ThenInclude(x => x.AccountBalance)
                            .Include(x => x.Providers)!.ThenInclude(x => x.Scopes)
                            .Include(x => x.Providers)!.ThenInclude(x => x.Syncronisations)

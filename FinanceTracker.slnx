@@ -20,6 +20,11 @@
     <File Path=".github\workflows\Build.yml" />
     <File Path=".github\workflows\PublishDockerImages.yml" />
   </Folder>
+  <Folder Name="/Misc/Docker/">
+    <File Path="Docker\.env" />
+    <File Path="Docker\docker-compose.yaml" />
+    <File Path="Src\Dockerfile" />
+  </Folder>
   <Folder Name="/SourceGenerators/">
     <Project Path="Src/Generators/FinanceTracker.Generated.Helpers/FinanceTracker.Generated.Helpers.csproj" />
     <Project Path="Src/Generators/FinanceTracker.Generated.Attributes/FinanceTracker.Generated.Attributes/FinanceTracker.Generated.Attributes.csproj" />

@@ -7,6 +7,7 @@
     <AnalysisMode>Recommended</AnalysisMode>
     <AnalysisMode>Recommended</AnalysisMode>
     <UserSecretsId>aspnet-FinanceTracker-9a9b6489-4fce-4066-805b-f87a60ca0ad2</UserSecretsId>
+    <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
   </PropertyGroup>
 
 

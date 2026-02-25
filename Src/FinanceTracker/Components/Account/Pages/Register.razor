@@ -65,12 +65,17 @@
         </MudItem>
     </MudGrid>
 </EditForm>
+
 @if (identityErrors != null)
 {
-    foreach (var error in identityErrors)
-    {
-        <MudText Typo="Typo.body2" Color="Color.Error" GutterBottom="true">@error</MudText>
-    }
+    <MudGrid Class="mt-4">
+        @foreach (var error in identityErrors)
+        {
+            <MudItem xs="12">
+                <MudText Typo="Typo.body2" Align="Align.Center" Color="Color.Error" GutterBottom="true">@error.Description</MudText>
+            </MudItem>
+        }
+    </MudGrid>
 }
 
 <MudGrid Class="mt-4">

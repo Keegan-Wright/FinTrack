@@ -1,2 +1,46 @@
-name: FinTrack Publish
-## Placeholder
+name: Fintrack Build and Push Docker Images
+
+on:
+  push:
+    tags:
+      - 'v*'
+      
+jobs:
+  build-and-push-image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        
+      - name: Get tag
+        id: tag
+        uses: devops-actions/action-get-tag@v1.0.3
+
+      - name: DockerHub Login
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+                  
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Src/Dockerfile
+          push: true
+          tags: | 
+            keeganwright12/fintrackweb:echo ${{steps.tag.outputs.tag}}
+          platforms: linux/amd64,linux/arm64
+
+          
+
+# Execute dockerfile in srd dir
+# Make release tag configurable
+#docker buildx build . --push -t keeganwright12/fintrackweb:v0.0.1 --platform linux/arm/v7,linux/arm64/v8,linux/amd64

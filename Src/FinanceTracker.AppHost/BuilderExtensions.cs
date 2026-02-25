@@ -34,19 +34,11 @@ internal static class BuilderExtensions
             return resourceBuilder;
         }
 
-        public IResourceBuilder<T> AddAuth(IConfigurationSection authConfig)
-        {
-            resourceBuilder.WithEnvironment("AUTH_ISSUER",
-                authConfig["Issuer"]);
-            resourceBuilder.WithEnvironment("AUTH_AUDIENCE",
-                authConfig["Audience"]);
-            resourceBuilder.WithEnvironment("AUTH_SIGNING_KEY",
-                authConfig["SigningKey"]);
-            return resourceBuilder;
-        }
-
         public IResourceBuilder<T> AddEncryption(IConfigurationSection encryptionConfig)
         {
+
+
+
             resourceBuilder.WithEnvironment("ENCRYPTION_KEY",
                 encryptionConfig["SymmetricKey"]);
             resourceBuilder.WithEnvironment("ENCRYPTION_SALT",
