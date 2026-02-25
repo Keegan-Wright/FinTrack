@@ -1,2 +1,6 @@
 name: FinTrack Publish
 ## Placeholder
+
+# Execute dockerfile in srd dir
+# Make release tag configurable
+#docker buildx build . --push -t keeganwright12/fintrackweb:v0.0.1 --platform linux/arm/v7,linux/arm64/v8,linux/amd64
