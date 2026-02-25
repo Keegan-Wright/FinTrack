@@ -1,13 +1,19 @@
+using Aspire.Hosting.Docker.Resources.ComposeNodes;
 using Microsoft.Extensions.Configuration;
 #pragma warning disable ASPIRECOMPUTE003
+#pragma warning disable ASPIREPIPELINES003
 
 IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
 
+
+
 var registry = builder.AddContainerRegistry(
-    "docker-hub",                              // Registry name
-    "docker.io",                           // Registry endpoint
-   "keeganwright12"     // Repository path
+    "docker-hub",
+    "docker.io",
+    "keeganwright12"
 );
+
+builder.AddDockerComposeEnvironment("fintrack");
 
 IConfigurationSection openBankingConfig = builder.Configuration.GetSection("OpenBanking");
 IConfigurationSection encryptionConfig = builder.Configuration.GetSection("Encryption");
@@ -24,19 +30,27 @@ var openBankingClientSecret = builder.AddParameter("OpenBanking-Client-Secret", 
 
 
 IResourceBuilder<RedisResource> redis = builder.AddRedis("FinTrack-Redis")
-    .WithDataVolume(isReadOnly: false)
-    .WithPersistence(TimeSpan.FromMinutes(5));
+    .WithDataVolume()
+    .WithPersistence(TimeSpan.FromMinutes(5))
+    .PublishAsDockerComposeService((resource, service) =>
+    {
+        service.Restart = "unless-stopped";
+    });
 
 
 IResourceBuilder<PostgresServerResource> postgres = builder.AddPostgres("FinTrack-Postgres")
     .WithPgWeb()
-    .WithDataVolume(isReadOnly: false);
+    .WithDataVolume(isReadOnly: false)
+    .PublishAsDockerComposeService((resource, service) =>
+    {
+        service.Restart = "unless-stopped";
+    });
 
 
 IResourceBuilder<PostgresDatabaseResource> postgresDb = postgres.AddDatabase("FinTrackDb");
 
-#pragma warning disable ASPIREPIPELINES003
-builder.AddProject<Projects.FinanceTracker>("FinTrack")
+
+var finTrack = builder.AddProject<Projects.FinanceTracker>("FinTrackWeb")
 
     .WithEnvironment("ENCRYPTION_KEY", encryptionKey)
     .WithEnvironment("ENCRYPTION_SALT", encryptionSalt)
@@ -49,6 +63,13 @@ builder.AddProject<Projects.FinanceTracker>("FinTrack")
     .WithReference(redis)
     .WithReference(postgresDb)
     .WaitFor(redis)
-    .WaitFor(postgresDb);
+    .WaitFor(postgresDb)
+    .PublishAsDockerComposeService((resource, service) =>
+    {
+        service.Restart = "unless-stopped";
+    })
+    .WithContainerRegistry(registry)
+    .WithRemoteImageTag("v0.0.1");
+
 
 await builder.Build().RunAsync();

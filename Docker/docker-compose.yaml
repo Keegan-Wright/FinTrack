@@ -1,0 +1,89 @@
+services:
+  fintrack-redis:
+    image: "docker.io/library/redis:8.2"
+    command:
+      - "-c"
+      - "redis-server --requirepass $$REDIS_PASSWORD --save 300 1"
+    entrypoint:
+      - "/bin/sh"
+    environment:
+      REDIS_PASSWORD: "${FINTRACK_REDIS_PASSWORD}"
+    expose:
+      - "6379"
+    volumes:
+      - type: "volume"
+        target: "/data"
+        source: "FinTrack-Redis-data"
+        read_only: false
+    networks:
+      - "fintrack"
+    restart: "unless-stopped"
+  fintrack-postgres:
+    image: "docker.io/library/postgres:17.6"
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: "scram-sha-256"
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --auth-local=scram-sha-256"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "${FINTRACK_POSTGRES_PASSWORD}"
+    expose:
+      - "5432"
+    volumes:
+      - type: "volume"
+        target: "/var/lib/postgresql/data"
+        source: "FinTrack-Postgres-data"
+        read_only: false
+    networks:
+      - "fintrack"
+    restart: "unless-stopped"
+  fintrackweb:
+    image: "docker.io/keeganwright12/fintrackweb:latest"
+    ports:
+      - 8080:8080
+    environment:
+      OTEL_DOTNET_EXPERIMENTAL_OTLP_EMIT_EXCEPTION_LOG_ATTRIBUTES: "true"
+      OTEL_DOTNET_EXPERIMENTAL_OTLP_EMIT_EVENT_LOG_ATTRIBUTES: "true"
+      OTEL_DOTNET_EXPERIMENTAL_OTLP_RETRY: "in_memory"
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
+      HTTP_PORTS: 8080
+      ENCRYPTION_KEY: "${FINTRACK_SYMMETRIC_KEY}"
+      ENCRYPTION_SALT: "${FINTRACK_SYMMETRIC_SALT}"
+      ENCRYPTION_ITERATIONS: "${FINTRACK_SYMMETRIC_KEY_ITERATIONS}"
+      OPEN_BANKING_TRUELAYER_BASE_AUTH_URL: "${OPENBANKING_AUTH_URL}"
+      OPEN_BANKING_TRUELAYER_BASE_DATA_URL: "${OPENBANKING_DATA_URL}"
+      OPEN_BANKING_TRUELAYER_AUTH_REDIRECT_URL: "${OPENBANKING_AUTH_REDIRECT_URL}"
+      OPEN_BANKING_TRUELAYER_CLIENT_ID: "${OPENBANKING_CLIENT_ID}"
+      OPEN_BANKING_TRUELAYER_CLIENT_SECRET: "${OPENBANKING_CLIENT_SECRET}"
+      ConnectionStrings__FinTrack-Redis: "FinTrack-Redis:6379,password=${FINTRACK_REDIS_PASSWORD}"
+      FINTRACK_REDIS_HOST: "FinTrack-Redis"
+      FINTRACK_REDIS_PORT: "6379"
+      FINTRACK_REDIS_PASSWORD: "${FINTRACK_REDIS_PASSWORD}"
+      FINTRACK_REDIS_URI: "redis://:${FINTRACK_REDIS_PASSWORD}@FinTrack-Redis:6379"
+      ConnectionStrings__FinTrackDb: "Host=FinTrack-Postgres;Port=5432;Username=postgres;Password=${FINTRACK_POSTGRES_PASSWORD};Database=FinTrackDb"
+      FINTRACKDB_HOST: "FinTrack-Postgres"
+      FINTRACKDB_PORT: "5432"
+      FINTRACKDB_USERNAME: "postgres"
+      FINTRACKDB_PASSWORD: "${FINTRACK_POSTGRES_PASSWORD}"
+      FINTRACKDB_URI: "postgresql://postgres:${FINTRACK_POSTGRES_PASSWORD}@FinTrack-Postgres:5432/FinTrackDb"
+      FINTRACKDB_JDBCCONNECTIONSTRING: "jdbc:postgresql://FinTrack-Postgres:5432/FinTrackDb"
+      FINTRACKDB_DATABASENAME: "FinTrackDb"
+      OTEL_EXPORTER_OTLP_ENDPOINT: ""
+      OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
+      OTEL_SERVICE_NAME: "FinTrackWeb"
+    expose:
+      - 8080
+    depends_on:
+      fintrack-redis:
+        condition: "service_started"
+      fintrack-postgres:
+        condition: "service_started"
+    networks:
+      - "fintrack"
+    restart: "unless-stopped"
+networks:
+  fintrack:
+    driver: "bridge"
+volumes:
+  FinTrack-Redis-data:
+    driver: "local"
+  FinTrack-Postgres-data:
+    driver: "local"
