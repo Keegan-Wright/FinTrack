@@ -36,11 +36,5 @@ jobs:
           file: ./Src/Dockerfile
           push: true
           tags: | 
-            keeganwright12/fintrackweb:echo ${{steps.tag.outputs.tag}}
+            keeganwright12/fintrackweb:${{steps.tag.outputs.tag}}
           platforms: linux/amd64,linux/arm64
-
-          
-
-# Execute dockerfile in srd dir
-# Make release tag configurable
-#docker buildx build . --push -t keeganwright12/fintrackweb:v0.0.1 --platform linux/arm/v7,linux/arm64/v8,linux/amd64
