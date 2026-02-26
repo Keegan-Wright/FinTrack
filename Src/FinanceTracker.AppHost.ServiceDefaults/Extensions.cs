@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Npgsql;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -47,6 +48,7 @@ public static class Extensions
                 logging.IncludeScopes = true;
             });
 
+
             builder.Services.AddOpenTelemetry()
                 .ConfigureResource(x =>
                     x.AddService("FinanceTracker")
@@ -61,12 +63,11 @@ public static class Extensions
                         .AddHttpClientInstrumentation()
                         .AddRuntimeInstrumentation();
 
-                    metrics.AddMeter("Npgsql");
+                    metrics.AddNpgsqlInstrumentation();
                 })
                 .WithTracing(tracing =>
                 {
                     tracing.AddSource("TickerQ");
-                    tracing.AddSource("Npgsql");
 
                     tracing.AddSource(builder.Environment.ApplicationName)
                         .AddAspNetCoreInstrumentation(aspNetCoreTraceInstrumentationOptions =>
@@ -74,9 +75,9 @@ public static class Extensions
                                 !context.Request.Path.StartsWithSegments(HealthEndpointPath)
                                 && !context.Request.Path.StartsWithSegments(AlivenessEndpointPath)
                         )
-                        .AddHttpClientInstrumentation();
+                        .AddHttpClientInstrumentation()
+                        .AddNpgsql();
                 });
-
             builder.AddOpenTelemetryExporters();
         }
 
