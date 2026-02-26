@@ -92,7 +92,8 @@ public partial class Program
             BaseDataUrl = builder.Configuration.GetValue<Uri>("OPEN_BANKING_TRUELAYER_BASE_DATA_URL")!,
             AuthRedirectUrl = builder.Configuration.GetValue<Uri>("OPEN_BANKING_TRUELAYER_AUTH_REDIRECT_URL")!,
             ClientId = builder.Configuration.GetValue<string>("OPEN_BANKING_TRUELAYER_CLIENT_ID")!,
-            ClientSecret = builder.Configuration.GetValue<Guid>("OPEN_BANKING_TRUELAYER_CLIENT_SECRET")
+            ClientSecret = builder.Configuration.GetValue<Guid>("OPEN_BANKING_TRUELAYER_CLIENT_SECRET"),
+            PublicIpAddress = builder.Configuration.GetValue<string>("OPEN_BANKING_PUBLIC_IP_ADDRESS")
         };
 
         builder.Services.AddSingleton(trueLayerConfig);

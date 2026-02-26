@@ -262,7 +262,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         return responseBody!;
     }
 
-    private static async Task<HttpClient> BuildHttpClient(Uri baseUrl, string? authHeader = null)
+    private async Task<HttpClient> BuildHttpClient(Uri baseUrl, string? authHeader = null)
     {
         //var httpHandler = new SentryHttpMessageHandler();
         HttpClient httpClient = new();
@@ -275,9 +275,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
 
         IPHostEntry dnsEntries = await Dns.GetHostEntryAsync(Dns.GetHostName());
 
-        httpClient.DefaultRequestHeaders.Add("x-PSU-IP",
-            dnsEntries.AddressList.FirstOrDefault(x =>
-                x.AddressFamily == AddressFamily.InterNetwork && x.MapToIPv4().ToString() != "127.0.1.1")!.ToString());
+        httpClient.DefaultRequestHeaders.Add("x-PSU-IP", _trueLayerOpenBankingConfiguration.PublicIpAddress);
 
         httpClient.Timeout = TimeSpan.FromMinutes(5);
 

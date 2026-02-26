@@ -27,6 +27,7 @@ var openBankingDataUrl = builder.AddParameter("OpenBanking-Data-Url", openBankin
 var openBankingAuthRedirectUrl = builder.AddParameter("OpenBanking-Auth-Redirect-Url", openBankingConfig["TrueLayer:AuthRedirectUrl"] ?? string.Empty);
 var openBankingClientId = builder.AddParameter("OpenBanking-Client-Id", openBankingConfig["TrueLayer:ClientId"] ?? string.Empty);
 var openBankingClientSecret = builder.AddParameter("OpenBanking-Client-Secret", openBankingConfig["TrueLayer:ClientSecret"] ?? string.Empty);
+var openBankingPublicIpAddress = builder.AddParameter("OpenBanking-Public-IP-Address", openBankingConfig["TrueLayer:PublicIpAddress"] ?? string.Empty);
 
 
 IResourceBuilder<RedisResource> redis = builder.AddRedis("FinTrack-Redis")
@@ -60,6 +61,7 @@ var finTrack = builder.AddProject<Projects.FinanceTracker>("FinTrackWeb")
     .WithEnvironment("OPEN_BANKING_TRUELAYER_AUTH_REDIRECT_URL", openBankingAuthRedirectUrl)
     .WithEnvironment("OPEN_BANKING_TRUELAYER_CLIENT_ID", openBankingClientId)
     .WithEnvironment("OPEN_BANKING_TRUELAYER_CLIENT_SECRET", openBankingClientSecret)
+    .WithEnvironment("OPEN_BANKING_PUBLIC_IP_ADDRESS", openBankingPublicIpAddress)
     .WithEnvironment("APP_CULTURE", "en-GB")
     .WithReference(redis)
     .WithReference(postgresDb)
