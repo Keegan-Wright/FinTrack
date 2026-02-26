@@ -27,7 +27,7 @@ public partial class Program
         var culture = builder.Configuration["APP_CULTURE"];
         if (!string.IsNullOrEmpty(culture))
         {
-            var cultureInfo = new CultureInfo("en-GB");
+            var cultureInfo = new CultureInfo(culture);
             CultureInfo.DefaultThreadCurrentCulture = cultureInfo;
             CultureInfo.DefaultThreadCurrentUICulture = cultureInfo;
         }
