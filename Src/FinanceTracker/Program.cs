@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Claims;
 using FinanceTracker.AppHost.ServiceDefaults;
 using FinanceTracker.Components;
@@ -7,6 +8,7 @@ using FinanceTracker.Data;
 using FinanceTracker.Data.Models;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
 using MudBlazor.Services;
 using TickerQ.DependencyInjection;
@@ -21,6 +23,14 @@ public partial class Program
     public static async Task Main(string[] args)
     {
         WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+
+        var culture = builder.Configuration["APP_CULTURE"];
+        if (!string.IsNullOrEmpty(culture))
+        {
+            var cultureInfo = new CultureInfo("en-GB");
+            CultureInfo.DefaultThreadCurrentCulture = cultureInfo;
+            CultureInfo.DefaultThreadCurrentUICulture = cultureInfo;
+        }
 
         builder.AddServiceDefaults();
 // Add MudBlazor services
@@ -107,6 +117,8 @@ public partial class Program
                 efOptions.UseApplicationDbContext<FinanceTrackerContext>(ConfigurationType.UseModelCustomizer);
             });
         });
+
+
 
         builder.Services.AddCascadingValue(_ => new ApplicationState());
 

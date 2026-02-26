@@ -1,4 +1,5 @@
 @page "/Accounts"
+@using System.Globalization
 @using FinanceTracker.Enums
 @using FinanceTracker.Models.Response.Account
 @using FinanceTracker.Services.Account
@@ -31,14 +32,16 @@
                             <MudStack AlignItems="AlignItems.Center" Spacing="0">
                                 <MudText Typo="Typo.caption">Current Balance</MudText>
                                 <MudText Typo="Typo.h6"
-                                         Color="Color.Primary">@account.AccountBalance.ToString("c")</MudText>
+                                         Color="Color.Primary">
+                                    @account.AccountBalance.ToString("C", CultureInfo.CurrentCulture)
+                                </MudText>
                             </MudStack>
                         </MudItem>
                         <MudItem>
                             <MudStack AlignItems="AlignItems.Center" Spacing="0">
                                 <MudText Typo="Typo.caption">Available Balance</MudText>
                                 <MudText Typo="Typo.h6"
-                                         Color="Color.Secondary">@account.AvailableBalance.ToString("c")</MudText>
+                                         Color="Color.Secondary">@account.AvailableBalance.ToString("C", CultureInfo.CurrentCulture)</MudText>
                             </MudStack>
                         </MudItem>
                     </MudGrid>
@@ -56,7 +59,7 @@
                                 <CellTemplate>
                                     <MudText Color="@(context.Item.Amount < 0 ? Color.Error : Color.Success)"
                                              Typo="Typo.body2">
-                                        @context.Item.Amount.ToString("c")
+                                        @context.Item.Amount.ToString("C", CultureInfo.CurrentCulture)
                                     </MudText>
                                 </CellTemplate>
                             </PropertyColumn>

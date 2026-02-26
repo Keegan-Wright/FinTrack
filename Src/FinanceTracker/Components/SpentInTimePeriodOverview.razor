@@ -1,3 +1,4 @@
+@using System.Globalization
 <MudCard Elevation="0" Class="pa-4">
     <MudText Typo="Typo.subtitle1" Class="mb-4 font-bold">@Title</MudText>
     <MudGrid Spacing="3">
@@ -9,11 +10,11 @@
                                  Color="Color.Success"></MudIcon>
                         <MudText Typo="Typo.caption" Class="mud-text-secondary">Total In</MudText>
                     </MudStack>
-                    <MudText Typo="Typo.h6" Color="Color.Success">@TotalIn.ToString("C")</MudText>
+                    <MudText Typo="Typo.h6" Color="Color.Success">@TotalIn.ToString("C", CultureInfo.CurrentCulture)</MudText>
                     @if (PerDayAverageIn.HasValue && DaysInPeriod > 0)
                     {
                         <MudText Typo="Typo.caption" Class="mud-text-secondary">
-                            Avg/day: @PerDayAverageIn.Value.ToString("C")</MudText>
+                            Avg/day: @PerDayAverageIn.Value.ToString("C", CultureInfo.CurrentCulture)</MudText>
                     }
                 </MudStack>
             </MudPaper>
@@ -27,11 +28,11 @@
                                  Color="Color.Error"></MudIcon>
                         <MudText Typo="Typo.caption" Class="mud-text-secondary">Total Out</MudText>
                     </MudStack>
-                    <MudText Typo="Typo.h6" Color="Color.Error">@TotalOut.ToString("C")</MudText>
+                    <MudText Typo="Typo.h6" Color="Color.Error">@TotalOut.ToString("C", CultureInfo.CurrentCulture)</MudText>
                     @if (PerDayAverageOut.HasValue && DaysInPeriod > 0)
                     {
                         <MudText Typo="Typo.caption" Class="mud-text-secondary">
-                            Avg/day: @PerDayAverageOut.Value.ToString("C")</MudText>
+                            Avg/day: @PerDayAverageOut.Value.ToString("C", CultureInfo.CurrentCulture)</MudText>
                     }
                 </MudStack>
             </MudPaper>
@@ -45,7 +46,7 @@
                                  Color="Color.Tertiary"></MudIcon>
                         <MudText Typo="Typo.caption" Class="mud-text-secondary">Difference</MudText>
                     </MudStack>
-                    <MudText Typo="Typo.h6" Color="Color.Tertiary">@Normalised.ToString("C")</MudText>
+                    <MudText Typo="Typo.h6" Color="Color.Tertiary">@Normalised.ToString("C", CultureInfo.CurrentCulture)</MudText>
                 </MudStack>
             </MudPaper>
         </MudItem>

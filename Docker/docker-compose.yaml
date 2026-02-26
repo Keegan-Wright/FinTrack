@@ -66,6 +66,7 @@ services:
       FINTRACKDB_URI: "postgresql://postgres:${FINTRACK_POSTGRES_PASSWORD}@FinTrack-Postgres:5432/FinTrackDb"
       FINTRACKDB_JDBCCONNECTIONSTRING: "jdbc:postgresql://FinTrack-Postgres:5432/FinTrackDb"
       FINTRACKDB_DATABASENAME: "FinTrackDb"
+      APP_CULTURE: "${APP_CULTURE}"
       OTEL_EXPORTER_OTLP_ENDPOINT: ""
       OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
       OTEL_SERVICE_NAME: "FinTrackWeb"

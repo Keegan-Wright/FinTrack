@@ -1,4 +1,5 @@
 @page "/HouseholdMembers"
+@using System.Globalization
 @using FinanceTracker.Components.Dialogs
 @using FinanceTracker.Models.Request.HouseholdMember
 @using FinanceTracker.Models.Response.HouseholdMembers
@@ -33,7 +34,7 @@
                                 @member.FirstName @member.LastName
                             </MudText>
                             <MudText Typo="Typo.caption">
-                                @member.Income?.ToString("c")
+                                @member.Income?.ToString("C", CultureInfo.CurrentCulture)
                             </MudText>
                         </MudItem>
                     </MudGrid>

@@ -1,4 +1,5 @@
 @page "/Calendar"
+@using System.Globalization
 @using FinanceTracker.Models.Response.Calendar
 @using FinanceTracker.Services.Calendar
 @using Microsoft.AspNetCore.Authorization
@@ -28,7 +29,7 @@
                         <MudExpansionPanel Text="Transactions">
                             @foreach (var transaction in calenderItem.Transactions)
                             {
-                                <MudText>@transaction.Description @transaction.Amount.ToString("C")</MudText>
+                                <MudText>@transaction.Description @transaction.Amount.ToString("C", CultureInfo.CurrentCulture)</MudText>
                             }
                         </MudExpansionPanel>
 
