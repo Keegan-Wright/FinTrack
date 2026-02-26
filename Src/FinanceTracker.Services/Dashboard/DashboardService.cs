@@ -6,15 +6,16 @@ using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using FinanceTracker.Models.Response.Dashboard;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Services.Dashboard;
 
 [InjectionCategory(InjectionCategoryType.Service)]
 [Scoped<IDashboardService>]
-public class DashboardService : ServiceBase, IDashboardService
+public class DashboardService : ServiceBase<DashboardService>, IDashboardService
 {
-    public DashboardService(ClaimsPrincipal user, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory)
-        : base(user, financeTrackerContextFactory)
+    public DashboardService(ClaimsPrincipal user, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<DashboardService> logger)
+        : base(user, financeTrackerContextFactory, logger)
     {
     }
 

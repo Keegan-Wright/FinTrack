@@ -11,17 +11,18 @@ using FinanceTracker.Models.Response.Reports.Category;
 using FinanceTracker.Models.Response.Reports.SpentInTimePeriod;
 using FinanceTracker.Services.OpenBanking;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Services.Reports;
 
 [InjectionCategory(InjectionCategoryType.Service)]
 [Scoped<IReportService>]
-public class ReportService : ServiceBase, IReportService
+public class ReportService : ServiceBase<ReportService>, IReportService
 {
     private readonly IOpenBankingService _openBankingService;
 
     public ReportService(ClaimsPrincipal user, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
-        IOpenBankingService openBankingService) : base(user, financeTrackerContextFactory) =>
+        IOpenBankingService openBankingService, ILogger<ReportService> logger) : base(user, financeTrackerContextFactory, logger) =>
         _openBankingService = openBankingService;
 
     public async IAsyncEnumerable<SpentInTimePeriodReportResponse> GetSpentInTimePeriodReportAsync(

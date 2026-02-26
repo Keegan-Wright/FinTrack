@@ -7,16 +7,17 @@ using FinanceTracker.Generated.Enums;
 using FinanceTracker.Models.Request.Budget;
 using FinanceTracker.Models.Response.Budget;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Services.Budget;
 
 [InjectionCategory(InjectionCategoryType.Service)]
 [Scoped<IBudgetCategoriesService>]
-public class BudgetCategoriesService : ServiceBase, IBudgetCategoriesService
+public class BudgetCategoriesService : ServiceBase<BudgetCategoriesService>, IBudgetCategoriesService
 {
     public BudgetCategoriesService(ClaimsPrincipal user,
-        IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory) : base(user,
-        financeTrackerContextFactory)
+        IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<BudgetCategoriesService> logger) : base(user,
+        financeTrackerContextFactory, logger)
     {
     }
 

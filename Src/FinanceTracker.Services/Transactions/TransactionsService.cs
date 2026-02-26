@@ -9,18 +9,20 @@ using FinanceTracker.Models.Request.Transaction;
 using FinanceTracker.Models.Response.Transaction;
 using FinanceTracker.Services.OpenBanking;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Services.Transactions;
 
 [InjectionCategory(InjectionCategoryType.Service)]
 [Scoped<ITransactionsService>]
-public class TransactionsService : ServiceBase, ITransactionsService
+public class TransactionsService : ServiceBase<TransactionsService>, ITransactionsService
 {
     private readonly IOpenBankingService _openBankingService;
 
     public TransactionsService(ClaimsPrincipal user,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
-        IOpenBankingService openBankingService) : base(user, financeTrackerContextFactory) =>
+        IOpenBankingService openBankingService,
+        ILogger<TransactionsService> logger) : base(user, financeTrackerContextFactory, logger) =>
         _openBankingService = openBankingService;
 
     public async IAsyncEnumerable<TransactionResponse> GetAllTransactionsAsync(

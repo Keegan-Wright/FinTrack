@@ -5,15 +5,16 @@ using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using FinanceTracker.Models.Response.Calendar;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Services.Calendar;
 
 [InjectionCategory(InjectionCategoryType.Service)]
 [Scoped<ICalendarService>]
-public class CalendarService : ServiceBase, ICalendarService
+public class CalendarService : ServiceBase<CalendarService>, ICalendarService
 {
-    public CalendarService(ClaimsPrincipal user, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory)
-        : base(user, financeTrackerContextFactory)
+    public CalendarService(ClaimsPrincipal user, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<CalendarService> logger)
+        : base(user, financeTrackerContextFactory, logger)
     {
     }
 

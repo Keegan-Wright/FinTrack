@@ -7,16 +7,17 @@ using FinanceTracker.Generated.Enums;
 using FinanceTracker.Models.Request.HouseholdMember;
 using FinanceTracker.Models.Response.HouseholdMembers;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Services.HouseholdMembers;
 
 [InjectionCategory(InjectionCategoryType.Service)]
 [Scoped<IHouseholdMemberService>]
-public class HouseholdMemberService : ServiceBase, IHouseholdMemberService
+public class HouseholdMemberService : ServiceBase<HouseholdMemberService>, IHouseholdMemberService
 {
     public HouseholdMemberService(ClaimsPrincipal user,
-        IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory) : base(user,
-        financeTrackerContextFactory)
+        IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<HouseholdMemberService> logger) : base(user,
+        financeTrackerContextFactory, logger)
     {
     }
 

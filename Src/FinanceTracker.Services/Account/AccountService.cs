@@ -9,17 +9,18 @@ using FinanceTracker.Generated.Enums;
 using FinanceTracker.Models.Response.Account;
 using FinanceTracker.Services.OpenBanking;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Services.Account;
 
 [InjectionCategory(InjectionCategoryType.Service)]
 [Scoped<IAccountService>]
-public class AccountService : ServiceBase, IAccountService
+public class AccountService : ServiceBase<AccountService>, IAccountService
 {
     private readonly IOpenBankingService _openBankingService;
 
     public AccountService(ClaimsPrincipal user, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
-        IOpenBankingService openBankingService) : base(user, financeTrackerContextFactory) =>
+        IOpenBankingService openBankingService, ILogger<AccountService> logger) : base(user, financeTrackerContextFactory, logger) =>
         _openBankingService = openBankingService;
 
     public async IAsyncEnumerable<AccountAndTransactionsResponse> GetAccountsAndMostRecentTransactionsAsync(
@@ -27,6 +28,7 @@ public class AccountService : ServiceBase, IAccountService
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await _openBankingService.PerformSyncAsync(syncFlags, cancellationToken);
+
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
         IQueryable<OpenBankingAccount> query = context
