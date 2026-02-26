@@ -17,9 +17,13 @@ namespace FinanceTracker.Services.External.OpenBanking;
 public class TrueLayerOpenBankingApiService : IOpenBankingApiService
 {
     private readonly TrueLayerOpenBankingConfiguration _trueLayerOpenBankingConfiguration;
+    private readonly IHttpClientFactory _clientFactory;
 
-    public TrueLayerOpenBankingApiService(TrueLayerOpenBankingConfiguration trueLayerOpenBankingConfiguration) =>
+    public TrueLayerOpenBankingApiService(TrueLayerOpenBankingConfiguration trueLayerOpenBankingConfiguration, IHttpClientFactory clientFactory)
+    {
         _trueLayerOpenBankingConfiguration = trueLayerOpenBankingConfiguration;
+        _clientFactory = clientFactory;
+    }
 
 
     public async Task<ExternalOpenBankingAccessResponse> ExchangeCodeForAccessTokenAsync(string vendorAccessCode,
@@ -264,16 +268,13 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
 
     private async Task<HttpClient> BuildHttpClient(Uri baseUrl, string? authHeader = null)
     {
-        //var httpHandler = new SentryHttpMessageHandler();
-        HttpClient httpClient = new();
+        var httpClient = _clientFactory.CreateClient("OpenBankingClient");
         httpClient.BaseAddress = baseUrl;
 
         if (!string.IsNullOrEmpty(authHeader))
         {
             httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", authHeader);
         }
-
-        IPHostEntry dnsEntries = await Dns.GetHostEntryAsync(Dns.GetHostName());
 
         httpClient.DefaultRequestHeaders.Add("x-PSU-IP", _trueLayerOpenBankingConfiguration.PublicIpAddress);
 

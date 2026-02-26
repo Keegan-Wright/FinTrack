@@ -8,7 +8,6 @@ using FinanceTracker.Data;
 using FinanceTracker.Data.Models;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
 using MudBlazor.Services;
 using TickerQ.DependencyInjection;
@@ -122,6 +121,9 @@ public partial class Program
 
 
         builder.Services.AddCascadingValue(_ => new ApplicationState());
+
+
+        builder.Services.AddHttpClient("OpenBankingClient");
 
         AddFinanceTrackerServices(builder.Services);
         AddFinanceTrackerValidators(builder.Services);
