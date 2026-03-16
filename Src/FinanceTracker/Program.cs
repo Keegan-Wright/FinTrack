@@ -6,6 +6,7 @@ using FinanceTracker.Components.Account;
 using FinanceTracker.Configurations;
 using FinanceTracker.Data;
 using FinanceTracker.Data.Models;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;

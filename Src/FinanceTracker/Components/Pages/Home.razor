@@ -14,6 +14,7 @@
 @using FinanceTracker.Services.HouseholdMembers
 @using FinanceTracker.Services.Transactions
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.Extensions.Diagnostics.Latency
 @inherits PageComponent
 
 @attribute [Authorize]
@@ -27,7 +28,7 @@
 
 <PageTitle>Home</PageTitle>
 
-<MudCard Class="mb-3">
+<MudCard Class="mb-6">
     <MudCardContent>
 
         @* Header *@
@@ -100,13 +101,11 @@
                 }
                 else
                 {
-                    <div class="mb-6">
-                        <MudChart ChartType="ChartType.Bar"
-                                  ChartSeries="_cashflowSeries"
-                                  ChartLabels="_cashflowLabels"
-                                  ChartOptions="_chartOptions"
-                                  Height="340px"/>
-                    </div>
+                    <MudChart ChartType="ChartType.Bar"
+                              ChartSeries="_cashflowSeries"
+                              ChartLabels="_cashflowLabels"
+                              Width="100%"
+                              />
                 }
 
                 @if (!string.IsNullOrWhiteSpace(_chartNote))
@@ -132,13 +131,11 @@
                 }
                 else
                 {
-                    <div>
                         <MudChart ChartType="ChartType.Bar"
                                   ChartSeries="_categorySeries"
                                   ChartLabels="_categoryLabels"
                                   ChartOptions="_chartOptions"
-                                  Height="380px"/>
-                    </div>
+                                  Width="100%"/>
                 }
             </MudCardContent>
         </MudCard>
@@ -200,7 +197,7 @@
                 else
                 {
                     <MudStack Spacing="2">
-                        @foreach (var b in _budgetCategories.OrderByDescending(x => x.SavingsGoal > 0 ? x.AvailableFunds / x.SavingsGoal : 0).Take(6))
+                        @foreach (var b in _budgetCategories.OrderByDescending(x => x.SavingsGoal > 0 ? x.AvailableFunds / x.SavingsGoal : 0))
                         {
                             var progress = b.SavingsGoal <= 0 ? 0 : Math.Clamp((double)(b.AvailableFunds / b.SavingsGoal), 0, 1);
                             <MudPaper Outlined="true" Class="pa-3" Elevation="0">
@@ -282,7 +279,7 @@
                                         {
                                             <MudDivider Class="my-2"/>
                                             <MudList T="AccountTransactionResponse" Dense="true">
-                                                @foreach (var t in a.Transactions.OrderByDescending(x => x.Time).Take(3))
+                                                @foreach (var t in a.Transactions.OrderByDescending(x => x.Time))
                                                 {
                                                     <MudListItem T="AccountTransactionResponse">
                                                         <MudStack Row="true" AlignItems="AlignItems.Center"
@@ -318,8 +315,7 @@
 
 @code {
 
-    [CascadingParameter]
-    private Task<AuthenticationState> authenticationStateTask { get; set; }
+    [CascadingParameter] private Task<AuthenticationState> AuthenticationStateTask { get; set; }
 
     private enum DashboardRangePreset
     {
@@ -356,12 +352,13 @@
     private string[] _categoryLabels = Array.Empty<string>();
 
     private string? _chartNote;
-    private string? userName;
+    private string? _userName;
 
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
-        userName = (await authenticationStateTask).User.Identity.Name;
+        var authState = await AuthenticationStateTask;
+        _userName = authState.User.Claims.FirstOrDefault(x => x.Type == CustomClaims.FirstName)?.Value ?? authState.User.Identity!.Name;
         ApplyPresetRange(_rangePreset);
         await LoadDashboardAsync();
     }
@@ -428,7 +425,7 @@
             }
 
             await foreach (var account in AccountService.GetAccountsAndMostRecentTransactionsAsync(
-                               5,
+                               3,
                                SyncTypes.Account | SyncTypes.Balance | SyncTypes.Transactions,
                                _cts.Token))
             {
@@ -536,22 +533,23 @@
 
     private void BuildCategoryChart(List<TransactionResponse> transactions)
     {
-        var top = transactions
-            .Where(x => x.Amount < 0)
-            .GroupBy(x => string.IsNullOrWhiteSpace(x.TransactionCategory) ? "Uncategorised" : x.TransactionCategory)
-            .Select(g => new { Category = g.Key, Total = g.Sum(x => Math.Abs(x.Amount)) })
-            .OrderByDescending(x => x.Total)
-            .Take(8)
-            .ToList();
+        List<(string Tag, decimal Total)> AddedItems = new();
 
-        if (top.Count == 0)
+        var distinctTags = transactions.SelectMany(x => x.Tags).Distinct();
+        foreach (var distinctTag in distinctTags)
+        {
+            var transactionsToAdd = transactions.Where(x => x.Tags.Contains(distinctTag));
+            AddedItems.Add((distinctTag, transactionsToAdd.Where(x => x.Amount < 0).Sum(x => Math.Abs(x.Amount))));
+        }
+
+        if (AddedItems.Count == 0)
             return;
 
-        _categoryLabels = top.Select(x => x.Category).ToArray();
+        _categoryLabels = AddedItems.Select(x => x.Tag).ToArray();
         _categorySeries.Add(new ChartSeries<double>
         {
             Name = "Spend",
-            Data = top.Select(x => Convert.ToDouble(x.Total)).ToArray()
+            Data = AddedItems.Select(x => Convert.ToDouble(x.Total)).ToArray()
         });
     }
 
@@ -571,9 +569,9 @@
     private string GetGreeting()
     {
         var hour = DateTime.Now.Hour;
-        if (hour < 12) return $"Good morning {userName}";
-        if (hour < 18) return $"Good afternoon {userName}";
-        return $"Good evening {userName}";
+        if (hour < 12) return $"Good morning {_userName}";
+        if (hour < 18) return $"Good afternoon {_userName}";
+        return $"Good evening {_userName}";
     }
 
     private static string DueInLabel(DateTime paymentDateUtc)
