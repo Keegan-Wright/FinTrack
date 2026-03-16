@@ -1,8 +1,617 @@
-﻿@page "/"
+@page "/"
+@using System.Collections.Immutable
+@using System.Globalization
+@using FinanceTracker.Enums
+@using FinanceTracker.Models.Request.Transaction
+@using FinanceTracker.Models.Response.Account
+@using FinanceTracker.Models.Response.Budget
+@using FinanceTracker.Models.Response.Dashboard
+@using FinanceTracker.Models.Response.HouseholdMembers
+@using FinanceTracker.Models.Response.Transaction
+@using FinanceTracker.Services.Account
+@using FinanceTracker.Services.Budget
+@using FinanceTracker.Services.Dashboard
+@using FinanceTracker.Services.HouseholdMembers
+@using FinanceTracker.Services.Transactions
 @using Microsoft.AspNetCore.Authorization
+@inherits PageComponent
 
 @attribute [Authorize]
+@inject IDashboardService DashboardService
+@inject IAccountService AccountService
+@inject ITransactionsService TransactionsService
+@inject IBudgetCategoriesService BudgetCategoriesService
+@inject IHouseholdMemberService HouseholdMemberService
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
 
 <PageTitle>Home</PageTitle>
 
-<MudText>Nothing here yet, dashboard to come shortly</MudText>
+<MudCard Class="mb-3">
+    <MudCardContent>
+
+        @* Header *@
+        <MudStack Spacing="3" Class="mb-3">
+            <MudStack Row="true">
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.h4">@GetGreeting()</MudText>
+                    <MudText Typo="Typo.body2">Here's what's happening across your finances</MudText>
+                </MudStack>
+            </MudStack>
+
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                <MudButton Variant="@GetPresetButtonVariant(DashboardRangePreset.ThisMonth)"
+                           Size="Size.Small"
+                           OnClick="@(() => SetRangePresetAsync(DashboardRangePreset.ThisMonth))">
+                    This month
+                </MudButton>
+                <MudButton Variant="@GetPresetButtonVariant(DashboardRangePreset.Last30Days)"
+                           Size="Size.Small"
+                           OnClick="@(() => SetRangePresetAsync(DashboardRangePreset.Last30Days))">
+                    Last 30 days
+                </MudButton>
+                <MudButton Variant="@GetPresetButtonVariant(DashboardRangePreset.ThisYear)"
+                           Size="Size.Small"
+                           OnClick="@(() => SetRangePresetAsync(DashboardRangePreset.ThisYear))">
+                    This year
+                </MudButton>
+            </MudStack>
+        </MudStack>
+
+        <MudGrid Spacing="3">
+            <MudItem xs="12" md="6" lg="3">
+                <KpiCard TTrendType="decimal?" Icon="@Icons.Material.Filled.SouthWest" Label="Money In"
+                         Value="@_spent?.TotalIn" Trend="@_trendIn"
+                         Color="Color.Success"/>
+            </MudItem>
+            <MudItem xs="12" md="6" lg="3">
+                <KpiCard TTrendType="decimal?" Icon="@Icons.Material.Filled.NorthEast" Label="Money Out"
+                         Value="@_spent?.TotalOut" Trend="@_trendOut" Color="Color.Error"/>
+            </MudItem>
+            <MudItem xs="12" md="6" lg="3">
+                <KpiCard TTrendType="string" Icon="@Icons.Material.Filled.ShowChart" Label="Net" Value="@_net"
+                         Trend="@GetTransactionsInRangeCaption()" Color="Color.Tertiary"/>
+            </MudItem>
+            <MudItem xs="12" md="6" lg="3">
+                <KpiCard TTrendType="string" Icon="@Icons.Material.Filled.SouthWest" Label="Total Balance"
+                         Value="@_totalBalance" Trend="@GetBalanceMeta()" Color="Color.Secondary"/>
+            </MudItem>
+        </MudGrid>
+
+    </MudCardContent>
+</MudCard>
+
+
+<MudGrid>
+
+    @* Cashflow trend *@
+    <MudItem xs="12" lg="6">
+
+        <MudCard>
+            <MudCardContent>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                    <MudText Typo="Typo.subtitle1">Cashflow trend</MudText>
+                    <MudText Typo="Typo.caption">Daily totals (in/out/net)</MudText>
+                </MudStack>
+
+                @if (_cashflowSeries.Count == 0 || _cashflowLabels.Length == 0)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Not enough data yet for this range.</MudText>
+                }
+                else
+                {
+                    <div class="mb-6">
+                        <MudChart ChartType="ChartType.Bar"
+                                  ChartSeries="_cashflowSeries"
+                                  ChartLabels="_cashflowLabels"
+                                  ChartOptions="_chartOptions"
+                                  Height="340px"/>
+                    </div>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(_chartNote))
+                {
+                    <MudText Typo="Typo.caption" Class="mt-2" Color="Color.Warning">@_chartNote</MudText>
+                }
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+
+    @* Top Categories *@
+    <MudItem xs="12" lg="6">
+        <MudCard>
+            <MudCardContent>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-2">
+                    <MudText Typo="Typo.subtitle1">Top spending categories</MudText>
+                    <MudText Typo="Typo.caption">Outflow only</MudText>
+                </MudStack>
+
+                @if (_categorySeries.Count == 0 || _categoryLabels.Length == 0)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">No category spend to show.</MudText>
+                }
+                else
+                {
+                    <div>
+                        <MudChart ChartType="ChartType.Bar"
+                                  ChartSeries="_categorySeries"
+                                  ChartLabels="_categoryLabels"
+                                  ChartOptions="_chartOptions"
+                                  Height="380px"/>
+                    </div>
+                }
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+
+    @* Upcoming Payments *@
+    <MudItem xs="12" lg="6">
+        <MudCard>
+            <MudCardContent>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                    <MudText Typo="Typo.subtitle1">Upcoming payments</MudText>
+                    <MudText Typo="Typo.caption">Standing orders & direct debits</MudText>
+                </MudStack>
+
+                @if (_upcomingPayments.Count == 0)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">No upcoming payments found.</MudText>
+                }
+                else
+                {
+                    <MudList T="UpcomingPaymentsResponse" Dense="true">
+                        @foreach (var p in _upcomingPayments)
+                        {
+                            <MudListItem T="UpcomingPaymentsResponse">
+                                <MudStack Row="true" AlignItems="AlignItems.Center"
+                                          Justify="Justify.SpaceBetween" Class="w-100">
+                                    <MudStack Spacing="0" Class="min-w-0">
+                                        <MudText Typo="Typo.body2"
+                                                 Class="text-truncate">@p.PaymentName</MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                            @p.PaymentType · @p.PaymentDate.ToLocalTime().ToString("ddd d MMM", CultureInfo.CurrentCulture) · @DueInLabel(p.PaymentDate)
+                                        </MudText>
+                                    </MudStack>
+                                    <MudText Typo="Typo.body2" Color="Color.Error" Class="ml-2">
+                                        @FormatCurrency(Math.Abs(p.Amount))
+                                    </MudText>
+                                </MudStack>
+                            </MudListItem>
+                        }
+                    </MudList>
+                }
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+
+    @* Goals & Budgets *@
+    <MudItem xs="12" lg="6">
+        <MudCard>
+            <MudCardContent>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                    <MudText Typo="Typo.subtitle1">Goals & budgets</MudText>
+                    <MudText Typo="Typo.caption">Available vs savings goal</MudText>
+                </MudStack>
+
+                @if (_budgetCategories.Count == 0)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">No budget categories yet.</MudText>
+                }
+                else
+                {
+                    <MudStack Spacing="2">
+                        @foreach (var b in _budgetCategories.OrderByDescending(x => x.SavingsGoal > 0 ? x.AvailableFunds / x.SavingsGoal : 0).Take(6))
+                        {
+                            var progress = b.SavingsGoal <= 0 ? 0 : Math.Clamp((double)(b.AvailableFunds / b.SavingsGoal), 0, 1);
+                            <MudPaper Outlined="true" Class="pa-3" Elevation="0">
+                                <MudStack Row="true" AlignItems="AlignItems.Center"
+                                          Justify="Justify.SpaceBetween">
+                                    <MudStack Spacing="0" Class="min-w-0">
+                                        <MudText Typo="Typo.body2" Class="text-truncate">@b.Name</MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                            @FormatCurrency(b.AvailableFunds) of @FormatCurrency(b.SavingsGoal)
+                                            @if (b.GoalCompletionDate is not null)
+                                            {
+                                                <span> · goal by @b.GoalCompletionDate.Value.ToLocalTime().ToString("d MMM yyyy", CultureInfo.CurrentCulture)</span>
+                                            }
+                                        </MudText>
+                                    </MudStack>
+                                    <MudText Typo="Typo.caption" Class="ml-2">@($"{progress:P0}")</MudText>
+                                </MudStack>
+                                <MudProgressLinear Class="mt-2" Value="@(progress * 100)" Color="Color.Primary"
+                                                   Rounded="true"/>
+                            </MudPaper>
+                        }
+                    </MudStack>
+                }
+
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+
+    @* Accounts Snapshot *@
+    <MudItem xs="12">
+        <MudCard>
+            <MudCardContent>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween"
+                          Class="mb-2 flex-wrap">
+                    <MudText Typo="Typo.subtitle1">Accounts snapshot</MudText>
+                    <MudText Typo="Typo.caption">Balances and most recent activity</MudText>
+                </MudStack>
+
+                @if (_accounts.Count == 0)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">No accounts connected yet.</MudText>
+                }
+                else
+                {
+                    <MudGrid Spacing="3">
+                        @foreach (var a in _accounts.OrderByDescending(x => x.AccountBalance))
+                        {
+                            <MudItem xs="12" md="6" lg="4">
+                                <MudCard>
+                                    <MudCardHeader>
+                                        <CardHeaderAvatar>
+                                            <MudAvatar Square="true"
+                                                       Style="width: 40px; height: 40px; background-color: transparent;">
+                                                <MudImage
+                                                    Src="@($"data:image/svg+xml;base64, {Convert.ToBase64String(a.Logo)}")"/>
+                                            </MudAvatar>
+                                        </CardHeaderAvatar>
+                                        <CardHeaderContent>
+                                            <MudText Typo="Typo.subtitle1">@a.AccountName</MudText>
+                                            <MudText Typo="Typo.caption"
+                                                     Color="Color.Secondary">@a.AccountType</MudText>
+                                        </CardHeaderContent>
+                                    </MudCardHeader>
+                                    <MudCardContent>
+                                        <MudGrid Justify="Justify.SpaceBetween" Class="mb-2">
+                                            <MudItem>
+                                                <MudText Typo="Typo.caption">Current</MudText>
+                                                <MudText
+                                                    Typo="Typo.h6">@FormatCurrency(a.AccountBalance)</MudText>
+                                            </MudItem>
+                                            <MudItem Class="text-right">
+                                                <MudText Typo="Typo.caption">Available</MudText>
+                                                <MudText Typo="Typo.h6"
+                                                         Color="Color.Secondary">@FormatCurrency(a.AvailableBalance)</MudText>
+                                            </MudItem>
+                                        </MudGrid>
+
+                                        @if (a.Transactions is not null && a.Transactions.Any())
+                                        {
+                                            <MudDivider Class="my-2"/>
+                                            <MudList T="AccountTransactionResponse" Dense="true">
+                                                @foreach (var t in a.Transactions.OrderByDescending(x => x.Time).Take(3))
+                                                {
+                                                    <MudListItem T="AccountTransactionResponse">
+                                                        <MudStack Row="true" AlignItems="AlignItems.Center"
+                                                                  Justify="Justify.SpaceBetween" Class="w-100">
+                                                            <MudStack Spacing="0" Class="min-w-0">
+                                                                <MudText Typo="Typo.body2"
+                                                                         Class="text-truncate">@t.Description</MudText>
+                                                                <MudText Typo="Typo.caption"
+                                                                         Color="Color.Secondary">
+                                                                    @t.Time.ToLocalTime().ToString("d MMM", CultureInfo.CurrentCulture) · @t.Status
+                                                                </MudText>
+                                                            </MudStack>
+                                                            <MudText Typo="Typo.body2" Class="ml-2"
+                                                                     Color="@(t.Amount < 0 ? Color.Error : Color.Success)">
+                                                                @FormatCurrency(t.Amount)
+                                                            </MudText>
+                                                        </MudStack>
+                                                    </MudListItem>
+                                                }
+                                            </MudList>
+                                        }
+                                    </MudCardContent>
+                                </MudCard>
+                            </MudItem>
+                        }
+                    </MudGrid>
+                }
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+</MudGrid>
+
+
+@code {
+
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationStateTask { get; set; }
+
+    private enum DashboardRangePreset
+    {
+        ThisMonth,
+        Last30Days,
+        ThisYear
+    }
+
+    private DashboardRangePreset _rangePreset = DashboardRangePreset.ThisMonth;
+
+    private DateTime _fromDate;
+    private DateTime _toDate;
+
+    private SpentInTimePeriodResponse? _spent;
+    private int _transactionCount;
+    private decimal _net;
+
+    private decimal _totalBalance;
+    private decimal? _householdIncome;
+
+    private decimal? _trendIn;
+    private decimal? _trendOut;
+
+    private readonly List<UpcomingPaymentsResponse> _upcomingPayments = [];
+    private readonly List<AccountAndTransactionsResponse> _accounts = [];
+    private readonly List<BudgetCategoryResponse> _budgetCategories = [];
+    private readonly List<HouseholdMemberResponse> _householdMembers = [];
+
+    private readonly ChartOptions _chartOptions = new();
+    private readonly List<ChartSeries<double>> _cashflowSeries = [];
+    private string[] _cashflowLabels = Array.Empty<string>();
+
+    private readonly List<ChartSeries<double>> _categorySeries = [];
+    private string[] _categoryLabels = Array.Empty<string>();
+
+    private string? _chartNote;
+    private string? userName;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        userName = (await authenticationStateTask).User.Identity.Name;
+        ApplyPresetRange(_rangePreset);
+        await LoadDashboardAsync();
+    }
+
+    private async Task SetRangePresetAsync(DashboardRangePreset preset)
+    {
+        if (_rangePreset == preset)
+            return;
+
+        _rangePreset = preset;
+        ApplyPresetRange(preset);
+        await LoadDashboardAsync();
+    }
+
+    private void ApplyPresetRange(DashboardRangePreset preset)
+    {
+        var now = DateTime.Now;
+        _toDate = now;
+
+        _fromDate = preset switch
+        {
+            DashboardRangePreset.ThisMonth => new DateTime(now.Year, now.Month, 1),
+            DashboardRangePreset.ThisYear => new DateTime(now.Year, 1, 1),
+            DashboardRangePreset.Last30Days => now.AddDays(-30),
+            _ => new DateTime(now.Year, now.Month, 1)
+        };
+    }
+
+    private async Task LoadDashboardAsync()
+    {
+        SetLoadingState(true, "Loading your dashboard");
+        _chartNote = null;
+        _upcomingPayments.Clear();
+        _accounts.Clear();
+        _budgetCategories.Clear();
+        _householdMembers.Clear();
+        _cashflowSeries.Clear();
+        _cashflowLabels = Array.Empty<string>();
+        _categorySeries.Clear();
+        _categoryLabels = Array.Empty<string>();
+        _transactionCount = 0;
+        _net = 0;
+        _totalBalance = 0;
+        _householdIncome = null;
+        _trendIn = null;
+        _trendOut = null;
+
+        try
+        {
+            _spent = await DashboardService.GetSpentInTimePeriod(_fromDate, _toDate, _cts.Token);
+            _net = (_spent?.TotalIn ?? 0) + (_spent?.TotalOut ?? 0);
+
+            var periodDays = (_toDate.Date - _fromDate.Date).Days + 1;
+            var previousFrom = _fromDate.AddDays(-periodDays);
+            var previousTo = _fromDate;
+            var previous = await DashboardService.GetSpentInTimePeriod(previousFrom, previousTo, _cts.Token);
+
+            _trendIn = CalculateTrendPercentage(_spent?.TotalIn ?? 0, previous.TotalIn);
+            _trendOut = CalculateTrendPercentage(Math.Abs(_spent?.TotalOut ?? 0), Math.Abs(previous.TotalOut));
+
+            await foreach (var payment in DashboardService.GetUpcomingPaymentsAsync(8, _cts.Token))
+            {
+                _upcomingPayments.Add(payment);
+            }
+
+            await foreach (var account in AccountService.GetAccountsAndMostRecentTransactionsAsync(
+                               5,
+                               SyncTypes.Account | SyncTypes.Balance | SyncTypes.Transactions,
+                               _cts.Token))
+            {
+                _accounts.Add(account);
+                _totalBalance += account.AccountBalance;
+            }
+
+            await foreach (var budget in BudgetCategoriesService.GetBudgetItemsAsync(_cts.Token))
+            {
+                _budgetCategories.Add(budget);
+            }
+
+            await foreach (var member in HouseholdMemberService.GetHouseholdMembersAsync(_cts.Token))
+            {
+                _householdMembers.Add(member);
+            }
+
+            _householdIncome = _householdMembers.Sum(x => x.Income ?? 0m);
+
+            await BuildChartsAsync();
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
+    private async Task BuildChartsAsync()
+    {
+        const int maxTransactionsForCharts = 5000;
+        var request = new FilteredTransactionsRequest
+        {
+            FromDate = _fromDate.ToUniversalTime(),
+            ToDate = _toDate.ToUniversalTime(),
+            AccountIds = ImmutableList<Guid>.Empty,
+            ProviderIds = ImmutableList<Guid>.Empty,
+            Categories = ImmutableList<string>.Empty,
+            Types = ImmutableList<string>.Empty,
+            Tags = ImmutableList<string>.Empty
+        };
+
+        var transactions = new List<TransactionResponse>(512);
+        await foreach (var tx in TransactionsService.GetAllTransactionsAsync(request, SyncTypes.Transactions, _cts.Token))
+        {
+            transactions.Add(tx);
+            if (transactions.Count >= maxTransactionsForCharts)
+            {
+                _chartNote = $"Charting limited to the first {maxTransactionsForCharts:n0} transactions in the selected range.";
+                break;
+            }
+        }
+
+        _transactionCount = transactions.Count;
+
+        if (transactions.Count == 0)
+            return;
+
+        BuildCashflowChart(transactions);
+        BuildCategoryChart(transactions);
+    }
+
+    private void BuildCashflowChart(List<TransactionResponse> transactions)
+    {
+        var start = _fromDate.Date;
+        var end = _toDate.Date;
+        var days = (end - start).Days + 1;
+        if (days <= 0)
+            return;
+
+        var inByDay = new decimal[days];
+        var outByDay = new decimal[days];
+
+        foreach (var tx in transactions)
+        {
+            var d = tx.TransactionTime.ToLocalTime().Date;
+            var idx = (d - start).Days;
+            if (idx < 0 || idx >= days)
+                continue;
+
+            if (tx.Amount >= 0)
+                inByDay[idx] += tx.Amount;
+            else
+                outByDay[idx] += Math.Abs(tx.Amount);
+        }
+
+        var labels = new string[days];
+        var inData = new double[days];
+        var outData = new double[days];
+        var netData = new double[days];
+
+        for (var i = 0; i < days; i++)
+        {
+            var day = start.AddDays(i);
+            labels[i] = day.ToString(days <= 31 ? "d MMM" : "MMM", CultureInfo.CurrentCulture);
+            inData[i] = Convert.ToDouble(inByDay[i]);
+            outData[i] = Convert.ToDouble(outByDay[i]);
+            netData[i] = Convert.ToDouble(inByDay[i] - outByDay[i]);
+        }
+
+        _cashflowLabels = labels;
+        _cashflowSeries.Add(new ChartSeries<double> { Name = "In", Data = inData });
+        _cashflowSeries.Add(new ChartSeries<double> { Name = "Out", Data = outData });
+        _cashflowSeries.Add(new ChartSeries<double> { Name = "Net", Data = netData });
+    }
+
+    private void BuildCategoryChart(List<TransactionResponse> transactions)
+    {
+        var top = transactions
+            .Where(x => x.Amount < 0)
+            .GroupBy(x => string.IsNullOrWhiteSpace(x.TransactionCategory) ? "Uncategorised" : x.TransactionCategory)
+            .Select(g => new { Category = g.Key, Total = g.Sum(x => Math.Abs(x.Amount)) })
+            .OrderByDescending(x => x.Total)
+            .Take(8)
+            .ToList();
+
+        if (top.Count == 0)
+            return;
+
+        _categoryLabels = top.Select(x => x.Category).ToArray();
+        _categorySeries.Add(new ChartSeries<double>
+        {
+            Name = "Spend",
+            Data = top.Select(x => Convert.ToDouble(x.Total)).ToArray()
+        });
+    }
+
+    private static decimal? CalculateTrendPercentage(decimal current, decimal previous)
+    {
+        if (previous == 0)
+            return null;
+
+        return (current - previous) / Math.Abs(previous);
+    }
+
+    private Variant GetPresetButtonVariant(DashboardRangePreset preset)
+    {
+        return preset == _rangePreset ? Variant.Filled : Variant.Outlined;
+    }
+
+    private string GetGreeting()
+    {
+        var hour = DateTime.Now.Hour;
+        if (hour < 12) return $"Good morning {userName}";
+        if (hour < 18) return $"Good afternoon {userName}";
+        return $"Good evening {userName}";
+    }
+
+    private static string DueInLabel(DateTime paymentDateUtc)
+    {
+        var days = (paymentDateUtc.ToLocalTime().Date - DateTime.Now.Date).Days;
+        if (days < 0) return "overdue";
+        if (days == 0) return "today";
+        if (days == 1) return "in 1 day";
+        return $"in {days} days";
+    }
+
+    private static string FormatCurrency(decimal value)
+    {
+        return value.ToString("C", CultureInfo.CurrentCulture);
+    }
+
+    private static string FormatTrend(decimal? trendPercent, bool invert = false)
+    {
+        if (trendPercent is null)
+            return "No previous period to compare";
+
+        var t = invert ? -trendPercent.Value : trendPercent.Value;
+        var sign = t > 0 ? "+" : string.Empty;
+        return $"{sign}{t:P0} vs previous period";
+    }
+
+    private string? GetBalanceMeta()
+    {
+        if (_householdIncome is null || _householdIncome == 0)
+            return null;
+
+        var netAfterOut = (_householdIncome ?? 0) - Math.Abs(_spent?.TotalOut ?? 0);
+        return $"Household income: {FormatCurrency(_householdIncome ?? 0)} · After out: {FormatCurrency(netAfterOut)}";
+    }
+
+    private string GetTransactionsInRangeCaption()
+    {
+        return $"{_transactionCount:n0} transactions in range";
+    }
+
+}

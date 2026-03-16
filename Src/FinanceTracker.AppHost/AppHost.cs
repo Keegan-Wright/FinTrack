@@ -41,6 +41,7 @@ IResourceBuilder<RedisResource> redis = builder.AddRedis("FinTrack-Redis")
 
 IResourceBuilder<PostgresServerResource> postgres = builder.AddPostgres("FinTrack-Postgres")
     .WithPgWeb()
+    .WithPgAdmin()
     .WithDataVolume(isReadOnly: false)
     .PublishAsDockerComposeService((resource, service) =>
     {
