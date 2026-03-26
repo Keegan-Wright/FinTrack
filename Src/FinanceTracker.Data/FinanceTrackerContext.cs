@@ -1,9 +1,11 @@
 using System.Reflection;
+using FinanceTracker.Configurations;
 using FinanceTracker.Data.Models;
 using FinanceTracker.Data.Models.Utility;
 using FinanceTracker.Security.Encryption;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
@@ -13,9 +15,12 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
 {
     private readonly ISymmetricEncryptionService _symmetricEncryptionService;
 
+
     public FinanceTrackerContext(DbContextOptions<FinanceTrackerContext> options,
-        ISymmetricEncryptionService symmetricEncryptionService) : base(options) =>
+        ISymmetricEncryptionService symmetricEncryptionService) : base(options)
+    {
         _symmetricEncryptionService = symmetricEncryptionService;
+    }
 
 
     public DbSet<FinanceTrackerUser> FinanceTrackerUsers { get; set; }

@@ -146,10 +146,7 @@ public partial class Program
 
         app.UseHttpsRedirection();
 
-        using IServiceScope scope = app.Services.CreateScope();
-        FinanceTrackerContext db = await scope.ServiceProvider.GetRequiredService<IDbContextFactory<FinanceTrackerContext>>()
-            .CreateDbContextAsync();
-        await db.Database.MigrateAsync();
+        await ExecuteDatabaseMigrationAsync(app);
 
 
         app.UseAntiforgery();
@@ -163,5 +160,15 @@ public partial class Program
 
 
         await app.RunAsync();
+    }
+
+    private static async Task ExecuteDatabaseMigrationAsync(WebApplication app)
+    {
+        await using var scope = app.Services.CreateAsyncScope();
+
+        FinanceTrackerContext db = await scope.ServiceProvider.GetRequiredService<IDbContextFactory<FinanceTrackerContext>>()
+            .CreateDbContextAsync();
+
+        await db.Database.MigrateAsync();
     }
 }
