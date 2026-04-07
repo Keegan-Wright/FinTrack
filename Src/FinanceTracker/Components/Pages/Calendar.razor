@@ -8,7 +8,7 @@
 @attribute [Authorize]
 @inject ICalendarService CalendarService
 
-<PageTitle>Accounts</PageTitle>
+<PageTitle>Calendar</PageTitle>
 
 <MudGrid Spacing="4">
     <MudItem xs="4">
@@ -27,22 +27,50 @@
                 <MudCardContent>
                     <MudExpansionPanels>
                         <MudExpansionPanel Text="Transactions">
-                            @foreach (var transaction in calenderItem.Transactions)
+                            @if (!calenderItem.Transactions.Any())
                             {
-                                <MudText>@transaction.Description @transaction.Amount.ToString("C", CultureInfo.CurrentCulture)</MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">No transactions on this day.</MudText>
+                            }
+                            else
+                            {
+                                <MudTable Items="calenderItem.Transactions">
+                                    <HeaderContent>
+                                        <MudTh>Desc</MudTh>
+                                        <MudTh>Amount</MudTh>
+                                    </HeaderContent>
+                                    <RowTemplate>
+                                        <MudTd DataLabel="Desc">@context.Description</MudTd>
+                                        <MudTd DataLabel="Amount"><MudText Color="@(context.Amount < 0 ? Color.Error : Color.Success)">@context.Amount.ToString("C", CultureInfo.CurrentCulture)</MudText></MudTd>
+                                    </RowTemplate>
+                                </MudTable>
                             }
                         </MudExpansionPanel>
 
                         <MudExpansionPanel Text="Goals">
-                            @foreach (var goal in calenderItem.Goals)
+                            @if (!calenderItem.Goals.Any())
                             {
-                                <MudText>@goal.Name</MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">No goals ending on this day.</MudText>
+                            }
+                            else
+                            {
+                                @foreach (var goal in calenderItem.Goals)
+                                {
+                                    <MudText>@goal.Name</MudText>
+                                }
                             }
                         </MudExpansionPanel>
 
                         <MudExpansionPanel Text="Events">
-                            @foreach (var userEvent in calenderItem.Events)
+                            @if (!calenderItem.Events.Any())
                             {
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">No events on this day.</MudText>
+                            }
+                            else
+                            {
+                                @foreach (var userEvent in calenderItem.Events)
+                                {
+                                    // Placeholder
+                                }
                             }
                         </MudExpansionPanel>
                     </MudExpansionPanels>
