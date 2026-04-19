@@ -28,7 +28,6 @@ public class ReportService : ServiceBase<ReportService>, IReportService
     public async IAsyncEnumerable<SpentInTimePeriodReportResponse> GetSpentInTimePeriodReportAsync(
         BaseReportRequest request, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        await _openBankingService.PerformSyncAsync(request.SyncTypes, cancellationToken);
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
         IQueryable<OpenBankingTransaction> query = GetQueryByBaseReportRequest(request, context);
@@ -99,7 +98,6 @@ public class ReportService : ServiceBase<ReportService>, IReportService
     public async IAsyncEnumerable<SpentInCategoryReportResponse> GetCategoryBreakdownReportAsync(
         BaseReportRequest request, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        await _openBankingService.PerformSyncAsync(request.SyncTypes, cancellationToken);
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
         IQueryable<OpenBankingTransaction> query = GetQueryByBaseReportRequest(request, context);
@@ -184,7 +182,6 @@ public class ReportService : ServiceBase<ReportService>, IReportService
     public async IAsyncEnumerable<SpentInAccountReportResponse> GetAccountBreakdownReportAsync(
         BaseReportRequest request, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        await _openBankingService.PerformSyncAsync(request.SyncTypes, cancellationToken);
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
         IQueryable<OpenBankingTransaction> query = GetQueryByBaseReportRequest(request, context);

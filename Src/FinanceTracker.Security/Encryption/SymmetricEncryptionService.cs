@@ -17,8 +17,8 @@ public class SymmetricEncryptionService : ISymmetricEncryptionService
 
     private readonly byte[] _key;
 
-    public SymmetricEncryptionService(EncryptionSettings encryptionSettings) =>
-        (_key, _iv) = DeriveKeyAndIv(encryptionSettings, HashAlgorithmName.SHA3_256);
+    public SymmetricEncryptionService(EncryptionConfiguration encryptionConfiguration) =>
+        (_key, _iv) = DeriveKeyAndIv(encryptionConfiguration, HashAlgorithmName.SHA3_256);
 
     public string Encrypt<T>(T value)
     {
@@ -104,12 +104,12 @@ public class SymmetricEncryptionService : ISymmetricEncryptionService
         return (T)Convert.ChangeType(plainText, targetType, CultureInfo.CurrentCulture);
     }
 
-    private static (byte[] Key, byte[] Iv) DeriveKeyAndIv(EncryptionSettings encryptionSettings,
+    private static (byte[] Key, byte[] Iv) DeriveKeyAndIv(EncryptionConfiguration encryptionConfiguration,
         HashAlgorithmName hashAlgorithm)
     {
-        byte[] saltBytes = Encoding.ASCII.GetBytes(encryptionSettings.SymmetricSalt);
+        byte[] saltBytes = Encoding.ASCII.GetBytes(encryptionConfiguration.SymmetricSalt);
         Span<byte> generator = new byte[256].AsSpan();
-        Rfc2898DeriveBytes.Pbkdf2(encryptionSettings.SymmetricKey, saltBytes, generator, encryptionSettings.Iterations,
+        Rfc2898DeriveBytes.Pbkdf2(encryptionConfiguration.SymmetricKey, saltBytes, generator, encryptionConfiguration.Iterations,
             hashAlgorithm);
 
         return (generator[..(KeySize / 8)].ToArray(), generator[..(BlockSize / 8)].ToArray());

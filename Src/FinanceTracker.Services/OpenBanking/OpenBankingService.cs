@@ -663,6 +663,7 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
     {
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+
         // User hasn't authenticated yet
         if (!await context.IsolateToUser(UserId)
                 .AsNoTracking()

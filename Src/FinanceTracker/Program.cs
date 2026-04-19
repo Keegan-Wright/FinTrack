@@ -98,7 +98,7 @@ public partial class Program
 
         builder.Services.AddSingleton(trueLayerConfig);
 
-        EncryptionSettings encryptionConfig = new()
+        EncryptionConfiguration encryptionConfig = new()
         {
             SymmetricKey = builder.Configuration.GetValue<string>("ENCRYPTION_KEY")!,
             SymmetricSalt = builder.Configuration.GetValue<string>("ENCRYPTION_SALT")!,

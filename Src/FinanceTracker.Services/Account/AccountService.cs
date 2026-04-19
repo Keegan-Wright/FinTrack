@@ -27,8 +27,6 @@ public class AccountService : ServiceBase<AccountService>, IAccountService
         int transactionsToReturn, SyncTypes syncFlags,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        await _openBankingService.PerformSyncAsync(syncFlags, cancellationToken);
-
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
         IQueryable<OpenBankingAccount> query = context
