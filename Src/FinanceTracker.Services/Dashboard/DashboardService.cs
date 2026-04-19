@@ -39,9 +39,6 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        // IMPORTANT:
-        // Transaction timestamps are encrypted at rest, so we cannot reliably filter by date in SQL.
-        // We materialize candidates first, then filter in-memory on decrypted values.
         DateTime fromUtc = fromDate.AddDays(-1).ToUniversalTime();
         DateTime toUtc = toDate.AddDays(1).ToUniversalTime();
 
@@ -96,8 +93,6 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
 
         upcomingPayments.AddRange(standingOrders.Where(x => x.PaymentDate > nowUtc));
 
-        // IMPORTANT:
-        // PreviousPaymentTimeStamp is encrypted at rest; do not do date arithmetic (AddMonths) in SQL.
         List<DirectDebitLite> directDebitItems = await context.IsolateToUser(UserId)
             .Include(x => x.Providers)!.ThenInclude(x => x.Accounts)!.ThenInclude(x => x.DirectDebits)
             .SelectMany(x => x.Providers!.SelectMany(c => c.Accounts!).SelectMany(r => r.DirectDebits!))

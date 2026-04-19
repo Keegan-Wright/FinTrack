@@ -40,10 +40,11 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
 
         transactionsQuery = ApplyTransactionRequestFiltering(filteredTransactionsRequest, transactionsQuery);
 
+        var transactions = await GetTransactionsSelect(transactionsQuery).ToListAsync(cancellationToken);
 
-        await foreach (TransactionResponse transaction in GetTransactionsSelect(transactionsQuery)
+        await foreach (TransactionResponse transaction in transactions
                            .OrderByDescending(x => x.TransactionTime)
-                           .AsAsyncEnumerable().WithCancellation(cancellationToken))
+                           .ToAsyncEnumerable().WithCancellation(cancellationToken))
         {
             // Few Client filters due to encryption limiting ability
             if (filteredTransactionsRequest.SearchTerm is not null)
