@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Security.Claims;
 using FinanceTracker.AppHost.ServiceDefaults;
+using FinanceTracker.BackgroundJobs;
 using FinanceTracker.Components;
 using FinanceTracker.Components.Account;
 using FinanceTracker.Configurations;
@@ -15,6 +16,9 @@ using TickerQ.DependencyInjection;
 using TickerQ.EntityFrameworkCore.Customizer;
 using TickerQ.EntityFrameworkCore.DependencyInjection;
 using TickerQ.Instrumentation.OpenTelemetry;
+using TickerQ.Utilities;
+using TickerQ.Utilities.Entities;
+using TickerQ.Utilities.Interfaces.Managers;
 
 namespace FinanceTracker;
 
@@ -117,8 +121,11 @@ public partial class Program
             {
                 efOptions.UseApplicationDbContext<FinanceTrackerContext>(ConfigurationType.UseModelCustomizer);
             });
+
+            options.IgnoreSeedDefinedCronTickers();
         });
 
+        builder.Services.MapTicker<SyncAllOpenBankingDetailsAsync>();
 
 
         builder.Services.AddCascadingValue(_ => new ApplicationState());
@@ -158,8 +165,33 @@ public partial class Program
         app.UseOutputCache();
         app.MapAdditionalIdentityEndpoints();
 
+        await SeedInitialTickers(app);
 
         await app.RunAsync();
+    }
+
+    private static async Task SeedInitialTickers(WebApplication app)
+    {
+
+        await using var scope = app.Services.CreateAsyncScope();
+
+        FinanceTrackerContext db = await scope.ServiceProvider
+            .GetRequiredService<IDbContextFactory<FinanceTrackerContext>>()
+            .CreateDbContextAsync();
+
+        if (!await db.CronTickerEntities.AnyAsync())
+        {
+            await db.CronTickerEntities.AddAsync(new CronTickerEntity()
+            {
+                Expression = "* * * * * *",
+                Description = "SyncAllOpenBankingDetailsAsync",
+                Function = "SyncAllOpenBankingDetailsAsync",
+                IsEnabled = true,
+                Retries = 1,
+                RetryIntervals = [10, 30]
+            });
+            await db.SaveChangesAsync();
+        }
     }
 
     private static async Task ExecuteDatabaseMigrationAsync(WebApplication app)
