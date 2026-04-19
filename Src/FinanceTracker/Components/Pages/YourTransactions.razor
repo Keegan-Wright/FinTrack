@@ -1,5 +1,6 @@
 @page "/Transactions"
 @using System.Collections.Immutable
+@using System.Globalization
 @using FinanceTracker.Components.Dialogs
 @using FinanceTracker.Components.Transactions
 @using FinanceTracker.Enums
@@ -49,11 +50,22 @@
     </ToolBarContent>
     <Columns>
         <PropertyColumn Property="x => x.Description" Title="Description" Sortable="true" Filterable="true"/>
-        <PropertyColumn Property="x => x.Amount" Format="c" Title="Amount" Sortable="true" Filterable="true"/>
+        <TemplateColumn Sortable="true"
+                        Filterable="false"
+                        SortBy="item => item.Amount">
+            <HeaderTemplate>
+                <MudText>Amount</MudText>
+            </HeaderTemplate>
+            <CellTemplate>
+                <MudText Color="@(context.Item.Amount < 0 ? Color.Error : Color.Success)">@context.Item.Amount.ToString("c", CultureInfo.CurrentCulture)</MudText>
+            </CellTemplate>
+        </TemplateColumn>
         <PropertyColumn Property="x => x.TransactionCategory" Title="Category" Sortable="true" Filterable="true"/>
         <PropertyColumn Property="x => x.TransactionType" Title="Type" Sortable="true" Filterable="true"/>
         <PropertyColumn Property="x => x.TransactionTime" Title="Date" Sortable="true" Filterable="true"/>
-        <TemplateColumn>
+        <TemplateColumn Sortable="true"
+                        Filterable="false"
+                        SortBy="item => item.Tags">
             <HeaderTemplate>
                 <MudText>Tags</MudText>
             </HeaderTemplate>
@@ -85,7 +97,6 @@
     private readonly List<TransactionTagFilterResponse> _transactionTagFilterItems = [];
     private readonly List<TransactionResponse> _transactions = [];
     private readonly string _searchTerm = string.Empty;
-
 
     private TransactionResponse? _contextMenuRow;
     private MudMenu _contextMenu = null!;
@@ -150,7 +161,6 @@
             _transactionTagFilterItems.Add(tag);
         }
     }
-
 
     private Func<TransactionResponse, bool> TransactionsQuickFilter =>
         x => string.IsNullOrWhiteSpace(_transactionsSearchTerm) || x.Description.Contains(_transactionsSearchTerm, StringComparison.OrdinalIgnoreCase);

@@ -257,10 +257,10 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
                     }
 
                     IEnumerable<ICollection<OpenBankingTransactionClassifications>> classifications =
-                        transactionsEdits.Select(x => x.Classifications)!;
+                        (transactionsEdits.Select(x => x.Classifications ?? []))!;
 
                     IEnumerable<OpenBankingTransactionClassifications> classificationItems =
-                        classifications.Where(x => x.Count != 0).SelectMany(x => x);
+                        classifications.Where(x =>  x.Count != 0).SelectMany(x => x);
 
                     await context.BulkInsertOrUpdateAsync(classificationItems, cancellationToken: cancellationToken);
                 }

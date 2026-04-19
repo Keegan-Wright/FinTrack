@@ -14,6 +14,20 @@ namespace FinanceTracker.Services.Dashboard;
 [Scoped<IDashboardService>]
 public class DashboardService : ServiceBase<DashboardService>, IDashboardService
 {
+    private sealed class TransactionLite
+    {
+        public decimal Amount { get; init; }
+        public DateTime TransactionTime { get; init; }
+        public string TransactionCategory { get; init; } = string.Empty;
+    }
+
+    private sealed class DirectDebitLite
+    {
+        public decimal PreviousPaymentAmount { get; init; }
+        public DateTime PreviousPaymentTimeStamp { get; init; }
+        public string Name { get; init; } = string.Empty;
+    }
+
     public DashboardService(ClaimsPrincipal user, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<DashboardService> logger)
         : base(user, financeTrackerContextFactory, logger)
     {
@@ -25,18 +39,32 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
+        DateTime fromUtc = fromDate.AddDays(-1).ToUniversalTime();
+        DateTime toUtc = toDate.AddDays(1).ToUniversalTime();
+
         IQueryable<OpenBankingTransaction> query = context.IsolateToUser(UserId)
             .Include(x => x.Providers)!.ThenInclude(x => x.Accounts)!.ThenInclude(x => x.Transactions)
             .SelectMany(x => x.Providers!.SelectMany(c => c.Accounts!).SelectMany(r => r.Transactions!))
-            .AsNoTracking().Where(x =>
-                x.TransactionTime >= fromDate.AddDays(-1).ToUniversalTime() &&
-                x.TransactionTime <= toDate.AddDays(1).ToUniversalTime() && x.TransactionCategory != "TRANSFER");
-        List<decimal> items = await query.Select(x => x.Amount).ToListAsync(cancellationToken);
+            .AsNoTracking();
+
+        List<TransactionLite> items = await query
+            .Select(x => new TransactionLite
+            {
+                Amount = x.Amount,
+                TransactionTime = x.TransactionTime,
+                TransactionCategory = x.TransactionCategory
+            })
+            .ToListAsync(cancellationToken);
+
+        IEnumerable<decimal> amountsInRange = items
+            .Where(x => x.TransactionTime >= fromUtc && x.TransactionTime <= toUtc)
+            .Where(x => x.TransactionCategory != "TRANSFER")
+            .Select(x => x.Amount);
 
         return new SpentInTimePeriodResponse
         {
-            TotalIn = items.Where(x => !decimal.IsNegative(x)).Sum(),
-            TotalOut = items.Where(decimal.IsNegative).Sum()
+            TotalIn = amountsInRange.Where(x => !decimal.IsNegative(x)).Sum(),
+            TotalOut = amountsInRange.Where(decimal.IsNegative).Sum()
         };
     }
 
@@ -44,39 +72,52 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         List<UpcomingPaymentsResponse> upcomingPayments = [];
+
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
-        upcomingPayments.AddRange(await context.IsolateToUser(UserId)
+
+        DateTime nowUtc = DateTime.Now.ToUniversalTime();
+
+        List<UpcomingPaymentsResponse> standingOrders = await context.IsolateToUser(UserId)
             .Include(x => x.Providers)!.ThenInclude(x => x.Accounts)!.ThenInclude(x => x.StandingOrders)
             .SelectMany(x => x.Providers!.SelectMany(c => c.Accounts!).SelectMany(r => r.StandingOrders!))
             .AsNoTracking()
-            .Where(x => x.NextPaymentDate > DateTime.Now.ToUniversalTime())
             .Select(x => new UpcomingPaymentsResponse
             {
                 Amount = x.NextPaymentAmount,
                 PaymentDate = x.NextPaymentDate,
                 PaymentName = x.Payee,
                 PaymentType = "Standing Order"
-            }).ToListAsync(cancellationToken));
+            })
+            .ToListAsync(cancellationToken);
 
+        upcomingPayments.AddRange(standingOrders.Where(x => x.PaymentDate > nowUtc));
 
-        upcomingPayments.AddRange(await context.IsolateToUser(UserId)
+        List<DirectDebitLite> directDebitItems = await context.IsolateToUser(UserId)
             .Include(x => x.Providers)!.ThenInclude(x => x.Accounts)!.ThenInclude(x => x.DirectDebits)
             .SelectMany(x => x.Providers!.SelectMany(c => c.Accounts!).SelectMany(r => r.DirectDebits!))
             .AsNoTracking()
+            .Select(x => new DirectDebitLite
+            {
+                PreviousPaymentAmount = x.PreviousPaymentAmount,
+                PreviousPaymentTimeStamp = x.PreviousPaymentTimeStamp,
+                Name = x.Name
+            })
+            .ToListAsync(cancellationToken);
+
+        upcomingPayments.AddRange(directDebitItems
             .Where(x => x.PreviousPaymentAmount != 0)
-            .Where(x => x.PreviousPaymentTimeStamp < DateTime.Now.ToUniversalTime())
             .Select(x => new UpcomingPaymentsResponse
             {
                 Amount = x.PreviousPaymentAmount,
                 PaymentDate = x.PreviousPaymentTimeStamp.AddMonths(1),
                 PaymentName = x.Name,
                 PaymentType = "Direct Debit"
-            }).ToListAsync(cancellationToken));
+            })
+            .Where(x => x.PaymentDate > nowUtc));
 
 
         await foreach (UpcomingPaymentsResponse upcomingPayment in upcomingPayments
-                           .Where(x => x.PaymentDate > DateTime.Now.ToUniversalTime())
                            .OrderBy(x => x.PaymentDate)
                            .Take(numberToFetch)
                            .ToAsyncEnumerable().WithCancellation(cancellationToken))

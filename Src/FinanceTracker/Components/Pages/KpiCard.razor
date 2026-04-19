@@ -1,0 +1,56 @@
+@using System.Globalization
+@typeparam TTrendType
+<MudCard Class="h-100">
+    <MudCardContent>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icon"/>
+            <MudStack Spacing="0">
+                <MudText Typo="Typo.caption">@Label</MudText>
+                <MudText Typo="Typo.h5" Color="Color">@FormatCurrency(Value ?? 0)</MudText>
+                @if (typeof(TTrendType) == typeof(string))
+                {
+                    <MudText Typo="Typo.caption">@Trend</MudText>
+                }
+                else
+                {
+                    <MudText Typo="Typo.caption">@FormatTrend(Trend)</MudText>
+                }
+
+            </MudStack>
+        </MudStack>
+    </MudCardContent>
+</MudCard>
+
+
+@code
+{
+
+    [Parameter, EditorRequired]
+    public string Icon { get; set; }
+
+    [Parameter, EditorRequired]
+    public string Label { get; set; }
+    [Parameter, EditorRequired]
+    public decimal? Value { get; set; }
+
+    [Parameter, EditorRequired]
+    public TTrendType? Trend { get; set; }
+
+    [Parameter]
+    public Color Color { get; set; }
+
+    private static string FormatCurrency(decimal value) =>
+        value.ToString("C", CultureInfo.CurrentCulture);
+
+    private static string FormatTrend(TTrendType? trendPercent, bool invert = false)
+    {
+        var formattedTrend = trendPercent as decimal?;
+
+        if (formattedTrend is null)
+            return "No previous period to compare";
+
+        var t = invert ? -formattedTrend.Value : formattedTrend.Value;
+        var sign = t > 0 ? "+" : string.Empty;
+        return $"{sign}{t:P0} vs previous period";
+    }
+}

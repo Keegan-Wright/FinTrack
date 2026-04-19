@@ -1,9 +1,12 @@
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using FinanceTracker.Data;
 using FinanceTracker.Data.Models;
 using FinanceTracker.Enums;
 using FinanceTracker.Services.OpenBanking;
 using Microsoft.EntityFrameworkCore;
+using OpenTelemetry;
+using OpenTelemetry.Trace;
 using TickerQ.Utilities.Base;
 
 namespace FinanceTracker.BackgroundJobs;
@@ -27,6 +30,10 @@ public class BackgroundSyncAutomatedJobs
     {
         context.CronOccurrenceOperations.SkipIfAlreadyRunning();
 
+        using var activity = new ActivitySource("FinanceTracker");
+
+        using var performingBackgroundSyncActivity = activity.StartActivity("PerformingBackgroundSync");
+
         await using FinanceTrackerContext dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
         ConfiguredCancelableAsyncEnumerable<FinanceTrackerUser> userQuery = dbContext.Users
             .Include(x => x.Providers)!
@@ -38,15 +45,34 @@ public class BackgroundSyncAutomatedJobs
             .AsSplitQuery()
             .AsAsyncEnumerable().WithCancellation(cancellationToken);
 
+
         await foreach (FinanceTrackerUser user in userQuery)
         {
+            performingBackgroundSyncActivity!.AddEvent(new ActivityEvent($"Processing User {user.Id}"));
             await _openBankingService.RunFunctionAsUser(user.Id, async () =>
             {
                 foreach (OpenBankingProvider provider in user.Providers!)
                 {
-                    await _openBankingService.BulkLoadProviderAsync(provider, SyncTypes.All, cancellationToken);
+                    try
+                    {
+                        performingBackgroundSyncActivity.AddEvent(
+                            new ActivityEvent($"Processing Provider {provider.Id} for User {user.Id}"));
+
+                        await _openBankingService.BulkLoadProviderAsync(provider, SyncTypes.All, cancellationToken);
+
+                        performingBackgroundSyncActivity.AddEvent(
+                            new ActivityEvent($"Finished Processing Provider {provider.Id} for User {user.Id}"));
+                    }
+                    catch (Exception ex)
+                    {
+                        performingBackgroundSyncActivity.AddException(ex);
+                    }
                 }
+                performingBackgroundSyncActivity.AddEvent(
+                    new ActivityEvent($"Finished Processing User {user.Id}"));
             });
         }
+
+        performingBackgroundSyncActivity.AddEvent(new ActivityEvent("Background sync completed"));
     }
 }
