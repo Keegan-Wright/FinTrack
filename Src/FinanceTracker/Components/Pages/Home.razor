@@ -545,11 +545,14 @@
         if (AddedItems.Count == 0)
             return;
 
-        _categoryLabels = AddedItems.Select(x => x.Tag).ToArray();
+        var amountToTake = 8;
+        var reducedItems = AddedItems.OrderByDescending(x => x.Total).Take(amountToTake);
+
+        _categoryLabels = reducedItems.Select(x => x.Tag).ToArray();
         _categorySeries.Add(new ChartSeries<double>
         {
             Name = "Spend",
-            Data = AddedItems.Select(x => Convert.ToDouble(x.Total)).ToArray()
+            Data = reducedItems.Select(x => Convert.ToDouble(x.Total)).ToArray()
         });
     }
 
