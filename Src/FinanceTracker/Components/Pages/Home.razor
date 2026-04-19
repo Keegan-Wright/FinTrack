@@ -14,7 +14,7 @@
 @using FinanceTracker.Services.HouseholdMembers
 @using FinanceTracker.Services.Transactions
 @using Microsoft.AspNetCore.Authorization
-@using Microsoft.Extensions.Diagnostics.Latency
+@using TickerQ.EntityFrameworkCore.DbContextFactory
 @inherits PageComponent
 
 @attribute [Authorize]
@@ -356,6 +356,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+
         await base.OnInitializedAsync();
         var authState = await AuthenticationStateTask;
         _userName = authState.User.Claims.FirstOrDefault(x => x.Type == CustomClaims.FirstName)?.Value ?? authState.User.Identity!.Name;

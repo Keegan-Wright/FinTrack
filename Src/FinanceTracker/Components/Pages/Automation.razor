@@ -1,0 +1,142 @@
+@page "/Automation"
+@using FinanceTracker.Components.Dialogs
+@using FinanceTracker.Models.Request.Automation
+@using FinanceTracker.Models.Response.Automation
+@using FinanceTracker.Services.Automation
+@using Microsoft.AspNetCore.Authorization
+@inherits PageComponent
+
+@attribute [Authorize]
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject IAutomationService AutomationService
+
+<PageTitle>Automation</PageTitle>
+
+<MudDataGrid T="AutomationCronResponse" Items="_cronResponses"
+             MultiSelection="true"
+             SortMode="SortMode.Multiple"
+             Filterable="true"
+             Hideable="true"
+             Hover="true"
+             RowsPerPage="50"
+             RowContextMenuClick="OpenContextMenu"
+             RowClick="OpenContextMenu">
+    <ToolBarContent>
+        <MudText Typo="Typo.h6">Automated Jobs</MudText>
+    </ToolBarContent>
+    <Columns>
+        <PropertyColumn Property="x => x.Function" Title="Function" Sortable="true" Filterable="true"/>
+        <PropertyColumn Property="x => x.Description" Title="Description" Sortable="true" Filterable="true"/>
+        <PropertyColumn Property="x => x.Expression" Title="Expression" Sortable="true" Filterable="true"/>
+        <PropertyColumn Property="x => x.Retries" Title="Retries" Sortable="true" Filterable="true"/>
+        <TemplateColumn Sortable="true"
+                        Filterable="false"
+                        SortBy="item => item.RetryIntervals">
+            <HeaderTemplate>
+                <MudText>RetryIntervals</MudText>
+            </HeaderTemplate>
+            <CellTemplate>
+                @if (context.Item.RetryIntervals is not null)
+                {
+                    @foreach (var tag in context.Item.RetryIntervals)
+                    {
+                        <MudChip>@tag</MudChip>
+                    }
+                }
+
+            </CellTemplate>
+        </TemplateColumn>
+        <PropertyColumn Property="x => x.IsEnabled" Title="IsEnabled" Sortable="true" Filterable="true"/>
+    </Columns>
+    <PagerContent>
+        <MudDataGridPager T="AutomationCronResponse"/>
+    </PagerContent>
+</MudDataGrid>
+<MudMenu PositionAtCursor="true" @ref="_contextMenu" id="_contextMenu">
+    <MudMenuItem Icon="@Icons.Material.Filled.Add" OnClick="EditCronItem">
+        Edit Cron
+    </MudMenuItem>
+</MudMenu>
+
+@code {
+
+    private readonly List<AutomationCronResponse> _cronResponses = [];
+    private AutomationCronResponse? _contextMenuRow;
+    private MudMenu _contextMenu = null!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        SetLoadingState(true, "Loading jobs");
+
+        await LoadJobs();
+
+        SetLoadingState(false);
+    }
+
+    private async Task LoadJobs()
+    {
+        _cronResponses.Clear();
+        await foreach (var cron in AutomationService.GetJobs(_cts.Token))
+        {
+            _cronResponses.Add(cron);
+        }
+    }
+
+    private async Task OpenContextMenu(DataGridRowClickEventArgs<AutomationCronResponse> row)
+    {
+        _contextMenuRow = row.Item;
+        await _contextMenu.OpenMenuAsync(row.MouseEventArgs);
+    }
+
+    private async Task EditCronItem()
+    {
+        if(_contextMenuRow is null)
+            return;
+
+
+
+        var dialogParameters = new DialogParameters<ModifyCronDialog>
+        {
+            { x => x.CronId, _contextMenuRow.Id },
+            { x => x.Description, _contextMenuRow.Description },
+            { x => x.Expression, _contextMenuRow.Expression },
+            { x => x.Retries, _contextMenuRow.Retries },
+            { x => x.RetryIntervals, _contextMenuRow.RetryIntervals },
+            { x => x.IsEnabled, _contextMenuRow.IsEnabled }
+        };
+
+        var dialogRef = await DialogService.ShowAsync<ModifyCronDialog>(null, dialogParameters);
+        var dialogActionResult = await dialogRef.Result;
+
+        if (dialogActionResult is null)
+            return;
+
+        if (dialogActionResult.Canceled)
+        {
+            Snackbar.Add("Job update cancelled");
+        }
+        else
+        {
+            try
+            {
+                SetLoadingState(true, "Updating job");
+                var cronJobUpdateRequest = (CronJobUpdateRequest)dialogActionResult.Data!;
+                await AutomationService.UpdateJobSettings(cronJobUpdateRequest, _cts.Token);
+
+            }
+            catch (Exception)
+            {
+                Snackbar.Add("Error occured updating job");
+            }
+            finally
+            {
+                SetLoadingState(false);
+                await LoadJobs();
+            }
+        }
+    }
+
+
+}

@@ -21,4 +21,10 @@
     <ProjectReference Include="..\FinanceTracker.Security\FinanceTracker.Security.csproj"/>
   </ItemGroup>
 
+  <ItemGroup>
+    <Reference Include="TickerQ.Utilities">
+      <HintPath>..\..\..\..\.nuget\packages\tickerq.utilities\10.3.0\lib\net10.0\TickerQ.Utilities.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
 </Project>

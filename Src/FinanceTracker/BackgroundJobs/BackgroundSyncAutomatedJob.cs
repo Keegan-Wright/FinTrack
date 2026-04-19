@@ -7,7 +7,9 @@ using FinanceTracker.Services.OpenBanking;
 using Microsoft.EntityFrameworkCore;
 using OpenTelemetry;
 using OpenTelemetry.Trace;
+using TickerQ.EntityFrameworkCore.DbContextFactory;
 using TickerQ.Utilities.Base;
+using TickerQ.Utilities.Enums;
 
 namespace FinanceTracker.BackgroundJobs;
 
@@ -23,7 +25,7 @@ public class BackgroundSyncAutomatedJobs
         _dbContextFactory = dbContextFactory;
     }
 
-    [TickerFunction("SyncAllOpenBankingDetailsAsync", "0 0 */4 * * *")]
+    [TickerFunction("SyncAllOpenBankingDetailsAsync", TickerTaskPriority.High, maxConcurrency: 1)]
     public async Task SyncAllOpenBankingDetailsAsync(
         TickerFunctionContext context,
         CancellationToken cancellationToken)

@@ -1,0 +1,51 @@
+@using FinanceTracker.Models.Request.Automation
+@using FinanceTracker.Models.Request.Classifications
+@using FinanceTracker.Models.Response.Classifications
+
+<DialogBase TResponse="CronJobUpdateRequest" Title="Update automated job"
+            ResponseConstructor="BuildResponseModel">
+    <Content>
+        <MudGrid>
+            <MudItem xs="6">
+                <MudTextField @bind-Value="Description" Label="Description" Placeholder="Description"></MudTextField>
+            </MudItem>
+            <MudItem xs="6">
+                <MudTextField @bind-Value="Expression" Label="Expression" Placeholder="Expression"></MudTextField>
+            </MudItem>
+            <MudItem xs="6">
+                <MudTextField T="int" @bind-Value="Retries" Label="Retries" Placeholder="Retries"></MudTextField>
+            </MudItem>
+            <MudItem xs="6">
+                <MudTextField T="int[]" @bind-Value="RetryIntervals" Label="Retry Intervals" Placeholder="Retry Intervals"></MudTextField>
+            </MudItem>
+            <MudItem xs="6">
+                <MudTextField T="bool" @bind-Value="IsEnabled" Label="Enabled" Placeholder="Enabled"></MudTextField>
+            </MudItem>
+        </MudGrid>
+    </Content>
+</DialogBase>
+
+@code {
+
+    [Parameter] public Guid CronId { get; set; }
+    [Parameter] public string Description { get; set; } = null!;
+    [Parameter] public string Expression { get; set; } = null!;
+    [Parameter] public int Retries { get; set; }
+    [Parameter] public int[] RetryIntervals { get; set; } = null!;
+    [Parameter] public bool IsEnabled { get; set; }
+
+
+    private CronJobUpdateRequest BuildResponseModel()
+    {
+        return new CronJobUpdateRequest(
+            CronId,
+            Description,
+            Expression,
+            Retries,
+            RetryIntervals,
+            IsEnabled);
+    }
+
+
+
+}
