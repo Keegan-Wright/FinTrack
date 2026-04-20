@@ -10,7 +10,6 @@ using FinanceTracker.Data.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using MudBlazor.Services;
 using TickerQ.DependencyInjection;
@@ -134,7 +133,7 @@ public partial class Program
 
         builder.Services.AddHttpClient("OpenBankingClient");
 
-        builder.Services.AddSignalR();
+        builder.Services.AddSingleton<IBackgroundSyncService, BackgroundSyncService>();
 
         AddFinanceTrackerServices(builder.Services);
         AddFinanceTrackerValidators(builder.Services);
@@ -159,7 +158,11 @@ public partial class Program
         await ExecuteDatabaseMigrationAsync(app);
 
 
-        app.MapHub<BackgroundUpdateHub>("/BackgroundProcessing");
+        app.MapGet("/BackgroundProcessing", (IBackgroundSyncService syncService, CancellationToken ct) =>
+        {
+            return TypedResults.ServerSentEvents(syncService.GetSyncNotifications(ct), "BackgroundBankingSyncComplete");
+        });
+
         app.UseAntiforgery();
         app.UseTickerQ();
         app.MapStaticAssets();

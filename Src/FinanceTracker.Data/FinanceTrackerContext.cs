@@ -43,6 +43,8 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
 
 
     public DbSet<CronTickerEntity> CronTickerEntities { get; set; }
+    public DbSet<CronTickerOccurrenceEntity<CronTickerEntity>> CronTickerOccurrenceEntities { get; set; }
+    public DbSet<TimeTickerEntity> TimeTickerEntities { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

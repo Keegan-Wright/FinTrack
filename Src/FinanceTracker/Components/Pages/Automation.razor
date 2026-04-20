@@ -78,7 +78,7 @@
     private async Task LoadJobs()
     {
         _cronResponses.Clear();
-        await foreach (var cron in AutomationService.GetJobs(_cts.Token))
+        await foreach (var cron in AutomationService.GetJobsAsync(_cts.Token))
         {
             _cronResponses.Add(cron);
         }
@@ -123,7 +123,7 @@
             {
                 SetLoadingState(true, "Updating job");
                 var cronJobUpdateRequest = (CronJobUpdateRequest)dialogActionResult.Data!;
-                await AutomationService.UpdateJobSettings(cronJobUpdateRequest, _cts.Token);
+                await AutomationService.UpdateJobSettingsAsync(cronJobUpdateRequest, _cts.Token);
 
             }
             catch (Exception)

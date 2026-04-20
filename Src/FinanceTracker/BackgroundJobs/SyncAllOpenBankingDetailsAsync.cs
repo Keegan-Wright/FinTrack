@@ -4,7 +4,6 @@ using FinanceTracker.Data;
 using FinanceTracker.Data.Models;
 using FinanceTracker.Enums;
 using FinanceTracker.Services.OpenBanking;
-using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using TickerQ.Utilities.Base;
 using TickerQ.Utilities.Interfaces;
@@ -19,14 +18,14 @@ public class SyncAllOpenBankingDetailsAsync : ITickerFunction
 
     private readonly IDbContextFactory<FinanceTrackerContext> _dbContextFactory;
     private readonly IOpenBankingService _openBankingService;
-    private readonly IHubContext<BackgroundUpdateHub, IBackgroundUpdateHub> _hub;
+    private readonly IBackgroundSyncService _syncService;
 
     public SyncAllOpenBankingDetailsAsync(IOpenBankingService openBankingService,
-        IDbContextFactory<FinanceTrackerContext> dbContextFactory, IHubContext<BackgroundUpdateHub, IBackgroundUpdateHub> hub)
+        IDbContextFactory<FinanceTrackerContext> dbContextFactory, IBackgroundSyncService syncService)
     {
         _openBankingService = openBankingService;
         _dbContextFactory = dbContextFactory;
-        _hub = hub;
+        _syncService = syncService;
     }
 
     public async Task ExecuteAsync(TickerFunctionContext context,
@@ -80,6 +79,6 @@ public class SyncAllOpenBankingDetailsAsync : ITickerFunction
 
         performingBackgroundSyncActivity.AddEvent(new ActivityEvent("Background sync completed"));
 
-        await _hub.Clients.All.BackgroundBankingSyncComplete(DateTime.UtcNow);
+        await _syncService.NotifySyncComplete();
     }
 }

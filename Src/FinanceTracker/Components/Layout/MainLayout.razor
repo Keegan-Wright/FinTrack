@@ -1,5 +1,14 @@
 ﻿@inherits LayoutBase
+@using FinanceTracker.BackgroundJobs
+@using FinanceTracker.Services.Automation
+@using TickerQ.Utilities.Entities
+@using TickerQ.Utilities.Interfaces.Managers
 @implements IDisposable
+
+@inject IJSRuntime JS
+@inject IAutomationService AutomationService;
+@inject ITimeTickerManager<TimeTickerEntity> TimeTickerManager;
+@inject NavigationManager NavigationManager
 
 <MudThemeProvider @ref="@_mudThemeProvider" Theme="_theme" @bind-IsDarkMode="_isDarkMode" DefaultScrollbar="true"/>
 <MudPopoverProvider/>
@@ -30,6 +39,24 @@
     </MudAppBar>
     <MudDrawer id="nav-drawer" @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="0">
         <NavMenu/>
+        <MudSpacer/>
+        @if (BackgroundSyncTime != null)
+        {
+            <MudStack Class="px-4 py-2" Spacing="0">
+                @if (UpdatingBackgroundSync)
+                {
+                    <MudSkeleton SkeletonType="SkeletonType.Text" Width="100%" Height="40px"></MudSkeleton>
+                }
+                else
+                {
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary">Last Synchronised at</MudText>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="4">
+                        <MudText Typo="Typo.caption" Style="line-height: 1.5;">@BackgroundSyncTime.Value.ToShortDateString() @BackgroundSyncTime.Value.ToShortTimeString()</MudText>
+                        <MudIconButton Size="Size.Small" Icon="@Icons.Material.Filled.Refresh" OnClick="@RequestResync" Class="pa-0" Style="margin-top: -2px;"></MudIconButton>
+                    </MudStack>
+                }
+            </MudStack>
+        }
     </MudDrawer>
     <MudMainContent Class="pt-16 pa-4 mt-4">
         <MudContainer MaxWidth="MaxWidth.ExtraExtraLarge">
@@ -51,6 +78,46 @@
 
     [CascadingParameter] public IHttpContextAccessor? HttpContext { get; set; }
 
+    private DotNetObjectReference<MainLayout>? _objRef;
+
+    internal readonly CancellationTokenSource _cts = new();
+
+    private bool UpdatingBackgroundSync { get; set; }
+    private DateTime? BackgroundSyncTime { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        if (firstRender)
+        {
+            _objRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("setupBackgroundSyncEvent", _objRef, NavigationManager.ToAbsoluteUri("/BackgroundProcessing").ToString());
+            await GetLatestSyncTimeAsync();
+        }
+    }
+
+    private async Task GetLatestSyncTimeAsync()
+    {
+        var syncTime = await AutomationService.GetLastSyncTimeAsync(_cts.Token);
+        BackgroundSyncTime = syncTime;
+        UpdatingBackgroundSync = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public async Task RequestResync()
+    {
+        UpdatingBackgroundSync = true;
+        await TimeTickerManager.AddAsync<SyncAllOpenBankingDetailsAsync>(DateTime.UtcNow, _cts.Token);
+    }
+
+    [JSInvokable]
+    public async Task OnBackgroundSyncComplete()
+    {
+        await GetLatestSyncTimeAsync();
+        StateHasChanged();
+    }
+
+
     private void DarkModeToggle()
     {
         _isDarkMode = !_isDarkMode;
@@ -59,6 +126,10 @@
     public void Dispose()
     {
         ApplicationState.PropertyChanged -= ApplicationStateOnPropertyChanged;
+        _objRef?.Dispose();
+        _cts.Cancel();
+        _cts.Dispose();
+
     }
 
 }

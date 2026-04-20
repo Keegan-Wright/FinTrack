@@ -21,7 +21,6 @@ namespace FinanceTracker.Services.OpenBanking;
 public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingService
 {
     private readonly IOpenBankingApiService _openBankingApiService;
-    private const int SyncMins = 5;
 
     public OpenBankingService(ClaimsPrincipal user,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
@@ -69,8 +68,7 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
     {
         ICollection<OpenBankingProviderScopes> providerScopes = provider.Scopes ?? [];
 
-        List<OpenBankingSynchronization> providerSyncs = provider.Syncronisations?.Where(x =>
-            x.SyncronisationTime > DateTime.Now.AddMinutes(-SyncMins).ToUniversalTime()).ToList()?? [];
+        List<OpenBankingSynchronization> providerSyncs = provider.Syncronisations?.ToList()?? [];
 
         provider.Accounts ??= [];
         provider.Scopes ??= [];
