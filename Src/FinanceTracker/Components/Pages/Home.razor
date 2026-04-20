@@ -14,7 +14,6 @@
 @using FinanceTracker.Services.HouseholdMembers
 @using FinanceTracker.Services.Transactions
 @using Microsoft.AspNetCore.Authorization
-@using TickerQ.EntityFrameworkCore.DbContextFactory
 @inherits PageComponent
 
 @attribute [Authorize]
@@ -23,8 +22,6 @@
 @inject ITransactionsService TransactionsService
 @inject IBudgetCategoriesService BudgetCategoriesService
 @inject IHouseholdMemberService HouseholdMemberService
-@inject NavigationManager Navigation
-@inject AuthenticationStateProvider AuthStateProvider
 
 <PageTitle>Home</PageTitle>
 

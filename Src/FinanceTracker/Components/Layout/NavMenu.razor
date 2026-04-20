@@ -1,4 +1,6 @@
-﻿@implements IDisposable
+﻿@using Microsoft.AspNetCore.SignalR.Client
+@using Microsoft.EntityFrameworkCore.Metadata.Internal
+@implements IDisposable
 
 @inject NavigationManager NavigationManager
 
@@ -27,9 +29,33 @@
 </MudNavMenu>
 
 @code {
-    protected override void OnInitialized()
+
+    private HubConnection _hubConnection { get; set; }
+
+    protected override async Task OnInitializedAsync()
     {
+        await base.OnInitializedAsync();
         NavigationManager.LocationChanged += OnLocationChanged;
+
+        await StartBackgroundHub();
+    }
+
+    private async Task StartBackgroundHub()
+    {
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.ToAbsoluteUri("/BackgroundProcessing"))
+            .WithServerTimeout(TimeSpan.FromSeconds(30))
+            .WithKeepAliveInterval(TimeSpan.FromSeconds(15))
+            .Build();
+
+        _hubConnection.HandshakeTimeout = TimeSpan.FromSeconds(15);
+
+        _hubConnection.On<DateTime>("BackgroundBankingSyncComplete", (completionTime) =>
+        {
+            var a = 1;
+        });
+
+            await _hubConnection.StartAsync();
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
