@@ -165,33 +165,7 @@ public partial class Program
         app.UseOutputCache();
         app.MapAdditionalIdentityEndpoints();
 
-        await SeedInitialTickers(app);
-
         await app.RunAsync();
-    }
-
-    private static async Task SeedInitialTickers(WebApplication app)
-    {
-
-        await using var scope = app.Services.CreateAsyncScope();
-
-        FinanceTrackerContext db = await scope.ServiceProvider
-            .GetRequiredService<IDbContextFactory<FinanceTrackerContext>>()
-            .CreateDbContextAsync();
-
-        if (!await db.CronTickerEntities.AnyAsync())
-        {
-            await db.CronTickerEntities.AddAsync(new CronTickerEntity()
-            {
-                Expression = "* * * * * *",
-                Description = "SyncAllOpenBankingDetailsAsync",
-                Function = "SyncAllOpenBankingDetailsAsync",
-                IsEnabled = true,
-                Retries = 1,
-                RetryIntervals = [10, 30]
-            });
-            await db.SaveChangesAsync();
-        }
     }
 
     private static async Task ExecuteDatabaseMigrationAsync(WebApplication app)
