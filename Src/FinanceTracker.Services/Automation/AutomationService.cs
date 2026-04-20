@@ -46,8 +46,8 @@ public class AutomationService :  ServiceBase<AutomationService>, IAutomationSer
         var cron = await context.CronTickerEntities.FirstAsync(x => x.Id == request.Id, cancellationToken);
 
         cron.Description = request.Description;
-        cron.RetryIntervals = cron.RetryIntervals;
-        cron.Retries = cron.Retries;
+        cron.RetryIntervals = request.RetryIntervals;
+        cron.Retries = request.Retries;
         cron.Expression = request.Expression;
         cron.IsEnabled = request.IsEnabled;
         await _cronTickerManager.UpdateAsync(cron, cancellationToken);

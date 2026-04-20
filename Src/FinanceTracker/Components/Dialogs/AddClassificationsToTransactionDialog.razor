@@ -46,16 +46,16 @@
     };
 
 
-    private AddCustomClassificationsToTransactionRequest BuildResponseModel()
+    private Task<AddCustomClassificationsToTransactionRequest?> BuildResponseModel()
     {
-        if (SelectedItems is null)
-            throw new InvalidOperationException();
+        if (SelectedItems is null || !SelectedItems.Any())
+            return Task.FromResult<AddCustomClassificationsToTransactionRequest?>(null);
 
-        return new AddCustomClassificationsToTransactionRequest
+        return Task.FromResult<AddCustomClassificationsToTransactionRequest?>(new AddCustomClassificationsToTransactionRequest
         {
             TransactionId = TransactionId,
             Classifications = SelectedItems.Select(x => new SelectedCustomClassificationsRequest { ClassificationId = x.ClassificationId })
-        };
+        });
     }
 
     void SelectedItemsChanged(HashSet<ClassificationsResponse> items)

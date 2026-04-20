@@ -1,28 +1,43 @@
 @using FinanceTracker.Models.Request.HouseholdMember
 <DialogBase TResponse="AddHouseholdMemberRequest" Title="Add Household member" ResponseConstructor="BuildResponseModel">
     <Content>
-        <MudGrid>
-            <MudItem xs="6">
-                <MudTextField @bind-Value="FirstName" Label="First Name" Placeholder="First Name"></MudTextField>
-            </MudItem>
-            <MudItem xs="6">
-                <MudTextField @bind-Value="Lastname" Label="Last Name" Placeholder="Last Name"></MudTextField>
-            </MudItem>
-            <MudItem xs="6">
-                <MudTextField T="decimal" @bind-Value="Income" Label="Income" Placeholder="Income"></MudTextField>
-            </MudItem>
-        </MudGrid>
+        <MudForm @ref="_form">
+            <MudGrid>
+                <MudItem xs="6">
+                    <MudTextField @bind-Value="FirstName" Label="First Name" Placeholder="First Name"
+                                  For="@(() => FirstName)"
+                                  Validation="@((string x) => string.IsNullOrWhiteSpace(x) ? "First Name is required" : null)"
+                                  Immediate="true"></MudTextField>
+                </MudItem>
+                <MudItem xs="6">
+                    <MudTextField @bind-Value="Lastname" Label="Last Name" Placeholder="Last Name"
+                                  For="@(() => Lastname)"
+                                  Validation="@((string x) => string.IsNullOrWhiteSpace(x) ? "Last Name is required" : null)"
+                                  Immediate="true"></MudTextField>
+                </MudItem>
+                <MudItem xs="6">
+                    <MudTextField T="decimal" @bind-Value="Income" Label="Income" Placeholder="Income"
+                                  For="@(() => Income)"
+                                  Validation="@((decimal x) => x < 0 ? "Income must be 0 or greater" : null)"
+                                  Immediate="true"></MudTextField>
+                </MudItem>
+            </MudGrid>
+        </MudForm>
     </Content>
 </DialogBase>
 
 @code {
 
+    private MudForm _form = null!;
+
     private string FirstName { get; set; } = string.Empty;
     private string Lastname { get; set; } = string.Empty;
     private decimal Income { get; set; }
-
-    private AddHouseholdMemberRequest BuildResponseModel()
+    private async Task<AddHouseholdMemberRequest?> BuildResponseModel()
     {
+        await _form.Validate();
+        if (!_form.IsValid) return null;
+
         return new AddHouseholdMemberRequest
         {
             FirstName = FirstName,

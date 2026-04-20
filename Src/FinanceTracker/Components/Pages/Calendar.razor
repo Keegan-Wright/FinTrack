@@ -19,59 +19,71 @@
 
     @foreach (var calenderItem in _calendarItems)
     {
-        <MudItem>
-            <MudCard>
+        <MudItem xs="12" sm="6" md="4" lg="3">
+            <MudCard Class="h-100">
                 <MudCardHeader>
-                    <MudText Typo="Typo.body1">@calenderItem.Date.ToShortDateString()</MudText>
+                    <MudText Typo="Typo.h6">@calenderItem.Date.ToString("dd/MM/yyyy")</MudText>
                 </MudCardHeader>
                 <MudCardContent>
-                    <MudExpansionPanels>
+                    <MudExpansionPanels MultiExpansion="true">
                         <MudExpansionPanel Text="Transactions">
-                            @if (!calenderItem.Transactions.Any())
-                            {
-                                <MudText Typo="Typo.body2" Color="Color.Secondary">No transactions on this day.</MudText>
-                            }
-                            else
-                            {
-                                <MudTable Items="calenderItem.Transactions">
-                                    <HeaderContent>
-                                        <MudTh>Desc</MudTh>
-                                        <MudTh>Amount</MudTh>
-                                    </HeaderContent>
-                                    <RowTemplate>
-                                        <MudTd DataLabel="Desc">@context.Description</MudTd>
-                                        <MudTd DataLabel="Amount"><MudText Color="@(context.Amount < 0 ? Color.Error : Color.Success)">@context.Amount.ToString("C", CultureInfo.CurrentCulture)</MudText></MudTd>
-                                    </RowTemplate>
-                                </MudTable>
-                            }
+                            <MudPaper MaxHeight="300px" Style="overflow-y: auto;" Elevation="0">
+                                @if (!calenderItem.Transactions.Any())
+                                {
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="pa-4">No transactions on this day.</MudText>
+                                }
+                                else
+                                {
+                                    <MudTable Items="calenderItem.Transactions" Hover="true" Breakpoint="Breakpoint.None" Dense="true" Elevation="0">
+                                        <HeaderContent>
+                                            <MudTh>Desc</MudTh>
+                                            <MudTh>Amount</MudTh>
+                                        </HeaderContent>
+                                        <RowTemplate>
+                                            <MudTd DataLabel="Desc">@context.Description</MudTd>
+                                            <MudTd DataLabel="Amount">
+                                                <MudText Color="@(context.Amount < 0 ? Color.Error : Color.Success)" Typo="Typo.body2">
+                                                    @context.Amount.ToString("C", CultureInfo.CurrentCulture)
+                                                </MudText>
+                                            </MudTd>
+                                        </RowTemplate>
+                                    </MudTable>
+                                }
+                            </MudPaper>
                         </MudExpansionPanel>
 
                         <MudExpansionPanel Text="Goals">
-                            @if (!calenderItem.Goals.Any())
-                            {
-                                <MudText Typo="Typo.body2" Color="Color.Secondary">No goals ending on this day.</MudText>
-                            }
-                            else
-                            {
-                                @foreach (var goal in calenderItem.Goals)
+                            <MudPaper MaxHeight="200px" Style="overflow-y: auto;" Elevation="0">
+                                @if (!calenderItem.Goals.Any())
                                 {
-                                    <MudText>@goal.Name</MudText>
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="pa-4">No goals ending on this day.</MudText>
                                 }
-                            }
+                                else
+                                {
+                                    <MudList T="string" Dense="true">
+                                        @foreach (var goal in calenderItem.Goals)
+                                        {
+                                            <MudListItem Text="@goal.Name" Icon="@Icons.Material.Filled.Flag" />
+                                        }
+                                    </MudList>
+                                }
+                            </MudPaper>
                         </MudExpansionPanel>
 
                         <MudExpansionPanel Text="Events">
-                            @if (!calenderItem.Events.Any())
-                            {
-                                <MudText Typo="Typo.body2" Color="Color.Secondary">No events on this day.</MudText>
-                            }
-                            else
-                            {
-                                @foreach (var userEvent in calenderItem.Events)
+                            <MudPaper MaxHeight="200px" Style="overflow-y: auto;" Elevation="0">
+                                @if (!calenderItem.Events.Any())
                                 {
-                                    // Placeholder
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="pa-4">No events on this day.</MudText>
                                 }
-                            }
+                                else
+                                {
+                                    @foreach (var userEvent in calenderItem.Events)
+                                    {
+                                        // Placeholder
+                                    }
+                                }
+                            </MudPaper>
                         </MudExpansionPanel>
                     </MudExpansionPanels>
                 </MudCardContent>

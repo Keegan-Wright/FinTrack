@@ -1,31 +1,44 @@
 @using FinanceTracker.Models.Request.Automation
-@using FinanceTracker.Models.Request.Classifications
-@using FinanceTracker.Models.Response.Classifications
-
 <DialogBase TResponse="CronJobUpdateRequest" Title="Update automated job"
             ResponseConstructor="BuildResponseModel">
     <Content>
-        <MudGrid>
-            <MudItem xs="6">
-                <MudTextField @bind-Value="Description" Label="Description" Placeholder="Description"></MudTextField>
-            </MudItem>
-            <MudItem xs="6">
-                <MudTextField @bind-Value="Expression" Label="Expression" Placeholder="Expression"></MudTextField>
-            </MudItem>
-            <MudItem xs="6">
-                <MudTextField T="int" @bind-Value="Retries" Label="Retries" Placeholder="Retries"></MudTextField>
-            </MudItem>
-            <MudItem xs="6">
-                <MudTextField T="int[]" @bind-Value="RetryIntervals" Label="Retry Intervals" Placeholder="Retry Intervals"></MudTextField>
-            </MudItem>
-            <MudItem xs="6">
-                <MudTextField T="bool" @bind-Value="IsEnabled" Label="Enabled" Placeholder="Enabled"></MudTextField>
-            </MudItem>
-        </MudGrid>
+        <MudForm @ref="_form">
+            <MudGrid>
+                <MudItem xs="6">
+                    <MudTextField @bind-Value="Description" Label="Description" Placeholder="Description"
+                                  For="@(() => Description)"
+                                  Validation="@((string x) => string.IsNullOrWhiteSpace(x) ? "Description is required" : null)"
+                                  Immediate="true"></MudTextField>
+                </MudItem>
+                <MudItem xs="6">
+                    <MudTextField @bind-Value="Expression" Label="Expression" Placeholder="Expression"
+                                  For="@(() => Expression)"
+                                  Validation="@((string x) => ValidateCron(x))"
+                                  Immediate="true"></MudTextField>
+                </MudItem>
+                <MudItem xs="6">
+                    <MudTextField T="int" @bind-Value="Retries" Label="Retries" Placeholder="Retries"
+                                  For="@(() => Retries)"
+                                  Immediate="true"></MudTextField>
+                </MudItem>
+                <MudItem xs="6">
+                    <MudTextField T="string" @bind-Value="RetryIntervalsString" Label="Retry Intervals"
+                                  Placeholder="Retry Intervals (comma-separated, e.g. 10, 20, 30)"
+                                  For="@(() => RetryIntervalsString)"
+                                  Validation="@((string x) => ValidateRetryIntervals(x))"
+                                  Immediate="true"></MudTextField>
+                </MudItem>
+                <MudItem xs="6">
+                    <MudCheckBox T="bool" @bind-Value="IsEnabled" Label="Enabled"></MudCheckBox>
+                </MudItem>
+            </MudGrid>
+        </MudForm>
     </Content>
 </DialogBase>
 
 @code {
+
+    private MudForm _form = null!;
 
     [Parameter] public Guid CronId { get; set; }
     [Parameter] public string Description { get; set; } = null!;
@@ -35,15 +48,60 @@
     [Parameter] public bool IsEnabled { get; set; }
 
 
-    private CronJobUpdateRequest BuildResponseModel()
+
+    private string RetryIntervalsString
     {
-        return new CronJobUpdateRequest(
-            CronId,
-            Description,
-            Expression,
-            Retries,
-            RetryIntervals,
-            IsEnabled);
+        get => string.Join(", ", RetryIntervals ?? []);
+        set
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                RetryIntervals = [];
+                return;
+            }
+
+            var intervals = value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(s => int.TryParse(s, out var i) ? i : (int?)null)
+                .Where(i => i.HasValue)
+                .Select(i => i!.Value)
+                .ToArray();
+
+            RetryIntervals = intervals;
+        }
+    }
+
+
+    private string? ValidateCron(string? expression)
+    {
+        if (string.IsNullOrWhiteSpace(expression)) return "Expression is required";
+        var parts = expression.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length == 6 ? null : "Expression must be a 6-part cron";
+    }
+
+    private string? ValidateRetryIntervals(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+
+        var parts = value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length == 0) return null;
+
+        foreach (var part in parts)
+        {
+            if (!int.TryParse(part, out _))
+            {
+                return "All intervals must be valid integers";
+            }
+        }
+
+        return null;
+    }
+
+    private async Task<CronJobUpdateRequest?> BuildResponseModel()
+    {
+        await _form.Validate();
+        if (!_form.IsValid) return null;
+
+        return new CronJobUpdateRequest(CronId, Description, Expression, Retries, RetryIntervals, IsEnabled);
     }
 
 
