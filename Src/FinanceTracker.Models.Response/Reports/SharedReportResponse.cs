@@ -2,7 +2,7 @@
 
 namespace FinanceTracker.Models.Response.Reports;
 
-public class SharedReportResponse
+public class SharedReportResponse : IReportResponse
 {
     [Description("Total number of transactions")]
     public int TotalTransactions { get; init; }

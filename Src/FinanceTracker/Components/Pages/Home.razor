@@ -194,7 +194,7 @@
                 else
                 {
                     <MudStack Spacing="2">
-                        @foreach (var b in _budgetCategories.OrderByDescending(x => x.SavingsGoal > 0 ? x.AvailableFunds / x.SavingsGoal : 0))
+                        @foreach (var b in _budgetCategories.OrderByDescending(static x => x.SavingsGoal > 0 ? x.AvailableFunds / x.SavingsGoal : 0))
                         {
                             var progress = b.SavingsGoal <= 0 ? 0 : Math.Clamp((double)(b.AvailableFunds / b.SavingsGoal), 0, 1);
                             <MudPaper Outlined="true" Class="pa-3" Elevation="0">
@@ -240,7 +240,7 @@
                 else
                 {
                     <MudGrid Spacing="3">
-                        @foreach (var a in _accounts.OrderByDescending(x => x.AccountBalance))
+                        @foreach (var a in _accounts.OrderByDescending(static x => x.AccountBalance))
                         {
                             <MudItem xs="12" md="6" lg="4">
                                 <MudCard>
@@ -276,7 +276,7 @@
                                         {
                                             <MudDivider Class="my-2"/>
                                             <MudList T="AccountTransactionResponse" Dense="true">
-                                                @foreach (var t in a.Transactions.OrderByDescending(x => x.Time))
+                                                @foreach (var t in a.Transactions.OrderByDescending(static x => x.Time))
                                                 {
                                                     <MudListItem T="AccountTransactionResponse">
                                                         <MudStack Row="true" AlignItems="AlignItems.Center"
@@ -533,24 +533,24 @@
     {
         List<(string Tag, decimal Total)> AddedItems = new();
 
-        var distinctTags = transactions.SelectMany(x => x.Tags).Distinct();
+        var distinctTags = transactions.SelectMany(static x => x.Tags).Distinct();
         foreach (var distinctTag in distinctTags)
         {
             var transactionsToAdd = transactions.Where(x => x.Tags.Contains(distinctTag));
-            AddedItems.Add((distinctTag, transactionsToAdd.Where(x => x.Amount < 0).Sum(x => Math.Abs(x.Amount))));
+            AddedItems.Add((distinctTag, transactionsToAdd.Where(static x => x.Amount < 0).Sum(static x => Math.Abs(x.Amount))));
         }
 
         if (AddedItems.Count == 0)
             return;
 
         var amountToTake = 8;
-        var reducedItems = AddedItems.OrderByDescending(x => x.Total).Take(amountToTake);
+        var reducedItems = AddedItems.OrderByDescending(static x => x.Total).Take(amountToTake);
 
-        _categoryLabels = reducedItems.Select(x => x.Tag).ToArray();
+        _categoryLabels = reducedItems.Select(static x => x.Tag).ToArray();
         _categorySeries.Add(new ChartSeries<double>
         {
             Name = "Spend",
-            Data = reducedItems.Select(x => Convert.ToDouble(x.Total)).ToArray()
+            Data = reducedItems.Select(static x => Convert.ToDouble(x.Total)).ToArray()
         });
     }
 

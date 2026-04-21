@@ -47,7 +47,7 @@ public class AccountService : ServiceBase<AccountService>, IAccountService
                 AccountType = account.AccountType,
                 AvailableBalance = account.AccountBalance?.Available ?? 0,
                 Logo = account.Provider!.Logo,
-                Transactions = account.Transactions?.OrderByDescending(x => x.TransactionTime).Take(transactionsToReturn).Select(transaction => new AccountTransactionResponse
+                Transactions = account.Transactions?.OrderByDescending(static x => x.TransactionTime).Take(transactionsToReturn).Select(static transaction => new AccountTransactionResponse
                 {
                     Amount = transaction.Amount,
                     Description = transaction.Description,

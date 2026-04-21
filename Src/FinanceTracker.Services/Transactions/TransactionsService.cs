@@ -42,7 +42,7 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
         var transactions = await GetTransactionsSelect(transactionsQuery).ToListAsync(cancellationToken);
 
         await foreach (TransactionResponse transaction in transactions
-                           .OrderByDescending(x => x.TransactionTime)
+                           .OrderByDescending(static x => x.TransactionTime)
                            .ToAsyncEnumerable().WithCancellation(cancellationToken))
         {
             // Few Client filters due to encryption limiting ability

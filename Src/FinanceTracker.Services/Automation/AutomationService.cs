@@ -75,7 +75,7 @@ public class AutomationService :  ServiceBase<AutomationService>, IAutomationSer
             .OrderByDescending(x => x.ExecutionTime)
             .FirstOrDefaultAsync(cancellationToken);
 
-        if (latestManaulTickerOccurence?.ExecutionTime > latestCronOccurence?.ExecutionTime)
+        if (latestCronOccurence is null ||  (latestManaulTickerOccurence?.ExecutionTime > latestCronOccurence?.ExecutionTime))
             return latestManaulTickerOccurence.ExecutionTime.Value.ToLocalTime();
         else
             return latestCronOccurence?.ExecutionTime.ToLocalTime();

@@ -105,7 +105,7 @@ public class ReportPageBase<TReportResponse> : PageComponent
     }
 
 
-    internal static List<ChartSeries<double>> GetMonthlyGraphSeries(List<SharedReportResponse> reportItems)
+    internal static List<ChartSeries<double>> GetMonthlyGraphSeries<T>(IEnumerable<T> reportItems) where T : IReportResponse
     {
         ChartSeries<double> totalIn = new()
         {
@@ -129,7 +129,7 @@ public class ReportPageBase<TReportResponse> : PageComponent
         return [totalIn, totalOut, totalDif, transactions];
     }
 
-    internal static List<ChartSeries<double>> GetDailyGraphSeries(List<SharedReportResponse> reportItems)
+    internal static List<ChartSeries<double>> GetDailyGraphSeries<T>(IEnumerable<T> reportItems) where T : IReportResponse
     {
         ChartSeries<double> totalIn = new()
         {
@@ -190,16 +190,16 @@ public class ReportPageBase<TReportResponse> : PageComponent
 
     internal static int GetDaysInYear(int year) => DateTime.IsLeapYear(year) ? 366 : 365;
 
-    internal static (decimal TotalIn, decimal TotalOut) GetPreviousPeriodTotals(
-        List<SharedReportResponse> previous,
-        int currentMonthIndex)
+    internal static (decimal TotalIn, decimal TotalOut) GetPreviousPeriodTotals<T>(
+        IEnumerable<T> previous,
+        int currentMonthIndex) where T : IReportResponse
     {
         if (currentMonthIndex <= 0)
         {
             return (0, 0);
         }
 
-        SharedReportResponse previousMonth = previous[currentMonthIndex - 1];
+        T previousMonth = previous.ElementAt(currentMonthIndex - 1);
         return (previousMonth.TotalIn, previousMonth.TotalOut);
     }
 

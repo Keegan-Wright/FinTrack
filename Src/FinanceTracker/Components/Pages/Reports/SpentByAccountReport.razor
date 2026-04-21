@@ -47,7 +47,7 @@
                                 </SpentInTimePeriodOverview>
 
                                 <MudChart ChartType="ChartType.Bar"
-                                          ChartSeries="@GetMonthlyGraphSeries(yearlyBreakdown.MonthlyBreakdown.ToList<SharedReportResponse>())"
+                                          ChartSeries="@GetMonthlyGraphSeries(yearlyBreakdown.MonthlyBreakdown)"
                                           ChartLabels="@GetMonthlyGraphAxis()"
                                           ChartOptions="_chartOptions"
                                           Class="mt-4">
@@ -60,7 +60,7 @@
                                         {
                                             var monthIndex = Array.IndexOf(yearlyBreakdown.MonthlyBreakdown.ToArray(), monthlyBreakdown);
                                             var (prevTotalIn, prevTotalOut) = monthIndex > 0
-                                                ? GetPreviousPeriodTotals(yearlyBreakdown.MonthlyBreakdown.ToList<SharedReportResponse>(), monthIndex)
+                                                ? GetPreviousPeriodTotals(yearlyBreakdown.MonthlyBreakdown, monthIndex)
                                                 : (0m, 0m);
                                             var outTrend = CalculateTrendComparison(monthlyBreakdown.TotalOut, prevTotalOut);
                                             var outTrendPercent = CalculateTrendPercentage(monthlyBreakdown.TotalOut, prevTotalOut);
@@ -83,7 +83,7 @@
                                                 @if (monthlyBreakdown.DailyBreakdown.Any())
                                                 {
                                                     <MudChart ChartType="ChartType.Bar"
-                                                              ChartSeries="@GetDailyGraphSeries(monthlyBreakdown.DailyBreakdown.ToList<SharedReportResponse>())"
+                                                              ChartSeries="@GetDailyGraphSeries(monthlyBreakdown.DailyBreakdown)"
                                                               ChartLabels="@GetDailyGraphAxis(yearlyBreakdown.Year, GetMonthIndex(monthlyBreakdown.Month))"
                                                               ChartOptions="_chartOptions"
                                                               Class="mt-4">
