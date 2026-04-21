@@ -1,14 +1,17 @@
 @using FinanceTracker.Models.Request.Classifications
+@using FluentValidation
+@using FinanceTracker.Extensions
+@inject IValidator<AddClassificationsRequest> Validator
 <DialogBase TResponse="AddClassificationsRequest" Title="Add Classification / Tag"
             ResponseConstructor="BuildResponseModel">
     <Content>
-        <MudForm @ref="_form">
+        <MudForm @ref="_form" Model="@_model">
             <MudGrid>
                 <MudItem xs="12">
-                    <MudTextField @bind-Value="_classification" Label="Classification / Tag"
+                    <MudTextField @bind-Value="_model.Tag" Label="Classification / Tag"
                                   Placeholder="Classification / Tag"
-                                  For="@(() => _classification)"
-                                  Validation="@((string x) => string.IsNullOrWhiteSpace(x) ? "Classification is required" : null)"
+                                  For="@(() => _model.Tag)"
+                                  Validation="@(Validator.ValidateValue(_model, nameof(AddClassificationsRequest.Tag)))"
                                   Immediate="true"></MudTextField>
                 </MudItem>
             </MudGrid>
@@ -19,17 +22,14 @@
 @code {
 
     private MudForm _form = null!;
+    private AddClassificationsRequest _model = new() { Tag = string.Empty };
 
-    private string _classification = string.Empty;
     private async Task<AddClassificationsRequest?> BuildResponseModel()
     {
         await _form.Validate();
         if (!_form.IsValid) return null;
 
-        return new AddClassificationsRequest
-        {
-            Tag = _classification
-        };
+        return _model;
     }
 
 }

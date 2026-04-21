@@ -1,8 +1,13 @@
 namespace FinanceTracker.Models.Request.Automation;
 
-public record CronJobUpdateRequest(Guid Id,
-    string Description,
-    string Expression,
-    int Retries,
-    int[] RetryIntervals,
-    bool IsEnabled);
+public class CronJobUpdateRequest()
+{
+    public Guid Id { get; set; }
+    public string Description { get; set; }
+    public required string Expression { get; set; }
+    public int Retries { get; set; }
+    public int[] RetryIntervals { get; set; }
+    public required bool IsEnabled { get; set; }
+
+
+}
