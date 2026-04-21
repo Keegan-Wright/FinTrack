@@ -76,7 +76,7 @@ public class AutomationService :  ServiceBase<AutomationService>, IAutomationSer
             .FirstOrDefaultAsync(cancellationToken);
 
         if (latestCronOccurence is null ||  (latestManaulTickerOccurence?.ExecutionTime > latestCronOccurence?.ExecutionTime))
-            return latestManaulTickerOccurence.ExecutionTime.Value.ToLocalTime();
+            return latestManaulTickerOccurence?.ExecutionTime?.ToLocalTime();
         else
             return latestCronOccurence?.ExecutionTime.ToLocalTime();
 
