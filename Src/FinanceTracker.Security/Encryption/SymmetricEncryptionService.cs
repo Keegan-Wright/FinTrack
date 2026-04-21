@@ -108,7 +108,7 @@ public class SymmetricEncryptionService : ISymmetricEncryptionService
         HashAlgorithmName hashAlgorithm)
     {
         byte[] saltBytes = Encoding.ASCII.GetBytes(encryptionConfiguration.SymmetricSalt);
-        Span<byte> generator = new byte[256].AsSpan();
+        Span<byte> generator = new byte[256];
         Rfc2898DeriveBytes.Pbkdf2(encryptionConfiguration.SymmetricKey, saltBytes, generator, encryptionConfiguration.Iterations,
             hashAlgorithm);
 
