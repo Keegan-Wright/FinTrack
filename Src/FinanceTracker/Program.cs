@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Security.Claims;
 using FinanceTracker.AppHost.ServiceDefaults;
+using FinanceTracker.BackgroundJobs;
 using FinanceTracker.Components;
 using FinanceTracker.Components.Account;
 using FinanceTracker.Configurations;
@@ -15,6 +16,9 @@ using TickerQ.DependencyInjection;
 using TickerQ.EntityFrameworkCore.Customizer;
 using TickerQ.EntityFrameworkCore.DependencyInjection;
 using TickerQ.Instrumentation.OpenTelemetry;
+using TickerQ.Utilities;
+using TickerQ.Utilities.Entities;
+using TickerQ.Utilities.Interfaces.Managers;
 
 namespace FinanceTracker;
 
@@ -82,9 +86,9 @@ public partial class Program
             .AddDefaultTokenProviders();
 
         builder.Services.AddSingleton<IEmailSender<FinanceTrackerUser>, IdentityNoOpEmailSender>();
-        builder.AddRedisClient("financeTrackerRedis");
-        builder.AddRedisDistributedCache("financeTrackerRedis");
-        builder.AddRedisOutputCache("financeTrackerRedis");
+        builder.AddRedisClient("FinTrack-Redis");
+        builder.AddRedisDistributedCache("FinTrack-Redis");
+        builder.AddRedisOutputCache("FinTrack-Redis");
 
         TrueLayerOpenBankingConfiguration trueLayerConfig = new()
         {
@@ -98,7 +102,7 @@ public partial class Program
 
         builder.Services.AddSingleton(trueLayerConfig);
 
-        EncryptionSettings encryptionConfig = new()
+        EncryptionConfiguration encryptionConfig = new()
         {
             SymmetricKey = builder.Configuration.GetValue<string>("ENCRYPTION_KEY")!,
             SymmetricSalt = builder.Configuration.GetValue<string>("ENCRYPTION_SALT")!,
@@ -117,14 +121,19 @@ public partial class Program
             {
                 efOptions.UseApplicationDbContext<FinanceTrackerContext>(ConfigurationType.UseModelCustomizer);
             });
+
+            options.IgnoreSeedDefinedCronTickers();
         });
 
+        builder.Services.MapTicker<SyncAllOpenBankingDetailsAsync>();
 
 
         builder.Services.AddCascadingValue(_ => new ApplicationState());
 
 
         builder.Services.AddHttpClient("OpenBankingClient");
+
+        builder.Services.AddSingleton<IBackgroundSyncService, BackgroundSyncService>();
 
         AddFinanceTrackerServices(builder.Services);
         AddFinanceTrackerValidators(builder.Services);
@@ -149,6 +158,11 @@ public partial class Program
         await ExecuteDatabaseMigrationAsync(app);
 
 
+        app.MapGet("/BackgroundProcessing", (IBackgroundSyncService syncService, CancellationToken ct) =>
+        {
+            return TypedResults.ServerSentEvents(syncService.GetSyncNotifications(ct), "BackgroundBankingSyncComplete");
+        });
+
         app.UseAntiforgery();
         app.UseTickerQ();
         app.MapStaticAssets();
@@ -157,7 +171,6 @@ public partial class Program
 
         app.UseOutputCache();
         app.MapAdditionalIdentityEndpoints();
-
 
         await app.RunAsync();
     }

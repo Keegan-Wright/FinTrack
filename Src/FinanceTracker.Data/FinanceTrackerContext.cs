@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using TickerQ.Utilities.Entities;
 
 namespace FinanceTracker.Data;
 
@@ -39,6 +40,11 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
     public DbSet<OpenBankingTransactionClassifications> OpenBankingTransactionClassifications { get; set; }
     public DbSet<CustomClassification> CustomClassifications { get; set; }
     public DbSet<HouseholdMember> HouseholdMembers { get; set; }
+
+
+    public DbSet<CronTickerEntity> CronTickerEntities { get; set; }
+    public DbSet<CronTickerOccurrenceEntity<CronTickerEntity>> CronTickerOccurrenceEntities { get; set; }
+    public DbSet<TimeTickerEntity> TimeTickerEntities { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

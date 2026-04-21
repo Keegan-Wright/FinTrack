@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using System.Security.Claims;
 using FinanceTracker.Data;
 using FinanceTracker.Data.Models;
+using FinanceTracker.Enums;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using FinanceTracker.Models.Response.Dashboard;
@@ -28,7 +29,8 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
         public string Name { get; init; } = string.Empty;
     }
 
-    public DashboardService(ClaimsPrincipal user, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<DashboardService> logger)
+    public DashboardService(ClaimsPrincipal user, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
+        ILogger<DashboardService> logger)
         : base(user, financeTrackerContextFactory, logger)
     {
     }
@@ -105,12 +107,15 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
             })
             .ToListAsync(cancellationToken);
 
+        // This feels like a hack but we can only request direct debits once a token is generated every ~90 days
+        // Unless we want to use a refresh token every login
+        var currentMonth = nowUtc.Month;
         upcomingPayments.AddRange(directDebitItems
             .Where(x => x.PreviousPaymentAmount != 0)
             .Select(x => new UpcomingPaymentsResponse
             {
                 Amount = x.PreviousPaymentAmount,
-                PaymentDate = x.PreviousPaymentTimeStamp.AddMonths(1),
+                PaymentDate = x.PreviousPaymentTimeStamp.AddMonths((currentMonth - x.PreviousPaymentTimeStamp.Month) + 1),
                 PaymentName = x.Name,
                 PaymentType = "Direct Debit"
             })

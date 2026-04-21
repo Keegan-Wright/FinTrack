@@ -29,7 +29,6 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
         FilteredTransactionsRequest filteredTransactionsRequest, SyncTypes syncTypes,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        await _openBankingService.PerformSyncAsync(syncTypes, cancellationToken);
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
         IQueryable<OpenBankingTransaction> transactionsQuery = context.IsolateToUser(UserId)
@@ -43,7 +42,7 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
         var transactions = await GetTransactionsSelect(transactionsQuery).ToListAsync(cancellationToken);
 
         await foreach (TransactionResponse transaction in transactions
-                           .OrderByDescending(x => x.TransactionTime)
+                           .OrderByDescending(static x => x.TransactionTime)
                            .ToAsyncEnumerable().WithCancellation(cancellationToken))
         {
             // Few Client filters due to encryption limiting ability
@@ -83,8 +82,6 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
     public async IAsyncEnumerable<TransactionAccountFilterResponse> GetAccountsForTransactionFiltersAsync(
         SyncTypes syncTypes, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        await _openBankingService.PerformSyncAsync(syncTypes, cancellationToken);
-
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 

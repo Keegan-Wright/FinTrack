@@ -5,28 +5,31 @@ using FinanceTracker.Data.Models;
 using FinanceTracker.Enums;
 using FinanceTracker.Services.OpenBanking;
 using Microsoft.EntityFrameworkCore;
-using OpenTelemetry;
-using OpenTelemetry.Trace;
 using TickerQ.Utilities.Base;
+using TickerQ.Utilities.Interfaces;
 
 namespace FinanceTracker.BackgroundJobs;
 
-public class BackgroundSyncAutomatedJobs
+
+// ReSharper disable once ClassNeverInstantiated.Global
+// Background job, ignore the warning
+public class SyncAllOpenBankingDetailsAsync : ITickerFunction
 {
+
     private readonly IDbContextFactory<FinanceTrackerContext> _dbContextFactory;
     private readonly IOpenBankingService _openBankingService;
+    private readonly IBackgroundSyncService _syncService;
 
-    public BackgroundSyncAutomatedJobs(IOpenBankingService openBankingService,
-        IDbContextFactory<FinanceTrackerContext> dbContextFactory)
+    public SyncAllOpenBankingDetailsAsync(IOpenBankingService openBankingService,
+        IDbContextFactory<FinanceTrackerContext> dbContextFactory, IBackgroundSyncService syncService)
     {
         _openBankingService = openBankingService;
         _dbContextFactory = dbContextFactory;
+        _syncService = syncService;
     }
 
-    [TickerFunction("SyncAllOpenBankingDetailsAsync", "0 0 */4 * * *")]
-    public async Task SyncAllOpenBankingDetailsAsync(
-        TickerFunctionContext context,
-        CancellationToken cancellationToken)
+    public async Task ExecuteAsync(TickerFunctionContext context,
+        CancellationToken cancellationToken = new CancellationToken())
     {
         context.CronOccurrenceOperations.SkipIfAlreadyRunning();
 
@@ -68,11 +71,14 @@ public class BackgroundSyncAutomatedJobs
                         performingBackgroundSyncActivity.AddException(ex);
                     }
                 }
+
                 performingBackgroundSyncActivity.AddEvent(
                     new ActivityEvent($"Finished Processing User {user.Id}"));
             });
         }
 
         performingBackgroundSyncActivity.AddEvent(new ActivityEvent("Background sync completed"));
+
+        await _syncService.NotifySyncComplete();
     }
 }

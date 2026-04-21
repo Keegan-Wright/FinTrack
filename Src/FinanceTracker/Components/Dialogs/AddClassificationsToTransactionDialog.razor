@@ -1,41 +1,60 @@
 @using FinanceTracker.Models.Request.Classifications
 @using FinanceTracker.Models.Response.Classifications
+@using FluentValidation
+@using FinanceTracker.Extensions
+@inject IValidator<AddCustomClassificationsToTransactionRequest> Validator
 <DialogBase TResponse="AddCustomClassificationsToTransactionRequest" Title="Add Classification / Tag To Transaction"
             ResponseConstructor="BuildResponseModel">
     <Content>
-
-        <MudDataGrid T="ClassificationsResponse" MultiSelection="true" Items="@Classifications"
-                     SortMode="SortMode.Multiple" Filterable="true" QuickFilter="@QuickFilter"
-                     Hideable="false"
-                     SelectedItemsChanged="@SelectedItemsChanged">
-            <ToolBarContent>
-                <MudText Typo="Typo.h6">Classifications / Tags</MudText>
-                <MudSpacer/>
-                <MudTextField @bind-Value="_searchString" Placeholder="Search classifications / tags"
-                              Adornment="Adornment.Start" Immediate="true"
-                              AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium"
-                              Class="mt-0"></MudTextField>
-            </ToolBarContent>
-            <Columns>
-                <SelectColumn T="ClassificationsResponse"/>
-                <PropertyColumn Property="x => x.Tag" Title="Classification / Tag" Sortable="true" Filterable="true"/>
-            </Columns>
-            <PagerContent>
-                <MudDataGridPager T="ClassificationsResponse"/>
-            </PagerContent>
-        </MudDataGrid>
+        <MudForm @ref="_form" Model="@_model">
+            <MudDataGrid T="ClassificationsResponse" MultiSelection="true" Items="@Classifications"
+                         SortMode="SortMode.Multiple" Filterable="true" QuickFilter="@QuickFilter"
+                         Hideable="false"
+                         SelectedItemsChanged="@SelectedItemsChanged">
+                <ToolBarContent>
+                    <MudText Typo="Typo.h6">Classifications / Tags</MudText>
+                    <MudSpacer/>
+                    <MudTextField @bind-Value="_searchString" Placeholder="Search classifications / tags"
+                                  Adornment="Adornment.Start" Immediate="true"
+                                  AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium"
+                                  Class="mt-0"></MudTextField>
+                </ToolBarContent>
+                <Columns>
+                    <SelectColumn T="ClassificationsResponse"/>
+                    <PropertyColumn Property="x => x.Tag" Title="Classification / Tag" Sortable="true" Filterable="true"/>
+                </Columns>
+                <PagerContent>
+                    <MudDataGridPager T="ClassificationsResponse"/>
+                </PagerContent>
+            </MudDataGrid>
+            <MudTextField T="IEnumerable<SelectedCustomClassificationsRequest>"
+                          @bind-Value="_model.Classifications"
+                          For="@(() => _model.Classifications)"
+                          Validation="@(Validator.ValidateValue(_model, nameof(AddCustomClassificationsToTransactionRequest.Classifications)))"
+                          Style="display: none;"/>
+        </MudForm>
     </Content>
 </DialogBase>
 
 @code {
 
+    private MudForm _form = null!;
+    private AddCustomClassificationsToTransactionRequest _model = null!;
+
     [Parameter] public Guid TransactionId { get; set; }
 
     [Parameter] public IEnumerable<ClassificationsResponse> Classifications { get; set; } = null!;
 
-    private List<ClassificationsResponse>? SelectedItems { get; set; }
     private string _searchString = string.Empty;
 
+    protected override void OnInitialized()
+    {
+        _model = new AddCustomClassificationsToTransactionRequest
+        {
+            TransactionId = TransactionId,
+            Classifications = []
+        };
+    }
 
     private Func<ClassificationsResponse, bool> QuickFilter => x =>
     {
@@ -46,21 +65,18 @@
     };
 
 
-    private AddCustomClassificationsToTransactionRequest BuildResponseModel()
+    private async Task<AddCustomClassificationsToTransactionRequest?> BuildResponseModel()
     {
-        if (SelectedItems is null)
-            throw new InvalidOperationException();
+        await _form.Validate();
+        if (!_form.IsValid) return null;
 
-        return new AddCustomClassificationsToTransactionRequest
-        {
-            TransactionId = TransactionId,
-            Classifications = SelectedItems.Select(x => new SelectedCustomClassificationsRequest { ClassificationId = x.ClassificationId })
-        };
+        return _model;
     }
 
     void SelectedItemsChanged(HashSet<ClassificationsResponse> items)
     {
-        SelectedItems = items.ToList();
+        _model.Classifications = items.Select(x => new SelectedCustomClassificationsRequest { ClassificationId = x.ClassificationId }).ToList();
+        _form.Validate();
     }
 
 }

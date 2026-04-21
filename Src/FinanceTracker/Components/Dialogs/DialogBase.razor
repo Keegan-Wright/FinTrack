@@ -19,14 +19,18 @@
 
     [Parameter] [EditorRequired] public required RenderFragment Content { get; set; }
 
-    [Parameter] [EditorRequired] public required Func<TResponse> ResponseConstructor { get; set; }
+    [Parameter] [EditorRequired] public required Func<Task<TResponse?>> ResponseConstructor { get; set; }
 
     private const string SubmitButtonText = "OK";
     private const string    CancelButtonText = "Cancel";
 
-    internal void Submit()
+    internal async Task Submit()
     {
-        MudDialog.Close(DialogResult.Ok(ResponseConstructor.Invoke()));
+        var response = await ResponseConstructor.Invoke();
+        if (response != null)
+        {
+            MudDialog.Close(DialogResult.Ok(response));
+        }
     }
 
     internal void Cancel()

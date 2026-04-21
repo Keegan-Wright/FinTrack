@@ -5,11 +5,11 @@ namespace FinanceTracker.Models.Request.HouseholdMember;
 public class AddHouseholdMemberRequest
 {
     [Description("First name of the household member")]
-    public required string FirstName { get; init; }
+    public required string FirstName { get; set; }
 
     [Description("Last name of the household member")]
-    public required string LastName { get; init; }
+    public required string LastName { get; set; }
 
     [Description("Monthly income of the household member")]
-    public required decimal Income { get; init; }
+    public required decimal Income { get; set; }
 }

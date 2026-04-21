@@ -1,34 +1,45 @@
 @using FinanceTracker.Models.Request.HouseholdMember
+@using FluentValidation
+@using FinanceTracker.Extensions
+@inject IValidator<AddHouseholdMemberRequest> Validator
 <DialogBase TResponse="AddHouseholdMemberRequest" Title="Add Household member" ResponseConstructor="BuildResponseModel">
     <Content>
-        <MudGrid>
-            <MudItem xs="6">
-                <MudTextField @bind-Value="FirstName" Label="First Name" Placeholder="First Name"></MudTextField>
-            </MudItem>
-            <MudItem xs="6">
-                <MudTextField @bind-Value="Lastname" Label="Last Name" Placeholder="Last Name"></MudTextField>
-            </MudItem>
-            <MudItem xs="6">
-                <MudTextField T="decimal" @bind-Value="Income" Label="Income" Placeholder="Income"></MudTextField>
-            </MudItem>
-        </MudGrid>
+        <MudForm @ref="_form" Model="@_model">
+            <MudGrid>
+                <MudItem xs="6">
+                    <MudTextField @bind-Value="_model.FirstName" Label="First Name" Placeholder="First Name"
+                                  For="@(() => _model.FirstName)"
+                                  Validation="@(Validator.ValidateValue(_model, nameof(AddHouseholdMemberRequest.FirstName)))"
+                                  Immediate="true"></MudTextField>
+                </MudItem>
+                <MudItem xs="6">
+                    <MudTextField @bind-Value="_model.LastName" Label="Last Name" Placeholder="Last Name"
+                                  For="@(() => _model.LastName)"
+                                  Validation="@(Validator.ValidateValue(_model, nameof(AddHouseholdMemberRequest.LastName)))"
+                                  Immediate="true"></MudTextField>
+                </MudItem>
+                <MudItem xs="6">
+                    <MudTextField T="decimal" @bind-Value="_model.Income" Label="Income" Placeholder="Income"
+                                  For="@(() => _model.Income)"
+                                  Validation="@(Validator.ValidateValue(_model, nameof(AddHouseholdMemberRequest.Income)))"
+                                  Immediate="true"></MudTextField>
+                </MudItem>
+            </MudGrid>
+        </MudForm>
     </Content>
 </DialogBase>
 
 @code {
 
-    private string FirstName { get; set; } = string.Empty;
-    private string Lastname { get; set; } = string.Empty;
-    private decimal Income { get; set; }
+    private MudForm _form = null!;
+    private AddHouseholdMemberRequest _model = new() { FirstName = string.Empty, LastName = string.Empty, Income = 0 };
 
-    private AddHouseholdMemberRequest BuildResponseModel()
+    private async Task<AddHouseholdMemberRequest?> BuildResponseModel()
     {
-        return new AddHouseholdMemberRequest
-        {
-            FirstName = FirstName,
-            LastName = Lastname,
-            Income = Income
-        };
+        await _form.Validate();
+        if (!_form.IsValid) return null;
+
+        return _model;
     }
 
 }

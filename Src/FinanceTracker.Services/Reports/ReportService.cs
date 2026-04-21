@@ -28,25 +28,24 @@ public class ReportService : ServiceBase<ReportService>, IReportService
     public async IAsyncEnumerable<SpentInTimePeriodReportResponse> GetSpentInTimePeriodReportAsync(
         BaseReportRequest request, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        await _openBankingService.PerformSyncAsync(request.SyncTypes, cancellationToken);
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
         IQueryable<OpenBankingTransaction> query = GetQueryByBaseReportRequest(request, context);
 
         List<OpenBankingTransaction> openBankingTransactions = [];
 
-        await foreach (OpenBankingTransaction transaction in query.OrderByDescending(x => x.TransactionTime)
+        await foreach (OpenBankingTransaction transaction in query.OrderByDescending(static x => x.TransactionTime)
                            .ToAsyncEnumerable().WithCancellation(cancellationToken))
         {
             openBankingTransactions.Add(transaction);
         }
 
-        decimal totalIn = openBankingTransactions.Where(x => !decimal.IsNegative(x.Amount)).Sum(x => x.Amount);
-        decimal totalOut = openBankingTransactions.Where(x => decimal.IsNegative(x.Amount)).Sum(x => x.Amount);
+        decimal totalIn = openBankingTransactions.Where(static x => !decimal.IsNegative(x.Amount)).Sum(static x => x.Amount);
+        decimal totalOut = openBankingTransactions.Where(static x => decimal.IsNegative(x.Amount)).Sum(static x => x.Amount);
         int totalTransactions = openBankingTransactions.Count;
 
 
-        foreach (IGrouping<int, OpenBankingTransaction> yearlyGrouping in openBankingTransactions.GroupBy(x =>
+        foreach (IGrouping<int, OpenBankingTransaction> yearlyGrouping in openBankingTransactions.GroupBy(static x =>
                      x.TransactionTime.Year))
         {
             SpentInTimePeriodReportResponse rsp = new()
@@ -57,33 +56,33 @@ public class ReportService : ServiceBase<ReportService>, IReportService
             SpentInTimePeriodReportYearlyBreakdownResponse yearGrp = new()
             {
                 Year = yearlyGrouping.Key,
-                TotalIn = yearlyGrouping.Where(x => !decimal.IsNegative(x.Amount)).Sum(x => x.Amount),
-                TotalOut = yearlyGrouping.Where(x => decimal.IsNegative(x.Amount)).Sum(x => x.Amount),
+                TotalIn = yearlyGrouping.Where(static x => !decimal.IsNegative(x.Amount)).Sum(static x => x.Amount),
+                TotalOut = yearlyGrouping.Where(static x => decimal.IsNegative(x.Amount)).Sum(static x => x.Amount),
                 TotalTransactions = yearlyGrouping.Count()
             };
 
-            foreach (IGrouping<int, OpenBankingTransaction> monthlyGrouping in yearlyGrouping.GroupBy(x =>
+            foreach (IGrouping<int, OpenBankingTransaction> monthlyGrouping in yearlyGrouping.GroupBy(static x =>
                          x.TransactionTime.Month))
             {
                 string monthName = DateTimeFormatInfo.CurrentInfo.GetMonthName(monthlyGrouping.Key);
                 SpentInTimePeriodReportMonthlyBreakdownResponse monthGrp = new()
                 {
                     Month = monthName,
-                    TotalIn = monthlyGrouping.Where(x => !decimal.IsNegative(x.Amount)).Sum(x => x.Amount),
-                    TotalOut = monthlyGrouping.Where(x => decimal.IsNegative(x.Amount)).Sum(x => x.Amount),
+                    TotalIn = monthlyGrouping.Where(static x => !decimal.IsNegative(x.Amount)).Sum(static x => x.Amount),
+                    TotalOut = monthlyGrouping.Where(static x => decimal.IsNegative(x.Amount)).Sum(static x => x.Amount),
                     TotalTransactions = monthlyGrouping.Count()
                 };
 
 
                 IEnumerable<IGrouping<int, OpenBankingTransaction>> dayGrp =
-                    monthlyGrouping.GroupBy(x => x.TransactionTime.Day);
+                    monthlyGrouping.GroupBy(static x => x.TransactionTime.Day);
                 foreach (IGrouping<int, OpenBankingTransaction> dayGrouping in dayGrp)
                 {
                     monthGrp.DailyBreakdown.Add(new SpentInTimePeriodReportDailyBreakdownResponse
                     {
                         Day = dayGrouping.Key,
-                        TotalIn = dayGrouping.Where(x => !decimal.IsNegative(x.Amount)).Sum(x => x.Amount),
-                        TotalOut = dayGrouping.Where(x => decimal.IsNegative(x.Amount)).Sum(x => x.Amount),
+                        TotalIn = dayGrouping.Where(static x => !decimal.IsNegative(x.Amount)).Sum(static x => x.Amount),
+                        TotalOut = dayGrouping.Where(static x => decimal.IsNegative(x.Amount)).Sum(static x => x.Amount),
                         TotalTransactions = dayGrouping.Count()
                     });
                 }
@@ -99,21 +98,20 @@ public class ReportService : ServiceBase<ReportService>, IReportService
     public async IAsyncEnumerable<SpentInCategoryReportResponse> GetCategoryBreakdownReportAsync(
         BaseReportRequest request, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        await _openBankingService.PerformSyncAsync(request.SyncTypes, cancellationToken);
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
         IQueryable<OpenBankingTransaction> query = GetQueryByBaseReportRequest(request, context);
 
         List<OpenBankingTransaction> openBankingTransactions = [];
 
-        await foreach (OpenBankingTransaction transaction in query.OrderByDescending(x => x.TransactionTime)
+        await foreach (OpenBankingTransaction transaction in query.OrderByDescending(static x => x.TransactionTime)
                            .ToAsyncEnumerable().WithCancellation(cancellationToken))
         {
             openBankingTransactions.Add(transaction);
         }
 
         IEnumerable<string> distinctClassifications = openBankingTransactions
-            .SelectMany(x => x.Classifications!.Select(c => c.Classification)).Distinct();
+            .SelectMany(static x => x.Classifications!.Select(static c => c.Classification)).Distinct();
 
 
         foreach (string classification in distinctClassifications)
@@ -122,8 +120,8 @@ public class ReportService : ServiceBase<ReportService>, IReportService
                 openBankingTransactions.Where(x => x.Classifications!.Any(c => c.Classification == classification));
 
             IEnumerable<OpenBankingTransaction> bankingTransactions = transactions.ToList();
-            decimal totalIn = bankingTransactions.Where(x => !decimal.IsNegative(x.Amount)).Sum(x => x.Amount);
-            decimal totalOut = bankingTransactions.Where(x => decimal.IsNegative(x.Amount)).Sum(x => x.Amount);
+            decimal totalIn = bankingTransactions.Where(static x => !decimal.IsNegative(x.Amount)).Sum(static x => x.Amount);
+            decimal totalOut = bankingTransactions.Where(static x => decimal.IsNegative(x.Amount)).Sum(static x => x.Amount);
             int totalTransactions = bankingTransactions.Count();
 
 
@@ -135,39 +133,39 @@ public class ReportService : ServiceBase<ReportService>, IReportService
                 Category = classification
             };
 
-            foreach (IGrouping<int, OpenBankingTransaction> yearlyGrouping in bankingTransactions.GroupBy(x =>
+            foreach (IGrouping<int, OpenBankingTransaction> yearlyGrouping in bankingTransactions.GroupBy(static x =>
                          x.TransactionTime.Year))
             {
                 SpentInCategoryReportYearlyBreakdownResponse yearGrp = new()
                 {
                     Year = yearlyGrouping.Key,
-                    TotalIn = yearlyGrouping.Where(x => !decimal.IsNegative(x.Amount)).Sum(x => x.Amount),
-                    TotalOut = yearlyGrouping.Where(x => decimal.IsNegative(x.Amount)).Sum(x => x.Amount),
+                    TotalIn = yearlyGrouping.Where(static x => !decimal.IsNegative(x.Amount)).Sum(static x => x.Amount),
+                    TotalOut = yearlyGrouping.Where(static x => decimal.IsNegative(x.Amount)).Sum(static x => x.Amount),
                     TotalTransactions = yearlyGrouping.Count()
                 };
 
-                foreach (IGrouping<int, OpenBankingTransaction> monthlyGrouping in yearlyGrouping.GroupBy(x =>
+                foreach (IGrouping<int, OpenBankingTransaction> monthlyGrouping in yearlyGrouping.GroupBy(static x =>
                              x.TransactionTime.Month))
                 {
                     string monthName = DateTimeFormatInfo.CurrentInfo.GetMonthName(monthlyGrouping.Key);
                     SpentInCategoryReportMonthlyBreakdownResponse monthGrp = new()
                     {
                         Month = monthName,
-                        TotalIn = monthlyGrouping.Where(x => !decimal.IsNegative(x.Amount)).Sum(x => x.Amount),
-                        TotalOut = monthlyGrouping.Where(x => decimal.IsNegative(x.Amount)).Sum(x => x.Amount),
+                        TotalIn = monthlyGrouping.Where(static x => !decimal.IsNegative(x.Amount)).Sum(static x => x.Amount),
+                        TotalOut = monthlyGrouping.Where(static x => decimal.IsNegative(x.Amount)).Sum(static x => x.Amount),
                         TotalTransactions = monthlyGrouping.Count()
                     };
 
 
                     IEnumerable<IGrouping<int, OpenBankingTransaction>> dayGrp =
-                        monthlyGrouping.GroupBy(x => x.TransactionTime.Day);
+                        monthlyGrouping.GroupBy(static x => x.TransactionTime.Day);
                     foreach (IGrouping<int, OpenBankingTransaction> dayGrouping in dayGrp)
                     {
                         monthGrp.DailyBreakdown.Add(new SpentInCategoryReportDailyBreakdownResponse
                         {
                             Day = dayGrouping.Key,
-                            TotalIn = dayGrouping.Where(x => !decimal.IsNegative(x.Amount)).Sum(x => x.Amount),
-                            TotalOut = dayGrouping.Where(x => decimal.IsNegative(x.Amount)).Sum(x => x.Amount),
+                            TotalIn = dayGrouping.Where(static x => !decimal.IsNegative(x.Amount)).Sum(static x => x.Amount),
+                            TotalOut = dayGrouping.Where(static x => decimal.IsNegative(x.Amount)).Sum(static x => x.Amount),
                             TotalTransactions = dayGrouping.Count()
                         });
                     }
@@ -184,14 +182,13 @@ public class ReportService : ServiceBase<ReportService>, IReportService
     public async IAsyncEnumerable<SpentInAccountReportResponse> GetAccountBreakdownReportAsync(
         BaseReportRequest request, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        await _openBankingService.PerformSyncAsync(request.SyncTypes, cancellationToken);
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
         IQueryable<OpenBankingTransaction> query = GetQueryByBaseReportRequest(request, context);
 
         List<OpenBankingTransaction> openBankingTransactions = [];
 
-        await foreach (OpenBankingTransaction transaction in query.OrderByDescending(x => x.TransactionTime)
+        await foreach (OpenBankingTransaction transaction in query.OrderByDescending(static x => x.TransactionTime)
                            .ToAsyncEnumerable().WithCancellation(cancellationToken))
         {
             bool blocked = BlockedByClientFilters(request, transaction);
@@ -203,11 +200,11 @@ public class ReportService : ServiceBase<ReportService>, IReportService
             openBankingTransactions.Add(transaction);
         }
 
-        foreach (IGrouping<string, OpenBankingTransaction> accountGrouping in openBankingTransactions.GroupBy(x =>
+        foreach (IGrouping<string, OpenBankingTransaction> accountGrouping in openBankingTransactions.GroupBy(static x =>
                      x.Account!.DisplayName))
         {
-            decimal totalIn = accountGrouping.Where(x => !decimal.IsNegative(x.Amount)).Sum(x => x.Amount);
-            decimal totalOut = accountGrouping.Where(x => decimal.IsNegative(x.Amount)).Sum(x => x.Amount);
+            decimal totalIn = accountGrouping.Where(static x => !decimal.IsNegative(x.Amount)).Sum(static x => x.Amount);
+            decimal totalOut = accountGrouping.Where(static x => decimal.IsNegative(x.Amount)).Sum(static x => x.Amount);
             int totalTransactions = accountGrouping.Count();
 
 
@@ -218,39 +215,39 @@ public class ReportService : ServiceBase<ReportService>, IReportService
                 TotalTransactions = totalTransactions,
                 AccountName = (accountGrouping.FirstOrDefault()?.Account!).DisplayName };
 
-            foreach (IGrouping<int, OpenBankingTransaction> yearlyGrouping in accountGrouping.GroupBy(x =>
+            foreach (IGrouping<int, OpenBankingTransaction> yearlyGrouping in accountGrouping.GroupBy(static x =>
                          x.TransactionTime.Year))
             {
                 SpentInAccountReportYearlyBreakdownResponse yearGrp = new()
                 {
                     Year = yearlyGrouping.Key,
-                    TotalIn = yearlyGrouping.Where(x => !decimal.IsNegative(x.Amount)).Sum(x => x.Amount),
-                    TotalOut = yearlyGrouping.Where(x => decimal.IsNegative(x.Amount)).Sum(x => x.Amount),
+                    TotalIn = yearlyGrouping.Where(static x => !decimal.IsNegative(x.Amount)).Sum(static x => x.Amount),
+                    TotalOut = yearlyGrouping.Where(static x => decimal.IsNegative(x.Amount)).Sum(static x => x.Amount),
                     TotalTransactions = yearlyGrouping.Count()
                 };
 
-                foreach (IGrouping<int, OpenBankingTransaction> monthlyGrouping in yearlyGrouping.GroupBy(x =>
+                foreach (IGrouping<int, OpenBankingTransaction> monthlyGrouping in yearlyGrouping.GroupBy(static x =>
                              x.TransactionTime.Month))
                 {
                     string monthName = DateTimeFormatInfo.CurrentInfo.GetMonthName(monthlyGrouping.Key);
                     SpentInAccountReportMonthlyBreakdownResponse monthGrp = new()
                     {
                         Month = monthName,
-                        TotalIn = monthlyGrouping.Where(x => !decimal.IsNegative(x.Amount)).Sum(x => x.Amount),
-                        TotalOut = monthlyGrouping.Where(x => decimal.IsNegative(x.Amount)).Sum(x => x.Amount),
+                        TotalIn = monthlyGrouping.Where(static x => !decimal.IsNegative(x.Amount)).Sum(static x => x.Amount),
+                        TotalOut = monthlyGrouping.Where(static x => decimal.IsNegative(x.Amount)).Sum(static x => x.Amount),
                         TotalTransactions = monthlyGrouping.Count()
                     };
 
 
                     IEnumerable<IGrouping<int, OpenBankingTransaction>> dayGrp =
-                        monthlyGrouping.GroupBy(x => x.TransactionTime.Day);
+                        monthlyGrouping.GroupBy(static x => x.TransactionTime.Day);
                     foreach (IGrouping<int, OpenBankingTransaction> dayGrouping in dayGrp)
                     {
                         monthGrp.DailyBreakdown.Add(new SpentInAccountReportDailyBreakdownResponse
                         {
                             Day = dayGrouping.Key,
-                            TotalIn = dayGrouping.Where(x => !decimal.IsNegative(x.Amount)).Sum(x => x.Amount),
-                            TotalOut = dayGrouping.Where(x => decimal.IsNegative(x.Amount)).Sum(x => x.Amount),
+                            TotalIn = dayGrouping.Where(static x => !decimal.IsNegative(x.Amount)).Sum(static x => x.Amount),
+                            TotalOut = dayGrouping.Where(static x => decimal.IsNegative(x.Amount)).Sum(static x => x.Amount),
                             TotalTransactions = dayGrouping.Count()
                         });
                     }

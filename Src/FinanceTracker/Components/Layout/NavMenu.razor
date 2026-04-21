@@ -22,13 +22,19 @@
         <MudNavLink Href="Report/ByCategory" Match="NavLinkMatch.All">Spent By Category</MudNavLink>
         <MudNavLink Href="Report/InTimePeriod" Match="NavLinkMatch.All">Spent In Time Period</MudNavLink>
     </MudNavGroup>
+    <MudNavLink Href="Automation" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Settings">Automation
+    </MudNavLink>
 </MudNavMenu>
 
 @code {
-    protected override void OnInitialized()
+
+    protected override async Task OnInitializedAsync()
     {
+        await base.OnInitializedAsync();
         NavigationManager.LocationChanged += OnLocationChanged;
     }
+
+
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
@@ -39,5 +45,4 @@
     {
         NavigationManager.LocationChanged -= OnLocationChanged;
     }
-
 }

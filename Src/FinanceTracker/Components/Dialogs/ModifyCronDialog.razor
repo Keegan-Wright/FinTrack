@@ -1,0 +1,96 @@
+@using FinanceTracker.Models.Request.Automation
+@using FluentValidation
+@using FinanceTracker.Extensions
+@inject IValidator<CronJobUpdateRequest> Validator
+<DialogBase TResponse="CronJobUpdateRequest" Title="Update automated job"
+            ResponseConstructor="BuildResponseModel">
+    <Content>
+        <MudForm @ref="_form" Model="@_model">
+            <MudGrid>
+                <MudItem xs="6">
+                    <MudTextField @bind-Value="_model.Description" Label="Description" Placeholder="Description"
+                                  For="@(() => _model.Description)"
+                                  Validation="@(Validator.ValidateValue(_model, nameof(CronJobUpdateRequest.Description)))"
+                                  Immediate="true"></MudTextField>
+                </MudItem>
+                <MudItem xs="6">
+                    <MudTextField @bind-Value="_model.Expression" Label="Expression" Placeholder="Expression"
+                                  For="@(() => _model.Expression)"
+                                  Validation="@(Validator.ValidateValue(_model, nameof(CronJobUpdateRequest.Expression)))"
+                                  Immediate="true"></MudTextField>
+                </MudItem>
+                <MudItem xs="6">
+                    <MudTextField T="int" @bind-Value="_model.Retries" Label="Retries" Placeholder="Retries"
+                                  For="@(() => _model.Retries)"
+                                  Validation="@(Validator.ValidateValue(_model, nameof(CronJobUpdateRequest.Retries)))"
+                                  Immediate="true"></MudTextField>
+                </MudItem>
+                <MudItem xs="6">
+                    <MudTextField T="string" @bind-Value="RetryIntervalsString" Label="Retry Intervals"
+                                  Placeholder="Retry Intervals (comma-separated, e.g. 10, 20, 30)"
+                                  For="@(() => RetryIntervalsString)"
+                                  Validation="@(Validator.ValidateValue(_model, nameof(CronJobUpdateRequest.RetryIntervals)))"
+                                  Immediate="true"></MudTextField>
+                </MudItem>
+                <MudItem xs="6">
+                    <MudCheckBox T="bool" @bind-Value="_model.IsEnabled" Label="Enabled"></MudCheckBox>
+                </MudItem>
+            </MudGrid>
+        </MudForm>
+    </Content>
+</DialogBase>
+
+@code {
+
+    private MudForm _form = null!;
+    private CronJobUpdateRequest _model = null!;
+
+    [Parameter] public Guid CronId { get; set; }
+    [Parameter] public string Description { get; set; } = null!;
+    [Parameter] public string Expression { get; set; } = null!;
+    [Parameter] public int Retries { get; set; }
+    [Parameter] public int[] RetryIntervals { get; set; } = null!;
+    [Parameter] public bool IsEnabled { get; set; }
+
+    protected override void OnInitialized()
+    {
+        _model = new CronJobUpdateRequest
+        {
+            Id = CronId,
+            Description = Description,
+            Expression = Expression,
+            Retries = Retries,
+            RetryIntervals = RetryIntervals,
+            IsEnabled = IsEnabled
+        };
+    }
+
+    private string RetryIntervalsString
+    {
+        get => string.Join(", ", _model.RetryIntervals ?? []);
+        set
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                _model.RetryIntervals = [];
+                return;
+            }
+
+            var intervals = value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(s => int.TryParse(s, out var i) ? i : (int?)null)
+                .Where(i => i.HasValue)
+                .Select(i => i!.Value)
+                .ToArray();
+
+            _model.RetryIntervals = intervals;
+        }
+    }
+
+    private async Task<CronJobUpdateRequest?> BuildResponseModel()
+    {
+        await _form.Validate();
+        if (!_form.IsValid) return null;
+
+        return _model;
+    }
+}

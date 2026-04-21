@@ -21,7 +21,6 @@ namespace FinanceTracker.Services.OpenBanking;
 public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingService
 {
     private readonly IOpenBankingApiService _openBankingApiService;
-    private const int SyncMins = 5;
 
     public OpenBankingService(ClaimsPrincipal user,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
@@ -34,7 +33,7 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
     {
         await foreach (ExternalOpenBankingProvider provider in _openBankingApiService
                            .GetAvailableProvidersAsync(cancellationToken)
-                           .OrderBy(x => x.DisplayName).WithCancellation(cancellationToken))
+                           .OrderBy(static x => x.DisplayName).WithCancellation(cancellationToken))
         {
             yield return provider;
         }
@@ -69,18 +68,17 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
     {
         ICollection<OpenBankingProviderScopes> providerScopes = provider.Scopes ?? [];
 
-        List<OpenBankingSynchronization> providerSyncs = provider.Syncronisations?.Where(x =>
-            x.SyncronisationTime > DateTime.Now.AddMinutes(-SyncMins).ToUniversalTime()).ToList()?? [];
+        List<OpenBankingSynchronization> providerSyncs = provider.Syncronisations?.ToList()?? [];
 
         provider.Accounts ??= [];
         provider.Scopes ??= [];
         provider.Syncronisations ??= [];
 
 
-        List<OpenBankingTransaction?> transactionsForProvider = provider.Accounts?.SelectMany(x => x.Transactions!)
-            .OrderByDescending(x => x.TransactionTime)
-            .GroupBy(x => x.AccountId)
-            .Select(x => x.FirstOrDefault()).ToList() ?? [];
+        List<OpenBankingTransaction?> transactionsForProvider = provider.Accounts?.SelectMany(static x => x.Transactions!)
+            .OrderByDescending(static x => x.TransactionTime)
+            .GroupBy(static x => x.AccountId)
+            .Select(static x => x.FirstOrDefault()).ToList() ?? [];
 
 
         await EnsureAuthenticatedAsync(provider, cancellationToken);
@@ -663,6 +661,7 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
     {
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+
         // User hasn't authenticated yet
         if (!await context.IsolateToUser(UserId)
                 .AsNoTracking()
