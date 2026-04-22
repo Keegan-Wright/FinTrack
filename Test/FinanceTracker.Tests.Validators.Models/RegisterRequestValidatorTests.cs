@@ -72,7 +72,7 @@ public class RegisterRequestValidatorTests : TestFixtureBase
             Email = "Email@Address.com",
             FirstName = "First name",
             LastName = "Last name",
-            ConfirmPassword = string.Empty // ConfirmPassword should also be equal or empty
+            ConfirmPassword = string.Empty
         };
 
         // Act
@@ -82,7 +82,6 @@ public class RegisterRequestValidatorTests : TestFixtureBase
         using (Assert.Multiple())
         {
             await Assert.That(result.IsValid).IsFalse();
-            // Two errors: Password empty and ConfirmPassword mismatch
             await Assert.That(result.Errors).Count().IsEqualTo(2);
             await Assert
                 .That(result.Errors.First(x => x.PropertyName == nameof(RegisterRequest.Password))
@@ -111,7 +110,6 @@ public class RegisterRequestValidatorTests : TestFixtureBase
         using (Assert.Multiple())
         {
             await Assert.That(result.IsValid).IsFalse();
-            // Two errors: Email empty and Email address invalid (because empty isn't a valid address either)
             await Assert.That(result.Errors).Count().IsEqualTo(2);
             await Assert
                 .That(result.Errors.First(x => x.PropertyName == nameof(RegisterRequest.Email) && x.ErrorMessage == "Email is required")
@@ -224,7 +222,6 @@ public class RegisterRequestValidatorTests : TestFixtureBase
         using (Assert.Multiple())
         {
             await Assert.That(result.IsValid).IsFalse();
-            // Two errors: ConfirmPassword empty and ConfirmPassword mismatch
             await Assert.That(result.Errors).Count().IsEqualTo(2);
             await Assert
                 .That(result.Errors.First(x => x.PropertyName == nameof(RegisterRequest.ConfirmPassword) && x.ErrorMessage == "Confirm password is required")
@@ -281,13 +278,6 @@ public class RegisterRequestValidatorTests : TestFixtureBase
         using (Assert.Multiple())
         {
             await Assert.That(result.IsValid).IsFalse();
-            // 7 errors:
-            // Username required, Password required, Email required, Email invalid,
-            // First name required, Last name required, Confirm password required
-            // (ConfirmPassword mismatch is NOT counted because both are empty strings, wait, empty string == empty string, so no mismatch error)
-            // Wait, why 7?
-            // Username, Password, Email (2), FirstName, LastName, ConfirmPassword (required)
-            // 1+1+2+1+1+1 = 7. Correct.
             await Assert.That(result.Errors).Count().IsEqualTo(7);
         }
     }
