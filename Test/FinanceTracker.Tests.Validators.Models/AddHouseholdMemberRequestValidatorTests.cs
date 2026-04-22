@@ -31,6 +31,28 @@ public class AddHouseholdMemberRequestValidatorTests : TestFixtureBase
     }
 
     [Test]
+    public async Task ValidateAsync_ZeroIncome_ValidationSuccess()
+    {
+        // Arrange
+        var testModel = new AddHouseholdMemberRequest()
+        {
+            FirstName = "Test",
+            LastName = "User",
+            Income = 0M
+        };
+
+        // Act
+        var result = await _subject.ValidateAsync(testModel, _cancellationTokenSource.Token);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(result.IsValid).IsTrue();
+            await Assert.That(result.Errors).Count().IsEqualTo(0);
+        }
+    }
+
+    [Test]
     public async Task ValidateAsync_ContainsError_ValidationError()
     {
         // Arrange
