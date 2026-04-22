@@ -15,7 +15,6 @@ public class CronJobUpdateRequestValidator : AbstractValidator<CronJobUpdateRequ
             .NotEmpty().WithMessage("Description is required");
 
         RuleFor(x => x.Expression)
-            .NotEmpty().WithMessage("Expression is required")
             .Must(ValidateCron).WithMessage("Expression must be a 6-part cron");
 
         RuleFor(x => x.RetryIntervals)
