@@ -6,8 +6,4 @@
         <Nullable>enable</Nullable>
     </PropertyGroup>
 
-    <ItemGroup>
-      <PackageReference Include="TUnit" Version="1.37.35" />
-    </ItemGroup>
-
 </Project>
