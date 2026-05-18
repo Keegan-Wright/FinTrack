@@ -68,8 +68,6 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
     {
         ICollection<OpenBankingProviderScopes> providerScopes = provider.Scopes ?? [];
 
-        List<OpenBankingSynchronization> providerSyncs = provider.Syncronisations?.ToList()?? [];
-
         provider.Accounts ??= [];
         provider.Scopes ??= [];
         provider.Syncronisations ??= [];
@@ -107,19 +105,18 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
             await foreach(var account in accountsResponse.Results.WithCancellation(cancellationToken))
             {
                 providerAccounts.Add(account);
-                var accountScopedRelevantSyncs = providerSyncs.Where(x => x.OpenBankingAccountId == account.AccountId).ToList();
 
                 Task<ExternalOpenBankingAccountStandingOrdersResponse?> standingOrdersTask =
                     GetOpenBankingStandingOrdersForAccountAsync(provider, syncFlags, account,
-                        authToken, performedSyncs, accountScopedRelevantSyncs, cancellationToken);
+                        authToken, performedSyncs, cancellationToken);
 
                 Task<ExternalOpenBankingAccountDirectDebitsResponse?> directDebitsTask =
                     GetOpenBankingDirectDebitsForAccountAsync(provider, syncFlags, account,
-                        authToken, performedSyncs, accountScopedRelevantSyncs, cancellationToken);
+                        authToken, performedSyncs, cancellationToken);
 
                 Task<ExternalOpenBankingGetAccountBalanceResponse?> balanceTask = GetOpenBankingAccountBalanceAsync(
                     provider, syncFlags, account, authToken,
-                    performedSyncs, accountScopedRelevantSyncs, cancellationToken);
+                    performedSyncs, cancellationToken);
 
                 OpenBankingTransaction? latestTransactionForAccount =
                     transactionsForProvider.FirstOrDefault(x => (x?.Account!).OpenBankingAccountId == account.AccountId);
@@ -127,12 +124,12 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
 
                 Task<ExternalOpenBankingAccountTransactionsResponse?> transactionsTask =
                     GetOpenBankingTransactionsForAccountAsync(provider, syncFlags, account,
-                        authToken, performedSyncs, accountScopedRelevantSyncs, latestTransactionForAccount,
+                        authToken, performedSyncs, latestTransactionForAccount,
                         cancellationToken);
 
                 Task<ExternalOpenBankingAccountTransactionsResponse?> pendingTransactionsTask =
                     GetOpenBankingPendingTransactionsForAccountAsync(provider, syncFlags,
-                        account, authToken, performedSyncs, accountScopedRelevantSyncs, latestTransactionForAccount,
+                        account, authToken, performedSyncs, latestTransactionForAccount,
                         cancellationToken);
 
                 await Task.WhenAll(standingOrdersTask, directDebitsTask, balanceTask, transactionsTask,
@@ -447,10 +444,10 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
 
     private async Task<ExternalOpenBankingAccountStandingOrdersResponse?> GetOpenBankingStandingOrdersForAccountAsync(
         OpenBankingProvider provider, SyncTypes syncFlags, ExternalOpenBankingAccount account, string authToken,
-        ConcurrentBag<OpenBankingSynchronization> performedSyncs, IEnumerable<OpenBankingSynchronization> relevantSyncs,
+        ConcurrentBag<OpenBankingSynchronization> performedSyncs,
         CancellationToken cancellationToken)
     {
-        if (!ShouldSynchronise(syncFlags, relevantSyncs, SyncTypes.StandingOrders))
+        if (!ShouldSynchronise(syncFlags, SyncTypes.StandingOrders))
         {
             return null;
         }
@@ -478,10 +475,10 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
 
     private async Task<ExternalOpenBankingAccountDirectDebitsResponse?> GetOpenBankingDirectDebitsForAccountAsync(
         OpenBankingProvider provider, SyncTypes syncFlags, ExternalOpenBankingAccount account, string authToken,
-        ConcurrentBag<OpenBankingSynchronization> performedSyncs, IEnumerable<OpenBankingSynchronization> relevantSyncs,
+        ConcurrentBag<OpenBankingSynchronization> performedSyncs,
         CancellationToken cancellationToken)
     {
-        if (!ShouldSynchronise(syncFlags, relevantSyncs, SyncTypes.DirectDebits))
+        if (!ShouldSynchronise(syncFlags, SyncTypes.DirectDebits))
         {
             return null;
         }
@@ -507,10 +504,10 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
 
     private async Task<ExternalOpenBankingGetAccountBalanceResponse?> GetOpenBankingAccountBalanceAsync(
         OpenBankingProvider provider, SyncTypes syncFlags, ExternalOpenBankingAccount account, string authToken,
-        ConcurrentBag<OpenBankingSynchronization> performedSyncs, IEnumerable<OpenBankingSynchronization> relevantSyncs,
+        ConcurrentBag<OpenBankingSynchronization> performedSyncs,
         CancellationToken cancellationToken)
     {
-        if (!ShouldSynchronise(syncFlags, relevantSyncs, SyncTypes.Balance))
+        if (!ShouldSynchronise(syncFlags, SyncTypes.Balance))
         {
             return null;
         }
@@ -536,10 +533,10 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
 
     private async Task<ExternalOpenBankingAccountTransactionsResponse?> GetOpenBankingTransactionsForAccountAsync(
         OpenBankingProvider provider, SyncTypes syncFlags, ExternalOpenBankingAccount account, string authToken,
-        ConcurrentBag<OpenBankingSynchronization> performedSyncs, IEnumerable<OpenBankingSynchronization> relevantSyncs,
+        ConcurrentBag<OpenBankingSynchronization> performedSyncs,
         OpenBankingTransaction? latestTransactionForAccount, CancellationToken cancellationToken)
     {
-        if (!ShouldSynchronise(syncFlags, relevantSyncs, SyncTypes.Transactions))
+        if (!ShouldSynchronise(syncFlags, SyncTypes.Transactions))
         {
             return null;
         }
@@ -569,11 +566,10 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
     private async Task<ExternalOpenBankingAccountTransactionsResponse?>
         GetOpenBankingPendingTransactionsForAccountAsync(OpenBankingProvider provider, SyncTypes syncFlags,
             ExternalOpenBankingAccount account, string authToken,
-            ConcurrentBag<OpenBankingSynchronization> performedSyncs,
-            IEnumerable<OpenBankingSynchronization> relevantSyncs, OpenBankingTransaction? latestTransactionForAccount,
+            ConcurrentBag<OpenBankingSynchronization> performedSyncs,OpenBankingTransaction? latestTransactionForAccount,
             CancellationToken cancellationToken)
     {
-        if (!ShouldSynchronise(syncFlags, relevantSyncs, SyncTypes.Transactions))
+        if (!ShouldSynchronise(syncFlags, SyncTypes.Transactions))
         {
             return null;
         }
@@ -614,11 +610,10 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
             Id = Guid.NewGuid()
         };
 
-    private static bool ShouldSynchronise(SyncTypes syncFlags, IEnumerable<OpenBankingSynchronization> relevantSyncs,
+    private static bool ShouldSynchronise(SyncTypes syncFlags,
         SyncTypes typeToCheck)
     {
-        return (syncFlags.HasFlag(SyncTypes.All) || syncFlags.HasFlag(typeToCheck)) &&
-               !relevantSyncs.Any(x => x.SyncronisationType == (int)typeToCheck);
+        return syncFlags.HasFlag(SyncTypes.All) || syncFlags.HasFlag(typeToCheck);
     }
 
     private async Task<string> GetAccessTokenAsync(OpenBankingProvider provider, CancellationToken cancellationToken)
