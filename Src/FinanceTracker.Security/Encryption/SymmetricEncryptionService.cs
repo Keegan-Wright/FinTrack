@@ -68,14 +68,15 @@ public class SymmetricEncryptionService : ISymmetricEncryptionService
 
         using Aes aes = CreateAes();
         using ICryptoTransform decryptor = aes.CreateDecryptor();
-        using MemoryStream memoryStram = new();
+        using MemoryStream memoryStream = new();
 
-        using (CryptoStream cryptoStream = new(memoryStram, decryptor, CryptoStreamMode.Write))
+
+        using (CryptoStream cryptoStream = new(memoryStream, decryptor, CryptoStreamMode.Write))
         {
             cryptoStream.Write(bytes, 0, bytes.Length);
         }
 
-        byte[] decryptedBytes = memoryStram.ToArray();
+        byte[] decryptedBytes = memoryStream.ToArray();
         string plainText = Encoding.Unicode.GetString(decryptedBytes);
 
         if (typeof(T) == typeof(byte[]))

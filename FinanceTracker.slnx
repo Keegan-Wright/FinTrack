@@ -33,6 +33,7 @@
   </Folder>
   <Project Path="Src/FinanceTracker.Security/FinanceTracker.Security.csproj" />
   <Folder Name="/Tests/">
+    <Project Path="Test/FinanceTracker.Tests.Security/FinanceTracker.Tests.Security.csproj" />
     <Project Path="Test/FinanceTracker.Tests.Shared/FinanceTracker.Tests.Shared.csproj" />
     <Project Path="Test/FinanceTracker.Tests.Validators.Models/FinanceTracker.Tests.Validators.Models.csproj" />
   </Folder>
