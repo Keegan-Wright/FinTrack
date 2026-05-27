@@ -42,3 +42,10 @@ jobs:
 
       - name: Test Solution
         run: dotnet test -c=release
+
+      - name: Upload HTML Test Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: TestReport
+          path: '**/*-report.html'
