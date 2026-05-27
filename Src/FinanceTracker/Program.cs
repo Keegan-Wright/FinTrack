@@ -7,6 +7,7 @@ using FinanceTracker.Components.Account;
 using FinanceTracker.Configurations;
 using FinanceTracker.Data;
 using FinanceTracker.Data.Models;
+using FinanceTracker.Security.Encryption;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -59,13 +60,16 @@ public partial class Program
             })
             .AddIdentityCookies();
 
-        builder.Services.AddDbContextFactory<FinanceTrackerContext>(options =>
+        builder.Services.AddDbContextFactory<FinanceTrackerContext>((sp, options) =>
+        {
             options.UseNpgsql(builder.Configuration.GetConnectionString("FinTrackDb"), npgsqlDbContextOptionsBuilder =>
             {
                 npgsqlDbContextOptionsBuilder.MigrationsAssembly("FinanceTracker.Data.Migrations");
                 npgsqlDbContextOptionsBuilder.EnableRetryOnFailure();
                 npgsqlDbContextOptionsBuilder.CommandTimeout(0);
-            }));
+            });
+        });
+
 
         builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
