@@ -33,9 +33,12 @@
   </Folder>
   <Project Path="Src/FinanceTracker.Security/FinanceTracker.Security.csproj" />
   <Folder Name="/Tests/">
+    <Project Path="Test/FinanceTracker.Tests.Services/FinanceTracker.Tests.Services.csproj" />
     <Project Path="Test/FinanceTracker.Tests.Security/FinanceTracker.Tests.Security.csproj" />
+    <Project Path="Test/FinanceTracker.Tests.Services.External/FinanceTracker.Tests.Services.External.csproj" />
     <Project Path="Test/FinanceTracker.Tests.Shared/FinanceTracker.Tests.Shared.csproj" />
     <Project Path="Test/FinanceTracker.Tests.Validators.Models/FinanceTracker.Tests.Validators.Models.csproj" />
+    <Project Path="Test/FinanceTracker.Tests/FinanceTracker.Tests.csproj" />
   </Folder>
   <Project Path="Src/FinanceTracker.Configurations/FinanceTracker.Configurations.csproj" />
   <Project Path="Src/FinanceTracker.Enums/FinanceTracker.Enums.csproj" />
