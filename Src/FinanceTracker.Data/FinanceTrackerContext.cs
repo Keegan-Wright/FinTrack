@@ -8,15 +8,23 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Microsoft.Extensions.DependencyInjection;
+using TickerQ.EntityFrameworkCore.Configurations;
 using TickerQ.Utilities.Entities;
 
 namespace FinanceTracker.Data;
 
-public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, FinanceTrackerRole, Guid>
+public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, FinanceTrackerRole, Guid>, IDesignTimeDbContextFactory<FinanceTrackerContext>
 {
     private readonly ISymmetricEncryptionService _symmetricEncryptionService;
 
+    [Obsolete("Used by design time only")]
+    public FinanceTrackerContext()
+    {
 
+    }
+
+    [ActivatorUtilitiesConstructor]
     public FinanceTrackerContext(DbContextOptions<FinanceTrackerContext> options,
         ISymmetricEncryptionService symmetricEncryptionService) : base(options)
     {
@@ -48,6 +56,10 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
+        builder.ApplyConfiguration(new TimeTickerConfigurations<TimeTickerEntity>("ticker"));
+        builder.ApplyConfiguration(new CronTickerConfigurations<CronTickerEntity>("ticker"));
+        builder.ApplyConfiguration(new CronTickerOccurrenceConfigurations<CronTickerEntity>("ticker"));
+
         foreach (IMutableEntityType entityType in builder.Model.GetEntityTypes())
         {
             Type clrType = entityType.ClrType;
@@ -66,6 +78,29 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
         }
 
         base.OnModelCreating(builder);
+    }
+
+    /// <summary>
+    /// Design time only - creates a mock instance of this context for migration creation
+    /// </summary>
+    /// <param name="args"></param>
+    /// <returns></returns>
+    public FinanceTrackerContext CreateDbContext(string[] args)
+    {
+        var builder = new DbContextOptionsBuilder<FinanceTrackerContext>();
+        builder.UseNpgsql("DesignTimeConnectionString", npgsqlDbContextOptionsBuilder =>
+        {
+            npgsqlDbContextOptionsBuilder.MigrationsAssembly("FinanceTracker.Data.Migrations");
+            npgsqlDbContextOptionsBuilder.EnableRetryOnFailure();
+            npgsqlDbContextOptionsBuilder.CommandTimeout(0);
+        });
+
+        return new FinanceTrackerContext(builder.Options, new SymmetricEncryptionService(new EncryptionConfiguration()
+        {
+            SymmetricKey = "DesignTimeKey",
+            SymmetricSalt = "DesignTimeSalt",
+            Iterations = 1
+        }));
     }
 }
 

@@ -123,7 +123,7 @@ public partial class Program
 
             options.AddOperationalStore(efOptions =>
             {
-                efOptions.UseApplicationDbContext<FinanceTrackerContext>(ConfigurationType.UseModelCustomizer);
+                efOptions.UseApplicationDbContext<FinanceTrackerContext>(ConfigurationType.IgnoreModelCustomizer);
             });
 
             options.IgnoreSeedDefinedCronTickers();
