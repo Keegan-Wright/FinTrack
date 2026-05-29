@@ -39,6 +39,7 @@
 
 
   <ItemGroup>
+    <ProjectReference Include="..\FinanceTracker.Ai\FinanceTracker.Ai.csproj" />
     <ProjectReference Include="..\FinanceTracker.AppHost.ServiceDefaults\FinanceTracker.AppHost.ServiceDefaults.csproj"/>
     <ProjectReference Include="..\FinanceTracker.Data.Migrations\FinanceTracker.Data.Migrations.csproj"/>
     <ProjectReference Include="..\FinanceTracker.Data\FinanceTracker.Data.csproj"/>

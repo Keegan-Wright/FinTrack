@@ -5,8 +5,6 @@ using Microsoft.Extensions.Configuration;
 
 IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
 
-
-
 var registry = builder.AddContainerRegistry(
     "docker-hub",
     "docker.io",
@@ -51,6 +49,9 @@ IResourceBuilder<PostgresServerResource> postgres = builder.AddPostgres("FinTrac
 
 IResourceBuilder<PostgresDatabaseResource> postgresDb = postgres.AddDatabase("FinTrackDb");
 
+var ollama = builder.AddOllama("ollama").WithGPUSupport(OllamaGpuVendor.AMD);
+var llama3 = ollama.AddModel("llama3.2");
+
 
 var finTrack = builder.AddProject<Projects.FinanceTracker>("FinTrackWeb")
 
@@ -66,8 +67,11 @@ var finTrack = builder.AddProject<Projects.FinanceTracker>("FinTrackWeb")
     .WithEnvironment("APP_CULTURE", "en-GB")
     .WithReference(redis)
     .WithReference(postgresDb)
+    .WithReference(llama3)
     .WaitFor(redis)
     .WaitFor(postgresDb)
+    .WaitFor(llama3)
+
     .PublishAsDockerComposeService((resource, service) =>
     {
         service.Restart = "unless-stopped";

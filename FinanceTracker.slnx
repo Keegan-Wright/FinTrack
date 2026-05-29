@@ -25,6 +25,10 @@
     <File Path="Docker\docker-compose.yaml" />
     <File Path="Src\Dockerfile" />
   </Folder>
+  <Folder Name="/Modules/" />
+  <Folder Name="/Modules/AI/">
+    <Project Path="Src/FinanceTracker.Ai/FinanceTracker.Ai.csproj" />
+  </Folder>
   <Folder Name="/SourceGenerators/">
     <Project Path="Src/Generators/FinanceTracker.Generated.Helpers/FinanceTracker.Generated.Helpers.csproj" />
     <Project Path="Src/Generators/FinanceTracker.Generated.Attributes/FinanceTracker.Generated.Attributes/FinanceTracker.Generated.Attributes.csproj" />

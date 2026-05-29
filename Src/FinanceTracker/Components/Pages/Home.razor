@@ -14,6 +14,8 @@
 @using FinanceTracker.Services.HouseholdMembers
 @using FinanceTracker.Services.Transactions
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.SemanticKernel
+@using Microsoft.SemanticKernel.ChatCompletion
 @inherits PageComponent
 
 @attribute [Authorize]
@@ -22,6 +24,8 @@
 @inject ITransactionsService TransactionsService
 @inject IBudgetCategoriesService BudgetCategoriesService
 @inject IHouseholdMemberService HouseholdMemberService
+@inject Kernel Kernel
+@inject IServiceProvider ServiceProvider
 
 <PageTitle>Home</PageTitle>
 
@@ -358,6 +362,36 @@
         var authState = await AuthenticationStateTask;
         _userName = authState.User.Claims.FirstOrDefault(x => x.Type == CustomClaims.FirstName)?.Value ?? authState.User.Identity!.Name;
         ApplyPresetRange(_rangePreset);
+
+
+        ChatHistory history = [];
+        history.AddUserMessage("Hello, how are you?");
+        var chat = Kernel.GetRequiredService<IChatCompletionService>();
+        var response = chat.GetStreamingChatMessageContentsAsync(history, new PromptExecutionSettings()
+        {
+            FunctionChoiceBehavior = FunctionChoiceBehavior.Auto()
+        }, Kernel);
+
+        var message = "";
+        await foreach (var part in response)
+        {
+            message += part;
+        }
+
+        var transactionQuery = "You can help me by listing me my most recent 4 transactions please, I'd like the name and amount spent";
+        history.AddUserMessage(transactionQuery);
+        var response2 = chat.GetStreamingChatMessageContentsAsync(history, new PromptExecutionSettings()
+        {
+            FunctionChoiceBehavior = FunctionChoiceBehavior.Auto()
+        }, Kernel);
+
+        var message2 = "";
+        await foreach (var part in response2)
+        {
+            message2 += part;
+        }
+
+
         await LoadDashboardAsync();
     }
 

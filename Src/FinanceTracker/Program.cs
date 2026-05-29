@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Security.Claims;
+using FinanceTracker.Ai;
 using FinanceTracker.AppHost.ServiceDefaults;
 using FinanceTracker.BackgroundJobs;
 using FinanceTracker.Components;
@@ -7,19 +8,15 @@ using FinanceTracker.Components.Account;
 using FinanceTracker.Configurations;
 using FinanceTracker.Data;
 using FinanceTracker.Data.Models;
-using FinanceTracker.Security.Encryption;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.SemanticKernel;
 using MudBlazor.Services;
 using TickerQ.DependencyInjection;
 using TickerQ.EntityFrameworkCore.Customizer;
 using TickerQ.EntityFrameworkCore.DependencyInjection;
 using TickerQ.Instrumentation.OpenTelemetry;
-using TickerQ.Utilities;
-using TickerQ.Utilities.Entities;
-using TickerQ.Utilities.Interfaces.Managers;
 
 namespace FinanceTracker;
 
@@ -138,6 +135,8 @@ public partial class Program
         builder.Services.AddHttpClient("OpenBankingClient");
 
         builder.Services.AddSingleton<IBackgroundSyncService, BackgroundSyncService>();
+
+        builder.AddAiModule();
 
         AddFinanceTrackerServices(builder.Services);
         AddFinanceTrackerValidators(builder.Services);
