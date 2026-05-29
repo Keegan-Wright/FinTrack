@@ -1,4 +1,5 @@
-﻿using FinanceTracker.Shared.Setup;
+﻿using FinanceTracker.Ai.Services;
+using FinanceTracker.Shared.Setup;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -15,6 +16,8 @@ public static class WebApplicationBuilderExtensions
 
             AddOllamaClients(builder);
             AddKernel(builder);
+
+            builder.Services.AddScoped<IChatService, ChatService>();
 
             return builder;
         }

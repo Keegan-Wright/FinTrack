@@ -1,13 +1,13 @@
 @page "/"
 @using System.Collections.Immutable
 @using System.Globalization
+@using FinanceTracker.Ai
 @using FinanceTracker.Enums
 @using FinanceTracker.Models.Request.Transaction
 @using FinanceTracker.Models.Response.Account
 @using FinanceTracker.Models.Response.Budget
 @using FinanceTracker.Models.Response.Dashboard
 @using FinanceTracker.Models.Response.HouseholdMembers
-@using FinanceTracker.Models.Response.Transaction
 @using FinanceTracker.Services.Account
 @using FinanceTracker.Services.Budget
 @using FinanceTracker.Services.Dashboard
@@ -16,6 +16,7 @@
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.SemanticKernel
 @using Microsoft.SemanticKernel.ChatCompletion
+@using TransactionResponse = FinanceTracker.Models.Response.Transaction.TransactionResponse
 @inherits PageComponent
 
 @attribute [Authorize]
@@ -24,6 +25,7 @@
 @inject ITransactionsService TransactionsService
 @inject IBudgetCategoriesService BudgetCategoriesService
 @inject IHouseholdMemberService HouseholdMemberService
+@inject IChatService ChatService
 
 <PageTitle>Home</PageTitle>
 
@@ -361,6 +363,7 @@
         _userName = authState.User.Claims.FirstOrDefault(x => x.Type == CustomClaims.FirstName)?.Value ?? authState.User.Identity!.Name;
         ApplyPresetRange(_rangePreset);
 
+        await ChatService.Chat();
         await LoadDashboardAsync();
     }
 
