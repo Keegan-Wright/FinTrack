@@ -9,6 +9,7 @@ using FinanceTracker.Configurations;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using FinanceTracker.Models.External;
+using FinanceTracker.Shared.Setup;
 
 namespace FinanceTracker.Services.External.OpenBanking;
 
@@ -268,7 +269,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
 
     private async Task<HttpClient> BuildHttpClient(Uri baseUrl, string? authHeader = null)
     {
-        var httpClient = _clientFactory.CreateClient("OpenBankingClient");
+        var httpClient = _clientFactory.CreateClient(FinanceTrackerConstants.OpenBankingHttpClientName);
         httpClient.BaseAddress = baseUrl;
 
         if (!string.IsNullOrEmpty(authHeader))

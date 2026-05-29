@@ -8,6 +8,7 @@ using FinanceTracker.Components.Account;
 using FinanceTracker.Configurations;
 using FinanceTracker.Data;
 using FinanceTracker.Data.Models;
+using FinanceTracker.Shared.Setup;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -26,71 +27,42 @@ public partial class Program
     {
         WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-        var culture = builder.Configuration["APP_CULTURE"];
-        if (!string.IsNullOrEmpty(culture))
-        {
-            var cultureInfo = new CultureInfo(culture);
-            CultureInfo.DefaultThreadCurrentCulture = cultureInfo;
-            CultureInfo.DefaultThreadCurrentUICulture = cultureInfo;
-        }
-
+        SetCulture(builder);
         builder.AddServiceDefaults();
-// Add MudBlazor services
-        builder.Services.AddMudServices();
+        AddBlazorServices(builder);
+        AddIdentity(builder);
+        AddRedis(builder);
+        AddTickerQ(builder);
+        AddFinanceTrackerServices(builder);
 
-// Add services to the container.
-        builder.Services.AddRazorComponents()
-            .AddInteractiveServerComponents();
+        WebApplication app = builder.Build();
+        app.UseExceptionHandler("/Error", true);
+        app.UseHttpsRedirection();
 
-        builder.Services.AddCascadingAuthenticationState();
-        builder.Services.AddScoped<IdentityUserAccessor>();
-        builder.Services.AddScoped<IdentityRedirectManager>();
-        builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
+        await ExecuteDatabaseMigrationAsync(app);
 
-        builder.AddRedisOutputCache("FinTrack-Redis");
-        builder.AddRedisDistributedCache("FinTrack-Redis");
+        app.UseAntiforgery();
+        app.UseTickerQ();
+        app.MapStaticAssets();
+        app.MapRazorComponents<App>()
+            .AddInteractiveServerRenderMode();
 
-        builder.Services.AddAuthentication(options =>
+        app.UseOutputCache();
+        app.MapAdditionalIdentityEndpoints();
+
+        app.MapGet("/BackgroundProcessing",
+            (IBackgroundSyncService syncService, CancellationToken ct) =>
             {
-                options.DefaultScheme = IdentityConstants.ApplicationScheme;
-                options.DefaultSignInScheme = IdentityConstants.ExternalScheme;
-            })
-            .AddIdentityCookies();
-
-        builder.Services.AddDbContextFactory<FinanceTrackerContext>((sp, options) =>
-        {
-            options.UseNpgsql(builder.Configuration.GetConnectionString("FinTrackDb"), npgsqlDbContextOptionsBuilder =>
-            {
-                npgsqlDbContextOptionsBuilder.MigrationsAssembly("FinanceTracker.Data.Migrations");
-                npgsqlDbContextOptionsBuilder.EnableRetryOnFailure();
-                npgsqlDbContextOptionsBuilder.CommandTimeout(0);
+                return TypedResults.ServerSentEvents(syncService.GetSyncNotifications(ct),
+                    FinanceTrackerConstants.BackgroundBankingSyncCompleteEventName);
             });
-        });
 
+        await app.RunAsync();
+    }
 
-        builder.Services.AddDatabaseDeveloperPageExceptionFilter();
-
-        builder.Services.AddHttpContextAccessor();
-        builder.Services.AddScoped<ClaimsPrincipal?>(s =>
-            s.GetService<IHttpContextAccessor>()?.HttpContext?.User ?? null);
-
-
-        builder.Services.AddIdentityCore<FinanceTrackerUser>(options =>
-            {
-                options.SignIn.RequireConfirmedAccount = false;
-                options.SignIn.RequireConfirmedEmail = false;
-                options.SignIn.RequireConfirmedPhoneNumber = false;
-                options.User.RequireUniqueEmail = true;
-            })
-            .AddEntityFrameworkStores<FinanceTrackerContext>()
-            .AddSignInManager()
-            .AddDefaultTokenProviders();
-
-        builder.Services.AddSingleton<IEmailSender<FinanceTrackerUser>, IdentityNoOpEmailSender>();
-        builder.AddRedisClient("FinTrack-Redis");
-        builder.AddRedisDistributedCache("FinTrack-Redis");
-        builder.AddRedisOutputCache("FinTrack-Redis");
-
+    private static void AddFinanceTrackerServices(WebApplicationBuilder builder)
+    {
+        builder.Services.AddSharedDependencies(builder.Configuration);
         TrueLayerOpenBankingConfiguration trueLayerConfig = new()
         {
             BaseAuthUrl = builder.Configuration.GetValue<Uri>("OPEN_BANKING_TRUELAYER_BASE_AUTH_URL")!,
@@ -102,16 +74,16 @@ public partial class Program
         };
 
         builder.Services.AddSingleton(trueLayerConfig);
+        builder.Services.AddHttpClient(FinanceTrackerConstants.OpenBankingHttpClientName);
+        builder.Services.AddSingleton<IBackgroundSyncService, BackgroundSyncService>();
+        builder.AddAiModule();
+        AddFinanceTrackerServices(builder.Services);
+        AddFinanceTrackerValidators(builder.Services);
+        AddFinanceTrackerExternalServices(builder.Services);
+    }
 
-        EncryptionConfiguration encryptionConfig = new()
-        {
-            SymmetricKey = builder.Configuration.GetValue<string>("ENCRYPTION_KEY")!,
-            SymmetricSalt = builder.Configuration.GetValue<string>("ENCRYPTION_SALT")!,
-            Iterations = builder.Configuration.GetValue<int>("ENCRYPTION_ITERATIONS")
-        };
-
-        builder.Services.AddSingleton(encryptionConfig);
-
+    private static void AddTickerQ(WebApplicationBuilder builder)
+    {
         builder.Services.AddTickerQ(options =>
         {
             options.AddOpenTelemetryInstrumentation();
@@ -125,64 +97,71 @@ public partial class Program
 
             options.IgnoreSeedDefinedCronTickers();
         });
-
         builder.Services.MapTicker<SyncAllOpenBankingDetailsAsync>();
+    }
 
+    private static void AddIdentity(WebApplicationBuilder builder)
+    {
+        builder.Services.AddScoped<IdentityUserAccessor>();
+        builder.Services.AddScoped<IdentityRedirectManager>();
+        builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
+        builder.Services.AddAuthentication(options =>
+            {
+                options.DefaultScheme = IdentityConstants.ApplicationScheme;
+                options.DefaultSignInScheme = IdentityConstants.ExternalScheme;
+            })
+            .AddIdentityCookies();
+        builder.Services.AddIdentityCore<FinanceTrackerUser>(options =>
+            {
+                options.SignIn.RequireConfirmedAccount = false;
+                options.SignIn.RequireConfirmedEmail = false;
+                options.SignIn.RequireConfirmedPhoneNumber = false;
+                options.User.RequireUniqueEmail = true;
+            })
+            .AddEntityFrameworkStores<FinanceTrackerContext>()
+            .AddSignInManager()
+            .AddDefaultTokenProviders();
+
+        builder.Services.AddSingleton<IEmailSender<FinanceTrackerUser>, IdentityNoOpEmailSender>();
+    }
+
+    private static void AddBlazorServices(WebApplicationBuilder builder)
+    {
+        builder.Services.AddMudServices();
+        builder.Services.AddRazorComponents()
+            .AddInteractiveServerComponents();
+        builder.Services.AddCascadingAuthenticationState();
 
         builder.Services.AddCascadingValue(_ => new ApplicationState());
+    }
 
-
-        builder.Services.AddHttpClient("OpenBankingClient");
-
-        builder.Services.AddSingleton<IBackgroundSyncService, BackgroundSyncService>();
-
-        builder.AddAiModule();
-
-        AddFinanceTrackerServices(builder.Services);
-        AddFinanceTrackerValidators(builder.Services);
-        AddFinanceTrackerExternalServices(builder.Services);
-
-        WebApplication app = builder.Build();
-
-// Configure the HTTP request pipeline.
-        if (app.Environment.IsDevelopment())
+    private static void SetCulture(WebApplicationBuilder builder)
+    {
+        var culture = builder.Configuration["APP_CULTURE"];
+        if (!string.IsNullOrEmpty(culture))
         {
-            app.UseMigrationsEndPoint();
+            var cultureInfo = new CultureInfo(culture);
+            CultureInfo.DefaultThreadCurrentCulture = cultureInfo;
+            CultureInfo.DefaultThreadCurrentUICulture = cultureInfo;
         }
-        else
-        {
-            app.UseExceptionHandler("/Error", true);
-            // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-            app.UseHsts();
-        }
+    }
 
-        app.UseHttpsRedirection();
-
-        await ExecuteDatabaseMigrationAsync(app);
-
-
-        app.MapGet("/BackgroundProcessing", (IBackgroundSyncService syncService, CancellationToken ct) =>
-        {
-            return TypedResults.ServerSentEvents(syncService.GetSyncNotifications(ct), "BackgroundBankingSyncComplete");
-        });
-
-        app.UseAntiforgery();
-        app.UseTickerQ();
-        app.MapStaticAssets();
-        app.MapRazorComponents<App>()
-            .AddInteractiveServerRenderMode();
-
-        app.UseOutputCache();
-        app.MapAdditionalIdentityEndpoints();
-
-        await app.RunAsync();
+    private static void AddRedis(WebApplicationBuilder builder)
+    {
+        builder.AddRedisOutputCache(FinanceTrackerConstants.RedisConnectionName);
+        builder.AddRedisDistributedCache(FinanceTrackerConstants.RedisConnectionName);
+        builder.AddRedisDistributedCache(FinanceTrackerConstants.RedisConnectionName);
+        builder.AddRedisClient(FinanceTrackerConstants.RedisConnectionName);
+        builder.AddRedisDistributedCache(FinanceTrackerConstants.RedisConnectionName);
+        builder.AddRedisOutputCache(FinanceTrackerConstants.RedisConnectionName);
     }
 
     private static async Task ExecuteDatabaseMigrationAsync(WebApplication app)
     {
         await using var scope = app.Services.CreateAsyncScope();
 
-        FinanceTrackerContext db = await scope.ServiceProvider.GetRequiredService<IDbContextFactory<FinanceTrackerContext>>()
+        FinanceTrackerContext db = await scope.ServiceProvider
+            .GetRequiredService<IDbContextFactory<FinanceTrackerContext>>()
             .CreateDbContextAsync();
 
         await db.Database.MigrateAsync();

@@ -1,4 +1,4 @@
-using Aspire.Hosting.Docker.Resources.ComposeNodes;
+using FinanceTracker.Shared.Setup;
 using Microsoft.Extensions.Configuration;
 #pragma warning disable ASPIRECOMPUTE003
 #pragma warning disable ASPIREPIPELINES003
@@ -28,7 +28,7 @@ var openBankingClientSecret = builder.AddParameter("OpenBanking-Client-Secret", 
 var openBankingPublicIpAddress = builder.AddParameter("OpenBanking-Public-IP-Address", openBankingConfig["TrueLayer:PublicIpAddress"] ?? string.Empty);
 
 
-IResourceBuilder<RedisResource> redis = builder.AddRedis("FinTrack-Redis")
+IResourceBuilder<RedisResource> redis = builder.AddRedis(FinanceTrackerConstants.RedisConnectionName)
     .WithDataVolume()
     .WithPersistence(TimeSpan.FromMinutes(5))
     .PublishAsDockerComposeService((resource, service) =>
@@ -37,7 +37,7 @@ IResourceBuilder<RedisResource> redis = builder.AddRedis("FinTrack-Redis")
     });
 
 
-IResourceBuilder<PostgresServerResource> postgres = builder.AddPostgres("FinTrack-Postgres")
+IResourceBuilder<PostgresServerResource> postgres = builder.AddPostgres(FinanceTrackerConstants.FinTrackDbConnectionName)
     .WithPgWeb()
     .WithPgAdmin()
     .WithDataVolume(isReadOnly: false)
@@ -47,13 +47,15 @@ IResourceBuilder<PostgresServerResource> postgres = builder.AddPostgres("FinTrac
     });
 
 
-IResourceBuilder<PostgresDatabaseResource> postgresDb = postgres.AddDatabase("FinTrackDb");
+IResourceBuilder<PostgresDatabaseResource> postgresDb = postgres.AddDatabase(FinanceTrackerConstants.FinTrackDbName);
 
-var ollama = builder.AddOllama("ollama").WithGPUSupport(OllamaGpuVendor.AMD);
-var llama3 = ollama.AddModel("llama3.2");
+var ollama = builder.AddOllama(FinanceTrackerConstants.OllamaResourceName).WithGPUSupport(OllamaGpuVendor.AMD)
+    .WithDataVolume(isReadOnly: false);
+
+var llama3 = ollama.AddModel(FinanceTrackerConstants.OllamaModelName);
 
 
-var finTrack = builder.AddProject<Projects.FinanceTracker>("FinTrackWeb")
+var finTrack = builder.AddProject<Projects.FinanceTracker>(FinanceTrackerConstants.WebResourceName)
 
     .WithEnvironment("ENCRYPTION_KEY", encryptionKey)
     .WithEnvironment("ENCRYPTION_SALT", encryptionSalt)

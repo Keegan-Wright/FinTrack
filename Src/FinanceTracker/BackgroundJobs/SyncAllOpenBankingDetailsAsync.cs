@@ -6,6 +6,7 @@ using FinanceTracker.Enums;
 using FinanceTracker.Services.OpenBanking;
 using Microsoft.EntityFrameworkCore;
 using TickerQ.Utilities.Base;
+using TickerQ.Utilities.Entities;
 using TickerQ.Utilities.Interfaces;
 
 namespace FinanceTracker.BackgroundJobs;
