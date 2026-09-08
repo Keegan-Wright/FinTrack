@@ -1,8 +1,6 @@
 using System.Globalization;
-using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Text;
 using FinanceTracker.Configurations;
@@ -18,7 +16,6 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
 {
     private readonly TrueLayerOpenBankingConfiguration _trueLayerOpenBankingConfiguration;
     private readonly IHttpClientFactory _clientFactory;
-
     public TrueLayerOpenBankingApiService(TrueLayerOpenBankingConfiguration trueLayerOpenBankingConfiguration, IHttpClientFactory clientFactory)
     {
         _trueLayerOpenBankingConfiguration = trueLayerOpenBankingConfiguration;
@@ -60,7 +57,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
 
         List<KeyValuePair<string, string>> formData =
         [
-            new("grant_type", "refresh_token"),
+            new("grant_type", "authorization_code"),
             new("client_id", _trueLayerOpenBankingConfiguration.ClientId),
             new("client_secret",
                 _trueLayerOpenBankingConfiguration.ClientSecret.ToString()),
