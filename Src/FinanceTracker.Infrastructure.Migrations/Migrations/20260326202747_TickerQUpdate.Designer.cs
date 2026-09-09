@@ -3,21 +3,24 @@ using System;
 using FinanceTracker.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace FinanceTracker.Domain.Migrations.Migrations
+namespace FinanceTracker.Infrastructure.Migrations.Migrations
 {
     [DbContext(typeof(FinanceTrackerContext))]
-    partial class FinanceTrackerContextModelSnapshot : ModelSnapshot
+    [Migration("20260326202747_TickerQUpdate")]
+    partial class TickerQUpdate
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.8")
+                .HasAnnotation("ProductVersion", "10.0.5")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -884,12 +887,9 @@ namespace FinanceTracker.Domain.Migrations.Migrations
                         .HasColumnType("text");
 
                     b.Property<bool>("IsEnabled")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsSystemPaused")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
-                        .HasDefaultValue(false);
+                        .HasDefaultValue(true);
 
                     b.Property<byte[]>("Request")
                         .HasColumnType("bytea");

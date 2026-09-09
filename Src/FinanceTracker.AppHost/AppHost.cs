@@ -17,6 +17,7 @@ builder.AddDockerComposeEnvironment("fintrack");
 
 IConfigurationSection openBankingConfig = builder.Configuration.GetSection("OpenBanking");
 IConfigurationSection encryptionConfig = builder.Configuration.GetSection("Encryption");
+IConfigurationSection oidcConfig = builder.Configuration.GetSection("OIDC");
 
 var encryptionKey = builder.AddParameter("FinTrack-Symmetric-Key", encryptionConfig["SymmetricKey"] ?? string.Empty );
 var encryptionSalt = builder.AddParameter("FinTrack-Symmetric-Salt", encryptionConfig["SymmetricSalt"] ?? string.Empty);
@@ -28,6 +29,11 @@ var openBankingAuthRedirectUrl = builder.AddParameter("OpenBanking-Auth-Redirect
 var openBankingClientId = builder.AddParameter("OpenBanking-Client-Id", openBankingConfig["TrueLayer:ClientId"] ?? string.Empty);
 var openBankingClientSecret = builder.AddParameter("OpenBanking-Client-Secret", openBankingConfig["TrueLayer:ClientSecret"] ?? string.Empty);
 var openBankingPublicIpAddress = builder.AddParameter("OpenBanking-Public-IP-Address", openBankingConfig["TrueLayer:PublicIpAddress"] ?? string.Empty);
+
+var oidcAuthority = builder.AddParameter("Oidc-Authority", oidcConfig["Authority"] ?? string.Empty);
+var oidcClientId = builder.AddParameter("Oidc-ClientId", oidcConfig["ClientId"] ?? string.Empty);
+var oidcClientSecret = builder.AddParameter("Oidc-ClientSecret", oidcConfig["ClientSecret"] ?? string.Empty);
+
 
 
 IResourceBuilder<RedisResource> redis = builder.AddRedis("FinTrack-Redis")
@@ -62,6 +68,9 @@ var finTrack = builder.AddProject<Projects.FinanceTracker>("FinTrackWeb")
     .WithEnvironment("OPEN_BANKING_TRUELAYER_CLIENT_SECRET", openBankingClientSecret)
     .WithEnvironment("OPEN_BANKING_PUBLIC_IP_ADDRESS", openBankingPublicIpAddress)
     .WithEnvironment("APP_CULTURE", "en-GB")
+    .WithEnvironment("OIDC_Authority", oidcAuthority)
+    .WithEnvironment("OIDC_ClientId", oidcClientId)
+    .WithEnvironment("OIDC_ClientSecret", oidcClientSecret)
     .WithReference(redis)
     .WithReference(postgresDb)
     .WaitFor(redis)

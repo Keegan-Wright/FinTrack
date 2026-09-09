@@ -24,11 +24,11 @@
     <Project Path="Src\Generators\FinanceTracker.Generated.Shared\FinanceTracker.Generated.Shared.csproj" />
   </Folder>
   <Folder Name="/Tests/">
-    <Project Path="FinanceTracker.Infrastructure.Tests\FinanceTracker.Infrastructure.Tests.csproj" />
+    <Project Path="Test/FinanceTracker.Infrastructure.Tests\FinanceTracker.Infrastructure.Tests.csproj" />
     <Project Path="Test/FinanceTracker.Tests.Shared/FinanceTracker.Tests.Shared.csproj" />
     <Project Path="Test/FinanceTracker.Tests/FinanceTracker.Tests.csproj" />
   </Folder>
-  <Project Path="FinanceTracker.Infrastructure.Migrations/FinanceTracker.Infrastructure.Migrations.csproj" />
+  <Project Path="Src/FinanceTracker.Infrastructure.Migrations/FinanceTracker.Infrastructure.Migrations.csproj" />
   <Project Path="Src/FinanceTracker.Contracts/FinanceTracker.Contracts.csproj" />
   <Project Path="Src/FinanceTracker.Domain/FinanceTracker.Domain.csproj" />
   <Project Path="Src/FinanceTracker/FinanceTracker.csproj" />

@@ -2,37 +2,30 @@
 
 #nullable disable
 
-namespace FinanceTracker.Domain.Migrations.Migrations
+namespace FinanceTracker.Infrastructure.Migrations.Migrations
 {
     /// <inheritdoc />
-    public partial class DotnetPackageUpgrades : Migration
+    public partial class TickerQUpdate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AlterColumn<bool>(
+            migrationBuilder.AddColumn<bool>(
                 name: "IsEnabled",
                 schema: "ticker",
                 table: "CronTickers",
                 type: "boolean",
                 nullable: false,
-                oldClrType: typeof(bool),
-                oldType: "boolean",
-                oldDefaultValue: true);
+                defaultValue: true);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AlterColumn<bool>(
+            migrationBuilder.DropColumn(
                 name: "IsEnabled",
                 schema: "ticker",
-                table: "CronTickers",
-                type: "boolean",
-                nullable: false,
-                defaultValue: true,
-                oldClrType: typeof(bool),
-                oldType: "boolean");
+                table: "CronTickers");
         }
     }
 }

@@ -3,29 +3,26 @@ using System;
 using FinanceTracker.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace FinanceTracker.Domain.Migrations.Migrations
+namespace FinanceTracker.Infrastructure.Migrations.Migrations
 {
     [DbContext(typeof(FinanceTrackerContext))]
-    [Migration("20260220224440_InitialWithEncryption")]
-    partial class InitialWithEncryption
+    partial class FinanceTrackerContextModelSnapshot : ModelSnapshot
     {
-        /// <inheritdoc />
-        protected override void BuildTargetModel(ModelBuilder modelBuilder)
+        protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.2")
+                .HasAnnotation("ProductVersion", "10.0.12")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("FinanceTracker.Data.Models.BudgetCategory", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.BudgetCategory", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -72,7 +69,7 @@ namespace FinanceTracker.Domain.Migrations.Migrations
                     b.ToTable("BudgetCategories");
                 });
 
-            modelBuilder.Entity("FinanceTracker.Data.Models.CustomClassification", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.CustomClassification", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -104,7 +101,7 @@ namespace FinanceTracker.Domain.Migrations.Migrations
                     b.ToTable("CustomClassifications");
                 });
 
-            modelBuilder.Entity("FinanceTracker.Data.Models.Debt", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.Debt", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -146,7 +143,7 @@ namespace FinanceTracker.Domain.Migrations.Migrations
                     b.ToTable("Debts");
                 });
 
-            modelBuilder.Entity("FinanceTracker.Data.Models.FinanceTrackerRole", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.FinanceTrackerRole", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -173,7 +170,7 @@ namespace FinanceTracker.Domain.Migrations.Migrations
                     b.ToTable("AspNetRoles", (string)null);
                 });
 
-            modelBuilder.Entity("FinanceTracker.Data.Models.FinanceTrackerUser", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.FinanceTrackerUser", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -215,6 +212,9 @@ namespace FinanceTracker.Domain.Migrations.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
+                    b.Property<string>("OpenIdConnectSubject")
+                        .HasColumnType("text");
+
                     b.Property<string>("PasswordHash")
                         .HasColumnType("text");
 
@@ -246,7 +246,7 @@ namespace FinanceTracker.Domain.Migrations.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
-            modelBuilder.Entity("FinanceTracker.Data.Models.HouseholdMember", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.HouseholdMember", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -285,7 +285,7 @@ namespace FinanceTracker.Domain.Migrations.Migrations
                     b.ToTable("HouseholdMembers");
                 });
 
-            modelBuilder.Entity("FinanceTracker.Data.Models.OpenBankingAccessToken", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingAccessToken", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -328,7 +328,7 @@ namespace FinanceTracker.Domain.Migrations.Migrations
                     b.ToTable("OpenBankingAccessTokens");
                 });
 
-            modelBuilder.Entity("FinanceTracker.Data.Models.OpenBankingAccount", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingAccount", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -372,7 +372,7 @@ namespace FinanceTracker.Domain.Migrations.Migrations
                     b.ToTable("OpenBankingAccounts");
                 });
 
-            modelBuilder.Entity("FinanceTracker.Data.Models.OpenBankingAccountBalance", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingAccountBalance", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -413,7 +413,7 @@ namespace FinanceTracker.Domain.Migrations.Migrations
                     b.ToTable("OpenBankingAccountBalances");
                 });
 
-            modelBuilder.Entity("FinanceTracker.Data.Models.OpenBankingDirectDebit", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingDirectDebit", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -468,7 +468,7 @@ namespace FinanceTracker.Domain.Migrations.Migrations
                     b.ToTable("OpenBankingDirectDebits");
                 });
 
-            modelBuilder.Entity("FinanceTracker.Data.Models.OpenBankingProvider", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingProvider", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -512,7 +512,7 @@ namespace FinanceTracker.Domain.Migrations.Migrations
                     b.ToTable("OpenBankingProviders");
                 });
 
-            modelBuilder.Entity("FinanceTracker.Data.Models.OpenBankingProviderScopes", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingProviderScopes", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -544,7 +544,7 @@ namespace FinanceTracker.Domain.Migrations.Migrations
                     b.ToTable("OpenBankingProviderScopes");
                 });
 
-            modelBuilder.Entity("FinanceTracker.Data.Models.OpenBankingStandingOrder", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingStandingOrder", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -620,7 +620,7 @@ namespace FinanceTracker.Domain.Migrations.Migrations
                     b.ToTable("OpenBankingStandingOrders");
                 });
 
-            modelBuilder.Entity("FinanceTracker.Data.Models.OpenBankingSynchronization", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingSynchronization", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -663,7 +663,7 @@ namespace FinanceTracker.Domain.Migrations.Migrations
                     b.ToTable("OpenBankingSynchronizations");
                 });
 
-            modelBuilder.Entity("FinanceTracker.Data.Models.OpenBankingTransaction", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingTransaction", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -728,7 +728,7 @@ namespace FinanceTracker.Domain.Migrations.Migrations
                     b.ToTable("OpenBankingTransactions");
                 });
 
-            modelBuilder.Entity("FinanceTracker.Data.Models.OpenBankingTransactionClassifications", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingTransactionClassifications", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -885,6 +885,14 @@ namespace FinanceTracker.Domain.Migrations.Migrations
 
                     b.Property<string>("InitIdentifier")
                         .HasColumnType("text");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsSystemPaused")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
 
                     b.Property<byte[]>("Request")
                         .HasColumnType("bytea");
@@ -1044,44 +1052,44 @@ namespace FinanceTracker.Domain.Migrations.Migrations
                     b.ToTable("TimeTickers", "ticker");
                 });
 
-            modelBuilder.Entity("FinanceTracker.Data.Models.BudgetCategory", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.BudgetCategory", b =>
                 {
-                    b.HasOne("FinanceTracker.Data.Models.FinanceTrackerUser", null)
+                    b.HasOne("FinanceTracker.Domain.FinanceTrackerUser", null)
                         .WithMany("BudgetCategories")
                         .HasForeignKey("FinanceTrackerUserId");
                 });
 
-            modelBuilder.Entity("FinanceTracker.Data.Models.CustomClassification", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.CustomClassification", b =>
                 {
-                    b.HasOne("FinanceTracker.Data.Models.FinanceTrackerUser", null)
+                    b.HasOne("FinanceTracker.Domain.FinanceTrackerUser", null)
                         .WithMany("CustomClassifications")
                         .HasForeignKey("FinanceTrackerUserId");
                 });
 
-            modelBuilder.Entity("FinanceTracker.Data.Models.Debt", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.Debt", b =>
                 {
-                    b.HasOne("FinanceTracker.Data.Models.FinanceTrackerUser", null)
+                    b.HasOne("FinanceTracker.Domain.FinanceTrackerUser", null)
                         .WithMany("Debts")
                         .HasForeignKey("FinanceTrackerUserId");
                 });
 
-            modelBuilder.Entity("FinanceTracker.Data.Models.HouseholdMember", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.HouseholdMember", b =>
                 {
-                    b.HasOne("FinanceTracker.Data.Models.FinanceTrackerUser", null)
+                    b.HasOne("FinanceTracker.Domain.FinanceTrackerUser", null)
                         .WithMany("HouseholdMembers")
                         .HasForeignKey("FinanceTrackerUserId");
                 });
 
-            modelBuilder.Entity("FinanceTracker.Data.Models.OpenBankingAccessToken", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingAccessToken", b =>
                 {
-                    b.HasOne("FinanceTracker.Data.Models.FinanceTrackerUser", null)
+                    b.HasOne("FinanceTracker.Domain.FinanceTrackerUser", null)
                         .WithMany("OpenBankingAccessTokens")
                         .HasForeignKey("FinanceTrackerUserId");
                 });
 
-            modelBuilder.Entity("FinanceTracker.Data.Models.OpenBankingAccount", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingAccount", b =>
                 {
-                    b.HasOne("FinanceTracker.Data.Models.OpenBankingProvider", "Provider")
+                    b.HasOne("FinanceTracker.Domain.OpenBankingProvider", "Provider")
                         .WithMany("Accounts")
                         .HasForeignKey("ProviderId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1090,20 +1098,20 @@ namespace FinanceTracker.Domain.Migrations.Migrations
                     b.Navigation("Provider");
                 });
 
-            modelBuilder.Entity("FinanceTracker.Data.Models.OpenBankingAccountBalance", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingAccountBalance", b =>
                 {
-                    b.HasOne("FinanceTracker.Data.Models.OpenBankingAccount", "Account")
+                    b.HasOne("FinanceTracker.Domain.OpenBankingAccount", "Account")
                         .WithOne("AccountBalance")
-                        .HasForeignKey("FinanceTracker.Data.Models.OpenBankingAccountBalance", "AccountId")
+                        .HasForeignKey("FinanceTracker.Domain.OpenBankingAccountBalance", "AccountId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Account");
                 });
 
-            modelBuilder.Entity("FinanceTracker.Data.Models.OpenBankingDirectDebit", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingDirectDebit", b =>
                 {
-                    b.HasOne("FinanceTracker.Data.Models.OpenBankingAccount", "Account")
+                    b.HasOne("FinanceTracker.Domain.OpenBankingAccount", "Account")
                         .WithMany("DirectDebits")
                         .HasForeignKey("AccountId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1112,16 +1120,16 @@ namespace FinanceTracker.Domain.Migrations.Migrations
                     b.Navigation("Account");
                 });
 
-            modelBuilder.Entity("FinanceTracker.Data.Models.OpenBankingProvider", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingProvider", b =>
                 {
-                    b.HasOne("FinanceTracker.Data.Models.FinanceTrackerUser", null)
+                    b.HasOne("FinanceTracker.Domain.FinanceTrackerUser", null)
                         .WithMany("Providers")
                         .HasForeignKey("FinanceTrackerUserId");
                 });
 
-            modelBuilder.Entity("FinanceTracker.Data.Models.OpenBankingProviderScopes", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingProviderScopes", b =>
                 {
-                    b.HasOne("FinanceTracker.Data.Models.OpenBankingProvider", "Provider")
+                    b.HasOne("FinanceTracker.Domain.OpenBankingProvider", "Provider")
                         .WithMany("Scopes")
                         .HasForeignKey("ProviderId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1130,9 +1138,9 @@ namespace FinanceTracker.Domain.Migrations.Migrations
                     b.Navigation("Provider");
                 });
 
-            modelBuilder.Entity("FinanceTracker.Data.Models.OpenBankingStandingOrder", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingStandingOrder", b =>
                 {
-                    b.HasOne("FinanceTracker.Data.Models.OpenBankingAccount", "Account")
+                    b.HasOne("FinanceTracker.Domain.OpenBankingAccount", "Account")
                         .WithMany("StandingOrders")
                         .HasForeignKey("AccountId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1141,15 +1149,15 @@ namespace FinanceTracker.Domain.Migrations.Migrations
                     b.Navigation("Account");
                 });
 
-            modelBuilder.Entity("FinanceTracker.Data.Models.OpenBankingSynchronization", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingSynchronization", b =>
                 {
-                    b.HasOne("FinanceTracker.Data.Models.OpenBankingAccount", "Account")
+                    b.HasOne("FinanceTracker.Domain.OpenBankingAccount", "Account")
                         .WithMany("Syncronisations")
                         .HasForeignKey("AccountId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("FinanceTracker.Data.Models.OpenBankingProvider", "Provider")
+                    b.HasOne("FinanceTracker.Domain.OpenBankingProvider", "Provider")
                         .WithMany("Syncronisations")
                         .HasForeignKey("ProviderId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1160,15 +1168,15 @@ namespace FinanceTracker.Domain.Migrations.Migrations
                     b.Navigation("Provider");
                 });
 
-            modelBuilder.Entity("FinanceTracker.Data.Models.OpenBankingTransaction", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingTransaction", b =>
                 {
-                    b.HasOne("FinanceTracker.Data.Models.OpenBankingAccount", "Account")
+                    b.HasOne("FinanceTracker.Domain.OpenBankingAccount", "Account")
                         .WithMany("Transactions")
                         .HasForeignKey("AccountId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("FinanceTracker.Data.Models.OpenBankingProvider", "Provider")
+                    b.HasOne("FinanceTracker.Domain.OpenBankingProvider", "Provider")
                         .WithMany("Transactions")
                         .HasForeignKey("ProviderId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1179,9 +1187,9 @@ namespace FinanceTracker.Domain.Migrations.Migrations
                     b.Navigation("Provider");
                 });
 
-            modelBuilder.Entity("FinanceTracker.Data.Models.OpenBankingTransactionClassifications", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingTransactionClassifications", b =>
                 {
-                    b.HasOne("FinanceTracker.Data.Models.OpenBankingTransaction", "Transaction")
+                    b.HasOne("FinanceTracker.Domain.OpenBankingTransaction", "Transaction")
                         .WithMany("Classifications")
                         .HasForeignKey("TransactionId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1192,7 +1200,7 @@ namespace FinanceTracker.Domain.Migrations.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
                 {
-                    b.HasOne("FinanceTracker.Data.Models.FinanceTrackerRole", null)
+                    b.HasOne("FinanceTracker.Domain.FinanceTrackerRole", null)
                         .WithMany()
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1201,7 +1209,7 @@ namespace FinanceTracker.Domain.Migrations.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>
                 {
-                    b.HasOne("FinanceTracker.Data.Models.FinanceTrackerUser", null)
+                    b.HasOne("FinanceTracker.Domain.FinanceTrackerUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1210,7 +1218,7 @@ namespace FinanceTracker.Domain.Migrations.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<System.Guid>", b =>
                 {
-                    b.HasOne("FinanceTracker.Data.Models.FinanceTrackerUser", null)
+                    b.HasOne("FinanceTracker.Domain.FinanceTrackerUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1219,13 +1227,13 @@ namespace FinanceTracker.Domain.Migrations.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<System.Guid>", b =>
                 {
-                    b.HasOne("FinanceTracker.Data.Models.FinanceTrackerRole", null)
+                    b.HasOne("FinanceTracker.Domain.FinanceTrackerRole", null)
                         .WithMany()
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("FinanceTracker.Data.Models.FinanceTrackerUser", null)
+                    b.HasOne("FinanceTracker.Domain.FinanceTrackerUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1234,7 +1242,7 @@ namespace FinanceTracker.Domain.Migrations.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<System.Guid>", b =>
                 {
-                    b.HasOne("FinanceTracker.Data.Models.FinanceTrackerUser", null)
+                    b.HasOne("FinanceTracker.Domain.FinanceTrackerUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1262,7 +1270,7 @@ namespace FinanceTracker.Domain.Migrations.Migrations
                     b.Navigation("Parent");
                 });
 
-            modelBuilder.Entity("FinanceTracker.Data.Models.FinanceTrackerUser", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.FinanceTrackerUser", b =>
                 {
                     b.Navigation("BudgetCategories");
 
@@ -1277,7 +1285,7 @@ namespace FinanceTracker.Domain.Migrations.Migrations
                     b.Navigation("Providers");
                 });
 
-            modelBuilder.Entity("FinanceTracker.Data.Models.OpenBankingAccount", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingAccount", b =>
                 {
                     b.Navigation("AccountBalance");
 
@@ -1290,7 +1298,7 @@ namespace FinanceTracker.Domain.Migrations.Migrations
                     b.Navigation("Transactions");
                 });
 
-            modelBuilder.Entity("FinanceTracker.Data.Models.OpenBankingProvider", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingProvider", b =>
                 {
                     b.Navigation("Accounts");
 
@@ -1301,7 +1309,7 @@ namespace FinanceTracker.Domain.Migrations.Migrations
                     b.Navigation("Transactions");
                 });
 
-            modelBuilder.Entity("FinanceTracker.Data.Models.OpenBankingTransaction", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingTransaction", b =>
                 {
                     b.Navigation("Classifications");
                 });

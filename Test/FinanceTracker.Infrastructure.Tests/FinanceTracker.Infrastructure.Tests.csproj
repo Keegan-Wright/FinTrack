@@ -10,9 +10,9 @@
     <PackageReference Include="NSubstitute" Version="5.3.0" />
     <PackageReference Include="TUnit" Version="1.45.29" />
   </ItemGroup>
-  
+
     <ItemGroup>
-      <ProjectReference Include="..\Test\FinanceTracker.Tests.Shared\FinanceTracker.Tests.Shared.csproj" />
+      <ProjectReference Include="..\FinanceTracker.Tests.Shared\FinanceTracker.Tests.Shared.csproj" />
     </ItemGroup>
 
 </Project>

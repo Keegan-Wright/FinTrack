@@ -2,7 +2,7 @@
 
 #nullable disable
 
-namespace FinanceTracker.Domain.Migrations.Migrations
+namespace FinanceTracker.Infrastructure.Migrations.Migrations
 {
     /// <inheritdoc />
     public partial class SeedsBackgroundSyncJob : Migration

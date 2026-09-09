@@ -2,6 +2,7 @@
 @using FinanceTracker.Extensions
 @using FluentValidation
 @inject IValidator<AddHouseholdMember> Validator
+
 <DialogBase TResponse="AddHouseholdMember" Title="Add Household member" ResponseConstructor="BuildResponseModel">
     <Content>
         <MudForm @ref="_form" Model="@_model">

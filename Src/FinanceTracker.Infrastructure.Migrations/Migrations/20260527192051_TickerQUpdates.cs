@@ -2,28 +2,28 @@
 
 #nullable disable
 
-namespace FinanceTracker.Domain.Migrations.Migrations
+namespace FinanceTracker.Infrastructure.Migrations.Migrations
 {
     /// <inheritdoc />
-    public partial class TickerQUpdate : Migration
+    public partial class TickerQUpdates : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<bool>(
-                name: "IsEnabled",
+                name: "IsSystemPaused",
                 schema: "ticker",
                 table: "CronTickers",
                 type: "boolean",
                 nullable: false,
-                defaultValue: true);
+                defaultValue: false);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropColumn(
-                name: "IsEnabled",
+                name: "IsSystemPaused",
                 schema: "ticker",
                 table: "CronTickers");
         }

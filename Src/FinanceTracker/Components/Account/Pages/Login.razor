@@ -61,6 +61,8 @@
             Href="@(NavigationManager.GetUriWithQueryParameters("Account/Register", new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))">
             Register as a new user
         </MudLink>
+        <br/>
+        <MudLink Href="/auth/oidc">Login with SSO</MudLink>
     </MudItem>
 </MudGrid>
 

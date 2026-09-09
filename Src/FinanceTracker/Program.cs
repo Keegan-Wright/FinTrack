@@ -7,17 +7,16 @@ using FinanceTracker.Components.Account;
 using FinanceTracker.Domain;
 using FinanceTracker.Infrastructure;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using MudBlazor.Services;
 using TickerQ.DependencyInjection;
 using TickerQ.EntityFrameworkCore.Customizer;
 using TickerQ.EntityFrameworkCore.DependencyInjection;
 using TickerQ.Instrumentation.OpenTelemetry;
-using TickerQ.Utilities;
-using TickerQ.Utilities.Entities;
-using TickerQ.Utilities.Interfaces.Managers;
 
 namespace FinanceTracker;
 
@@ -27,10 +26,10 @@ public partial class Program
     {
         WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-        var culture = builder.Configuration["APP_CULTURE"];
+        string? culture = builder.Configuration["APP_CULTURE"];
         if (!string.IsNullOrEmpty(culture))
         {
-            var cultureInfo = new CultureInfo(culture);
+            CultureInfo cultureInfo = new(culture);
             CultureInfo.DefaultThreadCurrentCulture = cultureInfo;
             CultureInfo.DefaultThreadCurrentUICulture = cultureInfo;
         }
@@ -51,12 +50,97 @@ public partial class Program
         builder.AddRedisOutputCache("FinTrack-Redis");
         builder.AddRedisDistributedCache("FinTrack-Redis");
 
-        builder.Services.AddAuthentication(options =>
+        AuthenticationBuilder authBuilder = builder.Services.AddAuthentication(options =>
+        {
+            options.DefaultScheme = IdentityConstants.ApplicationScheme;
+            options.DefaultSignInScheme = IdentityConstants.ExternalScheme;
+        });
+
+        authBuilder.AddIdentityCookies();
+
+
+
+
+        var oidcAuthority = builder.Configuration["OIDC_Authority"];
+        var oidcClientId = builder.Configuration["OIDC_ClientId"];
+        var oidcClientSecret = builder.Configuration["OIDC_ClientSecret"];
+
+        bool isOidcEnabled = !string.IsNullOrEmpty(oidcAuthority) &&
+                             !string.IsNullOrEmpty(oidcClientId) &&
+                             !string.IsNullOrEmpty(oidcClientSecret);
+
+
+
+        if (isOidcEnabled)
+        {
+            authBuilder.AddOpenIdConnect(OpenIdConnectDefaults.AuthenticationScheme, options =>
             {
-                options.DefaultScheme = IdentityConstants.ApplicationScheme;
-                options.DefaultSignInScheme = IdentityConstants.ExternalScheme;
-            })
-            .AddIdentityCookies();
+
+                options.Authority = oidcAuthority;
+                options.ClientId = oidcClientId;
+                options.ClientSecret = oidcClientSecret;
+
+                options.ResponseType = OpenIdConnectResponseType.Code;
+                options.SaveTokens = true;
+
+                options.Scope.Clear();
+                options.Scope.Add("openid");
+                options.Scope.Add("profile");
+                options.Scope.Add("email");
+
+                options.ClaimActions.MapJsonKey(ClaimTypes.GivenName, "given_name");
+                options.ClaimActions.MapJsonKey(ClaimTypes.Surname, "family_name");
+
+                options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+                {
+                    NameClaimType = "name"
+                };
+
+                options.Events = new OpenIdConnectEvents
+                {
+                    OnTokenValidated = async context =>
+                    {
+                        var oidcSub = context.Principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                        var email = context.Principal?.FindFirst(ClaimTypes.Email)?.Value;
+
+
+                        if (string.IsNullOrEmpty(oidcSub)) return;
+
+                        var factory = context.HttpContext.RequestServices
+                            .GetRequiredService<IDbContextFactory<FinanceTrackerContext>>();
+
+                        await using var dbContext = await factory.CreateDbContextAsync();
+
+                        var user = await dbContext.Users.FirstOrDefaultAsync(u => u.OpenIdConnectSubject == oidcSub)
+                                   ?? await dbContext.Users.FirstOrDefaultAsync(u => u.Email == email);
+
+                        if (user == null)
+                        {
+                            var firstName = context.Principal?.FindFirst(ClaimTypes.GivenName)?.Value;
+                            var lastName = context.Principal?.FindFirst(ClaimTypes.Surname)?.Value;
+
+                            user = new FinanceTrackerUser(firstName, lastName, email, oidcSub);
+                            dbContext.Users.Add(user);
+                        }
+                        else if (user.OpenIdConnectSubject == null)
+                        {
+                            // Link an existing local user account to Authelia upon their first SSO login
+                            user.SetOidcSubject(oidcSub);
+                            dbContext.Users.Update(user);
+                        }
+
+                        await dbContext.SaveChangesAsync();
+
+                        // Mutate the identity context to inject the ASP.NET Identity claims
+                        // This ensures UserManager<FinanceTrackerUser> natively recognizes the logged-in user
+                        var claimsIdentity = (ClaimsIdentity)context.Principal.Identity!;
+                        claimsIdentity.AddClaim(new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()));
+                    }
+                };
+            });
+        }
+
+
 
         builder.Services.AddDbContextFactory<FinanceTrackerContext>((sp, options) =>
         {
@@ -160,10 +244,24 @@ public partial class Program
         await ExecuteDatabaseMigrationAsync(app);
 
 
-        app.MapGet("/BackgroundProcessing", (IBackgroundSyncService syncService, CancellationToken ct) =>
+        app.MapGet("/BackgroundProcessing",
+            (IBackgroundSyncService syncService, CancellationToken ct) =>
+            {
+                return TypedResults.ServerSentEvents(syncService.GetSyncNotifications(ct),
+                    "BackgroundBankingSyncComplete");
+            });
+
+        if (isOidcEnabled)
         {
-            return TypedResults.ServerSentEvents(syncService.GetSyncNotifications(ct), "BackgroundBankingSyncComplete");
-        });
+            app.MapGet("/auth/oidc", async (HttpContext context) =>
+            {
+                await context.ChallengeAsync(OpenIdConnectDefaults.AuthenticationScheme, new AuthenticationProperties
+                {
+                    RedirectUri = "/"
+                });
+            });
+
+        }
 
         app.UseAntiforgery();
         app.UseTickerQ();
@@ -179,9 +277,10 @@ public partial class Program
 
     private static async Task ExecuteDatabaseMigrationAsync(WebApplication app)
     {
-        await using var scope = app.Services.CreateAsyncScope();
+        await using AsyncServiceScope scope = app.Services.CreateAsyncScope();
 
-        FinanceTrackerContext db = await scope.ServiceProvider.GetRequiredService<IDbContextFactory<FinanceTrackerContext>>()
+        FinanceTrackerContext db = await scope.ServiceProvider
+            .GetRequiredService<IDbContextFactory<FinanceTrackerContext>>()
             .CreateDbContextAsync();
 
         await db.Database.MigrateAsync();

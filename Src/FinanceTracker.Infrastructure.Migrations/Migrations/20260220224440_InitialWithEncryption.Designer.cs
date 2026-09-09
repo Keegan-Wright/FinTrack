@@ -9,18 +9,18 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace FinanceTracker.Domain.Migrations.Migrations
+namespace FinanceTracker.Infrastructure.Migrations.Migrations
 {
     [DbContext(typeof(FinanceTrackerContext))]
-    [Migration("20260326202747_TickerQUpdate")]
-    partial class TickerQUpdate
+    [Migration("20260220224440_InitialWithEncryption")]
+    partial class InitialWithEncryption
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.5")
+                .HasAnnotation("ProductVersion", "10.0.2")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -885,11 +885,6 @@ namespace FinanceTracker.Domain.Migrations.Migrations
 
                     b.Property<string>("InitIdentifier")
                         .HasColumnType("text");
-
-                    b.Property<bool>("IsEnabled")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true);
 
                     b.Property<byte[]>("Request")
                         .HasColumnType("bytea");

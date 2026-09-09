@@ -9,11 +9,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace FinanceTracker.Domain.Migrations.Migrations
+namespace FinanceTracker.Infrastructure.Migrations.Migrations
 {
     [DbContext(typeof(FinanceTrackerContext))]
-    [Migration("20260419122221_DotnetPackageUpgrades")]
-    partial class DotnetPackageUpgrades
+    [Migration("20260419212519_SeedsBackgroundSyncJob")]
+    partial class SeedsBackgroundSyncJob
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
