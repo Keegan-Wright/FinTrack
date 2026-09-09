@@ -62,7 +62,7 @@ public partial class Program
         {
             options.UseNpgsql(builder.Configuration.GetConnectionString("FinTrackDb"), npgsqlDbContextOptionsBuilder =>
             {
-                npgsqlDbContextOptionsBuilder.MigrationsAssembly("FinanceTracker.Domain.Migrations");
+                npgsqlDbContextOptionsBuilder.MigrationsAssembly("FinanceTracker.Infrastructure.Migrations");
                 npgsqlDbContextOptionsBuilder.EnableRetryOnFailure();
                 npgsqlDbContextOptionsBuilder.CommandTimeout(0);
             });

@@ -89,7 +89,7 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
             var builder = new DbContextOptionsBuilder<FinanceTrackerContext>();
             builder.UseNpgsql("DesignTimeConnectionString", npgsqlDbContextOptionsBuilder =>
             {
-                npgsqlDbContextOptionsBuilder.MigrationsAssembly("FinanceTracker.Domain.Migrations");
+                npgsqlDbContextOptionsBuilder.MigrationsAssembly("FinanceTracker.Infrastructure.Migrations");
                 npgsqlDbContextOptionsBuilder.EnableRetryOnFailure();
                 npgsqlDbContextOptionsBuilder.CommandTimeout(0);
             });
