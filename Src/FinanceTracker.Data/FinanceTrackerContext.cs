@@ -87,21 +87,21 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
     /// <returns></returns>
     public FinanceTrackerContext CreateDbContext(string[] args)
     {
-        var builder = new DbContextOptionsBuilder<FinanceTrackerContext>();
-        builder.UseNpgsql("DesignTimeConnectionString", npgsqlDbContextOptionsBuilder =>
-        {
-            npgsqlDbContextOptionsBuilder.MigrationsAssembly("FinanceTracker.Data.Migrations");
-            npgsqlDbContextOptionsBuilder.EnableRetryOnFailure();
-            npgsqlDbContextOptionsBuilder.CommandTimeout(0);
-        });
+            var builder = new DbContextOptionsBuilder<FinanceTrackerContext>();
+            builder.UseNpgsql("DesignTimeConnectionString", npgsqlDbContextOptionsBuilder =>
+            {
+                npgsqlDbContextOptionsBuilder.MigrationsAssembly("FinanceTracker.Data.Migrations");
+                npgsqlDbContextOptionsBuilder.EnableRetryOnFailure();
+                npgsqlDbContextOptionsBuilder.CommandTimeout(0);
+            });
 
-        return new FinanceTrackerContext(builder.Options, new SymmetricEncryptionService(new EncryptionConfiguration()
-        {
-            SymmetricKey = "DesignTimeKey",
-            SymmetricSalt = "DesignTimeSalt",
-            Iterations = 1
-        }));
-    }
+            return new FinanceTrackerContext(builder.Options, new SymmetricEncryptionService(new EncryptionConfiguration()
+            {
+                SymmetricKey = "DesignTimeKey",
+                SymmetricSalt = "DesignTimeSalt",
+                Iterations = 1
+            }));
+        }
 }
 
 public class EncryptionConverter<TModel> : ValueConverter<TModel, string>

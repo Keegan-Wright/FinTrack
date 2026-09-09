@@ -317,35 +317,53 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
     {
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
-        FinanceTrackerUser user = await context.IsolateToUser(UserId).SingleAsync(cancellationToken);
+        FinanceTrackerUser user = await context.IsolateToUser(UserId)
+            .Include(x => x.Providers)
+            .SingleAsync(cancellationToken);
 
 
 
         await foreach (ExternalOpenBankingAccountConnection externalProvider in (providerInformation.Results ?? throw new InvalidOperationException())
                            .WithCancellation(cancellationToken))
         {
-            using HttpClient logoClient = new();
-            Stream providerLogo = await logoClient.GetStreamAsync(externalProvider.Provider!.LogoUri, cancellationToken);
 
-            using MemoryStream ms = new();
-            await providerLogo.CopyToAsync(ms, cancellationToken);
+            OpenBankingProvider? provider = null;
 
-            OpenBankingProvider provider = new()
+            if (user.Providers!.Any(x => x.OpenBankingProviderId == externalProvider.Provider!.ProviderId))
             {
-                AccessCode = accessCode,
-                Name = externalProvider.Provider.DisplayName,
-                OpenBankingProviderId = externalProvider.Provider.ProviderId,
-                Created = DateTime.Now.ToUniversalTime(),
-                Logo = ms.ToArray(),
-                Scopes = []
-            };
+                provider = user.Providers.First(x => x.OpenBankingProviderId == externalProvider.Provider.ProviderId);
+            }
+            else
+            {
 
-            user.Providers ??= [];
+                using HttpClient logoClient = new();
+                Stream providerLogo = await logoClient.GetStreamAsync(externalProvider.Provider!.LogoUri, cancellationToken);
 
-            user.Providers.Add(provider);
+                using MemoryStream ms = new();
+                await providerLogo.CopyToAsync(ms, cancellationToken);
 
 
-            await context.SaveChangesAsync(cancellationToken);
+
+                provider = new()
+                {
+                    AccessCode = accessCode,
+                    Name = externalProvider.Provider.DisplayName,
+                    OpenBankingProviderId = externalProvider.Provider.ProviderId,
+                    Created = DateTime.Now.ToUniversalTime(),
+                    Logo = ms.ToArray(),
+                    Scopes = []
+                };
+
+                user.Providers ??= [];
+
+                user.Providers.Add(provider);
+
+
+                await context.SaveChangesAsync(cancellationToken);
+
+            }
+
+
 
             OpenBankingAccessToken accessToken = new()
             {
@@ -356,6 +374,7 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
                 Created = DateTime.Now.ToUniversalTime()
             };
 
+            provider.Scopes?.Clear();
             await foreach (string scope in externalProvider.Scopes!.WithCancellation(cancellationToken))
             {
                 OpenBankingProviderScopes providerScope = new()
@@ -363,7 +382,8 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
                     Scope = scope, Created = DateTime.Now.ToUniversalTime(), ProviderId = provider.Id
                 };
 
-                provider.Scopes.Add(providerScope);
+                provider.Scopes?.Add(providerScope);
+
             }
 
             user.OpenBankingAccessTokens ??= [];
