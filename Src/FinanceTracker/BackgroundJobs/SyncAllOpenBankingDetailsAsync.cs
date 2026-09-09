@@ -1,9 +1,13 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using FinanceTracker.Data;
-using FinanceTracker.Data.Models;
-using FinanceTracker.Enums;
-using FinanceTracker.Services.OpenBanking;
+using FinanceTracker.Contracts;
+
+
+using FinanceTracker.Domain;
+
+using FinanceTracker.Infrastructure;
+using FinanceTracker.Infrastructure.OpenBanking;
+
 using Microsoft.EntityFrameworkCore;
 using TickerQ.Utilities.Base;
 using TickerQ.Utilities.Interfaces;

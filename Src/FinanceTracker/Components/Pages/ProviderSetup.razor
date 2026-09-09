@@ -1,8 +1,8 @@
 @page "/ProviderSetup"
 @using System.Collections.Immutable
-@using FinanceTracker.Models.External
-@using FinanceTracker.Models.Request.OpenBanking
-@using FinanceTracker.Services.OpenBanking
+@using FinanceTracker.Contracts.OpenBanking
+@using FinanceTracker.Infrastructure.OpenBanking
+@using FinanceTracker.Infrastructure.OpenBanking.TrueLayer.Contracts
 @using Microsoft.AspNetCore.Authorization
 @inherits PageComponent
 
@@ -98,7 +98,7 @@
             }
         }
 
-        var requestModel = new GetProviderSetupUrlRequestModel
+        var requestModel = new ProviderSetupUrl
         {
             ProviderIds = selectedProviders.Select(x => x.ProviderId).ToImmutableList(),
             Scopes = scopes.ToImmutableList()
@@ -111,7 +111,7 @@
     {
         SetLoadingState(true, "Adding Provider");
 
-        var requestModel = new AddVendorRequestModel
+        var requestModel = new AddVendor
         {
             AccessCode = _vendorAccessToken
         };

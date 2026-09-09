@@ -1,9 +1,8 @@
 @page "/HouseholdMembers"
 @using System.Globalization
 @using FinanceTracker.Components.Dialogs
-@using FinanceTracker.Models.Request.HouseholdMember
-@using FinanceTracker.Models.Response.HouseholdMembers
-@using FinanceTracker.Services.HouseholdMembers
+@using FinanceTracker.Contracts.HouseholdMember
+@using FinanceTracker.Infrastructure.HouseholdMembers
 @using Microsoft.AspNetCore.Authorization
 @inherits PageComponent
 
@@ -46,7 +45,7 @@
 
 @code {
 
-    private readonly List<HouseholdMemberResponse> _houseHoldMembers = [];
+    private readonly List<HouseholdMember> _houseHoldMembers = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -77,7 +76,7 @@
             try
             {
                 SetLoadingState(true, "Adding member");
-                var householdMember = await HouseholdMemberService.AddHouseholdMemberAsync((AddHouseholdMemberRequest)dialogActionResult.Data!, _cts.Token);
+                var householdMember = await HouseholdMemberService.AddHouseholdMemberAsync((AddHouseholdMember)dialogActionResult.Data!, _cts.Token);
                 _houseHoldMembers.Add(householdMember);
             }
             catch (Exception)

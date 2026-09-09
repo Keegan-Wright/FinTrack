@@ -4,10 +4,8 @@ using FinanceTracker.AppHost.ServiceDefaults;
 using FinanceTracker.BackgroundJobs;
 using FinanceTracker.Components;
 using FinanceTracker.Components.Account;
-using FinanceTracker.Configurations;
-using FinanceTracker.Data;
-using FinanceTracker.Data.Models;
-using FinanceTracker.Security.Encryption;
+using FinanceTracker.Domain;
+using FinanceTracker.Infrastructure;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -64,7 +62,7 @@ public partial class Program
         {
             options.UseNpgsql(builder.Configuration.GetConnectionString("FinTrackDb"), npgsqlDbContextOptionsBuilder =>
             {
-                npgsqlDbContextOptionsBuilder.MigrationsAssembly("FinanceTracker.Data.Migrations");
+                npgsqlDbContextOptionsBuilder.MigrationsAssembly("FinanceTracker.Infrastructure.Migrations");
                 npgsqlDbContextOptionsBuilder.EnableRetryOnFailure();
                 npgsqlDbContextOptionsBuilder.CommandTimeout(0);
             });

@@ -1,4 +1,4 @@
-@using FinanceTracker.Models.Response.Transaction
+@using FinanceTracker.Contracts.Transactions
 <MudPaper Elevation="1" Class="px-4 pb-4 mb-4">
     <MudGrid Class="my-2">
         <MudItem xs="12" sm="6" md="4" lg="3">
@@ -110,15 +110,15 @@
 
 @code {
 
-    [Parameter] [EditorRequired] public List<TransactionAccountFilterResponse> AccountFilterItems { get; set; }
+    [Parameter] [EditorRequired] public List<TransactionAccountFilter> AccountFilterItems { get; set; }
 
-    [Parameter] [EditorRequired] public List<TransactionCategoryFilterResponse> CategoryFilterItems { get; set; }
+    [Parameter] [EditorRequired] public List<TransactionCategoryFilter> CategoryFilterItems { get; set; }
 
-    [Parameter] [EditorRequired] public List<TransactionProviderFilterResponse> ProviderFilterItems { get; set; }
+    [Parameter] [EditorRequired] public List<TransactionProviderFilter> ProviderFilterItems { get; set; }
 
-    [Parameter] [EditorRequired] public List<TransactionTypeFilterResponse> TransactionTypeFilterItems { get; set; }
+    [Parameter] [EditorRequired] public List<TransactionTypeFilter> TransactionTypeFilterItems { get; set; }
 
-    [Parameter] [EditorRequired] public List<TransactionTagFilterResponse> TransactionTagFilterItems { get; set; }
+    [Parameter] [EditorRequired] public List<TransactionTagFilter> TransactionTagFilterItems { get; set; }
 
     [Parameter] [EditorRequired] public string SearchTerm { get; set; }
 

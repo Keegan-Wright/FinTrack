@@ -1,8 +1,7 @@
 @page "/Classifications"
 @using FinanceTracker.Components.Dialogs
-@using FinanceTracker.Models.Request.Classifications
-@using FinanceTracker.Models.Response.Classifications
-@using FinanceTracker.Services.Classification
+@using FinanceTracker.Contracts.Classifications
+@using FinanceTracker.Infrastructure.Classification
 @using Microsoft.AspNetCore.Authorization
 @inherits PageComponent
 
@@ -18,7 +17,7 @@
                OnClick="@AddClassification">Add Classification / Tag
 </MudIconButton>
 
-<MudDataGrid T="ClassificationsResponse" Items="_classifications"
+<MudDataGrid T="Classification" Items="_classifications"
              MultiSelection="true"
              SortMode="SortMode.Multiple"
              Filterable="true"
@@ -37,7 +36,7 @@
         <PropertyColumn Property="x => x.Tag" Title="Classification / Tag" Sortable="true" Filterable="true"/>
     </Columns>
     <PagerContent>
-        <MudDataGridPager T="ClassificationsResponse"/>
+        <MudDataGridPager T="Classification"/>
     </PagerContent>
 </MudDataGrid>
 
@@ -45,7 +44,7 @@
 
 @code {
 
-    private readonly List<ClassificationsResponse> _classifications = [];
+    private readonly List<Classification> _classifications = [];
     private string? _classificationsSearchTerm;
 
 
@@ -62,7 +61,7 @@
     }
 
 
-    private Func<ClassificationsResponse, bool> ClassificationsQuickFilter => x =>
+    private Func<Classification, bool> ClassificationsQuickFilter => x =>
     {
         if (string.IsNullOrWhiteSpace(_classificationsSearchTerm))
             return true;
@@ -87,7 +86,7 @@
             try
             {
                 SetLoadingState(true, "Adding Classification / Tag");
-                var classification = await ClassificationService.AddCustomClassificationAsync((AddClassificationsRequest)dialogActionResult.Data!, _cts.Token);
+                var classification = await ClassificationService.AddCustomClassificationAsync((AddClassifications)dialogActionResult.Data!, _cts.Token);
                 _classifications.Add(classification);
             }
             catch (Exception)

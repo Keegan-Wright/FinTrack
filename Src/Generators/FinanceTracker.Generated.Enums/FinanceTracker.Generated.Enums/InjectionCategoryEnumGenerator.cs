@@ -1,5 +1,5 @@
 using System.Text;
-using FinanceTracker.Generated.Helpers;
+using FinanceTracker.Generated.Shared;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
 

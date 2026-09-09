@@ -1,12 +1,11 @@
 using System.Collections.Immutable;
 using System.Globalization;
 using FinanceTracker.Components.Transactions;
-using FinanceTracker.Enums;
-using FinanceTracker.Models.Request.Reports;
-using FinanceTracker.Models.Response.Reports;
-using FinanceTracker.Models.Response.Transaction;
-using FinanceTracker.Services.Reports;
-using FinanceTracker.Services.Transactions;
+using FinanceTracker.Contracts;
+using FinanceTracker.Contracts.Reports;
+using FinanceTracker.Contracts.Transactions;
+using FinanceTracker.Infrastructure.Reports;
+using FinanceTracker.Infrastructure.Transactions;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
 
@@ -15,15 +14,15 @@ namespace FinanceTracker.Components.Pages.Reports;
 public class ReportPageBase<TReportResponse> : PageComponent
 
 {
-    internal readonly List<TransactionAccountFilterResponse> _accountFilterItems = [];
-    internal readonly List<TransactionCategoryFilterResponse> _categoryFilterItems = [];
+    internal readonly List<TransactionAccountFilter> _accountFilterItems = [];
+    internal readonly List<TransactionCategoryFilter> _categoryFilterItems = [];
 
     internal readonly ChartOptions _chartOptions = new();
-    internal readonly List<TransactionProviderFilterResponse> _providerFilterItems = [];
+    internal readonly List<TransactionProviderFilter> _providerFilterItems = [];
 
     internal readonly string _searchTerm = string.Empty;
-    internal readonly List<TransactionTagFilterResponse> _transactionTagFilterItems = [];
-    internal readonly List<TransactionTypeFilterResponse> _transactionTypeFilterItems = [];
+    internal readonly List<TransactionTagFilter> _transactionTagFilterItems = [];
+    internal readonly List<TransactionTypeFilter> _transactionTypeFilterItems = [];
 
     [Inject]
     private ITransactionsService TransactionsService { get; set; } = null!;
@@ -39,7 +38,7 @@ public class ReportPageBase<TReportResponse> : PageComponent
     {
         SetLoadingState(true, "Loading Report");
         ReportItems.Clear();
-        BaseReportRequest reportRequest = new()
+        BaseReport report = new()
         {
             AccountIds = filters.AccountIds.ToImmutableList(),
             ProviderIds = filters.ProviderIds.ToImmutableList(),
@@ -55,11 +54,11 @@ public class ReportPageBase<TReportResponse> : PageComponent
         ReportResponseEnumerable = reportType switch
         {
             ReportType.SpentInTimePeriod => (IAsyncEnumerable<TReportResponse>)ReportService
-                .GetSpentInTimePeriodReportAsync(reportRequest, _cts.Token),
+                .GetSpentInTimePeriodReportAsync(report, _cts.Token),
             ReportType.CategoryBreakdown => (IAsyncEnumerable<TReportResponse>)ReportService
-                .GetCategoryBreakdownReportAsync(reportRequest, _cts.Token),
+                .GetCategoryBreakdownReportAsync(report, _cts.Token),
             ReportType.AccountBreakdown => (IAsyncEnumerable<TReportResponse>)ReportService
-                .GetAccountBreakdownReportAsync(reportRequest, _cts.Token),
+                .GetAccountBreakdownReportAsync(report, _cts.Token),
             _ => throw new ArgumentOutOfRangeException(nameof(reportType), reportType, null)
         };
 
@@ -73,31 +72,31 @@ public class ReportPageBase<TReportResponse> : PageComponent
 
     private async Task LoadFilterItemsAsync()
     {
-        await foreach (TransactionAccountFilterResponse account in TransactionsService
+        await foreach (TransactionAccountFilter account in TransactionsService
                            .GetAccountsForTransactionFiltersAsync(SyncTypes.All, _cts.Token))
         {
             _accountFilterItems.Add(account);
         }
 
-        await foreach (TransactionCategoryFilterResponse category in TransactionsService
+        await foreach (TransactionCategoryFilter category in TransactionsService
                            .GetCategoriesForTransactionFiltersAsync(_cts.Token))
         {
             _categoryFilterItems.Add(category);
         }
 
-        await foreach (TransactionProviderFilterResponse provider in TransactionsService
+        await foreach (TransactionProviderFilter provider in TransactionsService
                            .GetProvidersForTransactionFiltersAsync(_cts.Token))
         {
             _providerFilterItems.Add(provider);
         }
 
-        await foreach (TransactionTypeFilterResponse type in
+        await foreach (TransactionTypeFilter type in
                        TransactionsService.GetTypesForTransactionFiltersAsync(_cts.Token))
         {
             _transactionTypeFilterItems.Add(type);
         }
 
-        await foreach (TransactionTagFilterResponse tag in
+        await foreach (TransactionTagFilter tag in
                        TransactionsService.GetTagsForTransactionFiltersAsync(_cts.Token))
         {
             _transactionTagFilterItems.Add(tag);
@@ -105,7 +104,7 @@ public class ReportPageBase<TReportResponse> : PageComponent
     }
 
 
-    internal static List<ChartSeries<double>> GetMonthlyGraphSeries<T>(IEnumerable<T> reportItems) where T : IReportResponse
+    internal static List<ChartSeries<double>> GetMonthlyGraphSeries<T>(IEnumerable<T> reportItems) where T : IReport
     {
         ChartSeries<double> totalIn = new()
         {
@@ -129,7 +128,7 @@ public class ReportPageBase<TReportResponse> : PageComponent
         return [totalIn, totalOut, totalDif, transactions];
     }
 
-    internal static List<ChartSeries<double>> GetDailyGraphSeries<T>(IEnumerable<T> reportItems) where T : IReportResponse
+    internal static List<ChartSeries<double>> GetDailyGraphSeries<T>(IEnumerable<T> reportItems) where T : IReport
     {
         ChartSeries<double> totalIn = new()
         {
@@ -192,7 +191,7 @@ public class ReportPageBase<TReportResponse> : PageComponent
 
     internal static (decimal TotalIn, decimal TotalOut) GetPreviousPeriodTotals<T>(
         IEnumerable<T> previous,
-        int currentMonthIndex) where T : IReportResponse
+        int currentMonthIndex) where T : IReport
     {
         if (currentMonthIndex <= 0)
         {

@@ -1,9 +1,9 @@
 using System.Reflection;
 using FinanceTracker.BackgroundJobs;
-using FinanceTracker.Data;
-using FinanceTracker.Data.Models;
-using FinanceTracker.Enums;
-using FinanceTracker.Services.OpenBanking;
+using FinanceTracker.Contracts;
+using FinanceTracker.Domain;
+using FinanceTracker.Infrastructure;
+using FinanceTracker.Infrastructure.OpenBanking;
 using FinanceTracker.Tests.Shared;
 using Microsoft.EntityFrameworkCore;
 using NSubstitute;

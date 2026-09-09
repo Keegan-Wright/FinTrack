@@ -1,8 +1,8 @@
 @page "/Accounts"
 @using System.Globalization
-@using FinanceTracker.Enums
-@using FinanceTracker.Models.Response.Account
-@using FinanceTracker.Services.Account
+@using FinanceTracker.Contracts
+@using FinanceTracker.Contracts.Account
+@using FinanceTracker.Infrastructure.Account
 @using Microsoft.AspNetCore.Authorization
 @inherits PageComponent
 
@@ -47,7 +47,7 @@
                     </MudGrid>
 
                     <MudText Typo="Typo.subtitle2" Class="mb-2">Recent Transactions</MudText>
-                    <MudDataGrid T="AccountTransactionResponse" Items="account.Transactions"
+                    <MudDataGrid T="AccountTransaction" Items="account.Transactions"
                                  SortMode="SortMode.None"
                                  Filterable="false"
                                  Hideable="false"
@@ -74,7 +74,7 @@
 
 @code {
 
-    private readonly List<AccountAndTransactionsResponse> _accounts = [];
+    private readonly List<AccountAndTransactions> _accounts = [];
 
     protected override async Task OnInitializedAsync()
     {

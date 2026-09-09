@@ -1,0 +1,128 @@
+using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
+using FinanceTracker.Generated.Attributes;
+using FinanceTracker.Generated.Enums;
+
+namespace FinanceTracker.Infrastructure.Encryption;
+
+[InjectionCategory(InjectionCategoryType.Service)]
+[Singleton<ISymmetricEncryptionService>]
+public class SymmetricEncryptionService : ISymmetricEncryptionService
+{
+    private const int KeySize = 256;
+    private const int BlockSize = 128;
+    private readonly byte[] _iv;
+
+    private readonly byte[] _key;
+
+    public SymmetricEncryptionService(EncryptionConfiguration encryptionConfiguration) =>
+        (_key, _iv) = DeriveKeyAndIv(encryptionConfiguration, HashAlgorithmName.SHA3_256);
+
+    public string Encrypt<T>(T value)
+    {
+        if (value == null)
+        {
+            return string.Empty;
+        }
+
+        string? plainText;
+        if (value is byte[] byteArray)
+        {
+            plainText = Convert.ToBase64String(byteArray);
+        }
+        else
+        {
+            plainText = value.ToString();
+        }
+
+        if (string.IsNullOrEmpty(plainText))
+        {
+            return string.Empty;
+        }
+
+        byte[] bytes = Encoding.Unicode.GetBytes(plainText);
+
+        using Aes aes = CreateAes();
+        using ICryptoTransform encryptor = aes.CreateEncryptor();
+        using MemoryStream memoryStream = new();
+
+        using (CryptoStream cryptoStream = new(memoryStream, encryptor, CryptoStreamMode.Write))
+        {
+            cryptoStream.Write(bytes, 0, bytes.Length);
+        }
+
+        byte[] encryptedBytes = memoryStream.ToArray();
+        return Convert.ToBase64String(encryptedBytes);
+    }
+
+    public T? Decrypt<T>(string cipherText)
+    {
+        if (string.IsNullOrEmpty(cipherText))
+        {
+            return default;
+        }
+
+        byte[] bytes = Convert.FromBase64String(cipherText);
+
+        using Aes aes = CreateAes();
+        using ICryptoTransform decryptor = aes.CreateDecryptor();
+        using MemoryStream memoryStream = new();
+
+
+        using (CryptoStream cryptoStream = new(memoryStream, decryptor, CryptoStreamMode.Write))
+        {
+            cryptoStream.Write(bytes, 0, bytes.Length);
+        }
+
+        byte[] decryptedBytes = memoryStream.ToArray();
+        string plainText = Encoding.Unicode.GetString(decryptedBytes);
+
+        if (typeof(T) == typeof(byte[]))
+        {
+            return (T)(object)Convert.FromBase64String(plainText);
+        }
+
+        if (typeof(T) == typeof(string))
+        {
+            return (T)(object)plainText;
+        }
+
+        Type targetType = typeof(T);
+        if (!targetType.IsGenericType || targetType.GetGenericTypeDefinition() != typeof(Nullable<>))
+        {
+            return (T)Convert.ChangeType(plainText, targetType, CultureInfo.CurrentCulture);
+        }
+
+        if (string.IsNullOrEmpty(plainText))
+        {
+            return default;
+        }
+
+        targetType = Nullable.GetUnderlyingType(targetType)!;
+
+        return (T)Convert.ChangeType(plainText, targetType, CultureInfo.CurrentCulture);
+    }
+
+    private static (byte[] Key, byte[] Iv) DeriveKeyAndIv(EncryptionConfiguration encryptionConfiguration,
+        HashAlgorithmName hashAlgorithm)
+    {
+        byte[] saltBytes = Encoding.ASCII.GetBytes(encryptionConfiguration.SymmetricSalt);
+        Span<byte> generator = new byte[256];
+        Rfc2898DeriveBytes.Pbkdf2(encryptionConfiguration.SymmetricKey, saltBytes, generator, encryptionConfiguration.Iterations,
+            hashAlgorithm);
+
+        return (generator[..(KeySize / 8)].ToArray(), generator[..(BlockSize / 8)].ToArray());
+    }
+
+    private Aes CreateAes()
+    {
+        Aes aes = Aes.Create();
+        aes.Key = _key;
+        aes.IV = _iv;
+        aes.Mode = CipherMode.CBC;
+        aes.Padding = PaddingMode.PKCS7;
+
+        return aes;
+    }
+}

@@ -1,4 +1,5 @@
-using FinanceTracker.Data.Models;
+
+using FinanceTracker.Domain;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 

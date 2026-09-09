@@ -1,0 +1,61 @@
+using System.Collections.Immutable;
+using System.Runtime.CompilerServices;
+using System.Security.Claims;
+using FinanceTracker.Contracts;
+using FinanceTracker.Contracts.Account;
+using FinanceTracker.Domain;
+using FinanceTracker.Generated.Attributes;
+using FinanceTracker.Generated.Enums;
+using FinanceTracker.Infrastructure.OpenBanking;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+
+namespace FinanceTracker.Infrastructure.Account;
+
+[InjectionCategory(InjectionCategoryType.Service)]
+[Scoped<IAccountService>]
+public class AccountService : ServiceBase<AccountService>, IAccountService
+{
+    private readonly IOpenBankingService _openBankingService;
+
+    public AccountService(ClaimsPrincipal user, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
+        IOpenBankingService openBankingService, ILogger<AccountService> logger) : base(user, financeTrackerContextFactory, logger) =>
+        _openBankingService = openBankingService;
+
+    public async IAsyncEnumerable<AccountAndTransactions> GetAccountsAndMostRecentTransactionsAsync(
+        int transactionsToReturn, SyncTypes syncFlags,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        await using FinanceTrackerContext context =
+            await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+        IQueryable<OpenBankingAccount> query = context
+            .IsolateToUser(UserId)
+            .Include(x => x.Providers)!.ThenInclude(x => x.Accounts)!.ThenInclude(x => x.Provider)
+            .Include(x => x.Providers)!.ThenInclude(a => a.Accounts)!.ThenInclude(x => x.AccountBalance)
+            .Include(x => x.Providers)!.ThenInclude(x => x.Accounts)!.ThenInclude(x =>
+                x.Transactions!)
+            .SelectMany(x => x.Providers!.SelectMany(c => c.Accounts!))
+            .AsNoTracking();
+
+        await foreach (OpenBankingAccount account in query.AsAsyncEnumerable().WithCancellation(cancellationToken))
+        {
+            AccountAndTransactions response = new()
+            {
+                AccountBalance = account.AccountBalance?.Current ?? 0,
+                AccountName = account.DisplayName,
+                AccountType = account.AccountType,
+                AvailableBalance = account.AccountBalance?.Available ?? 0,
+                Logo = account.Provider!.Logo,
+                Transactions = account.Transactions?.OrderByDescending(static x => x.TransactionTime).Take(transactionsToReturn).Select(static transaction => new AccountTransaction
+                {
+                    Amount = transaction.Amount,
+                    Description = transaction.Description,
+                    Status = transaction.Pending ? "Pending" : "Complete",
+                    Time = transaction.TransactionTime
+                }).ToImmutableList()
+            };
+
+            yield return response;
+        }
+    }
+}

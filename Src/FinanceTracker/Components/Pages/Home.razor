@@ -1,19 +1,19 @@
 @page "/"
 @using System.Collections.Immutable
 @using System.Globalization
-@using FinanceTracker.Enums
-@using FinanceTracker.Models.Request.Transaction
-@using FinanceTracker.Models.Response.Account
-@using FinanceTracker.Models.Response.Budget
-@using FinanceTracker.Models.Response.Dashboard
-@using FinanceTracker.Models.Response.HouseholdMembers
-@using FinanceTracker.Models.Response.Transaction
-@using FinanceTracker.Services.Account
-@using FinanceTracker.Services.Budget
-@using FinanceTracker.Services.Dashboard
-@using FinanceTracker.Services.HouseholdMembers
-@using FinanceTracker.Services.Transactions
+@using FinanceTracker.Contracts
+@using FinanceTracker.Contracts.Account
+@using FinanceTracker.Contracts.Budget
+@using FinanceTracker.Contracts.Dashboard
+@using FinanceTracker.Contracts.HouseholdMember
+@using FinanceTracker.Contracts.Transactions
+@using FinanceTracker.Infrastructure.Account
+@using FinanceTracker.Infrastructure.Budget
+@using FinanceTracker.Infrastructure.Dashboard
+@using FinanceTracker.Infrastructure.HouseholdMembers
+@using FinanceTracker.Infrastructure.Transactions
 @using Microsoft.AspNetCore.Authorization
+@using AccountAndTransactions = FinanceTracker.Contracts.Account.AccountAndTransactions
 @inherits PageComponent
 
 @attribute [Authorize]
@@ -153,10 +153,10 @@
                 }
                 else
                 {
-                    <MudList T="UpcomingPaymentsResponse" Dense="true">
+                    <MudList T="UpcomingPayment" Dense="true">
                         @foreach (var p in _upcomingPayments)
                         {
-                            <MudListItem T="UpcomingPaymentsResponse">
+                            <MudListItem T="UpcomingPayment">
                                 <MudStack Row="true" AlignItems="AlignItems.Center"
                                           Justify="Justify.SpaceBetween" Class="w-100">
                                     <MudStack Spacing="0" Class="min-w-0">
@@ -275,10 +275,10 @@
                                         @if (a.Transactions is not null && a.Transactions.Any())
                                         {
                                             <MudDivider Class="my-2"/>
-                                            <MudList T="AccountTransactionResponse" Dense="true">
+                                            <MudList T="AccountTransaction" Dense="true">
                                                 @foreach (var t in a.Transactions.OrderByDescending(static x => x.Time))
                                                 {
-                                                    <MudListItem T="AccountTransactionResponse">
+                                                    <MudListItem T="AccountTransaction">
                                                         <MudStack Row="true" AlignItems="AlignItems.Center"
                                                                   Justify="Justify.SpaceBetween" Class="w-100">
                                                             <MudStack Spacing="0" Class="min-w-0">
@@ -326,7 +326,7 @@
     private DateTime _fromDate;
     private DateTime _toDate;
 
-    private SpentInTimePeriodResponse? _spent;
+    private SpentInTimePeriod? _spent;
     private int _transactionCount;
     private decimal _net;
 
@@ -336,10 +336,10 @@
     private decimal? _trendIn;
     private decimal? _trendOut;
 
-    private readonly List<UpcomingPaymentsResponse> _upcomingPayments = [];
-    private readonly List<AccountAndTransactionsResponse> _accounts = [];
-    private readonly List<BudgetCategoryResponse> _budgetCategories = [];
-    private readonly List<HouseholdMemberResponse> _householdMembers = [];
+    private readonly List<UpcomingPayment> _upcomingPayments = [];
+    private readonly List<AccountAndTransactions> _accounts = [];
+    private readonly List<BudgetCategory> _budgetCategories = [];
+    private readonly List<HouseholdMember> _householdMembers = [];
 
     private readonly ChartOptions _chartOptions = new();
     private readonly List<ChartSeries<double>> _cashflowSeries = [];
@@ -454,7 +454,7 @@
     private async Task BuildChartsAsync()
     {
         const int maxTransactionsForCharts = 5000;
-        var request = new FilteredTransactionsRequest
+        var request = new FilterTransactions
         {
             FromDate = _fromDate.ToUniversalTime(),
             ToDate = _toDate.ToUniversalTime(),
@@ -465,7 +465,7 @@
             Tags = ImmutableList<string>.Empty
         };
 
-        var transactions = new List<TransactionResponse>(512);
+        var transactions = new List<Transaction>(512);
         await foreach (var tx in TransactionsService.GetAllTransactionsAsync(request, SyncTypes.Transactions, _cts.Token))
         {
             transactions.Add(tx);
@@ -485,7 +485,7 @@
         BuildCategoryChart(transactions);
     }
 
-    private void BuildCashflowChart(List<TransactionResponse> transactions)
+    private void BuildCashflowChart(List<Transaction> transactions)
     {
         var start = _fromDate.Date;
         var end = _toDate.Date;
@@ -529,7 +529,7 @@
         _cashflowSeries.Add(new ChartSeries<double> { Name = "Net", Data = netData });
     }
 
-    private void BuildCategoryChart(List<TransactionResponse> transactions)
+    private void BuildCategoryChart(List<Transaction> transactions)
     {
         List<(string Tag, decimal Total)> AddedItems = new();
 
