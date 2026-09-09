@@ -1,7 +1,7 @@
 using System.Reflection;
 using System.Security.Claims;
 using System.Text.Json;
-using FinanceTracker.Data.Models;
+using FinanceTracker.Domain;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Http.Extensions;

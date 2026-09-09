@@ -1,6 +1,6 @@
-@using FinanceTracker.Models.Request.HouseholdMember
-@using FluentValidation
+@using FinanceTracker.Contracts.HouseholdMember
 @using FinanceTracker.Extensions
+@using FluentValidation
 @inject IValidator<AddHouseholdMemberRequest> Validator
 <DialogBase TResponse="AddHouseholdMemberRequest" Title="Add Household member" ResponseConstructor="BuildResponseModel">
     <Content>

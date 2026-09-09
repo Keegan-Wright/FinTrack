@@ -1,6 +1,6 @@
-@using FinanceTracker.Models.Request.Automation
-@using FluentValidation
+@using FinanceTracker.Contracts.Automation
 @using FinanceTracker.Extensions
+@using FluentValidation
 @inject IValidator<CronJobUpdateRequest> Validator
 <DialogBase TResponse="CronJobUpdateRequest" Title="Update automated job"
             ResponseConstructor="BuildResponseModel">

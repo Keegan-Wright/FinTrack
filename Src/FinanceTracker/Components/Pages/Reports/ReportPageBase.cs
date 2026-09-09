@@ -4,14 +4,8 @@ using FinanceTracker.Components.Transactions;
 using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.Reports;
 using FinanceTracker.Contracts.Transaction;
-using FinanceTracker.Enums;
 using FinanceTracker.Infrastructure.Reports;
 using FinanceTracker.Infrastructure.Transactions;
-using FinanceTracker.Models.Request.Reports;
-using FinanceTracker.Models.Response.Reports;
-using FinanceTracker.Models.Response.Transaction;
-using FinanceTracker.Services.Reports;
-using FinanceTracker.Services.Transactions;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
 

@@ -1,6 +1,6 @@
-@using FinanceTracker.Models.Request.Classifications
-@using FluentValidation
+@using FinanceTracker.Contracts.Classifications
 @using FinanceTracker.Extensions
+@using FluentValidation
 @inject IValidator<AddClassificationsRequest> Validator
 <DialogBase TResponse="AddClassificationsRequest" Title="Add Classification / Tag"
             ResponseConstructor="BuildResponseModel">

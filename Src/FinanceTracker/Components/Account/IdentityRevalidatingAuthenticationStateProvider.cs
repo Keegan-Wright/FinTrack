@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using FinanceTracker.Data.Models;
+using FinanceTracker.Domain;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Server;
 using Microsoft.AspNetCore.Identity;

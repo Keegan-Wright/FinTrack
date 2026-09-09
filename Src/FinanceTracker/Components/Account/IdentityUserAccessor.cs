@@ -1,4 +1,4 @@
-using FinanceTracker.Data.Models;
+using FinanceTracker.Domain;
 using Microsoft.AspNetCore.Identity;
 
 namespace FinanceTracker.Components.Account;
