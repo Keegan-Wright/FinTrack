@@ -1,0 +1,7 @@
+namespace FinanceTracker.Infrastructure.OpenBanking.TrueLayer.Contracts;
+
+public class ExternalOpenBankingAccountDirectDebitsResponse
+{
+    public IAsyncEnumerable<ExternalOpenBankingDirectDebit>? Results { get; set; }
+    public string Status { get; set; } = string.Empty;
+}

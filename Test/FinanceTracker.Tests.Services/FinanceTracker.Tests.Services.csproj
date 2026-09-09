@@ -8,13 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Src\FinanceTracker\FinanceTracker.csproj" />
-    <ProjectReference Include="..\..\Src\FinanceTracker.Configurations\FinanceTracker.Configurations.csproj" />
-    <ProjectReference Include="..\..\Src\FinanceTracker.Data.Models\FinanceTracker.Data.Models.csproj" />
-    <ProjectReference Include="..\..\Src\FinanceTracker.Data\FinanceTracker.Data.csproj" />
-    <ProjectReference Include="..\..\Src\FinanceTracker.Enums\FinanceTracker.Enums.csproj" />
-    <ProjectReference Include="..\..\Src\FinanceTracker.Models.Request\FinanceTracker.Models.Request.csproj" />
     <ProjectReference Include="..\..\Src\FinanceTracker.Security\FinanceTracker.Security.csproj" />
-    <ProjectReference Include="..\..\Src\FinanceTracker.Services\FinanceTracker.Services.csproj" />
     <ProjectReference Include="..\FinanceTracker.Tests.Shared\FinanceTracker.Tests.Shared.csproj" />
   </ItemGroup>
 
