@@ -22,7 +22,7 @@ public class AccountService : ServiceBase<AccountService>, IAccountService
         IOpenBankingService openBankingService, ILogger<AccountService> logger) : base(user, financeTrackerContextFactory, logger) =>
         _openBankingService = openBankingService;
 
-    public async IAsyncEnumerable<AccountAndTransactionsResponse> GetAccountsAndMostRecentTransactionsAsync(
+    public async IAsyncEnumerable<AccountAndTransactions> GetAccountsAndMostRecentTransactionsAsync(
         int transactionsToReturn, SyncTypes syncFlags,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -39,14 +39,14 @@ public class AccountService : ServiceBase<AccountService>, IAccountService
 
         await foreach (OpenBankingAccount account in query.AsAsyncEnumerable().WithCancellation(cancellationToken))
         {
-            AccountAndTransactionsResponse response = new()
+            AccountAndTransactions response = new()
             {
                 AccountBalance = account.AccountBalance?.Current ?? 0,
                 AccountName = account.DisplayName,
                 AccountType = account.AccountType,
                 AvailableBalance = account.AccountBalance?.Available ?? 0,
                 Logo = account.Provider!.Logo,
-                Transactions = account.Transactions?.OrderByDescending(static x => x.TransactionTime).Take(transactionsToReturn).Select(static transaction => new AccountTransactionResponse
+                Transactions = account.Transactions?.OrderByDescending(static x => x.TransactionTime).Take(transactionsToReturn).Select(static transaction => new AccountTransaction
                 {
                     Amount = transaction.Amount,
                     Description = transaction.Description,

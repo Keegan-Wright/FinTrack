@@ -45,7 +45,7 @@
 
 @code {
 
-    private readonly List<HouseholdMemberResponse> _houseHoldMembers = [];
+    private readonly List<HouseholdMember> _houseHoldMembers = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -76,7 +76,7 @@
             try
             {
                 SetLoadingState(true, "Adding member");
-                var householdMember = await HouseholdMemberService.AddHouseholdMemberAsync((AddHouseholdMemberRequest)dialogActionResult.Data!, _cts.Token);
+                var householdMember = await HouseholdMemberService.AddHouseholdMemberAsync((AddHouseholdMember)dialogActionResult.Data!, _cts.Token);
                 _houseHoldMembers.Add(householdMember);
             }
             catch (Exception)

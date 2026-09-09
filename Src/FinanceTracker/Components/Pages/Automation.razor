@@ -12,7 +12,7 @@
 
 <PageTitle>Automation</PageTitle>
 
-<MudDataGrid T="AutomationCronResponse" Items="_cronResponses"
+<MudDataGrid T="AutomationCron" Items="_cronResponses"
              MultiSelection="true"
              SortMode="SortMode.Multiple"
              Filterable="true"
@@ -49,7 +49,7 @@
         <PropertyColumn Property="x => x.IsEnabled" Title="IsEnabled" Sortable="true" Filterable="true"/>
     </Columns>
     <PagerContent>
-        <MudDataGridPager T="AutomationCronResponse"/>
+        <MudDataGridPager T="AutomationCron"/>
     </PagerContent>
 </MudDataGrid>
 <MudMenu PositionAtCursor="true" @ref="_contextMenu" id="_contextMenu">
@@ -60,8 +60,8 @@
 
 @code {
 
-    private readonly List<AutomationCronResponse> _cronResponses = [];
-    private AutomationCronResponse? _contextMenuRow;
+    private readonly List<AutomationCron> _cronResponses = [];
+    private AutomationCron? _contextMenuRow;
     private MudMenu _contextMenu = null!;
 
     protected override async Task OnInitializedAsync()
@@ -83,7 +83,7 @@
         }
     }
 
-    private async Task OpenContextMenu(DataGridRowClickEventArgs<AutomationCronResponse> row)
+    private async Task OpenContextMenu(DataGridRowClickEventArgs<AutomationCron> row)
     {
         _contextMenuRow = row.Item;
         await _contextMenu.OpenMenuAsync(row.MouseEventArgs);
@@ -121,7 +121,7 @@
             try
             {
                 SetLoadingState(true, "Updating job");
-                var cronJobUpdateRequest = (CronJobUpdateRequest)dialogActionResult.Data!;
+                var cronJobUpdateRequest = (UpdateCronJob)dialogActionResult.Data!;
                 await AutomationService.UpdateJobSettingsAsync(cronJobUpdateRequest, _cts.Token);
 
             }

@@ -6,6 +6,7 @@ using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using BudgetCategory = FinanceTracker.Contracts.Budget.BudgetCategory;
 
 namespace FinanceTracker.Infrastructure.Budget;
 
@@ -19,17 +20,17 @@ public class BudgetCategoriesService : ServiceBase<BudgetCategoriesService>, IBu
     {
     }
 
-    public async IAsyncEnumerable<BudgetCategoryResponse> GetBudgetItemsAsync(
+    public async IAsyncEnumerable<BudgetCategory> GetBudgetItemsAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
-        await foreach (BudgetCategory budgetCategory in context.IsolateToUser(UserId)
+        await foreach (Domain.BudgetCategory budgetCategory in context.IsolateToUser(UserId)
                            .Include(x => x.BudgetCategories)
                            .SelectMany(x => x.BudgetCategories!)
                            .AsAsyncEnumerable().WithCancellation(cancellationToken))
         {
-            yield return new BudgetCategoryResponse
+            yield return new BudgetCategory
             {
                 Name = budgetCategory.Name,
                 AvailableFunds = budgetCategory.AvailableFunds,
@@ -40,7 +41,7 @@ public class BudgetCategoriesService : ServiceBase<BudgetCategoriesService>, IBu
         }
     }
 
-    public async Task<BudgetCategoryResponse> AddBudgetCategoryAsync(AddBudgetCategoryRequest categoryToAdd,
+    public async Task<BudgetCategory> AddBudgetCategoryAsync(AddBudgetCategory categoryToAdd,
         CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -48,7 +49,7 @@ public class BudgetCategoriesService : ServiceBase<BudgetCategoriesService>, IBu
         FinanceTrackerUser user = await context.IsolateToUser(UserId)
             .Include(x => x.BudgetCategories).FirstAsync(cancellationToken);
 
-        BudgetCategory budgetCategory = new()
+        Domain.BudgetCategory budgetCategory = new()
         {
             Name = categoryToAdd.Name,
             AvailableFunds = categoryToAdd.AvailableFunds,
@@ -62,7 +63,7 @@ public class BudgetCategoriesService : ServiceBase<BudgetCategoriesService>, IBu
 
         await context.SaveChangesAsync(cancellationToken);
 
-        return new BudgetCategoryResponse
+        return new BudgetCategory
         {
             Name = budgetCategory.Name,
             AvailableFunds = budgetCategory.AvailableFunds,
@@ -79,7 +80,7 @@ public class BudgetCategoriesService : ServiceBase<BudgetCategoriesService>, IBu
         FinanceTrackerUser user = await context.IsolateToUser(UserId)
             .Include(x => x.BudgetCategories).SingleAsync(cancellationToken);
 
-        BudgetCategory? budgetCategory = user.BudgetCategories!.FirstOrDefault(x => x.Id == id);
+        Domain.BudgetCategory? budgetCategory = user.BudgetCategories!.FirstOrDefault(x => x.Id == id);
 
         if (budgetCategory == null)
         {

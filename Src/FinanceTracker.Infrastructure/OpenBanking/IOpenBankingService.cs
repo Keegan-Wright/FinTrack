@@ -10,8 +10,8 @@ public interface IOpenBankingService : IServiceBase
     IAsyncEnumerable<ExternalOpenBankingProvider> GetOpenBankingProvidersForClientAsync(
         CancellationToken cancellationToken);
 
-    string BuildAuthUrl(GetProviderSetupUrlRequestModel setupProviderRequestModel);
-    Task<bool> AddVendorViaAccessCodeAsync(AddVendorRequestModel addVendorRequestModel, CancellationToken cancellationToken);
+    string BuildAuthUrl(ProviderSetupUrl setupProvider);
+    Task<bool> AddVendorViaAccessCodeAsync(AddVendor addVendor, CancellationToken cancellationToken);
     Task PerformSyncAsync(SyncTypes syncFlags, CancellationToken cancellationToken);
     Task BulkLoadProviderAsync(OpenBankingProvider provider, SyncTypes syncFlags, CancellationToken cancellationToken);
 

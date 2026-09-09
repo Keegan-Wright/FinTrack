@@ -33,7 +33,7 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
     {
     }
 
-    public async Task<SpentInTimePeriodResponse> GetSpentInTimePeriod(DateTime fromDate, DateTime toDate,
+    public async Task<SpentInTimePeriod> GetSpentInTimePeriod(DateTime fromDate, DateTime toDate,
         CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -61,28 +61,28 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
             .Where(x => x.TransactionCategory != "TRANSFER")
             .Select(x => x.Amount);
 
-        return new SpentInTimePeriodResponse
+        return new SpentInTimePeriod
         {
             TotalIn = amountsInRange.Where(x => !decimal.IsNegative(x)).Sum(),
             TotalOut = amountsInRange.Where(decimal.IsNegative).Sum()
         };
     }
 
-    public async IAsyncEnumerable<UpcomingPaymentsResponse> GetUpcomingPaymentsAsync(int numberToFetch,
+    public async IAsyncEnumerable<UpcomingPayment> GetUpcomingPaymentsAsync(int numberToFetch,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        List<UpcomingPaymentsResponse> upcomingPayments = [];
+        List<UpcomingPayment> upcomingPayments = [];
 
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
         DateTime nowUtc = DateTime.Now.ToUniversalTime();
 
-        List<UpcomingPaymentsResponse> standingOrders = await context.IsolateToUser(UserId)
+        List<UpcomingPayment> standingOrders = await context.IsolateToUser(UserId)
             .Include(x => x.Providers)!.ThenInclude(x => x.Accounts)!.ThenInclude(x => x.StandingOrders)
             .SelectMany(x => x.Providers!.SelectMany(c => c.Accounts!).SelectMany(r => r.StandingOrders!))
             .AsNoTracking()
-            .Select(x => new UpcomingPaymentsResponse
+            .Select(x => new UpcomingPayment
             {
                 Amount = x.NextPaymentAmount,
                 PaymentDate = x.NextPaymentDate,
@@ -110,7 +110,7 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
         var currentMonth = nowUtc.Month;
         upcomingPayments.AddRange(directDebitItems
             .Where(x => x.PreviousPaymentAmount != 0)
-            .Select(x => new UpcomingPaymentsResponse
+            .Select(x => new UpcomingPayment
             {
                 Amount = x.PreviousPaymentAmount,
                 PaymentDate = x.PreviousPaymentTimeStamp.AddMonths((currentMonth - x.PreviousPaymentTimeStamp.Month) + 1),
@@ -120,7 +120,7 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
             .Where(x => x.PaymentDate > nowUtc));
 
 
-        await foreach (UpcomingPaymentsResponse upcomingPayment in upcomingPayments
+        await foreach (UpcomingPayment upcomingPayment in upcomingPayments
                            .OrderBy(x => x.PaymentDate)
                            .Take(numberToFetch)
                            .ToAsyncEnumerable().WithCancellation(cancellationToken))

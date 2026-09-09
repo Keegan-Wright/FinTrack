@@ -5,9 +5,9 @@ using FluentValidation;
 
 namespace FinanceTracker.Infrastructure.Validation;
 
-[Scoped<IValidator<CronJobUpdateRequest>>]
+[Scoped<IValidator<UpdateCronJob>>]
 [InjectionCategory(InjectionCategoryType.Validator)]
-public class CronJobUpdateRequestValidator : AbstractValidator<CronJobUpdateRequest>
+public class CronJobUpdateRequestValidator : AbstractValidator<UpdateCronJob>
 {
     public CronJobUpdateRequestValidator()
     {

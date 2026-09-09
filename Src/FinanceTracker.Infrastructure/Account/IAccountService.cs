@@ -5,6 +5,6 @@ namespace FinanceTracker.Infrastructure.Account;
 
 public interface IAccountService
 {
-    IAsyncEnumerable<AccountAndTransactionsResponse> GetAccountsAndMostRecentTransactionsAsync(
+    IAsyncEnumerable<AccountAndTransactions> GetAccountsAndMostRecentTransactionsAsync(
         int transactionsToReturn, SyncTypes syncFlags, CancellationToken cancellationToken);
 }

@@ -1,6 +1,6 @@
 using System.Collections.Immutable;
 using FinanceTracker.Contracts;
-using FinanceTracker.Contracts.Transaction;
+using FinanceTracker.Contracts.Transactions;
 using FinanceTracker.Domain;
 using FinanceTracker.Infrastructure.OpenBanking;
 using FinanceTracker.Infrastructure.Transactions;
@@ -89,7 +89,7 @@ public class TransactionsServiceTests : ServiceTestsFixtureBase
         var subject = new TransactionsService(BuildUser(PrimaryUserId), factory, openBanking,
             NullLogger<TransactionsService>.Instance);
 
-        var filter = new FilteredTransactionsRequest
+        var filter = new FilterTransactions
         {
             SearchTerm = "coffee",
             FromDate = now.AddDays(-1),
@@ -120,7 +120,7 @@ public class TransactionsServiceTests : ServiceTestsFixtureBase
         var subject = new TransactionsService(BuildUser(PrimaryUserId), factory, openBanking,
             NullLogger<TransactionsService>.Instance);
 
-        var filter = new FilteredTransactionsRequest
+        var filter = new FilterTransactions
         {
             SearchTerm = string.Empty,
             FromDate = DateTime.UtcNow.AddDays(-7),

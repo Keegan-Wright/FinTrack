@@ -4,13 +4,13 @@ namespace FinanceTracker.Infrastructure.Classification;
 
 public interface IClassificationService
 {
-    IAsyncEnumerable<ClassificationsResponse> GetAllCustomClassificationsAsync(CancellationToken cancellationToken);
-    Task<GetClassificationResponse> GetClassificationAsync(Guid id, CancellationToken cancellationToken);
+    IAsyncEnumerable<Contracts.Classifications.Classification> GetAllCustomClassificationsAsync(CancellationToken cancellationToken);
+    Task<GetClassification> GetClassificationAsync(Guid id, CancellationToken cancellationToken);
 
-    Task<ClassificationsResponse> AddCustomClassificationAsync(AddClassificationsRequest classification,
+    Task<Contracts.Classifications.Classification> AddCustomClassificationAsync(AddClassifications classification,
         CancellationToken cancellationToken);
 
-    Task AddCustomClassificationsToTransactionAsync(AddCustomClassificationsToTransactionRequest requestModel,
+    Task AddCustomClassificationsToTransactionAsync(AddCustomClassificationsToTransaction model,
         CancellationToken cancellationToken);
 
     Task RemoveCustomClassificationAsync(Guid id, CancellationToken cancellationToken);

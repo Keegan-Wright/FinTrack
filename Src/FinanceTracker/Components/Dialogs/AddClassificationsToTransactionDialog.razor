@@ -1,12 +1,12 @@
 @using FinanceTracker.Contracts.Classifications
 @using FinanceTracker.Extensions
 @using FluentValidation
-@inject IValidator<AddCustomClassificationsToTransactionRequest> Validator
-<DialogBase TResponse="AddCustomClassificationsToTransactionRequest" Title="Add Classification / Tag To Transaction"
+@inject IValidator<AddCustomClassificationsToTransaction> Validator
+<DialogBase TResponse="AddCustomClassificationsToTransaction" Title="Add Classification / Tag To Transaction"
             ResponseConstructor="BuildResponseModel">
     <Content>
         <MudForm @ref="_form" Model="@_model">
-            <MudDataGrid T="ClassificationsResponse" MultiSelection="true" Items="@Classifications"
+            <MudDataGrid T="Classification" MultiSelection="true" Items="@Classifications"
                          SortMode="SortMode.Multiple" Filterable="true" QuickFilter="@QuickFilter"
                          Hideable="false"
                          SelectedItemsChanged="@SelectedItemsChanged">
@@ -19,17 +19,17 @@
                                   Class="mt-0"></MudTextField>
                 </ToolBarContent>
                 <Columns>
-                    <SelectColumn T="ClassificationsResponse"/>
+                    <SelectColumn T="Classification"/>
                     <PropertyColumn Property="x => x.Tag" Title="Classification / Tag" Sortable="true" Filterable="true"/>
                 </Columns>
                 <PagerContent>
-                    <MudDataGridPager T="ClassificationsResponse"/>
+                    <MudDataGridPager T="Classification"/>
                 </PagerContent>
             </MudDataGrid>
-            <MudTextField T="IEnumerable<SelectedCustomClassificationsRequest>"
+            <MudTextField T="IEnumerable<SelectedCustomClassification>"
                           @bind-Value="_model.Classifications"
                           For="@(() => _model.Classifications)"
-                          Validation="@(Validator.ValidateValue(_model, nameof(AddCustomClassificationsToTransactionRequest.Classifications)))"
+                          Validation="@(Validator.ValidateValue(_model, nameof(AddCustomClassificationsToTransaction.Classifications)))"
                           Style="display: none;"/>
         </MudForm>
     </Content>
@@ -38,24 +38,24 @@
 @code {
 
     private MudForm _form = null!;
-    private AddCustomClassificationsToTransactionRequest _model = null!;
+    private AddCustomClassificationsToTransaction _model = null!;
 
     [Parameter] public Guid TransactionId { get; set; }
 
-    [Parameter] public IEnumerable<ClassificationsResponse> Classifications { get; set; } = null!;
+    [Parameter] public IEnumerable<Classification> Classifications { get; set; } = null!;
 
     private string _searchString = string.Empty;
 
     protected override void OnInitialized()
     {
-        _model = new AddCustomClassificationsToTransactionRequest
+        _model = new AddCustomClassificationsToTransaction
         {
             TransactionId = TransactionId,
             Classifications = []
         };
     }
 
-    private Func<ClassificationsResponse, bool> QuickFilter => x =>
+    private Func<Classification, bool> QuickFilter => x =>
     {
         if (string.IsNullOrWhiteSpace(_searchString))
             return true;
@@ -64,7 +64,7 @@
     };
 
 
-    private async Task<AddCustomClassificationsToTransactionRequest?> BuildResponseModel()
+    private async Task<AddCustomClassificationsToTransaction?> BuildResponseModel()
     {
         await _form.Validate();
         if (!_form.IsValid) return null;
@@ -72,9 +72,9 @@
         return _model;
     }
 
-    void SelectedItemsChanged(HashSet<ClassificationsResponse> items)
+    void SelectedItemsChanged(HashSet<Classification> items)
     {
-        _model.Classifications = items.Select(x => new SelectedCustomClassificationsRequest { ClassificationId = x.ClassificationId }).ToList();
+        _model.Classifications = items.Select(x => new SelectedCustomClassification { ClassificationId = x.ClassificationId }).ToList();
         _form.Validate();
     }
 

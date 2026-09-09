@@ -5,7 +5,7 @@
 @using FinanceTracker.Components.Transactions
 @using FinanceTracker.Contracts
 @using FinanceTracker.Contracts.Classifications
-@using FinanceTracker.Contracts.Transaction
+@using FinanceTracker.Contracts.Transactions
 @using FinanceTracker.Infrastructure.Classification
 @using FinanceTracker.Infrastructure.Transactions
 @using Microsoft.AspNetCore.Authorization
@@ -29,7 +29,7 @@
     SearchTerm="@_searchTerm"
     SearchTransactions="SearchTransactionsAsync"></TransactionFilters>
 
-<MudDataGrid T="TransactionResponse" Items="_transactions"
+<MudDataGrid T="Transaction" Items="_transactions"
              MultiSelection="true"
              SortMode="SortMode.Multiple"
              Filterable="true"
@@ -76,7 +76,7 @@
         </TemplateColumn>
     </Columns>
     <PagerContent>
-        <MudDataGridPager T="TransactionResponse"/>
+        <MudDataGridPager T="Transaction"/>
     </PagerContent>
 </MudDataGrid>
 <MudMenu PositionAtCursor="true" @ref="_contextMenu" id="_contextMenu">
@@ -88,15 +88,15 @@
 
 @code {
 
-    private readonly List<TransactionAccountFilterResponse> _accountFilterItems = [];
-    private readonly List<TransactionCategoryFilterResponse> _categoryFilterItems = [];
-    private readonly List<TransactionProviderFilterResponse> _providerFilterItems = [];
-    private readonly List<TransactionTypeFilterResponse> _transactionTypeFilterItems = [];
-    private readonly List<TransactionTagFilterResponse> _transactionTagFilterItems = [];
-    private readonly List<TransactionResponse> _transactions = [];
+    private readonly List<TransactionAccountFilter> _accountFilterItems = [];
+    private readonly List<TransactionCategoryFilter> _categoryFilterItems = [];
+    private readonly List<TransactionProviderFilter> _providerFilterItems = [];
+    private readonly List<TransactionTypeFilter> _transactionTypeFilterItems = [];
+    private readonly List<TransactionTagFilter> _transactionTagFilterItems = [];
+    private readonly List<Transaction> _transactions = [];
     private readonly string _searchTerm = string.Empty;
 
-    private TransactionResponse? _contextMenuRow;
+    private Transaction? _contextMenuRow;
     private MudMenu _contextMenu = null!;
     private string _transactionsSearchTerm = string.Empty;
 
@@ -112,7 +112,7 @@
     {
         SetLoadingState(true, "Loading transactions");
         _transactions.Clear();
-        var transactionRequest = new FilteredTransactionsRequest
+        var transactionRequest = new FilterTransactions
         {
             AccountIds = filters.AccountIds.ToImmutableList(),
             ProviderIds = filters.ProviderIds.ToImmutableList(),
@@ -160,11 +160,11 @@
         }
     }
 
-    private Func<TransactionResponse, bool> TransactionsQuickFilter =>
+    private Func<Transaction, bool> TransactionsQuickFilter =>
         x => string.IsNullOrWhiteSpace(_transactionsSearchTerm) || x.Description.Contains(_transactionsSearchTerm, StringComparison.OrdinalIgnoreCase);
 
 
-    private async Task OpenContextMenu(DataGridRowClickEventArgs<TransactionResponse> row)
+    private async Task OpenContextMenu(DataGridRowClickEventArgs<Transaction> row)
     {
         _contextMenuRow = row.Item;
         await _contextMenu.OpenMenuAsync(row.MouseEventArgs);
@@ -175,7 +175,7 @@
         if(_contextMenuRow is null)
             return;
 
-        var classifications = new List<ClassificationsResponse>();
+        var classifications = new List<Classification>();
         await foreach (var classification in ClassificationsService.GetAllCustomClassificationsAsync(_cts.Token))
         {
             classifications.Add(classification);
@@ -203,7 +203,7 @@
             try
             {
                 SetLoadingState(true, "Adding classifications");
-                var classificationsToAdd = (AddCustomClassificationsToTransactionRequest)dialogActionResult.Data!;
+                var classificationsToAdd = (AddCustomClassificationsToTransaction)dialogActionResult.Data!;
                 await ClassificationsService.AddCustomClassificationsToTransactionAsync(classificationsToAdd, _cts.Token);
                 var rebuiltTags = new List<string>();
                 rebuiltTags.AddRange(_contextMenuRow.Tags);

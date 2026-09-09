@@ -5,9 +5,9 @@ using FluentValidation;
 
 namespace FinanceTracker.Infrastructure.Validation;
 
-[Scoped<IValidator<AddHouseholdMemberRequest>>]
+[Scoped<IValidator<AddHouseholdMember>>]
 [InjectionCategory(InjectionCategoryType.Validator)]
-public class AddHouseholdMemberRequestValidator : AbstractValidator<AddHouseholdMemberRequest>
+public class AddHouseholdMemberRequestValidator : AbstractValidator<AddHouseholdMember>
 {
     public AddHouseholdMemberRequestValidator()
     {

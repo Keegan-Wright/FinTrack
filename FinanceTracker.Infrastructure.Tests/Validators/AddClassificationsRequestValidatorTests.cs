@@ -12,7 +12,7 @@ public class AddClassificationsRequestValidatorTests : TestFixtureBase
     public async Task ValidateAsync_ValidationSuccess()
     {
         // Arrange
-        var testModel = new AddClassificationsRequest()
+        var testModel = new AddClassifications()
         {
             Tag = "Subscription"
         };
@@ -32,7 +32,7 @@ public class AddClassificationsRequestValidatorTests : TestFixtureBase
     public async Task ValidateAsync_ContainsError_ValidationError()
     {
         // Arrange
-        var testModel = new AddClassificationsRequest()
+        var testModel = new AddClassifications()
         {
             Tag = string.Empty
         };

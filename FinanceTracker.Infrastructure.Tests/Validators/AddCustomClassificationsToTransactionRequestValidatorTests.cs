@@ -13,12 +13,12 @@ public class AddCustomClassificationsToTransactionRequestValidatorTests : TestFi
     public async Task ValidateAsync_ValidationSuccess()
     {
         // Arrange
-        var testModel = new AddCustomClassificationsToTransactionRequest
+        var testModel = new AddCustomClassificationsToTransaction
         {
             TransactionId = Guid.NewGuid(),
             Classifications = new []
             {
-                new SelectedCustomClassificationsRequest()
+                new SelectedCustomClassification()
                 {
                     ClassificationId = Guid.NewGuid()
                 }
@@ -40,12 +40,12 @@ public class AddCustomClassificationsToTransactionRequestValidatorTests : TestFi
     public async Task ValidateAsync_EmptyGuidTransactionId_ValidationError()
     {
         // Arrange
-        var testModel = new AddCustomClassificationsToTransactionRequest
+        var testModel = new AddCustomClassificationsToTransaction
         {
             TransactionId = Guid.Empty,
             Classifications = new []
             {
-                new SelectedCustomClassificationsRequest()
+                new SelectedCustomClassification()
                 {
                     ClassificationId = Guid.NewGuid()
                 }
@@ -60,7 +60,7 @@ public class AddCustomClassificationsToTransactionRequestValidatorTests : TestFi
         {
             await Assert.That(result.IsValid).IsFalse();
             await Assert.That(result.Errors).Count().IsEqualTo(1);
-            await Assert.That(result.Errors.First().PropertyName).IsEqualTo(nameof(AddCustomClassificationsToTransactionRequest.TransactionId));
+            await Assert.That(result.Errors.First().PropertyName).IsEqualTo(nameof(AddCustomClassificationsToTransaction.TransactionId));
             await Assert.That(result.Errors.First().ErrorMessage).IsEqualTo("Invalid transaction id");
         }
     }
@@ -69,7 +69,7 @@ public class AddCustomClassificationsToTransactionRequestValidatorTests : TestFi
     public async Task ValidateAsync_EmptyClassifications_ValidationError()
     {
         // Arrange
-        var testModel = new AddCustomClassificationsToTransactionRequest
+        var testModel = new AddCustomClassificationsToTransaction
         {
             TransactionId = Guid.NewGuid(),
             Classifications = []
@@ -83,7 +83,7 @@ public class AddCustomClassificationsToTransactionRequestValidatorTests : TestFi
         {
             await Assert.That(result.IsValid).IsFalse();
             await Assert.That(result.Errors).Count().IsEqualTo(1);
-            await Assert.That(result.Errors.First().PropertyName).IsEqualTo(nameof(AddCustomClassificationsToTransactionRequest.Classifications));
+            await Assert.That(result.Errors.First().PropertyName).IsEqualTo(nameof(AddCustomClassificationsToTransaction.Classifications));
             await Assert.That(result.Errors.First().ErrorMessage).IsEqualTo("At least one classification must be selected");
         }
     }
@@ -92,20 +92,20 @@ public class AddCustomClassificationsToTransactionRequestValidatorTests : TestFi
     public async Task ValidateAsync_ClassificationsEmptyGuid_ValidationError()
     {
         // Arrange
-        var testModel = new AddCustomClassificationsToTransactionRequest
+        var testModel = new AddCustomClassificationsToTransaction
         {
             TransactionId = Guid.NewGuid(),
             Classifications = new []
             {
-                new SelectedCustomClassificationsRequest()
+                new SelectedCustomClassification()
                 {
                     ClassificationId = Guid.Empty
                 },
-                new SelectedCustomClassificationsRequest()
+                new SelectedCustomClassification()
                 {
                     ClassificationId = Guid.Empty
                 },
-                new SelectedCustomClassificationsRequest()
+                new SelectedCustomClassification()
                 {
                     ClassificationId = Guid.Empty
                 },
@@ -120,7 +120,7 @@ public class AddCustomClassificationsToTransactionRequestValidatorTests : TestFi
         {
             await Assert.That(result.IsValid).IsFalse();
             await Assert.That(result.Errors).Count().IsEqualTo(3);
-            await Assert.That(result.Errors).All(x => x.PropertyName.EndsWith(nameof(SelectedCustomClassificationsRequest.ClassificationId)));
+            await Assert.That(result.Errors).All(x => x.PropertyName.EndsWith(nameof(SelectedCustomClassification.ClassificationId)));
             foreach (ValidationFailure validationFailure in result.Errors)
             {
                 await Assert.That(validationFailure.ErrorMessage)

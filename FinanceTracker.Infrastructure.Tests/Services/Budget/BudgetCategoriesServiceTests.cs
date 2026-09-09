@@ -4,6 +4,7 @@ using FinanceTracker.Infrastructure.Budget;
 using FinanceTracker.Tests.Shared;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using BudgetCategory = FinanceTracker.Domain.BudgetCategory;
 
 namespace FinanceTracker.Infrastructure.Tests.Services.Budget;
 
@@ -38,7 +39,7 @@ public class BudgetCategoriesServiceTests : ServiceTestsFixtureBase
         var subject = new BudgetCategoriesService(BuildUser(PrimaryUserId), factory, NullLogger<BudgetCategoriesService>.Instance);
 
         // Act
-        var added = await subject.AddBudgetCategoryAsync(new AddBudgetCategoryRequest
+        var added = await subject.AddBudgetCategoryAsync(new AddBudgetCategory
         {
             Name = "Emergency",
             AvailableFunds = 100,

@@ -20,7 +20,7 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
     {
     }
 
-    public async IAsyncEnumerable<ClassificationsResponse> GetAllCustomClassificationsAsync(
+    public async IAsyncEnumerable<Contracts.Classifications.Classification> GetAllCustomClassificationsAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -31,11 +31,11 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
 
         await foreach (CustomClassification classification in classifications.WithCancellation(cancellationToken))
         {
-            yield return new ClassificationsResponse { Tag = classification.Tag, ClassificationId = classification.Id };
+            yield return new Contracts.Classifications.Classification { Tag = classification.Tag, ClassificationId = classification.Id };
         }
     }
 
-    public async Task<GetClassificationResponse> GetClassificationAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<GetClassification> GetClassificationAsync(Guid id, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
@@ -44,10 +44,10 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
             .SelectMany(x => x.CustomClassifications!)
             .SingleAsync(x => x.Id == id, cancellationToken);
 
-        return new GetClassificationResponse { Tag = classification.Tag, ClassificationId = classification.Id };
+        return new GetClassification { Tag = classification.Tag, ClassificationId = classification.Id };
     }
 
-    public async Task<ClassificationsResponse> AddCustomClassificationAsync(AddClassificationsRequest classification,
+    public async Task<Contracts.Classifications.Classification> AddCustomClassificationAsync(AddClassifications classification,
         CancellationToken cancellationToken)
     {
         CustomClassification newClassification = new() { Tag = classification.Tag };
@@ -61,11 +61,11 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
 
         await context.SaveChangesAsync(cancellationToken);
 
-        return new ClassificationsResponse { Tag = classification.Tag, ClassificationId = newClassification.Id };
+        return new Contracts.Classifications.Classification { Tag = classification.Tag, ClassificationId = newClassification.Id };
     }
 
     public async Task AddCustomClassificationsToTransactionAsync(
-        AddCustomClassificationsToTransactionRequest requestModel,
+        AddCustomClassificationsToTransaction model,
         CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -77,12 +77,12 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
             .Include(x => x.Providers)!.ThenInclude(x => x.Accounts)!.ThenInclude(x => x.Transactions)!
             .ThenInclude(x => x.Classifications)
             .SelectMany(x => x.Providers!.SelectMany(c => c.Accounts!).SelectMany(r => r.Transactions!))
-            .FirstOrDefaultAsync(x => x.Id == requestModel.TransactionId, cancellationToken);
+            .FirstOrDefaultAsync(x => x.Id == model.TransactionId, cancellationToken);
 
         IAsyncEnumerable<CustomClassification> classifications = query
             .Include(x => x.CustomClassifications)
             .SelectMany(x => x.CustomClassifications!)
-            .Where(x => requestModel.Classifications.Select(c => c.ClassificationId).Contains(x.Id))
+            .Where(x => model.Classifications.Select(c => c.ClassificationId).Contains(x.Id))
             .ToAsyncEnumerable();
 
         List<OpenBankingTransactionClassifications> newClassifications = [];

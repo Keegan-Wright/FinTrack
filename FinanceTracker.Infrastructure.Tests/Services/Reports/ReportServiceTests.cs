@@ -93,7 +93,7 @@ public class ReportServiceTests : ServiceTestsFixtureBase
         var openBanking = Substitute.For<IOpenBankingService>();
         var subject = new ReportService(BuildUser(PrimaryUserId), factory, openBanking, NullLogger<ReportService>.Instance);
 
-        var request = new BaseReportRequest
+        var request = new BaseReport
         {
             SyncTypes = SyncTypes.All,
             AccountIds = null,
@@ -121,7 +121,7 @@ public class ReportServiceTests : ServiceTestsFixtureBase
         var openBanking = Substitute.For<IOpenBankingService>();
         var subject = new ReportService(BuildUser(PrimaryUserId), factory, openBanking, NullLogger<ReportService>.Instance);
 
-        var request = new BaseReportRequest
+        var request = new BaseReport
         {
             SyncTypes = SyncTypes.All,
             AccountIds = null,

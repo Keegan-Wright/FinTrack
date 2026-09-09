@@ -18,7 +18,7 @@ public class ClassificationServiceTests : ServiceTestsFixtureBase
         var subject = new ClassificationService(BuildUser(PrimaryUserId), factory,
             NullLogger<ClassificationService>.Instance);
 
-        var added = await subject.AddCustomClassificationAsync(new AddClassificationsRequest
+        var added = await subject.AddCustomClassificationAsync(new AddClassifications
         {
             Tag = "Groceries"
         }, _cancellationTokenSource.Token);

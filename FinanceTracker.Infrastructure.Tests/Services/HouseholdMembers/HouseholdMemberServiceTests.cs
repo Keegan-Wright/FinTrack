@@ -5,6 +5,7 @@ using FinanceTracker.Infrastructure.HouseholdMembers;
 using FinanceTracker.Tests.Shared;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using HouseholdMember = FinanceTracker.Domain.HouseholdMember;
 
 namespace FinanceTracker.Infrastructure.Tests.Services.HouseholdMembers;
 
@@ -31,7 +32,7 @@ public class HouseholdMemberServiceTests : ServiceTestsFixtureBase
         }
 
         var subject = new HouseholdMemberService(BuildUser(PrimaryUserId), factory, NullLogger<HouseholdMemberService>.Instance);
-        await subject.AddHouseholdMemberAsync(new AddHouseholdMemberRequest
+        await subject.AddHouseholdMemberAsync(new AddHouseholdMember
         {
             FirstName = "Jane",
             LastName = "Doe",

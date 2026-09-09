@@ -12,7 +12,7 @@ public class CronJobUpdateRequestValidatorTests : TestFixtureBase
     public async Task ValidateAsync_ValidationSuccess()
     {
         // Arrange
-        var testModel = new CronJobUpdateRequest
+        var testModel = new UpdateCronJob
         {
             Description = "Description",
             Expression = "* * * * * *",
@@ -40,7 +40,7 @@ public class CronJobUpdateRequestValidatorTests : TestFixtureBase
     public async Task ValidateAsync_ContainsError_ValidationError()
     {
         // Arrange
-        var testModel = new CronJobUpdateRequest()
+        var testModel = new UpdateCronJob()
         {
             Description = string.Empty,
             Expression = string.Empty,
@@ -58,15 +58,15 @@ public class CronJobUpdateRequestValidatorTests : TestFixtureBase
             await Assert.That(result.Errors).Count().IsEqualTo(3);
 
             await Assert
-                .That(result.Errors.First(x => x.PropertyName == nameof(CronJobUpdateRequest.Description))
+                .That(result.Errors.First(x => x.PropertyName == nameof(UpdateCronJob.Description))
                     .ErrorMessage).IsEqualTo("Description is required");
 
             await Assert
-                .That(result.Errors.First(x => x.PropertyName == nameof(CronJobUpdateRequest.Expression))
+                .That(result.Errors.First(x => x.PropertyName == nameof(UpdateCronJob.Expression))
                     .ErrorMessage).IsEqualTo("Expression must be a 6-part cron");
 
             await Assert
-                .That(result.Errors.First(x => x.PropertyName == nameof(CronJobUpdateRequest.RetryIntervals))
+                .That(result.Errors.First(x => x.PropertyName == nameof(UpdateCronJob.RetryIntervals))
                     .ErrorMessage).IsEqualTo("All intervals must be valid non-negative integers");
         }
     }

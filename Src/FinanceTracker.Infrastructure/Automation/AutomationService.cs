@@ -27,17 +27,17 @@ public class AutomationService :  ServiceBase<AutomationService>, IAutomationSer
         _timeTickerManager = timeTickerManager;
     }
 
-    public async IAsyncEnumerable<AutomationCronResponse> GetJobsAsync([EnumeratorCancellation] CancellationToken cancellationToken)
+    public async IAsyncEnumerable<AutomationCron> GetJobsAsync([EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await using var context = await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
         await foreach (var cron in context.CronTickerEntities.AsAsyncEnumerable().WithCancellation(cancellationToken))
         {
-            yield return new AutomationCronResponse(cron.Id,  cron.Function, cron.Description, cron.Expression, cron.Retries,
+            yield return new AutomationCron(cron.Id,  cron.Function, cron.Description, cron.Expression, cron.Retries,
                 cron.RetryIntervals, cron.IsEnabled);
         }
     }
 
-    public async Task<bool> UpdateJobSettingsAsync(CronJobUpdateRequest request, CancellationToken cancellationToken)
+    public async Task<bool> UpdateJobSettingsAsync(UpdateCronJob request, CancellationToken cancellationToken)
     {
         await using var context = await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
         var cron = await context.CronTickerEntities.FirstAsync(x => x.Id == request.Id, cancellationToken);

@@ -1,26 +1,26 @@
 using FinanceTracker.Contracts;
-using FinanceTracker.Contracts.Transaction;
+using FinanceTracker.Contracts.Transactions;
 
 namespace FinanceTracker.Infrastructure.Transactions;
 
 public interface ITransactionsService
 {
-    IAsyncEnumerable<TransactionResponse> GetAllTransactionsAsync(
-        FilteredTransactionsRequest filteredTransactionsRequest, SyncTypes syncTypes,
+    IAsyncEnumerable<Transaction> GetAllTransactionsAsync(
+        FilterTransactions filterTransactions, SyncTypes syncTypes,
         CancellationToken cancellationToken);
 
-    IAsyncEnumerable<TransactionAccountFilterResponse> GetAccountsForTransactionFiltersAsync(SyncTypes syncTypes,
+    IAsyncEnumerable<TransactionAccountFilter> GetAccountsForTransactionFiltersAsync(SyncTypes syncTypes,
         CancellationToken cancellationToken);
 
-    IAsyncEnumerable<TransactionProviderFilterResponse> GetProvidersForTransactionFiltersAsync(
+    IAsyncEnumerable<TransactionProviderFilter> GetProvidersForTransactionFiltersAsync(
         CancellationToken cancellationToken);
 
-    IAsyncEnumerable<TransactionTypeFilterResponse> GetTypesForTransactionFiltersAsync(
+    IAsyncEnumerable<TransactionTypeFilter> GetTypesForTransactionFiltersAsync(
         CancellationToken cancellationToken);
 
-    IAsyncEnumerable<TransactionCategoryFilterResponse> GetCategoriesForTransactionFiltersAsync(
+    IAsyncEnumerable<TransactionCategoryFilter> GetCategoriesForTransactionFiltersAsync(
         CancellationToken cancellationToken);
 
-    IAsyncEnumerable<TransactionTagFilterResponse> GetTagsForTransactionFiltersAsync(
+    IAsyncEnumerable<TransactionTagFilter> GetTagsForTransactionFiltersAsync(
         CancellationToken cancellationToken);
 }

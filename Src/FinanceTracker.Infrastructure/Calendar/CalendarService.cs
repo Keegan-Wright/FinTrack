@@ -17,7 +17,7 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
     {
     }
 
-    public async IAsyncEnumerable<CalendarItemsResponse> GetMonthItemsAsync(int month, int year,
+    public async IAsyncEnumerable<CalendarItems> GetMonthItemsAsync(int month, int year,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         int daysInMonth = DateTime.DaysInMonth(year, month);
@@ -29,10 +29,10 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
         // IMPORTANT:
         // Transaction timestamps / goal dates are encrypted at rest, so we cannot filter by date in SQL.
         // Materialize first, then filter in-memory on decrypted values.
-        List<CalendarTransactionItemResponse> transactionItems = await context.IsolateToUser(UserId)
+        List<CalendarTransactionItem> transactionItems = await context.IsolateToUser(UserId)
             .Include(x => x.Providers)!.ThenInclude(x => x.Accounts)!.ThenInclude(x => x.Transactions)
             .SelectMany(x => x.Providers!.SelectMany(c => c.Accounts!.SelectMany(v => v.Transactions!)))
-            .Select(x => new CalendarTransactionItemResponse
+            .Select(x => new CalendarTransactionItem
             {
                 Description = x.Description,
                 Amount = x.Amount,
@@ -41,18 +41,18 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
             })
             .ToListAsync(cancellationToken);
 
-        List<IGrouping<DateTime, CalendarTransactionItemResponse>> transactions = transactionItems
+        List<IGrouping<DateTime, CalendarTransactionItem>> transactions = transactionItems
             .Where(x => x.TransactionTime >= startDate && x.TransactionTime < endDate)
             .GroupBy(x => x.TransactionTime)
             .ToList();
 
-        List<CalendarGoalItemResponse> goalItems = await context.IsolateToUser(UserId)
+        List<CalendarGoalItem> goalItems = await context.IsolateToUser(UserId)
             .Include(x => x.BudgetCategories)
             .SelectMany(x => x.BudgetCategories!)
-            .Select(x => new CalendarGoalItemResponse { Name = x.Name, GoalCompletionDate = x.GoalCompletionDate })
+            .Select(x => new CalendarGoalItem { Name = x.Name, GoalCompletionDate = x.GoalCompletionDate })
             .ToListAsync(cancellationToken);
 
-        List<IGrouping<DateTime?, CalendarGoalItemResponse>> goals = goalItems
+        List<IGrouping<DateTime?, CalendarGoalItem>> goals = goalItems
             .Where(x => x.GoalCompletionDate >= startDate && x.GoalCompletionDate < endDate)
             .GroupBy(x => x.GoalCompletionDate)
             .ToList();
@@ -61,7 +61,7 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
         {
             DateTime date = startDate.AddDays(i);
 
-            CalendarItemsResponse response = new()
+            CalendarItems response = new()
             {
                 Date = date,
                 Transactions = transactions.Where(x => x.Key.Date == date.Date).SelectMany(x => x),

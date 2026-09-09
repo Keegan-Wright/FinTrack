@@ -5,9 +5,9 @@ using FluentValidation;
 
 namespace FinanceTracker.Infrastructure.Validation;
 
-[Scoped<IValidator<AddClassificationsRequest>>]
+[Scoped<IValidator<AddClassifications>>]
 [InjectionCategory(InjectionCategoryType.Validator)]
-public class AddClassificationsRequestValidator : AbstractValidator<AddClassificationsRequest>
+public class AddClassificationsRequestValidator : AbstractValidator<AddClassifications>
 {
     public AddClassificationsRequestValidator()
     {

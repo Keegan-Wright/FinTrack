@@ -37,18 +37,18 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
         }
     }
 
-    public string BuildAuthUrl(GetProviderSetupUrlRequestModel setupProviderRequestModel) =>
-        _openBankingApiService.BuildAuthUrl(setupProviderRequestModel.ProviderIds,
-            setupProviderRequestModel.Scopes);
+    public string BuildAuthUrl(ProviderSetupUrl setupProvider) =>
+        _openBankingApiService.BuildAuthUrl(setupProvider.ProviderIds,
+            setupProvider.Scopes);
 
-    public async Task<bool> AddVendorViaAccessCodeAsync(AddVendorRequestModel addVendorRequestModel, CancellationToken cancellationToken)
+    public async Task<bool> AddVendorViaAccessCodeAsync(AddVendor addVendor, CancellationToken cancellationToken)
     {
         ExternalOpenBankingAccessResponse providerAccessToken =
-            await _openBankingApiService.ExchangeCodeForAccessTokenAsync(addVendorRequestModel.AccessCode, cancellationToken);
+            await _openBankingApiService.ExchangeCodeForAccessTokenAsync(addVendor.AccessCode, cancellationToken);
         ExternalOpenBankingAccountConnectionResponse providerInformation =
             await _openBankingApiService.GetProviderInformation(providerAccessToken.AccessToken, cancellationToken);
 
-        await CreateNewProvider(addVendorRequestModel.AccessCode, providerAccessToken, providerInformation, cancellationToken);
+        await CreateNewProvider(addVendor.AccessCode, providerAccessToken, providerInformation, cancellationToken);
 
         return true;
     }

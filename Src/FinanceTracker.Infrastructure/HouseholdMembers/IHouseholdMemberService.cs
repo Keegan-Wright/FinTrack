@@ -4,9 +4,9 @@ namespace FinanceTracker.Infrastructure.HouseholdMembers;
 
 public interface IHouseholdMemberService
 {
-    IAsyncEnumerable<HouseholdMemberResponse> GetHouseholdMembersAsync(CancellationToken cancellationToken);
+    IAsyncEnumerable<HouseholdMember> GetHouseholdMembersAsync(CancellationToken cancellationToken);
 
-    Task<HouseholdMemberResponse> AddHouseholdMemberAsync(AddHouseholdMemberRequest categoryToAdd,
+    Task<HouseholdMember> AddHouseholdMemberAsync(AddHouseholdMember categoryToAdd,
         CancellationToken cancellationToken);
 
     Task<bool> DeleteHouseholdMemberAsync(Guid id, CancellationToken cancellationToken);

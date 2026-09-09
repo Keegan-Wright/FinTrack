@@ -49,7 +49,7 @@ public class OpenBankingServiceTests : ServiceTestsFixtureBase
         var subject = new OpenBankingService(BuildUser(PrimaryUserId), factory, api,
             NullLogger<OpenBankingService>.Instance);
 
-        var url = subject.BuildAuthUrl(new GetProviderSetupUrlRequestModel
+        var url = subject.BuildAuthUrl(new ProviderSetupUrl
         {
             ProviderIds = ["provider-1"],
             Scopes = ["accounts", "transactions"]
