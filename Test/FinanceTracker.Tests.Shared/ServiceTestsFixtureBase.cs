@@ -1,8 +1,7 @@
 using System.Security.Claims;
-using FinanceTracker.Configurations;
-using FinanceTracker.Data;
-using FinanceTracker.Data.Models;
-using FinanceTracker.Security.Encryption;
+using FinanceTracker.Domain;
+using FinanceTracker.Infrastructure;
+using FinanceTracker.Infrastructure.Encryption;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.Tests.Shared;

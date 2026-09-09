@@ -24,11 +24,8 @@
     <Project Path="Src\Generators\FinanceTracker.Generated.Shared\FinanceTracker.Generated.Shared.csproj" />
   </Folder>
   <Folder Name="/Tests/">
-    <Project Path="Test/FinanceTracker.Tests.Services/FinanceTracker.Tests.Services.csproj" />
-    <Project Path="Test/FinanceTracker.Tests.Security/FinanceTracker.Tests.Security.csproj" />
-    <Project Path="Test/FinanceTracker.Tests.Services.External/FinanceTracker.Tests.Services.External.csproj" />
+    <Project Path="FinanceTracker.Infrastructure.Tests\FinanceTracker.Infrastructure.Tests.csproj" />
     <Project Path="Test/FinanceTracker.Tests.Shared/FinanceTracker.Tests.Shared.csproj" />
-    <Project Path="Test/FinanceTracker.Tests.Validators.Models/FinanceTracker.Tests.Validators.Models.csproj" />
     <Project Path="Test/FinanceTracker.Tests/FinanceTracker.Tests.csproj" />
   </Folder>
   <Project Path="FinanceTracker.Infrastructure.Migrations/FinanceTracker.Infrastructure.Migrations.csproj" />
