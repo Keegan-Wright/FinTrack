@@ -298,6 +298,9 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.Property<DateTime>("Created")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<bool>("Expired")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("ExpiresIn")
                         .IsRequired()
                         .HasColumnType("text");

@@ -39,7 +39,7 @@ public class SyncAllOpenBankingDetailsAsync : ITickerFunction
 
         using var activity = new ActivitySource("FinanceTracker");
 
-        using var performingBackgroundSyncActivity = activity.StartActivity("PerformingBackgroundSync");
+        using var performingBackgroundSyncActivity = activity.StartActivity();
 
         await using FinanceTrackerContext dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
         ConfiguredCancelableAsyncEnumerable<FinanceTrackerUser> userQuery = dbContext.Users
@@ -81,7 +81,7 @@ public class SyncAllOpenBankingDetailsAsync : ITickerFunction
             });
         }
 
-        performingBackgroundSyncActivity.AddEvent(new ActivityEvent("Background sync completed"));
+        performingBackgroundSyncActivity?.AddEvent(new ActivityEvent("Background sync completed"));
 
         await _syncService.NotifySyncComplete();
     }

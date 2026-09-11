@@ -14,4 +14,11 @@ public class OpenBankingAccessToken : BaseEntity
 
     [Encrypt]
     public required string RefreshToken { get; init; }
+
+    public bool Expired { get; private set; }
+
+    public void Expire()
+    {
+        Expired = true;
+    }
 }
