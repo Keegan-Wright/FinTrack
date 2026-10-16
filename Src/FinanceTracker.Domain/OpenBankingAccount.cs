@@ -4,26 +4,33 @@ namespace FinanceTracker.Domain;
 
 public class OpenBankingAccount : BaseEntity
 {
-    public required string OpenBankingAccountId { get; init; }
+    public OpenBankingAccount(string openBankingAccountId, string accountType, string displayName, string currency,
+        Guid providerId)
+    {
+        OpenBankingAccountId = openBankingAccountId;
+        AccountType = accountType;
+        DisplayName = displayName;
+        Currency = currency;
+        ProviderId = providerId;
+    }
 
-    [Encrypt]
-    public required string AccountType { get; init; }
+    public string OpenBankingAccountId { get; private set; }
 
-    [Encrypt]
-    public required string DisplayName { get; init; }
+    [Encrypt] public string AccountType { get; private set; }
 
-    [Encrypt]
-    public required string Currency { get; init; }
+    [Encrypt] public string DisplayName { get; private set; }
 
-    public required Guid ProviderId { get; init; }
+    [Encrypt] public string Currency { get; private set; }
 
-    public OpenBankingProvider? Provider { get; init; }
+    public Guid ProviderId { get; private set; }
 
-    public OpenBankingAccountBalance? AccountBalance { get; set; }
+    public OpenBankingProvider? Provider { get; private set; }
 
-    public ICollection<OpenBankingTransaction>? Transactions { get; set; }
-    public ICollection<OpenBankingStandingOrder>? StandingOrders { get; set; }
-    public ICollection<OpenBankingDirectDebit>? DirectDebits { get; set; }
+    public OpenBankingAccountBalance? AccountBalance { get; private set; }
 
-    public ICollection<OpenBankingSynchronization>? Syncronisations { get; init; }
+    public ICollection<OpenBankingTransaction>? Transactions { get; private set; }
+    public ICollection<OpenBankingStandingOrder>? StandingOrders { get; private set; }
+    public ICollection<OpenBankingDirectDebit>? DirectDebits { get; private set; }
+
+    public ICollection<OpenBankingSynchronization>? Syncronisations { get; private set; }
 }

@@ -4,27 +4,34 @@ namespace FinanceTracker.Domain;
 
 public class OpenBankingDirectDebit : BaseEntity
 {
-    [Encrypt]
-    public required string OpenBankingDirectDebitId { get; set; }
+    public OpenBankingDirectDebit(string openBankingDirectDebitId, string name, string status,
+        DateTime previousPaymentTimeStamp, decimal previousPaymentAmount, string? currency, DateTime timeStamp,
+        Guid accountId)
+    {
+        OpenBankingDirectDebitId = openBankingDirectDebitId;
+        Name = name;
+        Status = status;
+        PreviousPaymentTimeStamp = previousPaymentTimeStamp;
+        PreviousPaymentAmount = previousPaymentAmount;
+        Currency = currency;
+        TimeStamp = timeStamp;
+        AccountId = accountId;
+    }
 
-    [Encrypt]
-    public required string Name { get; set; }
+    [Encrypt] public string OpenBankingDirectDebitId { get; private set; }
 
-    [Encrypt]
-    public required string Status { get; set; }
+    [Encrypt] public string Name { get; private set; }
 
-    [Encrypt]
-    public required DateTime PreviousPaymentTimeStamp { get; set; }
+    [Encrypt] public string Status { get; private set; }
 
-    [Encrypt]
-    public required decimal PreviousPaymentAmount { get; set; }
+    [Encrypt] public DateTime PreviousPaymentTimeStamp { get; private set; }
 
-    [Encrypt]
-    public required string? Currency { get; set; }
+    [Encrypt] public decimal PreviousPaymentAmount { get; private set; }
 
-    [Encrypt]
-    public required DateTime TimeStamp { get; set; }
+    [Encrypt] public string? Currency { get; private set; }
 
-    public Guid AccountId { get; init; }
-    public OpenBankingAccount? Account { get; init; }
+    [Encrypt] public DateTime TimeStamp { get; private set; }
+
+    public Guid AccountId { get; private set; }
+    public OpenBankingAccount? Account { get; private set; }
 }

@@ -620,8 +620,8 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
         new()
         {
             Created = DateTime.Now.ToUniversalTime(),
-            SyncronisationTime = DateTime.Now.ToUniversalTime(),
-            SyncronisationType = (int)syncType,
+            SynchronisationTime = DateTime.Now.ToUniversalTime(),
+            SynchronisationType = (int)syncType,
             ProviderId = provider.Id,
             Provider = provider,
             OpenBankingAccountId = accountId,

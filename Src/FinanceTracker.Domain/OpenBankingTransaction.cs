@@ -4,35 +4,43 @@ namespace FinanceTracker.Domain;
 
 public class OpenBankingTransaction : BaseEntity
 {
-    [Encrypt]
-    public required string Description { get; set; }
+    public OpenBankingTransaction(string description, string transactionType, string transactionCategory,
+        decimal amount, string currency, string transactionId, DateTime transactionTime, bool pending, Guid providerId,
+        Guid accountId)
+    {
+        Description = description;
+        TransactionType = transactionType;
+        TransactionCategory = transactionCategory;
+        Amount = amount;
+        Currency = currency;
+        TransactionId = transactionId;
+        TransactionTime = transactionTime;
+        Pending = pending;
+        ProviderId = providerId;
+        AccountId = accountId;
+    }
 
-    [Encrypt]
-    public required string TransactionType { get; set; }
+    [Encrypt] public string Description { get; private set; }
 
-    [Encrypt]
-    public required string TransactionCategory { get; set; }
+    [Encrypt] public string TransactionType { get; private set; }
 
-    [Encrypt]
-    public required decimal Amount { get; set; }
+    [Encrypt] public string TransactionCategory { get; private set; }
 
-    [Encrypt]
-    public required string Currency { get; set; }
+    [Encrypt] public decimal Amount { get; private set; }
 
-    [Encrypt]
-    public required string TransactionId { get; set; }
+    [Encrypt] public string Currency { get; private set; }
 
-    [Encrypt]
-    public required DateTime TransactionTime { get; set; }
+    [Encrypt] public string TransactionId { get; private set; }
 
-    [Encrypt]
-    public required bool Pending { get; set; }
+    [Encrypt] public DateTime TransactionTime { get; private set; }
 
-    public Guid ProviderId { get; init; }
-    public OpenBankingProvider? Provider { get; init; }
+    [Encrypt] public bool Pending { get; private set; }
 
-    public Guid AccountId { get; init; }
-    public OpenBankingAccount? Account { get; init; }
+    public Guid ProviderId { get; private set; }
+    public OpenBankingProvider? Provider { get; private set; }
 
-    public ICollection<OpenBankingTransactionClassifications>? Classifications { get; set; }
+    public Guid AccountId { get; private set; }
+    public OpenBankingAccount? Account { get; private set; }
+
+    public ICollection<OpenBankingTransactionClassifications>? Classifications { get; private set; }
 }

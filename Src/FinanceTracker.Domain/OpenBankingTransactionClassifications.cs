@@ -4,11 +4,17 @@ namespace FinanceTracker.Domain;
 
 public class OpenBankingTransactionClassifications : BaseEntity
 {
-    [Encrypt]
-    public required string Classification { get; init; }
+    public OpenBankingTransactionClassifications(string classification, Guid transactionId, bool isCustomClassification)
+    {
+        Classification = classification;
+        TransactionId = transactionId;
+        IsCustomClassification = isCustomClassification;
+    }
 
-    public Guid TransactionId { get; init; }
-    public OpenBankingTransaction? Transaction { get; set; }
+    [Encrypt] public string Classification { get; private set; }
 
-    public bool IsCustomClassification { get; init; }
+    public Guid TransactionId { get; private set; }
+    public OpenBankingTransaction? Transaction { get; private set; }
+
+    public bool IsCustomClassification { get; private set; }
 }

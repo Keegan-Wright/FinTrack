@@ -4,18 +4,27 @@ namespace FinanceTracker.Domain;
 
 public class OpenBankingSynchronization : BaseEntity
 {
-    public required int SyncronisationType { get; init; }
+    public OpenBankingSynchronization(int synchronisationType, string openBankingAccountId,
+        DateTime synchronisationTime, Guid providerId, Guid accountId)
+    {
+        SynchronisationType = synchronisationType;
+        SynchronisationTime = synchronisationTime;
+        ProviderId = providerId;
+        AccountId = accountId;
+        OpenBankingAccountId = openBankingAccountId;
+    }
 
-    public required DateTime SyncronisationTime { get; init; }
+    public int SynchronisationType { get; private set; }
+
+    public DateTime SynchronisationTime { get; private set; }
 
 
-    public Guid ProviderId { get; init; }
-    public OpenBankingProvider? Provider { get; init; }
+    public Guid ProviderId { get; private set; }
+    public OpenBankingProvider? Provider { get; private set; }
 
-    public Guid AccountId { get; set; }
-    public OpenBankingAccount? Account { get; set; }
+    public Guid AccountId { get; private set; }
+    public OpenBankingAccount? Account { get; private set; }
 
 
-    [Encrypt]
-    public required string OpenBankingAccountId { get; init; }
+    [Encrypt] public string OpenBankingAccountId { get; private set; }
 }

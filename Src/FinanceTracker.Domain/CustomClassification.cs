@@ -4,6 +4,7 @@ namespace FinanceTracker.Domain;
 
 public class CustomClassification : BaseEntity
 {
-    [Encrypt]
-    public required string Tag { get; init; }
+    public CustomClassification(string tag) => Tag = tag;
+
+    [Encrypt] public string Tag { get; private set; }
 }

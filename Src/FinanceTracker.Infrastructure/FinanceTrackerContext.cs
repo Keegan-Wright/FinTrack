@@ -31,27 +31,27 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
     }
 
 
-    public DbSet<FinanceTrackerUser> FinanceTrackerUsers { get; set; }
-    public DbSet<FinanceTrackerRole> FinanceTrackerRoles { get; set; }
-    public DbSet<BudgetCategory> BudgetCategories { get; set; }
-    public DbSet<Debt> Debts { get; set; }
-    public DbSet<OpenBankingProvider> OpenBankingProviders { get; set; }
-    public DbSet<OpenBankingProviderScopes> OpenBankingProviderScopes { get; set; }
-    public DbSet<OpenBankingAccount> OpenBankingAccounts { get; set; }
-    public DbSet<OpenBankingAccountBalance> OpenBankingAccountBalances { get; set; }
-    public DbSet<OpenBankingTransaction> OpenBankingTransactions { get; set; }
-    public DbSet<OpenBankingAccessToken> OpenBankingAccessTokens { get; set; }
-    public DbSet<OpenBankingStandingOrder> OpenBankingStandingOrders { get; set; }
-    public DbSet<OpenBankingSynchronization> OpenBankingSynchronizations { get; set; }
-    public DbSet<OpenBankingDirectDebit> OpenBankingDirectDebits { get; set; }
-    public DbSet<OpenBankingTransactionClassifications> OpenBankingTransactionClassifications { get; set; }
-    public DbSet<CustomClassification> CustomClassifications { get; set; }
-    public DbSet<HouseholdMember> HouseholdMembers { get; set; }
+    public DbSet<FinanceTrackerUser> FinanceTrackerUsers { get; private set; }
+    public DbSet<FinanceTrackerRole> FinanceTrackerRoles { get; private set; }
+    public DbSet<BudgetCategory> BudgetCategories { get; private set; }
+    public DbSet<Debt> Debts { get; private set; }
+    public DbSet<OpenBankingProvider> OpenBankingProviders { get; private set; }
+    public DbSet<OpenBankingProviderScopes> OpenBankingProviderScopes { get; private set; }
+    public DbSet<OpenBankingAccount> OpenBankingAccounts { get; private set; }
+    public DbSet<OpenBankingAccountBalance> OpenBankingAccountBalances { get; private set; }
+    public DbSet<OpenBankingTransaction> OpenBankingTransactions { get; private set; }
+    public DbSet<OpenBankingAccessToken> OpenBankingAccessTokens { get; private set; }
+    public DbSet<OpenBankingStandingOrder> OpenBankingStandingOrders { get; private set; }
+    public DbSet<OpenBankingSynchronization> OpenBankingSynchronizations { get; private set; }
+    public DbSet<OpenBankingDirectDebit> OpenBankingDirectDebits { get; private set; }
+    public DbSet<OpenBankingTransactionClassifications> OpenBankingTransactionClassifications { get; private set; }
+    public DbSet<CustomClassification> CustomClassifications { get; private set; }
+    public DbSet<HouseholdMember> HouseholdMembers { get; private set; }
 
 
-    public DbSet<CronTickerEntity> CronTickerEntities { get; set; }
-    public DbSet<CronTickerOccurrenceEntity<CronTickerEntity>> CronTickerOccurrenceEntities { get; set; }
-    public DbSet<TimeTickerEntity> TimeTickerEntities { get; set; }
+    public DbSet<CronTickerEntity> CronTickerEntities { get; private set; }
+    public DbSet<CronTickerOccurrenceEntity<CronTickerEntity>> CronTickerOccurrenceEntities { get; private set; }
+    public DbSet<TimeTickerEntity> TimeTickerEntities { get; private set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

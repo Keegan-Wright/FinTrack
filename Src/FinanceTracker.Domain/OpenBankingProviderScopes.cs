@@ -4,9 +4,14 @@ namespace FinanceTracker.Domain;
 
 public class OpenBankingProviderScopes : BaseEntity
 {
-    [Encrypt]
-    public required string Scope { get; init; }
+    public OpenBankingProviderScopes(string scope, Guid providerId)
+    {
+        Scope = scope;
+        ProviderId = providerId;
+    }
 
-    public Guid ProviderId { get; init; }
-    public OpenBankingProvider? Provider { get; init; }
+    [Encrypt] public string Scope { get; private set; }
+
+    public Guid ProviderId { get; private set; }
+    public OpenBankingProvider? Provider { get; private set; }
 }

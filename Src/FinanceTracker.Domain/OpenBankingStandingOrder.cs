@@ -4,42 +4,49 @@ namespace FinanceTracker.Domain;
 
 public class OpenBankingStandingOrder : BaseEntity
 {
-    [Encrypt]
-    public required string Frequency { get; set; }
+    public OpenBankingStandingOrder(string frequency, string status, string currency, DateTime nextPaymentDate,
+        decimal nextPaymentAmount, DateTime firstPaymentDate, decimal firstPaymentAmount, DateTime finalPaymentDate,
+        decimal finalPaymentAmount, string reference, string payee, DateTime timestamp, Guid accountId)
+    {
+        Frequency = frequency;
+        Status = status;
+        Currency = currency;
+        NextPaymentDate = nextPaymentDate;
+        NextPaymentAmount = nextPaymentAmount;
+        FirstPaymentDate = firstPaymentDate;
+        FirstPaymentAmount = firstPaymentAmount;
+        FinalPaymentDate = finalPaymentDate;
+        FinalPaymentAmount = finalPaymentAmount;
+        Reference = reference;
+        Payee = payee;
+        Timestamp = timestamp;
+        AccountId = accountId;
+    }
 
-    [Encrypt]
-    public required string Status { get; set; }
+    [Encrypt] public string Frequency { get; private set; }
 
-    [Encrypt]
-    public required string Currency { get; set; }
+    [Encrypt] public string Status { get; private set; }
 
-    [Encrypt]
-    public required DateTime NextPaymentDate { get; set; }
+    [Encrypt] public string Currency { get; private set; }
 
-    [Encrypt]
-    public required decimal NextPaymentAmount { get; set; }
+    [Encrypt] public DateTime NextPaymentDate { get; private set; }
 
-    [Encrypt]
-    public required DateTime FirstPaymentDate { get; set; }
+    [Encrypt] public decimal NextPaymentAmount { get; private set; }
 
-    [Encrypt]
-    public required decimal FirstPaymentAmount { get; set; }
+    [Encrypt] public DateTime FirstPaymentDate { get; private set; }
 
-    [Encrypt]
-    public required DateTime FinalPaymentDate { get; set; }
+    [Encrypt] public decimal FirstPaymentAmount { get; private set; }
 
-    [Encrypt]
-    public required decimal FinalPaymentAmount { get; set; }
+    [Encrypt] public DateTime FinalPaymentDate { get; private set; }
 
-    [Encrypt]
-    public required string Reference { get; set; }
+    [Encrypt] public decimal FinalPaymentAmount { get; private set; }
 
-    [Encrypt]
-    public required string Payee { get; set; }
+    [Encrypt] public string Reference { get; private set; }
 
-    [Encrypt]
-    public required DateTime Timestamp { get; set; }
+    [Encrypt] public string Payee { get; private set; }
 
-    public Guid AccountId { get; init; }
-    public OpenBankingAccount? Account { get; init; }
+    [Encrypt] public DateTime Timestamp { get; private set; }
+
+    public Guid AccountId { get; private set; }
+    public OpenBankingAccount? Account { get; private set; }
 }

@@ -4,15 +4,19 @@ namespace FinanceTracker.Domain;
 
 public class Debt : BaseEntity
 {
-    [Encrypt]
-    public required string Name { get; init; }
+    public Debt(string name, decimal monthlyPayment, DateTime? finalPaymentDate, DateTime? payOffGoal)
+    {
+        Name = name;
+        MonthlyPayment = monthlyPayment;
+        FinalPaymentDate = finalPaymentDate;
+        PayOffGoal = payOffGoal;
+    }
 
-    [Encrypt]
-    public decimal MonthlyPayment { get; init; }
+    [Encrypt] public string Name { get; private set; }
 
-    [Encrypt]
-    public DateTime? FinalPaymentDate { get; init; }
+    [Encrypt] public decimal MonthlyPayment { get; private set; }
 
-    [Encrypt]
-    public DateTime? PayOffGoal { get; init; }
+    [Encrypt] public DateTime? FinalPaymentDate { get; private set; }
+
+    [Encrypt] public DateTime? PayOffGoal { get; private set; }
 }

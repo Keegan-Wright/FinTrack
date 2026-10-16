@@ -648,10 +648,10 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                         .HasColumnType("xid")
                         .HasColumnName("xmin");
 
-                    b.Property<DateTime>("SyncronisationTime")
+                    b.Property<DateTime>("SynchronisationTime")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<int>("SyncronisationType")
+                    b.Property<int>("SynchronisationType")
                         .HasColumnType("integer");
 
                     b.Property<DateTime?>("Updated")

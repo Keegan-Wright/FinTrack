@@ -4,18 +4,23 @@ namespace FinanceTracker.Domain;
 
 public class BudgetCategory : BaseEntity
 {
-    [Encrypt]
-    public required string Name { get; init; }
+    public BudgetCategory(string name, decimal availableFunds, decimal monthlyStart, decimal savingsGoal,
+        DateTime? goalCompletionDate)
+    {
+        Name = name;
+        AvailableFunds = availableFunds;
+        MonthlyStart = monthlyStart;
+        SavingsGoal = savingsGoal;
+        GoalCompletionDate = goalCompletionDate;
+    }
 
-    [Encrypt]
-    public decimal AvailableFunds { get; init; }
+    [Encrypt] public string Name { get; private set; }
 
-    [Encrypt]
-    public decimal MonthlyStart { get; init; }
+    [Encrypt] public decimal AvailableFunds { get; private set; }
 
-    [Encrypt]
-    public decimal SavingsGoal { get; init; }
+    [Encrypt] public decimal MonthlyStart { get; private set; }
 
-    [Encrypt]
-    public DateTime? GoalCompletionDate { get; init; }
+    [Encrypt] public decimal SavingsGoal { get; private set; }
+
+    [Encrypt] public DateTime? GoalCompletionDate { get; private set; }
 }
