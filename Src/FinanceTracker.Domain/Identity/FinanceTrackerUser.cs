@@ -2,6 +2,9 @@ using Microsoft.AspNetCore.Identity;
 
 namespace FinanceTracker.Domain;
 
+/// <summary>
+/// Users of the application
+/// </summary>
 public sealed class FinanceTrackerUser : IdentityUser<Guid>
 {
     [Obsolete("EF Use Only")]
@@ -23,13 +26,5 @@ public sealed class FinanceTrackerUser : IdentityUser<Guid>
     public string LastName { get; private set; }
 
     public string? OpenIdConnectSubject { get; private set; }
-    public ICollection<OpenBankingProvider>? Providers { get; private set; }
-    public ICollection<CustomClassification>? CustomClassifications { get; private set; }
-    public ICollection<HouseholdMember>? HouseholdMembers { get; private set; }
-    public ICollection<Debt>? Debts { get; private set; }
-    public ICollection<BudgetCategory>? BudgetCategories { get; private set; }
-    public ICollection<OpenBankingAccessToken>? OpenBankingAccessTokens { get; private set; }
-
-
     public void SetOidcSubject(string subject) => OpenIdConnectSubject = subject;
 }
