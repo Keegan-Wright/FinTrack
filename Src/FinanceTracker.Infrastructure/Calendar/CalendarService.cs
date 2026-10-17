@@ -21,8 +21,8 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         int daysInMonth = DateTime.DaysInMonth(year, month);
-        DateTime startDate = new DateTime(year, month, 1).ToUniversalTime();
-        DateTime endDate = new DateTime(year, month, daysInMonth).ToUniversalTime();
+        DateTime startDate = new(year, month, 1, 0, 0, 0, DateTimeKind.Utc);
+        DateTime endDate = startDate.AddMonths(1);
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
@@ -43,16 +43,16 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
 
         List<IGrouping<DateTime, CalendarTransactionItem>> transactions = transactionItems
             .Where(x => x.TransactionTime >= startDate && x.TransactionTime < endDate)
-            .GroupBy(x => x.TransactionTime)
+            .GroupBy(static x => x.TransactionTime.Date)
             .ToList();
 
         List<CalendarGoalItem> goalItems = await context.BudgetCategories.OwnedBy(UserId)
             .Select(x => new CalendarGoalItem { Name = x.Name, GoalCompletionDate = x.GoalCompletionDate })
             .ToListAsync(cancellationToken);
 
-        List<IGrouping<DateTime?, CalendarGoalItem>> goals = goalItems
+        List<IGrouping<DateTime, CalendarGoalItem>> goals = goalItems
             .Where(x => x.GoalCompletionDate >= startDate && x.GoalCompletionDate < endDate)
-            .GroupBy(x => x.GoalCompletionDate)
+            .GroupBy(static x => x.GoalCompletionDate!.Value.Date)
             .ToList();
 
         for (int i = 0; i < daysInMonth; i++)
@@ -62,8 +62,8 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
             CalendarItems response = new()
             {
                 Date = date,
-                Transactions = transactions.Where(x => x.Key.Date == date.Date).SelectMany(x => x),
-                Goals = goals.Where(x => x.Key == date).SelectMany(x => x)
+                Transactions = transactions.Where(x => x.Key == date).SelectMany(static x => x),
+                Goals = goals.Where(x => x.Key == date).SelectMany(static x => x)
             };
 
             yield return response;

@@ -38,14 +38,19 @@ public class ReportService : ServiceBase<ReportService>, IReportService
         int totalTransactions = openBankingTransactions.Count;
 
 
+        if (totalTransactions == 0)
+        {
+            yield break;
+        }
+
+        SpentInTimePeriodReport rsp = new()
+        {
+            TotalIn = totalIn, TotalOut = totalOut, TotalTransactions = totalTransactions
+        };
+
         foreach (IGrouping<int, BankTransaction> yearlyGrouping in openBankingTransactions.GroupBy(static x =>
                      x.OccurredAt.Year))
         {
-            SpentInTimePeriodReport rsp = new()
-            {
-                TotalIn = totalIn, TotalOut = totalOut, TotalTransactions = totalTransactions
-            };
-
             SpentInTimePeriodReportYearlyBreakdown yearGrp = new()
             {
                 Year = yearlyGrouping.Key,
@@ -84,8 +89,9 @@ public class ReportService : ServiceBase<ReportService>, IReportService
             }
 
             rsp.YearlyBreakdown.Add(yearGrp);
-            yield return rsp;
         }
+
+        yield return rsp;
     }
 
     public async IAsyncEnumerable<SpentInCategoryReport> GetCategoryBreakdownReportAsync(
@@ -160,8 +166,9 @@ public class ReportService : ServiceBase<ReportService>, IReportService
                 }
 
                 rsp.YearlyBreakdown.Add(yearGrp);
-                yield return rsp;
             }
+
+            yield return rsp;
         }
     }
 
@@ -176,8 +183,9 @@ public class ReportService : ServiceBase<ReportService>, IReportService
         Dictionary<Guid, string> accountNames = await context.BankAccounts.OwnedBy(UserId)
             .ToDictionaryAsync(static x => x.Id, static x => x.DisplayName, cancellationToken);
 
-        foreach (IGrouping<string, BankTransaction> accountGrouping in openBankingTransactions.GroupBy(x =>
-                     accountNames[x.AccountId]))
+        // By id, display names aren't unique across providers
+        foreach (IGrouping<Guid, BankTransaction> accountGrouping in openBankingTransactions.GroupBy(static x =>
+                     x.AccountId))
         {
             decimal totalIn = accountGrouping.Where(static x => !decimal.IsNegative(x.Amount)).Sum(static x => x.Amount);
             decimal totalOut = accountGrouping.Where(static x => decimal.IsNegative(x.Amount)).Sum(static x => x.Amount);
@@ -189,7 +197,7 @@ public class ReportService : ServiceBase<ReportService>, IReportService
                 TotalIn = totalIn,
                 TotalOut = totalOut,
                 TotalTransactions = totalTransactions,
-                AccountName = accountGrouping.Key
+                AccountName = accountNames[accountGrouping.Key]
             };
 
             foreach (IGrouping<int, BankTransaction> yearlyGrouping in accountGrouping.GroupBy(static x =>
@@ -233,8 +241,9 @@ public class ReportService : ServiceBase<ReportService>, IReportService
                 }
 
                 rsp.YearlyBreakdown.Add(yearGrp);
-                yield return rsp;
             }
+
+            yield return rsp;
         }
     }
 
