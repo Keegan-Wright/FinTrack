@@ -1,6 +1,5 @@
 using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.Reports;
-using FinanceTracker.Domain;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.OpenBanking;
 using FinanceTracker.Infrastructure.Reports;
@@ -20,75 +19,9 @@ public class ReportServiceTests : ServiceTestsFixtureBase
         await SeedUsersAsync(factory, _cancellationTokenSource.Token);
 
         DateTime now = DateTime.UtcNow;
-        await using (FinanceTrackerContext context = await factory.CreateDbContextAsync(_cancellationTokenSource.Token))
-        {
-            FinanceTrackerUser user = await context.Users.Include(x => x.Providers)
-                .SingleAsync(x => x.Id == PrimaryUserId, _cancellationTokenSource.Token);
-
-            var provider = new OpenBankingProvider
-            {
-                Name = "Report Provider",
-                AccessCode = "code",
-                OpenBankingProviderId = "provider",
-                Logo = [4],
-                Accounts = [],
-                Scopes = [],
-                Transactions = [],
-                Syncronisations = []
-            };
-
-            var account = new OpenBankingAccount
-            {
-                OpenBankingAccountId = "acc",
-                AccountType = "CURRENT",
-                DisplayName = "Main",
-                Currency = "GBP",
-                ProviderId = provider.Id,
-                Transactions = [],
-                StandingOrders = [],
-                DirectDebits = [],
-                Syncronisations = []
-            };
-
-            account.Transactions!.Add(new OpenBankingTransaction
-            {
-                Description = "Income",
-                TransactionType = "CREDIT",
-                TransactionCategory = "SALARY",
-                Amount = 200,
-                Currency = "GBP",
-                TransactionId = "rp-1",
-                TransactionTime = now,
-                Pending = false,
-                ProviderId = provider.Id,
-                AccountId = account.Id,
-                Classifications = []
-            });
-
-            account.Transactions.Add(new OpenBankingTransaction
-            {
-                Description = "Expense",
-                TransactionType = "DEBIT",
-                TransactionCategory = "FOOD",
-                Amount = -50,
-                Currency = "GBP",
-                TransactionId = "rp-2",
-                TransactionTime = now,
-                Pending = false,
-                ProviderId = provider.Id,
-                AccountId = account.Id,
-                Classifications = []
-            });
-
-            foreach (OpenBankingTransaction tx in account.Transactions)
-            {
-                provider.Transactions!.Add(tx);
-            }
-
-            provider.Accounts!.Add(account);
-            user.Providers!.Add(provider);
-            await context.SaveChangesAsync(_cancellationTokenSource.Token);
-        }
+        await SeedAccountAsync(factory, PrimaryUserId, "Main", _cancellationTokenSource.Token,
+            Transaction("rp-1", "Income", 200, now, category: "SALARY"),
+            Transaction("rp-2", "Expense", -50, now, category: "FOOD"));
 
         var openBanking = Substitute.For<IOpenBankingService>();
         var subject = new ReportService(BuildUser(PrimaryUserId), factory, openBanking, NullLogger<ReportService>.Instance);

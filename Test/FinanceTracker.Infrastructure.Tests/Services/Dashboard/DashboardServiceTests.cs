@@ -1,4 +1,3 @@
-using FinanceTracker.Domain;
 using FinanceTracker.Infrastructure.Dashboard;
 using FinanceTracker.Tests.Shared;
 using Microsoft.EntityFrameworkCore;
@@ -15,85 +14,10 @@ public class DashboardServiceTests : ServiceTestsFixtureBase
         await SeedUsersAsync(factory, _cancellationTokenSource.Token);
 
         DateTime now = DateTime.UtcNow;
-        await using (FinanceTrackerContext context = await factory.CreateDbContextAsync(_cancellationTokenSource.Token))
-        {
-            FinanceTrackerUser user = await context.Users.Include(x => x.Providers)
-                .SingleAsync(x => x.Id == PrimaryUserId, _cancellationTokenSource.Token);
-
-            OpenBankingProvider provider = new()
-            {
-                Name = "Dash Provider",
-                AccessCode = "code",
-                OpenBankingProviderId = "provider",
-                Logo = [7],
-                Accounts = [],
-                Scopes = [],
-                Transactions = [],
-                Syncronisations = []
-            };
-
-            OpenBankingAccount account = new()
-            {
-                OpenBankingAccountId = "acc",
-                AccountType = "CURRENT",
-                DisplayName = "Daily",
-                Currency = "GBP",
-                ProviderId = provider.Id,
-                Transactions = [],
-                StandingOrders = [],
-                DirectDebits = [],
-                Syncronisations = []
-            };
-
-            account.Transactions!.Add(new OpenBankingTransaction
-            {
-                Description = "Incoming",
-                TransactionType = "CREDIT",
-                TransactionCategory = "SALARY",
-                Amount = 100,
-                Currency = "GBP",
-                TransactionId = "d1",
-                TransactionTime = now,
-                Pending = false,
-                ProviderId = provider.Id,
-                AccountId = account.Id,
-                Classifications = []
-            });
-
-            account.Transactions.Add(new OpenBankingTransaction
-            {
-                Description = "Outgoing",
-                TransactionType = "DEBIT",
-                TransactionCategory = "SHOPPING",
-                Amount = -25,
-                Currency = "GBP",
-                TransactionId = "d2",
-                TransactionTime = now,
-                Pending = false,
-                ProviderId = provider.Id,
-                AccountId = account.Id,
-                Classifications = []
-            });
-
-            account.Transactions.Add(new OpenBankingTransaction
-            {
-                Description = "Transfer",
-                TransactionType = "DEBIT",
-                TransactionCategory = "TRANSFER",
-                Amount = -500,
-                Currency = "GBP",
-                TransactionId = "d3",
-                TransactionTime = now,
-                Pending = false,
-                ProviderId = provider.Id,
-                AccountId = account.Id,
-                Classifications = []
-            });
-
-            provider.Accounts!.Add(account);
-            user.Providers!.Add(provider);
-            await context.SaveChangesAsync(_cancellationTokenSource.Token);
-        }
+        await SeedAccountAsync(factory, PrimaryUserId, "Daily", _cancellationTokenSource.Token,
+            Transaction("d1", "Incoming", 100, now, category: "SALARY"),
+            Transaction("d2", "Outgoing", -25, now, category: "SHOPPING"),
+            Transaction("d3", "Transfer", -500, now, category: "TRANSFER"));
 
         var subject = new DashboardService(BuildUser(PrimaryUserId), factory, NullLogger<DashboardService>.Instance);
         var result = await subject.GetSpentInTimePeriod(now.AddDays(-1), now.AddDays(1), _cancellationTokenSource.Token);

@@ -1,10 +1,9 @@
 using FinanceTracker.Contracts.Budget;
-using FinanceTracker.Domain;
 using FinanceTracker.Infrastructure.Budget;
 using FinanceTracker.Tests.Shared;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
-using BudgetCategory = FinanceTracker.Domain.BudgetCategory;
+using BudgetCategory = FinanceTracker.Domain.Budgeting.BudgetCategory;
 
 namespace FinanceTracker.Infrastructure.Tests.Services.Budget;
 
@@ -20,18 +19,7 @@ public class BudgetCategoriesServiceTests : ServiceTestsFixtureBase
 
         await using (FinanceTrackerContext context = await factory.CreateDbContextAsync(_cancellationTokenSource.Token))
         {
-            FinanceTrackerUser secondaryUser = await context.Users.Include(x => x.BudgetCategories)
-                .SingleAsync(x => x.Id == SecondaryUserId, _cancellationTokenSource.Token);
-
-            secondaryUser.BudgetCategories!.Add(new BudgetCategory
-            {
-                Name = "Secondary-only",
-                AvailableFunds = 9,
-                MonthlyStart = 1,
-                SavingsGoal = 20,
-                GoalCompletionDate = DateTime.UtcNow.Date,
-                Created = DateTime.UtcNow
-            });
+            context.BudgetCategories.Add(new BudgetCategory(SecondaryUserId, "Secondary-only", 9, 1, 20, DateTime.UtcNow.Date));
 
             await context.SaveChangesAsync(_cancellationTokenSource.Token);
         }
@@ -74,20 +62,9 @@ public class BudgetCategoriesServiceTests : ServiceTestsFixtureBase
         Guid categoryId;
         await using (FinanceTrackerContext context = await factory.CreateDbContextAsync(_cancellationTokenSource.Token))
         {
-            FinanceTrackerUser primaryUser = await context.Users.Include(x => x.BudgetCategories)
-                .SingleAsync(x => x.Id == PrimaryUserId, _cancellationTokenSource.Token);
+            var category = new BudgetCategory(PrimaryUserId, "Disposable", 30, 1, 40, DateTime.UtcNow.Date.AddDays(7));
 
-            var category = new BudgetCategory
-            {
-                Name = "Disposable",
-                AvailableFunds = 30,
-                MonthlyStart = 1,
-                SavingsGoal = 40,
-                GoalCompletionDate = DateTime.UtcNow.Date.AddDays(7),
-                Created = DateTime.UtcNow
-            };
-
-            primaryUser.BudgetCategories!.Add(category);
+            context.BudgetCategories.Add(category);
             await context.SaveChangesAsync(_cancellationTokenSource.Token);
             categoryId = category.Id;
         }

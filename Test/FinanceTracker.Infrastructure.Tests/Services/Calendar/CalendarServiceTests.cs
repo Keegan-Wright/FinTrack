@@ -1,4 +1,3 @@
-using FinanceTracker.Domain;
 using FinanceTracker.Infrastructure.Calendar;
 using FinanceTracker.Tests.Shared;
 using Microsoft.EntityFrameworkCore;
@@ -15,55 +14,8 @@ public class CalendarServiceTests : ServiceTestsFixtureBase
         await SeedUsersAsync(factory, _cancellationTokenSource.Token);
 
         DateTime txDate = new DateTime(2026, 5, 15, 12, 0, 0, DateTimeKind.Utc);
-        await using (FinanceTrackerContext context = await factory.CreateDbContextAsync(_cancellationTokenSource.Token))
-        {
-            FinanceTrackerUser user = await context.Users.Include(x => x.Providers)
-                .SingleAsync(x => x.Id == PrimaryUserId, _cancellationTokenSource.Token);
-
-            var provider = new OpenBankingProvider
-            {
-                Name = "Calendar Bank",
-                AccessCode = "code",
-                OpenBankingProviderId = "provider",
-                Logo = [9],
-                Accounts = [],
-                Scopes = [],
-                Transactions = [],
-                Syncronisations = []
-            };
-
-            var account = new OpenBankingAccount
-            {
-                OpenBankingAccountId = "acc",
-                AccountType = "CURRENT",
-                DisplayName = "Main",
-                Currency = "GBP",
-                ProviderId = provider.Id,
-                Transactions = [],
-                StandingOrders = [],
-                DirectDebits = [],
-                Syncronisations = []
-            };
-
-            account.Transactions!.Add(new OpenBankingTransaction
-            {
-                Description = "CalendarTx",
-                TransactionType = "DEBIT",
-                TransactionCategory = "SHOPPING",
-                Amount = -12,
-                Currency = "GBP",
-                TransactionId = "cal-1",
-                TransactionTime = txDate,
-                Pending = false,
-                ProviderId = provider.Id,
-                AccountId = account.Id,
-                Classifications = []
-            });
-
-            provider.Accounts!.Add(account);
-            user.Providers!.Add(provider);
-            await context.SaveChangesAsync(_cancellationTokenSource.Token);
-        }
+        await SeedAccountAsync(factory, PrimaryUserId, "Main", _cancellationTokenSource.Token,
+            Transaction("cal-1", "CalendarTx", -12, txDate, category: "SHOPPING"));
 
         var subject = new CalendarService(BuildUser(PrimaryUserId), factory, NullLogger<CalendarService>.Instance);
 

@@ -1,5 +1,8 @@
 using System.Security.Claims;
-using FinanceTracker.Domain;
+using FinanceTracker.Domain.Identity;
+using FinanceTracker.Domain.OpenBanking.Accounts;
+using FinanceTracker.Domain.OpenBanking.Connections;
+using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Encryption;
 using Microsoft.EntityFrameworkCore;
@@ -41,38 +44,43 @@ public abstract class ServiceTestsFixtureBase : TestFixtureBase
         await using FinanceTrackerContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
         context.Users.AddRange(
-            new FinanceTrackerUser
+            new FinanceTrackerUser("Primary", "User", "primary@test.local", "primary@test.local")
             {
-                Id = PrimaryUserId,
-                Email = "primary@test.local",
-                UserName = "primary@test.local",
-                FirstName = "Primary",
-                LastName = "User",
-                BudgetCategories = [],
-                HouseholdMembers = [],
-                CustomClassifications = [],
-                Debts = [],
-                OpenBankingAccessTokens = [],
-                Providers = []
+                Id = PrimaryUserId
             },
-            new FinanceTrackerUser
+            new FinanceTrackerUser("Secondary", "User", "secondary@test.local", "secondary@test.local")
             {
-                Id = SecondaryUserId,
-                Email = "secondary@test.local",
-                UserName = "secondary@test.local",
-                FirstName = "Secondary",
-                LastName = "User",
-                BudgetCategories = [],
-                HouseholdMembers = [],
-                CustomClassifications = [],
-                Debts = [],
-                OpenBankingAccessTokens = [],
-                Providers = []
+                Id = SecondaryUserId
             }
         );
 
         await context.SaveChangesAsync(cancellationToken);
     }
+
+    /// <summary>
+    /// Seeds a connection with a single account for <paramref name="userId"/> and imports the given transactions.
+    /// </summary>
+    protected static async Task<BankAccount> SeedAccountAsync(IDbContextFactory<FinanceTrackerContext> contextFactory,
+        Guid userId, string displayName, CancellationToken cancellationToken, params TransactionDetails[] transactions)
+    {
+        await using FinanceTrackerContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
+
+        BankConnection connection = new(userId, $"provider-{Guid.NewGuid()}", "Test Bank", "access-code",
+            ["accounts", "transactions"], [1, 2, 3]);
+        BankAccount account = new(userId, connection.Id, $"acc-{Guid.NewGuid()}", "CURRENT", displayName, "GBP");
+
+        context.BankConnections.Add(connection);
+        context.BankAccounts.Add(account);
+        context.BankTransactions.AddRange(transactions.Select(x => BankTransaction.Import(account, x)));
+
+        await context.SaveChangesAsync(cancellationToken);
+        return account;
+    }
+
+    protected static TransactionDetails Transaction(string externalId, string description, decimal amount,
+        DateTime occurredAt, string category = "SHOPPING", bool isPending = false, params string[] classifications) =>
+        new(externalId, description, decimal.IsNegative(amount) ? TransactionType.Debit : TransactionType.Credit,
+            category, amount, "GBP", occurredAt, isPending, classifications);
 
     private sealed class InMemoryFinanceTrackerContextFactory(
         DbContextOptions<FinanceTrackerContext> options,

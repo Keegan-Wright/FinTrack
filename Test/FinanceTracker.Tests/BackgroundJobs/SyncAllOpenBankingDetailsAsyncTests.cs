@@ -1,7 +1,7 @@
 using System.Reflection;
 using FinanceTracker.BackgroundJobs;
 using FinanceTracker.Contracts;
-using FinanceTracker.Domain;
+using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.OpenBanking;
 using FinanceTracker.Tests.Shared;
@@ -15,7 +15,7 @@ namespace FinanceTracker.Tests.BackgroundJobs;
 public class SyncAllOpenBankingDetailsAsyncTests : ServiceTestsFixtureBase
 {
     [Test]
-    public async Task ExecuteAsync_WhenUsersHaveProviders_BulkLoadsAllProvidersAndNotifiesComplete()
+    public async Task ExecuteAsync_WhenUsersHaveConnections_SyncsEachConnectionAsItsOwnerAndNotifiesComplete()
     {
         IDbContextFactory<FinanceTrackerContext> factory = BuildFactory($"sync-job-all-{Guid.NewGuid()}");
         await SeedUsersWithProvidersAsync(factory, _cancellationTokenSource.Token, primaryProviderCount: 2, secondaryProviderCount: 1);
@@ -34,13 +34,14 @@ public class SyncAllOpenBankingDetailsAsyncTests : ServiceTestsFixtureBase
 
         await subject.ExecuteAsync(BuildTickerFunctionContext(), _cancellationTokenSource.Token);
 
-        await openBankingService.Received(1)
+        // One user switch per connection
+        await openBankingService.Received(2)
             .RunFunctionAsUser(PrimaryUserId, Arg.Any<Func<Task>>());
         await openBankingService.Received(1)
             .RunFunctionAsUser(SecondaryUserId, Arg.Any<Func<Task>>());
 
         await openBankingService.Received(3)
-            .BulkLoadProviderAsync(Arg.Any<OpenBankingProvider>(), SyncTypes.All, _cancellationTokenSource.Token);
+            .SyncConnectionAsync(Arg.Any<Guid>(), SyncTypes.All, _cancellationTokenSource.Token);
 
         await syncService.Received(1).NotifySyncComplete();
     }
@@ -61,7 +62,7 @@ public class SyncAllOpenBankingDetailsAsyncTests : ServiceTestsFixtureBase
                 await function();
             });
 
-        openBankingService.BulkLoadProviderAsync(Arg.Any<OpenBankingProvider>(), SyncTypes.All, _cancellationTokenSource.Token)
+        openBankingService.SyncConnectionAsync(Arg.Any<Guid>(), SyncTypes.All, _cancellationTokenSource.Token)
             .Returns(Task.CompletedTask, Task.FromException(new InvalidOperationException("boom")), Task.CompletedTask);
 
         var subject = new SyncAllOpenBankingDetailsAsync(openBankingService, factory, syncService);
@@ -69,13 +70,13 @@ public class SyncAllOpenBankingDetailsAsyncTests : ServiceTestsFixtureBase
         await subject.ExecuteAsync(BuildTickerFunctionContext(), _cancellationTokenSource.Token);
 
         await openBankingService.Received(3)
-            .BulkLoadProviderAsync(Arg.Any<OpenBankingProvider>(), SyncTypes.All, _cancellationTokenSource.Token);
+            .SyncConnectionAsync(Arg.Any<Guid>(), SyncTypes.All, _cancellationTokenSource.Token);
 
         await syncService.Received(1).NotifySyncComplete();
     }
 
     [Test]
-    public async Task ExecuteAsync_WhenUsersHaveNoProviders_DoesNotBulkLoadAndStillNotifiesComplete()
+    public async Task ExecuteAsync_WhenUsersHaveNoConnections_DoesNotSyncAndStillNotifiesComplete()
     {
         IDbContextFactory<FinanceTrackerContext> factory = BuildFactory($"sync-job-empty-{Guid.NewGuid()}");
         await SeedUsersAsync(factory, _cancellationTokenSource.Token);
@@ -95,7 +96,7 @@ public class SyncAllOpenBankingDetailsAsyncTests : ServiceTestsFixtureBase
         await subject.ExecuteAsync(BuildTickerFunctionContext(), _cancellationTokenSource.Token);
 
         await openBankingService.DidNotReceive()
-            .BulkLoadProviderAsync(Arg.Any<OpenBankingProvider>(), SyncTypes.All, _cancellationTokenSource.Token);
+            .SyncConnectionAsync(Arg.Any<Guid>(), SyncTypes.All, _cancellationTokenSource.Token);
 
         await syncService.Received(1).NotifySyncComplete();
     }
@@ -128,38 +129,13 @@ public class SyncAllOpenBankingDetailsAsyncTests : ServiceTestsFixtureBase
 
         await using FinanceTrackerContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
-        FinanceTrackerUser primary = await context.Users
-            .Include(x => x.Providers)
-            .SingleAsync(x => x.Id == PrimaryUserId, cancellationToken);
-        FinanceTrackerUser secondary = await context.Users
-            .Include(x => x.Providers)
-            .SingleAsync(x => x.Id == SecondaryUserId, cancellationToken);
-
-        primary.Providers = BuildProviders(primaryProviderCount);
-        secondary.Providers = BuildProviders(secondaryProviderCount);
+        context.BankConnections.AddRange(BuildConnections(PrimaryUserId, primaryProviderCount));
+        context.BankConnections.AddRange(BuildConnections(SecondaryUserId, secondaryProviderCount));
 
         await context.SaveChangesAsync(cancellationToken);
     }
 
-    private static List<OpenBankingProvider> BuildProviders(int count)
-    {
-        var providers = new List<OpenBankingProvider>(count);
-
-        for (int i = 0; i < count; i++)
-        {
-            providers.Add(new OpenBankingProvider
-            {
-                Name = $"Provider-{i}",
-                AccessCode = $"access-{i}",
-                OpenBankingProviderId = $"ob-{i}",
-                Logo = [1, 2, 3],
-                Accounts = [],
-                Scopes = [],
-                Syncronisations = [],
-                Transactions = []
-            });
-        }
-
-        return providers;
-    }
+    private static IEnumerable<BankConnection> BuildConnections(Guid userId, int count) =>
+        Enumerable.Range(0, count).Select(i =>
+            new BankConnection(userId, $"ob-{i}", $"Provider-{i}", $"access-{i}", ["accounts"], [1, 2, 3]));
 }

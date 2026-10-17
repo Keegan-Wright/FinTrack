@@ -1,11 +1,10 @@
 using FinanceTracker.Contracts.HouseholdMember;
-using FinanceTracker.Domain;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.HouseholdMembers;
 using FinanceTracker.Tests.Shared;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
-using HouseholdMember = FinanceTracker.Domain.HouseholdMember;
+using HouseholdMember = FinanceTracker.Domain.Household.HouseholdMember;
 
 namespace FinanceTracker.Infrastructure.Tests.Services.HouseholdMembers;
 
@@ -19,15 +18,7 @@ public class HouseholdMemberServiceTests : ServiceTestsFixtureBase
 
         await using (FinanceTrackerContext context = await factory.CreateDbContextAsync(_cancellationTokenSource.Token))
         {
-            FinanceTrackerUser secondary = await context.Users.Include(x => x.HouseholdMembers)
-                .SingleAsync(x => x.Id == SecondaryUserId, _cancellationTokenSource.Token);
-            secondary.HouseholdMembers!.Add(new HouseholdMember
-            {
-                FirstName = "Other",
-                LastName = "User",
-                Income = 15,
-                Created = DateTime.UtcNow
-            });
+            context.HouseholdMembers.Add(new HouseholdMember(SecondaryUserId, "Other", "User", 15));
             await context.SaveChangesAsync(_cancellationTokenSource.Token);
         }
 

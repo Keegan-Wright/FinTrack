@@ -1,4 +1,4 @@
-using FinanceTracker.Domain;
+using FinanceTracker.Domain.Budgeting;
 using FinanceTracker.Tests.Shared;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,18 +16,7 @@ public class FinanceTrackerContextInMemoryEncryptionTests : ServiceTestsFixtureB
         // Act
         await using (FinanceTrackerContext writeContext = await factory.CreateDbContextAsync(_cancellationTokenSource.Token))
         {
-            FinanceTrackerUser user = await writeContext.Users.Include(x => x.BudgetCategories)
-                .SingleAsync(x => x.Id == PrimaryUserId, _cancellationTokenSource.Token);
-
-            user.BudgetCategories!.Add(new BudgetCategory
-            {
-                Name = "Encrypted Budget",
-                AvailableFunds = 77,
-                MonthlyStart = 3,
-                SavingsGoal = 500,
-                GoalCompletionDate = DateTime.UtcNow.Date.AddMonths(1),
-                Created = DateTime.UtcNow
-            });
+            writeContext.BudgetCategories.Add(new BudgetCategory(PrimaryUserId, "Encrypted Budget", 77, 3, 500, DateTime.UtcNow.Date.AddMonths(1)));
 
             await writeContext.SaveChangesAsync(_cancellationTokenSource.Token);
         }
