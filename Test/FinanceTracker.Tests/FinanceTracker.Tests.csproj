@@ -6,12 +6,12 @@
         <Nullable>enable</Nullable>
     </PropertyGroup>
 
-  
+
   <ItemGroup>
-    <PackageReference Include="NSubstitute" Version="6.2.0" />
-    <PackageReference Include="TUnit" Version="1.75.0" />
+    <PackageReference Include="NSubstitute"/>
+    <PackageReference Include="TUnit"/>
   </ItemGroup>
-  
+
     <ItemGroup>
       <ProjectReference Include="..\..\Src\FinanceTracker\FinanceTracker.csproj" />
       <ProjectReference Include="..\FinanceTracker.Tests.Shared\FinanceTracker.Tests.Shared.csproj" />

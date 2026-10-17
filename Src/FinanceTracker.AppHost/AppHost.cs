@@ -1,4 +1,5 @@
-using Aspire.Hosting.Docker.Resources.ComposeNodes;
+using Aspire.Hosting;
+using Aspire.Hosting.ApplicationModel;
 using Microsoft.Extensions.Configuration;
 #pragma warning disable ASPIRECOMPUTE003
 #pragma warning disable ASPIREPIPELINES003

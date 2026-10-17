@@ -2,6 +2,9 @@ using FinanceTracker.Infrastructure.Dashboard;
 using FinanceTracker.Tests.Shared;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using TUnit.Assertions;
+using TUnit.Assertions.Extensions;
+using TUnit.Core;
 
 namespace FinanceTracker.Infrastructure.Tests.Services.Dashboard;
 

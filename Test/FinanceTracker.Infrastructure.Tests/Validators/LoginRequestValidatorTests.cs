@@ -1,6 +1,9 @@
 using FinanceTracker.Contracts.Auth;
 using FinanceTracker.Infrastructure.Validation;
 using FinanceTracker.Tests.Shared;
+using TUnit.Assertions;
+using TUnit.Assertions.Extensions;
+using TUnit.Core;
 
 namespace FinanceTracker.Infrastructure.Tests.Validators;
 

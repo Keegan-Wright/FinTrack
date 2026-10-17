@@ -5,6 +5,9 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using TickerQ.Utilities.Entities;
 using TickerQ.Utilities.Interfaces.Managers;
+using TUnit.Assertions;
+using TUnit.Assertions.Extensions;
+using TUnit.Core;
 
 namespace FinanceTracker.Infrastructure.Tests.Services.Automation;
 
