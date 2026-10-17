@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -8,8 +7,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FinanceTracker.Infrastructure.Migrations.Migrations
 {
     /// <inheritdoc />
-    [SuppressMessage("Performance", "CA1861:Avoid constant arrays as arguments")]
-    public partial class InitialWithEncryption : Migration
+    public partial class Initial : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -38,6 +36,7 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     FirstName = table.Column<string>(type: "text", nullable: false),
                     LastName = table.Column<string>(type: "text", nullable: false),
+                    OpenIdConnectSubject = table.Column<string>(type: "text", nullable: true),
                     UserName = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
                     NormalizedUserName = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
                     Email = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
@@ -68,6 +67,8 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     Request = table.Column<byte[]>(type: "bytea", nullable: true),
                     Retries = table.Column<int>(type: "integer", nullable: false),
                     RetryIntervals = table.Column<int[]>(type: "integer[]", nullable: true),
+                    IsEnabled = table.Column<bool>(type: "boolean", nullable: false),
+                    IsSystemPaused = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
                     Function = table.Column<string>(type: "text", nullable: true),
                     Description = table.Column<string>(type: "text", nullable: true),
                     InitIdentifier = table.Column<string>(type: "text", nullable: true),
@@ -223,6 +224,33 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "BankConnections",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    ExternalProviderId = table.Column<string>(type: "text", nullable: false),
+                    Name = table.Column<string>(type: "text", nullable: false),
+                    AccessCode = table.Column<string>(type: "text", nullable: false),
+                    Logo = table.Column<string>(type: "text", nullable: false),
+                    Scopes = table.Column<string[]>(type: "text[]", nullable: false),
+                    ConsentGrantedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    Created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    Updated = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_BankConnections", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_BankConnections_AspNetUsers_UserId",
+                        column: x => x.UserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "BudgetCategories",
                 columns: table => new
                 {
@@ -232,19 +260,20 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     MonthlyStart = table.Column<string>(type: "text", nullable: false),
                     SavingsGoal = table.Column<string>(type: "text", nullable: false),
                     GoalCompletionDate = table.Column<string>(type: "text", nullable: true),
-                    FinanceTrackerUserId = table.Column<Guid>(type: "uuid", nullable: true),
                     Created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     Updated = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_BudgetCategories", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_BudgetCategories_AspNetUsers_FinanceTrackerUserId",
-                        column: x => x.FinanceTrackerUserId,
+                        name: "FK_BudgetCategories_AspNetUsers_UserId",
+                        column: x => x.UserId,
                         principalTable: "AspNetUsers",
-                        principalColumn: "Id");
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -253,19 +282,20 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     Tag = table.Column<string>(type: "text", nullable: false),
-                    FinanceTrackerUserId = table.Column<Guid>(type: "uuid", nullable: true),
                     Created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     Updated = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_CustomClassifications", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_CustomClassifications_AspNetUsers_FinanceTrackerUserId",
-                        column: x => x.FinanceTrackerUserId,
+                        name: "FK_CustomClassifications_AspNetUsers_UserId",
+                        column: x => x.UserId,
                         principalTable: "AspNetUsers",
-                        principalColumn: "Id");
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -277,19 +307,20 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     MonthlyPayment = table.Column<string>(type: "text", nullable: false),
                     FinalPaymentDate = table.Column<string>(type: "text", nullable: true),
                     PayOffGoal = table.Column<string>(type: "text", nullable: true),
-                    FinanceTrackerUserId = table.Column<Guid>(type: "uuid", nullable: true),
                     Created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     Updated = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Debts", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Debts_AspNetUsers_FinanceTrackerUserId",
-                        column: x => x.FinanceTrackerUserId,
+                        name: "FK_Debts_AspNetUsers_UserId",
+                        column: x => x.UserId,
                         principalTable: "AspNetUsers",
-                        principalColumn: "Id");
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -300,67 +331,20 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     FirstName = table.Column<string>(type: "text", nullable: false),
                     LastName = table.Column<string>(type: "text", nullable: false),
                     Income = table.Column<string>(type: "text", nullable: true),
-                    FinanceTrackerUserId = table.Column<Guid>(type: "uuid", nullable: true),
                     Created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     Updated = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_HouseholdMembers", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_HouseholdMembers_AspNetUsers_FinanceTrackerUserId",
-                        column: x => x.FinanceTrackerUserId,
+                        name: "FK_HouseholdMembers_AspNetUsers_UserId",
+                        column: x => x.UserId,
                         principalTable: "AspNetUsers",
-                        principalColumn: "Id");
-                });
-
-            migrationBuilder.CreateTable(
-                name: "OpenBankingAccessTokens",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    ProviderId = table.Column<Guid>(type: "uuid", nullable: false),
-                    AccessToken = table.Column<string>(type: "text", nullable: false),
-                    ExpiresIn = table.Column<string>(type: "text", nullable: false),
-                    RefreshToken = table.Column<string>(type: "text", nullable: false),
-                    FinanceTrackerUserId = table.Column<Guid>(type: "uuid", nullable: true),
-                    Created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    Updated = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_OpenBankingAccessTokens", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_OpenBankingAccessTokens_AspNetUsers_FinanceTrackerUserId",
-                        column: x => x.FinanceTrackerUserId,
-                        principalTable: "AspNetUsers",
-                        principalColumn: "Id");
-                });
-
-            migrationBuilder.CreateTable(
-                name: "OpenBankingProviders",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    Name = table.Column<string>(type: "text", nullable: false),
-                    AccessCode = table.Column<string>(type: "text", nullable: false),
-                    OpenBankingProviderId = table.Column<string>(type: "text", nullable: false),
-                    Logo = table.Column<string>(type: "text", nullable: false),
-                    FinanceTrackerUserId = table.Column<Guid>(type: "uuid", nullable: true),
-                    Created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    Updated = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_OpenBankingProviders", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_OpenBankingProviders_AspNetUsers_FinanceTrackerUserId",
-                        column: x => x.FinanceTrackerUserId,
-                        principalTable: "AspNetUsers",
-                        principalColumn: "Id");
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -395,109 +379,137 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "OpenBankingAccounts",
+                name: "AccessTokens",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    OpenBankingAccountId = table.Column<string>(type: "text", nullable: false),
+                    Token = table.Column<string>(type: "text", nullable: false),
+                    RefreshToken = table.Column<string>(type: "text", nullable: false),
+                    IssuedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    ExpiresAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    RevokedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    ConnectionId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    Updated = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AccessTokens", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_AccessTokens_BankConnections_ConnectionId",
+                        column: x => x.ConnectionId,
+                        principalTable: "BankConnections",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "BankAccounts",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    ConnectionId = table.Column<Guid>(type: "uuid", nullable: false),
+                    ExternalId = table.Column<string>(type: "text", nullable: false),
                     AccountType = table.Column<string>(type: "text", nullable: false),
                     DisplayName = table.Column<string>(type: "text", nullable: false),
                     Currency = table.Column<string>(type: "text", nullable: false),
-                    ProviderId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Balance_Available = table.Column<string>(type: "text", nullable: true),
+                    Balance_Current = table.Column<string>(type: "text", nullable: true),
+                    Balance_AsOf = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     Created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     Updated = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_OpenBankingAccounts", x => x.Id);
+                    table.PrimaryKey("PK_BankAccounts", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_OpenBankingAccounts_OpenBankingProviders_ProviderId",
-                        column: x => x.ProviderId,
-                        principalTable: "OpenBankingProviders",
+                        name: "FK_BankAccounts_AspNetUsers_UserId",
+                        column: x => x.UserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_BankAccounts_BankConnections_ConnectionId",
+                        column: x => x.ConnectionId,
+                        principalTable: "BankConnections",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "OpenBankingProviderScopes",
+                name: "BankTransactions",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    Scope = table.Column<string>(type: "text", nullable: false),
-                    ProviderId = table.Column<Guid>(type: "uuid", nullable: false),
-                    Created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    Updated = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_OpenBankingProviderScopes", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_OpenBankingProviderScopes_OpenBankingProviders_ProviderId",
-                        column: x => x.ProviderId,
-                        principalTable: "OpenBankingProviders",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "OpenBankingAccountBalances",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    Currency = table.Column<string>(type: "text", nullable: false),
-                    Available = table.Column<string>(type: "text", nullable: false),
-                    Current = table.Column<string>(type: "text", nullable: false),
                     AccountId = table.Column<Guid>(type: "uuid", nullable: false),
+                    ExternalId = table.Column<string>(type: "text", nullable: false),
+                    Description = table.Column<string>(type: "text", nullable: false),
+                    Type = table.Column<string>(type: "text", nullable: false),
+                    Category = table.Column<string>(type: "text", nullable: false),
+                    Amount = table.Column<string>(type: "text", nullable: false),
+                    Currency = table.Column<string>(type: "text", nullable: false),
+                    OccurredAt = table.Column<string>(type: "text", nullable: false),
+                    IsPending = table.Column<bool>(type: "boolean", nullable: false),
+                    ProviderClassifications = table.Column<string[]>(type: "text[]", nullable: false),
+                    CustomClassificationIds = table.Column<Guid[]>(type: "uuid[]", nullable: false),
                     Created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     Updated = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_OpenBankingAccountBalances", x => x.Id);
+                    table.PrimaryKey("PK_BankTransactions", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_OpenBankingAccountBalances_OpenBankingAccounts_AccountId",
+                        name: "FK_BankTransactions_AspNetUsers_UserId",
+                        column: x => x.UserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_BankTransactions_BankAccounts_AccountId",
                         column: x => x.AccountId,
-                        principalTable: "OpenBankingAccounts",
+                        principalTable: "BankAccounts",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "OpenBankingDirectDebits",
+                name: "DirectDebits",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    OpenBankingDirectDebitId = table.Column<string>(type: "text", nullable: false),
+                    ExternalId = table.Column<string>(type: "text", nullable: false),
                     Name = table.Column<string>(type: "text", nullable: false),
                     Status = table.Column<string>(type: "text", nullable: false),
-                    PreviousPaymentTimeStamp = table.Column<string>(type: "text", nullable: false),
+                    PreviousPaymentDate = table.Column<string>(type: "text", nullable: false),
                     PreviousPaymentAmount = table.Column<string>(type: "text", nullable: false),
                     Currency = table.Column<string>(type: "text", nullable: true),
-                    TimeStamp = table.Column<string>(type: "text", nullable: false),
+                    Timestamp = table.Column<string>(type: "text", nullable: false),
                     AccountId = table.Column<Guid>(type: "uuid", nullable: false),
                     Created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    Updated = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
+                    Updated = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_OpenBankingDirectDebits", x => x.Id);
+                    table.PrimaryKey("PK_DirectDebits", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_OpenBankingDirectDebits_OpenBankingAccounts_AccountId",
+                        name: "FK_DirectDebits_BankAccounts_AccountId",
                         column: x => x.AccountId,
-                        principalTable: "OpenBankingAccounts",
+                        principalTable: "BankAccounts",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "OpenBankingStandingOrders",
+                name: "StandingOrders",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Reference = table.Column<string>(type: "text", nullable: false),
+                    Payee = table.Column<string>(type: "text", nullable: false),
                     Frequency = table.Column<string>(type: "text", nullable: false),
                     Status = table.Column<string>(type: "text", nullable: false),
                     Currency = table.Column<string>(type: "text", nullable: false),
@@ -507,114 +519,50 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     FirstPaymentAmount = table.Column<string>(type: "text", nullable: false),
                     FinalPaymentDate = table.Column<string>(type: "text", nullable: false),
                     FinalPaymentAmount = table.Column<string>(type: "text", nullable: false),
-                    Reference = table.Column<string>(type: "text", nullable: false),
-                    Payee = table.Column<string>(type: "text", nullable: false),
                     Timestamp = table.Column<string>(type: "text", nullable: false),
                     AccountId = table.Column<Guid>(type: "uuid", nullable: false),
                     Created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    Updated = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
+                    Updated = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_OpenBankingStandingOrders", x => x.Id);
+                    table.PrimaryKey("PK_StandingOrders", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_OpenBankingStandingOrders_OpenBankingAccounts_AccountId",
+                        name: "FK_StandingOrders_BankAccounts_AccountId",
                         column: x => x.AccountId,
-                        principalTable: "OpenBankingAccounts",
+                        principalTable: "BankAccounts",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "OpenBankingSynchronizations",
+                name: "SyncLog",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    SyncronisationType = table.Column<int>(type: "integer", nullable: false),
-                    SyncronisationTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    ProviderId = table.Column<Guid>(type: "uuid", nullable: false),
                     AccountId = table.Column<Guid>(type: "uuid", nullable: false),
-                    OpenBankingAccountId = table.Column<string>(type: "text", nullable: false),
+                    Type = table.Column<string>(type: "text", nullable: false),
+                    OccurredAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     Created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    Updated = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
+                    Updated = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_OpenBankingSynchronizations", x => x.Id);
+                    table.PrimaryKey("PK_SyncLog", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_OpenBankingSynchronizations_OpenBankingAccounts_AccountId",
+                        name: "FK_SyncLog_BankAccounts_AccountId",
                         column: x => x.AccountId,
-                        principalTable: "OpenBankingAccounts",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_OpenBankingSynchronizations_OpenBankingProviders_ProviderId",
-                        column: x => x.ProviderId,
-                        principalTable: "OpenBankingProviders",
+                        principalTable: "BankAccounts",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.CreateTable(
-                name: "OpenBankingTransactions",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    Description = table.Column<string>(type: "text", nullable: false),
-                    TransactionType = table.Column<string>(type: "text", nullable: false),
-                    TransactionCategory = table.Column<string>(type: "text", nullable: false),
-                    Amount = table.Column<string>(type: "text", nullable: false),
-                    Currency = table.Column<string>(type: "text", nullable: false),
-                    TransactionId = table.Column<string>(type: "text", nullable: false),
-                    TransactionTime = table.Column<string>(type: "text", nullable: false),
-                    Pending = table.Column<string>(type: "text", nullable: false),
-                    ProviderId = table.Column<Guid>(type: "uuid", nullable: false),
-                    AccountId = table.Column<Guid>(type: "uuid", nullable: false),
-                    Created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    Updated = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_OpenBankingTransactions", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_OpenBankingTransactions_OpenBankingAccounts_AccountId",
-                        column: x => x.AccountId,
-                        principalTable: "OpenBankingAccounts",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_OpenBankingTransactions_OpenBankingProviders_ProviderId",
-                        column: x => x.ProviderId,
-                        principalTable: "OpenBankingProviders",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "OpenBankingTransactionClassifications",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    Classification = table.Column<string>(type: "text", nullable: false),
-                    TransactionId = table.Column<Guid>(type: "uuid", nullable: false),
-                    IsCustomClassification = table.Column<bool>(type: "boolean", nullable: false),
-                    Created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    Updated = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_OpenBankingTransactionClassifications", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_OpenBankingTransactionClassifications_OpenBankingTransactio~",
-                        column: x => x.TransactionId,
-                        principalTable: "OpenBankingTransactions",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
+            migrationBuilder.CreateIndex(
+                name: "IX_AccessTokens_ConnectionId",
+                table: "AccessTokens",
+                column: "ConnectionId",
+                unique: true,
+                filter: "\"RevokedAt\" IS NULL");
 
             migrationBuilder.CreateIndex(
                 name: "IX_AspNetRoleClaims_RoleId",
@@ -654,9 +602,37 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_BudgetCategories_FinanceTrackerUserId",
+                name: "IX_BankAccounts_ConnectionId_ExternalId",
+                table: "BankAccounts",
+                columns: new[] { "ConnectionId", "ExternalId" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_BankAccounts_UserId",
+                table: "BankAccounts",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_BankConnections_UserId_ExternalProviderId",
+                table: "BankConnections",
+                columns: new[] { "UserId", "ExternalProviderId" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_BankTransactions_AccountId_ExternalId",
+                table: "BankTransactions",
+                columns: new[] { "AccountId", "ExternalId" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_BankTransactions_UserId",
+                table: "BankTransactions",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_BudgetCategories_UserId",
                 table: "BudgetCategories",
-                column: "FinanceTrackerUserId");
+                column: "UserId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_CronTickerOccurrence_CronTickerId",
@@ -696,80 +672,41 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                 columns: new[] { "Function", "Expression" });
 
             migrationBuilder.CreateIndex(
-                name: "IX_CustomClassifications_FinanceTrackerUserId",
+                name: "IX_CustomClassifications_UserId_Tag",
                 table: "CustomClassifications",
-                column: "FinanceTrackerUserId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Debts_FinanceTrackerUserId",
-                table: "Debts",
-                column: "FinanceTrackerUserId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_HouseholdMembers_FinanceTrackerUserId",
-                table: "HouseholdMembers",
-                column: "FinanceTrackerUserId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_OpenBankingAccessTokens_FinanceTrackerUserId",
-                table: "OpenBankingAccessTokens",
-                column: "FinanceTrackerUserId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_OpenBankingAccountBalances_AccountId",
-                table: "OpenBankingAccountBalances",
-                column: "AccountId",
+                columns: new[] { "UserId", "Tag" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_OpenBankingAccounts_ProviderId",
-                table: "OpenBankingAccounts",
-                column: "ProviderId");
+                name: "IX_Debts_UserId",
+                table: "Debts",
+                column: "UserId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_OpenBankingDirectDebits_AccountId",
-                table: "OpenBankingDirectDebits",
+                name: "IX_DirectDebits_AccountId_ExternalId",
+                table: "DirectDebits",
+                columns: new[] { "AccountId", "ExternalId" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_HouseholdMembers_UserId",
+                table: "HouseholdMembers",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_StandingOrders_AccountId",
+                table: "StandingOrders",
                 column: "AccountId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_OpenBankingProviders_FinanceTrackerUserId",
-                table: "OpenBankingProviders",
-                column: "FinanceTrackerUserId");
+                name: "IX_SyncLog_AccountId_OccurredAt",
+                table: "SyncLog",
+                columns: new[] { "AccountId", "OccurredAt" });
 
             migrationBuilder.CreateIndex(
-                name: "IX_OpenBankingProviderScopes_ProviderId",
-                table: "OpenBankingProviderScopes",
-                column: "ProviderId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_OpenBankingStandingOrders_AccountId",
-                table: "OpenBankingStandingOrders",
-                column: "AccountId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_OpenBankingSynchronizations_AccountId",
-                table: "OpenBankingSynchronizations",
-                column: "AccountId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_OpenBankingSynchronizations_ProviderId",
-                table: "OpenBankingSynchronizations",
-                column: "ProviderId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_OpenBankingTransactionClassifications_TransactionId",
-                table: "OpenBankingTransactionClassifications",
-                column: "TransactionId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_OpenBankingTransactions_AccountId",
-                table: "OpenBankingTransactions",
-                column: "AccountId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_OpenBankingTransactions_ProviderId",
-                table: "OpenBankingTransactions",
-                column: "ProviderId");
+                name: "IX_SyncLog_OccurredAt",
+                table: "SyncLog",
+                column: "OccurredAt");
 
             migrationBuilder.CreateIndex(
                 name: "IX_TimeTicker_ExecutionTime",
@@ -788,11 +725,17 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                 schema: "ticker",
                 table: "TimeTickers",
                 column: "ParentId");
+
+            migrationBuilder.Sql("""INSERT INTO ticker."CronTickers"("Id", "Expression", "Request", "Retries", "RetryIntervals", "Function", "Description", "InitIdentifier", "CreatedAt", "UpdatedAt", "IsEnabled")VALUES (gen_random_uuid(), '0 0 */4 * * *', NULL, 1, ARRAY [10,20,30], 'SyncAllOpenBankingDetailsAsync', 'Performs background syncing of your banking data', NULL, timezone('utc', now()), timezone('utc', now()), true);""");
+            migrationBuilder.Sql("""INSERT INTO ticker."CronTickers"("Id", "Expression", "Request", "Retries", "RetryIntervals", "Function", "Description", "InitIdentifier", "CreatedAt", "UpdatedAt", "IsEnabled")VALUES (gen_random_uuid(), '0 0 */12 * * *', NULL, 1, ARRAY [10,20,30], 'MonitorOpenBankingTokenExpirationAsync', 'Performs background monitoring of your provider access tokens for expiration', NULL, timezone('utc', now()), timezone('utc', now()), true);""");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropTable(
+                name: "AccessTokens");
+
             migrationBuilder.DropTable(
                 name: "AspNetRoleClaims");
 
@@ -809,6 +752,9 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                 name: "AspNetUserTokens");
 
             migrationBuilder.DropTable(
+                name: "BankTransactions");
+
+            migrationBuilder.DropTable(
                 name: "BudgetCategories");
 
             migrationBuilder.DropTable(
@@ -822,28 +768,16 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                 name: "Debts");
 
             migrationBuilder.DropTable(
+                name: "DirectDebits");
+
+            migrationBuilder.DropTable(
                 name: "HouseholdMembers");
 
             migrationBuilder.DropTable(
-                name: "OpenBankingAccessTokens");
+                name: "StandingOrders");
 
             migrationBuilder.DropTable(
-                name: "OpenBankingAccountBalances");
-
-            migrationBuilder.DropTable(
-                name: "OpenBankingDirectDebits");
-
-            migrationBuilder.DropTable(
-                name: "OpenBankingProviderScopes");
-
-            migrationBuilder.DropTable(
-                name: "OpenBankingStandingOrders");
-
-            migrationBuilder.DropTable(
-                name: "OpenBankingSynchronizations");
-
-            migrationBuilder.DropTable(
-                name: "OpenBankingTransactionClassifications");
+                name: "SyncLog");
 
             migrationBuilder.DropTable(
                 name: "TimeTickers",
@@ -857,13 +791,10 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                 schema: "ticker");
 
             migrationBuilder.DropTable(
-                name: "OpenBankingTransactions");
+                name: "BankAccounts");
 
             migrationBuilder.DropTable(
-                name: "OpenBankingAccounts");
-
-            migrationBuilder.DropTable(
-                name: "OpenBankingProviders");
+                name: "BankConnections");
 
             migrationBuilder.DropTable(
                 name: "AspNetUsers");
