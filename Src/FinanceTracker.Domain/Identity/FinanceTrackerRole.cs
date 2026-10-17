@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 
-namespace FinanceTracker.Domain;
+namespace FinanceTracker.Domain.Identity;
 
 /// <summary>
 /// User roles
