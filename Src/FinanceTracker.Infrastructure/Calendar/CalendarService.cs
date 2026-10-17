@@ -29,26 +29,24 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
         // IMPORTANT:
         // Transaction timestamps / goal dates are encrypted at rest, so we cannot filter by date in SQL.
         // Materialize first, then filter in-memory on decrypted values.
-        List<CalendarTransactionItem> transactionItems = await context.IsolateToUser(UserId)
-            .Include(x => x.Providers)!.ThenInclude(x => x.Accounts)!.ThenInclude(x => x.Transactions)
-            .SelectMany(x => x.Providers!.SelectMany(c => c.Accounts!.SelectMany(v => v.Transactions!)))
-            .Select(x => new CalendarTransactionItem
+        List<CalendarTransactionItem> transactionItems = (await context.BankTransactions.OwnedBy(UserId)
+                .Select(static x => new { x.Description, x.Amount, x.Type, x.OccurredAt })
+                .ToListAsync(cancellationToken))
+            .Select(static x => new CalendarTransactionItem
             {
                 Description = x.Description,
                 Amount = x.Amount,
-                TransactionType = x.TransactionType,
-                TransactionTime = x.TransactionTime
+                TransactionType = x.Type.ToString(),
+                TransactionTime = x.OccurredAt
             })
-            .ToListAsync(cancellationToken);
+            .ToList();
 
         List<IGrouping<DateTime, CalendarTransactionItem>> transactions = transactionItems
             .Where(x => x.TransactionTime >= startDate && x.TransactionTime < endDate)
             .GroupBy(x => x.TransactionTime)
             .ToList();
 
-        List<CalendarGoalItem> goalItems = await context.IsolateToUser(UserId)
-            .Include(x => x.BudgetCategories)
-            .SelectMany(x => x.BudgetCategories!)
+        List<CalendarGoalItem> goalItems = await context.BudgetCategories.OwnedBy(UserId)
             .Select(x => new CalendarGoalItem { Name = x.Name, GoalCompletionDate = x.GoalCompletionDate })
             .ToListAsync(cancellationToken);
 

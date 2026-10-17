@@ -5,10 +5,11 @@ using FinanceTracker.Contracts.Reports;
 using FinanceTracker.Contracts.Reports.Account;
 using FinanceTracker.Contracts.Reports.Category;
 using FinanceTracker.Contracts.Reports.SpentInTimePeriod;
-using FinanceTracker.Domain;
+using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using FinanceTracker.Infrastructure.OpenBanking;
+using FinanceTracker.Infrastructure.Transactions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -29,23 +30,16 @@ public class ReportService : ServiceBase<ReportService>, IReportService
     {
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
-        IQueryable<OpenBankingTransaction> query = GetQueryByBaseReportRequest(request, context);
-
-        List<OpenBankingTransaction> openBankingTransactions = [];
-
-        await foreach (OpenBankingTransaction transaction in query.OrderByDescending(static x => x.TransactionTime)
-                           .ToAsyncEnumerable().WithCancellation(cancellationToken))
-        {
-            openBankingTransactions.Add(transaction);
-        }
+        (List<BankTransaction> openBankingTransactions, Dictionary<Guid, string> customTags) =
+            await GetTransactionsForReportAsync(request, context, cancellationToken);
 
         decimal totalIn = openBankingTransactions.Where(static x => !decimal.IsNegative(x.Amount)).Sum(static x => x.Amount);
         decimal totalOut = openBankingTransactions.Where(static x => decimal.IsNegative(x.Amount)).Sum(static x => x.Amount);
         int totalTransactions = openBankingTransactions.Count;
 
 
-        foreach (IGrouping<int, OpenBankingTransaction> yearlyGrouping in openBankingTransactions.GroupBy(static x =>
-                     x.TransactionTime.Year))
+        foreach (IGrouping<int, BankTransaction> yearlyGrouping in openBankingTransactions.GroupBy(static x =>
+                     x.OccurredAt.Year))
         {
             SpentInTimePeriodReport rsp = new()
             {
@@ -60,8 +54,8 @@ public class ReportService : ServiceBase<ReportService>, IReportService
                 TotalTransactions = yearlyGrouping.Count()
             };
 
-            foreach (IGrouping<int, OpenBankingTransaction> monthlyGrouping in yearlyGrouping.GroupBy(static x =>
-                         x.TransactionTime.Month))
+            foreach (IGrouping<int, BankTransaction> monthlyGrouping in yearlyGrouping.GroupBy(static x =>
+                         x.OccurredAt.Month))
             {
                 string monthName = DateTimeFormatInfo.CurrentInfo.GetMonthName(monthlyGrouping.Key);
                 SpentInTimePeriodReportMonthlyBreakdown monthGrp = new()
@@ -73,9 +67,9 @@ public class ReportService : ServiceBase<ReportService>, IReportService
                 };
 
 
-                IEnumerable<IGrouping<int, OpenBankingTransaction>> dayGrp =
-                    monthlyGrouping.GroupBy(static x => x.TransactionTime.Day);
-                foreach (IGrouping<int, OpenBankingTransaction> dayGrouping in dayGrp)
+                IEnumerable<IGrouping<int, BankTransaction>> dayGrp =
+                    monthlyGrouping.GroupBy(static x => x.OccurredAt.Day);
+                foreach (IGrouping<int, BankTransaction> dayGrouping in dayGrp)
                 {
                     monthGrp.DailyBreakdown.Add(new SpentInTimePeriodReportDailyBreakdown
                     {
@@ -99,26 +93,19 @@ public class ReportService : ServiceBase<ReportService>, IReportService
     {
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
-        IQueryable<OpenBankingTransaction> query = GetQueryByBaseReportRequest(request, context);
-
-        List<OpenBankingTransaction> openBankingTransactions = [];
-
-        await foreach (OpenBankingTransaction transaction in query.OrderByDescending(static x => x.TransactionTime)
-                           .ToAsyncEnumerable().WithCancellation(cancellationToken))
-        {
-            openBankingTransactions.Add(transaction);
-        }
+        (List<BankTransaction> openBankingTransactions, Dictionary<Guid, string> customTags) =
+            await GetTransactionsForReportAsync(request, context, cancellationToken);
 
         IEnumerable<string> distinctClassifications = openBankingTransactions
-            .SelectMany(static x => x.Classifications!.Select(static c => c.Classification)).Distinct();
+            .SelectMany(x => TransactionCriteria.GetTags(x, customTags)).Distinct();
 
 
         foreach (string classification in distinctClassifications)
         {
-            IEnumerable<OpenBankingTransaction> transactions =
-                openBankingTransactions.Where(x => x.Classifications!.Any(c => c.Classification == classification));
+            IEnumerable<BankTransaction> transactions =
+                openBankingTransactions.Where(x => TransactionCriteria.GetTags(x, customTags).Contains(classification));
 
-            IEnumerable<OpenBankingTransaction> bankingTransactions = transactions.ToList();
+            IEnumerable<BankTransaction> bankingTransactions = transactions.ToList();
             decimal totalIn = bankingTransactions.Where(static x => !decimal.IsNegative(x.Amount)).Sum(static x => x.Amount);
             decimal totalOut = bankingTransactions.Where(static x => decimal.IsNegative(x.Amount)).Sum(static x => x.Amount);
             int totalTransactions = bankingTransactions.Count();
@@ -132,8 +119,8 @@ public class ReportService : ServiceBase<ReportService>, IReportService
                 Category = classification
             };
 
-            foreach (IGrouping<int, OpenBankingTransaction> yearlyGrouping in bankingTransactions.GroupBy(static x =>
-                         x.TransactionTime.Year))
+            foreach (IGrouping<int, BankTransaction> yearlyGrouping in bankingTransactions.GroupBy(static x =>
+                         x.OccurredAt.Year))
             {
                 SpentInCategoryReportYearlyBreakdown yearGrp = new()
                 {
@@ -143,8 +130,8 @@ public class ReportService : ServiceBase<ReportService>, IReportService
                     TotalTransactions = yearlyGrouping.Count()
                 };
 
-                foreach (IGrouping<int, OpenBankingTransaction> monthlyGrouping in yearlyGrouping.GroupBy(static x =>
-                             x.TransactionTime.Month))
+                foreach (IGrouping<int, BankTransaction> monthlyGrouping in yearlyGrouping.GroupBy(static x =>
+                             x.OccurredAt.Month))
                 {
                     string monthName = DateTimeFormatInfo.CurrentInfo.GetMonthName(monthlyGrouping.Key);
                     SpentInCategoryReportMonthlyBreakdown monthGrp = new()
@@ -156,9 +143,9 @@ public class ReportService : ServiceBase<ReportService>, IReportService
                     };
 
 
-                    IEnumerable<IGrouping<int, OpenBankingTransaction>> dayGrp =
-                        monthlyGrouping.GroupBy(static x => x.TransactionTime.Day);
-                    foreach (IGrouping<int, OpenBankingTransaction> dayGrouping in dayGrp)
+                    IEnumerable<IGrouping<int, BankTransaction>> dayGrp =
+                        monthlyGrouping.GroupBy(static x => x.OccurredAt.Day);
+                    foreach (IGrouping<int, BankTransaction> dayGrouping in dayGrp)
                     {
                         monthGrp.DailyBreakdown.Add(new SpentInCategoryReportDailyBreakdown
                         {
@@ -183,24 +170,14 @@ public class ReportService : ServiceBase<ReportService>, IReportService
     {
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
-        IQueryable<OpenBankingTransaction> query = GetQueryByBaseReportRequest(request, context);
+        (List<BankTransaction> openBankingTransactions, Dictionary<Guid, string> customTags) =
+            await GetTransactionsForReportAsync(request, context, cancellationToken);
 
-        List<OpenBankingTransaction> openBankingTransactions = [];
+        Dictionary<Guid, string> accountNames = await context.BankAccounts.OwnedBy(UserId)
+            .ToDictionaryAsync(static x => x.Id, static x => x.DisplayName, cancellationToken);
 
-        await foreach (OpenBankingTransaction transaction in query.OrderByDescending(static x => x.TransactionTime)
-                           .ToAsyncEnumerable().WithCancellation(cancellationToken))
-        {
-            bool blocked = BlockedByClientFilters(request, transaction);
-            if (blocked)
-            {
-                continue;
-            }
-
-            openBankingTransactions.Add(transaction);
-        }
-
-        foreach (IGrouping<string, OpenBankingTransaction> accountGrouping in openBankingTransactions.GroupBy(static x =>
-                     x.Account!.DisplayName))
+        foreach (IGrouping<string, BankTransaction> accountGrouping in openBankingTransactions.GroupBy(x =>
+                     accountNames[x.AccountId]))
         {
             decimal totalIn = accountGrouping.Where(static x => !decimal.IsNegative(x.Amount)).Sum(static x => x.Amount);
             decimal totalOut = accountGrouping.Where(static x => decimal.IsNegative(x.Amount)).Sum(static x => x.Amount);
@@ -212,10 +189,11 @@ public class ReportService : ServiceBase<ReportService>, IReportService
                 TotalIn = totalIn,
                 TotalOut = totalOut,
                 TotalTransactions = totalTransactions,
-                AccountName = (accountGrouping.FirstOrDefault()?.Account!).DisplayName };
+                AccountName = accountGrouping.Key
+            };
 
-            foreach (IGrouping<int, OpenBankingTransaction> yearlyGrouping in accountGrouping.GroupBy(static x =>
-                         x.TransactionTime.Year))
+            foreach (IGrouping<int, BankTransaction> yearlyGrouping in accountGrouping.GroupBy(static x =>
+                         x.OccurredAt.Year))
             {
                 SpentInAccountReportYearlyBreakdown yearGrp = new()
                 {
@@ -225,8 +203,8 @@ public class ReportService : ServiceBase<ReportService>, IReportService
                     TotalTransactions = yearlyGrouping.Count()
                 };
 
-                foreach (IGrouping<int, OpenBankingTransaction> monthlyGrouping in yearlyGrouping.GroupBy(static x =>
-                             x.TransactionTime.Month))
+                foreach (IGrouping<int, BankTransaction> monthlyGrouping in yearlyGrouping.GroupBy(static x =>
+                             x.OccurredAt.Month))
                 {
                     string monthName = DateTimeFormatInfo.CurrentInfo.GetMonthName(monthlyGrouping.Key);
                     SpentInAccountReportMonthlyBreakdown monthGrp = new()
@@ -238,9 +216,9 @@ public class ReportService : ServiceBase<ReportService>, IReportService
                     };
 
 
-                    IEnumerable<IGrouping<int, OpenBankingTransaction>> dayGrp =
-                        monthlyGrouping.GroupBy(static x => x.TransactionTime.Day);
-                    foreach (IGrouping<int, OpenBankingTransaction> dayGrouping in dayGrp)
+                    IEnumerable<IGrouping<int, BankTransaction>> dayGrp =
+                        monthlyGrouping.GroupBy(static x => x.OccurredAt.Day);
+                    foreach (IGrouping<int, BankTransaction> dayGrouping in dayGrp)
                     {
                         monthGrp.DailyBreakdown.Add(new SpentInAccountReportDailyBreakdown
                         {
@@ -261,79 +239,24 @@ public class ReportService : ServiceBase<ReportService>, IReportService
     }
 
 
-    private IQueryable<OpenBankingTransaction> GetQueryByBaseReportRequest(BaseReport request,
-        FinanceTrackerContext context)
+    private async Task<(List<BankTransaction> Transactions, Dictionary<Guid, string> CustomTags)>
+        GetTransactionsForReportAsync(BaseReport request, FinanceTrackerContext context,
+            CancellationToken cancellationToken)
     {
-        IQueryable<OpenBankingTransaction> query = context.IsolateToUser(UserId)
-            .Include(x => x.Providers)!
-            .ThenInclude(x => x.Accounts)!
-            .ThenInclude(x => x.Transactions)
-            .SelectMany(x => x.Providers!.SelectMany(c => c.Transactions!))
-            .Include(x => x.Account)
-            .Include(x => x.Classifications)
-            .AsNoTracking();
+        TransactionCriteria criteria = TransactionCriteria.From(request);
+        Dictionary<Guid, string> customTags = await context.CustomClassifications.OwnedBy(UserId)
+            .ToDictionaryAsync(static x => x.Id, static x => x.Tag, cancellationToken);
 
+        List<BankTransaction> transactions = await criteria
+            .ApplyServerFilters(context.BankTransactions.OwnedBy(UserId), context)
+            .Where(static x => x.Category != "TRANSFER")
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
 
-        if (request.AccountIds is not null && request.AccountIds.Any())
-        {
-            query = query.Where(x => request.AccountIds.Contains(x.Account!.Id));
-        }
-
-        if (request.Types is not null && request.Types.Any())
-        {
-            query = query.Where(x => request.Types.Contains(x.TransactionType));
-        }
-
-        if (request.Categories is not null && request.Categories.Any())
-        {
-            query = query.Where(x => request.Categories.Contains(x.TransactionCategory));
-        }
-
-        if (request.Tags is not null && request.Tags.Any())
-        {
-            query = query.Where(x => request.Tags.Any(y => x.Classifications!.Any(c => c.Classification == y)));
-        }
-
-        if (request.ProviderIds is not null && request.ProviderIds.Any())
-        {
-            query = query.Where(x => request.ProviderIds.Contains(x.Provider!.Id))
-                .Select(x => x);
-        }
-
-        query = query.Where(x => x.TransactionCategory != "TRANSFER");
-
-
-        return query;
-    }
-
-    private static bool BlockedByClientFilters(BaseReport request, OpenBankingTransaction transaction)
-    {
-        // Few Client filters due to encryption limiting ability
-        if (request.SearchTerm is not null)
-        {
-            bool containsSearchTerm = transaction.Description.Contains(request.SearchTerm, StringComparison.CurrentCultureIgnoreCase);
-            if (!containsSearchTerm)
-            {
-                return true;
-            }
-        }
-
-
-        if (request.FromDate is not null)
-        {
-            bool containsFromDate = transaction.TransactionTime >= request.FromDate;
-            if (!containsFromDate)
-            {
-                return true;
-            }
-        }
-
-        if (request.ToDate is null)
-        {
-            return false;
-        }
-
-        bool containToDate = transaction.TransactionTime <= request.ToDate;
-        return !containToDate;
+        // Encrypted timestamps sort by ciphertext in SQL, order after decryption
+        return (transactions
+            .Where(x => criteria.MatchesClientFilters(x, customTags))
+            .OrderByDescending(static x => x.OccurredAt)
+            .ToList(), customTags);
     }
 }

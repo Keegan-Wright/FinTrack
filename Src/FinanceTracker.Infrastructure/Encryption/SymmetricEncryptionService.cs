@@ -26,15 +26,15 @@ public class SymmetricEncryptionService : ISymmetricEncryptionService
             return string.Empty;
         }
 
-        string? plainText;
-        if (value is byte[] byteArray)
+        // Invariant culture and round-trip formats so stored values don't depend on the host's locale
+        string? plainText = value switch
         {
-            plainText = Convert.ToBase64String(byteArray);
-        }
-        else
-        {
-            plainText = value.ToString();
-        }
+            byte[] byteArray => Convert.ToBase64String(byteArray),
+            DateTime dateTime => dateTime.ToString("O", CultureInfo.InvariantCulture),
+            DateTimeOffset dateTimeOffset => dateTimeOffset.ToString("O", CultureInfo.InvariantCulture),
+            IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture),
+            _ => value.ToString()
+        };
 
         if (string.IsNullOrEmpty(plainText))
         {
@@ -88,20 +88,34 @@ public class SymmetricEncryptionService : ISymmetricEncryptionService
             return (T)(object)plainText;
         }
 
-        Type targetType = typeof(T);
-        if (!targetType.IsGenericType || targetType.GetGenericTypeDefinition() != typeof(Nullable<>))
-        {
-            return (T)Convert.ChangeType(plainText, targetType, CultureInfo.CurrentCulture);
-        }
-
         if (string.IsNullOrEmpty(plainText))
         {
             return default;
         }
 
-        targetType = Nullable.GetUnderlyingType(targetType)!;
+        Type targetType = Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T);
 
-        return (T)Convert.ChangeType(plainText, targetType, CultureInfo.CurrentCulture);
+        return (T)ParsePlainText(plainText, targetType);
+    }
+
+    private static object ParsePlainText(string plainText, Type targetType)
+    {
+        if (targetType.IsEnum)
+        {
+            return Enum.Parse(targetType, plainText);
+        }
+
+        if (targetType == typeof(DateTime))
+        {
+            return DateTime.Parse(plainText, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
+        }
+
+        if (targetType == typeof(DateTimeOffset))
+        {
+            return DateTimeOffset.Parse(plainText, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
+        }
+
+        return Convert.ChangeType(plainText, targetType, CultureInfo.InvariantCulture);
     }
 
     private static (byte[] Key, byte[] Iv) DeriveKeyAndIv(EncryptionConfiguration encryptionConfiguration,

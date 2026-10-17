@@ -1,13 +1,7 @@
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
 using FinanceTracker.Contracts;
-
-
-using FinanceTracker.Domain;
-
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.OpenBanking;
-
 using Microsoft.EntityFrameworkCore;
 using TickerQ.Utilities.Base;
 using TickerQ.Utilities.Interfaces;
@@ -41,43 +35,35 @@ public class SyncAllOpenBankingDetailsAsync : ITickerFunction
 
         using var performingBackgroundSyncActivity = activity.StartActivity();
 
-        await using FinanceTrackerContext dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-        ConfiguredCancelableAsyncEnumerable<FinanceTrackerUser> userQuery = dbContext.Users
-            .Include(x => x.Providers)!
-            .ThenInclude(x => x.Accounts)!
-            .ThenInclude(x => x.Transactions)
-            .Include(x => x.Providers)!.ThenInclude(x => x.Accounts)!.ThenInclude(x => x.AccountBalance)
-            .Include(x => x.Providers)!.ThenInclude(x => x.Scopes)
-            .Include(x => x.Providers)!.ThenInclude(x => x.Syncronisations)
-            .AsSplitQuery()
-            .AsAsyncEnumerable().WithCancellation(cancellationToken);
-
-
-        await foreach (FinanceTrackerUser user in userQuery)
+        var connections = new List<(Guid Id, Guid UserId)>();
+        await using (FinanceTrackerContext dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken))
         {
-            performingBackgroundSyncActivity!.AddEvent(new ActivityEvent($"Processing User {user.Id}"));
-            await _openBankingService.RunFunctionAsUser(user.Id, async () =>
+            await foreach (var connection in dbContext.BankConnections
+                               .Select(static x => new { x.Id, x.UserId })
+                               .AsAsyncEnumerable().WithCancellation(cancellationToken))
             {
-                foreach (OpenBankingProvider provider in user.Providers!)
+                connections.Add((connection.Id, connection.UserId));
+            }
+        }
+
+        foreach ((Guid connectionId, Guid userId) in connections)
+        {
+            performingBackgroundSyncActivity?.AddEvent(
+                new ActivityEvent($"Processing Connection {connectionId} for User {userId}"));
+
+            await _openBankingService.RunFunctionAsUser(userId, async () =>
+            {
+                try
                 {
-                    try
-                    {
-                        performingBackgroundSyncActivity.AddEvent(
-                            new ActivityEvent($"Processing Provider {provider.Id} for User {user.Id}"));
+                    await _openBankingService.SyncConnectionAsync(connectionId, SyncTypes.All, cancellationToken);
 
-                        await _openBankingService.BulkLoadProviderAsync(provider, SyncTypes.All, cancellationToken);
-
-                        performingBackgroundSyncActivity.AddEvent(
-                            new ActivityEvent($"Finished Processing Provider {provider.Id} for User {user.Id}"));
-                    }
-                    catch (Exception ex)
-                    {
-                        performingBackgroundSyncActivity.AddException(ex);
-                    }
+                    performingBackgroundSyncActivity?.AddEvent(
+                        new ActivityEvent($"Finished Processing Connection {connectionId} for User {userId}"));
                 }
-
-                performingBackgroundSyncActivity.AddEvent(
-                    new ActivityEvent($"Finished Processing User {user.Id}"));
+                catch (Exception ex)
+                {
+                    performingBackgroundSyncActivity?.AddException(ex);
+                }
             });
         }
 

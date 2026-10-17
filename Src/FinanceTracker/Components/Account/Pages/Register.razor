@@ -2,7 +2,7 @@
 @using System.Security.Claims
 @using Blazilla
 @using FinanceTracker.Contracts.Auth
-@using FinanceTracker.Domain
+@using FinanceTracker.Domain.Identity
 @using FluentValidation
 @using Microsoft.AspNetCore.Identity
 
@@ -101,13 +101,8 @@
         if (!validationResult.IsValid)
             return;
 
-        var user = new FinanceTrackerUser
-        {
-            UserName = RegisterRequest.Username,
-            FirstName = RegisterRequest.FirstName!,
-            LastName = RegisterRequest.LastName!,
-            Email = RegisterRequest.Email
-        };
+        var user = new FinanceTrackerUser(RegisterRequest.FirstName!, RegisterRequest.LastName!,
+            RegisterRequest.Email!, RegisterRequest.Username!);
 
         await UserStore.SetUserNameAsync(user, RegisterRequest.Username, CancellationToken.None);
 

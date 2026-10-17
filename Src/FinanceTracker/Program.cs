@@ -4,7 +4,7 @@ using FinanceTracker.AppHost.ServiceDefaults;
 using FinanceTracker.BackgroundJobs;
 using FinanceTracker.Components;
 using FinanceTracker.Components.Account;
-using FinanceTracker.Domain;
+using FinanceTracker.Domain.Identity;
 using FinanceTracker.Infrastructure;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;

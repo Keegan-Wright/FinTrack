@@ -2,11 +2,8 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
-using FinanceTracker.Contracts;
-using FinanceTracker.Domain;
+using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Infrastructure;
-using FinanceTracker.Infrastructure.OpenBanking;
 using Microsoft.EntityFrameworkCore;
 using TickerQ.Utilities.Base;
 using TickerQ.Utilities.Interfaces;
@@ -18,15 +15,16 @@ namespace FinanceTracker.BackgroundJobs;
 // Background job, ignore the warning
 public class MonitorOpenBankingTokenExpirationAsync : ITickerFunction
 {
+    /// <summary>
+    /// Open banking consent must be renewed by the user every 90 days.
+    /// </summary>
+    private static readonly TimeSpan ConsentLifetime = TimeSpan.FromDays(90);
 
     private readonly IDbContextFactory<FinanceTrackerContext> _dbContextFactory;
-    private readonly IOpenBankingService _openBankingService;
     private readonly IBackgroundSyncService _syncService;
 
-    public MonitorOpenBankingTokenExpirationAsync(IOpenBankingService openBankingService,
-        IDbContextFactory<FinanceTrackerContext> dbContextFactory, IBackgroundSyncService syncService)
+    public MonitorOpenBankingTokenExpirationAsync(IDbContextFactory<FinanceTrackerContext> dbContextFactory, IBackgroundSyncService syncService)
     {
-        _openBankingService = openBankingService;
         _dbContextFactory = dbContextFactory;
         _syncService = syncService;
     }
@@ -41,35 +39,21 @@ public class MonitorOpenBankingTokenExpirationAsync : ITickerFunction
         using var performingMonitoringActivity = activity.StartActivity();
 
         await using FinanceTrackerContext dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-        ConfiguredCancelableAsyncEnumerable<FinanceTrackerUser> userQuery = dbContext.Users
-            .Include(x => x.Providers)!
-            .ThenInclude(x => x.Accounts)!
-            .ThenInclude(x => x.Transactions)
-            .Include(x => x.Providers)!.ThenInclude(x => x.Accounts)!.ThenInclude(x => x.AccountBalance)
-            .Include(x => x.Providers)!.ThenInclude(x => x.Scopes)
-            .Include(x => x.Providers)!.ThenInclude(x => x.Syncronisations)
-            .AsSplitQuery()
-            .AsAsyncEnumerable().WithCancellation(cancellationToken);
 
+        DateTime now = DateTime.UtcNow;
+        DateTime lapsedBefore = now - ConsentLifetime;
 
-        await foreach (FinanceTrackerUser user in userQuery)
+        List<BankConnection> lapsedConnections = await dbContext.BankConnections
+            .Where(x => x.ConsentGrantedAt <= lapsedBefore && x.AccessTokens.Any(t => t.RevokedAt == null))
+            .Include(x => x.AccessTokens.Where(t => t.RevokedAt == null))
+            .ToListAsync(cancellationToken);
+
+        foreach (BankConnection connection in lapsedConnections)
         {
-            performingMonitoringActivity!.AddEvent(new ActivityEvent($"Processing User {user.Id}"));
-            await _openBankingService.RunFunctionAsUser(user.Id, async () =>
-            {
-                foreach (var accessToken in user.OpenBankingAccessTokens!.Where(x => !x.Expired))
-                {
-                    if (accessToken.Created.AddDays(90) > DateTime.UtcNow)
-                    {
-                        accessToken.Expire();
-                    }
-                    //TODO Notification
-                }
+            performingMonitoringActivity?.AddEvent(new ActivityEvent($"Consent lapsed for connection {connection.Id} of user {connection.UserId}"));
 
-
-                performingMonitoringActivity.AddEvent(
-                    new ActivityEvent($"Finished Processing User {user.Id}"));
-            });
+            connection.RevokeActiveToken(now);
+            //TODO Notification
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);

@@ -1,7 +1,6 @@
 using System.Runtime.CompilerServices;
 using System.Security.Claims;
 using FinanceTracker.Contracts.Dashboard;
-using FinanceTracker.Domain;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -42,17 +41,12 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
         DateTime fromUtc = fromDate.AddDays(-1).ToUniversalTime();
         DateTime toUtc = toDate.AddDays(1).ToUniversalTime();
 
-        IQueryable<OpenBankingTransaction> query = context.IsolateToUser(UserId)
-            .Include(x => x.Providers)!.ThenInclude(x => x.Accounts)!.ThenInclude(x => x.Transactions)
-            .SelectMany(x => x.Providers!.SelectMany(c => c.Accounts!).SelectMany(r => r.Transactions!))
-            .AsNoTracking();
-
-        List<TransactionLite> items = await query
+        List<TransactionLite> items = await context.BankTransactions.OwnedBy(UserId)
             .Select(x => new TransactionLite
             {
                 Amount = x.Amount,
-                TransactionTime = x.TransactionTime,
-                TransactionCategory = x.TransactionCategory
+                TransactionTime = x.OccurredAt,
+                TransactionCategory = x.Category
             })
             .ToListAsync(cancellationToken);
 
@@ -78,10 +72,8 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
 
         DateTime nowUtc = DateTime.Now.ToUniversalTime();
 
-        List<UpcomingPayment> standingOrders = await context.IsolateToUser(UserId)
-            .Include(x => x.Providers)!.ThenInclude(x => x.Accounts)!.ThenInclude(x => x.StandingOrders)
-            .SelectMany(x => x.Providers!.SelectMany(c => c.Accounts!).SelectMany(r => r.StandingOrders!))
-            .AsNoTracking()
+        List<UpcomingPayment> standingOrders = await context.BankAccounts.OwnedBy(UserId)
+            .SelectMany(static x => x.StandingOrders)
             .Select(x => new UpcomingPayment
             {
                 Amount = x.NextPaymentAmount,
@@ -93,14 +85,12 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
 
         upcomingPayments.AddRange(standingOrders.Where(x => x.PaymentDate > nowUtc));
 
-        List<DirectDebitLite> directDebitItems = await context.IsolateToUser(UserId)
-            .Include(x => x.Providers)!.ThenInclude(x => x.Accounts)!.ThenInclude(x => x.DirectDebits)
-            .SelectMany(x => x.Providers!.SelectMany(c => c.Accounts!).SelectMany(r => r.DirectDebits!))
-            .AsNoTracking()
+        List<DirectDebitLite> directDebitItems = await context.BankAccounts.OwnedBy(UserId)
+            .SelectMany(static x => x.DirectDebits)
             .Select(x => new DirectDebitLite
             {
                 PreviousPaymentAmount = x.PreviousPaymentAmount,
-                PreviousPaymentTimeStamp = x.PreviousPaymentTimeStamp,
+                PreviousPaymentTimeStamp = x.PreviousPaymentDate,
                 Name = x.Name
             })
             .ToListAsync(cancellationToken);
