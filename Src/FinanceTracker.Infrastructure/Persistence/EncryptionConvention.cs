@@ -12,11 +12,14 @@ namespace FinanceTracker.Infrastructure.Persistence;
 /// </summary>
 internal static class EncryptionConvention
 {
-    public static void ApplyEncryption(this ModelBuilder builder, ISymmetricEncryptionService encryptionService)
+    extension(ModelBuilder builder)
     {
-        foreach (IMutableEntityType entityType in builder.Model.GetEntityTypes())
+        public void ApplyEncryption(ISymmetricEncryptionService encryptionService)
         {
-            ApplyToType(entityType, encryptionService);
+            foreach (IMutableEntityType entityType in builder.Model.GetEntityTypes())
+            {
+                ApplyToType(entityType, encryptionService);
+            }
         }
     }
 
