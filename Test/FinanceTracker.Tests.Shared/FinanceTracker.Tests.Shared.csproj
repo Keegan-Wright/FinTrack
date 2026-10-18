@@ -8,10 +8,14 @@
 
     <ItemGroup>
       <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory"/>
+      <PackageReference Include="Testcontainers.PostgreSql" />
+      <PackageReference Include="TUnit.AspNetCore" />
+      <PackageReference Include="TUnit.Core" />
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\..\Src\FinanceTracker.AppHost\FinanceTracker.AppHost.csproj" />
       <ProjectReference Include="..\..\Src\FinanceTracker.Infrastructure\FinanceTracker.Infrastructure.csproj" />
+      <ProjectReference Include="..\..\Src\FinanceTracker\FinanceTracker.csproj" />
     </ItemGroup>
-
 </Project>

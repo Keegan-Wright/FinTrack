@@ -18,7 +18,7 @@ public sealed class BudgetCategory : AggregateRoot
         decimal savingsGoal, DateTime? goalCompletionDate) : base(userId)
     {
         Rename(name);
-        AvailableFunds = availableFunds;
+        AdjustAvailableFunds(availableFunds);
         ChangeMonthlyStart(monthlyStart);
         SetSavingsGoal(savingsGoal, goalCompletionDate);
     }
@@ -43,7 +43,11 @@ public sealed class BudgetCategory : AggregateRoot
         Name = name;
     }
 
-    public void AdjustAvailableFunds(decimal amount) => AvailableFunds += amount;
+    public void AdjustAvailableFunds(decimal amount)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(amount);
+        AvailableFunds += amount;
+    }
 
     public void ChangeMonthlyStart(decimal monthlyStart)
     {

@@ -25,6 +25,7 @@
     <Project Path="Src\Generators\FinanceTracker.Generated.Shared\FinanceTracker.Generated.Shared.csproj" />
   </Folder>
   <Folder Name="/Tests/">
+    <Project Path="Test/FinanceTracker.Domain.Tests/FinanceTracker.Domain.Tests.csproj" />
     <Project Path="Test/FinanceTracker.Infrastructure.Tests\FinanceTracker.Infrastructure.Tests.csproj" />
     <Project Path="Test/FinanceTracker.Tests.Shared/FinanceTracker.Tests.Shared.csproj" />
     <Project Path="Test/FinanceTracker.Tests/FinanceTracker.Tests.csproj" />
