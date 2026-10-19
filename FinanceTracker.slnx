@@ -30,9 +30,9 @@
   <Project Path="Src/FinanceTracker.Infrastructure.Migrations/FinanceTracker.Infrastructure.Migrations.csproj" />
   <Folder Name="/Tests/Intergration/" />
   <Folder Name="/Tests/Unit/">
-    <Project Path="Test/FinanceTracker.Domain.Tests/FinanceTracker.Domain.Tests.csproj" />
-    <Project Path="Test/FinanceTracker.Infrastructure.Tests\FinanceTracker.Infrastructure.Tests.csproj" />
-    <Project Path="Test/FinanceTracker.Tests/FinanceTracker.Tests.csproj" />
+    <Project Path="Test\FinanceTracker.Tests.Unit.Domain\FinanceTracker.Tests.Unit.Domain.csproj" />
+    <Project Path="Test\FinanceTracker.Tests.Unit.FinanceTracker\FinanceTracker.Tests.Unit.FinanceTracker.csproj" />
+    <Project Path="Test\FinanceTracker.Tests.Unit.Infrastructure\FinanceTracker.Tests.Unit.Infrastructure.csproj" />
   </Folder>
   <Project Path="Src/FinanceTracker.Contracts/FinanceTracker.Contracts.csproj" />
   <Project Path="Src/FinanceTracker.Domain/FinanceTracker.Domain.csproj" />
