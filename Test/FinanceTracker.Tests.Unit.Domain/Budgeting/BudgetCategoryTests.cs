@@ -27,6 +27,17 @@ public class BudgetCategoryTests
     }
 
     [Test]
+    public async Task BudgetCategory_Rename_ValidString_DoesNotThrow()
+    {
+        var category = new BudgetCategory(Guid.NewGuid(), "Test", 0m, 0m, 0m, null);
+        var newName = "Testing Category";
+
+        category.Rename(newName);
+
+        await Assert.That(category.Name).IsEqualTo(newName);
+    }
+
+    [Test]
     public void BudgetCategory_ChangeMonthlyStart_Negative_Throws_ArgumentOutOfRangeException()
     {
         var category = new BudgetCategory(Guid.NewGuid(), "Test", 0m, 0m, 0m, null);
@@ -34,6 +45,19 @@ public class BudgetCategoryTests
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             category.ChangeMonthlyStart(-1));
     }
+
+
+    [Test]
+    public async Task BudgetCategory_ChangeMonthlyStart_ValidDecimal_DoesNotThrow()
+    {
+        var category = new BudgetCategory(Guid.NewGuid(), "Test", 0m, 0m, 0m, null);
+        var newMonthlyStart =  200m;
+
+        category.ChangeMonthlyStart(newMonthlyStart);
+
+        await Assert.That(category.MonthlyStart).IsEqualTo(newMonthlyStart);
+    }
+
 
     [Test]
     public void BudgetCategory_SetSavingsGoal_Negative_Throws_ArgumentOutOfRangeException()
@@ -45,12 +69,59 @@ public class BudgetCategoryTests
     }
 
     [Test]
+    public async Task BudgetCategory_SetSavingsGoal_ValidDecimalWithDate_DoesNotThrow()
+    {
+        var category = new BudgetCategory(Guid.NewGuid(), "Test", 0m, 0m, 0m, null);
+
+        var newSavingGoalValue = 200m;
+        var newGoalCompletionDate = DateTime.UtcNow;
+
+        category.SetSavingsGoal(newSavingGoalValue, newGoalCompletionDate);
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(category.SavingsGoal).IsEqualTo(newSavingGoalValue);
+            await Assert.That(category.GoalCompletionDate).IsEqualTo(newGoalCompletionDate);
+        }
+    }
+
+
+    [Test]
+    public async Task BudgetCategory_SetSavingsGoal_ValidDecimalNoDate_DoesNotThrow()
+    {
+        var category = new BudgetCategory(Guid.NewGuid(), "Test", 0m, 0m, 0m, DateTime.UtcNow);
+
+        var newSavingGoalValue = 200m;
+
+        category.SetSavingsGoal(newSavingGoalValue, null);
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(category.SavingsGoal).IsEqualTo(newSavingGoalValue);
+            await Assert.That(category.GoalCompletionDate).IsNull();
+        }
+    }
+
+
+    [Test]
     public void BudgetCategory_AdjustAvailableFunds_Negative_Throws_ArgumentOutOfRangeException()
     {
         var category = new BudgetCategory(Guid.NewGuid(), "Test", 0m, 0m, 0m, null);
 
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             category.SetSavingsGoal(-1, DateTime.UtcNow));
+    }
+
+    public async Task BudgetCategory_AdjustAvailableFunds_ValidDecimalNoDate_DoesNotThrow()
+    {
+        var category = new BudgetCategory(Guid.NewGuid(), "Test", 0m, 0m, 0m, DateTime.UtcNow);
+
+        var newAvailableFunds = 200m;
+
+        category.AdjustAvailableFunds(newAvailableFunds);
+
+
+       await Assert.That(category.SavingsGoal).IsEqualTo(newAvailableFunds);
     }
 
 }

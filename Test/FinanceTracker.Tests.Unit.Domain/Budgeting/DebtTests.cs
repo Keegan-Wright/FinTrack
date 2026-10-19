@@ -25,11 +25,34 @@ public class DebtTests
     }
 
     [Test]
+    public async Task Debt_ChangeMonthlyPayment_ValidDecimal_DoesNotThrow()
+    {
+        var debt = new Debt(Guid.NewGuid(), "Test", 100m, null, null);
+
+        var newMonthlyPayment = 300m;
+
+        debt.ChangeMonthlyPayment(newMonthlyPayment);
+
+        await Assert.That(debt.MonthlyPayment).IsEqualTo(newMonthlyPayment);
+    }
+
+    [Test]
     public void Debt_Rename_EmptyString_Throws_ArgumentException()
     {
         var debt = new Debt(Guid.NewGuid(), "Test", 100m, null, null);
 
         Assert.Throws<ArgumentException>(() =>
             debt.Rename(""));
+    }
+
+    [Test]
+    public async Task Debt_Rename_ValidString_DoesNotThrow()
+    {
+        var debt = new Debt(Guid.NewGuid(), "Test", 100m, null, null);
+        var newName = "Renamed";
+
+        debt.Rename(newName);
+
+        await Assert.That(debt.Name).IsEqualTo(newName);
     }
 }
