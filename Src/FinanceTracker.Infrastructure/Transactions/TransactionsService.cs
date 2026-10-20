@@ -133,13 +133,22 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        List<string> providerTags = await context.BankTransactions.OwnedBy(UserId)
-            .SelectMany(static x => x.ProviderClassifications)
+        // Unable to use .SelectMany on the encrypted column ProviderClassifications
+        var materialisedClassifications = await context.BankTransactions
+            .OwnedBy(UserId)
+            .Select(static x => x.ProviderClassifications)
             .Distinct()
             .ToListAsync(cancellationToken);
 
-        List<string> customTags = await context.CustomClassifications.OwnedBy(UserId)
+        List<string> providerTags = materialisedClassifications
+            .SelectMany(static x => x)
+            .Distinct()
+            .ToList();
+
+        List<string> customTags = await context.CustomClassifications
+            .OwnedBy(UserId)
             .Select(static x => x.Tag)
+            .Distinct() // Filter duplicates directly on the database engine level
             .ToListAsync(cancellationToken);
 
         foreach (string tag in providerTags.Union(customTags))

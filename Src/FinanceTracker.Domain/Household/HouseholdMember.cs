@@ -1,6 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
 using FinanceTracker.Domain.Common;
-using FinanceTracker.Domain.Utility;
 
 namespace FinanceTracker.Domain.Household;
 
@@ -21,11 +20,11 @@ public sealed class HouseholdMember : AggregateRoot
         ChangeIncome(income);
     }
 
-    [Encrypt] public string FirstName { get; private set; }
+    public string FirstName { get; private set; }
 
-    [Encrypt] public string LastName { get; private set; }
+    public string LastName { get; private set; }
 
-    [Encrypt] public decimal? Income { get; private set; }
+    public decimal? Income { get; private set; }
 
     [MemberNotNull(nameof(FirstName), nameof(LastName))]
     public void Rename(string firstName, string lastName)

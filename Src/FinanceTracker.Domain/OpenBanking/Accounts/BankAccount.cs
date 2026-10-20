@@ -1,6 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
 using FinanceTracker.Domain.Common;
-using FinanceTracker.Domain.Utility;
 
 namespace FinanceTracker.Domain.OpenBanking.Accounts;
 
@@ -33,11 +32,11 @@ public sealed class BankAccount : AggregateRoot
 
     public string ExternalId { get; private set; }
 
-    [Encrypt] public string AccountType { get; private set; }
+    public string AccountType { get; private set; }
 
-    [Encrypt] public string DisplayName { get; private set; }
+    public string DisplayName { get; private set; }
 
-    [Encrypt] public string Currency { get; private set; }
+    public string Currency { get; private set; }
 
     public AccountBalance? Balance { get; private set; }
 

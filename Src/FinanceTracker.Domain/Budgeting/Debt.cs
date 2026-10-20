@@ -1,6 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
 using FinanceTracker.Domain.Common;
-using FinanceTracker.Domain.Utility;
 
 namespace FinanceTracker.Domain.Budgeting;
 
@@ -23,13 +22,13 @@ public sealed class Debt : AggregateRoot
         PayOffGoal = payOffGoal;
     }
 
-    [Encrypt] public string Name { get; private set; }
+    public string Name { get; private set; }
 
-    [Encrypt] public decimal MonthlyPayment { get; private set; }
+    public decimal MonthlyPayment { get; private set; }
 
-    [Encrypt] public DateTime? FinalPaymentDate { get; private set; }
+    public DateTime? FinalPaymentDate { get; private set; }
 
-    [Encrypt] public DateTime? PayOffGoal { get; private set; }
+    public DateTime? PayOffGoal { get; private set; }
 
     [MemberNotNull(nameof(Name))]
     public void Rename(string name)

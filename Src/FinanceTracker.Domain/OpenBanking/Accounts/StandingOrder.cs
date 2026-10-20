@@ -1,6 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
 using FinanceTracker.Domain.Common;
-using FinanceTracker.Domain.Utility;
 
 namespace FinanceTracker.Domain.OpenBanking.Accounts;
 
@@ -23,29 +22,29 @@ public sealed class StandingOrder : Entity
         Update(details);
     }
 
-    [Encrypt] public string Reference { get; private set; }
+    public string Reference { get; private set; }
 
-    [Encrypt] public string Payee { get; private set; }
+    public string Payee { get; private set; }
 
-    [Encrypt] public string Frequency { get; private set; }
+    public string Frequency { get; private set; }
 
-    [Encrypt] public string Status { get; private set; }
+    public string Status { get; private set; }
 
-    [Encrypt] public string Currency { get; private set; }
+    public string Currency { get; private set; }
 
-    [Encrypt] public DateTime NextPaymentDate { get; private set; }
+    public DateTime NextPaymentDate { get; private set; }
 
-    [Encrypt] public decimal NextPaymentAmount { get; private set; }
+    public decimal NextPaymentAmount { get; private set; }
 
-    [Encrypt] public DateTime FirstPaymentDate { get; private set; }
+    public DateTime FirstPaymentDate { get; private set; }
 
-    [Encrypt] public decimal FirstPaymentAmount { get; private set; }
+    public decimal FirstPaymentAmount { get; private set; }
 
-    [Encrypt] public DateTime FinalPaymentDate { get; private set; }
+    public DateTime FinalPaymentDate { get; private set; }
 
-    [Encrypt] public decimal FinalPaymentAmount { get; private set; }
+    public decimal FinalPaymentAmount { get; private set; }
 
-    [Encrypt] public DateTime Timestamp { get; private set; }
+    public DateTime Timestamp { get; private set; }
 
     internal bool Matches(StandingOrderDetails details) =>
         Reference == details.Reference && Payee == details.Payee;

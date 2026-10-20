@@ -1,6 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
 using FinanceTracker.Domain.Common;
-using FinanceTracker.Domain.Utility;
 
 namespace FinanceTracker.Domain.Classifications;
 
@@ -16,7 +15,7 @@ public sealed class CustomClassification : AggregateRoot
 
     public CustomClassification(Guid userId, string tag) : base(userId) => Rename(tag);
 
-    [Encrypt] public string Tag { get; private set; }
+    public string Tag { get; private set; }
 
     [MemberNotNull(nameof(Tag))]
     public void Rename(string tag)

@@ -10,6 +10,8 @@ internal sealed class CustomClassificationConfiguration : AggregateRootConfigura
     {
         builder.ToTable("CustomClassifications");
 
+        builder.Property(x => x.Tag).Encrypted();
+
         builder.HasIndex(x => new { x.UserId, x.Tag }).IsUnique();
     }
 }

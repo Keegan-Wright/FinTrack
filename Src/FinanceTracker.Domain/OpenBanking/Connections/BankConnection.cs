@@ -1,6 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
 using FinanceTracker.Domain.Common;
-using FinanceTracker.Domain.Utility;
 
 namespace FinanceTracker.Domain.OpenBanking.Connections;
 
@@ -35,15 +34,15 @@ public sealed class BankConnection : AggregateRoot
         Reauthenticate(accessCode, scopes);
     }
 
-    [Encrypt] public string ExternalProviderId { get; private set; }
+    public string ExternalProviderId { get; private set; }
 
-    [Encrypt] public string Name { get; private set; }
+    public string Name { get; private set; }
 
-    [Encrypt] public string AccessCode { get; private set; }
+    public string AccessCode { get; private set; }
 
-    [Encrypt] public byte[] Logo { get; private set; }
+    public byte[] Logo { get; private set; }
 
-    [Encrypt] public IReadOnlyCollection<string> Scopes => _scopes.AsReadOnly();
+    public IReadOnlyCollection<string> Scopes => _scopes.AsReadOnly();
 
     public IReadOnlyCollection<AccessToken> AccessTokens => _accessTokens.AsReadOnly();
 

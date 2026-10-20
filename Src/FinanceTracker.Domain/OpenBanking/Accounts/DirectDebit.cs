@@ -1,6 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
 using FinanceTracker.Domain.Common;
-using FinanceTracker.Domain.Utility;
 
 namespace FinanceTracker.Domain.OpenBanking.Accounts;
 
@@ -22,19 +21,19 @@ public sealed class DirectDebit : Entity
         Update(details);
     }
 
-    [Encrypt] public string ExternalId { get; private set; }
+    public string ExternalId { get; private set; }
 
-    [Encrypt] public string Name { get; private set; }
+    public string Name { get; private set; }
 
-    [Encrypt] public string Status { get; private set; }
+    public string Status { get; private set; }
 
-    [Encrypt] public DateTime PreviousPaymentDate { get; private set; }
+    public DateTime PreviousPaymentDate { get; private set; }
 
-    [Encrypt] public decimal PreviousPaymentAmount { get; private set; }
+    public decimal PreviousPaymentAmount { get; private set; }
 
-    [Encrypt] public string? Currency { get; private set; }
+    public string? Currency { get; private set; }
 
-    [Encrypt] public DateTime Timestamp { get; private set; }
+    public DateTime Timestamp { get; private set; }
 
     [MemberNotNull(nameof(Name), nameof(Status))]
     internal void Update(DirectDebitDetails details)

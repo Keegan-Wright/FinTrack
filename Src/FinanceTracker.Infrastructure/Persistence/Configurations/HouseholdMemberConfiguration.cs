@@ -6,6 +6,12 @@ namespace FinanceTracker.Infrastructure.Persistence.Configurations;
 
 internal sealed class HouseholdMemberConfiguration : AggregateRootConfiguration<HouseholdMember>
 {
-    protected override void ConfigureAggregate(EntityTypeBuilder<HouseholdMember> builder) =>
+    protected override void ConfigureAggregate(EntityTypeBuilder<HouseholdMember> builder)
+    {
         builder.ToTable("HouseholdMembers");
+
+        builder.Property(x => x.FirstName).Encrypted();
+        builder.Property(x => x.LastName).Encrypted();
+        builder.Property(x => x.Income).Encrypted();
+    }
 }

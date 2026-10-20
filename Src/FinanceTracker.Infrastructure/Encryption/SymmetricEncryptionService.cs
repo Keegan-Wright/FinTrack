@@ -12,8 +12,8 @@ public class SymmetricEncryptionService : ISymmetricEncryptionService
 {
     private const int KeySize = 256;
     private const int BlockSize = 128;
-    private readonly byte[] _iv;
 
+    private readonly byte[] _iv;
     private readonly byte[] _key;
 
     public SymmetricEncryptionService(EncryptionConfiguration encryptionConfiguration) =>
@@ -32,6 +32,7 @@ public class SymmetricEncryptionService : ISymmetricEncryptionService
             byte[] byteArray => Convert.ToBase64String(byteArray),
             DateTime dateTime => dateTime.ToString("O", CultureInfo.InvariantCulture),
             DateTimeOffset dateTimeOffset => dateTimeOffset.ToString("O", CultureInfo.InvariantCulture),
+            System.Collections.IEnumerable enumerable when value is not string => System.Text.Json.JsonSerializer.Serialize(enumerable),
             IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture),
             _ => value.ToString()
         };
@@ -115,18 +116,39 @@ public class SymmetricEncryptionService : ISymmetricEncryptionService
             return DateTimeOffset.Parse(plainText, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
         }
 
+        if (targetType.IsArray)
+        {
+            Type? elementType = targetType.GetElementType();
+            if (elementType == null)
+            {
+                return Array.Empty<object>();
+            }
+
+            return System.Text.Json.JsonSerializer.Deserialize(plainText, targetType)
+                   ?? Array.CreateInstanceFromArrayType(elementType,0);
+        }
+
+        if (targetType.IsGenericType || typeof(System.Collections.IEnumerable).IsAssignableFrom(targetType))
+        {
+            return System.Text.Json.JsonSerializer.Deserialize(plainText, targetType)
+                   ?? throw new InvalidOperationException($"Failed to deserialize collection of type {targetType}.");
+        }
+
         return Convert.ChangeType(plainText, targetType, CultureInfo.InvariantCulture);
     }
 
     private static (byte[] Key, byte[] Iv) DeriveKeyAndIv(EncryptionConfiguration encryptionConfiguration,
         HashAlgorithmName hashAlgorithm)
     {
+        var keyLen = KeySize / 8;
+        var ivLen = BlockSize / 8;
+
         byte[] saltBytes = Encoding.ASCII.GetBytes(encryptionConfiguration.SymmetricSalt);
         Span<byte> generator = new byte[256];
         Rfc2898DeriveBytes.Pbkdf2(encryptionConfiguration.SymmetricKey, saltBytes, generator, encryptionConfiguration.Iterations,
             hashAlgorithm);
 
-        return (generator[..(KeySize / 8)].ToArray(), generator[..(BlockSize / 8)].ToArray());
+        return (generator[..(keyLen)].ToArray(), generator[keyLen..(keyLen + ivLen)].ToArray());
     }
 
     private Aes CreateAes()

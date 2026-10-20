@@ -14,6 +14,9 @@ internal sealed class AccessTokenConfiguration : IEntityTypeConfiguration<Access
         builder.Property(x => x.Id).ValueGeneratedNever();
         builder.Property<Guid>("ConnectionId");
 
+        builder.Property(x => x.Token).Encrypted();
+        builder.Property(x => x.RefreshToken).Encrypted();
+
         // At most one active token per connection
         builder.HasIndex("ConnectionId")
             .IsUnique()

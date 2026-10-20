@@ -14,6 +14,12 @@ internal sealed class BankConnectionConfiguration : AggregateRootConfiguration<B
 
         builder.PrimitiveCollection(x => x.Scopes).HasField("_scopes");
 
+        builder.Property(x => x.ExternalProviderId).Encrypted();
+        builder.Property(x => x.Name).Encrypted();
+        builder.Property(x => x.AccessCode).Encrypted();
+        builder.Property(x => x.Logo).Encrypted();
+        builder.Property(x => x.Scopes).Encrypted();
+
         builder.HasMany(x => x.AccessTokens)
             .WithOne()
             .HasForeignKey("ConnectionId")

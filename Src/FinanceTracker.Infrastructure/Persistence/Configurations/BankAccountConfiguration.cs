@@ -11,6 +11,10 @@ internal sealed class BankAccountConfiguration : AggregateRootConfiguration<Bank
     {
         builder.ToTable("BankAccounts");
 
+        builder.Property(x => x.AccountType).Encrypted();
+        builder.Property(x => x.DisplayName).Encrypted();
+        builder.Property(x => x.Currency).Encrypted();
+
         builder.HasOne<BankConnection>()
             .WithMany()
             .HasForeignKey(x => x.ConnectionId)
@@ -20,9 +24,9 @@ internal sealed class BankAccountConfiguration : AggregateRootConfiguration<Bank
 
         builder.OwnsOne(x => x.Balance, balance =>
         {
-            balance.Property(x => x.Available).HasColumnName("Balance_Available");
-            balance.Property(x => x.Current).HasColumnName("Balance_Current");
-            balance.Property(x => x.AsOf).HasColumnName("Balance_AsOf");
+            balance.Property(x => x.Available).HasColumnName("Balance_Available").Encrypted();
+            balance.Property(x => x.Current).HasColumnName("Balance_Current").Encrypted();
+            balance.Property(x => x.AsOf).HasColumnName("Balance_AsOf").Encrypted();
         });
 
         builder.HasMany(x => x.StandingOrders)

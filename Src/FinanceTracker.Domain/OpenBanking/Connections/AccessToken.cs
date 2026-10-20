@@ -1,5 +1,4 @@
 using FinanceTracker.Domain.Common;
-using FinanceTracker.Domain.Utility;
 
 namespace FinanceTracker.Domain.OpenBanking.Connections;
 
@@ -25,9 +24,9 @@ public sealed class AccessToken : Entity
         ExpiresAt = issuedAt.AddSeconds(expiresInSeconds);
     }
 
-    [Encrypt] public string Token { get; private set; }
+    public string Token { get; private set; }
 
-    [Encrypt] public string RefreshToken { get; private set; }
+    public string RefreshToken { get; private set; }
 
     public DateTime IssuedAt { get; private set; }
 

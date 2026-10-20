@@ -232,7 +232,7 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     Name = table.Column<string>(type: "text", nullable: false),
                     AccessCode = table.Column<string>(type: "text", nullable: false),
                     Logo = table.Column<string>(type: "text", nullable: false),
-                    Scopes = table.Column<string[]>(type: "text[]", nullable: false),
+                    Scopes = table.Column<string>(type: "text", nullable: false),
                     ConsentGrantedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     Created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     Updated = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
@@ -415,7 +415,7 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     Currency = table.Column<string>(type: "text", nullable: false),
                     Balance_Available = table.Column<string>(type: "text", nullable: true),
                     Balance_Current = table.Column<string>(type: "text", nullable: true),
-                    Balance_AsOf = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    Balance_AsOf = table.Column<string>(type: "text", nullable: true),
                     Created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     Updated = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     UserId = table.Column<Guid>(type: "uuid", nullable: false),
@@ -452,7 +452,7 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     Currency = table.Column<string>(type: "text", nullable: false),
                     OccurredAt = table.Column<string>(type: "text", nullable: false),
                     IsPending = table.Column<bool>(type: "boolean", nullable: false),
-                    ProviderClassifications = table.Column<string[]>(type: "text[]", nullable: false),
+                    ProviderClassifications = table.Column<string>(type: "text", nullable: false),
                     CustomClassificationIds = table.Column<Guid[]>(type: "uuid[]", nullable: false),
                     Created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     Updated = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
@@ -728,6 +728,7 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
             migrationBuilder.Sql("""INSERT INTO ticker."CronTickers"("Id", "Expression", "Request", "Retries", "RetryIntervals", "Function", "Description", "InitIdentifier", "CreatedAt", "UpdatedAt", "IsEnabled")VALUES (gen_random_uuid(), '0 0 */4 * * *', NULL, 1, ARRAY [10,20,30], 'SyncAllOpenBankingDetailsAsync', 'Performs background syncing of your banking data', NULL, timezone('utc', now()), timezone('utc', now()), true);""");
             migrationBuilder.Sql("""INSERT INTO ticker."CronTickers"("Id", "Expression", "Request", "Retries", "RetryIntervals", "Function", "Description", "InitIdentifier", "CreatedAt", "UpdatedAt", "IsEnabled")VALUES (gen_random_uuid(), '0 0 */12 * * *', NULL, 1, ARRAY [10,20,30], 'MonitorOpenBankingTokenExpirationAsync', 'Performs background monitoring of your provider access tokens for expiration', NULL, timezone('utc', now()), timezone('utc', now()), true);""");
+
         }
 
         /// <inheritdoc />

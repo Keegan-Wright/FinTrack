@@ -2,7 +2,6 @@ using System.Diagnostics.CodeAnalysis;
 using FinanceTracker.Domain.Classifications;
 using FinanceTracker.Domain.Common;
 using FinanceTracker.Domain.OpenBanking.Accounts;
-using FinanceTracker.Domain.Utility;
 
 namespace FinanceTracker.Domain.OpenBanking.Transactions;
 
@@ -30,26 +29,26 @@ public sealed class BankTransaction : AggregateRoot
 
     public Guid AccountId { get; private set; }
 
-    [Encrypt] public string ExternalId { get; private set; }
+    public string ExternalId { get; private set; }
 
-    [Encrypt] public string Description { get; private set; }
+    public string Description { get; private set; }
 
-    [Encrypt] public TransactionType Type { get; private set; }
+    public TransactionType Type { get; private set; }
 
-    [Encrypt] public string Category { get; private set; }
+    public string Category { get; private set; }
 
-    [Encrypt] public decimal Amount { get; private set; }
+    public decimal Amount { get; private set; }
 
-    [Encrypt] public string Currency { get; private set; }
+    public string Currency { get; private set; }
 
-    [Encrypt] public DateTime OccurredAt { get; private set; }
+    public DateTime OccurredAt { get; private set; }
 
     public bool IsPending { get; private set; }
 
     /// <summary>
     /// Tags supplied by the provider.
     /// </summary>
-    [Encrypt] public IReadOnlyCollection<string> ProviderClassifications => _providerClassifications.AsReadOnly();
+    public IReadOnlyCollection<string> ProviderClassifications => _providerClassifications.AsReadOnly();
 
     /// <summary>
     /// User applied <see cref="CustomClassification"/>s.

@@ -57,8 +57,10 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
     #endregion
 
 
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) =>
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
         optionsBuilder.AddInterceptors(AuditingInterceptor.Instance);
+    }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -70,8 +72,8 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
 
         builder.ApplyConfigurationsFromAssembly(typeof(FinanceTrackerContext).Assembly);
 
+        builder.UseEncryption(_symmetricEncryptionService);
 
-        builder.ApplyEncryption(_symmetricEncryptionService);
     }
 
     /// <summary>

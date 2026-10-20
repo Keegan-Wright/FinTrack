@@ -1,6 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
 using FinanceTracker.Domain.Common;
-using FinanceTracker.Domain.Utility;
 
 namespace FinanceTracker.Domain.Budgeting;
 
@@ -23,18 +22,18 @@ public sealed class BudgetCategory : AggregateRoot
         SetSavingsGoal(savingsGoal, goalCompletionDate);
     }
 
-    [Encrypt] public string Name { get; private set; }
+    public string Name { get; private set; }
 
     /// <summary>
     /// Can go negative when the category is overspent.
     /// </summary>
-    [Encrypt] public decimal AvailableFunds { get; private set; }
+    public decimal AvailableFunds { get; private set; }
 
-    [Encrypt] public decimal MonthlyStart { get; private set; }
+    public decimal MonthlyStart { get; private set; }
 
-    [Encrypt] public decimal SavingsGoal { get; private set; }
+    public decimal SavingsGoal { get; private set; }
 
-    [Encrypt] public DateTime? GoalCompletionDate { get; private set; }
+    public DateTime? GoalCompletionDate { get; private set; }
 
     [MemberNotNull(nameof(Name))]
     public void Rename(string name)
