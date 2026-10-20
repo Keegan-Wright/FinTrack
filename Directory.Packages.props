@@ -20,11 +20,12 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.13" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.13" />
     <PackageVersion Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="8.23.0" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.13" />
     <PackageVersion Include="Microsoft.Extensions.Identity.Stores" Version="10.0.13" />
     <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.13" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.13" />
     <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.13" />
     <PackageVersion Include="Npgsql.OpenTelemetry" Version="10.0.3" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
     <PackageVersion Include="Npgsql.EntityFrameworpekCore.PostgreSQL" Version="10.0.3" />
@@ -41,11 +42,11 @@
     <PackageVersion Include="OpenTelemetry.Instrumentation.EntityFrameworkCore" Version="1.15.0-beta.1" />
     <PackageVersion Include="NSubstitute" Version="6.2.0" />
     <PackageVersion Include="Testcontainers.PostgreSql" Version="4.16.0" />
-    
+
     <PackageVersion Include="TUnit" Version="1.75.0" />
     <PackageVersion Include="TUnit.Core" Version="1.75.0" />
     <PackageVersion Include="TUnit.AspNetCore" Version="1.75.0" />
-    
+
     <PackageVersion Include="Blazilla" Version="2.4.2" />
     <PackageVersion Include="FluentValidation" Version="12.2.0" />
     <PackageVersion Include="MudBlazor" Version="9.11.0" />
@@ -54,6 +55,8 @@
     <PackageVersion Include="TickerQ.EntityFrameworkCore" Version="10.4.0" />
     <PackageVersion Include="TickerQ.Instrumentation.OpenTelemetry" Version="10.4.0" />
     <PackageVersion Include="TickerQ.Utilities" Version="10.4.0" />
+
+    <PackageVersion Include="Bogus" Version="35.6.5"/>
 
   </ItemGroup>
 </Project>

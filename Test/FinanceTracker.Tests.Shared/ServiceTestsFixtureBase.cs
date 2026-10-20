@@ -33,7 +33,7 @@ public abstract class ServiceTestsFixtureBase : TestFixtureBase
     protected static IDbContextFactory<FinanceTrackerContext> BuildFactory(string databaseName)
     {
         var options = new DbContextOptionsBuilder<FinanceTrackerContext>()
-            .UseInMemoryDatabase(databaseName)
+           // UseInMemoryDatabase(databaseName)
             .Options;
 
         return new InMemoryFinanceTrackerContextFactory(options, BuildEncryptionService());

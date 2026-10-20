@@ -10,7 +10,6 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory"/>
       <PackageReference Include="Testcontainers.PostgreSql" />
       <PackageReference Include="TUnit.AspNetCore" />
       <PackageReference Include="TUnit.Core" />
