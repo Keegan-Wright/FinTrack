@@ -28,11 +28,14 @@ public abstract class InfrastructureTestBase : IAsyncDisposable
     [Before(Test)]
     public async Task BaseSetupAsync()
     {
-        // 1. Initialize a clean CancellationTokenSource for this specific test execution
         CancellationTokenSource = new CancellationTokenSource();
+        await EnsureContextCreated();
+        Scenario = new TestingScenario(DbContextFactory, CancellationToken);
+    }
 
-        // 2. Generate a completely isolated database name using TUnit's unique execution ID
-        var uniqueDbName = $"UnitTestDb_{TestContext.Current.Isolation.UniqueId}";
+    private async Task EnsureContextCreated()
+    {
+        var uniqueDbName = $"UnitTestDb_{TestContext.Current!.Isolation.UniqueId}";
         var connectionString = $"Data Source=InMemory_{uniqueDbName};Mode=Memory;Cache=Shared";
 
         _masterConnection = new SqliteConnection(connectionString);
@@ -46,26 +49,16 @@ public abstract class InfrastructureTestBase : IAsyncDisposable
 
         await using var context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
         await context.Database.EnsureCreatedAsync(CancellationToken);
-
-        Scenario = new TestingScenario(DbContextFactory, CancellationToken);
-
     }
 
     [After(Test)]
     public async Task BaseCleanupAsync()
     {
-        // Cancel and safely dispose of the token source after the test finishes
-        if (CancellationTokenSource != null)
-        {
-            await CancellationTokenSource.CancelAsync();
-            CancellationTokenSource.Dispose();
-        }
+        await CancellationTokenSource.CancelAsync();
+        CancellationTokenSource.Dispose();
 
-        if (_masterConnection != null)
-        {
-            await _masterConnection.CloseAsync();
-            await _masterConnection.DisposeAsync();
-        }
+        await _masterConnection!.CloseAsync();
+        await _masterConnection.DisposeAsync();
     }
 
 

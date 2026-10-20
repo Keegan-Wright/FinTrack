@@ -18,7 +18,7 @@ public sealed class UserScenario : ScenarioBuilder
 
         await context.SaveChangesAsync(Scenario.CancellationToken);
 
-        Scenario.UserMappings.Add(savedUser.Entity.UserName, savedUser.Entity.Id);
+        Scenario.UserMappings.Add(savedUser.Entity.UserName!, savedUser.Entity.Id);
 
         return Scenario;
     }
