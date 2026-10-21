@@ -25,7 +25,8 @@ internal sealed class BankTransactionConfiguration : AggregateRootConfiguration<
         builder.Property(x => x.OccurredAt).Encrypted();
         builder.Property(x => x.ProviderClassifications).Encrypted();
 
-        builder.HasIndex(x => new { x.AccountId, x.ExternalId }).IsUnique();
+        string externalIdBlindIndex = builder.HasBlindIndex(x => x.ExternalId);
+        builder.HasIndex(nameof(BankTransaction.AccountId), externalIdBlindIndex).IsUnique();
 
         builder.PrimitiveCollection(x => x.ProviderClassifications).HasField("_providerClassifications");
         builder.PrimitiveCollection(x => x.CustomClassificationIds).HasField("_customClassificationIds");

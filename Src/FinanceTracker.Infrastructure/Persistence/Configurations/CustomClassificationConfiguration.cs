@@ -12,6 +12,7 @@ internal sealed class CustomClassificationConfiguration : AggregateRootConfigura
 
         builder.Property(x => x.Tag).Encrypted();
 
-        builder.HasIndex(x => new { x.UserId, x.Tag }).IsUnique();
+        string tagBlindIndex = builder.HasBlindIndex(x => x.Tag);
+        builder.HasIndex(nameof(CustomClassification.UserId), tagBlindIndex).IsUnique();
     }
 }

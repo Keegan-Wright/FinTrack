@@ -5,6 +5,7 @@ using FinanceTracker.AppHost.ServiceDefaults;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Encryption;
 using FinanceTracker.Tests.Integration.OpenBanking;
+using FinanceTracker.Tests.Unit.Shared;
 using Microsoft.EntityFrameworkCore;
 using TUnit.Aspire;
 
@@ -17,12 +18,7 @@ namespace FinanceTracker.Tests.Integration;
 public sealed class FinTrackAppFixture : AspireFixture<Projects.FinanceTracker_AppHost>
 {
 
-    public static readonly EncryptionConfiguration EncryptionConfiguration = new()
-    {
-        SymmetricKey = "SymmetricKeyForIntegrationTesting",
-        SymmetricSalt = "SymmetricSaltForIntegrationTesting",
-        Iterations = 10
-    };
+    public static readonly EncryptionConfiguration EncryptionConfiguration = TestEncryptionKeys.Keyring();
 
     public FakeTrueLayer TrueLayer { get; } = new();
 
@@ -32,9 +28,8 @@ public sealed class FinTrackAppFixture : AspireFixture<Projects.FinanceTracker_A
 
     protected override string[] Args =>
     [
-        $"--Encryption:SymmetricKey={EncryptionConfiguration.SymmetricKey}",
-        $"--Encryption:SymmetricSalt={EncryptionConfiguration.SymmetricSalt}",
-        $"--Encryption:Iterations={EncryptionConfiguration.Iterations}",
+        $"--Encryption:Keys={TestEncryptionKeys.Serialise(EncryptionConfiguration)}",
+        $"--Encryption:CurrentKeyId={EncryptionConfiguration.CurrentKeyId}",
         $"--OpenBanking:TrueLayer:BaseAuthUrl={TrueLayer.AuthUrl}",
         $"--OpenBanking:TrueLayer:BaseDataUrl={TrueLayer.DataUrl}",
         $"--OpenBanking:TrueLayer:AuthRedirectUrl={TrueLayer.AuthUrl}redirect",
@@ -79,7 +74,7 @@ public sealed class FinTrackAppFixture : AspireFixture<Projects.FinanceTracker_A
             .UseNpgsql(connectionString)
             .Options;
 
-        DbContextFactory = new NpgsqlDbContextFactory(options, new SymmetricEncryptionService(EncryptionConfiguration));
+        DbContextFactory = new NpgsqlDbContextFactory(options, new ColumnEncryptionService(EncryptionConfiguration));
     }
 
     public override async ValueTask DisposeAsync()

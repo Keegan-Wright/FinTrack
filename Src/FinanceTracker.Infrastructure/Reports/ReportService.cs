@@ -257,12 +257,12 @@ public class ReportService : ServiceBase<ReportService>, IReportService
 
         List<BankTransaction> transactions = await criteria
             .ApplyServerFilters(context.BankTransactions.OwnedBy(UserId), context)
-            .Where(static x => x.Category != BankTransaction.TransferCategory)
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
-        // Encrypted timestamps sort by ciphertext in SQL, order after decryption
+        // Category and timestamps are encrypted, so filter and sort after decryption
         return (transactions
+            .Where(static x => x.Category != BankTransaction.TransferCategory)
             .Where(x => criteria.MatchesClientFilters(x, customTags))
             .OrderByDescending(static x => x.OccurredAt)
             .ToList(), customTags);

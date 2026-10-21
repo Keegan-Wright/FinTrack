@@ -9,7 +9,7 @@ namespace FinanceTracker.Tests.Integration;
 /// </summary>
 internal sealed class NpgsqlDbContextFactory(
     DbContextOptions<FinanceTrackerContext> options,
-    ISymmetricEncryptionService symmetricEncryptionService) : IDbContextFactory<FinanceTrackerContext>
+    IColumnEncryptionService columnEncryptionService) : IDbContextFactory<FinanceTrackerContext>
 {
-    public FinanceTrackerContext CreateDbContext() => new(options, symmetricEncryptionService, TimeProvider.System);
+    public FinanceTrackerContext CreateDbContext() => new(options, columnEncryptionService, TimeProvider.System);
 }

@@ -8,6 +8,7 @@ using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using FinanceTracker.Infrastructure.OpenBanking.TrueLayer;
 using FinanceTracker.Infrastructure.OpenBanking.TrueLayer.Contracts;
+using FinanceTracker.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -71,8 +72,9 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
                     : await externalConnection.Scopes.ToListAsync(cancellationToken);
 
                 BankConnection? connection = await context.BankConnections.OwnedBy(UserId)
+                    .WhereEncryptedEquals(x => x.ExternalProviderId, provider.ProviderId, context)
                     .Include(x => x.AccessTokens.Where(t => t.RevokedAt == null))
-                    .SingleOrDefaultAsync(x => x.ExternalProviderId == provider.ProviderId, cancellationToken);
+                    .SingleOrDefaultAsync(cancellationToken);
 
                 if (connection is null)
                 {
@@ -329,7 +331,8 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
 
         List<string> externalIds = incoming.Keys.ToList();
         Dictionary<string, BankTransaction> existing = await context.BankTransactions
-            .Where(x => x.AccountId == account.Id && externalIds.Contains(x.ExternalId))
+            .Where(x => x.AccountId == account.Id)
+            .WhereEncryptedIn(x => x.ExternalId, externalIds, context)
             .ToDictionaryAsync(static x => x.ExternalId, cancellationToken);
 
         foreach (TransactionDetails details in incoming.Values)

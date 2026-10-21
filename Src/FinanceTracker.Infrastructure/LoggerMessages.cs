@@ -21,4 +21,7 @@ public static partial class LoggerMessages
 
     [LoggerMessage(LogLevel.Warning, "Connection {connectionId} for user {userId} has no active consent, re-authentication is required before it can sync")]
     public static partial void LogConnectionNotAuthenticated(this ILogger logger, Guid connectionId, Guid userId);
+
+    [LoggerMessage(LogLevel.Information, "Re-encrypted {count} {entityType} rows with encryption key {keyId}")]
+    public static partial void LogReencrypted(this ILogger logger, int count, string entityType, int keyId);
 }

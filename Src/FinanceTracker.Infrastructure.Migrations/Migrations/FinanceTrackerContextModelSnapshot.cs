@@ -137,6 +137,11 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                         .HasColumnType("text")
                         .HasAnnotation("FinanceTracker.EncrptedColumn", true);
 
+                    b.Property<string>("TagBlindIndex")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.BlindIndexSource", "Tag");
+
                     b.Property<DateTime?>("Updated")
                         .HasColumnType("timestamp with time zone");
 
@@ -145,7 +150,7 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId", "Tag")
+                    b.HasIndex("UserId", "TagBlindIndex")
                         .IsUnique();
 
                     b.ToTable("CustomClassifications", (string)null);
@@ -367,6 +372,11 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                         .HasColumnType("text")
                         .HasAnnotation("FinanceTracker.EncrptedColumn", true);
 
+                    b.Property<string>("ExternalIdBlindIndex")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.BlindIndexSource", "ExternalId");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text")
@@ -397,7 +407,7 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AccountId", "ExternalId")
+                    b.HasIndex("AccountId", "ExternalIdBlindIndex")
                         .IsUnique();
 
                     b.ToTable("DirectDebits", (string)null);
@@ -577,6 +587,11 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                         .HasColumnType("text")
                         .HasAnnotation("FinanceTracker.EncrptedColumn", true);
 
+                    b.Property<string>("ExternalProviderIdBlindIndex")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.BlindIndexSource", "ExternalProviderId");
+
                     b.Property<string>("Logo")
                         .IsRequired()
                         .HasColumnType("text")
@@ -606,7 +621,7 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId", "ExternalProviderId")
+                    b.HasIndex("UserId", "ExternalProviderIdBlindIndex")
                         .IsUnique();
 
                     b.ToTable("BankConnections", (string)null);
@@ -652,6 +667,11 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                         .HasColumnType("text")
                         .HasAnnotation("FinanceTracker.EncrptedColumn", true);
 
+                    b.Property<string>("ExternalIdBlindIndex")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.BlindIndexSource", "ExternalId");
+
                     b.Property<bool>("IsPending")
                         .HasColumnType("boolean");
 
@@ -686,7 +706,7 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.HasIndex("AccountId", "ExternalId")
+                    b.HasIndex("AccountId", "ExternalIdBlindIndex")
                         .IsUnique();
 
                     b.ToTable("BankTransactions", (string)null);

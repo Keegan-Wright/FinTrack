@@ -98,12 +98,12 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        IAsyncEnumerable<TransactionType> types = context.BankTransactions.OwnedBy(UserId)
+        // Encrypted, so equal types only compare equal once decrypted
+        List<TransactionType> types = await context.BankTransactions.OwnedBy(UserId)
             .Select(static x => x.Type)
-            .Distinct()
-            .AsAsyncEnumerable();
+            .ToListAsync(cancellationToken);
 
-        await foreach (TransactionType type in types.WithCancellation(cancellationToken))
+        foreach (TransactionType type in types.Distinct())
         {
             yield return new TransactionTypeFilter { TransactionType = type.ToString() };
         }
@@ -115,12 +115,12 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        IAsyncEnumerable<string> categories = context.BankTransactions.OwnedBy(UserId)
+        // Encrypted, so equal categories only compare equal once decrypted
+        List<string> categories = await context.BankTransactions.OwnedBy(UserId)
             .Select(static x => x.Category)
-            .Distinct()
-            .AsAsyncEnumerable();
+            .ToListAsync(cancellationToken);
 
-        await foreach (string category in categories.WithCancellation(cancellationToken))
+        foreach (string category in categories.Distinct())
         {
             yield return new TransactionCategoryFilter { TransactionCategory = category };
         }
@@ -136,7 +136,6 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
         List<IReadOnlyCollection<string>> materialisedClassifications = await context.BankTransactions
             .OwnedBy(UserId)
             .Select(static x => x.ProviderClassifications)
-            .Distinct()
             .ToListAsync(cancellationToken);
 
         List<string> providerTags = materialisedClassifications
@@ -147,7 +146,6 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
         List<string> customTags = await context.CustomClassifications
             .OwnedBy(UserId)
             .Select(static x => x.Tag)
-            .Distinct() // Filter duplicates directly on the database engine level
             .ToListAsync(cancellationToken);
 
         foreach (string tag in providerTags.Union(customTags))

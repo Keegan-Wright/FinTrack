@@ -38,7 +38,7 @@ public class AuditingInterceptorTests : InfrastructureTestBase
         await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
         return context.GetService<IDbContextOptions>().FindExtension<CoreOptionsExtension>()!.Interceptors!
             .OfType<ISaveChangesInterceptor>()
-            .Single();
+            .Single(static x => x.GetType().Name == "AuditingInterceptor");
     }
 
     private sealed class TestEventDefinition() : EventDefinitionBase(Substitute.For<ILoggingOptions>(),

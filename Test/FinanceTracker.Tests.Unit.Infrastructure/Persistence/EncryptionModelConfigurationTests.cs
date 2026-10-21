@@ -15,7 +15,7 @@ public class EncryptionModelConfigurationTests : InfrastructureTestBase
     [Test]
     public async Task UseEncryption_NullModelBuilder_Throws()
     {
-        await Assert.That(() => ModelBuilderExtensions.UseEncryption(null!, SymmetricEncryptionService))
+        await Assert.That(() => ModelBuilderExtensions.UseEncryption(null!, ColumnEncryptionService))
             .Throws<ArgumentNullException>();
     }
 
@@ -112,7 +112,7 @@ public class EncryptionModelConfigurationTests : InfrastructureTestBase
     public async Task EncryptionConverter_RoundTripsValue()
     {
         // Arrange
-        EncryptionConverter<decimal> converter = new(SymmetricEncryptionService);
+        EncryptionConverter<decimal> converter = new(ColumnEncryptionService);
 
         // Act
         object? stored = converter.ConvertToProvider(123.45m);

@@ -22,6 +22,7 @@ internal sealed class DirectDebitConfiguration : IEntityTypeConfiguration<Direct
         builder.Property(x => x.Currency).Encrypted();
         builder.Property(x => x.Timestamp).Encrypted();
 
-        builder.HasIndex("AccountId", nameof(DirectDebit.ExternalId)).IsUnique();
+        string externalIdBlindIndex = builder.HasBlindIndex(x => x.ExternalId);
+        builder.HasIndex("AccountId", externalIdBlindIndex).IsUnique();
     }
 }

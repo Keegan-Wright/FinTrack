@@ -37,25 +37,25 @@ internal sealed record TransactionCriteria(
                 context.BankAccounts.Any(a => a.Id == x.AccountId && ProviderIds.Contains(a.ConnectionId)));
         }
 
-        if (Types is { Count: > 0 })
-        {
-            List<TransactionType> types = Types
-                .Select(static x => Enum.TryParse(x, true, out TransactionType type) ? type : (TransactionType?)null)
-                .OfType<TransactionType>()
-                .ToList();
-            query = query.Where(x => types.Contains(x.Type));
-        }
-
-        if (Categories is { Count: > 0 })
-        {
-            query = query.Where(x => Categories.Contains(x.Category));
-        }
-
         return query;
     }
 
+    /// <summary>
+    /// Filters on encrypted columns, which can only be compared once decrypted.
+    /// </summary>
     public bool MatchesClientFilters(BankTransaction transaction, IReadOnlyDictionary<Guid, string> customTags)
     {
+        if (Types is { Count: > 0 } &&
+            !Types.Any(x => Enum.TryParse(x, true, out TransactionType type) && type == transaction.Type))
+        {
+            return false;
+        }
+
+        if (Categories is { Count: > 0 } && !Categories.Contains(transaction.Category))
+        {
+            return false;
+        }
+
         if (SearchTerm is not null &&
             !transaction.Description.Contains(SearchTerm, StringComparison.CurrentCultureIgnoreCase))
         {

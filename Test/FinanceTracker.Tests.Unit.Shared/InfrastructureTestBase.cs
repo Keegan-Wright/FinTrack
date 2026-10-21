@@ -15,16 +15,13 @@ public abstract class InfrastructureTestBase : UnitTestBase, IAsyncDisposable
 {
     private SqliteConnection? _masterConnection;
 
+    private DbContextOptions<FinanceTrackerContext> _options = null!;
+
     protected TestingScenario Scenario { get; private set; } = null!;
     protected IDbContextFactory<FinanceTrackerContext> DbContextFactory { get; private set; } = null!;
 
-    protected ISymmetricEncryptionService SymmetricEncryptionService { get; } = new SymmetricEncryptionService(
-        new EncryptionConfiguration()
-        {
-            Iterations = 10,
-            SymmetricKey = "SymmetricKeyForUnitTesting",
-            SymmetricSalt = "SymmetricSaltForUnitTesting"
-        });
+    protected IColumnEncryptionService ColumnEncryptionService { get; } =
+        new ColumnEncryptionService(TestEncryptionKeys.Keyring());
 
 
     [Before(Test)]
@@ -43,16 +40,23 @@ public abstract class InfrastructureTestBase : UnitTestBase, IAsyncDisposable
         _masterConnection = new SqliteConnection(connectionString);
         await _masterConnection.OpenAsync(CancellationToken);
 
-        DbContextOptions<FinanceTrackerContext> options = new DbContextOptionsBuilder<FinanceTrackerContext>()
+        _options = new DbContextOptionsBuilder<FinanceTrackerContext>()
             .UseSqlite(connectionString)
             .ReplaceService<IModelCustomizer, SqliteModelCustomizer>()
             .Options;
 
-        DbContextFactory = new SqliteInMemoryDbContextFactory(options, SymmetricEncryptionService);
+        DbContextFactory = CreateDbContextFactory(ColumnEncryptionService);
 
         await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
         await context.Database.EnsureCreatedAsync(CancellationToken);
     }
+
+    /// <summary>
+    /// Contexts on this test's database using <paramref name="encryptionService"/>, e.g. a rotated keyring.
+    /// </summary>
+    protected IDbContextFactory<FinanceTrackerContext> CreateDbContextFactory(
+        IColumnEncryptionService encryptionService) =>
+        new SqliteInMemoryDbContextFactory(_options, encryptionService);
 
     /// <summary>
     /// The current user services act for, as a user seeded through the scenario.

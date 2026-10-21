@@ -7,13 +7,13 @@ namespace FinanceTracker.Tests.Unit.Shared;
 public class SqliteInMemoryDbContextFactory : IDbContextFactory<FinanceTrackerContext>
 {
     private readonly DbContextOptions<FinanceTrackerContext> _options;
-    private readonly ISymmetricEncryptionService _symmetricEncryptionService;
+    private readonly IColumnEncryptionService _columnEncryptionService;
     public SqliteInMemoryDbContextFactory(DbContextOptions<FinanceTrackerContext> options,
-        ISymmetricEncryptionService symmetricEncryptionService)
+        IColumnEncryptionService columnEncryptionService)
     {
         _options = options;
-        _symmetricEncryptionService = symmetricEncryptionService;
+        _columnEncryptionService = columnEncryptionService;
     }
 
-    public FinanceTrackerContext CreateDbContext() => new FinanceTrackerContext(_options, _symmetricEncryptionService, TimeProvider.System);
+    public FinanceTrackerContext CreateDbContext() => new FinanceTrackerContext(_options, _columnEncryptionService, TimeProvider.System);
 }

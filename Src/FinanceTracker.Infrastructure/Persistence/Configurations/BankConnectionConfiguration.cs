@@ -10,7 +10,8 @@ internal sealed class BankConnectionConfiguration : AggregateRootConfiguration<B
     {
         builder.ToTable("BankConnections");
 
-        builder.HasIndex(x => new { x.UserId, x.ExternalProviderId }).IsUnique();
+        string providerBlindIndex = builder.HasBlindIndex(x => x.ExternalProviderId);
+        builder.HasIndex(nameof(BankConnection.UserId), providerBlindIndex).IsUnique();
 
         builder.PrimitiveCollection(x => x.Scopes).HasField("_scopes");
 

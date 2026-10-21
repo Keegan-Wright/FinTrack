@@ -10,7 +10,7 @@ namespace FinanceTracker.Infrastructure.Persistence;
 public static class ModelBuilderExtensions
 {
     public static ModelBuilder UseEncryption(this ModelBuilder modelBuilder,
-        ISymmetricEncryptionService encryptionService)
+        IColumnEncryptionService encryptionService)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
         ArgumentNullException.ThrowIfNull(encryptionService);
@@ -36,7 +36,7 @@ public static class ModelBuilderExtensions
         return modelBuilder;
     }
 
-    private static ValueConverter CreateConverter(Type modelType, ISymmetricEncryptionService encryptionService) =>
+    private static ValueConverter CreateConverter(Type modelType, IColumnEncryptionService encryptionService) =>
         (ValueConverter)Activator.CreateInstance(
             typeof(EncryptionConverter<>).MakeGenericType(modelType), encryptionService)!;
 

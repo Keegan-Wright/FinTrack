@@ -54,8 +54,9 @@ public class FinanceTrackerContextTests : InfrastructureTestBase
         // Assert
         using (Assert.Multiple())
         {
-            await Assert.That(stored).IsNotEqualTo("Secret Budget");
-            await Assert.That(stored).IsEqualTo(SymmetricEncryptionService.Encrypt("Secret Budget"));
+            await Assert.That(stored).DoesNotContain("Secret");
+            await Assert.That(stored).StartsWith("1:");
+            await Assert.That(ColumnEncryptionService.Decrypt<string>(stored)).IsEqualTo("Secret Budget");
         }
     }
 

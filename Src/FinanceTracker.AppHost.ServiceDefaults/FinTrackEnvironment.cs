@@ -7,9 +7,15 @@ public static class FinTrackEnvironment
 {
     public const string Culture = "APP_CULTURE";
 
-    public const string EncryptionKey = "ENCRYPTION_KEY";
-    public const string EncryptionSalt = "ENCRYPTION_SALT";
-    public const string EncryptionIterations = "ENCRYPTION_ITERATIONS";
+    /// <summary>
+    /// The keyring, <c>id:base64key</c> pairs separated by <c>;</c>.
+    /// </summary>
+    public const string EncryptionKeys = "ENCRYPTION_KEYS";
+
+    /// <summary>
+    /// The keyring id new values are encrypted with.
+    /// </summary>
+    public const string EncryptionCurrentKeyId = "ENCRYPTION_CURRENT_KEY_ID";
 
     public const string TrueLayerBaseAuthUrl = "OPEN_BANKING_TRUELAYER_BASE_AUTH_URL";
     public const string TrueLayerBaseDataUrl = "OPEN_BANKING_TRUELAYER_BASE_DATA_URL";

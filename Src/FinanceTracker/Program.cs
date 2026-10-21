@@ -6,6 +6,7 @@ using FinanceTracker.Components;
 using FinanceTracker.Components.Account;
 using FinanceTracker.Domain.Identity;
 using FinanceTracker.Infrastructure;
+using FinanceTracker.Infrastructure.Encryption;
 using FinanceTracker.Infrastructure.OpenBanking.TrueLayer;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
@@ -195,12 +196,10 @@ public partial class Program
 
         builder.Services.AddSingleton(trueLayerConfig);
 
-        EncryptionConfiguration encryptionConfig = new()
-        {
-            SymmetricKey = builder.Configuration.GetValue<string>(FinTrackEnvironment.EncryptionKey)!,
-            SymmetricSalt = builder.Configuration.GetValue<string>(FinTrackEnvironment.EncryptionSalt)!,
-            Iterations = builder.Configuration.GetValue<int>(FinTrackEnvironment.EncryptionIterations)
-        };
+        EncryptionConfiguration encryptionConfig = EncryptionConfiguration.Parse(
+            builder.Configuration.GetValue<string>(FinTrackEnvironment.EncryptionKeys)
+                ?? throw new InvalidOperationException($"{FinTrackEnvironment.EncryptionKeys} isn't configured."),
+            builder.Configuration.GetValue<int>(FinTrackEnvironment.EncryptionCurrentKeyId));
 
         builder.Services.AddSingleton(encryptionConfig);
 
@@ -291,10 +290,15 @@ public partial class Program
     {
         await using AsyncServiceScope scope = app.Services.CreateAsyncScope();
 
-        FinanceTrackerContext db = await scope.ServiceProvider
-            .GetRequiredService<IDbContextFactory<FinanceTrackerContext>>()
-            .CreateDbContextAsync();
+        await using (FinanceTrackerContext db = await scope.ServiceProvider
+                         .GetRequiredService<IDbContextFactory<FinanceTrackerContext>>()
+                         .CreateDbContextAsync())
+        {
+            await db.Database.MigrateAsync();
+        }
 
-        await db.Database.MigrateAsync();
+        // Anything still under an older key is re-encrypted before the app serves requests
+        await ActivatorUtilities.CreateInstance<EncryptionKeyRotator>(scope.ServiceProvider)
+            .RotateAsync(CancellationToken.None);
     }
 }

@@ -18,13 +18,10 @@ IResourceBuilder<ContainerRegistryResource> registry = builder.AddContainerRegis
 builder.AddDockerComposeEnvironment("fintrack");
 
 
-IResourceBuilder<ParameterResource> encryptionKey =
-    builder.AddParameterFromConfiguration("FinTrack-Symmetric-Key", "Encryption:SymmetricKey", secret: true);
-IResourceBuilder<ParameterResource> encryptionSalt =
-    builder.AddParameterFromConfiguration("FinTrack-Symmetric-Salt", "Encryption:SymmetricSalt", secret: true);
-// Part of the key derivation, so it must stay matched to the data's key and salt
-IResourceBuilder<ParameterResource> encryptionIterations =
-    builder.AddParameterFromConfiguration("FinTrack-Symmetric-Key-Iterations", "Encryption:Iterations");
+IResourceBuilder<ParameterResource> encryptionKeys =
+    builder.AddParameterFromConfiguration("FinTrack-Encryption-Keys", "Encryption:Keys", secret: true);
+IResourceBuilder<ParameterResource> encryptionCurrentKeyId =
+    builder.AddParameterFromConfiguration("FinTrack-Encryption-Current-Key-Id", "Encryption:CurrentKeyId");
 
 IResourceBuilder<ParameterResource> openBankingAuthUrl =
     builder.AddParameterFromConfiguration("OpenBanking-Auth-Url", "OpenBanking:TrueLayer:BaseAuthUrl");
@@ -63,9 +60,8 @@ IResourceBuilder<PostgresDatabaseResource> postgresDb = postgres.AddDatabase(Fin
 
 IResourceBuilder<ProjectResource> finTrack = builder.AddProject<Projects.FinanceTracker>(FinTrackResources.Web)
 
-    .WithEnvironment(FinTrackEnvironment.EncryptionKey, encryptionKey)
-    .WithEnvironment(FinTrackEnvironment.EncryptionSalt, encryptionSalt)
-    .WithEnvironment(FinTrackEnvironment.EncryptionIterations, encryptionIterations)
+    .WithEnvironment(FinTrackEnvironment.EncryptionKeys, encryptionKeys)
+    .WithEnvironment(FinTrackEnvironment.EncryptionCurrentKeyId, encryptionCurrentKeyId)
     .WithEnvironment(FinTrackEnvironment.TrueLayerBaseAuthUrl, openBankingAuthUrl)
     .WithEnvironment(FinTrackEnvironment.TrueLayerBaseDataUrl, openBankingDataUrl)
     .WithEnvironment(FinTrackEnvironment.TrueLayerAuthRedirectUrl, openBankingAuthRedirectUrl)

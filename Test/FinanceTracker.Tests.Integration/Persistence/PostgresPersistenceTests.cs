@@ -40,6 +40,31 @@ public class PostgresPersistenceTests : IntegrationTestBase
     }
 
     [Test]
+    public async Task EncryptedColumns_SameValueIsStoredDifferently()
+    {
+        // Arrange
+        string username = UniqueName();
+        await Scenario.Do(s => s.UserScenario.WithUser(username))
+            .Do(s => s.BudgetCategoryScenario.WithBudgetCategory("first", username, userId =>
+                new BudgetCategory(userId, "Holidays", 1, 1, 1, null)))
+            .Do(s => s.BudgetCategoryScenario.WithBudgetCategory("second", username, userId =>
+                new BudgetCategory(userId, "Holidays", 1, 1, 1, null)));
+
+        // Act
+        string first = await ReadRawColumnAsync<BudgetCategory>(nameof(BudgetCategory.Name),
+            Scenario.BudgetCategoryMappings["first"]);
+        string second = await ReadRawColumnAsync<BudgetCategory>(nameof(BudgetCategory.Name),
+            Scenario.BudgetCategoryMappings["second"]);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(first).IsNotEqualTo(second);
+            await Assert.That(first).StartsWith("1:");
+        }
+    }
+
+    [Test]
     public async Task EncryptedCollection_ChangesAreSaved()
     {
         // Arrange

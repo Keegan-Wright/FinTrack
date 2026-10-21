@@ -10,6 +10,7 @@ using FinanceTracker.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using TickerQ.EntityFrameworkCore.Configurations;
 using TickerQ.Utilities.Entities;
@@ -18,7 +19,12 @@ namespace FinanceTracker.Infrastructure;
 
 public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, FinanceTrackerRole, Guid>, IDesignTimeDbContextFactory<FinanceTrackerContext>
 {
-    private readonly ISymmetricEncryptionService _symmetricEncryptionService;
+    private readonly IColumnEncryptionService _columnEncryptionService;
+
+    /// <summary>
+    /// Encrypts columns and computes blind indexes, see <see cref="Persistence.BlindIndexInterceptor"/>.
+    /// </summary>
+    internal IColumnEncryptionService EncryptionService => _columnEncryptionService;
 
     /// <summary>
     /// The clock <see cref="Persistence.AuditingInterceptor"/> stamps audit times from.
@@ -34,9 +40,9 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
 
     [ActivatorUtilitiesConstructor]
     public FinanceTrackerContext(DbContextOptions<FinanceTrackerContext> options,
-        ISymmetricEncryptionService symmetricEncryptionService, TimeProvider timeProvider) : base(options)
+        IColumnEncryptionService columnEncryptionService, TimeProvider timeProvider) : base(options)
     {
-        _symmetricEncryptionService = symmetricEncryptionService;
+        _columnEncryptionService = columnEncryptionService;
         TimeProvider = timeProvider;
     }
 
@@ -66,7 +72,8 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
-        optionsBuilder.AddInterceptors(AuditingInterceptor.Instance);
+        optionsBuilder.AddInterceptors(AuditingInterceptor.Instance, BlindIndexInterceptor.Instance);
+        optionsBuilder.ReplaceService<IModelCacheKeyFactory, EncryptionModelCacheKeyFactory>();
     }
 
     protected override void OnModelCreating(ModelBuilder builder)
@@ -79,7 +86,7 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
 
         builder.ApplyConfigurationsFromAssembly(typeof(FinanceTrackerContext).Assembly);
 
-        builder.UseEncryption(_symmetricEncryptionService);
+        builder.UseEncryption(_columnEncryptionService);
 
     }
 
@@ -98,11 +105,11 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
                 npgsqlDbContextOptionsBuilder.CommandTimeout(0);
             });
 
-            return new FinanceTrackerContext(builder.Options, new SymmetricEncryptionService(new EncryptionConfiguration()
+            // Migrations only need the model, a throwaway key is enough
+            return new FinanceTrackerContext(builder.Options, new ColumnEncryptionService(new EncryptionConfiguration
             {
-                SymmetricKey = "DesignTimeKey",
-                SymmetricSalt = "DesignTimeSalt",
-                Iterations = 1
+                Keys = new Dictionary<int, byte[]> { [1] = new byte[EncryptionConfiguration.KeySize] },
+                CurrentKeyId = 1
             }), TimeProvider.System);
         }
 }
