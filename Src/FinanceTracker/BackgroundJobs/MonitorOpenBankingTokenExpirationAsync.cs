@@ -18,12 +18,10 @@ public class MonitorOpenBankingTokenExpirationAsync : ITickerFunction
     private static readonly TimeSpan ConsentLifetime = TimeSpan.FromDays(90);
 
     private readonly IDbContextFactory<FinanceTrackerContext> _dbContextFactory;
-    private readonly IBackgroundSyncService _syncService;
 
-    public MonitorOpenBankingTokenExpirationAsync(IDbContextFactory<FinanceTrackerContext> dbContextFactory, IBackgroundSyncService syncService)
+    public MonitorOpenBankingTokenExpirationAsync(IDbContextFactory<FinanceTrackerContext> dbContextFactory)
     {
         _dbContextFactory = dbContextFactory;
-        _syncService = syncService;
     }
 
     public async Task ExecuteAsync(TickerFunctionContext context,
@@ -56,7 +54,5 @@ public class MonitorOpenBankingTokenExpirationAsync : ITickerFunction
         await dbContext.SaveChangesAsync(cancellationToken);
 
         performingMonitoringActivity?.AddEvent(new ActivityEvent("Monitor OpenBanking Token Expiration completed"));
-
-        await _syncService.NotifySyncComplete();
     }
 }

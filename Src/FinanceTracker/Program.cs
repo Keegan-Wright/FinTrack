@@ -212,6 +212,8 @@ public partial class Program
         });
 
         builder.Services.MapTicker<SyncAllOpenBankingDetailsAsync>();
+        builder.Services.MapTicker<SyncUserOpenBankingDetailsAsync, SyncUserOpenBankingDetailsRequest>();
+        builder.Services.MapTicker<MonitorOpenBankingTokenExpirationAsync>();
 
 
         builder.Services.AddCascadingValue(_ => new ApplicationState());
@@ -219,7 +221,7 @@ public partial class Program
 
         builder.Services.AddHttpClient("OpenBankingClient");
 
-        builder.Services.AddSingleton<IBackgroundSyncService, BackgroundSyncService>();
+        builder.Services.AddSingleton<ISyncNotifier, SyncNotifier>();
         builder.Services.AddSingleton(TimeProvider.System);
 
         AddFinanceTrackerServices(builder.Services);
@@ -244,13 +246,7 @@ public partial class Program
 
         await ExecuteDatabaseMigrationAsync(app);
 
-
-        app.MapGet("/BackgroundProcessing",
-            (IBackgroundSyncService syncService, CancellationToken ct) =>
-            {
-                return TypedResults.ServerSentEvents(syncService.GetSyncNotifications(ct),
-                    "BackgroundBankingSyncComplete");
-            });
+        app.MapDefaultEndpoints();
 
         if (isOidcEnabled)
         {

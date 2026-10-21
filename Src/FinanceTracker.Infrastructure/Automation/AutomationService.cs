@@ -6,7 +6,6 @@ using FinanceTracker.Generated.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using TickerQ.Utilities.Entities;
-using TickerQ.Utilities.Enums;
 using TickerQ.Utilities.Interfaces.Managers;
 
 namespace FinanceTracker.Infrastructure.Automation;
@@ -52,30 +51,17 @@ public class AutomationService :  ServiceBase<AutomationService>, IAutomationSer
         return true;
     }
 
+    /// <summary>
+    /// When any of the user's accounts last synced from the sync log
+    /// </summary>
     public async Task<DateTime?> GetLastSyncTimeAsync(CancellationToken cancellationToken)
     {
-        var eventName = "SyncAllOpenBankingDetailsAsync";
         await using var context = await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        var cron = await context.CronTickerEntities
-            .FirstAsync(x => x.Function == eventName, cancellationToken);
+        var lastSync = await context.SyncLog
+            .Where(x => context.BankAccounts.Any(a => a.Id == x.AccountId && a.UserId == UserId))
+            .MaxAsync(x => (DateTime?)x.OccurredAt, cancellationToken);
 
-        var latestCronOccurence = await context.CronTickerOccurrenceEntities
-            .Where(x => x.CronTickerId == cron.Id)
-            .Where(x => x.Status == TickerStatus.Done)
-            .OrderByDescending(x => x.ExecutionTime)
-            .FirstOrDefaultAsync(cancellationToken);
-
-        var latestManaulTickerOccurence = await context.TimeTickerEntities
-            .Where(x => x.Function == eventName)
-            .Where(x => x.Status == TickerStatus.Done)
-            .OrderByDescending(x => x.ExecutionTime)
-            .FirstOrDefaultAsync(cancellationToken);
-
-        if (latestCronOccurence is null ||  (latestManaulTickerOccurence?.ExecutionTime > latestCronOccurence.ExecutionTime))
-            return latestManaulTickerOccurence?.ExecutionTime?.ToLocalTime();
-        else
-            return latestCronOccurence.ExecutionTime.ToLocalTime();
-
+        return lastSync?.ToLocalTime();
     }
 }

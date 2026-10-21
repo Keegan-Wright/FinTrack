@@ -2,7 +2,10 @@
 
 @using FinanceTracker.Components.Transactions
 @using FinanceTracker.Contracts
+@using Microsoft.AspNetCore.Authorization
 @inherits ReportPageBase<FinanceTracker.Contracts.Reports.Category.SpentInCategoryReport>
+
+@attribute [Authorize]
 
 <PageTitle>Spent By Category Report</PageTitle>
 

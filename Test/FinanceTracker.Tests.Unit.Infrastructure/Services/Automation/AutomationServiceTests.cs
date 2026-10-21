@@ -1,11 +1,11 @@
 using FinanceTracker.Contracts.Automation;
+using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Infrastructure.Automation;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using TickerQ.Utilities.Entities;
-using TickerQ.Utilities.Enums;
 using TickerQ.Utilities.Interfaces.Managers;
 
 namespace FinanceTracker.Tests.Unit.Infrastructure.Services.Automation;
@@ -13,6 +13,7 @@ namespace FinanceTracker.Tests.Unit.Infrastructure.Services.Automation;
 public class AutomationServiceTests : InfrastructureTestBase
 {
     private const string Username = "primary";
+    private const string OtherUsername = "secondary";
     private const string SyncFunction = "SyncAllOpenBankingDetailsAsync";
 
     private readonly ICronTickerManager<CronTickerEntity> _cronTickerManager =
@@ -121,22 +122,12 @@ public class AutomationServiceTests : InfrastructureTestBase
     }
 
     [Test]
-    public async Task GetLastSyncTimeAsync_WhenSyncJobNotRegistered_Throws()
-    {
-        // Arrange
-        await Scenario.Do(s => s.UserScenario.WithUser(Username));
-        AutomationService subject = BuildSubject();
-
-        // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => subject.GetLastSyncTimeAsync(CancellationToken));
-    }
-
-    [Test]
-    public async Task GetLastSyncTimeAsync_WhenNothingHasRun_ReturnsNull()
+    public async Task GetLastSyncTimeAsync_WhenNothingHasSynced_ReturnsNull()
     {
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
-            .Do(s => s.AutomationScenario.WithCronJob("sync", SyncFunction));
+            .Do(s => s.BankConnectionScenario.WithConnection("bank", Username))
+            .Do(s => s.BankAccountScenario.WithAccount("main", "bank"));
 
         AutomationService subject = BuildSubject();
 
@@ -148,18 +139,18 @@ public class AutomationServiceTests : InfrastructureTestBase
     }
 
     [Test]
-    public async Task GetLastSyncTimeAsync_ReturnsLatestCompletedCronRunInLocalTime()
+    public async Task GetLastSyncTimeAsync_ReturnsLatestSyncAcrossTheUsersAccountsInLocalTime()
     {
         // Arrange
         DateTime older = new(2026, 1, 1, 10, 0, 0, DateTimeKind.Utc);
         DateTime latest = new(2026, 1, 2, 10, 0, 0, DateTimeKind.Utc);
-        DateTime failed = new(2026, 1, 3, 10, 0, 0, DateTimeKind.Utc);
 
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
-            .Do(s => s.AutomationScenario.WithCronJob("sync", SyncFunction))
-            .Do(s => s.AutomationScenario.WithCronOccurrence("sync", TickerStatus.Done, older))
-            .Do(s => s.AutomationScenario.WithCronOccurrence("sync", TickerStatus.Done, latest))
-            .Do(s => s.AutomationScenario.WithCronOccurrence("sync", TickerStatus.Failed, failed));
+            .Do(s => s.BankConnectionScenario.WithConnection("bank", Username))
+            .Do(s => s.BankAccountScenario.WithAccount("main", "bank"))
+            .Do(s => s.BankAccountScenario.WithAccount("savings", "bank"))
+            .Do(s => s.BankAccountScenario.WithSyncLog("main", SyncType.Transactions, older))
+            .Do(s => s.BankAccountScenario.WithSyncLog("savings", SyncType.Balance, latest));
 
         AutomationService subject = BuildSubject();
 
@@ -171,16 +162,20 @@ public class AutomationServiceTests : InfrastructureTestBase
     }
 
     [Test]
-    public async Task GetLastSyncTimeAsync_WhenManualRunIsMoreRecent_ReturnsManualRun()
+    public async Task GetLastSyncTimeAsync_IgnoresOtherUsersSyncs()
     {
         // Arrange
-        DateTime cronRun = new(2026, 1, 1, 10, 0, 0, DateTimeKind.Utc);
-        DateTime manualRun = new(2026, 1, 2, 10, 0, 0, DateTimeKind.Utc);
+        DateTime mine = new(2026, 1, 1, 10, 0, 0, DateTimeKind.Utc);
+        DateTime theirs = new(2026, 1, 2, 10, 0, 0, DateTimeKind.Utc);
 
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
-            .Do(s => s.AutomationScenario.WithCronJob("sync", SyncFunction))
-            .Do(s => s.AutomationScenario.WithCronOccurrence("sync", TickerStatus.Done, cronRun))
-            .Do(s => s.AutomationScenario.WithTimeTicker(SyncFunction, TickerStatus.Done, manualRun));
+            .Do(s => s.UserScenario.WithUser(OtherUsername))
+            .Do(s => s.BankConnectionScenario.WithConnection("bank", Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("theirs", OtherUsername))
+            .Do(s => s.BankAccountScenario.WithAccount("main", "bank"))
+            .Do(s => s.BankAccountScenario.WithAccount("their-account", "theirs"))
+            .Do(s => s.BankAccountScenario.WithSyncLog("main", SyncType.Account, mine))
+            .Do(s => s.BankAccountScenario.WithSyncLog("their-account", SyncType.Account, theirs));
 
         AutomationService subject = BuildSubject();
 
@@ -188,65 +183,7 @@ public class AutomationServiceTests : InfrastructureTestBase
         DateTime? lastSync = await subject.GetLastSyncTimeAsync(CancellationToken);
 
         // Assert
-        await Assert.That(lastSync).IsEqualTo(manualRun.ToLocalTime());
-    }
-
-    [Test]
-    public async Task GetLastSyncTimeAsync_WhenCronRunIsMoreRecent_ReturnsCronRun()
-    {
-        // Arrange
-        DateTime manualRun = new(2026, 1, 1, 10, 0, 0, DateTimeKind.Utc);
-        DateTime cronRun = new(2026, 1, 2, 10, 0, 0, DateTimeKind.Utc);
-
-        await Scenario.Do(s => s.UserScenario.WithUser(Username))
-            .Do(s => s.AutomationScenario.WithCronJob("sync", SyncFunction))
-            .Do(s => s.AutomationScenario.WithCronOccurrence("sync", TickerStatus.Done, cronRun))
-            .Do(s => s.AutomationScenario.WithTimeTicker(SyncFunction, TickerStatus.Done, manualRun));
-
-        AutomationService subject = BuildSubject();
-
-        // Act
-        DateTime? lastSync = await subject.GetLastSyncTimeAsync(CancellationToken);
-
-        // Assert
-        await Assert.That(lastSync).IsEqualTo(cronRun.ToLocalTime());
-    }
-
-    [Test]
-    public async Task GetLastSyncTimeAsync_WhenOnlyManualRunsCompleted_ReturnsManualRun()
-    {
-        // Arrange
-        DateTime manualRun = new(2026, 1, 2, 10, 0, 0, DateTimeKind.Utc);
-
-        await Scenario.Do(s => s.UserScenario.WithUser(Username))
-            .Do(s => s.AutomationScenario.WithCronJob("sync", SyncFunction))
-            .Do(s => s.AutomationScenario.WithTimeTicker(SyncFunction, TickerStatus.Done, manualRun))
-            .Do(s => s.AutomationScenario.WithTimeTicker("SomeOtherFunction", TickerStatus.Done, manualRun.AddDays(1)));
-
-        AutomationService subject = BuildSubject();
-
-        // Act
-        DateTime? lastSync = await subject.GetLastSyncTimeAsync(CancellationToken);
-
-        // Assert
-        await Assert.That(lastSync).IsEqualTo(manualRun.ToLocalTime());
-    }
-
-    [Test]
-    public async Task GetLastSyncTimeAsync_WhenManualRunHasNoExecutionTime_ReturnsNull()
-    {
-        // Arrange
-        await Scenario.Do(s => s.UserScenario.WithUser(Username))
-            .Do(s => s.AutomationScenario.WithCronJob("sync", SyncFunction))
-            .Do(s => s.AutomationScenario.WithTimeTicker(SyncFunction, TickerStatus.Done, null));
-
-        AutomationService subject = BuildSubject();
-
-        // Act
-        DateTime? lastSync = await subject.GetLastSyncTimeAsync(CancellationToken);
-
-        // Assert
-        await Assert.That(lastSync).IsNull();
+        await Assert.That(lastSync).IsEqualTo(mine.ToLocalTime());
     }
 
     private AutomationService BuildSubject() => new(UserPrincipal(Username), DbContextFactory,

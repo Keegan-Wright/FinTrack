@@ -1,7 +1,10 @@
 @page "/Report/InTimePeriod"
 @using FinanceTracker.Components.Transactions
 @using FinanceTracker.Contracts
+@using Microsoft.AspNetCore.Authorization
 @inherits ReportPageBase<FinanceTracker.Contracts.Reports.SpentInTimePeriod.SpentInTimePeriodReport>
+
+@attribute [Authorize]
 
 <PageTitle>Spent By In Time Period Report</PageTitle>
 

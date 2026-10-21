@@ -1,14 +1,14 @@
 ﻿@inherits LayoutBase
 @using FinanceTracker.BackgroundJobs
+@using System.Security.Claims
 @using FinanceTracker.Infrastructure.Automation
 @using TickerQ.Utilities.Entities
 @using TickerQ.Utilities.Interfaces.Managers
 @implements IDisposable
 
-@inject IJSRuntime JS
 @inject IAutomationService AutomationService;
 @inject ITimeTickerManager<TimeTickerEntity> TimeTickerManager;
-@inject NavigationManager NavigationManager
+@inject ISyncNotifier SyncNotifier
 
 <MudThemeProvider @ref="@_mudThemeProvider" Theme="_theme" @bind-IsDarkMode="_isDarkMode" DefaultScrollbar="true"/>
 <MudPopoverProvider/>
@@ -78,7 +78,10 @@
 
     [CascadingParameter] public IHttpContextAccessor? HttpContext { get; set; }
 
-    private DotNetObjectReference<MainLayout>? _objRef;
+    [CascadingParameter] private Task<AuthenticationState> AuthenticationState { get; set; } = null!;
+
+    private Guid? _userId;
+    private IDisposable? _syncSubscription;
 
     internal readonly CancellationTokenSource _cts = new();
 
@@ -90,8 +93,13 @@
         await base.OnAfterRenderAsync(firstRender);
         if (firstRender)
         {
-            _objRef = DotNetObjectReference.Create(this);
-            await JS.InvokeVoidAsync("setupBackgroundSyncEvent", _objRef, NavigationManager.ToAbsoluteUri("/BackgroundProcessing").ToString());
+            ClaimsPrincipal user = (await AuthenticationState).User;
+            if (Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out Guid userId))
+            {
+                _userId = userId;
+                _syncSubscription = SyncNotifier.Subscribe(userId, () => InvokeAsync(GetLatestSyncTimeAsync));
+            }
+
             await GetLatestSyncTimeAsync();
         }
     }
@@ -106,15 +114,12 @@
 
     public async Task RequestResync()
     {
-        UpdatingBackgroundSync = true;
-        await TimeTickerManager.AddAsync<SyncAllOpenBankingDetailsAsync>(DateTime.UtcNow, _cts.Token);
-    }
+        if (_userId is not { } userId)
+            return;
 
-    [JSInvokable]
-    public async Task OnBackgroundSyncComplete()
-    {
-        await GetLatestSyncTimeAsync();
-        StateHasChanged();
+        UpdatingBackgroundSync = true;
+        await TimeTickerManager.AddAsync<SyncUserOpenBankingDetailsAsync, SyncUserOpenBankingDetailsRequest>(
+            DateTime.UtcNow, new SyncUserOpenBankingDetailsRequest(userId), _cts.Token);
     }
 
 
@@ -126,7 +131,7 @@
     public void Dispose()
     {
         ApplicationState.PropertyChanged -= ApplicationStateOnPropertyChanged;
-        _objRef?.Dispose();
+        _syncSubscription?.Dispose();
         _cts.Cancel();
         _cts.Dispose();
 

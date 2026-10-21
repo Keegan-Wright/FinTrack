@@ -40,8 +40,11 @@ jobs:
       - name: Build Solution
         run: dotnet build -c=release
 
-      - name: Test Solution
-        run: dotnet test -c=release
+      - name: Unit Tests
+        run: |
+          for project in Domain FinanceTracker Infrastructure; do
+            dotnet test --project Test/FinanceTracker.Tests.Unit.$project -c=release || exit 1
+          done
 
       - name: Upload HTML Test Report
         uses: actions/upload-artifact@v4

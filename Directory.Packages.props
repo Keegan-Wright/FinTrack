@@ -46,6 +46,8 @@
     <PackageVersion Include="TUnit" Version="1.75.0" />
     <PackageVersion Include="TUnit.Core" Version="1.75.0" />
     <PackageVersion Include="TUnit.AspNetCore" Version="1.75.0" />
+    <PackageVersion Include="TUnit.Aspire" Version="1.75.0" />
+    <PackageVersion Include="WireMock.Net" Version="2.18.0" />
 
     <PackageVersion Include="Blazilla" Version="2.4.2" />
     <PackageVersion Include="FluentValidation" Version="12.2.0" />

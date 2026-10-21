@@ -3,7 +3,6 @@ using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.EntityFrameworkCore;
-using NSubstitute;
 
 namespace FinanceTracker.Tests.Unit.FinanceTracker.BackgroundJobs;
 
@@ -13,8 +12,6 @@ public class MonitorOpenBankingTokenExpirationAsyncTests : InfrastructureTestBas
     private const string OtherUsername = "secondary";
 
     private static readonly TimeSpan ConsentLifetime = TimeSpan.FromDays(90);
-
-    private readonly IBackgroundSyncService _syncService = Substitute.For<IBackgroundSyncService>();
 
     [Test]
     public async Task ExecuteAsync_ConsentLapsed_RevokesActiveToken()
@@ -138,42 +135,6 @@ public class MonitorOpenBankingTokenExpirationAsyncTests : InfrastructureTestBas
         }
     }
 
-    [Test]
-    [Arguments(true)]
-    [Arguments(false)]
-    public async Task ExecuteAsync_NotifiesCompleteOnce(bool hasLapsedConnection)
-    {
-        // Arrange
-        await Scenario.Do(s => s.UserScenario.WithUser(Username))
-            .Do(s => s.BankConnectionScenario.WithConnection("bank", Username))
-            .Do(s => s.BankConnectionScenario.WithAccessToken("bank"))
-            .Do(s => hasLapsedConnection
-                ? s.BankConnectionScenario.WithConsentGrantedAt("bank", Lapsed())
-                : Task.FromResult(s));
-
-        MonitorOpenBankingTokenExpirationAsync subject = BuildSubject();
-
-        // Act
-        await subject.ExecuteAsync(TickerFunctionContextFactory.Create(), CancellationToken);
-
-        // Assert
-        await _syncService.Received(1).NotifySyncComplete();
-    }
-
-    [Test]
-    public async Task ExecuteAsync_NoConnections_StillNotifiesComplete()
-    {
-        // Arrange
-        await Scenario.Do(s => s.UserScenario.WithUser(Username));
-        MonitorOpenBankingTokenExpirationAsync subject = BuildSubject();
-
-        // Act
-        await subject.ExecuteAsync(TickerFunctionContextFactory.Create(), CancellationToken);
-
-        // Assert
-        await _syncService.Received(1).NotifySyncComplete();
-    }
-
     private static DateTime Lapsed() => DateTime.UtcNow - ConsentLifetime - TimeSpan.FromHours(1);
 
     private async Task RevokeActiveTokenAsync(string connectionName, DateTime revokedAt)
@@ -194,5 +155,5 @@ public class MonitorOpenBankingTokenExpirationAsyncTests : InfrastructureTestBas
             .SingleAsync(x => x.Id == id, CancellationToken);
     }
 
-    private MonitorOpenBankingTokenExpirationAsync BuildSubject() => new(DbContextFactory, _syncService);
+    private MonitorOpenBankingTokenExpirationAsync BuildSubject() => new(DbContextFactory);
 }

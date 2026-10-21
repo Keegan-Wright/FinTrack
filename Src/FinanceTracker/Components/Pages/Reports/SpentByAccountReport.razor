@@ -1,7 +1,10 @@
 @page "/Report/ByAccount"
 @using FinanceTracker.Components.Transactions
 @using FinanceTracker.Contracts
+@using Microsoft.AspNetCore.Authorization
 @inherits ReportPageBase<FinanceTracker.Contracts.Reports.Account.SpentInAccountReport>
+
+@attribute [Authorize]
 
 <PageTitle>Spent By Account Report</PageTitle>
 
