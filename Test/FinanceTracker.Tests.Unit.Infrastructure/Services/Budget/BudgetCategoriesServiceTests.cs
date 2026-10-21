@@ -193,5 +193,5 @@ public class BudgetCategoriesServiceTests : InfrastructureTestBase
     }
 
     private BudgetCategoriesService BuildSubject(string username) =>
-        new(UserPrincipal(username), DbContextFactory, NullLogger<BudgetCategoriesService>.Instance);
+        new(CurrentUserFor(username), DbContextFactory, NullLogger<BudgetCategoriesService>.Instance);
 }

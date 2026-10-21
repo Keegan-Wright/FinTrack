@@ -1,5 +1,4 @@
 using FinanceTracker.Infrastructure;
-using FinanceTracker.Infrastructure.OpenBanking;
 using Microsoft.EntityFrameworkCore;
 using TickerQ.Utilities.Base;
 using TickerQ.Utilities.Interfaces;
@@ -15,9 +14,9 @@ namespace FinanceTracker.BackgroundJobs;
 /// </summary>
 public class SyncAllOpenBankingDetailsAsync : OpenBankingSyncJob, ITickerFunction
 {
-    public SyncAllOpenBankingDetailsAsync(IOpenBankingService openBankingService,
+    public SyncAllOpenBankingDetailsAsync(IServiceScopeFactory scopeFactory,
         IDbContextFactory<FinanceTrackerContext> dbContextFactory, ISyncNotifier syncNotifier)
-        : base(openBankingService, dbContextFactory, syncNotifier)
+        : base(scopeFactory, dbContextFactory, syncNotifier)
     {
     }
 

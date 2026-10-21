@@ -186,6 +186,6 @@ public class AutomationServiceTests : InfrastructureTestBase
         await Assert.That(lastSync).IsEqualTo(mine.ToLocalTime());
     }
 
-    private AutomationService BuildSubject() => new(UserPrincipal(Username), DbContextFactory,
+    private AutomationService BuildSubject() => new(CurrentUserFor(Username), DbContextFactory,
         NullLogger<AutomationService>.Instance, _cronTickerManager, Substitute.For<ITimeTickerManager<TimeTickerEntity>>());
 }

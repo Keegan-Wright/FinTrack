@@ -181,5 +181,5 @@ public class CalendarServiceTests : InfrastructureTestBase
     }
 
     private CalendarService BuildSubject() =>
-        new(UserPrincipal(Username), DbContextFactory, NullLogger<CalendarService>.Instance);
+        new(CurrentUserFor(Username), DbContextFactory, NullLogger<CalendarService>.Instance);
 }

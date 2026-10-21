@@ -185,6 +185,6 @@ public class AccountServiceTests : InfrastructureTestBase
         await Assert.That(accounts.Count).IsEqualTo(0);
     }
 
-    private AccountService BuildSubject(string username) => new(UserPrincipal(username), DbContextFactory,
+    private AccountService BuildSubject(string username) => new(CurrentUserFor(username), DbContextFactory,
         Substitute.For<IOpenBankingService>(), NullLogger<AccountService>.Instance);
 }

@@ -576,25 +576,6 @@ public class OpenBankingServiceTests : InfrastructureTestBase
     }
 
     [Test]
-    public async Task RunFunctionAsUser_WithoutPrincipal_RunsAsTheGivenUserThenResets()
-    {
-        // Arrange
-        await SeedConnectionAsync();
-        OpenBankingService subject = new(null!, DbContextFactory, _api, NullLogger<OpenBankingService>.Instance, TimeProvider.System);
-
-        // Act
-        await ((IOpenBankingService)subject).RunFunctionAsUser(Scenario.UserMappings[Username],
-            () => subject.PerformSyncAsync(SyncTypes.All, CancellationToken));
-
-        // Assert
-        using (Assert.Multiple())
-        {
-            await _api.Received(1).GetAllAccountsAsync(Token, CancellationToken);
-            await Assert.That(subject.AutomationInstanceUserId).IsEqualTo(Guid.Empty);
-        }
-    }
-
-    [Test]
     public async Task AddVendorViaAccessCodeAsync_ExistingConnection_ReauthenticatesIssuesTokenAndSyncs()
     {
         // Arrange
@@ -885,7 +866,7 @@ public class OpenBankingServiceTests : InfrastructureTestBase
         }
 
         CapturingLogger<OpenBankingService> logger = new();
-        OpenBankingService subject = new(UserPrincipal(Username), DbContextFactory, _api, logger, TimeProvider.System);
+        OpenBankingService subject = new(CurrentUserFor(Username), DbContextFactory, _api, logger, TimeProvider.System);
 
         // Act
         await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
@@ -1083,6 +1064,6 @@ public class OpenBankingServiceTests : InfrastructureTestBase
     }
 
     private OpenBankingService BuildSubject() =>
-        new(UserPrincipal(Username), DbContextFactory, _api, NullLogger<OpenBankingService>.Instance,
+        new(CurrentUserFor(Username), DbContextFactory, _api, NullLogger<OpenBankingService>.Instance,
             TimeProvider.System);
 }

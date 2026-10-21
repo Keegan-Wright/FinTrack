@@ -10,8 +10,10 @@ using FinanceTracker.Infrastructure.OpenBanking.TrueLayer;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Server.Circuits;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using MudBlazor.Services;
 using TickerQ.DependencyInjection;
@@ -160,11 +162,9 @@ public partial class Program
 
         builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-        builder.Services.AddHttpContextAccessor();
-        // Resolves to null outside a request (background jobs), services fall back to their automation user id.
-        // To be replaced by an ICurrentUser service, HttpContext isn't reliable for interactive Blazor circuits
-        builder.Services.AddScoped<ClaimsPrincipal>(s =>
-            s.GetService<IHttpContextAccessor>()?.HttpContext?.User!);
+        // Services act for ICurrentUser, set per request below, per circuit by the handler, per job by its scope
+        builder.Services.AddCurrentUser();
+        builder.Services.TryAddEnumerable(ServiceDescriptor.Scoped<CircuitHandler, CurrentUserCircuitHandler>());
 
 
         builder.Services.AddIdentityCore<FinanceTrackerUser>(options =>
@@ -254,6 +254,14 @@ public partial class Program
         await ExecuteDatabaseMigrationAsync(app);
 
         app.MapDefaultEndpoints();
+
+        // Authentication has already run, so the request's user is known. Covers static and prerendered pages and
+        // endpoints, interactive circuits are handled by CurrentUserCircuitHandler
+        app.Use((context, next) =>
+        {
+            context.RequestServices.GetRequiredService<CurrentUser>().Set(context.User);
+            return next(context);
+        });
 
         if (isOidcEnabled)
         {

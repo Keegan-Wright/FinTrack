@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.Runtime.CompilerServices;
-using System.Security.Claims;
 using FinanceTracker.Contracts.Reports;
 using FinanceTracker.Contracts.Reports.Account;
 using FinanceTracker.Contracts.Reports.Category;
@@ -21,8 +20,8 @@ public class ReportService : ServiceBase<ReportService>, IReportService
 {
     private readonly IOpenBankingService _openBankingService;
 
-    public ReportService(ClaimsPrincipal user, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
-        IOpenBankingService openBankingService, ILogger<ReportService> logger) : base(user, financeTrackerContextFactory, logger) =>
+    public ReportService(ICurrentUser currentUser, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
+        IOpenBankingService openBankingService, ILogger<ReportService> logger) : base(currentUser, financeTrackerContextFactory, logger) =>
         _openBankingService = openBankingService;
 
     public async IAsyncEnumerable<SpentInTimePeriodReport> GetSpentInTimePeriodReportAsync(

@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-using System.Security.Claims;
 using FinanceTracker.Contracts.HouseholdMember;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
@@ -13,8 +12,8 @@ namespace FinanceTracker.Infrastructure.HouseholdMembers;
 [Scoped<IHouseholdMemberService>]
 public class HouseholdMemberService : ServiceBase<HouseholdMemberService>, IHouseholdMemberService
 {
-    public HouseholdMemberService(ClaimsPrincipal user,
-        IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<HouseholdMemberService> logger) : base(user,
+    public HouseholdMemberService(ICurrentUser currentUser,
+        IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<HouseholdMemberService> logger) : base(currentUser,
         financeTrackerContextFactory, logger)
     {
     }

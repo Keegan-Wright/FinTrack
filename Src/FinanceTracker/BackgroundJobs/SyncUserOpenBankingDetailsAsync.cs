@@ -1,12 +1,9 @@
 using FinanceTracker.Infrastructure;
-using FinanceTracker.Infrastructure.OpenBanking;
 using Microsoft.EntityFrameworkCore;
 using TickerQ.Utilities.Base;
 using TickerQ.Utilities.Interfaces;
 
 namespace FinanceTracker.BackgroundJobs;
-
-public sealed record SyncUserOpenBankingDetailsRequest(Guid UserId);
 
 // ReSharper disable once ClassNeverInstantiated.Global
 // Background job, ignore the warning
@@ -15,9 +12,9 @@ public sealed record SyncUserOpenBankingDetailsRequest(Guid UserId);
 /// </summary>
 public class SyncUserOpenBankingDetailsAsync : OpenBankingSyncJob, ITickerFunction<SyncUserOpenBankingDetailsRequest>
 {
-    public SyncUserOpenBankingDetailsAsync(IOpenBankingService openBankingService,
+    public SyncUserOpenBankingDetailsAsync(IServiceScopeFactory scopeFactory,
         IDbContextFactory<FinanceTrackerContext> dbContextFactory, ISyncNotifier syncNotifier)
-        : base(openBankingService, dbContextFactory, syncNotifier)
+        : base(scopeFactory, dbContextFactory, syncNotifier)
     {
     }
 

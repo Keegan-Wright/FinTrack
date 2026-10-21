@@ -285,5 +285,5 @@ public class ClassificationServiceTests : InfrastructureTestBase
     }
 
     private ClassificationService BuildSubject() =>
-        new(UserPrincipal(Username), DbContextFactory, NullLogger<ClassificationService>.Instance);
+        new(CurrentUserFor(Username), DbContextFactory, NullLogger<ClassificationService>.Instance);
 }

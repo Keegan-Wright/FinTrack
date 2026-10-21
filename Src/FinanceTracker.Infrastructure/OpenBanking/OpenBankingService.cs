@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-using System.Security.Claims;
 using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.OpenBanking;
 using FinanceTracker.Domain.OpenBanking.Accounts;
@@ -24,10 +23,10 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
     private readonly TimeProvider _timeProvider;
     private readonly IOpenBankingApiService _openBankingApiService;
 
-    public OpenBankingService(ClaimsPrincipal user,
+    public OpenBankingService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
         IOpenBankingApiService openBankingApiService, ILogger<OpenBankingService> logger,
-        TimeProvider timeProvider) : base(user, financeTrackerContextFactory, logger)
+        TimeProvider timeProvider) : base(currentUser, financeTrackerContextFactory, logger)
     {
         _openBankingApiService = openBankingApiService;
         _timeProvider = timeProvider;

@@ -287,6 +287,6 @@ public class DashboardServiceTests : InfrastructureTestBase
     private static DateTime Utc(string value) =>
         DateTime.SpecifyKind(DateTime.Parse(value, System.Globalization.CultureInfo.InvariantCulture), DateTimeKind.Utc);
 
-    private DashboardService BuildSubject(DateTime? now = null) => new(UserPrincipal(Username), DbContextFactory,
+    private DashboardService BuildSubject(DateTime? now = null) => new(CurrentUserFor(Username), DbContextFactory,
         NullLogger<DashboardService>.Instance, new FixedTimeProvider(now ?? Now));
 }

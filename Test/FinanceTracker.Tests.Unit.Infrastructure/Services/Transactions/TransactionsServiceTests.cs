@@ -427,6 +427,6 @@ public class TransactionsServiceTests : InfrastructureTestBase
     private Task<List<Transaction>> GetAllAsync(TransactionsService subject, FilterTransactions filter) =>
         subject.GetAllTransactionsAsync(filter, SyncTypes.All, CancellationToken).ToListAsync(CancellationToken).AsTask();
 
-    private TransactionsService BuildSubject() => new(UserPrincipal(Username), DbContextFactory,
+    private TransactionsService BuildSubject() => new(CurrentUserFor(Username), DbContextFactory,
         Substitute.For<IOpenBankingService>(), NullLogger<TransactionsService>.Instance);
 }

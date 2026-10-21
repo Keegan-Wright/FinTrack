@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-using System.Security.Claims;
 using FinanceTracker.Contracts.Calendar;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
@@ -12,8 +11,8 @@ namespace FinanceTracker.Infrastructure.Calendar;
 [Scoped<ICalendarService>]
 public class CalendarService : ServiceBase<CalendarService>, ICalendarService
 {
-    public CalendarService(ClaimsPrincipal user, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<CalendarService> logger)
-        : base(user, financeTrackerContextFactory, logger)
+    public CalendarService(ICurrentUser currentUser, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<CalendarService> logger)
+        : base(currentUser, financeTrackerContextFactory, logger)
     {
     }
 

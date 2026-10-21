@@ -4,7 +4,7 @@ using FinanceTracker.Infrastructure.OpenBanking.TrueLayer.Contracts;
 
 namespace FinanceTracker.Infrastructure.OpenBanking;
 
-public interface IOpenBankingService : IServiceBase
+public interface IOpenBankingService
 {
     IAsyncEnumerable<ExternalOpenBankingProvider> GetOpenBankingProvidersForClientAsync(
         CancellationToken cancellationToken);
@@ -13,11 +13,4 @@ public interface IOpenBankingService : IServiceBase
     Task<bool> AddVendorViaAccessCodeAsync(AddVendor addVendor, CancellationToken cancellationToken);
     Task PerformSyncAsync(SyncTypes syncFlags, CancellationToken cancellationToken);
     Task SyncConnectionAsync(Guid connectionId, SyncTypes syncFlags, CancellationToken cancellationToken);
-
-    async Task RunFunctionAsUser(Guid userId, Func<Task> action)
-    {
-        SetAutomationInstanceUserId(userId);
-        await action();
-        SetAutomationInstanceUserId(Guid.Empty);
-    }
 }

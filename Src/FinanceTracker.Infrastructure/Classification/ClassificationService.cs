@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-using System.Security.Claims;
 using FinanceTracker.Contracts.Classifications;
 using FinanceTracker.Domain.Classifications;
 using FinanceTracker.Domain.OpenBanking.Transactions;
@@ -14,8 +13,8 @@ namespace FinanceTracker.Infrastructure.Classification;
 [Scoped<IClassificationService>]
 public class ClassificationService : ServiceBase<ClassificationService>, IClassificationService
 {
-    public ClassificationService(ClaimsPrincipal user,
-        IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<ClassificationService> logger) : base(user,
+    public ClassificationService(ICurrentUser currentUser,
+        IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<ClassificationService> logger) : base(currentUser,
         financeTrackerContextFactory, logger)
     {
     }

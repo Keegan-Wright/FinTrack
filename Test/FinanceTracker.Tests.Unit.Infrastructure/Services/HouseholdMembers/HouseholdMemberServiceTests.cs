@@ -163,5 +163,5 @@ public class HouseholdMemberServiceTests : InfrastructureTestBase
     }
 
     private HouseholdMemberService BuildSubject() =>
-        new(UserPrincipal(Username), DbContextFactory, NullLogger<HouseholdMemberService>.Instance);
+        new(CurrentUserFor(Username), DbContextFactory, NullLogger<HouseholdMemberService>.Instance);
 }

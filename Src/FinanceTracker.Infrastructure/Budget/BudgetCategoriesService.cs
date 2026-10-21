@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-using System.Security.Claims;
 using FinanceTracker.Contracts.Budget;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
@@ -13,8 +12,8 @@ namespace FinanceTracker.Infrastructure.Budget;
 [Scoped<IBudgetCategoriesService>]
 public class BudgetCategoriesService : ServiceBase<BudgetCategoriesService>, IBudgetCategoriesService
 {
-    public BudgetCategoriesService(ClaimsPrincipal user,
-        IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<BudgetCategoriesService> logger) : base(user,
+    public BudgetCategoriesService(ICurrentUser currentUser,
+        IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<BudgetCategoriesService> logger) : base(currentUser,
         financeTrackerContextFactory, logger)
     {
     }

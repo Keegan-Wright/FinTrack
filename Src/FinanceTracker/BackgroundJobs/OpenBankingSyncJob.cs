@@ -14,13 +14,13 @@ namespace FinanceTracker.BackgroundJobs;
 public abstract class OpenBankingSyncJob
 {
     private readonly IDbContextFactory<FinanceTrackerContext> _dbContextFactory;
-    private readonly IOpenBankingService _openBankingService;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly ISyncNotifier _syncNotifier;
 
-    protected OpenBankingSyncJob(IOpenBankingService openBankingService,
+    protected OpenBankingSyncJob(IServiceScopeFactory scopeFactory,
         IDbContextFactory<FinanceTrackerContext> dbContextFactory, ISyncNotifier syncNotifier)
     {
-        _openBankingService = openBankingService;
+        _scopeFactory = scopeFactory;
         _dbContextFactory = dbContextFactory;
         _syncNotifier = syncNotifier;
     }
@@ -52,20 +52,23 @@ public abstract class OpenBankingSyncJob
             performingBackgroundSyncActivity?.AddEvent(
                 new ActivityEvent($"Processing Connection {connectionId} for User {userId}"));
 
-            await _openBankingService.RunFunctionAsUser(userId, async () =>
+            try
             {
-                try
-                {
-                    await _openBankingService.SyncConnectionAsync(connectionId, SyncTypes.All, cancellationToken);
+                // Each connection syncs in its own scope acting as its owner, so services resolve that user and
+                // nothing carries over from the previous connection
+                await using AsyncServiceScope scope = _scopeFactory.CreateUserScope(userId);
+                IOpenBankingService openBankingService =
+                    scope.ServiceProvider.GetRequiredService<IOpenBankingService>();
 
-                    performingBackgroundSyncActivity?.AddEvent(
-                        new ActivityEvent($"Finished Processing Connection {connectionId} for User {userId}"));
-                }
-                catch (Exception ex)
-                {
-                    performingBackgroundSyncActivity?.AddException(ex);
-                }
-            });
+                await openBankingService.SyncConnectionAsync(connectionId, SyncTypes.All, cancellationToken);
+
+                performingBackgroundSyncActivity?.AddEvent(
+                    new ActivityEvent($"Finished Processing Connection {connectionId} for User {userId}"));
+            }
+            catch (Exception ex)
+            {
+                performingBackgroundSyncActivity?.AddException(ex);
+            }
         }
 
         performingBackgroundSyncActivity?.AddEvent(new ActivityEvent("Background sync completed"));

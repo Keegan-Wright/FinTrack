@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-using System.Security.Claims;
 using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.Transactions;
 using FinanceTracker.Domain.OpenBanking.Transactions;
@@ -17,10 +16,10 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
 {
     private readonly IOpenBankingService _openBankingService;
 
-    public TransactionsService(ClaimsPrincipal user,
+    public TransactionsService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
         IOpenBankingService openBankingService,
-        ILogger<TransactionsService> logger) : base(user, financeTrackerContextFactory, logger) =>
+        ILogger<TransactionsService> logger) : base(currentUser, financeTrackerContextFactory, logger) =>
         _openBankingService = openBankingService;
 
     public async IAsyncEnumerable<Transaction> GetAllTransactionsAsync(

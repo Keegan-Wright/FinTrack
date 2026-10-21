@@ -303,6 +303,6 @@ public class ReportServiceTests : InfrastructureTestBase
 
     private static string MonthName(int month) => DateTimeFormatInfo.CurrentInfo.GetMonthName(month);
 
-    private ReportService BuildSubject() => new(UserPrincipal(Username), DbContextFactory,
+    private ReportService BuildSubject() => new(CurrentUserFor(Username), DbContextFactory,
         Substitute.For<IOpenBankingService>(), NullLogger<ReportService>.Instance);
 }

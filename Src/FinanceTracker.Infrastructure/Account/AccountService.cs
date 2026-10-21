@@ -1,6 +1,5 @@
 using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
-using System.Security.Claims;
 using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.Account;
 using FinanceTracker.Domain.OpenBanking.Accounts;
@@ -19,8 +18,8 @@ public class AccountService : ServiceBase<AccountService>, IAccountService
 {
     private readonly IOpenBankingService _openBankingService;
 
-    public AccountService(ClaimsPrincipal user, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
-        IOpenBankingService openBankingService, ILogger<AccountService> logger) : base(user, financeTrackerContextFactory, logger) =>
+    public AccountService(ICurrentUser currentUser, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
+        IOpenBankingService openBankingService, ILogger<AccountService> logger) : base(currentUser, financeTrackerContextFactory, logger) =>
         _openBankingService = openBankingService;
 
     public async IAsyncEnumerable<AccountAndTransactions> GetAccountsAndMostRecentTransactionsAsync(

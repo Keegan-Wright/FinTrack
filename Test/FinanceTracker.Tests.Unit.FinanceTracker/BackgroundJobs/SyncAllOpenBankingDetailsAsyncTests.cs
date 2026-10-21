@@ -105,11 +105,10 @@ public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
         // Assert
         using (Assert.Multiple())
         {
-            await OpenBankingService.DidNotReceiveWithAnyArgs().RunFunctionAsUser(default, default!);
             await OpenBankingService.DidNotReceiveWithAnyArgs().SyncConnectionAsync(default, default, default);
             await SyncNotifier.DidNotReceiveWithAnyArgs().NotifyAsync(default);
         }
     }
 
-    private SyncAllOpenBankingDetailsAsync BuildSubject() => new(OpenBankingService, DbContextFactory, SyncNotifier);
+    private SyncAllOpenBankingDetailsAsync BuildSubject() => new(ScopeFactory, DbContextFactory, SyncNotifier);
 }

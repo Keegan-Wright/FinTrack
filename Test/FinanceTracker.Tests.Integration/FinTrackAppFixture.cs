@@ -87,11 +87,4 @@ public sealed class FinTrackAppFixture : AspireFixture<Projects.FinanceTracker_A
         await base.DisposeAsync();
         TrueLayer.Dispose();
     }
-
-    private sealed class NpgsqlDbContextFactory(
-        DbContextOptions<FinanceTrackerContext> options,
-        ISymmetricEncryptionService symmetricEncryptionService) : IDbContextFactory<FinanceTrackerContext>
-    {
-        public FinanceTrackerContext CreateDbContext() => new(options, symmetricEncryptionService, TimeProvider.System);
-    }
 }

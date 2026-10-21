@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Encryption;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
@@ -56,12 +55,16 @@ public abstract class InfrastructureTestBase : UnitTestBase, IAsyncDisposable
     }
 
     /// <summary>
-    /// Builds the principal services resolve the current user from, for a user seeded through the scenario.
+    /// The current user services act for, as a user seeded through the scenario.
     /// </summary>
-    protected ClaimsPrincipal UserPrincipal(string username) => BuildPrincipal(Scenario.UserMappings[username]);
+    protected ICurrentUser CurrentUserFor(string username) => CurrentUserFor(Scenario.UserMappings[username]);
 
-    protected static ClaimsPrincipal BuildPrincipal(Guid userId) =>
-        new(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"));
+    protected static ICurrentUser CurrentUserFor(Guid userId)
+    {
+        CurrentUser currentUser = new();
+        currentUser.Set(userId);
+        return currentUser;
+    }
 
     [After(Test)]
     public async Task BaseCleanupAsync()

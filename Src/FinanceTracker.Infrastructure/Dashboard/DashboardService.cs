@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-using System.Security.Claims;
 using FinanceTracker.Contracts.Dashboard;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Generated.Attributes;
@@ -29,9 +28,9 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
 
     private readonly TimeProvider _timeProvider;
 
-    public DashboardService(ClaimsPrincipal user, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
+    public DashboardService(ICurrentUser currentUser, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
         ILogger<DashboardService> logger, TimeProvider timeProvider)
-        : base(user, financeTrackerContextFactory, logger) =>
+        : base(currentUser, financeTrackerContextFactory, logger) =>
         _timeProvider = timeProvider;
 
     public async Task<SpentInTimePeriod> GetSpentInTimePeriod(DateTime fromDate, DateTime toDate,

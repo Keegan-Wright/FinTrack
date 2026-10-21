@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-using System.Security.Claims;
 using FinanceTracker.Contracts.Automation;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
@@ -18,8 +17,8 @@ public class AutomationService :  ServiceBase<AutomationService>, IAutomationSer
     private readonly ICronTickerManager<CronTickerEntity> _cronTickerManager;
     private readonly ITimeTickerManager<TimeTickerEntity> _timeTickerManager;
 
-    public AutomationService(ClaimsPrincipal user,
-        IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<AutomationService> logger, ICronTickerManager<CronTickerEntity> cronTickerManager, ITimeTickerManager<TimeTickerEntity> timeTickerManager) : base(user,
+    public AutomationService(ICurrentUser currentUser,
+        IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<AutomationService> logger, ICronTickerManager<CronTickerEntity> cronTickerManager, ITimeTickerManager<TimeTickerEntity> timeTickerManager) : base(currentUser,
         financeTrackerContextFactory, logger)
     {
         _cronTickerManager = cronTickerManager;
