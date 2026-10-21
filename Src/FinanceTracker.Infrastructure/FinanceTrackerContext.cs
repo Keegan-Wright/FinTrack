@@ -19,6 +19,11 @@ namespace FinanceTracker.Infrastructure;
 
 public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, FinanceTrackerRole, Guid>, IDesignTimeDbContextFactory<FinanceTrackerContext>
 {
+    /// <summary>
+    /// How long a database command may run before it's abandoned.
+    /// </summary>
+    public const int CommandTimeoutSeconds = 30;
+
     private readonly IColumnEncryptionService _columnEncryptionService;
 
     /// <summary>
@@ -102,7 +107,7 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
             {
                 npgsqlDbContextOptionsBuilder.MigrationsAssembly("FinanceTracker.Infrastructure.Migrations");
                 npgsqlDbContextOptionsBuilder.EnableRetryOnFailure();
-                npgsqlDbContextOptionsBuilder.CommandTimeout(0);
+                npgsqlDbContextOptionsBuilder.CommandTimeout(CommandTimeoutSeconds);
             });
 
             // Migrations only need the model, a throwaway key is enough

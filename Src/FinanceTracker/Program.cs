@@ -156,7 +156,7 @@ public partial class Program
             {
                 npgsqlDbContextOptionsBuilder.MigrationsAssembly("FinanceTracker.Infrastructure.Migrations");
                 npgsqlDbContextOptionsBuilder.EnableRetryOnFailure();
-                npgsqlDbContextOptionsBuilder.CommandTimeout(0);
+                npgsqlDbContextOptionsBuilder.CommandTimeout(FinanceTrackerContext.CommandTimeoutSeconds);
             });
         });
 
