@@ -1,6 +1,7 @@
 using FinanceTracker.Domain.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
 
 namespace FinanceTracker.Tests.Unit.Shared;
 
@@ -18,7 +19,7 @@ public sealed class SqliteModelCustomizer : RelationalModelCustomizer
         base.Customize(modelBuilder, context);
 
         // RowVersion is Postgres' xmin, SQLite has nothing to generate it so it is written like any other column
-        foreach (var entityType in modelBuilder.Model.GetEntityTypes()
+        foreach (IMutableEntityType? entityType in modelBuilder.Model.GetEntityTypes()
                      .Where(x => typeof(AggregateRoot).IsAssignableFrom(x.ClrType)))
         {
             modelBuilder.Entity(entityType.ClrType)

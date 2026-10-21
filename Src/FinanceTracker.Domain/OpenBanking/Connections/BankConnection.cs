@@ -17,12 +17,14 @@ public sealed class BankConnection : AggregateRoot
     private readonly List<AccessToken> _accessTokens = [];
 
     [Obsolete("EF Use Only")]
+#pragma warning disable CS8618 // EF Core sets the properties when it materialises the entity
     private BankConnection()
     {
     }
+#pragma warning restore CS8618
 
     public BankConnection(Guid userId, string externalProviderId, string name, string accessCode,
-        IEnumerable<string> scopes, byte[] logo) : base(userId)
+        IEnumerable<string> scopes, byte[] logo, DateTime consentGrantedAt) : base(userId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(externalProviderId);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
@@ -31,7 +33,7 @@ public sealed class BankConnection : AggregateRoot
         ExternalProviderId = externalProviderId;
         Name = name;
         Logo = logo;
-        Reauthenticate(accessCode, scopes);
+        Reauthenticate(accessCode, scopes, consentGrantedAt);
     }
 
     public string ExternalProviderId { get; private set; }
@@ -59,17 +61,16 @@ public sealed class BankConnection : AggregateRoot
     /// Replaces the consent for this connection. Any active token belongs to the old consent and is revoked.
     /// </summary>
     [MemberNotNull(nameof(AccessCode))]
-    public void Reauthenticate(string accessCode, IEnumerable<string> scopes)
+    public void Reauthenticate(string accessCode, IEnumerable<string> scopes, DateTime reauthenticatedAt)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(accessCode);
         ArgumentNullException.ThrowIfNull(scopes);
 
-        DateTime now = DateTime.UtcNow;
         AccessCode = accessCode;
-        ConsentGrantedAt = now;
+        ConsentGrantedAt = reauthenticatedAt;
         _scopes.Clear();
         _scopes.AddRange(scopes.Distinct());
-        ActiveToken?.Revoke(now);
+        ActiveToken?.Revoke(reauthenticatedAt);
     }
 
     /// <summary>

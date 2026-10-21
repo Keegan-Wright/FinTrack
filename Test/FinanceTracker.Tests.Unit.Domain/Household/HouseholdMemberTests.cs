@@ -15,7 +15,7 @@ public class HouseholdMemberTests
         decimal income)
     {
         Assert.Throws<ArgumentException>(() =>
-            new HouseholdMember(Guid.NewGuid(), firstName, lastName, income));
+            _ = new HouseholdMember(Guid.NewGuid(), firstName, lastName, income));
     }
 
     [Test]
@@ -34,8 +34,8 @@ public class HouseholdMemberTests
     {
         var householdMember = new HouseholdMember(Guid.NewGuid(), "Test", "User", 100m);
 
-        var newFirstName = "UpdatedFirstName";
-        var newLastName = "UpdatedLastName";
+        string newFirstName = "UpdatedFirstName";
+        string newLastName = "UpdatedLastName";
 
         householdMember.Rename(newFirstName, newLastName);
 
@@ -61,7 +61,7 @@ public class HouseholdMemberTests
     {
         var householdMember = new HouseholdMember(Guid.NewGuid(), "Test", "User", 100m);
 
-        var newIncome = 500m;
+        decimal newIncome = 500m;
 
         householdMember.ChangeIncome(newIncome);
 

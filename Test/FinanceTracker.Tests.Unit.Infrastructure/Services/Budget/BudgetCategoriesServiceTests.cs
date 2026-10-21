@@ -1,4 +1,5 @@
 using FinanceTracker.Contracts.Budget;
+using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Budget;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
@@ -32,7 +33,7 @@ public class BudgetCategoriesServiceTests : InfrastructureTestBase
         }, CancellationToken);
 
         // Assert
-        await using var context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
         Domain.Budgeting.BudgetCategory persisted = await context.BudgetCategories.SingleAsync(CancellationToken);
 
         using (Assert.Multiple())
@@ -65,7 +66,7 @@ public class BudgetCategoriesServiceTests : InfrastructureTestBase
         }, CancellationToken));
 
         // Assert
-        await using var context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
         await Assert.That(await context.BudgetCategories.CountAsync(CancellationToken)).IsEqualTo(0);
     }
 
@@ -143,7 +144,7 @@ public class BudgetCategoriesServiceTests : InfrastructureTestBase
             CancellationToken);
 
         // Assert
-        await using var context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
         List<Guid> remaining = await context.BudgetCategories.Select(x => x.Id).ToListAsync(CancellationToken);
 
         using (Assert.Multiple())
@@ -182,7 +183,7 @@ public class BudgetCategoriesServiceTests : InfrastructureTestBase
             CancellationToken);
 
         // Assert
-        await using var context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
 
         using (Assert.Multiple())
         {

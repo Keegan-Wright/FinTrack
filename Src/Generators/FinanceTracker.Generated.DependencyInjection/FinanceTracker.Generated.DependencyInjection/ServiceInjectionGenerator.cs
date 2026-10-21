@@ -33,7 +33,7 @@ public class ServiceInjectionGenerator : IIncrementalGenerator
                     continue;
                 }
 
-                if (symbol.Name.StartsWith("FinanceTracker"))
+                if (symbol.Name.StartsWith("FinanceTracker", StringComparison.Ordinal))
                 {
                     CollectTypesWithAttributes(symbol.GlobalNamespace, typesToInject);
                 }
@@ -223,19 +223,19 @@ public class ServiceInjectionGenerator : IIncrementalGenerator
         {
             string attributeName = attribute.AttributeClass?.Name ?? string.Empty;
 
-            if (attributeName.StartsWith(SourceGeneratorConstants.ScopedAttributeName))
+            if (attributeName.StartsWith(SourceGeneratorConstants.ScopedAttributeName, StringComparison.Ordinal))
             {
                 string serviceType = GetGenericArgumentFromAttribute(attribute);
                 return (true, "Scoped", serviceType);
             }
 
-            if (attributeName.StartsWith(SourceGeneratorConstants.TransientAttributeName))
+            if (attributeName.StartsWith(SourceGeneratorConstants.TransientAttributeName, StringComparison.Ordinal))
             {
                 string serviceType = GetGenericArgumentFromAttribute(attribute);
                 return (true, "Transient", serviceType);
             }
 
-            if (!attributeName.StartsWith(SourceGeneratorConstants.SingletonAttributeName))
+            if (!attributeName.StartsWith(SourceGeneratorConstants.SingletonAttributeName, StringComparison.Ordinal))
             {
                 continue;
             }
@@ -257,7 +257,7 @@ public class ServiceInjectionGenerator : IIncrementalGenerator
         {
             string attributeName = attribute.AttributeClass?.Name ?? string.Empty;
 
-            if (!attributeName.StartsWith(SourceGeneratorConstants.InjectionCategoryAttributeName))
+            if (!attributeName.StartsWith(SourceGeneratorConstants.InjectionCategoryAttributeName, StringComparison.Ordinal))
             {
                 continue;
             }

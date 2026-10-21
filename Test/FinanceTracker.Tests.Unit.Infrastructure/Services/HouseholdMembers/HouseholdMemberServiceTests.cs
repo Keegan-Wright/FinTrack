@@ -1,4 +1,5 @@
 using FinanceTracker.Contracts.HouseholdMember;
+using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.HouseholdMembers;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
@@ -29,7 +30,7 @@ public class HouseholdMemberServiceTests : InfrastructureTestBase
         }, CancellationToken);
 
         // Assert
-        await using var context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
         Domain.Household.HouseholdMember persisted = await context.HouseholdMembers.SingleAsync(CancellationToken);
 
         using (Assert.Multiple())
@@ -53,7 +54,7 @@ public class HouseholdMemberServiceTests : InfrastructureTestBase
             new AddHouseholdMember { FirstName = "Jane", LastName = "Doe", Income = -1 }, CancellationToken));
 
         // Assert
-        await using var context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
         await Assert.That(await context.HouseholdMembers.CountAsync(CancellationToken)).IsEqualTo(0);
     }
 
@@ -114,7 +115,7 @@ public class HouseholdMemberServiceTests : InfrastructureTestBase
             CancellationToken);
 
         // Assert
-        await using var context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
 
         using (Assert.Multiple())
         {
@@ -152,7 +153,7 @@ public class HouseholdMemberServiceTests : InfrastructureTestBase
             CancellationToken);
 
         // Assert
-        await using var context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
 
         using (Assert.Multiple())
         {

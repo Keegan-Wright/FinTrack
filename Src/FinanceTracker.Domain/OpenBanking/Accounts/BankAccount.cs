@@ -13,9 +13,11 @@ public sealed class BankAccount : AggregateRoot
     private readonly List<DirectDebit> _directDebits = [];
 
     [Obsolete("EF Use Only")]
+#pragma warning disable CS8618 // EF Core sets the properties when it materialises the entity
     private BankAccount()
     {
     }
+#pragma warning restore CS8618
 
     public BankAccount(Guid userId, Guid connectionId, string externalId, string accountType, string displayName,
         string currency) : base(userId)

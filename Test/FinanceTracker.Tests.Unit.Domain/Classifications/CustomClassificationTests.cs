@@ -27,14 +27,14 @@ public class CustomClassificationTests
     public void CustomClassification_InvalidTag_Throws_ArgumentException(string? tag)
     {
         Assert.Throws<ArgumentException>(() =>
-            new CustomClassification(Guid.NewGuid(), tag!));
+            _ = new CustomClassification(Guid.NewGuid(), tag!));
     }
 
     [Test]
     public void CustomClassification_EmptyUserId_Throws_ArgumentOutOfRangeException()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() =>
-            new CustomClassification(Guid.Empty, "Groceries"));
+            _ = new CustomClassification(Guid.Empty, "Groceries"));
     }
 
     [Test]

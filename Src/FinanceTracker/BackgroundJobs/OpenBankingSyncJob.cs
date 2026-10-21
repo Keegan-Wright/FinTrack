@@ -33,9 +33,7 @@ public abstract class OpenBankingSyncJob
     protected async Task<IReadOnlySet<Guid>> SyncConnectionsAsync(Expression<Func<BankConnection, bool>> connections,
         CancellationToken cancellationToken)
     {
-        using var activity = new ActivitySource("FinanceTracker");
-
-        using var performingBackgroundSyncActivity = activity.StartActivity(GetType().Name);
+        using Activity? performingBackgroundSyncActivity = Telemetry.ActivitySource.StartActivity(GetType().Name);
 
         var toSync = new List<(Guid Id, Guid UserId)>();
         await using (FinanceTrackerContext dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken))

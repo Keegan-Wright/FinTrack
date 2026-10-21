@@ -85,7 +85,7 @@ internal static class IdentityComponentsEndpointRouteBuilderExtensions
             }
 
             string userId = await userManager.GetUserIdAsync(user);
-            downloadLogger.LogInformation("User with ID '{UserId}' asked for their personal data.", userId);
+            downloadLogger.LogPersonalDataRequested(userId);
 
             // Only include personal data for download
             Dictionary<string, string> personalData = new();

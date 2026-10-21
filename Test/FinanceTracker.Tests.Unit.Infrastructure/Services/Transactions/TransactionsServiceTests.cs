@@ -281,7 +281,7 @@ public class TransactionsServiceTests : InfrastructureTestBase
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
             .Do(s => s.UserScenario.WithUser(OtherUsername))
             .Do(s => s.BankConnectionScenario.WithConnection("bank", Username, userId =>
-                new BankConnection(userId, "ob-bank", "My Bank", "code", ["accounts"], [1])))
+                new BankConnection(userId, "ob-bank", "My Bank", "code", ["accounts"], [1], DateTime.UtcNow)))
             .Do(s => s.BankConnectionScenario.WithConnection("other-bank", OtherUsername));
 
         TransactionsService subject = BuildSubject();

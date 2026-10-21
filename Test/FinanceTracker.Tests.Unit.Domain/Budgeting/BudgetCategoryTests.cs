@@ -14,7 +14,7 @@ public class BudgetCategoryTests
     public void BudgetCategory_InvalidConstruction_Throws_ArgumentException(string name, decimal availableFunds, decimal monthlyStart, decimal savingsGoal)
     {
         Assert.Throws<ArgumentException>(() =>
-            new BudgetCategory(Guid.NewGuid(), name, availableFunds, monthlyStart, savingsGoal, null));
+            _ = new BudgetCategory(Guid.NewGuid(), name, availableFunds, monthlyStart, savingsGoal, null));
     }
 
     [Test]
@@ -30,7 +30,7 @@ public class BudgetCategoryTests
     public async Task BudgetCategory_Rename_ValidString_DoesNotThrow()
     {
         var category = new BudgetCategory(Guid.NewGuid(), "Test", 0m, 0m, 0m, null);
-        var newName = "Testing Category";
+        string newName = "Testing Category";
 
         category.Rename(newName);
 
@@ -51,7 +51,7 @@ public class BudgetCategoryTests
     public async Task BudgetCategory_ChangeMonthlyStart_ValidDecimal_DoesNotThrow()
     {
         var category = new BudgetCategory(Guid.NewGuid(), "Test", 0m, 0m, 0m, null);
-        var newMonthlyStart =  200m;
+        decimal newMonthlyStart =  200m;
 
         category.ChangeMonthlyStart(newMonthlyStart);
 
@@ -73,8 +73,8 @@ public class BudgetCategoryTests
     {
         var category = new BudgetCategory(Guid.NewGuid(), "Test", 0m, 0m, 0m, null);
 
-        var newSavingGoalValue = 200m;
-        var newGoalCompletionDate = DateTime.UtcNow;
+        decimal newSavingGoalValue = 200m;
+        DateTime newGoalCompletionDate = DateTime.UtcNow;
 
         category.SetSavingsGoal(newSavingGoalValue, newGoalCompletionDate);
 
@@ -91,7 +91,7 @@ public class BudgetCategoryTests
     {
         var category = new BudgetCategory(Guid.NewGuid(), "Test", 0m, 0m, 0m, DateTime.UtcNow);
 
-        var newSavingGoalValue = 200m;
+        decimal newSavingGoalValue = 200m;
 
         category.SetSavingsGoal(newSavingGoalValue, null);
 
@@ -117,7 +117,7 @@ public class BudgetCategoryTests
     {
         var category = new BudgetCategory(Guid.NewGuid(), "Test", 0m, 0m, 0m, DateTime.UtcNow);
 
-        var newAvailableFunds = 200m;
+        decimal newAvailableFunds = 200m;
 
         category.AdjustAvailableFunds(newAvailableFunds);
 
@@ -183,7 +183,7 @@ public class BudgetCategoryTests
     public void BudgetCategory_EmptyUserId_Throws_ArgumentOutOfRangeException()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() =>
-            new BudgetCategory(Guid.Empty, "Test", 0m, 0m, 0m, null));
+            _ = new BudgetCategory(Guid.Empty, "Test", 0m, 0m, 0m, null));
     }
 
 }

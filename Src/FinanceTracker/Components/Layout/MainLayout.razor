@@ -9,6 +9,7 @@
 @inject IAutomationService AutomationService;
 @inject ITimeTickerManager<TimeTickerEntity> TimeTickerManager;
 @inject ISyncNotifier SyncNotifier
+@inject TimeProvider TimeProvider
 
 <MudThemeProvider @ref="@_mudThemeProvider" Theme="_theme" @bind-IsDarkMode="_isDarkMode" DefaultScrollbar="true"/>
 <MudPopoverProvider/>
@@ -119,7 +120,7 @@
 
         UpdatingBackgroundSync = true;
         await TimeTickerManager.AddAsync<SyncUserOpenBankingDetailsAsync, SyncUserOpenBankingDetailsRequest>(
-            DateTime.UtcNow, new SyncUserOpenBankingDetailsRequest(userId), _cts.Token);
+            TimeProvider.GetUtcNow().UtcDateTime, new SyncUserOpenBankingDetailsRequest(userId), _cts.Token);
     }
 
 

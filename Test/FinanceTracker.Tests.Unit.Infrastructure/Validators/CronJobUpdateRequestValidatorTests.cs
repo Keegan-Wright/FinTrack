@@ -1,6 +1,7 @@
 using FinanceTracker.Contracts.Automation;
 using FinanceTracker.Infrastructure.Validation;
 using FinanceTracker.Tests.Unit.Shared;
+using FluentValidation.Results;
 using TUnit.Assertions;
 using TUnit.Assertions.Extensions;
 using TUnit.Core;
@@ -29,7 +30,7 @@ public class CronJobUpdateRequestValidatorTests : UnitTestBase
         };
 
         // Act
-        var result = await _subject.ValidateAsync(testModel, CancellationToken);
+        ValidationResult result = await _subject.ValidateAsync(testModel, CancellationToken);
 
         // Assert
         using (Assert.Multiple())
@@ -52,7 +53,7 @@ public class CronJobUpdateRequestValidatorTests : UnitTestBase
         };
 
         // Act
-        var result = await _subject.ValidateAsync(testModel, CancellationToken);
+        ValidationResult result = await _subject.ValidateAsync(testModel, CancellationToken);
 
         // Assert
         await Assert.That(result.IsValid).IsTrue();
@@ -71,7 +72,7 @@ public class CronJobUpdateRequestValidatorTests : UnitTestBase
         };
 
         // Act
-        var result = await _subject.ValidateAsync(testModel, CancellationToken);
+        ValidationResult result = await _subject.ValidateAsync(testModel, CancellationToken);
 
         // Assert
         using (Assert.Multiple())

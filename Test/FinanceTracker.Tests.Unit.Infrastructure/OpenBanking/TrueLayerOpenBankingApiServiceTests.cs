@@ -25,7 +25,7 @@ public class TrueLayerOpenBankingApiServiceTests : UnitTestBase
             TokenType = "Bearer"
         };
 
-        var subject = BuildSubject(async request =>
+        TrueLayerOpenBankingApiService subject = BuildSubject(async request =>
         {
             capturedRequest = request;
             return new HttpResponseMessage(HttpStatusCode.OK)
@@ -47,7 +47,7 @@ public class TrueLayerOpenBankingApiServiceTests : UnitTestBase
             await Assert.That(capturedRequest!.Method).IsEqualTo(HttpMethod.Post);
             await Assert.That(capturedRequest.RequestUri!.ToString()).EndsWith("connect/token");
 
-            var formBody = await capturedRequest.Content!.ReadAsStringAsync(CancellationToken);
+            string formBody = await capturedRequest.Content!.ReadAsStringAsync(CancellationToken);
             await Assert.That(formBody).Contains("grant_type=authorization_code");
             await Assert.That(formBody).Contains("code=vendor-code");
             await Assert.That(formBody).Contains("client_id=client-id");
@@ -58,7 +58,7 @@ public class TrueLayerOpenBankingApiServiceTests : UnitTestBase
     public async Task GetProviderInformation_FailedRequest_ReturnsDefaultResponse()
     {
         // Arrange
-        var subject = BuildSubject(_ =>
+        TrueLayerOpenBankingApiService subject = BuildSubject(_ =>
             Task.FromResult(new HttpResponseMessage(HttpStatusCode.BadRequest)));
 
         // Act
@@ -66,7 +66,7 @@ public class TrueLayerOpenBankingApiServiceTests : UnitTestBase
             await subject.GetProviderInformation("access-token", CancellationToken);
 
         // Assert
-        await Assert.That(result.Results).IsNull();
+        await Assert.That((object?)result.Results).IsNull();
     }
 
     [Test]
@@ -80,7 +80,7 @@ public class TrueLayerOpenBankingApiServiceTests : UnitTestBase
             new()
         };
 
-        var subject = BuildSubject(_ =>
+        TrueLayerOpenBankingApiService subject = BuildSubject(_ =>
             Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = JsonContent.Create(providers)
@@ -101,11 +101,11 @@ public class TrueLayerOpenBankingApiServiceTests : UnitTestBase
     public async Task BuildAuthUrl_ValidProvidersAndScopes_BuildsExpectedUrl()
     {
         // Arrange
-        var subject = BuildSubject(_ =>
+        TrueLayerOpenBankingApiService subject = BuildSubject(_ =>
             Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)));
 
         // Act
-        var result = subject.BuildAuthUrl(["providerA", "providerB"], ["info", "accounts"]);
+        string result = subject.BuildAuthUrl(["providerA", "providerB"], ["info", "accounts"]);
 
         // Assert
         using (Assert.Multiple())
@@ -123,7 +123,7 @@ public class TrueLayerOpenBankingApiServiceTests : UnitTestBase
         // Arrange
         HttpRequestMessage? capturedRequest = null;
         string? formBody = null;
-        var subject = BuildSubject(async request =>
+        TrueLayerOpenBankingApiService subject = BuildSubject(async request =>
         {
             capturedRequest = request;
             formBody = await request.Content!.ReadAsStringAsync();
@@ -152,7 +152,7 @@ public class TrueLayerOpenBankingApiServiceTests : UnitTestBase
         // Arrange
         byte[] logo = [137, 80, 78, 71];
         HttpRequestMessage? capturedRequest = null;
-        var subject = BuildSubject(request =>
+        TrueLayerOpenBankingApiService subject = BuildSubject(request =>
         {
             capturedRequest = request;
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(logo) });
@@ -174,7 +174,7 @@ public class TrueLayerOpenBankingApiServiceTests : UnitTestBase
     [Test]
     public async Task GetProviderLogoAsync_FailedRequest_Throws()
     {
-        var subject = BuildSubject(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound)));
+        TrueLayerOpenBankingApiService subject = BuildSubject(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound)));
 
         await Assert.ThrowsAsync<HttpRequestException>(() =>
             subject.GetProviderLogoAsync("https://logos.example.com/missing.png", CancellationToken));
@@ -185,7 +185,7 @@ public class TrueLayerOpenBankingApiServiceTests : UnitTestBase
     {
         // Arrange
         HttpRequestMessage? capturedRequest = null;
-        var subject = BuildSubject(request =>
+        TrueLayerOpenBankingApiService subject = BuildSubject(request =>
         {
             capturedRequest = request;
             return Task.FromResult(Json(new
@@ -219,7 +219,7 @@ public class TrueLayerOpenBankingApiServiceTests : UnitTestBase
     {
         // Arrange
         HttpRequestMessage? capturedRequest = null;
-        var subject = BuildSubject(request =>
+        TrueLayerOpenBankingApiService subject = BuildSubject(request =>
         {
             capturedRequest = request;
             return Task.FromResult(Json(new
@@ -249,7 +249,7 @@ public class TrueLayerOpenBankingApiServiceTests : UnitTestBase
     {
         // Arrange
         HttpRequestMessage? capturedRequest = null;
-        var subject = BuildSubject(request =>
+        TrueLayerOpenBankingApiService subject = BuildSubject(request =>
         {
             capturedRequest = request;
             return Task.FromResult(Json(new { results = Array.Empty<ExternalOpenBankingAccountTransaction>() }));
@@ -268,7 +268,7 @@ public class TrueLayerOpenBankingApiServiceTests : UnitTestBase
     {
         // Arrange
         HttpRequestMessage? capturedRequest = null;
-        var subject = BuildSubject(request =>
+        TrueLayerOpenBankingApiService subject = BuildSubject(request =>
         {
             capturedRequest = request;
             return Task.FromResult(Json(new
@@ -300,7 +300,7 @@ public class TrueLayerOpenBankingApiServiceTests : UnitTestBase
     {
         // Arrange
         HttpRequestMessage? capturedRequest = null;
-        var subject = BuildSubject(request =>
+        TrueLayerOpenBankingApiService subject = BuildSubject(request =>
         {
             capturedRequest = request;
             return Task.FromResult(Json(new { results = Array.Empty<ExternalOpenBankingAccountTransaction>() }));
@@ -321,7 +321,7 @@ public class TrueLayerOpenBankingApiServiceTests : UnitTestBase
     {
         // Arrange
         HttpRequestMessage? capturedRequest = null;
-        var subject = BuildSubject(request =>
+        TrueLayerOpenBankingApiService subject = BuildSubject(request =>
         {
             capturedRequest = request;
             return Task.FromResult(Json(new
@@ -351,7 +351,7 @@ public class TrueLayerOpenBankingApiServiceTests : UnitTestBase
     {
         // Arrange
         HttpRequestMessage? capturedRequest = null;
-        var subject = BuildSubject(request =>
+        TrueLayerOpenBankingApiService subject = BuildSubject(request =>
         {
             capturedRequest = request;
             return Task.FromResult(Json(new
@@ -379,66 +379,66 @@ public class TrueLayerOpenBankingApiServiceTests : UnitTestBase
     [Test]
     public async Task GetAllAccountsAsync_FailedRequest_ReturnsEmptyResponse()
     {
-        var subject = BuildSubject(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized)));
+        TrueLayerOpenBankingApiService subject = BuildSubject(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized)));
 
         ExternalOpenBankingListAllAccountsResponse result = await subject.GetAllAccountsAsync("token", CancellationToken);
 
-        await Assert.That(result.Results).IsNull();
+        await Assert.That((object?)result.Results).IsNull();
     }
 
     [Test]
     public async Task GetAccountBalanceAsync_FailedRequest_ReturnsEmptyResponse()
     {
-        var subject = BuildSubject(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotImplemented)));
+        TrueLayerOpenBankingApiService subject = BuildSubject(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotImplemented)));
 
         ExternalOpenBankingGetAccountBalanceResponse result =
             await subject.GetAccountBalanceAsync("acc-1", "token", CancellationToken);
 
-        await Assert.That(result.Results).IsNull();
+        await Assert.That((object?)result.Results).IsNull();
     }
 
     [Test]
     public async Task GetAccountTransactionsAsync_FailedRequest_ReturnsEmptyResponse()
     {
-        var subject = BuildSubject(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError)));
+        TrueLayerOpenBankingApiService subject = BuildSubject(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError)));
 
         ExternalOpenBankingAccountTransactionsResponse result =
             await subject.GetAccountTransactionsAsync("acc-1", "token", null, CancellationToken);
 
-        await Assert.That(result.Results).IsNull();
+        await Assert.That((object?)result.Results).IsNull();
     }
 
     [Test]
     public async Task GetAccountPendingTransactionsAsync_FailedRequest_ReturnsEmptyResponse()
     {
-        var subject = BuildSubject(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError)));
+        TrueLayerOpenBankingApiService subject = BuildSubject(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError)));
 
         ExternalOpenBankingAccountTransactionsResponse result =
             await subject.GetAccountPendingTransactionsAsync("acc-1", "token", null, CancellationToken);
 
-        await Assert.That(result.Results).IsNull();
+        await Assert.That((object?)result.Results).IsNull();
     }
 
     [Test]
     public async Task GetAccountStandingOrdersAsync_FailedRequest_ReturnsEmptyResponse()
     {
-        var subject = BuildSubject(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotImplemented)));
+        TrueLayerOpenBankingApiService subject = BuildSubject(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotImplemented)));
 
         ExternalOpenBankingAccountStandingOrdersResponse result =
             await subject.GetAccountStandingOrdersAsync("acc-1", "token", CancellationToken);
 
-        await Assert.That(result.Results).IsNull();
+        await Assert.That((object?)result.Results).IsNull();
     }
 
     [Test]
     public async Task GetAccountDirectDebitsAsync_FailedRequest_ReturnsEmptyResponse()
     {
-        var subject = BuildSubject(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotImplemented)));
+        TrueLayerOpenBankingApiService subject = BuildSubject(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotImplemented)));
 
         ExternalOpenBankingAccountDirectDebitsResponse result =
             await subject.GetAccountDirectDebitsAsync("acc-1", "token", CancellationToken);
 
-        await Assert.That(result.Results).IsNull();
+        await Assert.That((object?)result.Results).IsNull();
     }
 
     [Test]
@@ -446,7 +446,7 @@ public class TrueLayerOpenBankingApiServiceTests : UnitTestBase
     {
         // Arrange
         HttpRequestMessage? capturedRequest = null;
-        var subject = BuildSubject(request =>
+        TrueLayerOpenBankingApiService subject = BuildSubject(request =>
         {
             capturedRequest = request;
             return Task.FromResult(Json(new
@@ -483,7 +483,7 @@ public class TrueLayerOpenBankingApiServiceTests : UnitTestBase
     {
         // Arrange
         HttpRequestMessage? capturedRequest = null;
-        var subject = BuildSubject(request =>
+        TrueLayerOpenBankingApiService subject = BuildSubject(request =>
         {
             capturedRequest = request;
             return Task.FromResult(Json(Array.Empty<ExternalOpenBankingProvider>()));
@@ -519,7 +519,7 @@ public class TrueLayerOpenBankingApiServiceTests : UnitTestBase
         HttpClient client = new(new FakeHttpMessageHandler(responseFactory));
         var clientFactory = new FakeHttpClientFactory(client);
 
-        return new TrueLayerOpenBankingApiService(configuration, clientFactory);
+        return new TrueLayerOpenBankingApiService(configuration, clientFactory, TimeProvider.System);
     }
 
     private sealed class FakeHttpClientFactory(HttpClient httpClient) : IHttpClientFactory

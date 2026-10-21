@@ -20,7 +20,7 @@ public class PostgresPersistenceTests : IntegrationTestBase
         const string connectionName = "Plaintext Bank Name";
         await Scenario.Do(s => s.UserScenario.WithUser(username))
             .Do(s => s.BankConnectionScenario.WithConnection("bank", username, userId =>
-                new BankConnection(userId, UniqueName("provider"), connectionName, "access-code", ["accounts"], [1, 2, 3])));
+                new BankConnection(userId, UniqueName("provider"), connectionName, "access-code", ["accounts"], [1, 2, 3], DateTime.UtcNow)));
 
         Guid connectionId = Scenario.ConnectionMappings["bank"];
 
@@ -53,7 +53,7 @@ public class PostgresPersistenceTests : IntegrationTestBase
         await using (FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken))
         {
             BankConnection connection = await context.BankConnections.SingleAsync(x => x.Id == connectionId, CancellationToken);
-            connection.Reauthenticate("new-access-code", ["info", "accounts"]);
+            connection.Reauthenticate("new-access-code", ["info", "accounts"], DateTime.UtcNow);
             await context.SaveChangesAsync(CancellationToken);
         }
 
@@ -98,12 +98,12 @@ public class PostgresPersistenceTests : IntegrationTestBase
         string providerId = UniqueName("provider");
         await Scenario.Do(s => s.UserScenario.WithUser(username))
             .Do(s => s.BankConnectionScenario.WithConnection("bank", username, userId =>
-                new BankConnection(userId, providerId, "Bank", "access-code", ["accounts"], [])));
+                new BankConnection(userId, providerId, "Bank", "access-code", ["accounts"], [], DateTime.UtcNow)));
 
         Guid userId = Scenario.UserMappings[username];
 
         await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
-        context.BankConnections.Add(new BankConnection(userId, providerId, "Same Bank", "other-code", ["accounts"], []));
+        context.BankConnections.Add(new BankConnection(userId, providerId, "Same Bank", "other-code", ["accounts"], [], DateTime.UtcNow));
 
         // Act & Assert
         await Assert.That(() => context.SaveChangesAsync(CancellationToken)).Throws<DbUpdateException>();

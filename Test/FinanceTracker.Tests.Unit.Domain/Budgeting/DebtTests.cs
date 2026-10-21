@@ -12,7 +12,7 @@ public class DebtTests
     public void Debt_InvalidConstruction_Throws_ArgumentException(string name, decimal monthlyPayment)
     {
         Assert.Throws<ArgumentException>(() =>
-            new Debt(Guid.NewGuid(), name, monthlyPayment,null, null));
+            _ = new Debt(Guid.NewGuid(), name, monthlyPayment,null, null));
     }
 
     [Test]
@@ -29,7 +29,7 @@ public class DebtTests
     {
         var debt = new Debt(Guid.NewGuid(), "Test", 100m, null, null);
 
-        var newMonthlyPayment = 300m;
+        decimal newMonthlyPayment = 300m;
 
         debt.ChangeMonthlyPayment(newMonthlyPayment);
 
@@ -49,7 +49,7 @@ public class DebtTests
     public async Task Debt_Rename_ValidString_DoesNotThrow()
     {
         var debt = new Debt(Guid.NewGuid(), "Test", 100m, null, null);
-        var newName = "Renamed";
+        string newName = "Renamed";
 
         debt.Rename(newName);
 
@@ -79,7 +79,7 @@ public class DebtTests
     public void Debt_ZeroMonthlyPayment_Throws_ArgumentOutOfRangeException()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() =>
-            new Debt(Guid.NewGuid(), "Test", 0m, null, null));
+            _ = new Debt(Guid.NewGuid(), "Test", 0m, null, null));
     }
 
     [Test]
@@ -109,7 +109,7 @@ public class DebtTests
         var finalPayment = new DateTime(2030, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
         debt.ChangeFinalPaymentDate(finalPayment);
-        var afterSet = debt.FinalPaymentDate;
+        DateTime? afterSet = debt.FinalPaymentDate;
         debt.ChangeFinalPaymentDate(null);
 
         using (Assert.Multiple())
@@ -126,7 +126,7 @@ public class DebtTests
         var payOffGoal = new DateTime(2028, 6, 1, 0, 0, 0, DateTimeKind.Utc);
 
         debt.SetPayOffGoal(payOffGoal);
-        var afterSet = debt.PayOffGoal;
+        DateTime? afterSet = debt.PayOffGoal;
         debt.SetPayOffGoal(null);
 
         using (Assert.Multiple())

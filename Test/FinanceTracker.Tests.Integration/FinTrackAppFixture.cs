@@ -1,6 +1,7 @@
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Testing;
+using FinanceTracker.AppHost.ServiceDefaults;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Encryption;
 using FinanceTracker.Tests.Integration.OpenBanking;
@@ -15,10 +16,6 @@ namespace FinanceTracker.Tests.Integration;
 /// </summary>
 public sealed class FinTrackAppFixture : AspireFixture<Projects.FinanceTracker_AppHost>
 {
-    public const string WebResource = "FinTrackWeb";
-    private const string DatabaseResource = "FinTrackDb";
-    private const string PostgresResource = "FinTrack-Postgres";
-    private const string RedisResource = "FinTrack-Redis";
 
     public static readonly EncryptionConfiguration EncryptionConfiguration = new()
     {
@@ -56,7 +53,7 @@ public sealed class FinTrackAppFixture : AspireFixture<Projects.FinanceTracker_A
     protected override void ConfigureBuilder(IDistributedApplicationTestingBuilder builder)
     {
         // Each run gets fresh containers rather than the dev data volumes
-        foreach (IResource resource in builder.Resources.Where(x => x.Name is PostgresResource or RedisResource))
+        foreach (IResource resource in builder.Resources.Where(x => x.Name is FinTrackResources.Postgres or FinTrackResources.Redis))
         {
             foreach (ContainerMountAnnotation mount in resource.Annotations.OfType<ContainerMountAnnotation>().ToList())
             {
@@ -65,7 +62,7 @@ public sealed class FinTrackAppFixture : AspireFixture<Projects.FinanceTracker_A
         }
 
         // The app only reports healthy once it has migrated and is serving requests
-        ProjectResource web = builder.Resources.OfType<ProjectResource>().Single(x => x.Name == WebResource);
+        ProjectResource web = builder.Resources.OfType<ProjectResource>().Single(x => x.Name == FinTrackResources.Web);
         builder.CreateResourceBuilder(web).WithHttpHealthCheck("/health");
     }
 
@@ -74,9 +71,9 @@ public sealed class FinTrackAppFixture : AspireFixture<Projects.FinanceTracker_A
         await base.InitializeAsync();
 
         // The app redirects plain http to https, so tests talk to it over https directly
-        WebBaseAddress = App.GetEndpoint(WebResource, "https");
+        WebBaseAddress = App.GetEndpoint(FinTrackResources.Web, "https");
 
-        string? connectionString = await GetConnectionStringAsync(DatabaseResource);
+        string? connectionString = await GetConnectionStringAsync(FinTrackResources.Database);
 
         DbContextOptions<FinanceTrackerContext> options = new DbContextOptionsBuilder<FinanceTrackerContext>()
             .UseNpgsql(connectionString)
@@ -95,6 +92,6 @@ public sealed class FinTrackAppFixture : AspireFixture<Projects.FinanceTracker_A
         DbContextOptions<FinanceTrackerContext> options,
         ISymmetricEncryptionService symmetricEncryptionService) : IDbContextFactory<FinanceTrackerContext>
     {
-        public FinanceTrackerContext CreateDbContext() => new(options, symmetricEncryptionService);
+        public FinanceTrackerContext CreateDbContext() => new(options, symmetricEncryptionService, TimeProvider.System);
     }
 }

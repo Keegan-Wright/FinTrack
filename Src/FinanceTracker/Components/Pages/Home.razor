@@ -22,6 +22,7 @@
 @inject ITransactionsService TransactionsService
 @inject IBudgetCategoriesService BudgetCategoriesService
 @inject IHouseholdMemberService HouseholdMemberService
+@inject TimeProvider TimeProvider
 
 <PageTitle>Home</PageTitle>
 
@@ -312,7 +313,7 @@
 
 @code {
 
-    [CascadingParameter] private Task<AuthenticationState> AuthenticationStateTask { get; set; }
+    [CascadingParameter] private Task<AuthenticationState> AuthenticationStateTask { get; set; } = null!;
 
     private enum DashboardRangePreset
     {
@@ -373,7 +374,7 @@
 
     private void ApplyPresetRange(DashboardRangePreset preset)
     {
-        var now = DateTime.Now;
+        var now = TimeProvider.GetLocalNow().DateTime;
         _toDate = now;
 
         _fromDate = preset switch
@@ -569,15 +570,15 @@
 
     private string GetGreeting()
     {
-        var hour = DateTime.Now.Hour;
+        var hour = TimeProvider.GetLocalNow().Hour;
         if (hour < 12) return $"Good morning {_userName}";
         if (hour < 18) return $"Good afternoon {_userName}";
         return $"Good evening {_userName}";
     }
 
-    private static string DueInLabel(DateTime paymentDateUtc)
+    private string DueInLabel(DateTime paymentDateUtc)
     {
-        var days = (paymentDateUtc.ToLocalTime().Date - DateTime.Now.Date).Days;
+        var days = (paymentDateUtc.ToLocalTime().Date - TimeProvider.GetLocalNow().Date).Days;
         if (days < 0) return "overdue";
         if (days == 0) return "today";
         if (days == 1) return "in 1 day";

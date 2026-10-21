@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using TickerQ.Utilities.Entities;
 using TickerQ.Utilities.Enums;
 
@@ -47,7 +48,7 @@ public sealed class AutomationScenario : ScenarioBuilder
     public Task<TestingScenario> WithTimeTicker(string function, TickerStatus status, DateTime? executionTime) =>
         PersistAsync(context =>
         {
-            var ticker = context.TimeTickerEntities.Add(new TimeTickerEntity
+            EntityEntry<TimeTickerEntity> ticker = context.TimeTickerEntities.Add(new TimeTickerEntity
             {
                 Id = Guid.NewGuid(),
                 Function = function,

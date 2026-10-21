@@ -9,9 +9,11 @@ namespace FinanceTracker.Domain.OpenBanking.Accounts;
 public sealed class DirectDebit : Entity
 {
     [Obsolete("EF Use Only")]
+#pragma warning disable CS8618 // EF Core sets the properties when it materialises the entity
     private DirectDebit()
     {
     }
+#pragma warning restore CS8618
 
     internal DirectDebit(DirectDebitDetails details)
     {

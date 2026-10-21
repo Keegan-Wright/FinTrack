@@ -28,8 +28,8 @@ public class AutomationService :  ServiceBase<AutomationService>, IAutomationSer
 
     public async IAsyncEnumerable<AutomationCron> GetJobsAsync([EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        await using var context = await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
-        await foreach (var cron in context.CronTickerEntities.AsAsyncEnumerable().WithCancellation(cancellationToken))
+        await using FinanceTrackerContext context = await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+        await foreach (CronTickerEntity? cron in context.CronTickerEntities.AsAsyncEnumerable().WithCancellation(cancellationToken))
         {
             yield return new AutomationCron(cron.Id,  cron.Function, cron.Description, cron.Expression, cron.Retries,
                 cron.RetryIntervals, cron.IsEnabled);
@@ -38,8 +38,8 @@ public class AutomationService :  ServiceBase<AutomationService>, IAutomationSer
 
     public async Task<bool> UpdateJobSettingsAsync(UpdateCronJob request, CancellationToken cancellationToken)
     {
-        await using var context = await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
-        var cron = await context.CronTickerEntities.FirstAsync(x => x.Id == request.Id, cancellationToken);
+        await using FinanceTrackerContext context = await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+        CronTickerEntity cron = await context.CronTickerEntities.FirstAsync(x => x.Id == request.Id, cancellationToken);
 
         cron.Description = request.Description;
         cron.RetryIntervals = request.RetryIntervals;
@@ -56,9 +56,9 @@ public class AutomationService :  ServiceBase<AutomationService>, IAutomationSer
     /// </summary>
     public async Task<DateTime?> GetLastSyncTimeAsync(CancellationToken cancellationToken)
     {
-        await using var context = await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+        await using FinanceTrackerContext context = await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        var lastSync = await context.SyncLog
+        DateTime? lastSync = await context.SyncLog
             .Where(x => context.BankAccounts.Any(a => a.Id == x.AccountId && a.UserId == UserId))
             .MaxAsync(x => (DateTime?)x.OccurredAt, cancellationToken);
 

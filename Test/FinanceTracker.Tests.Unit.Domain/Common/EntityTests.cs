@@ -80,12 +80,12 @@ public class EntityTests
     [Test]
     public async Task Entity_ComparedToNull_IsNotEqual()
     {
-        var entity = new TestingEntity();
+        TestingEntity entity = new();
         TestingEntity? nullEntity = null;
 
         using (Assert.Multiple())
         {
-            await Assert.That(entity.Equals(null)).IsFalse();
+            await Assert.That(entity.Equals(nullEntity)).IsFalse();
             await Assert.That(entity.Equals((object?)null)).IsFalse();
             await Assert.That(entity == nullEntity).IsFalse();
             await Assert.That(nullEntity == null).IsTrue();

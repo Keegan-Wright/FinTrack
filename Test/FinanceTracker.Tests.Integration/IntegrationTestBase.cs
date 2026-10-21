@@ -12,12 +12,12 @@ namespace FinanceTracker.Tests.Integration;
 /// </summary>
 public abstract class IntegrationTestBase
 {
-    private CancellationTokenSource _cancellationTokenSource = null!;
+    private CancellationTokenSource CancellationTokenSource { get; set; } = null!;
 
     [ClassDataSource<FinTrackAppFixture>(Shared = SharedType.PerTestSession)]
     public required FinTrackAppFixture App { get; init; }
 
-    protected CancellationToken CancellationToken => _cancellationTokenSource.Token;
+    protected CancellationToken CancellationToken => CancellationTokenSource.Token;
 
     protected IDbContextFactory<FinanceTrackerContext> DbContextFactory => App.DbContextFactory;
 
@@ -26,15 +26,15 @@ public abstract class IntegrationTestBase
     [Before(Test)]
     public void BaseIntegrationSetup()
     {
-        _cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromMinutes(2));
+        CancellationTokenSource = new CancellationTokenSource(TimeSpan.FromMinutes(2));
         Scenario = new TestingScenario(DbContextFactory, CancellationToken);
     }
 
     [After(Test)]
     public async Task BaseIntegrationCleanupAsync()
     {
-        await _cancellationTokenSource.CancelAsync();
-        _cancellationTokenSource.Dispose();
+        await CancellationTokenSource.CancelAsync();
+        CancellationTokenSource.Dispose();
     }
 
     /// <summary>

@@ -8,9 +8,11 @@ namespace FinanceTracker.Domain.OpenBanking.Connections;
 public sealed class AccessToken : Entity
 {
     [Obsolete("EF Use Only")]
+#pragma warning disable CS8618 // EF Core sets the properties when it materialises the entity
     private AccessToken()
     {
     }
+#pragma warning restore CS8618
 
     internal AccessToken(string token, string refreshToken, DateTime issuedAt, int expiresInSeconds)
     {

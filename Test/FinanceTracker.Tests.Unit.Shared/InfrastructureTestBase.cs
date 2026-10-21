@@ -37,21 +37,21 @@ public abstract class InfrastructureTestBase : UnitTestBase, IAsyncDisposable
 
     private async Task EnsureContextCreated()
     {
-        var uniqueDbName = $"UnitTestDb_{TestContext.Current!.Isolation.UniqueId}";
-        var connectionString = $"Data Source=InMemory_{uniqueDbName};Mode=Memory;Cache=Shared";
+        string uniqueDbName = $"UnitTestDb_{TestContext.Current!.Isolation.UniqueId}";
+        string connectionString = $"Data Source=InMemory_{uniqueDbName};Mode=Memory;Cache=Shared";
 
         // The in memory database lives as long as one connection to it is open
         _masterConnection = new SqliteConnection(connectionString);
         await _masterConnection.OpenAsync(CancellationToken);
 
-        var options = new DbContextOptionsBuilder<FinanceTrackerContext>()
+        DbContextOptions<FinanceTrackerContext> options = new DbContextOptionsBuilder<FinanceTrackerContext>()
             .UseSqlite(connectionString)
             .ReplaceService<IModelCustomizer, SqliteModelCustomizer>()
             .Options;
 
         DbContextFactory = new SqliteInMemoryDbContextFactory(options, SymmetricEncryptionService);
 
-        await using var context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
         await context.Database.EnsureCreatedAsync(CancellationToken);
     }
 

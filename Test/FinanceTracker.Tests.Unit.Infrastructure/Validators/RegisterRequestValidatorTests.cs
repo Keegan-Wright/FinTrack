@@ -1,6 +1,7 @@
 using FinanceTracker.Contracts.Auth;
 using FinanceTracker.Infrastructure.Validation;
 using FinanceTracker.Tests.Unit.Shared;
+using FluentValidation.Results;
 using TUnit.Assertions;
 using TUnit.Assertions.Extensions;
 using TUnit.Core;
@@ -26,7 +27,7 @@ public class RegisterRequestValidatorTests : UnitTestBase
         };
 
         // Act
-        var result = await _subject.ValidateAsync(testModel, CancellationToken);
+        ValidationResult result = await _subject.ValidateAsync(testModel, CancellationToken);
 
         // Assert
         using (Assert.Multiple())
@@ -51,7 +52,7 @@ public class RegisterRequestValidatorTests : UnitTestBase
         };
 
         // Act
-        var result = await _subject.ValidateAsync(testModel, CancellationToken);
+        ValidationResult result = await _subject.ValidateAsync(testModel, CancellationToken);
 
         // Assert
         using (Assert.Multiple())
@@ -79,7 +80,7 @@ public class RegisterRequestValidatorTests : UnitTestBase
         };
 
         // Act
-        var result = await _subject.ValidateAsync(testModel, CancellationToken);
+        ValidationResult result = await _subject.ValidateAsync(testModel, CancellationToken);
 
         // Assert
         using (Assert.Multiple())
@@ -107,7 +108,7 @@ public class RegisterRequestValidatorTests : UnitTestBase
         };
 
         // Act
-        var result = await _subject.ValidateAsync(testModel, CancellationToken);
+        ValidationResult result = await _subject.ValidateAsync(testModel, CancellationToken);
 
         // Assert
         using (Assert.Multiple())
@@ -135,7 +136,7 @@ public class RegisterRequestValidatorTests : UnitTestBase
         };
 
         // Act
-        var result = await _subject.ValidateAsync(testModel, CancellationToken);
+        ValidationResult result = await _subject.ValidateAsync(testModel, CancellationToken);
 
         // Assert
         using (Assert.Multiple())
@@ -163,7 +164,7 @@ public class RegisterRequestValidatorTests : UnitTestBase
         };
 
         // Act
-        var result = await _subject.ValidateAsync(testModel, CancellationToken);
+        ValidationResult result = await _subject.ValidateAsync(testModel, CancellationToken);
 
         // Assert
         using (Assert.Multiple())
@@ -191,7 +192,7 @@ public class RegisterRequestValidatorTests : UnitTestBase
         };
 
         // Act
-        var result = await _subject.ValidateAsync(testModel, CancellationToken);
+        ValidationResult result = await _subject.ValidateAsync(testModel, CancellationToken);
 
         // Assert
         using (Assert.Multiple())
@@ -219,7 +220,7 @@ public class RegisterRequestValidatorTests : UnitTestBase
         };
 
         // Act
-        var result = await _subject.ValidateAsync(testModel, CancellationToken);
+        ValidationResult result = await _subject.ValidateAsync(testModel, CancellationToken);
 
         // Assert
         using (Assert.Multiple())
@@ -247,7 +248,7 @@ public class RegisterRequestValidatorTests : UnitTestBase
         };
 
         // Act
-        var result = await _subject.ValidateAsync(testModel, CancellationToken);
+        ValidationResult result = await _subject.ValidateAsync(testModel, CancellationToken);
 
         // Assert
         using (Assert.Multiple())
@@ -275,7 +276,7 @@ public class RegisterRequestValidatorTests : UnitTestBase
         };
 
         // Act
-        var result = await _subject.ValidateAsync(testModel, CancellationToken);
+        ValidationResult result = await _subject.ValidateAsync(testModel, CancellationToken);
 
         // Assert
         using (Assert.Multiple())

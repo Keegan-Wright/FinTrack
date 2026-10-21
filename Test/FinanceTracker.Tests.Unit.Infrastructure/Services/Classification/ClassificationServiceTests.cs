@@ -1,5 +1,7 @@
 using FinanceTracker.Contracts.Classifications;
+using FinanceTracker.Domain.Classifications;
 using FinanceTracker.Domain.OpenBanking.Transactions;
+using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Classification;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
@@ -25,8 +27,8 @@ public class ClassificationServiceTests : InfrastructureTestBase
             new AddClassifications { Tag = "Groceries" }, CancellationToken);
 
         // Assert
-        await using var context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
-        var persisted = await context.CustomClassifications.SingleAsync(CancellationToken);
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        CustomClassification persisted = await context.CustomClassifications.SingleAsync(CancellationToken);
 
         using (Assert.Multiple())
         {
@@ -86,7 +88,7 @@ public class ClassificationServiceTests : InfrastructureTestBase
         // Assert
         using (Assert.Multiple())
         {
-            await Assert.That(classifications.Select(x => x.Tag)).IsEquivalentTo(["Mine"]);
+            await Assert.That(classifications.Select(x => x.Tag ?? string.Empty)).IsEquivalentTo(["Mine"]);
             await Assert.That(classifications.Single().ClassificationId)
                 .IsEqualTo(Scenario.ClassificationMappings["mine"]);
         }
@@ -246,7 +248,7 @@ public class ClassificationServiceTests : InfrastructureTestBase
         await subject.RemoveCustomClassificationAsync(Scenario.ClassificationMappings["bills"], CancellationToken);
 
         // Assert
-        await using var context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
         List<Guid> remainingClassifications = await context.CustomClassifications.Select(x => x.Id)
             .ToListAsync(CancellationToken);
         BankTransaction first = await LoadTransactionAsync("first");
@@ -277,7 +279,7 @@ public class ClassificationServiceTests : InfrastructureTestBase
 
     private async Task<BankTransaction> LoadTransactionAsync(string transactionName)
     {
-        await using var context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
         Guid id = Scenario.TransactionMappings[transactionName];
         return await context.BankTransactions.SingleAsync(x => x.Id == id, CancellationToken);
     }

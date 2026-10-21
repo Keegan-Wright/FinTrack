@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using System.Security.Claims;
 using FinanceTracker.Contracts.Dashboard;
+using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -53,7 +54,7 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
 
         IEnumerable<decimal> amountsInRange = items
             .Where(x => x.TransactionTime >= fromUtc && x.TransactionTime <= toUtc)
-            .Where(x => x.TransactionCategory != "TRANSFER")
+            .Where(x => x.TransactionCategory != BankTransaction.TransferCategory)
             .Select(x => x.Amount);
 
         return new SpentInTimePeriod

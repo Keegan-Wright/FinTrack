@@ -10,13 +10,13 @@ public abstract class OpenBankingSyncJobTestBase : InfrastructureTestBase
     protected const string Username = "primary";
     protected const string OtherUsername = "secondary";
 
-    protected readonly IOpenBankingService OpenBankingService = Substitute.For<IOpenBankingService>();
-    protected readonly ISyncNotifier SyncNotifier = Substitute.For<ISyncNotifier>();
+    protected IOpenBankingService OpenBankingService { get; } = Substitute.For<IOpenBankingService>();
+    protected ISyncNotifier SyncNotifier { get; } = Substitute.For<ISyncNotifier>();
 
     /// <summary>
     /// Each connection synced, with the user the service was acting as at the time.
     /// </summary>
-    protected readonly List<(Guid UserId, Guid ConnectionId)> Synced = [];
+    protected List<(Guid UserId, Guid ConnectionId)> Synced { get; } = [];
 
     [Before(Test)]
     public void SetupOpenBankingService()

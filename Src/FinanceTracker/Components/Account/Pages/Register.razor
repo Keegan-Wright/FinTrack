@@ -91,7 +91,10 @@
 @code {
     private IEnumerable<IdentityError>? identityErrors;
 
-    [SupplyParameterFromForm] private RegisterRequest RegisterRequest { get; set; } = new();
+    [SupplyParameterFromForm] private RegisterRequest RegisterRequest { get; set; } = default!;
+
+    // Form posts bind the property before initialisation, so only create a model when nothing was posted
+    protected override void OnInitialized() => RegisterRequest ??= new();
 
     [SupplyParameterFromQuery] private string? ReturnUrl { get; set; }
 
@@ -115,7 +118,7 @@
             return;
         }
 
-        Logger.LogInformation("User created a new account with password.");
+        Logger.LogUserRegistered();
         await UserManager.AddClaimAsync(user, new Claim(CustomClaims.FirstName, RegisterRequest.FirstName));
         await SignInManager.SignInAsync(user, false);
         RedirectManager.RedirectTo(ReturnUrl);

@@ -38,20 +38,20 @@ public class BankAccountTests
         string displayName, string currency)
     {
         Assert.Throws<ArgumentException>(() =>
-            new BankAccount(Guid.NewGuid(), Guid.NewGuid(), externalId, accountType, displayName, currency));
+            _ = new BankAccount(Guid.NewGuid(), Guid.NewGuid(), externalId, accountType, displayName, currency));
     }
 
     [Test]
     public void BankAccount_EmptyConnectionId_Throws_ArgumentOutOfRangeException()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() =>
-            new BankAccount(Guid.NewGuid(), Guid.Empty, "acc-1", "TRANSACTION", "Main", "GBP"));
+            _ = new BankAccount(Guid.NewGuid(), Guid.Empty, "acc-1", "TRANSACTION", "Main", "GBP"));
     }
 
     [Test]
     public async Task BankAccount_UpdateDetails_ReplacesDetails()
     {
-        var account = BuildAccount();
+        BankAccount account = BuildAccount();
 
         account.UpdateDetails("SAVINGS", "Rainy Day", "EUR");
 
@@ -70,7 +70,7 @@ public class BankAccountTests
     public void BankAccount_UpdateDetails_Invalid_Throws_ArgumentException(string accountType, string displayName,
         string currency)
     {
-        var account = BuildAccount();
+        BankAccount account = BuildAccount();
 
         Assert.Throws<ArgumentException>(() =>
             account.UpdateDetails(accountType, displayName, currency));
@@ -79,7 +79,7 @@ public class BankAccountTests
     [Test]
     public async Task BankAccount_UpdateBalance_SetsBalance()
     {
-        var account = BuildAccount();
+        BankAccount account = BuildAccount();
 
         account.UpdateBalance(90m, -10m, Now);
 
@@ -89,12 +89,12 @@ public class BankAccountTests
     [Test]
     public async Task BankAccount_SyncStandingOrders_AddsNewOrders()
     {
-        var account = BuildAccount();
-        var details = StandingOrder("REF-1", "Landlord", 750m);
+        BankAccount account = BuildAccount();
+        StandingOrderDetails details = StandingOrder("REF-1", "Landlord", 750m);
 
         account.SyncStandingOrders([details]);
 
-        var standingOrder = account.StandingOrders.Single();
+        StandingOrder standingOrder = account.StandingOrders.Single();
 
         using (Assert.Multiple())
         {
@@ -116,13 +116,13 @@ public class BankAccountTests
     [Test]
     public async Task BankAccount_SyncStandingOrders_MatchesOnReferenceAndPayee()
     {
-        var account = BuildAccount();
+        BankAccount account = BuildAccount();
         account.SyncStandingOrders([StandingOrder("REF-1", "Landlord", 750m)]);
-        var original = account.StandingOrders.Single();
+        StandingOrder original = account.StandingOrders.Single();
 
         account.SyncStandingOrders([StandingOrder("REF-1", "Landlord", 800m)]);
 
-        var updated = account.StandingOrders.Single();
+        StandingOrder updated = account.StandingOrders.Single();
 
         using (Assert.Multiple())
         {
@@ -134,9 +134,9 @@ public class BankAccountTests
     [Test]
     public async Task BankAccount_SyncStandingOrders_SameReferenceDifferentPayee_IsSeparateOrder()
     {
-        var account = BuildAccount();
+        BankAccount account = BuildAccount();
         account.SyncStandingOrders([StandingOrder("REF-1", "Landlord", 750m)]);
-        var original = account.StandingOrders.Single();
+        StandingOrder original = account.StandingOrders.Single();
 
         account.SyncStandingOrders([StandingOrder("REF-1", "New Landlord", 750m)]);
 
@@ -150,7 +150,7 @@ public class BankAccountTests
     [Test]
     public async Task BankAccount_SyncStandingOrders_RemovesOrdersNoLongerReported()
     {
-        var account = BuildAccount();
+        BankAccount account = BuildAccount();
         account.SyncStandingOrders([StandingOrder("REF-1", "Landlord", 750m), StandingOrder("REF-2", "Gym", 30m)]);
 
         account.SyncStandingOrders([StandingOrder("REF-2", "Gym", 30m)]);
@@ -161,7 +161,7 @@ public class BankAccountTests
     [Test]
     public async Task BankAccount_SyncStandingOrders_Empty_RemovesAll()
     {
-        var account = BuildAccount();
+        BankAccount account = BuildAccount();
         account.SyncStandingOrders([StandingOrder("REF-1", "Landlord", 750m)]);
 
         account.SyncStandingOrders([]);
@@ -172,7 +172,7 @@ public class BankAccountTests
     [Test]
     public void BankAccount_SyncStandingOrders_Null_Throws_ArgumentNullException()
     {
-        var account = BuildAccount();
+        BankAccount account = BuildAccount();
 
         Assert.Throws<ArgumentNullException>(() =>
             account.SyncStandingOrders(null!));
@@ -181,12 +181,12 @@ public class BankAccountTests
     [Test]
     public async Task BankAccount_SyncDirectDebits_AddsNewMandates()
     {
-        var account = BuildAccount();
-        var details = DirectDebit("dd-1", "Energy", 80m);
+        BankAccount account = BuildAccount();
+        DirectDebitDetails details = DirectDebit("dd-1", "Energy", 80m);
 
         account.SyncDirectDebits([details]);
 
-        var directDebit = account.DirectDebits.Single();
+        DirectDebit directDebit = account.DirectDebits.Single();
 
         using (Assert.Multiple())
         {
@@ -203,13 +203,13 @@ public class BankAccountTests
     [Test]
     public async Task BankAccount_SyncDirectDebits_MatchesOnExternalId()
     {
-        var account = BuildAccount();
+        BankAccount account = BuildAccount();
         account.SyncDirectDebits([DirectDebit("dd-1", "Energy", 80m)]);
-        var original = account.DirectDebits.Single();
+        DirectDebit original = account.DirectDebits.Single();
 
         account.SyncDirectDebits([DirectDebit("dd-1", "Energy Co", 95m)]);
 
-        var updated = account.DirectDebits.Single();
+        DirectDebit updated = account.DirectDebits.Single();
 
         using (Assert.Multiple())
         {
@@ -222,7 +222,7 @@ public class BankAccountTests
     [Test]
     public async Task BankAccount_SyncDirectDebits_RemovesMandatesNoLongerReported()
     {
-        var account = BuildAccount();
+        BankAccount account = BuildAccount();
         account.SyncDirectDebits([DirectDebit("dd-1", "Energy", 80m), DirectDebit("dd-2", "Water", 20m)]);
 
         account.SyncDirectDebits([DirectDebit("dd-1", "Energy", 80m)]);
@@ -233,7 +233,7 @@ public class BankAccountTests
     [Test]
     public async Task BankAccount_SyncDirectDebits_NullCurrency_IsAllowed()
     {
-        var account = BuildAccount();
+        BankAccount account = BuildAccount();
 
         account.SyncDirectDebits([DirectDebit("dd-1", "Energy", 80m) with { Currency = null }]);
 
@@ -243,7 +243,7 @@ public class BankAccountTests
     [Test]
     public void BankAccount_SyncDirectDebits_EmptyExternalId_Throws_ArgumentException()
     {
-        var account = BuildAccount();
+        BankAccount account = BuildAccount();
 
         Assert.Throws<ArgumentException>(() =>
             account.SyncDirectDebits([DirectDebit("", "Energy", 80m)]));
@@ -252,7 +252,7 @@ public class BankAccountTests
     [Test]
     public void BankAccount_SyncDirectDebits_Null_Throws_ArgumentNullException()
     {
-        var account = BuildAccount();
+        BankAccount account = BuildAccount();
 
         Assert.Throws<ArgumentNullException>(() =>
             account.SyncDirectDebits(null!));
@@ -263,9 +263,9 @@ public class BankAccountTests
     [Arguments(SyncType.Transactions)]
     public async Task BankAccount_RecordSync_CreatesEntryForAccount(SyncType type)
     {
-        var account = BuildAccount();
+        BankAccount account = BuildAccount();
 
-        var entry = account.RecordSync(type, Now);
+        SyncLogEntry entry = account.RecordSync(type, Now);
 
         using (Assert.Multiple())
         {

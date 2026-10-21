@@ -55,7 +55,7 @@ public class FluentValidationExtensionsTests
     {
         // Arrange
         var model = new AddHouseholdMember { FirstName = "Jane", LastName = "Doe", Income = -1 };
-        var validate = _validator.ValidateValue(model, nameof(AddHouseholdMember.Income));
+        Func<object, string, Task<IEnumerable<string>>> validate = _validator.ValidateValue(model, nameof(AddHouseholdMember.Income));
 
         // Act
         model.Income = 10;

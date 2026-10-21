@@ -1,5 +1,7 @@
 using FinanceTracker.Domain.Identity;
+using FinanceTracker.Infrastructure;
 using FinanceTracker.Tests.Unit.Shared.Fakers;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 
 namespace FinanceTracker.Tests.Unit.Shared.Scenarios;
 
@@ -20,9 +22,9 @@ public sealed class UserScenario : ScenarioBuilder
 
     private async Task<TestingScenario> WithUser(FinanceTrackerUser user)
     {
-        await using var context = await Scenario.DbContextFactory.CreateDbContextAsync(Scenario.CancellationToken);
+        await using FinanceTrackerContext context = await Scenario.DbContextFactory.CreateDbContextAsync(Scenario.CancellationToken);
 
-        var savedUser = await context.Users.AddAsync(user, Scenario.CancellationToken);
+        EntityEntry<FinanceTrackerUser> savedUser = await context.Users.AddAsync(user, Scenario.CancellationToken);
 
         await context.SaveChangesAsync(Scenario.CancellationToken);
 

@@ -9,9 +9,11 @@ namespace FinanceTracker.Domain.Classifications;
 public sealed class CustomClassification : AggregateRoot
 {
     [Obsolete("EF Use Only")]
+#pragma warning disable CS8618 // EF Core sets the properties when it materialises the entity
     private CustomClassification()
     {
     }
+#pragma warning restore CS8618
 
     public CustomClassification(Guid userId, string tag) : base(userId) => Rename(tag);
 

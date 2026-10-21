@@ -6,6 +6,7 @@ using FinanceTracker.Components;
 using FinanceTracker.Components.Account;
 using FinanceTracker.Domain.Identity;
 using FinanceTracker.Infrastructure;
+using FinanceTracker.Infrastructure.OpenBanking.TrueLayer;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -26,7 +27,7 @@ public partial class Program
     {
         WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-        string? culture = builder.Configuration["APP_CULTURE"];
+        string? culture = builder.Configuration[FinTrackEnvironment.Culture];
         if (!string.IsNullOrEmpty(culture))
         {
             CultureInfo cultureInfo = new(culture);
@@ -47,9 +48,6 @@ public partial class Program
         builder.Services.AddScoped<IdentityRedirectManager>();
         builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
 
-        builder.AddRedisOutputCache("FinTrack-Redis");
-        builder.AddRedisDistributedCache("FinTrack-Redis");
-
         AuthenticationBuilder authBuilder = builder.Services.AddAuthentication(options =>
         {
             options.DefaultScheme = IdentityConstants.ApplicationScheme;
@@ -61,9 +59,9 @@ public partial class Program
 
 
 
-        var oidcAuthority = builder.Configuration["OIDC_Authority"];
-        var oidcClientId = builder.Configuration["OIDC_ClientId"];
-        var oidcClientSecret = builder.Configuration["OIDC_ClientSecret"];
+        string? oidcAuthority = builder.Configuration[FinTrackEnvironment.OidcAuthority];
+        string? oidcClientId = builder.Configuration[FinTrackEnvironment.OidcClientId];
+        string? oidcClientSecret = builder.Configuration[FinTrackEnvironment.OidcClientSecret];
 
         bool isOidcEnabled = !string.IsNullOrEmpty(oidcAuthority) &&
                              !string.IsNullOrEmpty(oidcClientId) &&
@@ -100,24 +98,31 @@ public partial class Program
                 {
                     OnTokenValidated = async context =>
                     {
-                        var oidcSub = context.Principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                        var email = context.Principal?.FindFirst(ClaimTypes.Email)?.Value;
+                        ClaimsPrincipal? principal = context.Principal;
+                        string? oidcSub = principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                        string? email = principal?.FindFirst(ClaimTypes.Email)?.Value;
 
+                        if (principal is null || string.IsNullOrEmpty(oidcSub)) return;
 
-                        if (string.IsNullOrEmpty(oidcSub)) return;
+                        // Users are matched and created by email, without one a sign in could link to the wrong account
+                        if (string.IsNullOrEmpty(email))
+                        {
+                            context.Fail("The identity provider did not supply an email address.");
+                            return;
+                        }
 
-                        var factory = context.HttpContext.RequestServices
+                        IDbContextFactory<FinanceTrackerContext> factory = context.HttpContext.RequestServices
                             .GetRequiredService<IDbContextFactory<FinanceTrackerContext>>();
 
-                        await using var dbContext = await factory.CreateDbContextAsync();
+                        await using FinanceTrackerContext dbContext = await factory.CreateDbContextAsync();
 
-                        var user = await dbContext.Users.FirstOrDefaultAsync(u => u.OpenIdConnectSubject == oidcSub)
+                        FinanceTrackerUser? user = await dbContext.Users.FirstOrDefaultAsync(u => u.OpenIdConnectSubject == oidcSub)
                                    ?? await dbContext.Users.FirstOrDefaultAsync(u => u.Email == email);
 
                         if (user == null)
                         {
-                            var firstName = context.Principal?.FindFirst(ClaimTypes.GivenName)?.Value;
-                            var lastName = context.Principal?.FindFirst(ClaimTypes.Surname)?.Value;
+                            string firstName = principal.FindFirst(ClaimTypes.GivenName)?.Value ?? string.Empty;
+                            string lastName = principal.FindFirst(ClaimTypes.Surname)?.Value ?? string.Empty;
 
                             user = new FinanceTrackerUser(firstName, lastName, email, oidcSub);
                             dbContext.Users.Add(user);
@@ -133,7 +138,7 @@ public partial class Program
 
                         // Mutate the identity context to inject the ASP.NET Identity claims
                         // This ensures UserManager<FinanceTrackerUser> natively recognizes the logged-in user
-                        var claimsIdentity = (ClaimsIdentity)context.Principal.Identity!;
+                        var claimsIdentity = (ClaimsIdentity)principal.Identity!;
                         claimsIdentity.AddClaim(new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()));
                     }
                 };
@@ -144,7 +149,7 @@ public partial class Program
 
         builder.Services.AddDbContextFactory<FinanceTrackerContext>((sp, options) =>
         {
-            options.UseNpgsql(builder.Configuration.GetConnectionString("FinTrackDb"), npgsqlDbContextOptionsBuilder =>
+            options.UseNpgsql(builder.Configuration.GetConnectionString(FinTrackResources.Database), npgsqlDbContextOptionsBuilder =>
             {
                 npgsqlDbContextOptionsBuilder.MigrationsAssembly("FinanceTracker.Infrastructure.Migrations");
                 npgsqlDbContextOptionsBuilder.EnableRetryOnFailure();
@@ -156,8 +161,10 @@ public partial class Program
         builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
         builder.Services.AddHttpContextAccessor();
-        builder.Services.AddScoped<ClaimsPrincipal?>(s =>
-            s.GetService<IHttpContextAccessor>()?.HttpContext?.User ?? null);
+        // Resolves to null outside a request (background jobs), services fall back to their automation user id.
+        // To be replaced by an ICurrentUser service, HttpContext isn't reliable for interactive Blazor circuits
+        builder.Services.AddScoped<ClaimsPrincipal>(s =>
+            s.GetService<IHttpContextAccessor>()?.HttpContext?.User!);
 
 
         builder.Services.AddIdentityCore<FinanceTrackerUser>(options =>
@@ -172,27 +179,27 @@ public partial class Program
             .AddDefaultTokenProviders();
 
         builder.Services.AddSingleton<IEmailSender<FinanceTrackerUser>, IdentityNoOpEmailSender>();
-        builder.AddRedisClient("FinTrack-Redis");
-        builder.AddRedisDistributedCache("FinTrack-Redis");
-        builder.AddRedisOutputCache("FinTrack-Redis");
+        builder.AddRedisClient(FinTrackResources.Redis);
+        builder.AddRedisDistributedCache(FinTrackResources.Redis);
+        builder.AddRedisOutputCache(FinTrackResources.Redis);
 
         TrueLayerOpenBankingConfiguration trueLayerConfig = new()
         {
-            BaseAuthUrl = builder.Configuration.GetValue<Uri>("OPEN_BANKING_TRUELAYER_BASE_AUTH_URL")!,
-            BaseDataUrl = builder.Configuration.GetValue<Uri>("OPEN_BANKING_TRUELAYER_BASE_DATA_URL")!,
-            AuthRedirectUrl = builder.Configuration.GetValue<Uri>("OPEN_BANKING_TRUELAYER_AUTH_REDIRECT_URL")!,
-            ClientId = builder.Configuration.GetValue<string>("OPEN_BANKING_TRUELAYER_CLIENT_ID")!,
-            ClientSecret = builder.Configuration.GetValue<Guid>("OPEN_BANKING_TRUELAYER_CLIENT_SECRET"),
-            PublicIpAddress = builder.Configuration.GetValue<string>("OPEN_BANKING_PUBLIC_IP_ADDRESS")
+            BaseAuthUrl = builder.Configuration.GetValue<Uri>(FinTrackEnvironment.TrueLayerBaseAuthUrl)!,
+            BaseDataUrl = builder.Configuration.GetValue<Uri>(FinTrackEnvironment.TrueLayerBaseDataUrl)!,
+            AuthRedirectUrl = builder.Configuration.GetValue<Uri>(FinTrackEnvironment.TrueLayerAuthRedirectUrl)!,
+            ClientId = builder.Configuration.GetValue<string>(FinTrackEnvironment.TrueLayerClientId)!,
+            ClientSecret = builder.Configuration.GetValue<Guid>(FinTrackEnvironment.TrueLayerClientSecret),
+            PublicIpAddress = builder.Configuration.GetValue<string>(FinTrackEnvironment.PublicIpAddress) ?? string.Empty
         };
 
         builder.Services.AddSingleton(trueLayerConfig);
 
         EncryptionConfiguration encryptionConfig = new()
         {
-            SymmetricKey = builder.Configuration.GetValue<string>("ENCRYPTION_KEY")!,
-            SymmetricSalt = builder.Configuration.GetValue<string>("ENCRYPTION_SALT")!,
-            Iterations = builder.Configuration.GetValue<int>("ENCRYPTION_ITERATIONS")
+            SymmetricKey = builder.Configuration.GetValue<string>(FinTrackEnvironment.EncryptionKey)!,
+            SymmetricSalt = builder.Configuration.GetValue<string>(FinTrackEnvironment.EncryptionSalt)!,
+            Iterations = builder.Configuration.GetValue<int>(FinTrackEnvironment.EncryptionIterations)
         };
 
         builder.Services.AddSingleton(encryptionConfig);
@@ -219,7 +226,7 @@ public partial class Program
         builder.Services.AddCascadingValue(_ => new ApplicationState());
 
 
-        builder.Services.AddHttpClient("OpenBankingClient");
+        builder.Services.AddHttpClient(TrueLayerOpenBankingApiService.HttpClientName);
 
         builder.Services.AddSingleton<ISyncNotifier, SyncNotifier>();
         builder.Services.AddSingleton(TimeProvider.System);

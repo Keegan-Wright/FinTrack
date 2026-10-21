@@ -26,7 +26,7 @@ public class AddCustomClassificationsToTransactionRequestValidatorTests : UnitTe
         };
 
         // Act
-        var result = await _subject.ValidateAsync(testModel, CancellationToken);
+        ValidationResult result = await _subject.ValidateAsync(testModel, CancellationToken);
 
         // Assert
         using (Assert.Multiple())
@@ -53,7 +53,7 @@ public class AddCustomClassificationsToTransactionRequestValidatorTests : UnitTe
         };
 
         // Act
-        var result = await _subject.ValidateAsync(testModel, CancellationToken);
+        ValidationResult result = await _subject.ValidateAsync(testModel, CancellationToken);
 
         // Assert
         using (Assert.Multiple())
@@ -76,7 +76,7 @@ public class AddCustomClassificationsToTransactionRequestValidatorTests : UnitTe
         };
 
         // Act
-        var result = await _subject.ValidateAsync(testModel, CancellationToken);
+        ValidationResult result = await _subject.ValidateAsync(testModel, CancellationToken);
 
         // Assert
         using (Assert.Multiple())
@@ -113,14 +113,14 @@ public class AddCustomClassificationsToTransactionRequestValidatorTests : UnitTe
         };
 
         // Act
-        var result = await _subject.ValidateAsync(testModel, CancellationToken);
+        ValidationResult result = await _subject.ValidateAsync(testModel, CancellationToken);
 
         // Assert
         using (Assert.Multiple())
         {
             await Assert.That(result.IsValid).IsFalse();
             await Assert.That(result.Errors).Count().IsEqualTo(3);
-            await Assert.That(result.Errors).All(x => x.PropertyName.EndsWith(nameof(SelectedCustomClassification.ClassificationId)));
+            await Assert.That(result.Errors).All(x => x.PropertyName.EndsWith(nameof(SelectedCustomClassification.ClassificationId), StringComparison.Ordinal));
             foreach (ValidationFailure validationFailure in result.Errors)
             {
                 await Assert.That(validationFailure.ErrorMessage)

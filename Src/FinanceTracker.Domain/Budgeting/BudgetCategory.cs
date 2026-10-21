@@ -9,9 +9,11 @@ namespace FinanceTracker.Domain.Budgeting;
 public sealed class BudgetCategory : AggregateRoot
 {
     [Obsolete("EF Use Only")]
+#pragma warning disable CS8618 // EF Core sets the properties when it materialises the entity
     private BudgetCategory()
     {
     }
+#pragma warning restore CS8618
 
     public BudgetCategory(Guid userId, string name, decimal availableFunds, decimal monthlyStart,
         decimal savingsGoal, DateTime? goalCompletionDate) : base(userId)

@@ -1,5 +1,6 @@
 using FinanceTracker.Domain.Common;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace FinanceTracker.Infrastructure.Persistence;
@@ -31,8 +32,12 @@ internal sealed class AuditingInterceptor : SaveChangesInterceptor
             return;
         }
 
-        DateTime now = DateTime.UtcNow;
-        foreach (var entry in context.ChangeTracker.Entries<IAuditable>())
+        // The interceptor is shared, so the clock comes from the context being saved
+        TimeProvider clock = context is FinanceTrackerContext financeTrackerContext
+            ? financeTrackerContext.TimeProvider
+            : TimeProvider.System;
+        DateTime now = clock.GetUtcNow().UtcDateTime;
+        foreach (EntityEntry<IAuditable> entry in context.ChangeTracker.Entries<IAuditable>())
         {
             switch (entry.State)
             {

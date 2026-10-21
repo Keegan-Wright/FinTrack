@@ -18,10 +18,13 @@ public class MonitorOpenBankingTokenExpirationAsync : ITickerFunction
     private static readonly TimeSpan ConsentLifetime = TimeSpan.FromDays(90);
 
     private readonly IDbContextFactory<FinanceTrackerContext> _dbContextFactory;
+    private readonly TimeProvider _timeProvider;
 
-    public MonitorOpenBankingTokenExpirationAsync(IDbContextFactory<FinanceTrackerContext> dbContextFactory)
+    public MonitorOpenBankingTokenExpirationAsync(IDbContextFactory<FinanceTrackerContext> dbContextFactory,
+        TimeProvider timeProvider)
     {
         _dbContextFactory = dbContextFactory;
+        _timeProvider = timeProvider;
     }
 
     public async Task ExecuteAsync(TickerFunctionContext context,
@@ -29,13 +32,12 @@ public class MonitorOpenBankingTokenExpirationAsync : ITickerFunction
     {
         context.CronOccurrenceOperations.SkipIfAlreadyRunning();
 
-        using var activity = new ActivitySource("FinanceTracker");
-
-        using var performingMonitoringActivity = activity.StartActivity();
+        using Activity? performingMonitoringActivity =
+            Telemetry.ActivitySource.StartActivity(nameof(MonitorOpenBankingTokenExpirationAsync));
 
         await using FinanceTrackerContext dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
 
-        DateTime now = DateTime.UtcNow;
+        DateTime now = _timeProvider.GetUtcNow().UtcDateTime;
         DateTime lapsedBefore = now - ConsentLifetime;
 
         List<BankConnection> lapsedConnections = await dbContext.BankConnections

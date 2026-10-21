@@ -25,7 +25,7 @@ public class CronJobUpdateRequestValidator : AbstractValidator<UpdateCronJob>
     private bool ValidateCron(string expression)
     {
         if (string.IsNullOrWhiteSpace(expression)) return false;
-        var parts = expression.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        string[] parts = expression.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         return parts.Length == 6;
     }
 }

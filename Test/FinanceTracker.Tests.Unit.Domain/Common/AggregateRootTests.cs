@@ -10,7 +10,7 @@ public class AggregateRootTests
     public void AggregateRoot_InvalidConstruction_Throws_ArgumentException()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() =>
-            new TestingAggregateRoot(Guid.Empty));
+            _ = new TestingAggregateRoot(Guid.Empty));
     }
 
     [Test]

@@ -6,6 +6,7 @@ using WireMock.Matchers;
 using WireMock.RequestBuilders;
 using WireMock.ResponseBuilders;
 using WireMock.Server;
+using WireMock.Types;
 
 namespace FinanceTracker.Tests.Integration.OpenBanking;
 
@@ -75,7 +76,7 @@ public sealed class FakeTrueLayer : IDisposable
     /// </summary>
     public IReadOnlyList<ILogEntry> RequestsWithToken(string accessToken) =>
         Server.LogEntries
-            .Where(x => x.RequestMessage?.Headers?.TryGetValue("Authorization", out var values) == true &&
+            .Where(x => x.RequestMessage?.Headers?.TryGetValue("Authorization", out WireMockList<string>? values) == true &&
                         values.Contains($"Bearer {accessToken}"))
             .ToList();
 

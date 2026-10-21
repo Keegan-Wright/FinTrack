@@ -67,16 +67,16 @@
 
     private async Task<AddCustomClassificationsToTransaction?> BuildResponseModel()
     {
-        await _form.Validate();
+        await _form.ValidateAsync();
         if (!_form.IsValid) return null;
 
         return _model;
     }
 
-    void SelectedItemsChanged(HashSet<Classification> items)
+    private async Task SelectedItemsChanged(HashSet<Classification> items)
     {
         _model.Classifications = items.Select(x => new SelectedCustomClassification { ClassificationId = x.ClassificationId }).ToList();
-        _form.Validate();
+        await _form.ValidateAsync();
     }
 
 }

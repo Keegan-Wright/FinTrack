@@ -21,10 +21,10 @@ public class SymmetricEncryptionServiceTests : UnitTestBase
     public async Task Encrypt_ValidValue_ReturnsEncryptedValue()
     {
         // Arrange
-        var testString = "ValueToEncrypt";
+        string testString = "ValueToEncrypt";
 
         // Act
-        var encryptedString = _subject.Encrypt(testString);
+        string encryptedString = _subject.Encrypt(testString);
 
         // Assert
         await Assert.That(encryptedString).IsNotEqualTo(testString);
@@ -34,10 +34,10 @@ public class SymmetricEncryptionServiceTests : UnitTestBase
     public async Task Encrypt_EmptyString_ReturnsEmptyString()
     {
         // Arrange
-        var testString = string.Empty;
+        string testString = string.Empty;
 
         // Act
-        var encryptedString = _subject.Encrypt(testString);
+        string encryptedString = _subject.Encrypt(testString);
 
         // Assert
         await Assert.That(encryptedString).IsEqualTo(string.Empty);
@@ -50,7 +50,7 @@ public class SymmetricEncryptionServiceTests : UnitTestBase
         string? testString = null;
 
         // Act
-        var encryptedString = _subject.Encrypt(testString);
+        string encryptedString = _subject.Encrypt(testString);
 
         // Assert
         await Assert.That(encryptedString).IsEqualTo(string.Empty);
@@ -65,17 +65,17 @@ public class SymmetricEncryptionServiceTests : UnitTestBase
         string? testString = null;
 
         // Act
-        var encryptedString = _subject.Decrypt<string>(testString);
+        string? decrypted = _subject.Decrypt<string>(testString!);
 
         // Assert
-        await Assert.That(encryptedString).IsEqualTo((string)default);
+        await Assert.That(decrypted).IsNull();
     }
 
     [Test]
     public async Task Decrypt_UnencryptedString_ThrowsCryptoGraphicException()
     {
         // Arrange
-        var testString = "IShouldThrow";
+        string testString = "IShouldThrow";
 
         // Act &  Assert
         await Assert.That(() => _subject.Decrypt<string>(testString))
@@ -87,9 +87,9 @@ public class SymmetricEncryptionServiceTests : UnitTestBase
     public async Task Decrypt_StringWithInvalidPadding_ThrowsCryptographicException()
     {
         // Arrange
-        var testString = "IShouldThrow";
+        string testString = "IShouldThrow";
 
-        var encryptedTestString = _subject.Encrypt(testString);
+        string encryptedTestString = _subject.Encrypt(testString);
 
         var inlineDecryptor = new SymmetricEncryptionService(new EncryptionConfiguration()
         {
@@ -109,11 +109,11 @@ public class SymmetricEncryptionServiceTests : UnitTestBase
     public async Task EndToEnd_String_Success()
     {
         // Arrange
-        var testString = "Im a test string";
+        string testString = "Im a test string";
 
         // Act
-        var encryptedString = _subject.Encrypt(testString);
-        var decryptedString = _subject.Decrypt<string>(encryptedString);
+        string encryptedString = _subject.Encrypt(testString);
+        string? decryptedString = _subject.Decrypt<string>(encryptedString);
 
         // Assert
         await Assert.That(decryptedString).IsEqualTo(testString);
@@ -123,22 +123,22 @@ public class SymmetricEncryptionServiceTests : UnitTestBase
     public async Task EndToEnd_Numeric_Success()
     {
         // Arrange
-        var testInt = 1002;
-        var testFloat = 1002f;
-        var testDouble = 1002D;
-        var testDecimal = 1002M;
+        int testInt = 1002;
+        float testFloat = 1002f;
+        double testDouble = 1002D;
+        decimal testDecimal = 1002M;
 
 
         // Act
-        var encryptedInt = _subject.Encrypt(testInt);
-        var encryptedFloat = _subject.Encrypt(testFloat);
-        var encryptedDouble = _subject.Encrypt(testDouble);
-        var encryptedDecimal = _subject.Encrypt(testDecimal);
+        string encryptedInt = _subject.Encrypt(testInt);
+        string encryptedFloat = _subject.Encrypt(testFloat);
+        string encryptedDouble = _subject.Encrypt(testDouble);
+        string encryptedDecimal = _subject.Encrypt(testDecimal);
 
-        var decryptedInt = _subject.Decrypt<int>(encryptedInt);
-        var decryptedFloat = _subject.Decrypt<float>(encryptedFloat);
-        var decryptedDouble = _subject.Decrypt<double>(encryptedDouble);
-        var decryptedDecimal = _subject.Decrypt<decimal>(encryptedDecimal);
+        int decryptedInt = _subject.Decrypt<int>(encryptedInt);
+        float decryptedFloat = _subject.Decrypt<float>(encryptedFloat);
+        double decryptedDouble = _subject.Decrypt<double>(encryptedDouble);
+        decimal decryptedDecimal = _subject.Decrypt<decimal>(encryptedDecimal);
 
         // Assert
         using (Assert.Multiple())
@@ -154,12 +154,12 @@ public class SymmetricEncryptionServiceTests : UnitTestBase
     public async Task EndToEnd_DateTime_Success()
     {
         // Arrange
-        var testDateTime = DateTime.UtcNow;
+        DateTime testDateTime = DateTime.UtcNow;
 
         // Act
-        var encryptedDateTime = _subject.Encrypt(testDateTime);
+        string encryptedDateTime = _subject.Encrypt(testDateTime);
 
-        var decryptedDateTime = _subject.Decrypt<DateTime>(encryptedDateTime);
+        DateTime decryptedDateTime = _subject.Decrypt<DateTime>(encryptedDateTime);
         // Assert
         using (Assert.Multiple())
         {
@@ -180,7 +180,7 @@ public class SymmetricEncryptionServiceTests : UnitTestBase
         var testDateTimeOffset = new DateTimeOffset(2026, 3, 4, 5, 6, 7, 890, TimeSpan.FromHours(2));
 
         // Act
-        var decrypted = _subject.Decrypt<DateTimeOffset>(_subject.Encrypt(testDateTimeOffset));
+        DateTimeOffset decrypted = _subject.Decrypt<DateTimeOffset>(_subject.Encrypt(testDateTimeOffset));
 
         // Assert
         using (Assert.Multiple())
@@ -197,7 +197,7 @@ public class SymmetricEncryptionServiceTests : UnitTestBase
         int[] testArray = [1, 2, 3];
 
         // Act
-        var decrypted = _subject.Decrypt<int[]>(_subject.Encrypt(testArray));
+        int[]? decrypted = _subject.Decrypt<int[]>(_subject.Encrypt(testArray));
 
         // Assert
         await Assert.That(decrypted).IsEquivalentTo(testArray);
@@ -210,7 +210,7 @@ public class SymmetricEncryptionServiceTests : UnitTestBase
         List<string> testList = ["a", "b"];
 
         // Act
-        var decrypted = _subject.Decrypt<List<string>>(_subject.Encrypt(testList));
+        List<string>? decrypted = _subject.Decrypt<List<string>>(_subject.Encrypt(testList));
 
         // Assert
         await Assert.That(decrypted).IsEquivalentTo(testList);
@@ -220,7 +220,7 @@ public class SymmetricEncryptionServiceTests : UnitTestBase
     public async Task EndToEnd_Enum_Success()
     {
         // Act
-        var decrypted = _subject.Decrypt<DayOfWeek>(_subject.Encrypt(DayOfWeek.Friday));
+        DayOfWeek decrypted = _subject.Decrypt<DayOfWeek>(_subject.Encrypt(DayOfWeek.Friday));
 
         // Assert
         await Assert.That(decrypted).IsEqualTo(DayOfWeek.Friday);
@@ -230,7 +230,7 @@ public class SymmetricEncryptionServiceTests : UnitTestBase
     public async Task EndToEnd_NullableValue_Success()
     {
         // Act
-        var decrypted = _subject.Decrypt<int?>(_subject.Encrypt<int?>(42));
+        int? decrypted = _subject.Decrypt<int?>(_subject.Encrypt<int?>(42));
 
         // Assert
         await Assert.That(decrypted).IsEqualTo(42);
@@ -240,7 +240,7 @@ public class SymmetricEncryptionServiceTests : UnitTestBase
     public async Task Decrypt_NullJsonArray_ReturnsEmptyArray()
     {
         // Act
-        var decrypted = _subject.Decrypt<int[]>(_subject.Encrypt("null"));
+        int[]? decrypted = _subject.Decrypt<int[]>(_subject.Encrypt("null"));
 
         // Assert
         await Assert.That(decrypted).IsEquivalentTo(Array.Empty<int>());

@@ -7,6 +7,7 @@
 
 @attribute [Authorize]
 @inject ICalendarService CalendarService
+@inject TimeProvider TimeProvider
 
 <PageTitle>Calendar</PageTitle>
 
@@ -96,10 +97,11 @@
 @code {
 
     private readonly List<CalendarItems> _calendarItems = [];
-    private DateTime _selectedMonthYear = DateTime.UtcNow;
+    private DateTime _selectedMonthYear;
 
     protected override async Task OnInitializedAsync()
     {
+        _selectedMonthYear = TimeProvider.GetUtcNow().UtcDateTime;
         await base.OnInitializedAsync();
         await LoadSelectedCalendarMonthAsync();
     }

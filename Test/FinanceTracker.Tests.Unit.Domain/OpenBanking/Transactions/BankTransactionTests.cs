@@ -12,8 +12,8 @@ public class BankTransactionTests
     [Test]
     public async Task BankTransaction_Import_TakesOwnershipFromAccountAndSetsDetails()
     {
-        var account = BuildAccount();
-        var details = Details("tx-1");
+        BankAccount account = BuildAccount();
+        TransactionDetails details = Details("tx-1");
 
         var transaction = BankTransaction.Import(account, details);
 
@@ -112,7 +112,7 @@ public class BankTransactionTests
     [Test]
     public async Task BankTransaction_UpdateFromSync_KeepsCustomClassifications()
     {
-        var account = BuildAccount();
+        BankAccount account = BuildAccount();
         var transaction = BankTransaction.Import(account, Details("tx-1"));
         var classification = new CustomClassification(account.UserId, "Holiday");
         transaction.Classify(classification);
@@ -125,7 +125,7 @@ public class BankTransactionTests
     [Test]
     public async Task BankTransaction_Classify_AddsClassificationOnce()
     {
-        var account = BuildAccount();
+        BankAccount account = BuildAccount();
         var transaction = BankTransaction.Import(account, Details("tx-1"));
         var classification = new CustomClassification(account.UserId, "Holiday");
 
@@ -157,7 +157,7 @@ public class BankTransactionTests
     [Test]
     public async Task BankTransaction_Unclassify_RemovesOnlyThatClassification()
     {
-        var account = BuildAccount();
+        BankAccount account = BuildAccount();
         var transaction = BankTransaction.Import(account, Details("tx-1"));
         var holiday = new CustomClassification(account.UserId, "Holiday");
         var food = new CustomClassification(account.UserId, "Food");

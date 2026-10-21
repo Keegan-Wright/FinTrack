@@ -258,7 +258,7 @@ public class ReportService : ServiceBase<ReportService>, IReportService
 
         List<BankTransaction> transactions = await criteria
             .ApplyServerFilters(context.BankTransactions.OwnedBy(UserId), context)
-            .Where(static x => x.Category != "TRANSFER")
+            .Where(static x => x.Category != BankTransaction.TransferCategory)
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 

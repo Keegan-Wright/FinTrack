@@ -15,5 +15,5 @@ public class SqliteInMemoryDbContextFactory : IDbContextFactory<FinanceTrackerCo
         _symmetricEncryptionService = symmetricEncryptionService;
     }
 
-    public FinanceTrackerContext CreateDbContext() => new FinanceTrackerContext(_options, _symmetricEncryptionService);
+    public FinanceTrackerContext CreateDbContext() => new FinanceTrackerContext(_options, _symmetricEncryptionService, TimeProvider.System);
 }

@@ -7,7 +7,7 @@ namespace FinanceTracker.Infrastructure;
 public class ServiceBase<TLogger> : IServiceBase
 {
     protected IDbContextFactory<FinanceTrackerContext> FinanceTrackerContextFactory { get; }
-    protected readonly ILogger<TLogger> Logger;
+    protected ILogger<TLogger> Logger { get; }
 
     private ClaimsPrincipal? User { get; }
 

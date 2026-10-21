@@ -129,8 +129,8 @@ public class SymmetricEncryptionService : ISymmetricEncryptionService
     private static (byte[] Key, byte[] Iv) DeriveKeyAndIv(EncryptionConfiguration encryptionConfiguration,
         HashAlgorithmName hashAlgorithm)
     {
-        var keyLen = KeySize / 8;
-        var ivLen = BlockSize / 8;
+        int keyLen = KeySize / 8;
+        int ivLen = BlockSize / 8;
 
         byte[] saltBytes = Encoding.ASCII.GetBytes(encryptionConfiguration.SymmetricSalt);
         Span<byte> generator = new byte[256];

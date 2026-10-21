@@ -134,7 +134,7 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
         // Unable to use .SelectMany on the encrypted column ProviderClassifications
-        var materialisedClassifications = await context.BankTransactions
+        List<IReadOnlyCollection<string>> materialisedClassifications = await context.BankTransactions
             .OwnedBy(UserId)
             .Select(static x => x.ProviderClassifications)
             .Distinct()

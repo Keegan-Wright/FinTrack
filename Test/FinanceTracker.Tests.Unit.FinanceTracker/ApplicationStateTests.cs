@@ -9,8 +9,8 @@ public class ApplicationStateTests
     {
         // Arrange
         var subject = new ApplicationState();
-        List<string?> changed = [];
-        subject.PropertyChanged += (_, args) => changed.Add(args.PropertyName);
+        List<string> changed = [];
+        subject.PropertyChanged += (_, args) => changed.Add(args.PropertyName ?? string.Empty);
 
         // Act
         subject.Loading = true;
@@ -28,8 +28,8 @@ public class ApplicationStateTests
     {
         // Arrange
         var subject = new ApplicationState();
-        List<string?> changed = [];
-        subject.PropertyChanged += (_, args) => changed.Add(args.PropertyName);
+        List<string> changed = [];
+        subject.PropertyChanged += (_, args) => changed.Add(args.PropertyName ?? string.Empty);
 
         // Act
         subject.LoadingMessage = "Syncing";
@@ -47,8 +47,8 @@ public class ApplicationStateTests
     {
         // Arrange
         var subject = new ApplicationState { Loading = true, LoadingMessage = "Syncing" };
-        List<string?> changed = [];
-        subject.PropertyChanged += (_, args) => changed.Add(args.PropertyName);
+        List<string> changed = [];
+        subject.PropertyChanged += (_, args) => changed.Add(args.PropertyName ?? string.Empty);
 
         // Act
         subject.Loading = true;

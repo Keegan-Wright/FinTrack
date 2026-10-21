@@ -3,12 +3,14 @@ using FinanceTracker.Contracts.OpenBanking;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Domain.OpenBanking.Transactions;
+using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.OpenBanking;
 using FinanceTracker.Infrastructure.OpenBanking.TrueLayer.Contracts;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Fakers.TrueLayer;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
@@ -578,7 +580,7 @@ public class OpenBankingServiceTests : InfrastructureTestBase
     {
         // Arrange
         await SeedConnectionAsync();
-        OpenBankingService subject = new(null!, DbContextFactory, _api, NullLogger<OpenBankingService>.Instance);
+        OpenBankingService subject = new(null!, DbContextFactory, _api, NullLogger<OpenBankingService>.Instance, TimeProvider.System);
 
         // Act
         await ((IOpenBankingService)subject).RunFunctionAsUser(Scenario.UserMappings[Username],
@@ -598,7 +600,7 @@ public class OpenBankingServiceTests : InfrastructureTestBase
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
             .Do(s => s.BankConnectionScenario.WithConnection("bank", Username, userId =>
-                new BankConnection(userId, "ob-existing", "Bank", "old-code", ["accounts"], [1])))
+                new BankConnection(userId, "ob-existing", "Bank", "old-code", ["accounts"], [1], DateTime.UtcNow)))
             .Do(s => s.BankConnectionScenario.WithAccessToken("bank", token: "old-token"));
 
         _api.ExchangeCodeForAccessTokenAsync("new-code", CancellationToken).Returns(
@@ -614,7 +616,7 @@ public class OpenBankingServiceTests : InfrastructureTestBase
         bool result = await subject.AddVendorViaAccessCodeAsync(new AddVendor { AccessCode = "new-code" }, CancellationToken);
 
         // Assert
-        await using var context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
         BankConnection connection = await context.BankConnections.Include(x => x.AccessTokens)
             .SingleAsync(CancellationToken);
 
@@ -653,7 +655,7 @@ public class OpenBankingServiceTests : InfrastructureTestBase
         bool result = await subject.AddVendorViaAccessCodeAsync(new AddVendor { AccessCode = "new-code" }, CancellationToken);
 
         // Assert
-        await using var context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
         BankConnection connection = await context.BankConnections.Include(x => x.AccessTokens)
             .SingleAsync(CancellationToken);
         BankAccount account = await context.BankAccounts.SingleAsync(CancellationToken);
@@ -696,7 +698,7 @@ public class OpenBankingServiceTests : InfrastructureTestBase
         await subject.AddVendorViaAccessCodeAsync(new AddVendor { AccessCode = "new-code" }, CancellationToken);
 
         // Assert
-        await using var context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
 
         using (Assert.Multiple())
         {
@@ -711,7 +713,7 @@ public class OpenBankingServiceTests : InfrastructureTestBase
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
             .Do(s => s.BankConnectionScenario.WithConnection("bank", Username, userId =>
-                new BankConnection(userId, "ob-existing", "Bank", "old-code", ["accounts"], [1])));
+                new BankConnection(userId, "ob-existing", "Bank", "old-code", ["accounts"], [1], DateTime.UtcNow)));
 
         _api.ExchangeCodeForAccessTokenAsync("new-code", CancellationToken).Returns(
             new ExternalOpenBankingAccessResponse { AccessToken = Token, RefreshToken = "refresh", ExpiresIn = 3600 });
@@ -751,7 +753,7 @@ public class OpenBankingServiceTests : InfrastructureTestBase
             subject.AddVendorViaAccessCodeAsync(new AddVendor { AccessCode = "new-code" }, CancellationToken));
 
         // Assert
-        await using var context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
         await Assert.That(await context.BankConnections.CountAsync(CancellationToken)).IsEqualTo(0);
     }
 
@@ -761,7 +763,7 @@ public class OpenBankingServiceTests : InfrastructureTestBase
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
             .Do(s => s.BankConnectionScenario.WithConnection("bank", Username, userId =>
-                new BankConnection(userId, "ob-existing", "Bank", "old-code", ["accounts"], [1])));
+                new BankConnection(userId, "ob-existing", "Bank", "old-code", ["accounts"], [1], DateTime.UtcNow)));
 
         _api.ExchangeCodeForAccessTokenAsync("new-code", CancellationToken).Returns(
             new ExternalOpenBankingAccessResponse { AccessToken = Token, RefreshToken = "refresh", ExpiresIn = 3600 });
@@ -883,13 +885,13 @@ public class OpenBankingServiceTests : InfrastructureTestBase
         }
 
         CapturingLogger<OpenBankingService> logger = new();
-        OpenBankingService subject = new(UserPrincipal(Username), DbContextFactory, _api, logger);
+        OpenBankingService subject = new(UserPrincipal(Username), DbContextFactory, _api, logger, TimeProvider.System);
 
         // Act
         await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
 
         // Assert
-        var error = logger.Entries.Single(x => x.Level == Microsoft.Extensions.Logging.LogLevel.Error);
+        (LogLevel Level, string Message, Exception? Exception) error = logger.Entries.Single(x => x.Level == Microsoft.Extensions.Logging.LogLevel.Error);
         List<SyncType> logged = await LoadSyncLogTypesAsync();
         List<string> imported = (await LoadTransactionsAsync()).Select(x => x.ExternalId).ToList();
 
@@ -1016,7 +1018,7 @@ public class OpenBankingServiceTests : InfrastructureTestBase
         await subject.AddVendorViaAccessCodeAsync(new AddVendor { AccessCode = "new-code" }, CancellationToken);
 
         // Assert
-        await using var context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
         await Assert.That((await context.BankConnections.SingleAsync(CancellationToken)).Scopes.Count).IsEqualTo(0);
     }
 
@@ -1054,7 +1056,7 @@ public class OpenBankingServiceTests : InfrastructureTestBase
 
     private async Task<List<BankAccount>> LoadAccountsAsync()
     {
-        await using var context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
         return await context.BankAccounts
             .Include(x => x.StandingOrders)
             .Include(x => x.DirectDebits)
@@ -1063,23 +1065,24 @@ public class OpenBankingServiceTests : InfrastructureTestBase
 
     private async Task<List<BankTransaction>> LoadTransactionsAsync()
     {
-        await using var context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
         return await context.BankTransactions.ToListAsync(CancellationToken);
     }
 
     private async Task<List<SyncType>> LoadSyncLogTypesAsync()
     {
-        await using var context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
         return await context.SyncLog.Select(x => x.Type).ToListAsync(CancellationToken);
     }
 
     private async Task<BankConnection> LoadConnectionAsync(string connectionName)
     {
-        await using var context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
         Guid id = Scenario.ConnectionMappings[connectionName];
         return await context.BankConnections.Include(x => x.AccessTokens).SingleAsync(x => x.Id == id, CancellationToken);
     }
 
     private OpenBankingService BuildSubject() =>
-        new(UserPrincipal(Username), DbContextFactory, _api, NullLogger<OpenBankingService>.Instance);
+        new(UserPrincipal(Username), DbContextFactory, _api, NullLogger<OpenBankingService>.Instance,
+            TimeProvider.System);
 }

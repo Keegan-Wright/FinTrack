@@ -1,6 +1,7 @@
 using FinanceTracker.Contracts.HouseholdMember;
 using FinanceTracker.Infrastructure.Validation;
 using FinanceTracker.Tests.Unit.Shared;
+using FluentValidation.Results;
 using TUnit.Assertions;
 using TUnit.Assertions.Extensions;
 using TUnit.Core;
@@ -23,7 +24,7 @@ public class AddHouseholdMemberRequestValidatorTests : UnitTestBase
         };
 
         // Act
-        var result = await _subject.ValidateAsync(testModel, CancellationToken);
+        ValidationResult result = await _subject.ValidateAsync(testModel, CancellationToken);
 
         // Assert
         using (Assert.Multiple())
@@ -45,7 +46,7 @@ public class AddHouseholdMemberRequestValidatorTests : UnitTestBase
         };
 
         // Act
-        var result = await _subject.ValidateAsync(testModel, CancellationToken);
+        ValidationResult result = await _subject.ValidateAsync(testModel, CancellationToken);
 
         // Assert
         using (Assert.Multiple())
@@ -67,7 +68,7 @@ public class AddHouseholdMemberRequestValidatorTests : UnitTestBase
         };
 
         // Act
-        var result = await _subject.ValidateAsync(testModel, CancellationToken);
+        ValidationResult result = await _subject.ValidateAsync(testModel, CancellationToken);
 
         // Assert
         using (Assert.Multiple())

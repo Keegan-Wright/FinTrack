@@ -1,7 +1,7 @@
-using FinanceTracker.Domain.Identity;
 using FinanceTracker.Domain.Budgeting;
 using FinanceTracker.Domain.Classifications;
 using FinanceTracker.Domain.Household;
+using FinanceTracker.Domain.Identity;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Domain.OpenBanking.Transactions;
@@ -20,17 +20,24 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
 {
     private readonly ISymmetricEncryptionService _symmetricEncryptionService;
 
+    /// <summary>
+    /// The clock <see cref="Persistence.AuditingInterceptor"/> stamps audit times from.
+    /// </summary>
+    internal TimeProvider TimeProvider { get; } = TimeProvider.System;
+
     [Obsolete("Used by design time only")]
+#pragma warning disable CS8618 // Only used to reach CreateDbContext, which builds a fully initialised context
     public FinanceTrackerContext()
     {
-
     }
+#pragma warning restore CS8618
 
     [ActivatorUtilitiesConstructor]
     public FinanceTrackerContext(DbContextOptions<FinanceTrackerContext> options,
-        ISymmetricEncryptionService symmetricEncryptionService) : base(options)
+        ISymmetricEncryptionService symmetricEncryptionService, TimeProvider timeProvider) : base(options)
     {
         _symmetricEncryptionService = symmetricEncryptionService;
+        TimeProvider = timeProvider;
     }
 
 
@@ -96,6 +103,6 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
                 SymmetricKey = "DesignTimeKey",
                 SymmetricSalt = "DesignTimeSalt",
                 Iterations = 1
-            }));
+            }), TimeProvider.System);
         }
 }

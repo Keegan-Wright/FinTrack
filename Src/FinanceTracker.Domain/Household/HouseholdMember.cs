@@ -10,9 +10,11 @@ namespace FinanceTracker.Domain.Household;
 public sealed class HouseholdMember : AggregateRoot
 {
     [Obsolete("EF Use Only")]
+#pragma warning disable CS8618 // EF Core sets the properties when it materialises the entity
     private HouseholdMember()
     {
     }
+#pragma warning restore CS8618
 
     public HouseholdMember(Guid userId, string firstName, string lastName, decimal? income) : base(userId)
     {

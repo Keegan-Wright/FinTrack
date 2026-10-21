@@ -10,9 +10,11 @@ namespace FinanceTracker.Domain.OpenBanking.Accounts;
 public sealed class StandingOrder : Entity
 {
     [Obsolete("EF Use Only")]
+#pragma warning disable CS8618 // EF Core sets the properties when it materialises the entity
     private StandingOrder()
     {
     }
+#pragma warning restore CS8618
 
     internal StandingOrder(StandingOrderDetails details)
     {

@@ -48,7 +48,7 @@ public class SyncNotifier : ISyncNotifier
             catch (Exception ex)
             {
                 // One broken circuit shouldn't stop the user's other tabs hearing about the sync
-                _logger.LogWarning(ex, "Failed to notify a circuit of a completed sync for user {UserId}", userId);
+                _logger.LogSyncNotificationFailed(ex, userId);
             }
         }
     }

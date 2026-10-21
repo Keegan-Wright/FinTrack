@@ -2,6 +2,7 @@ using System.Reflection;
 using FinanceTracker.Infrastructure.Encryption;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace FinanceTracker.Infrastructure.Persistence;
@@ -14,13 +15,13 @@ public static class ModelBuilderExtensions
         ArgumentNullException.ThrowIfNull(modelBuilder);
         ArgumentNullException.ThrowIfNull(encryptionService);
 
-        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        foreach (IMutableEntityType entityType in modelBuilder.Model.GetEntityTypes())
         {
             var encrptionMarkedProperties = entityType.GetProperties()
                 .Where(x => x.FindAnnotation(Annotations.EncryptedPropertyAnnotation) != null)
                 .ToList();
 
-            foreach (var markedProperty in encrptionMarkedProperties)
+            foreach (IMutableProperty? markedProperty in encrptionMarkedProperties)
             {
                 markedProperty.SetValueConverter(CreateConverter(markedProperty.ClrType, encryptionService));
 

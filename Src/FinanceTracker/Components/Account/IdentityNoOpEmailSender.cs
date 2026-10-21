@@ -8,7 +8,7 @@ namespace FinanceTracker.Components.Account;
 // Remove the "else if (EmailSender is IdentityNoOpEmailSender)" block from RegisterConfirmation.razor after updating with a real implementation.
 internal sealed class IdentityNoOpEmailSender : IEmailSender<FinanceTrackerUser>
 {
-    private readonly IEmailSender emailSender = new NoOpEmailSender();
+    private readonly NoOpEmailSender emailSender = new();
 
     public Task SendConfirmationLinkAsync(FinanceTrackerUser user, string email, string confirmationLink) =>
         emailSender.SendEmailAsync(email, "Confirm your email",

@@ -26,7 +26,7 @@
 
     private async Task<AddClassifications?> BuildResponseModel()
     {
-        await _form.Validate();
+        await _form.ValidateAsync();
         if (!_form.IsValid) return null;
 
         return _model;

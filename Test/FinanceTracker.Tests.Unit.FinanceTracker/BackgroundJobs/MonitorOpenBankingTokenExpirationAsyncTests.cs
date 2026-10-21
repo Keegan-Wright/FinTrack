@@ -1,5 +1,6 @@
 using FinanceTracker.BackgroundJobs;
 using FinanceTracker.Domain.OpenBanking.Connections;
+using FinanceTracker.Infrastructure;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.EntityFrameworkCore;
@@ -139,7 +140,7 @@ public class MonitorOpenBankingTokenExpirationAsyncTests : InfrastructureTestBas
 
     private async Task RevokeActiveTokenAsync(string connectionName, DateTime revokedAt)
     {
-        await using var context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
         Guid id = Scenario.ConnectionMappings[connectionName];
         BankConnection connection = await context.BankConnections.Include(x => x.AccessTokens)
             .SingleAsync(x => x.Id == id, CancellationToken);
@@ -149,11 +150,11 @@ public class MonitorOpenBankingTokenExpirationAsyncTests : InfrastructureTestBas
 
     private async Task<BankConnection> LoadConnectionAsync(string connectionName)
     {
-        await using var context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
         Guid id = Scenario.ConnectionMappings[connectionName];
         return await context.BankConnections.Include(x => x.AccessTokens)
             .SingleAsync(x => x.Id == id, CancellationToken);
     }
 
-    private MonitorOpenBankingTokenExpirationAsync BuildSubject() => new(DbContextFactory);
+    private MonitorOpenBankingTokenExpirationAsync BuildSubject() => new(DbContextFactory, TimeProvider.System);
 }
