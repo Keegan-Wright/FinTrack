@@ -9,6 +9,5 @@ public enum SyncType
     Balance = 2,
     DirectDebits = 3,
     StandingOrders = 4,
-    Transactions = 5,
-    PendingTransactions = 6
+    Transactions = 5
 }

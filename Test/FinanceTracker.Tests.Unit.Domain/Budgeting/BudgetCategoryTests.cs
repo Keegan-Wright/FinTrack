@@ -109,9 +109,10 @@ public class BudgetCategoryTests
         var category = new BudgetCategory(Guid.NewGuid(), "Test", 0m, 0m, 0m, null);
 
         Assert.Throws<ArgumentOutOfRangeException>(() =>
-            category.SetSavingsGoal(-1, DateTime.UtcNow));
+            category.AdjustAvailableFunds(-1));
     }
 
+    [Test]
     public async Task BudgetCategory_AdjustAvailableFunds_ValidDecimalNoDate_DoesNotThrow()
     {
         var category = new BudgetCategory(Guid.NewGuid(), "Test", 0m, 0m, 0m, DateTime.UtcNow);
@@ -121,7 +122,68 @@ public class BudgetCategoryTests
         category.AdjustAvailableFunds(newAvailableFunds);
 
 
-       await Assert.That(category.SavingsGoal).IsEqualTo(newAvailableFunds);
+       await Assert.That(category.AvailableFunds).IsEqualTo(newAvailableFunds);
+    }
+
+    [Test]
+    public async Task BudgetCategory_AdjustAvailableFunds_AddsToExistingFunds()
+    {
+        var category = new BudgetCategory(Guid.NewGuid(), "Test", 50m, 0m, 0m, null);
+
+        category.AdjustAvailableFunds(25m);
+        category.AdjustAvailableFunds(0m);
+
+        await Assert.That(category.AvailableFunds).IsEqualTo(75m);
+    }
+
+    [Test]
+    public async Task BudgetCategory_ValidConstruction_SetsProperties()
+    {
+        var userId = Guid.NewGuid();
+        var goalDate = new DateTime(2027, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        var category = new BudgetCategory(userId, "Holiday", 100m, 25m, 1000m, goalDate);
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(category.UserId).IsEqualTo(userId);
+            await Assert.That(category.Name).IsEqualTo("Holiday");
+            await Assert.That(category.AvailableFunds).IsEqualTo(100m);
+            await Assert.That(category.MonthlyStart).IsEqualTo(25m);
+            await Assert.That(category.SavingsGoal).IsEqualTo(1000m);
+            await Assert.That(category.GoalCompletionDate).IsEqualTo(goalDate);
+        }
+    }
+
+    [Test]
+    public async Task BudgetCategory_ZeroValues_AreValid()
+    {
+        var category = new BudgetCategory(Guid.NewGuid(), "Test", 0m, 0m, 0m, null);
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(category.AvailableFunds).IsEqualTo(0m);
+            await Assert.That(category.MonthlyStart).IsEqualTo(0m);
+            await Assert.That(category.SavingsGoal).IsEqualTo(0m);
+        }
+    }
+
+    [Test]
+    [Arguments(null)]
+    [Arguments(" ")]
+    public void BudgetCategory_Rename_NullOrWhitespace_Throws_ArgumentException(string? name)
+    {
+        var category = new BudgetCategory(Guid.NewGuid(), "Test", 0m, 0m, 0m, null);
+
+        Assert.Throws<ArgumentException>(() =>
+            category.Rename(name!));
+    }
+
+    [Test]
+    public void BudgetCategory_EmptyUserId_Throws_ArgumentOutOfRangeException()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            new BudgetCategory(Guid.Empty, "Test", 0m, 0m, 0m, null));
     }
 
 }

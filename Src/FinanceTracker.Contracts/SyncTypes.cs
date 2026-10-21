@@ -11,6 +11,5 @@ public enum SyncTypes
     DirectDebits = 4,
     StandingOrders = 8,
     Transactions = 16,
-    PendingTransactions = 32,
     All = 64
 }

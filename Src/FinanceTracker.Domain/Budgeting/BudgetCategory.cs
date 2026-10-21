@@ -24,9 +24,6 @@ public sealed class BudgetCategory : AggregateRoot
 
     public string Name { get; private set; }
 
-    /// <summary>
-    /// Can go negative when the category is overspent.
-    /// </summary>
     public decimal AvailableFunds { get; private set; }
 
     public decimal MonthlyStart { get; private set; }
