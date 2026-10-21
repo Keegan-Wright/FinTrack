@@ -6,3 +6,6 @@ riderModule.iml
 /.vs
 /.idea
 /.nuget
+
+# Aspire publish output, the generated .env can contain parameter values
+aspire-output/

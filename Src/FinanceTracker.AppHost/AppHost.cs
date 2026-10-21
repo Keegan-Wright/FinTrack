@@ -17,24 +17,27 @@ IResourceBuilder<ContainerRegistryResource> registry = builder.AddContainerRegis
 
 builder.AddDockerComposeEnvironment("fintrack");
 
-IConfigurationSection openBankingConfig = builder.Configuration.GetSection("OpenBanking");
-IConfigurationSection encryptionConfig = builder.Configuration.GetSection("Encryption");
-IConfigurationSection oidcConfig = builder.Configuration.GetSection("OIDC");
 
-IResourceBuilder<ParameterResource> encryptionKey = builder.AddParameter("FinTrack-Symmetric-Key", encryptionConfig["SymmetricKey"] ?? string.Empty );
-IResourceBuilder<ParameterResource> encryptionSalt = builder.AddParameter("FinTrack-Symmetric-Salt", encryptionConfig["SymmetricSalt"] ?? string.Empty);
-IResourceBuilder<ParameterResource> encryptionIterations = builder.AddParameter("FinTrack-Symmetric-Key-Iterations",encryptionConfig["Iterations"] ?? string.Empty);
+IResourceBuilder<ParameterResource> encryptionKey =
+    builder.AddParameterFromConfiguration("FinTrack-Symmetric-Key", "Encryption:SymmetricKey", secret: true);
+IResourceBuilder<ParameterResource> encryptionSalt =
+    builder.AddParameterFromConfiguration("FinTrack-Symmetric-Salt", "Encryption:SymmetricSalt", secret: true);
+// Part of the key derivation, so it must stay matched to the data's key and salt
+IResourceBuilder<ParameterResource> encryptionIterations =
+    builder.AddParameterFromConfiguration("FinTrack-Symmetric-Key-Iterations", "Encryption:Iterations");
 
-IResourceBuilder<ParameterResource> openBankingAuthUrl = builder.AddParameter("OpenBanking-Auth-Url", openBankingConfig["TrueLayer:BaseAuthUrl"] ?? string.Empty);
-IResourceBuilder<ParameterResource> openBankingDataUrl = builder.AddParameter("OpenBanking-Data-Url", openBankingConfig["TrueLayer:BaseDataUrl"] ?? string.Empty);
-IResourceBuilder<ParameterResource> openBankingAuthRedirectUrl = builder.AddParameter("OpenBanking-Auth-Redirect-Url", openBankingConfig["TrueLayer:AuthRedirectUrl"] ?? string.Empty);
-IResourceBuilder<ParameterResource> openBankingClientId = builder.AddParameter("OpenBanking-Client-Id", openBankingConfig["TrueLayer:ClientId"] ?? string.Empty);
-IResourceBuilder<ParameterResource> openBankingClientSecret = builder.AddParameter("OpenBanking-Client-Secret", openBankingConfig["TrueLayer:ClientSecret"] ?? string.Empty);
-IResourceBuilder<ParameterResource> openBankingPublicIpAddress = builder.AddParameter("OpenBanking-Public-IP-Address", openBankingConfig["TrueLayer:PublicIpAddress"] ?? string.Empty);
-
-IResourceBuilder<ParameterResource> oidcAuthority = builder.AddParameter("Oidc-Authority", oidcConfig["Authority"] ?? string.Empty);
-IResourceBuilder<ParameterResource> oidcClientId = builder.AddParameter("Oidc-ClientId", oidcConfig["ClientId"] ?? string.Empty);
-IResourceBuilder<ParameterResource> oidcClientSecret = builder.AddParameter("Oidc-ClientSecret", oidcConfig["ClientSecret"] ?? string.Empty);
+IResourceBuilder<ParameterResource> openBankingAuthUrl =
+    builder.AddParameterFromConfiguration("OpenBanking-Auth-Url", "OpenBanking:TrueLayer:BaseAuthUrl");
+IResourceBuilder<ParameterResource> openBankingDataUrl =
+    builder.AddParameterFromConfiguration("OpenBanking-Data-Url", "OpenBanking:TrueLayer:BaseDataUrl");
+IResourceBuilder<ParameterResource> openBankingAuthRedirectUrl =
+    builder.AddParameterFromConfiguration("OpenBanking-Auth-Redirect-Url", "OpenBanking:TrueLayer:AuthRedirectUrl");
+IResourceBuilder<ParameterResource> openBankingClientId =
+    builder.AddParameterFromConfiguration("OpenBanking-Client-Id", "OpenBanking:TrueLayer:ClientId");
+IResourceBuilder<ParameterResource> openBankingClientSecret =
+    builder.AddParameterFromConfiguration("OpenBanking-Client-Secret", "OpenBanking:TrueLayer:ClientSecret", secret: true);
+IResourceBuilder<ParameterResource> openBankingPublicIpAddress =
+    builder.AddParameterFromConfiguration("OpenBanking-Public-IP-Address", "OpenBanking:TrueLayer:PublicIpAddress");
 
 
 
@@ -70,9 +73,6 @@ IResourceBuilder<ProjectResource> finTrack = builder.AddProject<Projects.Finance
     .WithEnvironment(FinTrackEnvironment.TrueLayerClientSecret, openBankingClientSecret)
     .WithEnvironment(FinTrackEnvironment.PublicIpAddress, openBankingPublicIpAddress)
     .WithEnvironment(FinTrackEnvironment.Culture, "en-GB")
-    .WithEnvironment(FinTrackEnvironment.OidcAuthority, oidcAuthority)
-    .WithEnvironment(FinTrackEnvironment.OidcClientId, oidcClientId)
-    .WithEnvironment(FinTrackEnvironment.OidcClientSecret, oidcClientSecret)
     .WithReference(redis)
     .WithReference(postgresDb)
     .WaitFor(redis)
@@ -83,6 +83,18 @@ IResourceBuilder<ProjectResource> finTrack = builder.AddProject<Projects.Finance
     })
     .WithContainerRegistry(registry)
     .WithRemoteImageTag("v0.0.1");
+
+// OIDC sign in is optional, it's only wired up when an authority is configured
+if (!string.IsNullOrEmpty(builder.Configuration["OIDC:Authority"]))
+{
+    finTrack
+        .WithEnvironment(FinTrackEnvironment.OidcAuthority,
+            builder.AddParameterFromConfiguration("Oidc-Authority", "OIDC:Authority"))
+        .WithEnvironment(FinTrackEnvironment.OidcClientId,
+            builder.AddParameterFromConfiguration("Oidc-ClientId", "OIDC:ClientId"))
+        .WithEnvironment(FinTrackEnvironment.OidcClientSecret,
+            builder.AddParameterFromConfiguration("Oidc-ClientSecret", "OIDC:ClientSecret", secret: true));
+}
 
 
 await builder.Build().RunAsync();
