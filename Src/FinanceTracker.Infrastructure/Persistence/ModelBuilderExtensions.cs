@@ -9,31 +9,33 @@ namespace FinanceTracker.Infrastructure.Persistence;
 
 public static class ModelBuilderExtensions
 {
-    public static ModelBuilder UseEncryption(this ModelBuilder modelBuilder,
-        IColumnEncryptionService encryptionService)
+    extension(ModelBuilder modelBuilder)
     {
-        ArgumentNullException.ThrowIfNull(modelBuilder);
-        ArgumentNullException.ThrowIfNull(encryptionService);
-
-        foreach (IMutableEntityType entityType in modelBuilder.Model.GetEntityTypes())
+        public ModelBuilder UseEncryption(IColumnEncryptionService encryptionService)
         {
-            var encrptionMarkedProperties = entityType.GetProperties()
-                .Where(x => x.FindAnnotation(Annotations.EncryptedPropertyAnnotation) != null)
-                .ToList();
+            ArgumentNullException.ThrowIfNull(modelBuilder);
+            ArgumentNullException.ThrowIfNull(encryptionService);
 
-            foreach (IMutableProperty? markedProperty in encrptionMarkedProperties)
+            foreach (IMutableEntityType entityType in modelBuilder.Model.GetEntityTypes())
             {
-                markedProperty.SetValueConverter(CreateConverter(markedProperty.ClrType, encryptionService));
+                var encrptionMarkedProperties = entityType.GetProperties()
+                    .Where(x => x.FindAnnotation(Annotations.EncryptedPropertyAnnotation) != null)
+                    .ToList();
 
-                // With a converter EF compares collections by reference, so changes made in place are never saved
-                if (CreateCollectionComparer(markedProperty.ClrType) is { } collectionComparer)
+                foreach (IMutableProperty? markedProperty in encrptionMarkedProperties)
                 {
-                    markedProperty.SetValueComparer(collectionComparer);
+                    markedProperty.SetValueConverter(CreateConverter(markedProperty.ClrType, encryptionService));
+
+                    // With a converter EF compares collections by reference, so changes made in place are never saved
+                    if (CreateCollectionComparer(markedProperty.ClrType) is { } collectionComparer)
+                    {
+                        markedProperty.SetValueComparer(collectionComparer);
+                    }
                 }
             }
-        }
 
-        return modelBuilder;
+            return modelBuilder;
+        }
     }
 
     private static ValueConverter CreateConverter(Type modelType, IColumnEncryptionService encryptionService) =>

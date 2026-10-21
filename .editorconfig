@@ -215,6 +215,10 @@ end_of_line = crlf
 [*.cs]
 dotnet_diagnostic.CA1716.severity = none
 
+# Misfires on C# 14 extension blocks: every block is compiler-named "extension", so classes with more than one block
+# look like they have members differing only by case
+dotnet_diagnostic.CA1708.severity = none
+
 # EF Core generated migrations, analysers skip generated code
 [Src/FinanceTracker.Infrastructure.Migrations/Migrations/**.cs]
 generated_code = true

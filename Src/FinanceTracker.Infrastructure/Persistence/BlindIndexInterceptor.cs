@@ -6,8 +6,7 @@ using Microsoft.EntityFrameworkCore.Metadata;
 namespace FinanceTracker.Infrastructure.Persistence;
 
 /// <summary>
-/// Fills blind index columns from their encrypted properties on save, see
-/// <see cref="EntityTypeBuilderExtensions.HasBlindIndex{TEntity}"/>.
+/// Fills blind index columns from their encrypted properties on save, see <see cref="EntityTypeBuilderExtensions"/>.
 /// </summary>
 internal sealed class BlindIndexInterceptor : SaveChangesInterceptor
 {

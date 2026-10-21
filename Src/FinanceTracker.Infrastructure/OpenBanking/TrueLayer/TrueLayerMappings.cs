@@ -9,46 +9,54 @@ namespace FinanceTracker.Infrastructure.OpenBanking.TrueLayer;
 /// </summary>
 internal static class TrueLayerMappings
 {
-    public static StandingOrderDetails ToDetails(this ExternalOpenBankingAccountStandingOrder standingOrder) => new(
-        standingOrder.Reference,
-        standingOrder.Payee,
-        standingOrder.Frequency,
-        standingOrder.Status,
-        standingOrder.Currency,
-        standingOrder.NextPaymentDate.ToUtc(),
-        standingOrder.NextPaymentAmount,
-        standingOrder.FirstPaymentDate.ToUtc(),
-        standingOrder.FirstPaymentAmount,
-        standingOrder.FinalPaymentDate.ToUtc(),
-        standingOrder.FinalPaymentAmount,
-        standingOrder.Timestamp.ToUtc());
-
-    public static DirectDebitDetails ToDetails(this ExternalOpenBankingDirectDebit directDebit) => new(
-        directDebit.DirectDebitId,
-        directDebit.Name,
-        directDebit.Status,
-        directDebit.PreviousPaymentTimestamp.ToUtc(),
-        directDebit.PreviousPaymentAmount,
-        directDebit.Currency,
-        directDebit.Timestamp.ToUtc());
-
-    public static async Task<TransactionDetails> ToDetailsAsync(this ExternalOpenBankingAccountTransaction transaction,
-        bool isPending, CancellationToken cancellationToken)
+    extension(ExternalOpenBankingAccountStandingOrder standingOrder)
     {
-        List<string> classifications = transaction.TransactionClassification is null
-            ? []
-            : await transaction.TransactionClassification.ToListAsync(cancellationToken);
+        public StandingOrderDetails ToDetails() => new(
+            standingOrder.Reference,
+            standingOrder.Payee,
+            standingOrder.Frequency,
+            standingOrder.Status,
+            standingOrder.Currency,
+            standingOrder.NextPaymentDate.ToUtc(),
+            standingOrder.NextPaymentAmount,
+            standingOrder.FirstPaymentDate.ToUtc(),
+            standingOrder.FirstPaymentAmount,
+            standingOrder.FinalPaymentDate.ToUtc(),
+            standingOrder.FinalPaymentAmount,
+            standingOrder.Timestamp.ToUtc());
+    }
 
-        return new TransactionDetails(
-            transaction.TransactionId,
-            transaction.Description,
-            ParseTransactionType(transaction),
-            transaction.TransactionCategory,
-            transaction.Amount,
-            transaction.Currency,
-            transaction.Timestamp.ToUtc(),
-            isPending,
-            classifications);
+    extension(ExternalOpenBankingDirectDebit directDebit)
+    {
+        public DirectDebitDetails ToDetails() => new(
+            directDebit.DirectDebitId,
+            directDebit.Name,
+            directDebit.Status,
+            directDebit.PreviousPaymentTimestamp.ToUtc(),
+            directDebit.PreviousPaymentAmount,
+            directDebit.Currency,
+            directDebit.Timestamp.ToUtc());
+    }
+
+    extension(ExternalOpenBankingAccountTransaction transaction)
+    {
+        public async Task<TransactionDetails> ToDetailsAsync(bool isPending, CancellationToken cancellationToken)
+        {
+            List<string> classifications = transaction.TransactionClassification is null
+                ? []
+                : await transaction.TransactionClassification.ToListAsync(cancellationToken);
+
+            return new TransactionDetails(
+                transaction.TransactionId,
+                transaction.Description,
+                ParseTransactionType(transaction),
+                transaction.TransactionCategory,
+                transaction.Amount,
+                transaction.Currency,
+                transaction.Timestamp.ToUtc(),
+                isPending,
+                classifications);
+        }
     }
 
     /// <summary>
@@ -61,10 +69,13 @@ internal static class TrueLayerMappings
                 ? TransactionType.Debit
                 : TransactionType.Credit;
 
-    internal static DateTime ToUtc(this DateTime value) => value.Kind switch
+    extension(DateTime value)
     {
-        DateTimeKind.Utc => value,
-        DateTimeKind.Local => value.ToUniversalTime(),
-        _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
-    };
+        internal DateTime ToUtc() => value.Kind switch
+        {
+            DateTimeKind.Utc => value,
+            DateTimeKind.Local => value.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
+        };
+    }
 }

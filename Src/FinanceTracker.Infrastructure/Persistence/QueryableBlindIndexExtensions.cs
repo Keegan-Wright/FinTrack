@@ -8,26 +8,29 @@ namespace FinanceTracker.Infrastructure.Persistence;
 /// </summary>
 internal static class QueryableBlindIndexExtensions
 {
-    public static IQueryable<TEntity> WhereEncryptedEquals<TEntity>(this IQueryable<TEntity> query,
-        Expression<Func<TEntity, string>> encryptedProperty, string value, FinanceTrackerContext context)
+    extension<TEntity>(IQueryable<TEntity> query)
     {
-        string hash = context.EncryptionService.ComputeBlindIndex(value);
-        (ParameterExpression entity, Expression blindIndex) = BlindIndexAccess(encryptedProperty);
+        public IQueryable<TEntity> WhereEncryptedEquals(Expression<Func<TEntity, string>> encryptedProperty, string value,
+            FinanceTrackerContext context)
+        {
+            string hash = context.EncryptionService.ComputeBlindIndex(value);
+            (ParameterExpression entity, Expression blindIndex) = BlindIndexAccess(encryptedProperty);
 
-        return query.Where(Expression.Lambda<Func<TEntity, bool>>(
-            Expression.Equal(blindIndex, Expression.Constant(hash)), entity));
-    }
+            return query.Where(Expression.Lambda<Func<TEntity, bool>>(
+                Expression.Equal(blindIndex, Expression.Constant(hash)), entity));
+        }
 
-    public static IQueryable<TEntity> WhereEncryptedIn<TEntity>(this IQueryable<TEntity> query,
-        Expression<Func<TEntity, string>> encryptedProperty, IEnumerable<string> values, FinanceTrackerContext context)
-    {
-        List<string> hashes = values.Select(context.EncryptionService.ComputeBlindIndex).ToList();
-        (ParameterExpression entity, Expression blindIndex) = BlindIndexAccess(encryptedProperty);
+        public IQueryable<TEntity> WhereEncryptedIn(Expression<Func<TEntity, string>> encryptedProperty,
+            IEnumerable<string> values, FinanceTrackerContext context)
+        {
+            List<string> hashes = values.Select(context.EncryptionService.ComputeBlindIndex).ToList();
+            (ParameterExpression entity, Expression blindIndex) = BlindIndexAccess(encryptedProperty);
 
-        Expression contains = Expression.Call(typeof(Enumerable), nameof(Enumerable.Contains), [typeof(string)],
-            Expression.Constant(hashes), blindIndex);
+            Expression contains = Expression.Call(typeof(Enumerable), nameof(Enumerable.Contains), [typeof(string)],
+                Expression.Constant(hashes), blindIndex);
 
-        return query.Where(Expression.Lambda<Func<TEntity, bool>>(contains, entity));
+            return query.Where(Expression.Lambda<Func<TEntity, bool>>(contains, entity));
+        }
     }
 
     /// <summary>

@@ -1,4 +1,3 @@
-@using System.Globalization
 @typeparam TTrendType
 <MudCard Class="h-100">
     <MudCardContent>
@@ -6,7 +5,7 @@
             <MudIcon Icon="@Icon"/>
             <MudStack Spacing="0">
                 <MudText Typo="Typo.caption">@Label</MudText>
-                <MudText Typo="Typo.h5" Color="Color">@FormatCurrency(Value ?? 0)</MudText>
+                <MudText Typo="Typo.h5" Color="Color">@CurrencyFormatter.Format(Value ?? 0)</MudText>
                 @if (typeof(TTrendType) == typeof(string))
                 {
                     <MudText Typo="Typo.caption">@Trend</MudText>
@@ -38,9 +37,6 @@
 
     [Parameter]
     public Color Color { get; set; }
-
-    private static string FormatCurrency(decimal value) =>
-        value.ToString("C", CultureInfo.CurrentCulture);
 
     private static string FormatTrend(TTrendType? trendPercent, bool invert = false)
     {
