@@ -3,15 +3,34 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.Tests.Unit.Shared.Scenarios;
 
+/// <summary>
+/// Seeds a test database. Each builder maps the data it adds by a test chosen name so later steps, and the
+/// test itself, can refer back to it.
+/// </summary>
 public sealed class TestingScenario
 {
     internal IDbContextFactory<FinanceTrackerContext> DbContextFactory { get; init; }
     internal CancellationToken CancellationToken { get; init; }
 
-    public DebtScenario DebtScenario { get; init; }
     public UserScenario UserScenario { get; init; }
+    public BankConnectionScenario BankConnectionScenario { get; init; }
+    public BankAccountScenario BankAccountScenario { get; init; }
+    public TransactionScenario TransactionScenario { get; init; }
+    public ClassificationScenario ClassificationScenario { get; init; }
+    public BudgetCategoryScenario BudgetCategoryScenario { get; init; }
+    public DebtScenario DebtScenario { get; init; }
+    public HouseholdMemberScenario HouseholdMemberScenario { get; init; }
+    public AutomationScenario AutomationScenario { get; init; }
 
     public Dictionary<string, Guid> UserMappings { get; set; } = [];
+    public Dictionary<string, Guid> ConnectionMappings { get; set; } = [];
+    public Dictionary<string, Guid> AccountMappings { get; set; } = [];
+    public Dictionary<string, Guid> TransactionMappings { get; set; } = [];
+    public Dictionary<string, Guid> ClassificationMappings { get; set; } = [];
+    public Dictionary<string, Guid> BudgetCategoryMappings { get; set; } = [];
+    public Dictionary<string, Guid> DebtMappings { get; set; } = [];
+    public Dictionary<string, Guid> HouseholdMemberMappings { get; set; } = [];
+    public Dictionary<string, Guid> CronTickerMappings { get; set; } = [];
 
     public TestingScenario(IDbContextFactory<FinanceTrackerContext> dbContextFactory,
         CancellationToken cancellationToken)
@@ -19,8 +38,15 @@ public sealed class TestingScenario
         DbContextFactory = dbContextFactory;
         CancellationToken = cancellationToken;
 
-        DebtScenario = new DebtScenario(this);
         UserScenario = new UserScenario(this);
+        BankConnectionScenario = new BankConnectionScenario(this);
+        BankAccountScenario = new BankAccountScenario(this);
+        TransactionScenario = new TransactionScenario(this);
+        ClassificationScenario = new ClassificationScenario(this);
+        BudgetCategoryScenario = new BudgetCategoryScenario(this);
+        DebtScenario = new DebtScenario(this);
+        HouseholdMemberScenario = new HouseholdMemberScenario(this);
+        AutomationScenario = new AutomationScenario(this);
     }
 
 }
