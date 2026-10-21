@@ -51,7 +51,7 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
             .ToListAsync(cancellationToken);
 
         List<IGrouping<DateTime, CalendarGoalItem>> goals = goalItems
-            .Where(x => x.GoalCompletionDate >= startDate && x.GoalCompletionDate < endDate)
+            .Where(x => x.GoalCompletionDate is { } goalDate && goalDate >= startDate && goalDate < endDate)
             .GroupBy(static x => x.GoalCompletionDate!.Value.Date)
             .ToList();
 

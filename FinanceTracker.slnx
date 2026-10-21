@@ -24,9 +24,7 @@
     <Project Path="Src/Generators/FinanceTracker.Generated.Enums/FinanceTracker.Generated.Enums/FinanceTracker.Generated.Enums.csproj" />
     <Project Path="Src\Generators\FinanceTracker.Generated.Shared\FinanceTracker.Generated.Shared.csproj" />
   </Folder>
-  <Folder Name="/Tests/">
-    <Project Path="Test/FinanceTracker.Tests.Shared/FinanceTracker.Tests.Shared.csproj" />
-  </Folder>
+  <Folder Name="/Tests/" />
   <Project Path="Src/FinanceTracker.Infrastructure.Migrations/FinanceTracker.Infrastructure.Migrations.csproj" />
   <Folder Name="/Tests/Intergration/" />
   <Folder Name="/Tests/Unit/">

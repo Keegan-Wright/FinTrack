@@ -89,11 +89,6 @@ public class SymmetricEncryptionService : ISymmetricEncryptionService
             return (T)(object)plainText;
         }
 
-        if (string.IsNullOrEmpty(plainText))
-        {
-            return default;
-        }
-
         Type targetType = Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T);
 
         return (T)ParsePlainText(plainText, targetType);
@@ -118,14 +113,8 @@ public class SymmetricEncryptionService : ISymmetricEncryptionService
 
         if (targetType.IsArray)
         {
-            Type? elementType = targetType.GetElementType();
-            if (elementType == null)
-            {
-                return Array.Empty<object>();
-            }
-
             return System.Text.Json.JsonSerializer.Deserialize(plainText, targetType)
-                   ?? Array.CreateInstanceFromArrayType(elementType,0);
+                   ?? Array.CreateInstanceFromArrayType(targetType, 0);
         }
 
         if (targetType.IsGenericType || typeof(System.Collections.IEnumerable).IsAssignableFrom(targetType))

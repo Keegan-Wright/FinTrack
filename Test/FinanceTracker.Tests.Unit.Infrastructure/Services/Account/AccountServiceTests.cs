@@ -1,108 +1,190 @@
-using System.Security.Claims;
 using FinanceTracker.Contracts;
-using FinanceTracker.Domain.Identity;
+using FinanceTracker.Contracts.Account;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Connections;
-using FinanceTracker.Domain.OpenBanking.Transactions;
-using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Account;
 using FinanceTracker.Infrastructure.OpenBanking;
-using FinanceTracker.Tests.Shared;
 using FinanceTracker.Tests.Unit.Shared;
+using FinanceTracker.Tests.Unit.Shared.Fakers;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
-using Org.BouncyCastle.Bcpg.Sig;
-using TUnit.Assertions;
-using TUnit.Assertions.Extensions;
-using TUnit.Core;
 
 namespace FinanceTracker.Tests.Unit.Infrastructure.Services.Account;
 
-public class AccountServiceTests : ServiceTestsFixtureBase
+public class AccountServiceTests : InfrastructureTestBase
 {
+    private const string Username = "primary";
+    private const string OtherUsername = "secondary";
+
     [Test]
-    public async Task GetAccountsAndMostRecentTransactionsAsync_ReturnsSortedLatestTransactionsPerAccount()
+    public async Task GetAccountsAndMostRecentTransactionsAsync_ReturnsLatestTransactionsFirst()
     {
-        IDbContextFactory<FinanceTrackerContext> factory = BuildFactory($"account-{Guid.NewGuid()}");
-        await SeedUsersAsync(factory, _cancellationTokenSource.Token);
+        // Arrange
+        DateTime now = DateTime.UtcNow;
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("bank", Username))
+            .Do(s => s.BankAccountScenario.WithAccount("main", "bank"))
+            .Do(s => s.TransactionScenario.WithTransaction("oldest", "main",
+                new TransactionDetailsFaker().Generate() with { Description = "Oldest", OccurredAt = now.AddDays(-3) }))
+            .Do(s => s.TransactionScenario.WithTransaction("latest", "main",
+                new TransactionDetailsFaker().Generate() with { Description = "Latest", OccurredAt = now.AddDays(-1) }))
+            .Do(s => s.TransactionScenario.WithTransaction("middle", "main",
+                new TransactionDetailsFaker().Generate() with { Description = "Middle", OccurredAt = now.AddDays(-2) }));
 
-        await SeedAccountAsync(factory, PrimaryUserId, "Main", _cancellationTokenSource.Token,
-            Transaction("tx-1", "Older", -20, DateTime.UtcNow.AddDays(-2), category: "SHOPPING"),
-            Transaction("tx-2", "Latest", -10, DateTime.UtcNow.AddDays(-1), category: "SHOPPING", isPending: true));
+        AccountService subject = BuildSubject(Username);
 
-        var openBanking = Substitute.For<IOpenBankingService>();
-        var subject = new AccountService(BuildUser(PrimaryUserId), factory, openBanking, NullLogger<AccountService>.Instance);
+        // Act
+        List<AccountAndTransactions> accounts = await subject
+            .GetAccountsAndMostRecentTransactionsAsync(2, SyncTypes.All, CancellationToken)
+            .ToListAsync(CancellationToken);
 
-        List<string> descriptions = [];
-        await foreach (var account in subject.GetAccountsAndMostRecentTransactionsAsync(1, SyncTypes.All, _cancellationTokenSource.Token))
+        // Assert
+        await Assert.That(string.Join(",", accounts.Single().Transactions!.Select(x => x.Description)))
+            .IsEqualTo("Latest,Middle");
+    }
+
+    [Test]
+    public async Task GetAccountsAndMostRecentTransactionsAsync_MapsAccountBalanceAndLogo()
+    {
+        // Arrange
+        byte[] logo = [9, 8, 7];
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("bank", Username, userId =>
+                new BankConnection(userId, "ob-bank", "Bank", "code", ["accounts"], logo)))
+            .Do(s => s.BankAccountScenario.WithAccount("main", "bank", (userId, connectionId) =>
+                new BankAccount(userId, connectionId, "acc-1", "TRANSACTION", "Main Account", "GBP")))
+            .Do(s => s.BankAccountScenario.WithBalance("main", new AccountBalance(90m, 100m, DateTime.UtcNow)));
+
+        AccountService subject = BuildSubject(Username);
+
+        // Act
+        AccountAndTransactions account = (await subject
+            .GetAccountsAndMostRecentTransactionsAsync(5, SyncTypes.All, CancellationToken)
+            .ToListAsync(CancellationToken)).Single();
+
+        // Assert
+        using (Assert.Multiple())
         {
-            descriptions.Add(account.Transactions!.Single().Description);
+            await Assert.That(account.AccountName).IsEqualTo("Main Account");
+            await Assert.That(account.AccountType).IsEqualTo("TRANSACTION");
+            await Assert.That(account.AccountBalance).IsEqualTo(100m);
+            await Assert.That(account.AvailableBalance).IsEqualTo(90m);
+            await Assert.That(account.Logo).IsEquivalentTo(logo);
+            await Assert.That(account.Transactions!.Count).IsEqualTo(0);
         }
+    }
 
-        await Assert.That(descriptions).IsEquivalentTo(["Latest"]);
+    [Test]
+    public async Task GetAccountsAndMostRecentTransactionsAsync_WhenAccountHasNoBalance_ReturnsZeroBalances()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("bank", Username))
+            .Do(s => s.BankAccountScenario.WithAccount("main", "bank"));
+
+        AccountService subject = BuildSubject(Username);
+
+        // Act
+        AccountAndTransactions account = (await subject
+            .GetAccountsAndMostRecentTransactionsAsync(5, SyncTypes.All, CancellationToken)
+            .ToListAsync(CancellationToken)).Single();
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(account.AccountBalance).IsEqualTo(0m);
+            await Assert.That(account.AvailableBalance).IsEqualTo(0m);
+        }
+    }
+
+    [Test]
+    public async Task GetAccountsAndMostRecentTransactionsAsync_MapsPendingStatus()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("bank", Username))
+            .Do(s => s.BankAccountScenario.WithAccount("main", "bank"))
+            .Do(s => s.TransactionScenario.WithTransaction("pending", "main",
+                new TransactionDetailsFaker().Generate() with { IsPending = true, Description = "Pending" }))
+            .Do(s => s.TransactionScenario.WithTransaction("booked", "main",
+                new TransactionDetailsFaker().Generate() with { IsPending = false, Description = "Booked" }));
+
+        AccountService subject = BuildSubject(Username);
+
+        // Act
+        AccountAndTransactions account = (await subject
+            .GetAccountsAndMostRecentTransactionsAsync(5, SyncTypes.All, CancellationToken)
+            .ToListAsync(CancellationToken)).Single();
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(account.Transactions!.Single(x => x.Description == "Pending").Status).IsEqualTo("Pending");
+            await Assert.That(account.Transactions!.Single(x => x.Description == "Booked").Status).IsEqualTo("Complete");
+        }
+    }
+
+    [Test]
+    public async Task GetAccountsAndMostRecentTransactionsAsync_GroupsTransactionsByAccount()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("bank", Username))
+            .Do(s => s.BankAccountScenario.WithAccount("current", "bank"))
+            .Do(s => s.BankAccountScenario.WithAccount("savings", "bank"))
+            .Do(s => s.TransactionScenario.WithTransactions("current", 3))
+            .Do(s => s.TransactionScenario.WithTransactions("savings", 1));
+
+        AccountService subject = BuildSubject(Username);
+
+        // Act
+        List<AccountAndTransactions> accounts = await subject
+            .GetAccountsAndMostRecentTransactionsAsync(10, SyncTypes.All, CancellationToken)
+            .ToListAsync(CancellationToken);
+
+        // Assert
+        await Assert.That(accounts.Select(x => x.Transactions!.Count)).IsEquivalentTo([3, 1]);
+    }
+
+    [Test]
+    public async Task GetAccountsAndMostRecentTransactionsAsync_OnlyReturnsCurrentUsersAccounts()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.UserScenario.WithUser(OtherUsername))
+            .Do(s => s.BankConnectionScenario.WithConnection("other-bank", OtherUsername))
+            .Do(s => s.BankAccountScenario.WithAccount("other", "other-bank"))
+            .Do(s => s.TransactionScenario.WithTransactions("other", 2));
+
+        AccountService subject = BuildSubject(Username);
+
+        // Act
+        List<AccountAndTransactions> accounts = await subject
+            .GetAccountsAndMostRecentTransactionsAsync(5, SyncTypes.All, CancellationToken)
+            .ToListAsync(CancellationToken);
+
+        // Assert
+        await Assert.That(accounts.Count).IsEqualTo(0);
     }
 
     [Test]
     public async Task GetAccountsAndMostRecentTransactionsAsync_WhenUserHasNoAccounts_ReturnsEmpty()
     {
-        IDbContextFactory<FinanceTrackerContext> factory = BuildFactory($"account-empty-{Guid.NewGuid()}");
-        await SeedUsersAsync(factory, _cancellationTokenSource.Token);
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username));
 
-        var openBanking = Substitute.For<IOpenBankingService>();
-        var subject = new AccountService(BuildUser(PrimaryUserId), factory, openBanking, NullLogger<AccountService>.Instance);
+        AccountService subject = BuildSubject(Username);
 
-        var accounts = new List<string>();
-        await foreach (var account in subject.GetAccountsAndMostRecentTransactionsAsync(1, SyncTypes.All,
-                           _cancellationTokenSource.Token))
-        {
-            accounts.Add(account.AccountName);
-        }
+        // Act
+        List<AccountAndTransactions> accounts = await subject
+            .GetAccountsAndMostRecentTransactionsAsync(1, SyncTypes.All, CancellationToken)
+            .ToListAsync(CancellationToken);
 
+        // Assert
         await Assert.That(accounts.Count).IsEqualTo(0);
     }
-}
 
-
-public class AccountServiceTestsV2 : InfrastructureTestBase
-{
-    [Test]
-    public async Task GetAccountsAndMostRecentTransactionsAsync_ReturnsSortedLatestTransactionsPerAccount()
-    {
-
-        var usserId = Guid.NewGuid();
-        var identity = new ClaimsIdentity([
-            new Claim(ClaimTypes.NameIdentifier, usserId.ToString())
-        ], "test");
-
-        var princ = new ClaimsPrincipal(identity);
-
-        await Scenario.Do(_ => _.UserScenario.WithUser("Keegan", "Wright", "fsdfsfsfddf@sdfsdfsfdsdf.com", "kwright"));
-
-        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
-
-
-        BankConnection connection = new(usserId, $"provider-{Guid.NewGuid()}", "Test Bank", "access-code",
-            ["accounts", "transactions"], [1, 2, 3]);
-        BankAccount bankAccount = new(usserId, connection.Id, $"acc-{Guid.NewGuid()}", "CURRENT", "displayName", "GBP");
-
-        context.BankConnections.Add(connection);
-        context.BankAccounts.Add(bankAccount);
-        context.BankTransactions.AddRange(BankTransaction.Import(bankAccount, new TransactionDetails(Guid.NewGuid().ToString(),"Testing", TransactionType.Credit, "Test", 323m, "GBP", DateTime.UtcNow, false, [])));
-
-        await context.SaveChangesAsync(CancellationToken);
-
-
-        var openBanking = Substitute.For<IOpenBankingService>();
-        var subject = new AccountService(princ, DbContextFactory, openBanking, NullLogger<AccountService>.Instance);
-
-        List<string> descriptions = [];
-        await foreach (var account in subject.GetAccountsAndMostRecentTransactionsAsync(1, SyncTypes.All, CancellationToken))
-        {
-            descriptions.Add(account.Transactions!.Single().Description);
-        }
-
-        await Assert.That(descriptions).IsEquivalentTo(["Latest"]);
-    }
+    private AccountService BuildSubject(string username) => new(UserPrincipal(username), DbContextFactory,
+        Substitute.For<IOpenBankingService>(), NullLogger<AccountService>.Instance);
 }

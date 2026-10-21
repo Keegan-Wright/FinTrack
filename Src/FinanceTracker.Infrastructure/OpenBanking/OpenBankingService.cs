@@ -72,7 +72,8 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
                 if (connection is null)
                 {
                     connection = new BankConnection(UserId, provider.ProviderId, provider.DisplayName,
-                        addVendor.AccessCode, scopes, await DownloadLogoAsync(provider.LogoUri, cancellationToken));
+                        addVendor.AccessCode, scopes,
+                        await _openBankingApiService.GetProviderLogoAsync(provider.LogoUri, cancellationToken));
                     context.BankConnections.Add(connection);
                 }
                 else
@@ -338,21 +339,11 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
             }
         }
 
+        // Only once booked transactions are in, the log marks where the next sync fetches from
         if (snapshot.Transactions is not null)
         {
             context.SyncLog.Add(account.RecordSync(SyncType.Transactions, syncedAt));
         }
-
-        if (snapshot.PendingTransactions is not null)
-        {
-            context.SyncLog.Add(account.RecordSync(SyncType.PendingTransactions, syncedAt));
-        }
-    }
-
-    private static async Task<byte[]> DownloadLogoAsync(string logoUri, CancellationToken cancellationToken)
-    {
-        using HttpClient logoClient = new();
-        return await logoClient.GetByteArrayAsync(logoUri, cancellationToken);
     }
 
     private static bool ShouldSynchronise(SyncTypes syncFlags, SyncTypes typeToCheck) =>

@@ -1,140 +1,138 @@
-using System.Reflection;
 using FinanceTracker.BackgroundJobs;
 using FinanceTracker.Contracts;
-using FinanceTracker.Domain.OpenBanking.Connections;
-using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.OpenBanking;
-using FinanceTracker.Tests.Shared;
-using Microsoft.EntityFrameworkCore;
+using FinanceTracker.Tests.Unit.Shared;
+using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using NSubstitute;
-using TickerQ.Utilities.Base;
+using NSubstitute.ExceptionExtensions;
 
 namespace FinanceTracker.Tests.Unit.FinanceTracker.BackgroundJobs;
 
-public class SyncAllOpenBankingDetailsAsyncTests : ServiceTestsFixtureBase
+public class SyncAllOpenBankingDetailsAsyncTests : InfrastructureTestBase
 {
-    [Test]
-    public async Task ExecuteAsync_WhenUsersHaveConnections_SyncsEachConnectionAsItsOwnerAndNotifiesComplete()
+    private const string Username = "primary";
+    private const string OtherUsername = "secondary";
+
+    private readonly IOpenBankingService _openBankingService = Substitute.For<IOpenBankingService>();
+    private readonly IBackgroundSyncService _syncService = Substitute.For<IBackgroundSyncService>();
+
+    /// <summary>
+    /// Each connection synced, with the user the service was acting as at the time.
+    /// </summary>
+    private readonly List<(Guid UserId, Guid ConnectionId)> _synced = [];
+
+    [Before(Test)]
+    public void SetupOpenBankingService()
     {
-        IDbContextFactory<FinanceTrackerContext> factory = BuildFactory($"sync-job-all-{Guid.NewGuid()}");
-        await SeedUsersWithProvidersAsync(factory, _cancellationTokenSource.Token, primaryProviderCount: 2, secondaryProviderCount: 1);
+        Guid currentUser = Guid.Empty;
 
-        var openBankingService = Substitute.For<IOpenBankingService>();
-        var syncService = Substitute.For<IBackgroundSyncService>();
-
-        openBankingService.RunFunctionAsUser(Arg.Any<Guid>(), Arg.Any<Func<Task>>())
+        _openBankingService.RunFunctionAsUser(Arg.Any<Guid>(), Arg.Any<Func<Task>>())
             .Returns(async callInfo =>
             {
-                var function = callInfo.Arg<Func<Task>>();
-                await function();
+                currentUser = callInfo.Arg<Guid>();
+                await callInfo.Arg<Func<Task>>()();
+                currentUser = Guid.Empty;
             });
 
-        var subject = new SyncAllOpenBankingDetailsAsync(openBankingService, factory, syncService);
-
-        await subject.ExecuteAsync(BuildTickerFunctionContext(), _cancellationTokenSource.Token);
-
-        // One user switch per connection
-        await openBankingService.Received(2)
-            .RunFunctionAsUser(PrimaryUserId, Arg.Any<Func<Task>>());
-        await openBankingService.Received(1)
-            .RunFunctionAsUser(SecondaryUserId, Arg.Any<Func<Task>>());
-
-        await openBankingService.Received(3)
-            .SyncConnectionAsync(Arg.Any<Guid>(), SyncTypes.All, _cancellationTokenSource.Token);
-
-        await syncService.Received(1).NotifySyncComplete();
+        _openBankingService
+            .When(x => x.SyncConnectionAsync(Arg.Any<Guid>(), Arg.Any<SyncTypes>(), Arg.Any<CancellationToken>()))
+            .Do(callInfo => _synced.Add((currentUser, callInfo.Arg<Guid>())));
     }
 
     [Test]
-    public async Task ExecuteAsync_WhenProviderLoadThrows_ContinuesAndStillNotifiesComplete()
+    public async Task ExecuteAsync_WhenUsersHaveConnections_SyncsEachConnectionAsItsOwner()
     {
-        IDbContextFactory<FinanceTrackerContext> factory = BuildFactory($"sync-job-throws-{Guid.NewGuid()}");
-        await SeedUsersWithProvidersAsync(factory, _cancellationTokenSource.Token, primaryProviderCount: 2, secondaryProviderCount: 1);
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.UserScenario.WithUser(OtherUsername))
+            .Do(s => s.BankConnectionScenario.WithConnection("first", Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("second", Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("theirs", OtherUsername));
 
-        var openBankingService = Substitute.For<IOpenBankingService>();
-        var syncService = Substitute.For<IBackgroundSyncService>();
+        SyncAllOpenBankingDetailsAsync subject = BuildSubject();
 
-        openBankingService.RunFunctionAsUser(Arg.Any<Guid>(), Arg.Any<Func<Task>>())
-            .Returns(async callInfo =>
-            {
-                var function = callInfo.Arg<Func<Task>>();
-                await function();
-            });
+        // Act
+        await subject.ExecuteAsync(TickerFunctionContextFactory.Create(), CancellationToken);
 
-        openBankingService.SyncConnectionAsync(Arg.Any<Guid>(), SyncTypes.All, _cancellationTokenSource.Token)
-            .Returns(Task.CompletedTask, Task.FromException(new InvalidOperationException("boom")), Task.CompletedTask);
+        // Assert
+        Guid userId = Scenario.UserMappings[Username];
+        Guid otherUserId = Scenario.UserMappings[OtherUsername];
 
-        var subject = new SyncAllOpenBankingDetailsAsync(openBankingService, factory, syncService);
+        using (Assert.Multiple())
+        {
+            await Assert.That(_synced).IsEquivalentTo([
+                (userId, Scenario.ConnectionMappings["first"]),
+                (userId, Scenario.ConnectionMappings["second"]),
+                (otherUserId, Scenario.ConnectionMappings["theirs"])
+            ]);
+            await _openBankingService.Received(3)
+                .SyncConnectionAsync(Arg.Any<Guid>(), SyncTypes.All, CancellationToken);
+        }
+    }
 
-        await subject.ExecuteAsync(BuildTickerFunctionContext(), _cancellationTokenSource.Token);
+    [Test]
+    public async Task ExecuteAsync_WhenUsersHaveConnections_NotifiesCompleteOnce()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("first", Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("second", Username));
 
-        await openBankingService.Received(3)
-            .SyncConnectionAsync(Arg.Any<Guid>(), SyncTypes.All, _cancellationTokenSource.Token);
+        SyncAllOpenBankingDetailsAsync subject = BuildSubject();
 
-        await syncService.Received(1).NotifySyncComplete();
+        // Act
+        await subject.ExecuteAsync(TickerFunctionContextFactory.Create(), CancellationToken);
+
+        // Assert
+        await _syncService.Received(1).NotifySyncComplete();
+    }
+
+    [Test]
+    public async Task ExecuteAsync_WhenAConnectionFailsToSync_ContinuesWithTheRestAndNotifiesComplete()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("first", Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("broken", Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("third", Username));
+
+        _openBankingService.SyncConnectionAsync(Scenario.ConnectionMappings["broken"], SyncTypes.All, CancellationToken)
+            .ThrowsAsync(new InvalidOperationException("boom"));
+
+        SyncAllOpenBankingDetailsAsync subject = BuildSubject();
+
+        // Act
+        await subject.ExecuteAsync(TickerFunctionContextFactory.Create(), CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await _openBankingService.Received(3)
+                .SyncConnectionAsync(Arg.Any<Guid>(), SyncTypes.All, CancellationToken);
+            await _syncService.Received(1).NotifySyncComplete();
+        }
     }
 
     [Test]
     public async Task ExecuteAsync_WhenUsersHaveNoConnections_DoesNotSyncAndStillNotifiesComplete()
     {
-        IDbContextFactory<FinanceTrackerContext> factory = BuildFactory($"sync-job-empty-{Guid.NewGuid()}");
-        await SeedUsersAsync(factory, _cancellationTokenSource.Token);
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.UserScenario.WithUser(OtherUsername));
 
-        var openBankingService = Substitute.For<IOpenBankingService>();
-        var syncService = Substitute.For<IBackgroundSyncService>();
+        SyncAllOpenBankingDetailsAsync subject = BuildSubject();
 
-        openBankingService.RunFunctionAsUser(Arg.Any<Guid>(), Arg.Any<Func<Task>>())
-            .Returns(async callInfo =>
-            {
-                var function = callInfo.Arg<Func<Task>>();
-                await function();
-            });
+        // Act
+        await subject.ExecuteAsync(TickerFunctionContextFactory.Create(), CancellationToken);
 
-        var subject = new SyncAllOpenBankingDetailsAsync(openBankingService, factory, syncService);
-
-        await subject.ExecuteAsync(BuildTickerFunctionContext(), _cancellationTokenSource.Token);
-
-        await openBankingService.DidNotReceive()
-            .SyncConnectionAsync(Arg.Any<Guid>(), SyncTypes.All, _cancellationTokenSource.Token);
-
-        await syncService.Received(1).NotifySyncComplete();
-    }
-
-    private static TickerFunctionContext BuildTickerFunctionContext()
-    {
-        var context = new TickerFunctionContext();
-
-        if (context.CronOccurrenceOperations is null)
+        // Assert
+        using (Assert.Multiple())
         {
-            FieldInfo? backingField = typeof(TickerFunctionContext)
-                .GetField("<CronOccurrenceOperations>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic);
-            backingField?.SetValue(context, new CronOccurrenceOperations());
+            await _openBankingService.DidNotReceiveWithAnyArgs().RunFunctionAsUser(default, default!);
+            await _openBankingService.DidNotReceiveWithAnyArgs().SyncConnectionAsync(default, default, default);
+            await _syncService.Received(1).NotifySyncComplete();
         }
-
-        PropertyInfo? skipActionProperty = typeof(CronOccurrenceOperations)
-            .GetProperty("SkipIfAlreadyRunningAction", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-        skipActionProperty?.SetValue(context.CronOccurrenceOperations, (Action)(() => { }));
-
-        return context;
     }
 
-    private static async Task SeedUsersWithProvidersAsync(
-        IDbContextFactory<FinanceTrackerContext> contextFactory,
-        CancellationToken cancellationToken,
-        int primaryProviderCount,
-        int secondaryProviderCount)
-    {
-        await SeedUsersAsync(contextFactory, cancellationToken);
-
-        await using FinanceTrackerContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
-
-        context.BankConnections.AddRange(BuildConnections(PrimaryUserId, primaryProviderCount));
-        context.BankConnections.AddRange(BuildConnections(SecondaryUserId, secondaryProviderCount));
-
-        await context.SaveChangesAsync(cancellationToken);
-    }
-
-    private static IEnumerable<BankConnection> BuildConnections(Guid userId, int count) =>
-        Enumerable.Range(0, count).Select(i =>
-            new BankConnection(userId, $"ob-{i}", $"Provider-{i}", $"access-{i}", ["accounts"], [1, 2, 3]));
+    private SyncAllOpenBankingDetailsAsync BuildSubject() => new(_openBankingService, DbContextFactory, _syncService);
 }

@@ -1,13 +1,13 @@
 using FinanceTracker.Contracts.HouseholdMember;
 using FinanceTracker.Infrastructure.Validation;
-using FinanceTracker.Tests.Shared;
+using FinanceTracker.Tests.Unit.Shared;
 using TUnit.Assertions;
 using TUnit.Assertions.Extensions;
 using TUnit.Core;
 
 namespace FinanceTracker.Tests.Unit.Infrastructure.Validators;
 
-public class AddHouseholdMemberRequestValidatorTests : TestFixtureBase
+public class AddHouseholdMemberRequestValidatorTests : UnitTestBase
 {
     private readonly AddHouseholdMemberRequestValidator _subject = new();
 
@@ -23,7 +23,7 @@ public class AddHouseholdMemberRequestValidatorTests : TestFixtureBase
         };
 
         // Act
-        var result = await _subject.ValidateAsync(testModel, _cancellationTokenSource.Token);
+        var result = await _subject.ValidateAsync(testModel, CancellationToken);
 
         // Assert
         using (Assert.Multiple())
@@ -45,7 +45,7 @@ public class AddHouseholdMemberRequestValidatorTests : TestFixtureBase
         };
 
         // Act
-        var result = await _subject.ValidateAsync(testModel, _cancellationTokenSource.Token);
+        var result = await _subject.ValidateAsync(testModel, CancellationToken);
 
         // Assert
         using (Assert.Multiple())
@@ -67,7 +67,7 @@ public class AddHouseholdMemberRequestValidatorTests : TestFixtureBase
         };
 
         // Act
-        var result = await _subject.ValidateAsync(testModel, _cancellationTokenSource.Token);
+        var result = await _subject.ValidateAsync(testModel, CancellationToken);
 
         // Assert
         using (Assert.Multiple())

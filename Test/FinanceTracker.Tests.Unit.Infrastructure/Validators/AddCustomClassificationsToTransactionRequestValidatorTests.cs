@@ -1,14 +1,11 @@
 using FinanceTracker.Contracts.Classifications;
 using FinanceTracker.Infrastructure.Validation;
-using FinanceTracker.Tests.Shared;
+using FinanceTracker.Tests.Unit.Shared;
 using FluentValidation.Results;
-using TUnit.Assertions;
-using TUnit.Assertions.Extensions;
-using TUnit.Core;
 
 namespace FinanceTracker.Tests.Unit.Infrastructure.Validators;
 
-public class AddCustomClassificationsToTransactionRequestValidatorTests : TestFixtureBase
+public class AddCustomClassificationsToTransactionRequestValidatorTests : UnitTestBase
 {
     private readonly AddCustomClassificationsToTransactionRequestValidator _subject = new();
 
@@ -29,7 +26,7 @@ public class AddCustomClassificationsToTransactionRequestValidatorTests : TestFi
         };
 
         // Act
-        var result = await _subject.ValidateAsync(testModel, _cancellationTokenSource.Token);
+        var result = await _subject.ValidateAsync(testModel, CancellationToken);
 
         // Assert
         using (Assert.Multiple())
@@ -56,7 +53,7 @@ public class AddCustomClassificationsToTransactionRequestValidatorTests : TestFi
         };
 
         // Act
-        var result = await _subject.ValidateAsync(testModel, _cancellationTokenSource.Token);
+        var result = await _subject.ValidateAsync(testModel, CancellationToken);
 
         // Assert
         using (Assert.Multiple())
@@ -79,7 +76,7 @@ public class AddCustomClassificationsToTransactionRequestValidatorTests : TestFi
         };
 
         // Act
-        var result = await _subject.ValidateAsync(testModel, _cancellationTokenSource.Token);
+        var result = await _subject.ValidateAsync(testModel, CancellationToken);
 
         // Assert
         using (Assert.Multiple())
@@ -116,7 +113,7 @@ public class AddCustomClassificationsToTransactionRequestValidatorTests : TestFi
         };
 
         // Act
-        var result = await _subject.ValidateAsync(testModel, _cancellationTokenSource.Token);
+        var result = await _subject.ValidateAsync(testModel, CancellationToken);
 
         // Assert
         using (Assert.Multiple())

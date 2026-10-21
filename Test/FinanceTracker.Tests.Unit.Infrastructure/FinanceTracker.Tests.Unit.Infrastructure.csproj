@@ -12,7 +12,6 @@
   </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\FinanceTracker.Tests.Shared\FinanceTracker.Tests.Shared.csproj" />
       <ProjectReference Include="..\FinanceTracker.Tests.Unit.Shared\FinanceTracker.Tests.Unit.Shared.csproj" />
     </ItemGroup>
 

@@ -56,7 +56,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
 
         List<KeyValuePair<string, string>> formData =
         [
-            new("grant_type", "authorization_code"),
+            new("grant_type", "refresh_token"),
             new("client_id", _trueLayerOpenBankingConfiguration.ClientId),
             new("client_secret",
                 _trueLayerOpenBankingConfiguration.ClientSecret.ToString()),
@@ -260,6 +260,14 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
             await response.Content.ReadFromJsonAsync<ExternalOpenBankingAccountConnectionResponse>(cancellationToken);
 
         return responseBody!;
+    }
+
+    public async Task<byte[]> GetProviderLogoAsync(string logoUri, CancellationToken cancellationToken)
+    {
+        // Logos are public assets on their own host, no base address or auth headers
+        using HttpClient httpClient = _clientFactory.CreateClient("OpenBankingClient");
+
+        return await httpClient.GetByteArrayAsync(logoUri, cancellationToken);
     }
 
     private async Task<HttpClient> BuildHttpClient(Uri baseUrl, string? authHeader = null)

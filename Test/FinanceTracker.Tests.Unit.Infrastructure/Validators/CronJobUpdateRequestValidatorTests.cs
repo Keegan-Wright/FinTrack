@@ -1,13 +1,13 @@
 using FinanceTracker.Contracts.Automation;
 using FinanceTracker.Infrastructure.Validation;
-using FinanceTracker.Tests.Shared;
+using FinanceTracker.Tests.Unit.Shared;
 using TUnit.Assertions;
 using TUnit.Assertions.Extensions;
 using TUnit.Core;
 
 namespace FinanceTracker.Tests.Unit.Infrastructure.Validators;
 
-public class CronJobUpdateRequestValidatorTests : TestFixtureBase
+public class CronJobUpdateRequestValidatorTests : UnitTestBase
 {
     private readonly CronJobUpdateRequestValidator _subject = new();
 
@@ -29,7 +29,7 @@ public class CronJobUpdateRequestValidatorTests : TestFixtureBase
         };
 
         // Act
-        var result = await _subject.ValidateAsync(testModel, _cancellationTokenSource.Token);
+        var result = await _subject.ValidateAsync(testModel, CancellationToken);
 
         // Assert
         using (Assert.Multiple())
@@ -37,6 +37,25 @@ public class CronJobUpdateRequestValidatorTests : TestFixtureBase
             await Assert.That(result.IsValid).IsTrue();
             await Assert.That(result.Errors).Count().IsEqualTo(0);
         }
+    }
+
+    [Test]
+    public async Task ValidateAsync_NoRetryIntervals_ValidationSuccess()
+    {
+        // Arrange
+        var testModel = new UpdateCronJob
+        {
+            Description = "Description",
+            Expression = "* * * * * *",
+            RetryIntervals = null!,
+            IsEnabled = true
+        };
+
+        // Act
+        var result = await _subject.ValidateAsync(testModel, CancellationToken);
+
+        // Assert
+        await Assert.That(result.IsValid).IsTrue();
     }
 
     [Test]
@@ -52,7 +71,7 @@ public class CronJobUpdateRequestValidatorTests : TestFixtureBase
         };
 
         // Act
-        var result = await _subject.ValidateAsync(testModel, _cancellationTokenSource.Token);
+        var result = await _subject.ValidateAsync(testModel, CancellationToken);
 
         // Assert
         using (Assert.Multiple())

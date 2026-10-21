@@ -62,12 +62,12 @@ internal sealed record TransactionCriteria(
             return false;
         }
 
-        if (FromDate is not null && transaction.OccurredAt < FromDate)
+        if (FromDate is { } fromDate && transaction.OccurredAt < fromDate)
         {
             return false;
         }
 
-        if (ToDate is not null && transaction.OccurredAt > ToDate)
+        if (ToDate is { } toDate && transaction.OccurredAt > toDate)
         {
             return false;
         }

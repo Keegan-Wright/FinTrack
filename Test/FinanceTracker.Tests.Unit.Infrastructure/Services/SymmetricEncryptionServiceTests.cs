@@ -1,14 +1,14 @@
 ﻿using System.Security.Cryptography;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Encryption;
-using FinanceTracker.Tests.Shared;
+using FinanceTracker.Tests.Unit.Shared;
 using TUnit.Assertions;
 using TUnit.Assertions.Extensions;
 using TUnit.Core;
 
 namespace FinanceTracker.Tests.Unit.Infrastructure.Services;
 
-public class SymmetricEncryptionServiceTests : TestFixtureBase
+public class SymmetricEncryptionServiceTests : UnitTestBase
 {
     private readonly SymmetricEncryptionService _subject = new(new EncryptionConfiguration()
     {
@@ -171,5 +171,85 @@ public class SymmetricEncryptionServiceTests : TestFixtureBase
             await Assert.That(decryptedDateTime.Minute).IsEquivalentTo(testDateTime.Minute);
             await Assert.That(decryptedDateTime.Second).IsEquivalentTo(testDateTime.Second);
         }
+    }
+
+    [Test]
+    public async Task EndToEnd_DateTimeOffset_KeepsOffset()
+    {
+        // Arrange
+        var testDateTimeOffset = new DateTimeOffset(2026, 3, 4, 5, 6, 7, 890, TimeSpan.FromHours(2));
+
+        // Act
+        var decrypted = _subject.Decrypt<DateTimeOffset>(_subject.Encrypt(testDateTimeOffset));
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(decrypted).IsEqualTo(testDateTimeOffset);
+            await Assert.That(decrypted.Offset).IsEqualTo(TimeSpan.FromHours(2));
+        }
+    }
+
+    [Test]
+    public async Task EndToEnd_Array_Success()
+    {
+        // Arrange
+        int[] testArray = [1, 2, 3];
+
+        // Act
+        var decrypted = _subject.Decrypt<int[]>(_subject.Encrypt(testArray));
+
+        // Assert
+        await Assert.That(decrypted).IsEquivalentTo(testArray);
+    }
+
+    [Test]
+    public async Task EndToEnd_Collection_Success()
+    {
+        // Arrange
+        List<string> testList = ["a", "b"];
+
+        // Act
+        var decrypted = _subject.Decrypt<List<string>>(_subject.Encrypt(testList));
+
+        // Assert
+        await Assert.That(decrypted).IsEquivalentTo(testList);
+    }
+
+    [Test]
+    public async Task EndToEnd_Enum_Success()
+    {
+        // Act
+        var decrypted = _subject.Decrypt<DayOfWeek>(_subject.Encrypt(DayOfWeek.Friday));
+
+        // Assert
+        await Assert.That(decrypted).IsEqualTo(DayOfWeek.Friday);
+    }
+
+    [Test]
+    public async Task EndToEnd_NullableValue_Success()
+    {
+        // Act
+        var decrypted = _subject.Decrypt<int?>(_subject.Encrypt<int?>(42));
+
+        // Assert
+        await Assert.That(decrypted).IsEqualTo(42);
+    }
+
+    [Test]
+    public async Task Decrypt_NullJsonArray_ReturnsEmptyArray()
+    {
+        // Act
+        var decrypted = _subject.Decrypt<int[]>(_subject.Encrypt("null"));
+
+        // Assert
+        await Assert.That(decrypted).IsEquivalentTo(Array.Empty<int>());
+    }
+
+    [Test]
+    public async Task Decrypt_NullJsonCollection_Throws()
+    {
+        await Assert.That(() => _subject.Decrypt<List<int>>(_subject.Encrypt("null")))
+            .Throws<InvalidOperationException>();
     }
 }

@@ -220,6 +220,7 @@ public partial class Program
         builder.Services.AddHttpClient("OpenBankingClient");
 
         builder.Services.AddSingleton<IBackgroundSyncService, BackgroundSyncService>();
+        builder.Services.AddSingleton(TimeProvider.System);
 
         AddFinanceTrackerServices(builder.Services);
         AddFinanceTrackerValidators(builder.Services);

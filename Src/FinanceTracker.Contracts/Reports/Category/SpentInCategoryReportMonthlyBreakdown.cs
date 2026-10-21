@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using System.ComponentModel;
 
 namespace FinanceTracker.Contracts.Reports.Category;
@@ -9,5 +8,5 @@ public class SpentInCategoryReportMonthlyBreakdown : SharedReport
     public required string Month { get; init; }
 
     [Description("Daily breakdown of spending for the specified month")]
-    public IImmutableList<SpentInCategoryReportDailyBreakdown> DailyBreakdown { get; } = [];
+    public IList<SpentInCategoryReportDailyBreakdown> DailyBreakdown { get; } = [];
 }

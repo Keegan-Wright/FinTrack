@@ -26,11 +26,12 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
         public string Name { get; init; } = string.Empty;
     }
 
+    private readonly TimeProvider _timeProvider;
+
     public DashboardService(ClaimsPrincipal user, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
-        ILogger<DashboardService> logger)
-        : base(user, financeTrackerContextFactory, logger)
-    {
-    }
+        ILogger<DashboardService> logger, TimeProvider timeProvider)
+        : base(user, financeTrackerContextFactory, logger) =>
+        _timeProvider = timeProvider;
 
     public async Task<SpentInTimePeriod> GetSpentInTimePeriod(DateTime fromDate, DateTime toDate,
         CancellationToken cancellationToken)
@@ -70,7 +71,7 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        DateTime nowUtc = DateTime.Now.ToUniversalTime();
+        DateTime nowUtc = _timeProvider.GetUtcNow().UtcDateTime;
 
         List<UpcomingPayment> standingOrders = await context.BankAccounts.OwnedBy(UserId)
             .SelectMany(static x => x.StandingOrders)
@@ -97,17 +98,15 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
 
         // This feels like a hack but we can only request direct debits once a token is generated every ~90 days
         // Unless we want to use a refresh token every login
-        var currentMonth = nowUtc.Month;
         upcomingPayments.AddRange(directDebitItems
             .Where(x => x.PreviousPaymentAmount != 0)
             .Select(x => new UpcomingPayment
             {
                 Amount = x.PreviousPaymentAmount,
-                PaymentDate = x.PreviousPaymentTimeStamp.AddMonths((currentMonth - x.PreviousPaymentTimeStamp.Month) + 1),
+                PaymentDate = NextMonthlyPaymentAfter(x.PreviousPaymentTimeStamp, nowUtc),
                 PaymentName = x.Name,
                 PaymentType = "Direct Debit"
-            })
-            .Where(x => x.PaymentDate > nowUtc));
+            }));
 
 
         await foreach (UpcomingPayment upcomingPayment in upcomingPayments
@@ -117,5 +116,17 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
         {
             yield return upcomingPayment;
         }
+    }
+
+    /// <summary>
+    /// The first monthly anniversary of <paramref name="previousPayment"/> after <paramref name="now"/>.
+    /// Always offset from the previous payment so short months don't drift the day.
+    /// </summary>
+    private static DateTime NextMonthlyPaymentAfter(DateTime previousPayment, DateTime now)
+    {
+        int monthsSince = ((now.Year - previousPayment.Year) * 12) + now.Month - previousPayment.Month;
+        DateTime next = previousPayment.AddMonths(Math.Max(monthsSince, 0));
+
+        return next > now ? next : previousPayment.AddMonths(Math.Max(monthsSince, 0) + 1);
     }
 }

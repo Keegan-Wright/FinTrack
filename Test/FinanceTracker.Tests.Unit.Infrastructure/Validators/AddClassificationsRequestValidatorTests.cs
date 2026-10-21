@@ -1,13 +1,13 @@
 ﻿using FinanceTracker.Contracts.Classifications;
 using FinanceTracker.Infrastructure.Validation;
-using FinanceTracker.Tests.Shared;
+using FinanceTracker.Tests.Unit.Shared;
 using TUnit.Assertions;
 using TUnit.Assertions.Extensions;
 using TUnit.Core;
 
 namespace FinanceTracker.Tests.Unit.Infrastructure.Validators;
 
-public class AddClassificationsRequestValidatorTests : TestFixtureBase
+public class AddClassificationsRequestValidatorTests : UnitTestBase
 {
     private readonly AddClassificationsRequestValidator _subject = new();
 
@@ -21,7 +21,7 @@ public class AddClassificationsRequestValidatorTests : TestFixtureBase
         };
 
         // Act
-        var result = await _subject.ValidateAsync(testModel, _cancellationTokenSource.Token);
+        var result = await _subject.ValidateAsync(testModel, CancellationToken);
 
         // Assert
         using (Assert.Multiple())
@@ -41,7 +41,7 @@ public class AddClassificationsRequestValidatorTests : TestFixtureBase
         };
 
         // Act
-        var result = await _subject.ValidateAsync(testModel, _cancellationTokenSource.Token);
+        var result = await _subject.ValidateAsync(testModel, CancellationToken);
 
         // Assert
         using (Assert.Multiple())
