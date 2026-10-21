@@ -1,0 +1,14 @@
+# Temporary: builds the web image from local source instead of pulling the published one.
+# Layered on top of docker-compose.yaml, run from the repository root:
+#
+#   docker compose -f Docker/docker-compose.yaml -f Docker/docker-compose.local.yaml up -d --build
+#   docker compose -f Docker/docker-compose.yaml -f Docker/docker-compose.local.yaml down
+#
+# Paths resolve from this folder (Docker/), so the build context is the repository root.
+services:
+  fintrackweb:
+    image: "fintrack:local"
+    pull_policy: build
+    build:
+      context: ".."
+      dockerfile: "Src/Dockerfile"

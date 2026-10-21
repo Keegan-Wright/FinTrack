@@ -1,0 +1,18 @@
+# Build output, local obj folders hold this machine's restore paths and break restores in the container
+**/bin/
+**/obj/
+**/TestResults/
+**/aspire-output/
+
+# Not part of the image
+.git/
+.github/
+.idea/
+.vs/
+Test/
+Docs/
+Docker/
+**/*.user
+**/*.DotSettings.user
+**/.env
+**/secrets.json
