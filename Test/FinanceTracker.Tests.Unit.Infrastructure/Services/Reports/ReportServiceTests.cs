@@ -1,13 +1,12 @@
 using System.Globalization;
-using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.Reports;
 using FinanceTracker.Contracts.Reports.Account;
 using FinanceTracker.Contracts.Reports.Category;
 using FinanceTracker.Contracts.Reports.SpentInTimePeriod;
 using FinanceTracker.Contracts.Services;
+using FinanceTracker.Contracts.Transactions;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Transactions;
-using FinanceTracker.Infrastructure.OpenBanking;
 using FinanceTracker.Infrastructure.Reports;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Fakers;
@@ -99,9 +98,8 @@ public class ReportServiceTests : InfrastructureTestBase
             .Do(s => s.TransactionScenario.WithTransaction("other-account", "savings", Transaction(-80m, January20)));
 
         ReportService subject = BuildSubject();
-        BaseReport request = new()
+        FilterTransactions request = new()
         {
-            SyncTypes = SyncTypes.All,
             AccountIds = [Scenario.AccountMappings["main"]],
             FromDate = January15.AddDays(1),
             ToDate = February3.AddDays(-1)
@@ -222,7 +220,7 @@ public class ReportServiceTests : InfrastructureTestBase
             .Do(s => s.TransactionScenario.WithTransaction("travel", "main", Transaction(-20m, January15, classifications: ["Travel"])));
 
         ReportService subject = BuildSubject();
-        BaseReport request = new() { SyncTypes = SyncTypes.All, Tags = ["Travel"] };
+        FilterTransactions request = new() { Tags = ["Travel"] };
 
         // Act
         List<SpentInCategoryReport> reports = await subject.GetCategoryBreakdownReportAsync(request, CancellationToken)
@@ -300,10 +298,9 @@ public class ReportServiceTests : InfrastructureTestBase
             ProviderClassifications = classifications ?? []
         };
 
-    private static BaseReport Request() => new() { SyncTypes = SyncTypes.All };
+    private static FilterTransactions Request() => new();
 
     private static string MonthName(int month) => DateTimeFormatInfo.CurrentInfo.GetMonthName(month);
 
-    private ReportService BuildSubject() => new(CurrentUserFor(Username), DbContextFactory,
-        Substitute.For<IOpenBankingService>(), NullLogger<ReportService>.Instance);
+    private ReportService BuildSubject() => new(CurrentUserFor(Username), DbContextFactory, NullLogger<ReportService>.Instance);
 }

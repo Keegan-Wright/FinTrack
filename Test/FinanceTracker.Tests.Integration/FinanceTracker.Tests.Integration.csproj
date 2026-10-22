@@ -15,6 +15,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\..\Src\FinanceTracker.AppHost\FinanceTracker.AppHost.csproj" />
+        <ProjectReference Include="..\..\Src\FinanceTracker.Client\FinanceTracker.Client.csproj" />
         <ProjectReference Include="..\FinanceTracker.Tests.Unit.Shared\FinanceTracker.Tests.Unit.Shared.csproj" />
     </ItemGroup>
 

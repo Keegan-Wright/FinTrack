@@ -1,10 +1,8 @@
-using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Transactions;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Domain.OpenBanking.Transactions;
-using FinanceTracker.Infrastructure.OpenBanking;
 using FinanceTracker.Infrastructure.Transactions;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Fakers;
@@ -262,7 +260,7 @@ public class TransactionsServiceTests : InfrastructureTestBase
 
         // Act
         List<TransactionAccountFilter> accounts = await subject
-            .GetAccountsForTransactionFiltersAsync(SyncTypes.All, CancellationToken).ToListAsync(CancellationToken);
+            .GetAccountsForTransactionFiltersAsync(CancellationToken).ToListAsync(CancellationToken);
 
         // Assert
         using (Assert.Multiple())
@@ -426,8 +424,7 @@ public class TransactionsServiceTests : InfrastructureTestBase
         };
 
     private Task<List<Transaction>> GetAllAsync(TransactionsService subject, FilterTransactions filter) =>
-        subject.GetAllTransactionsAsync(filter, SyncTypes.All, CancellationToken).ToListAsync(CancellationToken).AsTask();
+        subject.GetAllTransactionsAsync(filter, CancellationToken).ToListAsync(CancellationToken).AsTask();
 
-    private TransactionsService BuildSubject() => new(CurrentUserFor(Username), DbContextFactory,
-        Substitute.For<IOpenBankingService>(), NullLogger<TransactionsService>.Instance);
+    private TransactionsService BuildSubject() => new(CurrentUserFor(Username), DbContextFactory, NullLogger<TransactionsService>.Instance);
 }

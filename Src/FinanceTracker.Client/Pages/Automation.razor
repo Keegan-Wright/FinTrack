@@ -1,11 +1,13 @@
 @page "/Automation"
-@* Lists the scheduled background jobs (IAutomationService) and edits their schedule and retries. *@
+@* Lists the scheduled background jobs (IAutomationService) and edits their schedule and retries. The jobs run for
+   every user, so only admins can see them. *@
 @using FinanceTracker.Client.Components.Dialogs
+@using FinanceTracker.Contracts.Auth
 @using FinanceTracker.Contracts.Automation
 @using Microsoft.AspNetCore.Authorization
 @inherits PageComponent
 
-@attribute [Authorize]
+@attribute [Authorize(Roles = FinTrackRoles.Admin)]
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject IAutomationService AutomationService

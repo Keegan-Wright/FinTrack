@@ -1,9 +1,11 @@
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Testing;
+using System.Net;
 using FinanceTracker.AppHost.ServiceDefaults;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Encryption;
+using FinanceTracker.Tests.Integration.Http;
 using FinanceTracker.Tests.Integration.OpenBanking;
 using FinanceTracker.Tests.Unit.Shared;
 using Microsoft.EntityFrameworkCore;
@@ -25,6 +27,12 @@ public sealed class FinTrackAppFixture : AspireFixture<Projects.FinanceTracker_A
     public IDbContextFactory<FinanceTrackerContext> DbContextFactory { get; private set; } = null!;
 
     public Uri WebBaseAddress { get; private set; } = null!;
+
+    /// <summary>
+    /// The session's first registered user, so its admin. Registered before any test runs, which leaves every user a
+    /// test registers a non-admin.
+    /// </summary>
+    public SignedInUser FirstUser { get; private set; } = null!;
 
     protected override string[] Args =>
     [
@@ -75,6 +83,25 @@ public sealed class FinTrackAppFixture : AspireFixture<Projects.FinanceTracker_A
             .Options;
 
         DbContextFactory = new NpgsqlDbContextFactory(options, new ColumnEncryptionService(EncryptionConfiguration));
+
+        FirstUser = await RegisterFirstUserAsync();
+    }
+
+    private async Task<SignedInUser> RegisterFirstUserAsync()
+    {
+        string username = $"first-{Guid.NewGuid():N}";
+        FinTrackClient client = new(WebBaseAddress);
+
+        HttpResponseMessage response = await client.RegisterAsync(username, SignedInUser.DefaultPassword, CancellationToken.None);
+        if (response.StatusCode != HttpStatusCode.Redirect)
+        {
+            throw new InvalidOperationException($"Registering the first user returned {response.StatusCode}");
+        }
+
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync();
+        Guid userId = await context.Users.Where(x => x.UserName == username).Select(x => x.Id).SingleAsync();
+
+        return new SignedInUser(username, userId, client);
     }
 
     public override async ValueTask DisposeAsync()

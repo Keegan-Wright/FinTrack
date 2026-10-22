@@ -48,9 +48,8 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
         }
     }
 
-    public string BuildAuthUrl(ProviderSetupUrl setupProvider) =>
-        _openBankingApiService.BuildAuthUrl(setupProvider.ProviderIds,
-            setupProvider.Scopes);
+    public Task<string> BuildAuthUrlAsync(ProviderSetupUrl setupProvider, CancellationToken cancellationToken) =>
+        Task.FromResult(_openBankingApiService.BuildAuthUrl(setupProvider.ProviderIds, setupProvider.Scopes));
 
     public async Task<bool> AddVendorViaAccessCodeAsync(AddVendor addVendor, CancellationToken cancellationToken)
     {

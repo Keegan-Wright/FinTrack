@@ -1,8 +1,9 @@
 namespace FinanceTracker;
 
 /// <summary>
-/// Tells a user's open circuits that a background sync has finished for them. Subscriptions live in memory, so only
-/// circuits on the instance that ran the sync are reached.
+/// Tells a user's open circuits and browsers that a background sync has finished for them. Subscriptions and hub
+/// connections live in memory, so only those on the instance that ran the sync are reached until SignalR gets a
+/// backplane.
 /// </summary>
 public interface ISyncNotifier
 {

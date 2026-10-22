@@ -2,6 +2,7 @@ using FinanceTracker.Contracts.Reports;
 using FinanceTracker.Contracts.Reports.Account;
 using FinanceTracker.Contracts.Reports.Category;
 using FinanceTracker.Contracts.Reports.SpentInTimePeriod;
+using FinanceTracker.Contracts.Transactions;
 
 namespace FinanceTracker.Contracts.Services;
 
@@ -17,19 +18,19 @@ public interface IReportService
     /// <summary>
     /// A single report covering every matching transaction, or nothing when no transactions match.
     /// </summary>
-    IAsyncEnumerable<SpentInTimePeriodReport> GetSpentInTimePeriodReportAsync(BaseReport request,
+    IAsyncEnumerable<SpentInTimePeriodReport> GetSpentInTimePeriodReportAsync(FilterTransactions request,
         CancellationToken cancellationToken);
 
     /// <summary>
     /// One report per tag (provider classification or custom classification). A transaction with several tags
     /// counts towards each of them.
     /// </summary>
-    IAsyncEnumerable<SpentInCategoryReport> GetCategoryBreakdownReportAsync(BaseReport request,
+    IAsyncEnumerable<SpentInCategoryReport> GetCategoryBreakdownReportAsync(FilterTransactions request,
         CancellationToken cancellationToken);
 
     /// <summary>
     /// One report per account that has matching transactions.
     /// </summary>
-    IAsyncEnumerable<SpentInAccountReport> GetAccountBreakdownReportAsync(BaseReport request,
+    IAsyncEnumerable<SpentInAccountReport> GetAccountBreakdownReportAsync(FilterTransactions request,
         CancellationToken cancellationToken);
 }

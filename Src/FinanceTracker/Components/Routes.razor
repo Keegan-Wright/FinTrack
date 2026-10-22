@@ -6,7 +6,17 @@
     <Found Context="routeData">
         <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(MainLayout)">
             <NotAuthorized>
-                <RedirectToLogin/>
+                @* Signed in but missing a role, e.g. a page only admins can use *@
+                @if (context.User.Identity?.IsAuthenticated == true)
+                {
+                    <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mt-4">
+                        You do not have access to this page.
+                    </MudAlert>
+                }
+                else
+                {
+                    <RedirectToLogin/>
+                }
             </NotAuthorized>
         </AuthorizeRouteView>
         <FocusOnNavigate RouteData="routeData" Selector="h1"/>

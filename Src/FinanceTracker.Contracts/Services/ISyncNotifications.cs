@@ -10,5 +10,8 @@ public interface ISyncNotifications
     /// Calls <paramref name="onSyncComplete"/> each time a sync finishes for the user, until the returned
     /// subscription is disposed. The callback may run on any thread.
     /// </summary>
-    IDisposable Subscribe(Func<Task> onSyncComplete);
+    /// <remarks>
+    /// In the browser this connects to the sync hub first, so it can fail like any request.
+    /// </remarks>
+    Task<IDisposable> SubscribeAsync(Func<Task> onSyncComplete, CancellationToken cancellationToken);
 }

@@ -16,6 +16,8 @@
     <PackageReference Include="Extensions.MudBlazor.StaticInput"/>
     <PackageReference Include="Microsoft.AspNetCore.Components.Authorization"/>
     <PackageReference Include="Microsoft.AspNetCore.Components.Web"/>
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client"/>
+    <PackageReference Include="Microsoft.Extensions.Http"/>
     <PackageReference Include="MudBlazor"/>
   </ItemGroup>
 

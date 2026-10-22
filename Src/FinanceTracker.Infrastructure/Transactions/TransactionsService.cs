@@ -1,11 +1,9 @@
 using System.Runtime.CompilerServices;
-using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.Transactions;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
-using FinanceTracker.Infrastructure.OpenBanking;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -15,16 +13,14 @@ namespace FinanceTracker.Infrastructure.Transactions;
 [Scoped<ITransactionsService>]
 public class TransactionsService : ServiceBase<TransactionsService>, ITransactionsService
 {
-    private readonly IOpenBankingService _openBankingService;
-
     public TransactionsService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
-        IOpenBankingService openBankingService,
-        ILogger<TransactionsService> logger) : base(currentUser, financeTrackerContextFactory, logger) =>
-        _openBankingService = openBankingService;
+        ILogger<TransactionsService> logger) : base(currentUser, financeTrackerContextFactory, logger)
+    {
+    }
 
     public async IAsyncEnumerable<Transaction> GetAllTransactionsAsync(
-        FilterTransactions filterTransactions, SyncTypes syncTypes,
+        FilterTransactions filterTransactions,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -60,7 +56,7 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
     }
 
     public async IAsyncEnumerable<TransactionAccountFilter> GetAccountsForTransactionFiltersAsync(
-        SyncTypes syncTypes, [EnumeratorCancellation] CancellationToken cancellationToken)
+        [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);

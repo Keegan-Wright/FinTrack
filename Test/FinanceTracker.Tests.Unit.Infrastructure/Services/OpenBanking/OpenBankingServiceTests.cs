@@ -105,7 +105,7 @@ public class OpenBankingServiceTests : InfrastructureTestBase
     }
 
     [Test]
-    public async Task BuildAuthUrl_DelegatesProvidersAndScopesToExternalApiService()
+    public async Task BuildAuthUrlAsync_DelegatesProvidersAndScopesToExternalApiService()
     {
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser(Username));
@@ -114,11 +114,11 @@ public class OpenBankingServiceTests : InfrastructureTestBase
         OpenBankingService subject = BuildSubject();
 
         // Act
-        string url = subject.BuildAuthUrl(new ProviderSetupUrl
+        string url = await subject.BuildAuthUrlAsync(new ProviderSetupUrl
         {
             ProviderIds = ["provider-1"],
             Scopes = ["accounts", "transactions"]
-        });
+        }, CancellationToken);
 
         // Assert
         using (Assert.Multiple())

@@ -30,6 +30,7 @@ public class HouseholdMemberService : ServiceBase<HouseholdMemberService>, IHous
         {
             yield return new HouseholdMember
             {
+                Id = householdMember.Id,
                 FirstName = householdMember.FirstName,
                 LastName = householdMember.LastName,
                 Income = householdMember.Income
@@ -50,6 +51,7 @@ public class HouseholdMemberService : ServiceBase<HouseholdMemberService>, IHous
 
         return new HouseholdMember
         {
+            Id = householdMember.Id,
             FirstName = householdMember.FirstName,
             LastName = householdMember.LastName,
             Income = householdMember.Income

@@ -49,7 +49,7 @@ public class ReportPageBase<TReportResponse> : PageComponent
     {
         SetLoadingState(true, "Loading Report");
         ReportItems.Clear();
-        BaseReport report = new()
+        FilterTransactions report = new()
         {
             AccountIds = filters.AccountIds.ToImmutableList(),
             ProviderIds = filters.ProviderIds.ToImmutableList(),
@@ -58,8 +58,7 @@ public class ReportPageBase<TReportResponse> : PageComponent
             SearchTerm = filters.SearchTerm,
             FromDate = filters.DateRange?.Start,
             ToDate = filters.DateRange?.End,
-            Tags = filters.TransactionTags.ToImmutableList(),
-            SyncTypes = SyncTypes.All
+            Tags = filters.TransactionTags.ToImmutableList()
         };
 
         ReportResponseEnumerable = reportType switch
@@ -84,7 +83,7 @@ public class ReportPageBase<TReportResponse> : PageComponent
     private async Task LoadFilterItemsAsync()
     {
         await foreach (TransactionAccountFilter account in TransactionsService
-                           .GetAccountsForTransactionFiltersAsync(SyncTypes.All, _cts.Token))
+                           .GetAccountsForTransactionFiltersAsync(_cts.Token))
         {
             _accountFilterItems.Add(account);
         }

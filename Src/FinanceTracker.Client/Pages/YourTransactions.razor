@@ -5,7 +5,6 @@
 @using System.Globalization
 @using FinanceTracker.Client.Components.Dialogs
 @using FinanceTracker.Client.Components.Transactions
-@using FinanceTracker.Contracts
 @using FinanceTracker.Contracts.Classifications
 @using FinanceTracker.Contracts.Transactions
 @using Microsoft.AspNetCore.Authorization
@@ -124,7 +123,7 @@
             Tags = filters.TransactionTags.ToImmutableList()
         };
 
-        await foreach (var transaction in TransactionsService.GetAllTransactionsAsync(transactionRequest, SyncTypes.All, _cts.Token))
+        await foreach (var transaction in TransactionsService.GetAllTransactionsAsync(transactionRequest, _cts.Token))
         {
             _transactions.Add(transaction);
         }
@@ -134,7 +133,7 @@
 
     private async Task LoadFilterItemsAsync()
     {
-        await foreach (var account in TransactionsService.GetAccountsForTransactionFiltersAsync(SyncTypes.All, _cts.Token))
+        await foreach (var account in TransactionsService.GetAccountsForTransactionFiltersAsync(_cts.Token))
         {
             _accountFilterItems.Add(account);
         }

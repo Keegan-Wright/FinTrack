@@ -18,6 +18,6 @@ public sealed class CurrentUserSyncNotifications : ISyncNotifications
         _syncNotifier = syncNotifier;
     }
 
-    public IDisposable Subscribe(Func<Task> onSyncComplete) =>
-        _syncNotifier.Subscribe(_currentUser.UserId, onSyncComplete);
+    public Task<IDisposable> SubscribeAsync(Func<Task> onSyncComplete, CancellationToken cancellationToken) =>
+        Task.FromResult(_syncNotifier.Subscribe(_currentUser.UserId, onSyncComplete));
 }

@@ -6,6 +6,11 @@ namespace FinanceTracker.Contracts.Budget;
 public class BudgetCategory
 {
     /// <summary>
+    /// The category's id.
+    /// </summary>
+    public required Guid Id { get; init; }
+
+    /// <summary>
     /// The category's name.
     /// </summary>
     public required string Name { get; init; }

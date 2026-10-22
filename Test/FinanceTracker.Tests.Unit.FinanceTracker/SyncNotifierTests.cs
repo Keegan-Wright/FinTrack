@@ -1,12 +1,49 @@
+using FinanceTracker.Api;
+using FinanceTracker.Contracts.Api;
 using FinanceTracker.Tests.Unit.Shared;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging.Abstractions;
+using NSubstitute;
 
 namespace FinanceTracker.Tests.Unit.FinanceTracker;
 
 public class SyncNotifierTests : UnitTestBase
 {
     private readonly Guid _userId = Guid.NewGuid();
-    private readonly SyncNotifier _subject = new(NullLogger<SyncNotifier>.Instance);
+    private readonly IHubContext<SyncHub> _hubContext = Substitute.For<IHubContext<SyncHub>>();
+    private readonly SyncNotifier _subject;
+
+    public SyncNotifierTests() => _subject = new SyncNotifier(_hubContext, NullLogger<SyncNotifier>.Instance);
+
+    [Test]
+    public async Task NotifyAsync_PushesToTheUsersBrowsers()
+    {
+        // Arrange
+        IClientProxy userClients = Substitute.For<IClientProxy>();
+        _hubContext.Clients.User(_userId.ToString()).Returns(userClients);
+
+        // Act
+        await _subject.NotifyAsync(_userId);
+
+        // Assert
+        await userClients.Received(1).SendCoreAsync(SyncHubContract.SyncComplete,
+            Arg.Is<object?[]>(x => x.Length == 0), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task NotifyAsync_WhenTheHubFails_StillNotifiesCircuits()
+    {
+        // Arrange
+        int notified = 0;
+        _hubContext.Clients.User(_userId.ToString()).Returns(_ => throw new InvalidOperationException("hub down"));
+        using IDisposable subscription = _subject.Subscribe(_userId, () => Count(ref notified));
+
+        // Act
+        await _subject.NotifyAsync(_userId);
+
+        // Assert
+        await Assert.That(notified).IsEqualTo(1);
+    }
 
     [Test]
     public async Task NotifyAsync_CallsEverySubscriptionForTheUser()

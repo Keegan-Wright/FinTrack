@@ -17,5 +17,5 @@ public class SpentInTimePeriodReportYearlyBreakdown : SharedReport
     /// Each month of the year with transactions.
     /// </summary>
     [Description("Monthly breakdown of spending for the specified year")]
-    public IList<SpentInTimePeriodReportMonthlyBreakdown> MonthlyBreakdown { get; } = [];
+    public IList<SpentInTimePeriodReportMonthlyBreakdown> MonthlyBreakdown { get; init; } = [];
 }

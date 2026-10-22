@@ -50,11 +50,13 @@ public static class AuthenticationExtensions
                     options.SignIn.RequireConfirmedPhoneNumber = false;
                     options.User.RequireUniqueEmail = true;
                 })
+                .AddRoles<FinanceTrackerRole>()
                 .AddEntityFrameworkStores<FinanceTrackerContext>()
                 .AddSignInManager()
                 .AddDefaultTokenProviders();
 
             builder.Services.AddSingleton<IEmailSender<FinanceTrackerUser>, IdentityNoOpEmailSender>();
+            builder.Services.AddScoped<AdminProvisioner>();
 
             // Services act for ICurrentUser, set per request by UseCurrentUser, per circuit by the handler, per job
             // by its scope
@@ -67,6 +69,16 @@ public static class AuthenticationExtensions
 
     extension(WebApplication app)
     {
+        /// <summary>
+        /// Makes sure an existing install has its admin, see <see cref="AdminProvisioner.EnsureAdminAsync"/>. Run
+        /// after migrating, the role tables have to exist.
+        /// </summary>
+        public async Task EnsureAdminAsync()
+        {
+            await using AsyncServiceScope scope = app.Services.CreateAsyncScope();
+            await scope.ServiceProvider.GetRequiredService<AdminProvisioner>().EnsureAdminAsync();
+        }
+
         /// <summary>
         /// Sets the request's <see cref="CurrentUser"/>. Authentication has already run, so the user is known. Covers
         /// static and prerendered pages and endpoints, interactive circuits are handled by
@@ -192,5 +204,18 @@ public static class AuthenticationExtensions
         // This ensures UserManager<FinanceTrackerUser> natively recognizes the logged-in user
         var claimsIdentity = (ClaimsIdentity)principal.Identity!;
         claimsIdentity.AddClaim(new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()));
+
+        IServiceProvider services = context.HttpContext.RequestServices;
+        UserManager<FinanceTrackerUser> userManager = services.GetRequiredService<UserManager<FinanceTrackerUser>>();
+        FinanceTrackerUser? identityUser = await userManager.FindByIdAsync(user.Id.ToString());
+        if (identityUser is not null)
+        {
+            await services.GetRequiredService<AdminProvisioner>().GrantIfFirstUserAsync(identityUser);
+        }
+
+        foreach (string role in identityUser is null ? [] : await userManager.GetRolesAsync(identityUser))
+        {
+            claimsIdentity.AddClaim(new Claim(claimsIdentity.RoleClaimType, role));
+        }
     }
 }

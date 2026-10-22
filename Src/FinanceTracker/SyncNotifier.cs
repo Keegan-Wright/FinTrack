@@ -1,18 +1,24 @@
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
+using FinanceTracker.Api;
+using FinanceTracker.Contracts.Api;
+using Microsoft.AspNetCore.SignalR;
 
 namespace FinanceTracker;
 
 /// <summary>
-/// In memory <see cref="ISyncNotifier"/>, subscriptions are keyed by user.
+/// <see cref="ISyncNotifier"/> for both front ends in memory subscriptions keyed by user for server rendered
+/// circuits, and <see cref="SyncHub"/> for browsers calling the API.
 /// </summary>
 public class SyncNotifier : ISyncNotifier
 {
     private readonly ConcurrentDictionary<Guid, ImmutableList<Func<Task>>> _subscribers = new();
+    private readonly IHubContext<SyncHub> _hubContext;
     private readonly ILogger<SyncNotifier> _logger;
 
-    public SyncNotifier(ILogger<SyncNotifier> logger)
+    public SyncNotifier(IHubContext<SyncHub> hubContext, ILogger<SyncNotifier> logger)
     {
+        _hubContext = hubContext;
         _logger = logger;
     }
 
@@ -24,6 +30,16 @@ public class SyncNotifier : ISyncNotifier
 
     public async Task NotifyAsync(Guid userId)
     {
+        try
+        {
+            await _hubContext.Clients.User(userId.ToString()).SendAsync(SyncHubContract.SyncComplete);
+        }
+        catch (Exception ex)
+        {
+            // Browsers missing the push shouldn't stop the user's circuits hearing about the sync
+            _logger.LogSyncNotificationFailed(ex, userId);
+        }
+
         if (!_subscribers.TryGetValue(userId, out ImmutableList<Func<Task>>? callbacks))
             return;
 

@@ -5,10 +5,10 @@ using FinanceTracker.Contracts.Reports.Account;
 using FinanceTracker.Contracts.Reports.Category;
 using FinanceTracker.Contracts.Reports.SpentInTimePeriod;
 using FinanceTracker.Contracts.Services;
+using FinanceTracker.Contracts.Transactions;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
-using FinanceTracker.Infrastructure.OpenBanking;
 using FinanceTracker.Infrastructure.Transactions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -19,14 +19,13 @@ namespace FinanceTracker.Infrastructure.Reports;
 [Scoped<IReportService>]
 public class ReportService : ServiceBase<ReportService>, IReportService
 {
-    private readonly IOpenBankingService _openBankingService;
-
     public ReportService(ICurrentUser currentUser, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
-        IOpenBankingService openBankingService, ILogger<ReportService> logger) : base(currentUser, financeTrackerContextFactory, logger) =>
-        _openBankingService = openBankingService;
+        ILogger<ReportService> logger) : base(currentUser, financeTrackerContextFactory, logger)
+    {
+    }
 
     public async IAsyncEnumerable<SpentInTimePeriodReport> GetSpentInTimePeriodReportAsync(
-        BaseReport request, [EnumeratorCancellation] CancellationToken cancellationToken)
+        FilterTransactions request, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
@@ -95,7 +94,7 @@ public class ReportService : ServiceBase<ReportService>, IReportService
     }
 
     public async IAsyncEnumerable<SpentInCategoryReport> GetCategoryBreakdownReportAsync(
-        BaseReport request, [EnumeratorCancellation] CancellationToken cancellationToken)
+        FilterTransactions request, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
@@ -173,7 +172,7 @@ public class ReportService : ServiceBase<ReportService>, IReportService
     }
 
     public async IAsyncEnumerable<SpentInAccountReport> GetAccountBreakdownReportAsync(
-        BaseReport request, [EnumeratorCancellation] CancellationToken cancellationToken)
+        FilterTransactions request, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
@@ -249,7 +248,7 @@ public class ReportService : ServiceBase<ReportService>, IReportService
 
 
     private async Task<(List<BankTransaction> Transactions, Dictionary<Guid, string> CustomTags)>
-        GetTransactionsForReportAsync(BaseReport request, FinanceTrackerContext context,
+        GetTransactionsForReportAsync(FilterTransactions request, FinanceTrackerContext context,
             CancellationToken cancellationToken)
     {
         TransactionCriteria criteria = TransactionCriteria.From(request);

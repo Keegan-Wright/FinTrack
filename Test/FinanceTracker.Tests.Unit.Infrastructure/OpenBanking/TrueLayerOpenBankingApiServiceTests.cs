@@ -55,6 +55,21 @@ public class TrueLayerOpenBankingApiServiceTests : UnitTestBase
     }
 
     [Test]
+    public async Task ExchangeCodeForAccessTokenAsync_RejectedCode_Throws()
+    {
+        // Arrange
+        TrueLayerOpenBankingApiService subject = BuildSubject(_ =>
+            Task.FromResult(new HttpResponseMessage(HttpStatusCode.BadRequest)
+            {
+                Content = JsonContent.Create(new { error = "invalid_grant" })
+            }));
+
+        // Act & Assert
+        await Assert.ThrowsAsync<HttpRequestException>(() =>
+            subject.ExchangeCodeForAccessTokenAsync("expired-code", CancellationToken));
+    }
+
+    [Test]
     public async Task GetProviderInformation_FailedRequest_ReturnsDefaultResponse()
     {
         // Arrange

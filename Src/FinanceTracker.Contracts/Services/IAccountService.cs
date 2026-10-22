@@ -11,11 +11,10 @@ public interface IAccountService
     /// Every account the user has connected, each with its latest balance and most recent transactions.
     /// </summary>
     /// <param name="transactionsToReturn">How many of each account's newest transactions to include.</param>
-    /// <param name="syncFlags">Not used yet, every account and transaction is returned.</param>
     /// <param name="cancellationToken">Cancels the lookup.</param>
     /// <remarks>
     /// Transaction dates are encrypted, so every transaction is loaded and sorted after decryption.
     /// </remarks>
     IAsyncEnumerable<AccountAndTransactions> GetAccountsAndMostRecentTransactionsAsync(
-        int transactionsToReturn, SyncTypes syncFlags, CancellationToken cancellationToken);
+        int transactionsToReturn, CancellationToken cancellationToken);
 }

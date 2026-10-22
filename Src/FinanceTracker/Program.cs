@@ -1,3 +1,4 @@
+using FinanceTracker.Api;
 using FinanceTracker.AppHost.ServiceDefaults;
 using FinanceTracker.Client;
 using FinanceTracker.Components;
@@ -20,6 +21,7 @@ public partial class Program
         builder.Services.AddMudServices();
         builder.Services.AddRazorComponents()
             .AddInteractiveServerComponents();
+        builder.Services.AddSignalR();
         builder.Services.AddCascadingValue(_ => new ApplicationState());
 
         builder.AddFinTrackAuthentication()
@@ -54,6 +56,7 @@ public partial class Program
         app.UseHttpsRedirection();
 
         await app.MigrateDatabaseAsync();
+        await app.EnsureAdminAsync();
 
         app.MapDefaultEndpoints();
         app.UseCurrentUser();
@@ -68,6 +71,7 @@ public partial class Program
 
         app.UseOutputCache();
         app.MapAdditionalIdentityEndpoints();
+        app.MapFinTrackApi();
 
         await app.RunAsync();
     }

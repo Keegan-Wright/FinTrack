@@ -81,7 +81,7 @@
     private Func<OpenBankingProvider, bool> QuickFilter =>
         x => string.IsNullOrWhiteSpace(_searchString) || x.DisplayName.Contains(_searchString, StringComparison.OrdinalIgnoreCase);
 
-    void SelectedItemsChanged(HashSet<OpenBankingProvider> selectedProviders)
+    async Task SelectedItemsChanged(HashSet<OpenBankingProvider> selectedProviders)
     {
         var requestModel = new ProviderSetupUrl
         {
@@ -89,7 +89,7 @@
             Scopes = selectedProviders.SelectMany(x => x.Scopes).ToImmutableList()
         };
 
-        _openBankingAuthUrl = OpenBankingService.BuildAuthUrl(requestModel);
+        _openBankingAuthUrl = await OpenBankingService.BuildAuthUrlAsync(requestModel, _cts.Token);
     }
 
     async Task AddProviderAsync()
