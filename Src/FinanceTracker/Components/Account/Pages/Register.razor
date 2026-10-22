@@ -2,7 +2,7 @@
 @using System.Security.Claims
 @using Blazilla
 @using FinanceTracker.Contracts.Auth
-@using FinanceTracker.Domain
+@using FinanceTracker.Domain.Identity
 @using FluentValidation
 @using Microsoft.AspNetCore.Identity
 
@@ -91,7 +91,10 @@
 @code {
     private IEnumerable<IdentityError>? identityErrors;
 
-    [SupplyParameterFromForm] private RegisterRequest RegisterRequest { get; set; } = new();
+    [SupplyParameterFromForm] private RegisterRequest RegisterRequest { get; set; } = default!;
+
+    // Form posts bind the property before initialisation, so only create a model when nothing was posted
+    protected override void OnInitialized() => RegisterRequest ??= new();
 
     [SupplyParameterFromQuery] private string? ReturnUrl { get; set; }
 
@@ -101,13 +104,8 @@
         if (!validationResult.IsValid)
             return;
 
-        var user = new FinanceTrackerUser
-        {
-            UserName = RegisterRequest.Username,
-            FirstName = RegisterRequest.FirstName!,
-            LastName = RegisterRequest.LastName!,
-            Email = RegisterRequest.Email
-        };
+        var user = new FinanceTrackerUser(RegisterRequest.FirstName!, RegisterRequest.LastName!,
+            RegisterRequest.Email!, RegisterRequest.Username!);
 
         await UserStore.SetUserNameAsync(user, RegisterRequest.Username, CancellationToken.None);
 
@@ -120,7 +118,7 @@
             return;
         }
 
-        Logger.LogInformation("User created a new account with password.");
+        Logger.LogUserRegistered();
         await UserManager.AddClaimAsync(user, new Claim(CustomClaims.FirstName, RegisterRequest.FirstName));
         await SignInManager.SignInAsync(user, false);
         RedirectManager.RedirectTo(ReturnUrl);

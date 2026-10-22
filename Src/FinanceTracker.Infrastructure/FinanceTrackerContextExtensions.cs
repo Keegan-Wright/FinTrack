@@ -1,12 +1,14 @@
-using FinanceTracker.Domain;
+using FinanceTracker.Domain.Common;
 
 namespace FinanceTracker.Infrastructure;
 
 public static class FinanceTrackerContextExtensions
 {
-    extension(FinanceTrackerContext context)
+    extension<T>(IQueryable<T> query) where T : class, IUserOwned
     {
-        public IQueryable<FinanceTrackerUser> IsolateToUser(Guid userId) =>
-            context.FinanceTrackerUsers.Where(x => x.Id == userId);
+        /// <summary>
+        /// Restricts an aggregate query to those owned by <paramref name="userId"/>.
+        /// </summary>
+        public IQueryable<T> OwnedBy(Guid userId) => query.Where(x => x.UserId == userId);
     }
 }

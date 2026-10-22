@@ -1,27 +1,25 @@
-﻿using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Infrastructure;
 
-public class ServiceBase<TLogger> : IServiceBase
+public class ServiceBase<TLogger>
 {
+    private readonly ICurrentUser _currentUser;
+
     protected IDbContextFactory<FinanceTrackerContext> FinanceTrackerContextFactory { get; }
-    protected readonly ILogger<TLogger> Logger;
+    protected ILogger<TLogger> Logger { get; }
 
-    private ClaimsPrincipal? User { get; }
-
-    protected ServiceBase(ClaimsPrincipal? user, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<TLogger> logger)
+    protected ServiceBase(ICurrentUser currentUser,
+        IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<TLogger> logger)
     {
-        User = user;
+        _currentUser = currentUser;
         FinanceTrackerContextFactory = financeTrackerContextFactory;
         Logger = logger;
     }
 
-    protected Guid UserId => User != null
-        ? Guid.Parse(User.Claims.FirstOrDefault(x => x.Type == ClaimTypes.NameIdentifier)?.Value!)
-        : AutomationInstanceUserId;
-
-
-    public Guid AutomationInstanceUserId { get; set; }
+    /// <summary>
+    /// The user this service acts for, see <see cref="ICurrentUser"/>.
+    /// </summary>
+    protected Guid UserId => _currentUser.UserId;
 }

@@ -1,7 +1,6 @@
 using System.Runtime.CompilerServices;
-using System.Security.Claims;
 using FinanceTracker.Contracts.Budget;
-using FinanceTracker.Domain;
+using FinanceTracker.Contracts.Services;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -14,8 +13,8 @@ namespace FinanceTracker.Infrastructure.Budget;
 [Scoped<IBudgetCategoriesService>]
 public class BudgetCategoriesService : ServiceBase<BudgetCategoriesService>, IBudgetCategoriesService
 {
-    public BudgetCategoriesService(ClaimsPrincipal user,
-        IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<BudgetCategoriesService> logger) : base(user,
+    public BudgetCategoriesService(ICurrentUser currentUser,
+        IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<BudgetCategoriesService> logger) : base(currentUser,
         financeTrackerContextFactory, logger)
     {
     }
@@ -25,9 +24,8 @@ public class BudgetCategoriesService : ServiceBase<BudgetCategoriesService>, IBu
     {
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
-        await foreach (Domain.BudgetCategory budgetCategory in context.IsolateToUser(UserId)
-                           .Include(x => x.BudgetCategories)
-                           .SelectMany(x => x.BudgetCategories!)
+        await foreach (Domain.Budgeting.BudgetCategory budgetCategory in context.BudgetCategories.OwnedBy(UserId)
+                           .AsNoTracking()
                            .AsAsyncEnumerable().WithCancellation(cancellationToken))
         {
             yield return new BudgetCategory
@@ -46,20 +44,11 @@ public class BudgetCategoriesService : ServiceBase<BudgetCategoriesService>, IBu
     {
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
-        FinanceTrackerUser user = await context.IsolateToUser(UserId)
-            .Include(x => x.BudgetCategories).FirstAsync(cancellationToken);
+        Domain.Budgeting.BudgetCategory budgetCategory = new(UserId, categoryToAdd.Name,
+            categoryToAdd.AvailableFunds, categoryToAdd.MonthlyStart, categoryToAdd.SavingsGoal,
+            categoryToAdd.GoalCompletionDate);
 
-        Domain.BudgetCategory budgetCategory = new()
-        {
-            Name = categoryToAdd.Name,
-            AvailableFunds = categoryToAdd.AvailableFunds,
-            Created = DateTime.Now.ToUniversalTime(),
-            GoalCompletionDate = categoryToAdd.GoalCompletionDate,
-            MonthlyStart = categoryToAdd.MonthlyStart,
-            SavingsGoal = categoryToAdd.SavingsGoal
-        };
-
-        user.BudgetCategories!.Add(budgetCategory);
+        context.BudgetCategories.Add(budgetCategory);
 
         await context.SaveChangesAsync(cancellationToken);
 
@@ -77,10 +66,8 @@ public class BudgetCategoriesService : ServiceBase<BudgetCategoriesService>, IBu
     {
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
-        FinanceTrackerUser user = await context.IsolateToUser(UserId)
-            .Include(x => x.BudgetCategories).SingleAsync(cancellationToken);
-
-        Domain.BudgetCategory? budgetCategory = user.BudgetCategories!.FirstOrDefault(x => x.Id == id);
+        Domain.Budgeting.BudgetCategory? budgetCategory = await context.BudgetCategories.OwnedBy(UserId)
+            .SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
 
         if (budgetCategory == null)
         {

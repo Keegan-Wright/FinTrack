@@ -1,8 +1,8 @@
 using System.Runtime.CompilerServices;
-using System.Security.Claims;
 using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.Transactions;
-using FinanceTracker.Domain;
+using FinanceTracker.Contracts.Services;
+using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using FinanceTracker.Infrastructure.OpenBanking;
@@ -17,10 +17,10 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
 {
     private readonly IOpenBankingService _openBankingService;
 
-    public TransactionsService(ClaimsPrincipal user,
+    public TransactionsService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
         IOpenBankingService openBankingService,
-        ILogger<TransactionsService> logger) : base(user, financeTrackerContextFactory, logger) =>
+        ILogger<TransactionsService> logger) : base(currentUser, financeTrackerContextFactory, logger) =>
         _openBankingService = openBankingService;
 
     public async IAsyncEnumerable<Transaction> GetAllTransactionsAsync(
@@ -29,51 +29,33 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
     {
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
-        IQueryable<OpenBankingTransaction> transactionsQuery = context.IsolateToUser(UserId)
-            .Include(x => x.Providers)!.ThenInclude(x => x.Accounts)!.ThenInclude(x => x.Transactions)!
-            .ThenInclude(x => x.Classifications)
-            .SelectMany(x => x.Providers!.SelectMany(c => c.Accounts!).SelectMany(r => r.Transactions!))
-            .AsQueryable();
 
-        transactionsQuery = ApplyTransactionRequestFiltering(filterTransactions, transactionsQuery);
+        TransactionCriteria criteria = TransactionCriteria.From(filterTransactions);
+        Dictionary<Guid, string> customTags = await context.CustomClassifications.OwnedBy(UserId)
+            .ToDictionaryAsync(static x => x.Id, static x => x.Tag, cancellationToken);
 
-        var transactions = await GetTransactionsSelect(transactionsQuery).ToListAsync(cancellationToken);
+        List<BankTransaction> transactions = await criteria
+            .ApplyServerFilters(context.BankTransactions.OwnedBy(UserId), context)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
 
-        await foreach (Transaction transaction in transactions
-                           .OrderByDescending(static x => x.TransactionTime)
-                           .ToAsyncEnumerable().WithCancellation(cancellationToken))
+        // Encrypted timestamps sort by ciphertext in SQL, order after decryption
+        foreach (BankTransaction transaction in transactions
+                     .Where(x => criteria.MatchesClientFilters(x, customTags))
+                     .OrderByDescending(static x => x.OccurredAt))
         {
-            // Few Client filters due to encryption limiting ability
-            if (filterTransactions.SearchTerm is not null)
+            yield return new Transaction
             {
-                bool containsSearchTerm = transaction.Description.Contains(filterTransactions.SearchTerm, StringComparison.CurrentCultureIgnoreCase);
-                if (!containsSearchTerm)
-                {
-                    continue;
-                }
-            }
-
-
-            if (filterTransactions.FromDate is not null)
-            {
-                bool containsFromDate = transaction.TransactionTime >= filterTransactions.FromDate;
-                if (!containsFromDate)
-                {
-                    continue;
-                }
-            }
-
-            if (filterTransactions.ToDate is not null)
-            {
-                bool containsFromDate = transaction.TransactionTime <= filterTransactions.ToDate;
-                if (!containsFromDate)
-                {
-                    continue;
-                }
-            }
-
-
-            yield return transaction;
+                Amount = transaction.Amount,
+                Currency = transaction.Currency,
+                Description = transaction.Description,
+                Pending = transaction.IsPending,
+                TransactionCategory = transaction.Category,
+                TransactionId = transaction.Id,
+                TransactionTime = transaction.OccurredAt,
+                TransactionType = transaction.Type.ToString(),
+                Tags = TransactionCriteria.GetTags(transaction, customTags).ToList()
+            };
         }
     }
 
@@ -83,13 +65,10 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        IQueryable<TransactionAccountFilter> query = context.IsolateToUser(UserId).Include(x => x.Providers)!
-            .ThenInclude(x => x.Accounts)
-            .SelectMany(x => x.Providers!.SelectMany(c => c.Accounts!))
+        IAsyncEnumerable<TransactionAccountFilter> accounts = context.BankAccounts.OwnedBy(UserId)
             .AsNoTracking()
-            .Select(x => new TransactionAccountFilter { AccountId = x.Id, AccountName = x.DisplayName });
-
-        IAsyncEnumerable<TransactionAccountFilter> accounts = query.AsAsyncEnumerable();
+            .Select(static x => new TransactionAccountFilter { AccountId = x.Id, AccountName = x.DisplayName })
+            .AsAsyncEnumerable();
 
         await foreach (TransactionAccountFilter account in accounts.WithCancellation(cancellationToken))
         {
@@ -102,13 +81,13 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
     {
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
-        IQueryable<TransactionProviderFilter> query = context.IsolateToUser(UserId)
-            .Include(x => x.Providers)!.ThenInclude(x => x.Accounts)
-            .SelectMany(x => x.Providers!)
-            .Select(x => new TransactionProviderFilter { ProviderId = x.Id, ProviderName = x.Name }).Distinct();
 
-        await foreach (TransactionProviderFilter provider in query.AsAsyncEnumerable()
-                           .WithCancellation(cancellationToken))
+        IAsyncEnumerable<TransactionProviderFilter> providers = context.BankConnections.OwnedBy(UserId)
+            .AsNoTracking()
+            .Select(static x => new TransactionProviderFilter { ProviderId = x.Id, ProviderName = x.Name })
+            .AsAsyncEnumerable();
+
+        await foreach (TransactionProviderFilter provider in providers.WithCancellation(cancellationToken))
         {
             yield return provider;
         }
@@ -119,16 +98,15 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
     {
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
-        IQueryable<TransactionTypeFilter> query = context.IsolateToUser(UserId)
-            .Include(x => x.Providers)!.ThenInclude(x => x.Accounts)!.ThenInclude(x => x.Transactions)
-            .SelectMany(x => x.Providers!.SelectMany(c => c.Accounts!).SelectMany(c => c.Transactions!))
-            .Select(x => new TransactionTypeFilter { TransactionType = x.TransactionType })
-            .Distinct();
 
-        await foreach (TransactionTypeFilter type in query.AsAsyncEnumerable()
-                           .WithCancellation(cancellationToken))
+        // Encrypted, so equal types only compare equal once decrypted
+        List<TransactionType> types = await context.BankTransactions.OwnedBy(UserId)
+            .Select(static x => x.Type)
+            .ToListAsync(cancellationToken);
+
+        foreach (TransactionType type in types.Distinct())
         {
-            yield return type;
+            yield return new TransactionTypeFilter { TransactionType = type.ToString() };
         }
     }
 
@@ -137,12 +115,13 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
     {
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
-        IQueryable<string> query = context.IsolateToUser(UserId)
-            .Include(x => x.Providers)!.ThenInclude(x => x.Accounts)!.ThenInclude(x => x.Transactions)
-            .SelectMany(x => x.Providers!.SelectMany(c => c.Accounts!).SelectMany(r => r.Transactions!))
-            .Select(x => x.TransactionCategory).Distinct();
 
-        await foreach (string category in query.AsAsyncEnumerable().WithCancellation(cancellationToken))
+        // Encrypted, so equal categories only compare equal once decrypted
+        List<string> categories = await context.BankTransactions.OwnedBy(UserId)
+            .Select(static x => x.Category)
+            .ToListAsync(cancellationToken);
+
+        foreach (string category in categories.Distinct())
         {
             yield return new TransactionCategoryFilter { TransactionCategory = category };
         }
@@ -153,71 +132,26 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
     {
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
-        IQueryable<TransactionTagFilter> query = context.IsolateToUser(UserId)
-            .Include(x => x.Providers)!.ThenInclude(x => x.Accounts)!.ThenInclude(x => x.Transactions)!
-            .ThenInclude(x => x.Classifications)
-            .SelectMany(x =>
-                x.Providers!.SelectMany(c => c.Accounts!).SelectMany(r => r.Transactions!)
-                    .SelectMany(t => t.Classifications!))
-            .Select(x => new TransactionTagFilter { Tag = x.Classification })
-            .Distinct();
 
-        await foreach (TransactionTagFilter type in query.AsAsyncEnumerable()
-                           .WithCancellation(cancellationToken))
+        // Unable to use .SelectMany on the encrypted column ProviderClassifications
+        List<IReadOnlyCollection<string>> materialisedClassifications = await context.BankTransactions
+            .OwnedBy(UserId)
+            .Select(static x => x.ProviderClassifications)
+            .ToListAsync(cancellationToken);
+
+        List<string> providerTags = materialisedClassifications
+            .SelectMany(static x => x)
+            .Distinct()
+            .ToList();
+
+        List<string> customTags = await context.CustomClassifications
+            .OwnedBy(UserId)
+            .Select(static x => x.Tag)
+            .ToListAsync(cancellationToken);
+
+        foreach (string tag in providerTags.Union(customTags))
         {
-            yield return type;
+            yield return new TransactionTagFilter { Tag = tag };
         }
     }
-
-
-    private static IQueryable<OpenBankingTransaction> ApplyTransactionRequestFiltering(
-        FilterTransactions filterTransactions, IQueryable<OpenBankingTransaction> transactionsQuery)
-    {
-        if (filterTransactions.AccountIds is not null && filterTransactions.AccountIds.Any())
-        {
-            transactionsQuery =
-                transactionsQuery.Where(x => filterTransactions.AccountIds.Contains(x.Account!.Id));
-        }
-
-        if (filterTransactions.Types is not null && filterTransactions.Types.Any())
-        {
-            transactionsQuery =
-                transactionsQuery.Where(x => filterTransactions.Types.Contains(x.TransactionType));
-        }
-
-        if (filterTransactions.Categories is not null && filterTransactions.Categories.Any())
-        {
-            transactionsQuery =
-                transactionsQuery.Where(x => filterTransactions.Categories.Contains(x.TransactionCategory));
-        }
-
-        if (filterTransactions.Tags is not null && filterTransactions.Tags.Any())
-        {
-            transactionsQuery = transactionsQuery.Where(x =>
-                filterTransactions.Tags.Any(y => x.Classifications!.Any(c => c.Classification == y)));
-        }
-
-        if (filterTransactions.ProviderIds is not null && filterTransactions.ProviderIds.Any())
-        {
-            transactionsQuery = transactionsQuery
-                .Where(x => filterTransactions.ProviderIds.Contains(x.Provider!.Id))
-                .Select(x => x);
-        }
-
-        return transactionsQuery;
-    }
-
-    private static IQueryable<Transaction> GetTransactionsSelect(IQueryable<OpenBankingTransaction> query) =>
-        query.Select(transaction => new Transaction
-        {
-            Amount = transaction.Amount,
-            Currency = transaction.Currency,
-            Description = transaction.Description,
-            Pending = transaction.Pending,
-            TransactionCategory = transaction.TransactionCategory,
-            TransactionId = transaction.Id,
-            TransactionTime = transaction.TransactionTime,
-            TransactionType = transaction.TransactionType,
-            Tags = transaction.Classifications!.Select(x => x.Classification)
-        });
 }

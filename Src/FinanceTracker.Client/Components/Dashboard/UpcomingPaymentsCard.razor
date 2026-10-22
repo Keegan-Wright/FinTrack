@@ -1,0 +1,56 @@
+@* The dashboard's next standing order and direct debit payments. *@
+@using System.Globalization
+@using FinanceTracker.Contracts.Dashboard
+@inject TimeProvider TimeProvider
+
+<MudCard>
+    <MudCardContent>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+            <MudText Typo="Typo.subtitle1">Upcoming payments</MudText>
+            <MudText Typo="Typo.caption">Standing orders & direct debits</MudText>
+        </MudStack>
+
+        @if (Payments.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Color="Color.Secondary">No upcoming payments found.</MudText>
+        }
+        else
+        {
+            <MudList T="UpcomingPayment" Dense="true">
+                @foreach (var p in Payments)
+                {
+                    <MudListItem T="UpcomingPayment">
+                        <MudStack Row="true" AlignItems="AlignItems.Center"
+                                  Justify="Justify.SpaceBetween" Class="w-100">
+                            <MudStack Spacing="0" Class="min-w-0">
+                                <MudText Typo="Typo.body2"
+                                         Class="text-truncate">@p.PaymentName</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    @p.PaymentType · @p.PaymentDate.ToLocalTime().ToString("ddd d MMM", CultureInfo.CurrentCulture) · @DueInLabel(p.PaymentDate)
+                                </MudText>
+                            </MudStack>
+                            <MudText Typo="Typo.body2" Color="Color.Error" Class="ml-2">
+                                @CurrencyFormatter.Format(Math.Abs(p.Amount))
+                            </MudText>
+                        </MudStack>
+                    </MudListItem>
+                }
+            </MudList>
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+
+    [Parameter, EditorRequired] public IReadOnlyList<UpcomingPayment> Payments { get; set; } = [];
+
+    private string DueInLabel(DateTime paymentDateUtc)
+    {
+        var days = (paymentDateUtc.ToLocalTime().Date - TimeProvider.GetLocalNow().Date).Days;
+        if (days < 0) return "overdue";
+        if (days == 0) return "today";
+        if (days == 1) return "in 1 day";
+        return $"in {days} days";
+    }
+
+}

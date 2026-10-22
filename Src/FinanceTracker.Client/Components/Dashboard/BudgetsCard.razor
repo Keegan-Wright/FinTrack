@@ -1,0 +1,51 @@
+@* The dashboard's budget categories and progress towards their savings goals. *@
+@using System.Globalization
+@using FinanceTracker.Contracts.Budget
+
+<MudCard>
+    <MudCardContent>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+            <MudText Typo="Typo.subtitle1">Goals & budgets</MudText>
+            <MudText Typo="Typo.caption">Available vs savings goal</MudText>
+        </MudStack>
+
+        @if (BudgetCategories.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Color="Color.Secondary">No budget categories yet.</MudText>
+        }
+        else
+        {
+            <MudStack Spacing="2">
+                @foreach (var b in BudgetCategories.OrderByDescending(static x => x.SavingsGoal > 0 ? x.AvailableFunds / x.SavingsGoal : 0))
+                {
+                    var progress = b.SavingsGoal <= 0 ? 0 : Math.Clamp((double)(b.AvailableFunds / b.SavingsGoal), 0, 1);
+                    <MudPaper Outlined="true" Class="pa-3" Elevation="0">
+                        <MudStack Row="true" AlignItems="AlignItems.Center"
+                                  Justify="Justify.SpaceBetween">
+                            <MudStack Spacing="0" Class="min-w-0">
+                                <MudText Typo="Typo.body2" Class="text-truncate">@b.Name</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    @CurrencyFormatter.Format(b.AvailableFunds) of @CurrencyFormatter.Format(b.SavingsGoal)
+                                    @if (b.GoalCompletionDate is not null)
+                                    {
+                                        <span> · goal by @b.GoalCompletionDate.Value.ToLocalTime().ToString("d MMM yyyy", CultureInfo.CurrentCulture)</span>
+                                    }
+                                </MudText>
+                            </MudStack>
+                            <MudText Typo="Typo.caption" Class="ml-2">@($"{progress:P0}")</MudText>
+                        </MudStack>
+                        <MudProgressLinear Class="mt-2" Value="@(progress * 100)" Color="Color.Primary"
+                                           Rounded="true"/>
+                    </MudPaper>
+                }
+            </MudStack>
+        }
+
+    </MudCardContent>
+</MudCard>
+
+@code {
+
+    [Parameter, EditorRequired] public IReadOnlyList<BudgetCategory> BudgetCategories { get; set; } = [];
+
+}

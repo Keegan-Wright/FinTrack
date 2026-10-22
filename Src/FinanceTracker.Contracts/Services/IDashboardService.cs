@@ -1,0 +1,33 @@
+using FinanceTracker.Contracts.Dashboard;
+
+namespace FinanceTracker.Contracts.Services;
+
+/// <summary>
+/// Totals and upcoming payments for the signed in user's dashboard.
+/// </summary>
+public interface IDashboardService
+{
+    /// <summary>
+    /// Money in and out across all the user's accounts between two dates. Transfers (provider category
+    /// <c>TRANSFER</c>) are left out.
+    /// </summary>
+    /// <param name="fromDate">The first day of the period.</param>
+    /// <param name="toDate">The last day of the period.</param>
+    /// <param name="cancellationToken">Cancels the lookup.</param>
+    /// <remarks>
+    /// The range is widened by a day either side so no time zone loses a day's transactions.
+    /// </remarks>
+    Task<SpentInTimePeriod> GetSpentInTimePeriod(DateTime fromDate, DateTime toDate,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// The user's next standing order and direct debit payments, soonest first.
+    /// </summary>
+    /// <param name="numberToFetch">The most payments to return.</param>
+    /// <param name="cancellationToken">Cancels the lookup.</param>
+    /// <remarks>
+    /// Banks only report a direct debit's previous payment, so its next one is estimated as a month after it.
+    /// </remarks>
+    IAsyncEnumerable<UpcomingPayment> GetUpcomingPaymentsAsync(int numberToFetch,
+        CancellationToken cancellationToken);
+}

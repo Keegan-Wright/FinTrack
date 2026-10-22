@@ -17,37 +17,37 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.12")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("FinanceTracker.Domain.BudgetCategory", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.Budgeting.BudgetCategory", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<string>("AvailableFunds")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
 
                     b.Property<DateTime>("Created")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid?>("FinanceTrackerUserId")
-                        .HasColumnType("uuid");
-
                     b.Property<string>("GoalCompletionDate")
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
 
                     b.Property<string>("MonthlyStart")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
 
                     b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
@@ -57,29 +57,74 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
                     b.Property<string>("SavingsGoal")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
 
                     b.Property<DateTime?>("Updated")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("FinanceTrackerUserId");
+                    b.HasIndex("UserId");
 
-                    b.ToTable("BudgetCategories");
+                    b.ToTable("BudgetCategories", (string)null);
                 });
 
-            modelBuilder.Entity("FinanceTracker.Domain.CustomClassification", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.Budgeting.Debt", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("Created")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid?>("FinanceTrackerUserId")
+                    b.Property<string>("FinalPaymentDate")
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.Property<string>("MonthlyPayment")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.Property<string>("PayOffGoal")
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<DateTime?>("Updated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Debts", (string)null);
+                });
+
+            modelBuilder.Entity("FinanceTracker.Domain.Classifications.CustomClassification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
@@ -89,43 +134,49 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
                     b.Property<string>("Tag")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.Property<string>("TagBlindIndex")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.BlindIndexSource", "Tag");
 
                     b.Property<DateTime?>("Updated")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("FinanceTrackerUserId");
+                    b.HasIndex("UserId", "TagBlindIndex")
+                        .IsUnique();
 
-                    b.ToTable("CustomClassifications");
+                    b.ToTable("CustomClassifications", (string)null);
                 });
 
-            modelBuilder.Entity("FinanceTracker.Domain.Debt", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.Household.HouseholdMember", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("Created")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("FinalPaymentDate")
-                        .HasColumnType("text");
-
-                    b.Property<Guid?>("FinanceTrackerUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("MonthlyPayment")
+                    b.Property<string>("FirstName")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
 
-                    b.Property<string>("Name")
+                    b.Property<string>("Income")
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.Property<string>("LastName")
                         .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("PayOffGoal")
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
 
                     b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
@@ -136,14 +187,17 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.Property<DateTime?>("Updated")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("FinanceTrackerUserId");
+                    b.HasIndex("UserId");
 
-                    b.ToTable("Debts");
+                    b.ToTable("HouseholdMembers", (string)null);
                 });
 
-            modelBuilder.Entity("FinanceTracker.Domain.FinanceTrackerRole", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.Identity.FinanceTrackerRole", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -170,7 +224,7 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.ToTable("AspNetRoles", (string)null);
                 });
 
-            modelBuilder.Entity("FinanceTracker.Domain.FinanceTrackerUser", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.Identity.FinanceTrackerUser", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -246,156 +300,33 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
-            modelBuilder.Entity("FinanceTracker.Domain.HouseholdMember", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.OpenBanking.Accounts.BankAccount", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("FinanceTrackerUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("FirstName")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Income")
-                        .HasColumnType("text");
-
-                    b.Property<string>("LastName")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
-                    b.Property<DateTime?>("Updated")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("FinanceTrackerUserId");
-
-                    b.ToTable("HouseholdMembers");
-                });
-
-            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingAccessToken", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("AccessToken")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("Expired")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("ExpiresIn")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<Guid?>("FinanceTrackerUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("ProviderId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("RefreshToken")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
-                    b.Property<DateTime?>("Updated")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("FinanceTrackerUserId");
-
-                    b.ToTable("OpenBankingAccessTokens");
-                });
-
-            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingAccount", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<string>("AccountType")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.Property<Guid>("ConnectionId")
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime>("Created")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Currency")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
 
                     b.Property<string>("DisplayName")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
 
-                    b.Property<string>("OpenBankingAccountId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("ProviderId")
-                        .HasColumnType("uuid");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
-                    b.Property<DateTime?>("Updated")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ProviderId");
-
-                    b.ToTable("OpenBankingAccounts");
-                });
-
-            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingAccountBalance", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("AccountId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Available")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Currency")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Current")
+                    b.Property<string>("ExternalId")
                         .IsRequired()
                         .HasColumnType("text");
 
@@ -408,18 +339,22 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.Property<DateTime?>("Updated")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("AccountId")
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("ConnectionId", "ExternalId")
                         .IsUnique();
 
-                    b.ToTable("OpenBankingAccountBalances");
+                    b.ToTable("BankAccounts", (string)null);
                 });
 
-            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingDirectDebit", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.OpenBanking.Accounts.DirectDebit", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("AccountId")
@@ -429,37 +364,125 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Currency")
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.Property<string>("ExternalId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.Property<string>("ExternalIdBlindIndex")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.BlindIndexSource", "ExternalId");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("OpenBankingDirectDebitId")
-                        .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
 
                     b.Property<string>("PreviousPaymentAmount")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
 
-                    b.Property<string>("PreviousPaymentTimeStamp")
+                    b.Property<string>("PreviousPaymentDate")
                         .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
 
-                    b.Property<string>("TimeStamp")
+                    b.Property<string>("Timestamp")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.Property<DateTime?>("Updated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountId", "ExternalIdBlindIndex")
+                        .IsUnique();
+
+                    b.ToTable("DirectDebits", (string)null);
+                });
+
+            modelBuilder.Entity("FinanceTracker.Domain.OpenBanking.Accounts.StandingOrder", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.Property<string>("FinalPaymentAmount")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.Property<string>("FinalPaymentDate")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.Property<string>("FirstPaymentAmount")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.Property<string>("FirstPaymentDate")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.Property<string>("Frequency")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.Property<string>("NextPaymentAmount")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.Property<string>("NextPaymentDate")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.Property<string>("Payee")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.Property<string>("Reference")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.Property<string>("Timestamp")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
 
                     b.Property<DateTime?>("Updated")
                         .HasColumnType("timestamp with time zone");
@@ -468,36 +491,116 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
                     b.HasIndex("AccountId");
 
-                    b.ToTable("OpenBankingDirectDebits");
+                    b.ToTable("StandingOrders", (string)null);
                 });
 
-            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingProvider", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.OpenBanking.Accounts.SyncLogEntry", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("OccurredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("Updated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OccurredAt");
+
+                    b.HasIndex("AccountId", "OccurredAt");
+
+                    b.ToTable("SyncLog", (string)null);
+                });
+
+            modelBuilder.Entity("FinanceTracker.Domain.OpenBanking.Connections.AccessToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ConnectionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("IssuedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RefreshToken")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.Property<DateTime?>("Updated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConnectionId")
+                        .IsUnique()
+                        .HasFilter("\"RevokedAt\" IS NULL");
+
+                    b.ToTable("AccessTokens", (string)null);
+                });
+
+            modelBuilder.Entity("FinanceTracker.Domain.OpenBanking.Connections.BankConnection", b =>
+                {
+                    b.Property<Guid>("Id")
                         .HasColumnType("uuid");
 
                     b.Property<string>("AccessCode")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.Property<DateTime>("ConsentGrantedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime>("Created")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid?>("FinanceTrackerUserId")
-                        .HasColumnType("uuid");
+                    b.Property<string>("ExternalProviderId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.Property<string>("ExternalProviderIdBlindIndex")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.BlindIndexSource", "ExternalProviderId");
 
                     b.Property<string>("Logo")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("OpenBankingProviderId")
-                        .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
 
                     b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
@@ -505,171 +608,28 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                         .HasColumnType("xid")
                         .HasColumnName("xmin");
 
-                    b.Property<DateTime?>("Updated")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("FinanceTrackerUserId");
-
-                    b.ToTable("OpenBankingProviders");
-                });
-
-            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingProviderScopes", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("ProviderId")
-                        .HasColumnType("uuid");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
-                    b.Property<string>("Scope")
+                    b.PrimitiveCollection<string>("Scopes")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
 
                     b.Property<DateTime?>("Updated")
                         .HasColumnType("timestamp with time zone");
 
-                    b.HasKey("Id");
-
-                    b.HasIndex("ProviderId");
-
-                    b.ToTable("OpenBankingProviderScopes");
-                });
-
-            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingStandingOrder", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
+                    b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
-
-                    b.Property<Guid>("AccountId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Currency")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("FinalPaymentAmount")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("FinalPaymentDate")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("FirstPaymentAmount")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("FirstPaymentDate")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Frequency")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("NextPaymentAmount")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("NextPaymentDate")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Payee")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Reference")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Timestamp")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime?>("Updated")
-                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AccountId");
+                    b.HasIndex("UserId", "ExternalProviderIdBlindIndex")
+                        .IsUnique();
 
-                    b.ToTable("OpenBankingStandingOrders");
+                    b.ToTable("BankConnections", (string)null);
                 });
 
-            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingSynchronization", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.OpenBanking.Transactions.BankTransaction", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("AccountId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("OpenBankingAccountId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("ProviderId")
-                        .HasColumnType("uuid");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
-                    b.Property<DateTime>("SyncronisationTime")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("SyncronisationType")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime?>("Updated")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AccountId");
-
-                    b.HasIndex("ProviderId");
-
-                    b.ToTable("OpenBankingSynchronizations");
-                });
-
-            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingTransaction", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("AccountId")
@@ -677,93 +637,79 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
                     b.Property<string>("Amount")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
 
                     b.Property<DateTime>("Created")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Currency")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.PrimitiveCollection<Guid[]>("CustomClassificationIds")
+                        .IsRequired()
+                        .HasColumnType("uuid[]");
 
                     b.Property<string>("Description")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
 
-                    b.Property<string>("Pending")
+                    b.Property<string>("ExternalId")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
 
-                    b.Property<Guid>("ProviderId")
-                        .HasColumnType("uuid");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
-                    b.Property<string>("TransactionCategory")
+                    b.Property<string>("ExternalIdBlindIndex")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.BlindIndexSource", "ExternalId");
 
-                    b.Property<string>("TransactionId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("TransactionTime")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("TransactionType")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime?>("Updated")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AccountId");
-
-                    b.HasIndex("ProviderId");
-
-                    b.ToTable("OpenBankingTransactions");
-                });
-
-            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingTransactionClassifications", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Classification")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsCustomClassification")
+                    b.Property<bool>("IsPending")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("OccurredAt")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.PrimitiveCollection<string>("ProviderClassifications")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
                     b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("xid")
                         .HasColumnName("xmin");
 
-                    b.Property<Guid>("TransactionId")
-                        .HasColumnType("uuid");
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
 
                     b.Property<DateTime?>("Updated")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("TransactionId");
+                    b.HasIndex("UserId");
 
-                    b.ToTable("OpenBankingTransactionClassifications");
+                    b.HasIndex("AccountId", "ExternalIdBlindIndex")
+                        .IsUnique();
+
+                    b.ToTable("BankTransactions", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
@@ -1055,155 +1001,153 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.ToTable("TimeTickers", "ticker");
                 });
 
-            modelBuilder.Entity("FinanceTracker.Domain.BudgetCategory", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.Budgeting.BudgetCategory", b =>
                 {
-                    b.HasOne("FinanceTracker.Domain.FinanceTrackerUser", null)
-                        .WithMany("BudgetCategories")
-                        .HasForeignKey("FinanceTrackerUserId");
+                    b.HasOne("FinanceTracker.Domain.Identity.FinanceTrackerUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
-            modelBuilder.Entity("FinanceTracker.Domain.CustomClassification", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.Budgeting.Debt", b =>
                 {
-                    b.HasOne("FinanceTracker.Domain.FinanceTrackerUser", null)
-                        .WithMany("CustomClassifications")
-                        .HasForeignKey("FinanceTrackerUserId");
+                    b.HasOne("FinanceTracker.Domain.Identity.FinanceTrackerUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
-            modelBuilder.Entity("FinanceTracker.Domain.Debt", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.Classifications.CustomClassification", b =>
                 {
-                    b.HasOne("FinanceTracker.Domain.FinanceTrackerUser", null)
-                        .WithMany("Debts")
-                        .HasForeignKey("FinanceTrackerUserId");
+                    b.HasOne("FinanceTracker.Domain.Identity.FinanceTrackerUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
-            modelBuilder.Entity("FinanceTracker.Domain.HouseholdMember", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.Household.HouseholdMember", b =>
                 {
-                    b.HasOne("FinanceTracker.Domain.FinanceTrackerUser", null)
-                        .WithMany("HouseholdMembers")
-                        .HasForeignKey("FinanceTrackerUserId");
+                    b.HasOne("FinanceTracker.Domain.Identity.FinanceTrackerUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
-            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingAccessToken", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.OpenBanking.Accounts.BankAccount", b =>
                 {
-                    b.HasOne("FinanceTracker.Domain.FinanceTrackerUser", null)
-                        .WithMany("OpenBankingAccessTokens")
-                        .HasForeignKey("FinanceTrackerUserId");
-                });
-
-            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingAccount", b =>
-                {
-                    b.HasOne("FinanceTracker.Domain.OpenBankingProvider", "Provider")
-                        .WithMany("Accounts")
-                        .HasForeignKey("ProviderId")
+                    b.HasOne("FinanceTracker.Domain.OpenBanking.Connections.BankConnection", null)
+                        .WithMany()
+                        .HasForeignKey("ConnectionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Provider");
-                });
-
-            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingAccountBalance", b =>
-                {
-                    b.HasOne("FinanceTracker.Domain.OpenBankingAccount", "Account")
-                        .WithOne("AccountBalance")
-                        .HasForeignKey("FinanceTracker.Domain.OpenBankingAccountBalance", "AccountId")
+                    b.HasOne("FinanceTracker.Domain.Identity.FinanceTrackerUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Account");
+                    b.OwnsOne("FinanceTracker.Domain.OpenBanking.Accounts.AccountBalance", "Balance", b1 =>
+                        {
+                            b1.Property<Guid>("BankAccountId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("AsOf")
+                                .IsRequired()
+                                .HasColumnType("text")
+                                .HasColumnName("Balance_AsOf")
+                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                            b1.Property<string>("Available")
+                                .IsRequired()
+                                .HasColumnType("text")
+                                .HasColumnName("Balance_Available")
+                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                            b1.Property<string>("Current")
+                                .IsRequired()
+                                .HasColumnType("text")
+                                .HasColumnName("Balance_Current")
+                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                            b1.HasKey("BankAccountId");
+
+                            b1.ToTable("BankAccounts");
+
+                            b1.WithOwner()
+                                .HasForeignKey("BankAccountId");
+                        });
+
+                    b.Navigation("Balance");
                 });
 
-            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingDirectDebit", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.OpenBanking.Accounts.DirectDebit", b =>
                 {
-                    b.HasOne("FinanceTracker.Domain.OpenBankingAccount", "Account")
+                    b.HasOne("FinanceTracker.Domain.OpenBanking.Accounts.BankAccount", null)
                         .WithMany("DirectDebits")
                         .HasForeignKey("AccountId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Account");
                 });
 
-            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingProvider", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.OpenBanking.Accounts.StandingOrder", b =>
                 {
-                    b.HasOne("FinanceTracker.Domain.FinanceTrackerUser", null)
-                        .WithMany("Providers")
-                        .HasForeignKey("FinanceTrackerUserId");
-                });
-
-            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingProviderScopes", b =>
-                {
-                    b.HasOne("FinanceTracker.Domain.OpenBankingProvider", "Provider")
-                        .WithMany("Scopes")
-                        .HasForeignKey("ProviderId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Provider");
-                });
-
-            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingStandingOrder", b =>
-                {
-                    b.HasOne("FinanceTracker.Domain.OpenBankingAccount", "Account")
+                    b.HasOne("FinanceTracker.Domain.OpenBanking.Accounts.BankAccount", null)
                         .WithMany("StandingOrders")
                         .HasForeignKey("AccountId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Account");
                 });
 
-            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingSynchronization", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.OpenBanking.Accounts.SyncLogEntry", b =>
                 {
-                    b.HasOne("FinanceTracker.Domain.OpenBankingAccount", "Account")
-                        .WithMany("Syncronisations")
+                    b.HasOne("FinanceTracker.Domain.OpenBanking.Accounts.BankAccount", null)
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FinanceTracker.Domain.OpenBanking.Connections.AccessToken", b =>
+                {
+                    b.HasOne("FinanceTracker.Domain.OpenBanking.Connections.BankConnection", null)
+                        .WithMany("AccessTokens")
+                        .HasForeignKey("ConnectionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FinanceTracker.Domain.OpenBanking.Connections.BankConnection", b =>
+                {
+                    b.HasOne("FinanceTracker.Domain.Identity.FinanceTrackerUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FinanceTracker.Domain.OpenBanking.Transactions.BankTransaction", b =>
+                {
+                    b.HasOne("FinanceTracker.Domain.OpenBanking.Accounts.BankAccount", null)
+                        .WithMany()
                         .HasForeignKey("AccountId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("FinanceTracker.Domain.OpenBankingProvider", "Provider")
-                        .WithMany("Syncronisations")
-                        .HasForeignKey("ProviderId")
+                    b.HasOne("FinanceTracker.Domain.Identity.FinanceTrackerUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Account");
-
-                    b.Navigation("Provider");
-                });
-
-            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingTransaction", b =>
-                {
-                    b.HasOne("FinanceTracker.Domain.OpenBankingAccount", "Account")
-                        .WithMany("Transactions")
-                        .HasForeignKey("AccountId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("FinanceTracker.Domain.OpenBankingProvider", "Provider")
-                        .WithMany("Transactions")
-                        .HasForeignKey("ProviderId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Account");
-
-                    b.Navigation("Provider");
-                });
-
-            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingTransactionClassifications", b =>
-                {
-                    b.HasOne("FinanceTracker.Domain.OpenBankingTransaction", "Transaction")
-                        .WithMany("Classifications")
-                        .HasForeignKey("TransactionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Transaction");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
                 {
-                    b.HasOne("FinanceTracker.Domain.FinanceTrackerRole", null)
+                    b.HasOne("FinanceTracker.Domain.Identity.FinanceTrackerRole", null)
                         .WithMany()
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1212,7 +1156,7 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>
                 {
-                    b.HasOne("FinanceTracker.Domain.FinanceTrackerUser", null)
+                    b.HasOne("FinanceTracker.Domain.Identity.FinanceTrackerUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1221,7 +1165,7 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<System.Guid>", b =>
                 {
-                    b.HasOne("FinanceTracker.Domain.FinanceTrackerUser", null)
+                    b.HasOne("FinanceTracker.Domain.Identity.FinanceTrackerUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1230,13 +1174,13 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<System.Guid>", b =>
                 {
-                    b.HasOne("FinanceTracker.Domain.FinanceTrackerRole", null)
+                    b.HasOne("FinanceTracker.Domain.Identity.FinanceTrackerRole", null)
                         .WithMany()
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("FinanceTracker.Domain.FinanceTrackerUser", null)
+                    b.HasOne("FinanceTracker.Domain.Identity.FinanceTrackerUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1245,7 +1189,7 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<System.Guid>", b =>
                 {
-                    b.HasOne("FinanceTracker.Domain.FinanceTrackerUser", null)
+                    b.HasOne("FinanceTracker.Domain.Identity.FinanceTrackerUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1273,48 +1217,16 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.Navigation("Parent");
                 });
 
-            modelBuilder.Entity("FinanceTracker.Domain.FinanceTrackerUser", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.OpenBanking.Accounts.BankAccount", b =>
                 {
-                    b.Navigation("BudgetCategories");
-
-                    b.Navigation("CustomClassifications");
-
-                    b.Navigation("Debts");
-
-                    b.Navigation("HouseholdMembers");
-
-                    b.Navigation("OpenBankingAccessTokens");
-
-                    b.Navigation("Providers");
-                });
-
-            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingAccount", b =>
-                {
-                    b.Navigation("AccountBalance");
-
                     b.Navigation("DirectDebits");
 
                     b.Navigation("StandingOrders");
-
-                    b.Navigation("Syncronisations");
-
-                    b.Navigation("Transactions");
                 });
 
-            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingProvider", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.OpenBanking.Connections.BankConnection", b =>
                 {
-                    b.Navigation("Accounts");
-
-                    b.Navigation("Scopes");
-
-                    b.Navigation("Syncronisations");
-
-                    b.Navigation("Transactions");
-                });
-
-            modelBuilder.Entity("FinanceTracker.Domain.OpenBankingTransaction", b =>
-                {
-                    b.Navigation("Classifications");
+                    b.Navigation("AccessTokens");
                 });
 
             modelBuilder.Entity("TickerQ.Utilities.Entities.TimeTickerEntity", b =>

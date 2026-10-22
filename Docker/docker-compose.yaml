@@ -27,6 +27,12 @@ services:
       POSTGRES_PASSWORD: "${FINTRACK_POSTGRES_PASSWORD}"
     expose:
       - "5432"
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     volumes:
       - type: "volume"
         target: "/var/lib/postgresql/data"
@@ -45,9 +51,8 @@ services:
       OTEL_DOTNET_EXPERIMENTAL_OTLP_RETRY: "in_memory"
       ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
       HTTP_PORTS: 8080
-      ENCRYPTION_KEY: "${FINTRACK_SYMMETRIC_KEY}"
-      ENCRYPTION_SALT: "${FINTRACK_SYMMETRIC_SALT}"
-      ENCRYPTION_ITERATIONS: "${FINTRACK_SYMMETRIC_KEY_ITERATIONS}"
+      ENCRYPTION_KEYS: "${FINTRACK_ENCRYPTION_KEYS}"
+      ENCRYPTION_CURRENT_KEY_ID: "${FINTRACK_ENCRYPTION_CURRENT_KEY_ID}"
       OPEN_BANKING_TRUELAYER_BASE_AUTH_URL: "${OPENBANKING_AUTH_URL}"
       OPEN_BANKING_TRUELAYER_BASE_DATA_URL: "${OPENBANKING_DATA_URL}"
       OPEN_BANKING_TRUELAYER_AUTH_REDIRECT_URL: "${OPENBANKING_AUTH_REDIRECT_URL}"
@@ -77,7 +82,7 @@ services:
       fintrack-redis:
         condition: "service_started"
       fintrack-postgres:
-        condition: "service_started"
+        condition: "service_healthy"
     networks:
       - "fintrack"
     restart: "unless-stopped"

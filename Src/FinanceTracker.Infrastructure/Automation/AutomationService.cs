@@ -1,12 +1,12 @@
 using System.Runtime.CompilerServices;
-using System.Security.Claims;
 using FinanceTracker.Contracts.Automation;
+using FinanceTracker.Contracts.Services;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
+using FinanceTracker.Infrastructure.OpenBanking;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using TickerQ.Utilities.Entities;
-using TickerQ.Utilities.Enums;
 using TickerQ.Utilities.Interfaces.Managers;
 
 namespace FinanceTracker.Infrastructure.Automation;
@@ -17,20 +17,20 @@ public class AutomationService :  ServiceBase<AutomationService>, IAutomationSer
 {
 
     private readonly ICronTickerManager<CronTickerEntity> _cronTickerManager;
-    private readonly ITimeTickerManager<TimeTickerEntity> _timeTickerManager;
+    private readonly IOpenBankingSyncScheduler _syncScheduler;
 
-    public AutomationService(ClaimsPrincipal user,
-        IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<AutomationService> logger, ICronTickerManager<CronTickerEntity> cronTickerManager, ITimeTickerManager<TimeTickerEntity> timeTickerManager) : base(user,
+    public AutomationService(ICurrentUser currentUser,
+        IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<AutomationService> logger, ICronTickerManager<CronTickerEntity> cronTickerManager, IOpenBankingSyncScheduler syncScheduler) : base(currentUser,
         financeTrackerContextFactory, logger)
     {
         _cronTickerManager = cronTickerManager;
-        _timeTickerManager = timeTickerManager;
+        _syncScheduler = syncScheduler;
     }
 
     public async IAsyncEnumerable<AutomationCron> GetJobsAsync([EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        await using var context = await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
-        await foreach (var cron in context.CronTickerEntities.AsAsyncEnumerable().WithCancellation(cancellationToken))
+        await using FinanceTrackerContext context = await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+        await foreach (CronTickerEntity? cron in context.CronTickerEntities.AsAsyncEnumerable().WithCancellation(cancellationToken))
         {
             yield return new AutomationCron(cron.Id,  cron.Function, cron.Description, cron.Expression, cron.Retries,
                 cron.RetryIntervals, cron.IsEnabled);
@@ -39,8 +39,8 @@ public class AutomationService :  ServiceBase<AutomationService>, IAutomationSer
 
     public async Task<bool> UpdateJobSettingsAsync(UpdateCronJob request, CancellationToken cancellationToken)
     {
-        await using var context = await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
-        var cron = await context.CronTickerEntities.FirstAsync(x => x.Id == request.Id, cancellationToken);
+        await using FinanceTrackerContext context = await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+        CronTickerEntity cron = await context.CronTickerEntities.FirstAsync(x => x.Id == request.Id, cancellationToken);
 
         cron.Description = request.Description;
         cron.RetryIntervals = request.RetryIntervals;
@@ -54,28 +54,16 @@ public class AutomationService :  ServiceBase<AutomationService>, IAutomationSer
 
     public async Task<DateTime?> GetLastSyncTimeAsync(CancellationToken cancellationToken)
     {
-        var eventName = "SyncAllOpenBankingDetailsAsync";
-        await using var context = await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+        await using FinanceTrackerContext context = await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        var cron = await context.CronTickerEntities
-            .FirstAsync(x => x.Function == eventName, cancellationToken);
+        DateTime? lastSync = await context.SyncLog
+            .Where(x => context.BankAccounts.Any(a => a.Id == x.AccountId && a.UserId == UserId))
+            .MaxAsync(x => (DateTime?)x.OccurredAt, cancellationToken);
 
-        var latestCronOccurence = await context.CronTickerOccurrenceEntities
-            .Where(x => x.CronTickerId == cron.Id)
-            .Where(x => x.Status == TickerStatus.Done)
-            .OrderByDescending(x => x.ExecutionTime)
-            .FirstOrDefaultAsync(cancellationToken);
-
-        var latestManaulTickerOccurence = await context.TimeTickerEntities
-            .Where(x => x.Function == eventName)
-            .Where(x => x.Status == TickerStatus.Done)
-            .OrderByDescending(x => x.ExecutionTime)
-            .FirstOrDefaultAsync(cancellationToken);
-
-        if (latestCronOccurence is null ||  (latestManaulTickerOccurence?.ExecutionTime > latestCronOccurence?.ExecutionTime))
-            return latestManaulTickerOccurence?.ExecutionTime?.ToLocalTime();
-        else
-            return latestCronOccurence?.ExecutionTime.ToLocalTime();
-
+        return lastSync?.ToLocalTime();
     }
+
+    // The user comes from the scope, never the page, so nobody can queue a sync of someone else's connections
+    public Task RequestSyncAsync(CancellationToken cancellationToken) =>
+        _syncScheduler.ScheduleUserSyncAsync(UserId, cancellationToken);
 }

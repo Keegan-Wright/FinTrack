@@ -1,7 +1,7 @@
 using System.Runtime.CompilerServices;
-using System.Security.Claims;
 using FinanceTracker.Contracts.Dashboard;
-using FinanceTracker.Domain;
+using FinanceTracker.Contracts.Services;
+using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -27,11 +27,12 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
         public string Name { get; init; } = string.Empty;
     }
 
-    public DashboardService(ClaimsPrincipal user, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
-        ILogger<DashboardService> logger)
-        : base(user, financeTrackerContextFactory, logger)
-    {
-    }
+    private readonly TimeProvider _timeProvider;
+
+    public DashboardService(ICurrentUser currentUser, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
+        ILogger<DashboardService> logger, TimeProvider timeProvider)
+        : base(currentUser, financeTrackerContextFactory, logger) =>
+        _timeProvider = timeProvider;
 
     public async Task<SpentInTimePeriod> GetSpentInTimePeriod(DateTime fromDate, DateTime toDate,
         CancellationToken cancellationToken)
@@ -42,23 +43,18 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
         DateTime fromUtc = fromDate.AddDays(-1).ToUniversalTime();
         DateTime toUtc = toDate.AddDays(1).ToUniversalTime();
 
-        IQueryable<OpenBankingTransaction> query = context.IsolateToUser(UserId)
-            .Include(x => x.Providers)!.ThenInclude(x => x.Accounts)!.ThenInclude(x => x.Transactions)
-            .SelectMany(x => x.Providers!.SelectMany(c => c.Accounts!).SelectMany(r => r.Transactions!))
-            .AsNoTracking();
-
-        List<TransactionLite> items = await query
+        List<TransactionLite> items = await context.BankTransactions.OwnedBy(UserId)
             .Select(x => new TransactionLite
             {
                 Amount = x.Amount,
-                TransactionTime = x.TransactionTime,
-                TransactionCategory = x.TransactionCategory
+                TransactionTime = x.OccurredAt,
+                TransactionCategory = x.Category
             })
             .ToListAsync(cancellationToken);
 
         IEnumerable<decimal> amountsInRange = items
             .Where(x => x.TransactionTime >= fromUtc && x.TransactionTime <= toUtc)
-            .Where(x => x.TransactionCategory != "TRANSFER")
+            .Where(x => x.TransactionCategory != BankTransaction.TransferCategory)
             .Select(x => x.Amount);
 
         return new SpentInTimePeriod
@@ -76,12 +72,10 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        DateTime nowUtc = DateTime.Now.ToUniversalTime();
+        DateTime nowUtc = _timeProvider.GetUtcNow().UtcDateTime;
 
-        List<UpcomingPayment> standingOrders = await context.IsolateToUser(UserId)
-            .Include(x => x.Providers)!.ThenInclude(x => x.Accounts)!.ThenInclude(x => x.StandingOrders)
-            .SelectMany(x => x.Providers!.SelectMany(c => c.Accounts!).SelectMany(r => r.StandingOrders!))
-            .AsNoTracking()
+        List<UpcomingPayment> standingOrders = await context.BankAccounts.OwnedBy(UserId)
+            .SelectMany(static x => x.StandingOrders)
             .Select(x => new UpcomingPayment
             {
                 Amount = x.NextPaymentAmount,
@@ -93,31 +87,27 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
 
         upcomingPayments.AddRange(standingOrders.Where(x => x.PaymentDate > nowUtc));
 
-        List<DirectDebitLite> directDebitItems = await context.IsolateToUser(UserId)
-            .Include(x => x.Providers)!.ThenInclude(x => x.Accounts)!.ThenInclude(x => x.DirectDebits)
-            .SelectMany(x => x.Providers!.SelectMany(c => c.Accounts!).SelectMany(r => r.DirectDebits!))
-            .AsNoTracking()
+        List<DirectDebitLite> directDebitItems = await context.BankAccounts.OwnedBy(UserId)
+            .SelectMany(static x => x.DirectDebits)
             .Select(x => new DirectDebitLite
             {
                 PreviousPaymentAmount = x.PreviousPaymentAmount,
-                PreviousPaymentTimeStamp = x.PreviousPaymentTimeStamp,
+                PreviousPaymentTimeStamp = x.PreviousPaymentDate,
                 Name = x.Name
             })
             .ToListAsync(cancellationToken);
 
         // This feels like a hack but we can only request direct debits once a token is generated every ~90 days
         // Unless we want to use a refresh token every login
-        var currentMonth = nowUtc.Month;
         upcomingPayments.AddRange(directDebitItems
             .Where(x => x.PreviousPaymentAmount != 0)
             .Select(x => new UpcomingPayment
             {
                 Amount = x.PreviousPaymentAmount,
-                PaymentDate = x.PreviousPaymentTimeStamp.AddMonths((currentMonth - x.PreviousPaymentTimeStamp.Month) + 1),
+                PaymentDate = NextMonthlyPaymentAfter(x.PreviousPaymentTimeStamp, nowUtc),
                 PaymentName = x.Name,
                 PaymentType = "Direct Debit"
-            })
-            .Where(x => x.PaymentDate > nowUtc));
+            }));
 
 
         await foreach (UpcomingPayment upcomingPayment in upcomingPayments
@@ -127,5 +117,17 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
         {
             yield return upcomingPayment;
         }
+    }
+
+    /// <summary>
+    /// The first monthly anniversary of <paramref name="previousPayment"/> after <paramref name="now"/>.
+    /// Always offset from the previous payment so short months don't drift the day.
+    /// </summary>
+    private static DateTime NextMonthlyPaymentAfter(DateTime previousPayment, DateTime now)
+    {
+        int monthsSince = ((now.Year - previousPayment.Year) * 12) + now.Month - previousPayment.Month;
+        DateTime next = previousPayment.AddMonths(Math.Max(monthsSince, 0));
+
+        return next > now ? next : previousPayment.AddMonths(Math.Max(monthsSince, 0) + 1);
     }
 }

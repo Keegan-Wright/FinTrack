@@ -6,3 +6,13 @@ riderModule.iml
 /.vs
 /.idea
 /.nuget
+
+# Aspire publish output, the generated .env can contain parameter values
+aspire-output/
+
+# Test run output: TUnit/MTP reports (.trx, .html, .json) and coverage
+TestResults/
+*.trx
+coverage*.xml
+coverage*.json
+*.coverage

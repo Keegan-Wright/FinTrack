@@ -101,18 +101,21 @@ public static class Extensions
         }
     }
 
-    public static WebApplication MapDefaultEndpoints(this WebApplication app)
+    extension(WebApplication app)
     {
-        if (!app.Environment.IsDevelopment())
+        public WebApplication MapDefaultEndpoints()
         {
+            if (!app.Environment.IsDevelopment())
+            {
+                return app;
+            }
+
+            app.MapHealthChecks(HealthEndpointPath);
+
+            app.MapHealthChecks(AlivenessEndpointPath,
+                new HealthCheckOptions { Predicate = r => r.Tags.Contains("live") });
+
             return app;
         }
-
-        app.MapHealthChecks(HealthEndpointPath);
-
-        app.MapHealthChecks(AlivenessEndpointPath,
-            new HealthCheckOptions { Predicate = r => r.Tags.Contains("live") });
-
-        return app;
     }
 }

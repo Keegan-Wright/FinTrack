@@ -16,6 +16,7 @@ public class InjectionCategoryAttributeGenerator : IIncrementalGenerator
                                                      [System.AttributeUsage(System.AttributeTargets.Class)]
                                                      public class {{SourceGeneratorConstants.InjectionCategoryAttributeName}}({{SourceGeneratorConstants.InjectionCategoryEnumName}} Category) : System.Attribute
                                                      {
+                                                         public {{SourceGeneratorConstants.InjectionCategoryEnumName}} Category { get; } = Category;
                                                      }
                                                  }
                                                  """;

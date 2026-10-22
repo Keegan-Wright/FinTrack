@@ -7,6 +7,7 @@
   <Folder Name="/Misc/">
     <File Path=".editorconfig" />
     <File Path=".gitignore" />
+    <File Path="Directory.Packages.props" />
   </Folder>
   <Folder Name="/Misc/Automation/">
     <File Path=".github\workflows\Build.yml" />
@@ -23,12 +24,18 @@
     <Project Path="Src/Generators/FinanceTracker.Generated.Enums/FinanceTracker.Generated.Enums/FinanceTracker.Generated.Enums.csproj" />
     <Project Path="Src\Generators\FinanceTracker.Generated.Shared\FinanceTracker.Generated.Shared.csproj" />
   </Folder>
-  <Folder Name="/Tests/">
-    <Project Path="Test/FinanceTracker.Infrastructure.Tests\FinanceTracker.Infrastructure.Tests.csproj" />
-    <Project Path="Test/FinanceTracker.Tests.Shared/FinanceTracker.Tests.Shared.csproj" />
-    <Project Path="Test/FinanceTracker.Tests/FinanceTracker.Tests.csproj" />
-  </Folder>
+  <Folder Name="/Tests/" />
   <Project Path="Src/FinanceTracker.Infrastructure.Migrations/FinanceTracker.Infrastructure.Migrations.csproj" />
+  <Folder Name="/Tests/Integration/">
+    <Project Path="Test/FinanceTracker.Tests.Integration/FinanceTracker.Tests.Integration.csproj" />
+  </Folder>
+  <Folder Name="/Tests/Unit/">
+    <Project Path="Test/FinanceTracker.Tests.Unit.Shared/FinanceTracker.Tests.Unit.Shared.csproj" />
+    <Project Path="Test\FinanceTracker.Tests.Unit.Domain\FinanceTracker.Tests.Unit.Domain.csproj" />
+    <Project Path="Test\FinanceTracker.Tests.Unit.FinanceTracker\FinanceTracker.Tests.Unit.FinanceTracker.csproj" />
+    <Project Path="Test\FinanceTracker.Tests.Unit.Infrastructure\FinanceTracker.Tests.Unit.Infrastructure.csproj" />
+  </Folder>
+  <Project Path="Src/FinanceTracker.Client/FinanceTracker.Client.csproj" />
   <Project Path="Src/FinanceTracker.Contracts/FinanceTracker.Contracts.csproj" />
   <Project Path="Src/FinanceTracker.Domain/FinanceTracker.Domain.csproj" />
   <Project Path="Src/FinanceTracker/FinanceTracker.csproj" />

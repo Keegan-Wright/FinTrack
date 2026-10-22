@@ -33,4 +33,6 @@ public interface IOpenBankingApiService
 
     Task<ExternalOpenBankingAccountConnectionResponse> GetProviderInformation(string accessToken,
         CancellationToken cancellationToken);
+
+    Task<byte[]> GetProviderLogoAsync(string logoUri, CancellationToken cancellationToken);
 }

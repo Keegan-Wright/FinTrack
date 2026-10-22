@@ -1,13 +1,4 @@
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
-using FinanceTracker.Contracts;
-
-
-using FinanceTracker.Domain;
-
 using FinanceTracker.Infrastructure;
-using FinanceTracker.Infrastructure.OpenBanking;
-
 using Microsoft.EntityFrameworkCore;
 using TickerQ.Utilities.Base;
 using TickerQ.Utilities.Interfaces;
@@ -17,19 +8,16 @@ namespace FinanceTracker.BackgroundJobs;
 
 // ReSharper disable once ClassNeverInstantiated.Global
 // Background job, ignore the warning
-public class SyncAllOpenBankingDetailsAsync : ITickerFunction
+
+/// <summary>
+/// Scheduled sync of every user's connections.
+/// </summary>
+public class SyncAllOpenBankingDetailsAsync : OpenBankingSyncJob, ITickerFunction
 {
-
-    private readonly IDbContextFactory<FinanceTrackerContext> _dbContextFactory;
-    private readonly IOpenBankingService _openBankingService;
-    private readonly IBackgroundSyncService _syncService;
-
-    public SyncAllOpenBankingDetailsAsync(IOpenBankingService openBankingService,
-        IDbContextFactory<FinanceTrackerContext> dbContextFactory, IBackgroundSyncService syncService)
+    public SyncAllOpenBankingDetailsAsync(IServiceScopeFactory scopeFactory,
+        IDbContextFactory<FinanceTrackerContext> dbContextFactory, ISyncNotifier syncNotifier)
+        : base(scopeFactory, dbContextFactory, syncNotifier)
     {
-        _openBankingService = openBankingService;
-        _dbContextFactory = dbContextFactory;
-        _syncService = syncService;
     }
 
     public async Task ExecuteAsync(TickerFunctionContext context,
@@ -37,52 +25,8 @@ public class SyncAllOpenBankingDetailsAsync : ITickerFunction
     {
         context.CronOccurrenceOperations.SkipIfAlreadyRunning();
 
-        using var activity = new ActivitySource("FinanceTracker");
+        IReadOnlySet<Guid> syncedUsers = await SyncConnectionsAsync(static _ => true, cancellationToken);
 
-        using var performingBackgroundSyncActivity = activity.StartActivity();
-
-        await using FinanceTrackerContext dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-        ConfiguredCancelableAsyncEnumerable<FinanceTrackerUser> userQuery = dbContext.Users
-            .Include(x => x.Providers)!
-            .ThenInclude(x => x.Accounts)!
-            .ThenInclude(x => x.Transactions)
-            .Include(x => x.Providers)!.ThenInclude(x => x.Accounts)!.ThenInclude(x => x.AccountBalance)
-            .Include(x => x.Providers)!.ThenInclude(x => x.Scopes)
-            .Include(x => x.Providers)!.ThenInclude(x => x.Syncronisations)
-            .AsSplitQuery()
-            .AsAsyncEnumerable().WithCancellation(cancellationToken);
-
-
-        await foreach (FinanceTrackerUser user in userQuery)
-        {
-            performingBackgroundSyncActivity!.AddEvent(new ActivityEvent($"Processing User {user.Id}"));
-            await _openBankingService.RunFunctionAsUser(user.Id, async () =>
-            {
-                foreach (OpenBankingProvider provider in user.Providers!)
-                {
-                    try
-                    {
-                        performingBackgroundSyncActivity.AddEvent(
-                            new ActivityEvent($"Processing Provider {provider.Id} for User {user.Id}"));
-
-                        await _openBankingService.BulkLoadProviderAsync(provider, SyncTypes.All, cancellationToken);
-
-                        performingBackgroundSyncActivity.AddEvent(
-                            new ActivityEvent($"Finished Processing Provider {provider.Id} for User {user.Id}"));
-                    }
-                    catch (Exception ex)
-                    {
-                        performingBackgroundSyncActivity.AddException(ex);
-                    }
-                }
-
-                performingBackgroundSyncActivity.AddEvent(
-                    new ActivityEvent($"Finished Processing User {user.Id}"));
-            });
-        }
-
-        performingBackgroundSyncActivity?.AddEvent(new ActivityEvent("Background sync completed"));
-
-        await _syncService.NotifySyncComplete();
+        await NotifyAsync(syncedUsers);
     }
 }

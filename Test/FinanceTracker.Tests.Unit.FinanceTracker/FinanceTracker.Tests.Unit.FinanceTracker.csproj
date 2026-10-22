@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+
+  <ItemGroup>
+    <PackageReference Include="NSubstitute"/>
+    <PackageReference Include="TUnit"/>
+  </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\Src\FinanceTracker\FinanceTracker.csproj" />
+      <ProjectReference Include="..\FinanceTracker.Tests.Unit.Shared\FinanceTracker.Tests.Unit.Shared.csproj" />
+    </ItemGroup>
+
+</Project>

@@ -13,12 +13,21 @@ namespace FinanceTracker.Infrastructure.OpenBanking.TrueLayer;
 [Scoped<IOpenBankingApiService>]
 public class TrueLayerOpenBankingApiService : IOpenBankingApiService
 {
+    /// <summary>
+    /// Named <see cref="HttpClient"/> registered for TrueLayer and provider logo requests.
+    /// </summary>
+    public const string HttpClientName = "OpenBankingClient";
+
     private readonly TrueLayerOpenBankingConfiguration _trueLayerOpenBankingConfiguration;
     private readonly IHttpClientFactory _clientFactory;
-    public TrueLayerOpenBankingApiService(TrueLayerOpenBankingConfiguration trueLayerOpenBankingConfiguration, IHttpClientFactory clientFactory)
+    private readonly TimeProvider _timeProvider;
+
+    public TrueLayerOpenBankingApiService(TrueLayerOpenBankingConfiguration trueLayerOpenBankingConfiguration,
+        IHttpClientFactory clientFactory, TimeProvider timeProvider)
     {
         _trueLayerOpenBankingConfiguration = trueLayerOpenBankingConfiguration;
         _clientFactory = clientFactory;
+        _timeProvider = timeProvider;
     }
 
 
@@ -56,7 +65,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
 
         List<KeyValuePair<string, string>> formData =
         [
-            new("grant_type", "authorization_code"),
+            new("grant_type", "refresh_token"),
             new("client_id", _trueLayerOpenBankingConfiguration.ClientId),
             new("client_secret",
                 _trueLayerOpenBankingConfiguration.ClientSecret.ToString()),
@@ -119,7 +128,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
 
         if (transactionsStartingDate.HasValue)
         {
-            urlBuilder.Append(CultureInfo.CurrentCulture, $"?from={transactionsStartingDate:yyyy-MM-dd}&to={DateTime.Now:yyyy-MM-dd}");
+            urlBuilder.Append(CultureInfo.CurrentCulture, $"?from={transactionsStartingDate:yyyy-MM-dd}&to={_timeProvider.GetLocalNow():yyyy-MM-dd}");
         }
 
         HttpResponseMessage response = await httpClient.GetAsync(urlBuilder.ToString(), cancellationToken);
@@ -145,7 +154,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
 
         if (transactionsStartingDate.HasValue)
         {
-            urlBuilder.Append(CultureInfo.CurrentCulture, $"?from={transactionsStartingDate:yyyy-MM-dd}&to={DateTime.Now:yyyy-MM-dd}");
+            urlBuilder.Append(CultureInfo.CurrentCulture, $"?from={transactionsStartingDate:yyyy-MM-dd}&to={_timeProvider.GetLocalNow():yyyy-MM-dd}");
         }
 
         HttpResponseMessage response = await httpClient.GetAsync(urlBuilder.ToString(), cancellationToken);
@@ -262,9 +271,17 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         return responseBody!;
     }
 
+    public async Task<byte[]> GetProviderLogoAsync(string logoUri, CancellationToken cancellationToken)
+    {
+        // Logos are public assets on their own host, no base address or auth headers
+        using HttpClient httpClient = _clientFactory.CreateClient(HttpClientName);
+
+        return await httpClient.GetByteArrayAsync(logoUri, cancellationToken);
+    }
+
     private async Task<HttpClient> BuildHttpClient(Uri baseUrl, string? authHeader = null)
     {
-        var httpClient = _clientFactory.CreateClient("OpenBankingClient");
+        HttpClient httpClient = _clientFactory.CreateClient(HttpClientName);
         httpClient.BaseAddress = baseUrl;
 
         if (!string.IsNullOrEmpty(authHeader))
