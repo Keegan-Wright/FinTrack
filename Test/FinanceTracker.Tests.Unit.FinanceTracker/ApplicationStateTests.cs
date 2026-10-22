@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using FinanceTracker.Client;
 
 namespace FinanceTracker.Tests.Unit.FinanceTracker;
 

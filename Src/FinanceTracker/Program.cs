@@ -1,4 +1,5 @@
 using FinanceTracker.AppHost.ServiceDefaults;
+using FinanceTracker.Client;
 using FinanceTracker.Components;
 using FinanceTracker.Components.Account;
 using FinanceTracker.Extensions;
@@ -62,7 +63,8 @@ public partial class Program
         app.UseTickerQ();
         app.MapStaticAssets();
         app.MapRazorComponents<App>()
-            .AddInteractiveServerRenderMode();
+            .AddInteractiveServerRenderMode()
+            .AddAdditionalAssemblies(typeof(ApplicationState).Assembly);
 
         app.UseOutputCache();
         app.MapAdditionalIdentityEndpoints();

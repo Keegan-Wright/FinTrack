@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.OpenBanking;
+using FinanceTracker.Contracts.Services;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Domain.OpenBanking.Transactions;
@@ -16,7 +17,8 @@ namespace FinanceTracker.Infrastructure.OpenBanking;
 
 [InjectionCategory(InjectionCategoryType.Service)]
 [Scoped<IOpenBankingService>]
-public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingService
+[Scoped<IOpenBankingSyncService>]
+public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingService, IOpenBankingSyncService
 {
 
     private static readonly TimeSpan TransactionSyncOverlap = TimeSpan.FromDays(7);
@@ -35,14 +37,14 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
 
     private DateTime UtcNow => _timeProvider.GetUtcNow().UtcDateTime;
 
-    public async IAsyncEnumerable<ExternalOpenBankingProvider> GetOpenBankingProvidersForClientAsync(
+    public async IAsyncEnumerable<OpenBankingProvider> GetOpenBankingProvidersForClientAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await foreach (ExternalOpenBankingProvider provider in _openBankingApiService
                            .GetAvailableProvidersAsync(cancellationToken)
                            .OrderBy(static x => x.DisplayName).WithCancellation(cancellationToken))
         {
-            yield return provider;
+            yield return await provider.ToContractAsync(cancellationToken);
         }
     }
 

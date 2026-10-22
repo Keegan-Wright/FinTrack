@@ -199,12 +199,22 @@ public class ServiceInjectionGenerator : IIncrementalGenerator
             {
                 case INamedTypeSymbol { TypeKind: TypeKind.Class, IsAbstract: false } typeSymbol:
                 {
-                    (bool hasServiceLevel, string serviceLevel, string serviceType) = GetServiceLevelAttribute(typeSymbol);
                     (bool hasCategory, string category) = GetCategoryAttribute(typeSymbol);
 
-                    if (hasServiceLevel && hasCategory && !string.IsNullOrWhiteSpace(serviceType))
+                    if (hasCategory)
                     {
-                        typesToInject.Add((typeSymbol, serviceLevel, serviceType, category));
+                        // A class can be registered as several services, one attribute each
+                        foreach ((string serviceLevel, string serviceType) in GetServiceLevelAttributes(typeSymbol))
+                        {
+                            typesToInject.Add((typeSymbol, serviceLevel, serviceType, category));
+                        }
+                    }
+                    else if (GetValidatedType(typeSymbol) is { } validatedType)
+                    {
+                        // Validators are found by base type rather than attributes, so projects without the
+                        // generators (Contracts, shared with the front end) can declare them
+                        typesToInject.Add((typeSymbol, "Scoped", $"FluentValidation.IValidator<{validatedType}>",
+                            "Validator"));
                     }
 
                     break;
@@ -216,37 +226,46 @@ public class ServiceInjectionGenerator : IIncrementalGenerator
         }
     }
 
-    private static (bool HasAttribute, string ServiceLevel, string ServiceType) GetServiceLevelAttribute(
+    private static IEnumerable<(string ServiceLevel, string ServiceType)> GetServiceLevelAttributes(
         INamedTypeSymbol typeSymbol)
     {
         foreach (AttributeData? attribute in typeSymbol.GetAttributes())
         {
             string attributeName = attribute.AttributeClass?.Name ?? string.Empty;
 
-            if (attributeName.StartsWith(SourceGeneratorConstants.ScopedAttributeName, StringComparison.Ordinal))
-            {
-                string serviceType = GetGenericArgumentFromAttribute(attribute);
-                return (true, "Scoped", serviceType);
-            }
+            string? serviceLevel =
+                attributeName.StartsWith(SourceGeneratorConstants.ScopedAttributeName, StringComparison.Ordinal)
+                    ? "Scoped"
+                    : attributeName.StartsWith(SourceGeneratorConstants.TransientAttributeName, StringComparison.Ordinal)
+                        ? "Transient"
+                        : attributeName.StartsWith(SourceGeneratorConstants.SingletonAttributeName, StringComparison.Ordinal)
+                            ? "Singleton"
+                            : null;
 
-            if (attributeName.StartsWith(SourceGeneratorConstants.TransientAttributeName, StringComparison.Ordinal))
-            {
-                string serviceType = GetGenericArgumentFromAttribute(attribute);
-                return (true, "Transient", serviceType);
-            }
+            string serviceType = GetGenericArgumentFromAttribute(attribute);
 
-            if (!attributeName.StartsWith(SourceGeneratorConstants.SingletonAttributeName, StringComparison.Ordinal))
+            if (serviceLevel is not null && !string.IsNullOrWhiteSpace(serviceType))
             {
-                continue;
+                yield return (serviceLevel, serviceType);
             }
+        }
+    }
 
+    /// <summary>
+    /// The <c>T</c> of a FluentValidation <c>AbstractValidator&lt;T&gt;</c> the class derives from, if it does.
+    /// </summary>
+    private static string? GetValidatedType(INamedTypeSymbol typeSymbol)
+    {
+        for (INamedTypeSymbol? baseType = typeSymbol.BaseType; baseType is not null; baseType = baseType.BaseType)
+        {
+            if (baseType is { IsGenericType: true, TypeArguments.Length: 1 } &&
+                baseType.OriginalDefinition.ToDisplayString() == "FluentValidation.AbstractValidator<T>")
             {
-                string serviceType = GetGenericArgumentFromAttribute(attribute);
-                return (true, "Singleton", serviceType);
+                return baseType.TypeArguments[0].ToDisplayString();
             }
         }
 
-        return (false, string.Empty, string.Empty);
+        return null;
     }
 
     private static (bool HasAttribute, string Category) GetCategoryAttribute(INamedTypeSymbol typeSymbol)

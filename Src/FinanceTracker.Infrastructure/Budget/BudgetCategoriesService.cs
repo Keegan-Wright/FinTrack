@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using FinanceTracker.Contracts.Budget;
+using FinanceTracker.Contracts.Services;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using Microsoft.EntityFrameworkCore;

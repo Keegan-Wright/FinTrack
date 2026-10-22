@@ -57,10 +57,10 @@ public abstract class OpenBankingSyncJob
                 // Each connection syncs in its own scope acting as its owner, so services resolve that user and
                 // nothing carries over from the previous connection
                 await using AsyncServiceScope scope = _scopeFactory.CreateUserScope(userId);
-                IOpenBankingService openBankingService =
-                    scope.ServiceProvider.GetRequiredService<IOpenBankingService>();
+                IOpenBankingSyncService openBankingSyncService =
+                    scope.ServiceProvider.GetRequiredService<IOpenBankingSyncService>();
 
-                await openBankingService.SyncConnectionAsync(connectionId, SyncTypes.All, cancellationToken);
+                await openBankingSyncService.SyncConnectionAsync(connectionId, SyncTypes.All, cancellationToken);
 
                 performingBackgroundSyncActivity?.AddEvent(
                     new ActivityEvent($"Finished Processing Connection {connectionId} for User {userId}"));

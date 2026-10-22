@@ -1,0 +1,91 @@
+@* The dashboard's list of accounts and balances. *@
+@using System.Globalization
+@using FinanceTracker.Contracts.Account
+
+<MudCard>
+    <MudCardContent>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween"
+                  Class="mb-2 flex-wrap">
+            <MudText Typo="Typo.subtitle1">Accounts snapshot</MudText>
+            <MudText Typo="Typo.caption">Balances and most recent activity</MudText>
+        </MudStack>
+
+        @if (Accounts.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Color="Color.Secondary">No accounts connected yet.</MudText>
+        }
+        else
+        {
+            <MudGrid Spacing="3">
+                @foreach (var a in Accounts.OrderByDescending(static x => x.AccountBalance))
+                {
+                    <MudItem xs="12" md="6" lg="4">
+                        <MudCard>
+                            <MudCardHeader>
+                                <CardHeaderAvatar>
+                                    <MudAvatar Square="true"
+                                               Style="width: 40px; height: 40px; background-color: transparent;">
+                                        <MudImage
+                                            Src="@($"data:image/svg+xml;base64, {Convert.ToBase64String(a.Logo)}")"/>
+                                    </MudAvatar>
+                                </CardHeaderAvatar>
+                                <CardHeaderContent>
+                                    <MudText Typo="Typo.subtitle1">@a.AccountName</MudText>
+                                    <MudText Typo="Typo.caption"
+                                             Color="Color.Secondary">@a.AccountType</MudText>
+                                </CardHeaderContent>
+                            </MudCardHeader>
+                            <MudCardContent>
+                                <MudGrid Justify="Justify.SpaceBetween" Class="mb-2">
+                                    <MudItem>
+                                        <MudText Typo="Typo.caption">Current</MudText>
+                                        <MudText
+                                            Typo="Typo.h6">@CurrencyFormatter.Format(a.AccountBalance)</MudText>
+                                    </MudItem>
+                                    <MudItem Class="text-right">
+                                        <MudText Typo="Typo.caption">Available</MudText>
+                                        <MudText Typo="Typo.h6"
+                                                 Color="Color.Secondary">@CurrencyFormatter.Format(a.AvailableBalance)</MudText>
+                                    </MudItem>
+                                </MudGrid>
+
+                                @if (a.Transactions is not null && a.Transactions.Any())
+                                {
+                                    <MudDivider Class="my-2"/>
+                                    <MudList T="AccountTransaction" Dense="true">
+                                        @foreach (var t in a.Transactions.OrderByDescending(static x => x.Time))
+                                        {
+                                            <MudListItem T="AccountTransaction">
+                                                <MudStack Row="true" AlignItems="AlignItems.Center"
+                                                          Justify="Justify.SpaceBetween" Class="w-100">
+                                                    <MudStack Spacing="0" Class="min-w-0">
+                                                        <MudText Typo="Typo.body2"
+                                                                 Class="text-truncate">@t.Description</MudText>
+                                                        <MudText Typo="Typo.caption"
+                                                                 Color="Color.Secondary">
+                                                            @t.Time.ToLocalTime().ToString("d MMM", CultureInfo.CurrentCulture) · @t.Status
+                                                        </MudText>
+                                                    </MudStack>
+                                                    <MudText Typo="Typo.body2" Class="ml-2"
+                                                             Color="@(t.Amount < 0 ? Color.Error : Color.Success)">
+                                                        @CurrencyFormatter.Format(t.Amount)
+                                                    </MudText>
+                                                </MudStack>
+                                            </MudListItem>
+                                        }
+                                    </MudList>
+                                }
+                            </MudCardContent>
+                        </MudCard>
+                    </MudItem>
+                }
+            </MudGrid>
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+
+    [Parameter, EditorRequired] public IReadOnlyList<AccountAndTransactions> Accounts { get; set; } = [];
+
+}

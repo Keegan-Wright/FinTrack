@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using FinanceTracker.Contracts.Classifications;
+using FinanceTracker.Contracts.Services;
 using FinanceTracker.Domain.Classifications;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Generated.Attributes;

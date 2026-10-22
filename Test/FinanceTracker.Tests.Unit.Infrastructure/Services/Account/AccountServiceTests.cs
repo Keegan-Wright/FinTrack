@@ -1,5 +1,6 @@
 using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.Account;
+using FinanceTracker.Contracts.Services;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Infrastructure.Account;

@@ -13,7 +13,7 @@ public class SingletonAttributeGenerator : IIncrementalGenerator
 
                                                  namespace {{SourceGeneratorConstants.GeneratedNamespace}}.Attributes
                                                  {
-                                                     [System.AttributeUsage(System.AttributeTargets.Class)]
+                                                     [System.AttributeUsage(System.AttributeTargets.Class, AllowMultiple = true)]
                                                      public class {{SourceGeneratorConstants.SingletonAttributeName}}<TServiceInterface> : System.Attribute
                                                      {
                                                      }

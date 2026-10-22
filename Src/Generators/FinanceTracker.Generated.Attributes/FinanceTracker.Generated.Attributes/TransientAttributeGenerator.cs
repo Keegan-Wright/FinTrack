@@ -13,7 +13,7 @@ public class TransientAttributeGenerator : IIncrementalGenerator
 
                                                  namespace {{SourceGeneratorConstants.GeneratedNamespace}}
                                                  {
-                                                     [System.AttributeUsage(System.AttributeTargets.Class)]
+                                                     [System.AttributeUsage(System.AttributeTargets.Class, AllowMultiple = true)]
                                                      public class {{SourceGeneratorConstants.TransientAttributeName}}<TServiceInterface> : System.Attribute
                                                      {
                                                      }

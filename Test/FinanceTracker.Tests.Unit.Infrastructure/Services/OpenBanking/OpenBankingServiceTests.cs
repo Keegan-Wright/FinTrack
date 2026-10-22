@@ -43,11 +43,47 @@ public class OpenBankingServiceTests : InfrastructureTestBase
         OpenBankingService subject = BuildSubject();
 
         // Act
-        List<ExternalOpenBankingProvider> providers = await subject
+        List<OpenBankingProvider> providers = await subject
             .GetOpenBankingProvidersForClientAsync(CancellationToken).ToListAsync(CancellationToken);
 
         // Assert
         await Assert.That(string.Join(",", providers.Select(x => x.DisplayName))).IsEqualTo("Alpha,Mid,Zeta");
+    }
+
+    [Test]
+    public async Task GetOpenBankingProvidersForClientAsync_MapsProviderDetailsAndScopes()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username));
+        _api.GetAvailableProvidersAsync(CancellationToken).Returns(new[]
+        {
+            new ExternalOpenBankingProvider
+            {
+                ProviderId = "uk-ob-bank",
+                DisplayName = "Bank",
+                Country = "gb",
+                LogoUrl = "https://example.com/bank.svg",
+                Scopes = new[] { "accounts", "transactions" }.ToAsyncEnumerable()
+            },
+            new ExternalOpenBankingProvider { DisplayName = "No scopes" }
+        }.ToAsyncEnumerable());
+
+        OpenBankingService subject = BuildSubject();
+
+        // Act
+        List<OpenBankingProvider> providers = await subject
+            .GetOpenBankingProvidersForClientAsync(CancellationToken).ToListAsync(CancellationToken);
+
+        // Assert
+        OpenBankingProvider bank = providers.Single(x => x.DisplayName == "Bank");
+        using (Assert.Multiple())
+        {
+            await Assert.That(bank.ProviderId).IsEqualTo("uk-ob-bank");
+            await Assert.That(bank.Country).IsEqualTo("gb");
+            await Assert.That(bank.LogoUrl).IsEqualTo("https://example.com/bank.svg");
+            await Assert.That(bank.Scopes).IsEquivalentTo(["accounts", "transactions"]);
+            await Assert.That(providers.Single(x => x.DisplayName == "No scopes").Scopes).IsEmpty();
+        }
     }
 
     [Test]
@@ -61,7 +97,7 @@ public class OpenBankingServiceTests : InfrastructureTestBase
         OpenBankingService subject = BuildSubject();
 
         // Act
-        List<ExternalOpenBankingProvider> providers = await subject
+        List<OpenBankingProvider> providers = await subject
             .GetOpenBankingProvidersForClientAsync(CancellationToken).ToListAsync(CancellationToken);
 
         // Assert

@@ -19,7 +19,7 @@ public abstract class OpenBankingSyncJobTestBase : InfrastructureTestBase
     /// </summary>
     private ICurrentUser? _resolvedFor;
 
-    protected IOpenBankingService OpenBankingService { get; } = Substitute.For<IOpenBankingService>();
+    protected IOpenBankingSyncService OpenBankingService { get; } = Substitute.For<IOpenBankingSyncService>();
     protected ISyncNotifier SyncNotifier { get; } = Substitute.For<ISyncNotifier>();
 
     /// <summary>

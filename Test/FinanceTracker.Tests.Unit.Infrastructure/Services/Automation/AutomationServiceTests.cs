@@ -1,6 +1,7 @@
 using FinanceTracker.Contracts.Automation;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Infrastructure.Automation;
+using FinanceTracker.Infrastructure.OpenBanking;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -18,6 +19,8 @@ public class AutomationServiceTests : InfrastructureTestBase
 
     private readonly ICronTickerManager<CronTickerEntity> _cronTickerManager =
         Substitute.For<ICronTickerManager<CronTickerEntity>>();
+
+    private readonly IOpenBankingSyncScheduler _syncScheduler = Substitute.For<IOpenBankingSyncScheduler>();
 
     [Test]
     public async Task GetJobsAsync_ReturnsPersistedCronDefinitions()
@@ -186,6 +189,22 @@ public class AutomationServiceTests : InfrastructureTestBase
         await Assert.That(lastSync).IsEqualTo(mine.ToLocalTime());
     }
 
+    [Test]
+    public async Task RequestSyncAsync_SchedulesASyncForTheCurrentUser()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.UserScenario.WithUser(OtherUsername));
+
+        AutomationService subject = BuildSubject();
+
+        // Act
+        await subject.RequestSyncAsync(CancellationToken);
+
+        // Assert
+        await _syncScheduler.Received(1).ScheduleUserSyncAsync(Scenario.UserMappings[Username], CancellationToken);
+    }
+
     private AutomationService BuildSubject() => new(CurrentUserFor(Username), DbContextFactory,
-        NullLogger<AutomationService>.Instance, _cronTickerManager, Substitute.For<ITimeTickerManager<TimeTickerEntity>>());
+        NullLogger<AutomationService>.Instance, _cronTickerManager, _syncScheduler);
 }

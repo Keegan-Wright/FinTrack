@@ -1,0 +1,117 @@
+@page "/ProviderSetup"
+@* Connects banks: pick providers, consent on the provider's page, then paste back the access code
+   (IOpenBankingService). *@
+@using System.Collections.Immutable
+@using FinanceTracker.Contracts.OpenBanking
+@using Microsoft.AspNetCore.Authorization
+@inherits PageComponent
+
+@attribute [Authorize]
+
+@inject ISnackbar Snackbar
+@inject IOpenBankingService OpenBankingService
+
+<PageTitle>Provider Setup</PageTitle>
+
+<MudDataGrid T="OpenBankingProvider" Items="OpenBankingProviders"
+             MultiSelection="true"
+             SortMode="SortMode.Multiple"
+             Filterable="true"
+             QuickFilter="@QuickFilter"
+             Hideable="true"
+             Hover="true"
+             RowsPerPage="10"
+             SelectedItemsChanged="SelectedItemsChanged">
+    <ToolBarContent>
+        <MudText Typo="Typo.h6">Providers</MudText>
+        <MudSpacer/>
+        <MudTextField @bind-Value="_searchString" Placeholder="Search" Adornment="Adornment.Start" Immediate="true"
+                      AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+    </ToolBarContent>
+    <Columns>
+        <SelectColumn Class="col-1" T="OpenBankingProvider" HeaderStyle="width: 2rem"/>
+        <TemplateColumn HeaderStyle="width: 10rem">
+            <HeaderTemplate>
+                <MudText>Logo</MudText>
+            </HeaderTemplate>
+            <CellTemplate>
+                <MudImage Src="@context.Item?.LogoUrl" Fluid="true"></MudImage>
+            </CellTemplate>
+        </TemplateColumn>
+        <PropertyColumn Property="x => x.DisplayName" Title="Name" Sortable="true" Filterable="true"/>
+        <PropertyColumn Property="x => x.Country.ToUpper()" Title="Country" Sortable="true" Filterable="true"/>
+    </Columns>
+    <PagerContent>
+        <MudDataGridPager T="OpenBankingProvider"/>
+    </PagerContent>
+</MudDataGrid>
+
+@if (!string.IsNullOrEmpty(_openBankingAuthUrl))
+{
+    <MudStack>
+        <MudText Typo="Typo.body1">Open the below link to add your providers</MudText>
+        <MudLink Href="@_openBankingAuthUrl" Typo="Typo.body2" Target="_blank">Provider Setup</MudLink>
+    </MudStack>
+
+    <MudStack>
+        <MudTextField T="string" Placeholder="Access Code" @bind-Value="_vendorAccessToken"/>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" onClick="@AddProviderAsync">Add Provider</MudButton>
+    </MudStack>
+}
+
+@code {
+
+    private List<OpenBankingProvider> OpenBankingProviders { get; } = [];
+    private string _searchString = string.Empty;
+    private string _openBankingAuthUrl = string.Empty;
+    private string _vendorAccessToken = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        SetLoadingState(true, "Loading Providers");
+        await foreach (var provider in OpenBankingService.GetOpenBankingProvidersForClientAsync(_cts.Token))
+        {
+            OpenBankingProviders.Add(provider);
+        }
+
+        SetLoadingState(false);
+    }
+
+    private Func<OpenBankingProvider, bool> QuickFilter =>
+        x => string.IsNullOrWhiteSpace(_searchString) || x.DisplayName.Contains(_searchString, StringComparison.OrdinalIgnoreCase);
+
+    void SelectedItemsChanged(HashSet<OpenBankingProvider> selectedProviders)
+    {
+        var requestModel = new ProviderSetupUrl
+        {
+            ProviderIds = selectedProviders.Select(x => x.ProviderId).ToImmutableList(),
+            Scopes = selectedProviders.SelectMany(x => x.Scopes).ToImmutableList()
+        };
+
+        _openBankingAuthUrl = OpenBankingService.BuildAuthUrl(requestModel);
+    }
+
+    async Task AddProviderAsync()
+    {
+        SetLoadingState(true, "Adding Provider");
+
+        var requestModel = new AddVendor
+        {
+            AccessCode = _vendorAccessToken
+        };
+
+        var response = await OpenBankingService.AddVendorViaAccessCodeAsync(requestModel ,_cts.Token);
+
+        SetLoadingState(false);
+        if (response)
+        {
+            Snackbar.Add("Provider Added", Severity.Success);
+        }
+        else
+        {
+            Snackbar.Add("Error occured", Severity.Error);
+        }
+    }
+
+}

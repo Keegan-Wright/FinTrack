@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using FinanceTracker.Contracts.Dashboard;
+using FinanceTracker.Contracts.Services;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;

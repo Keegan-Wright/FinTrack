@@ -1,0 +1,47 @@
+@* Asks for a new household member's name and income, validated as you type. *@
+@using FinanceTracker.Contracts.HouseholdMember
+@using FinanceTracker.Client.Extensions
+@using FluentValidation
+@inject IValidator<AddHouseholdMember> Validator
+
+<DialogBase TResponse="AddHouseholdMember" Title="Add Household member" ResponseConstructor="BuildResponseModel">
+    <Content>
+        <MudForm @ref="_form" Model="@_model">
+            <MudGrid>
+                <MudItem xs="6">
+                    <MudTextField @bind-Value="_model.FirstName" Label="First Name" Placeholder="First Name"
+                                  For="@(() => _model.FirstName)"
+                                  Validation="@(Validator.ValidateValue(_model, nameof(AddHouseholdMember.FirstName)))"
+                                  Immediate="true"></MudTextField>
+                </MudItem>
+                <MudItem xs="6">
+                    <MudTextField @bind-Value="_model.LastName" Label="Last Name" Placeholder="Last Name"
+                                  For="@(() => _model.LastName)"
+                                  Validation="@(Validator.ValidateValue(_model, nameof(AddHouseholdMember.LastName)))"
+                                  Immediate="true"></MudTextField>
+                </MudItem>
+                <MudItem xs="6">
+                    <MudTextField T="decimal" @bind-Value="_model.Income" Label="Income" Placeholder="Income"
+                                  For="@(() => _model.Income)"
+                                  Validation="@(Validator.ValidateValue(_model, nameof(AddHouseholdMember.Income)))"
+                                  Immediate="true"></MudTextField>
+                </MudItem>
+            </MudGrid>
+        </MudForm>
+    </Content>
+</DialogBase>
+
+@code {
+
+    private MudForm _form = null!;
+    private AddHouseholdMember _model = new() { FirstName = string.Empty, LastName = string.Empty, Income = 0 };
+
+    private async Task<AddHouseholdMember?> BuildResponseModel()
+    {
+        await _form.ValidateAsync();
+        if (!_form.IsValid) return null;
+
+        return _model;
+    }
+
+}

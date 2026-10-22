@@ -1,5 +1,5 @@
 using FinanceTracker.Contracts.Auth;
-using FinanceTracker.Infrastructure.Validation;
+using FinanceTracker.Contracts.Validation;
 using FinanceTracker.Tests.Unit.Shared;
 using FluentValidation.Results;
 using TUnit.Assertions;

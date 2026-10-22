@@ -1,7 +1,9 @@
 using System.Runtime.CompilerServices;
 using FinanceTracker.Contracts.Automation;
+using FinanceTracker.Contracts.Services;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
+using FinanceTracker.Infrastructure.OpenBanking;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using TickerQ.Utilities.Entities;
@@ -15,14 +17,14 @@ public class AutomationService :  ServiceBase<AutomationService>, IAutomationSer
 {
 
     private readonly ICronTickerManager<CronTickerEntity> _cronTickerManager;
-    private readonly ITimeTickerManager<TimeTickerEntity> _timeTickerManager;
+    private readonly IOpenBankingSyncScheduler _syncScheduler;
 
     public AutomationService(ICurrentUser currentUser,
-        IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<AutomationService> logger, ICronTickerManager<CronTickerEntity> cronTickerManager, ITimeTickerManager<TimeTickerEntity> timeTickerManager) : base(currentUser,
+        IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<AutomationService> logger, ICronTickerManager<CronTickerEntity> cronTickerManager, IOpenBankingSyncScheduler syncScheduler) : base(currentUser,
         financeTrackerContextFactory, logger)
     {
         _cronTickerManager = cronTickerManager;
-        _timeTickerManager = timeTickerManager;
+        _syncScheduler = syncScheduler;
     }
 
     public async IAsyncEnumerable<AutomationCron> GetJobsAsync([EnumeratorCancellation] CancellationToken cancellationToken)
@@ -50,9 +52,6 @@ public class AutomationService :  ServiceBase<AutomationService>, IAutomationSer
         return true;
     }
 
-    /// <summary>
-    /// When any of the user's accounts last synced from the sync log
-    /// </summary>
     public async Task<DateTime?> GetLastSyncTimeAsync(CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context = await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
@@ -63,4 +62,8 @@ public class AutomationService :  ServiceBase<AutomationService>, IAutomationSer
 
         return lastSync?.ToLocalTime();
     }
+
+    // The user comes from the scope, never the page, so nobody can queue a sync of someone else's connections
+    public Task RequestSyncAsync(CancellationToken cancellationToken) =>
+        _syncScheduler.ScheduleUserSyncAsync(UserId, cancellationToken);
 }

@@ -1,3 +1,4 @@
+using FinanceTracker.Contracts.OpenBanking;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Infrastructure.OpenBanking.TrueLayer.Contracts;
@@ -5,7 +6,7 @@ using FinanceTracker.Infrastructure.OpenBanking.TrueLayer.Contracts;
 namespace FinanceTracker.Infrastructure.OpenBanking.TrueLayer;
 
 /// <summary>
-/// Translates TrueLayer payloads into domain details. Timestamps are normalised to UTC.
+/// Translates TrueLayer payloads into domain details and contracts. Timestamps are normalised to UTC.
 /// </summary>
 internal static class TrueLayerMappings
 {
@@ -57,6 +58,21 @@ internal static class TrueLayerMappings
                 isPending,
                 classifications);
         }
+    }
+
+    extension(ExternalOpenBankingProvider provider)
+    {
+        /// <summary>
+        /// The bank as pages see it, so TrueLayer's payload stays on the server.
+        /// </summary>
+        public async Task<OpenBankingProvider> ToContractAsync(CancellationToken cancellationToken) => new()
+        {
+            ProviderId = provider.ProviderId,
+            DisplayName = provider.DisplayName,
+            Country = provider.Country,
+            LogoUrl = provider.LogoUrl,
+            Scopes = provider.Scopes is null ? [] : await provider.Scopes.ToListAsync(cancellationToken)
+        };
     }
 
     /// <summary>

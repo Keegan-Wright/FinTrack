@@ -1,6 +1,8 @@
 ﻿@using FinanceTracker.Components.Account.Shared
-@using FinanceTracker.Components.Layout
-<Router AppAssembly="typeof(Program).Assembly">
+@using FinanceTracker.Client
+@using FinanceTracker.Client.Layout
+@* Identity pages are in this assembly, every other page is in the client's *@
+<Router AppAssembly="typeof(Program).Assembly" AdditionalAssemblies="[typeof(ApplicationState).Assembly]">
     <Found Context="routeData">
         <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(MainLayout)">
             <NotAuthorized>
