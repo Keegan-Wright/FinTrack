@@ -5,7 +5,6 @@
 @using System.Globalization
 @using FinanceTracker.Client.Components.Dialogs
 @using FinanceTracker.Client.Components.Transactions
-@using FinanceTracker.Contracts
 @using FinanceTracker.Contracts.Classifications
 @using FinanceTracker.Contracts.Transactions
 @using Microsoft.AspNetCore.Authorization
@@ -21,11 +20,11 @@
 <PageTitle>Transactions</PageTitle>
 
 <TransactionFilters
-    TransactionTagFilterItems="@_transactionTagFilterItems"
-    AccountFilterItems="@_accountFilterItems"
-    CategoryFilterItems="@_categoryFilterItems"
-    ProviderFilterItems="@_providerFilterItems"
-    TransactionTypeFilterItems="@_transactionTypeFilterItems"
+    TransactionTagFilterItems="@Filters.Tags"
+    AccountFilterItems="@Filters.Accounts"
+    CategoryFilterItems="@Filters.Categories"
+    ProviderFilterItems="@Filters.Providers"
+    TransactionTypeFilterItems="@Filters.Types"
     SearchTerm="@_searchTerm"
     SearchTransactions="SearchTransactionsAsync"></TransactionFilters>
 
@@ -88,11 +87,12 @@
 
 @code {
 
-    private readonly List<TransactionAccountFilter> _accountFilterItems = [];
-    private readonly List<TransactionCategoryFilter> _categoryFilterItems = [];
-    private readonly List<TransactionProviderFilter> _providerFilterItems = [];
-    private readonly List<TransactionTypeFilter> _transactionTypeFilterItems = [];
-    private readonly List<TransactionTagFilter> _transactionTagFilterItems = [];
+    /// <summary>
+    /// The filter bar's options, loaded once, see <see cref="PageComponent.LoadOnceAsync{T}"/>.
+    /// </summary>
+    [PersistentState]
+    public TransactionFilterOptions? FilterOptions { get; set; }
+
     private readonly List<Transaction> _transactions = [];
     private readonly string _searchTerm = string.Empty;
 
@@ -103,10 +103,11 @@
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
-        SetLoadingState(true, "Loading filters");
-        await LoadFilterItemsAsync();
-        SetLoadingState(false);
+        FilterOptions = await LoadOnceAsync(FilterOptions, "Loading filters",
+            cancellationToken => TransactionFilterOptions.LoadAsync(TransactionsService, cancellationToken));
     }
+
+    private TransactionFilterOptions Filters => FilterOptions ?? TransactionFilterOptions.None;
 
     private async Task SearchTransactionsAsync(TransactionFilters.ActiveTransactionFilters filters)
     {
@@ -124,40 +125,12 @@
             Tags = filters.TransactionTags.ToImmutableList()
         };
 
-        await foreach (var transaction in TransactionsService.GetAllTransactionsAsync(transactionRequest, SyncTypes.All, _cts.Token))
+        await foreach (var transaction in TransactionsService.GetAllTransactionsAsync(transactionRequest, _cts.Token))
         {
             _transactions.Add(transaction);
         }
 
         SetLoadingState(false);
-    }
-
-    private async Task LoadFilterItemsAsync()
-    {
-        await foreach (var account in TransactionsService.GetAccountsForTransactionFiltersAsync(SyncTypes.All, _cts.Token))
-        {
-            _accountFilterItems.Add(account);
-        }
-
-        await foreach (var category in TransactionsService.GetCategoriesForTransactionFiltersAsync(_cts.Token))
-        {
-            _categoryFilterItems.Add(category);
-        }
-
-        await foreach (var provider in TransactionsService.GetProvidersForTransactionFiltersAsync(_cts.Token))
-        {
-            _providerFilterItems.Add(provider);
-        }
-
-        await foreach (var type in TransactionsService.GetTypesForTransactionFiltersAsync(_cts.Token))
-        {
-            _transactionTypeFilterItems.Add(type);
-        }
-
-        await foreach (var tag in TransactionsService.GetTagsForTransactionFiltersAsync(_cts.Token))
-        {
-            _transactionTagFilterItems.Add(tag);
-        }
     }
 
     private Func<Transaction, bool> TransactionsQuickFilter =>

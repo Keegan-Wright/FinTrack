@@ -52,10 +52,11 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
 
         HttpResponseMessage response = await httpClient.PostAsync("connect/token", content, cancellationToken);
 
-        ExternalOpenBankingAccessResponse? responseBody =
-            await response.Content.ReadFromJsonAsync<ExternalOpenBankingAccessResponse>(cancellationToken);
+        // A rejected or expired code comes back as an error body, fail here rather than on its missing tokens later
+        response.EnsureSuccessStatusCode();
 
-        return responseBody!;
+        return await response.Content.ReadFromJsonAsync<ExternalOpenBankingAccessResponse>(cancellationToken)
+               ?? throw new InvalidOperationException("The provider returned no tokens for the access code.");
     }
 
     public async Task<ExternalOpenBankingAccessResponse> GetAccessTokenByRefreshTokenAsync(string refreshToken,
@@ -76,10 +77,11 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
 
         HttpResponseMessage response = await httpClient.PostAsync("connect/token", content, cancellationToken);
 
-        ExternalOpenBankingAccessResponse? responseBody =
-            await response.Content.ReadFromJsonAsync<ExternalOpenBankingAccessResponse>(cancellationToken);
+        // A rejected or expired code comes back as an error body, fail here rather than on its missing tokens later
+        response.EnsureSuccessStatusCode();
 
-        return responseBody!;
+        return await response.Content.ReadFromJsonAsync<ExternalOpenBankingAccessResponse>(cancellationToken)
+               ?? throw new InvalidOperationException("The provider returned no tokens for the access code.");
     }
 
     public async Task<ExternalOpenBankingListAllAccountsResponse> GetAllAccountsAsync(string authToken,
@@ -221,6 +223,9 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         HttpResponseMessage response =
             await httpClient.GetAsync($"api/providers?client_id={_trueLayerOpenBankingConfiguration.ClientId}",
                 cancellationToken);
+
+        // The list is cached, a failure has to throw rather than read as no providers
+        response.EnsureSuccessStatusCode();
 
         await foreach (ExternalOpenBankingProvider? provider in response.Content
                            .ReadFromJsonAsAsyncEnumerable<ExternalOpenBankingProvider>(cancellationToken))

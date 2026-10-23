@@ -1,4 +1,3 @@
-using FinanceTracker.Contracts.Reports;
 using FinanceTracker.Contracts.Transactions;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 
@@ -19,9 +18,6 @@ internal sealed record TransactionCriteria(
 {
     public static TransactionCriteria From(FilterTransactions filter) => new(filter.AccountIds, filter.ProviderIds,
         filter.Types, filter.Categories, filter.Tags, filter.SearchTerm, filter.FromDate, filter.ToDate);
-
-    public static TransactionCriteria From(BaseReport report) => new(report.AccountIds, report.ProviderIds,
-        report.Types, report.Categories, report.Tags, report.SearchTerm, report.FromDate, report.ToDate);
 
     public IQueryable<BankTransaction> ApplyServerFilters(IQueryable<BankTransaction> query,
         FinanceTrackerContext context)

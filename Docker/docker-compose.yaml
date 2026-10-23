@@ -1,23 +1,4 @@
 services:
-  fintrack-redis:
-    image: "docker.io/library/redis:8.2"
-    command:
-      - "-c"
-      - "redis-server --requirepass $$REDIS_PASSWORD --save 300 1"
-    entrypoint:
-      - "/bin/sh"
-    environment:
-      REDIS_PASSWORD: "${FINTRACK_REDIS_PASSWORD}"
-    expose:
-      - "6379"
-    volumes:
-      - type: "volume"
-        target: "/data"
-        source: "FinTrack-Redis-data"
-        read_only: false
-    networks:
-      - "fintrack"
-    restart: "unless-stopped"
   fintrack-postgres:
     image: "docker.io/library/postgres:17.6"
     environment:
@@ -59,11 +40,9 @@ services:
       OPEN_BANKING_TRUELAYER_CLIENT_ID: "${OPENBANKING_CLIENT_ID}"
       OPEN_BANKING_TRUELAYER_CLIENT_SECRET: "${OPENBANKING_CLIENT_SECRET}"
       OPEN_BANKING_PUBLIC_IP_ADDRESS: "${OPENBANKING_PUBLIC_IP_ADDRESS}"
-      ConnectionStrings__FinTrack-Redis: "FinTrack-Redis:6379,password=${FINTRACK_REDIS_PASSWORD}"
-      FINTRACK_REDIS_HOST: "FinTrack-Redis"
-      FINTRACK_REDIS_PORT: "6379"
-      FINTRACK_REDIS_PASSWORD: "${FINTRACK_REDIS_PASSWORD}"
-      FINTRACK_REDIS_URI: "redis://:${FINTRACK_REDIS_PASSWORD}@FinTrack-Redis:6379"
+      OIDC_Authority: "${OIDC_AUTHORITY}"
+      OIDC_ClientId: "${OIDC_CLIENT_ID}"
+      OIDC_ClientSecret: "${OIDC_CLIENT_SECRET}"
       ConnectionStrings__FinTrackDb: "Host=FinTrack-Postgres;Port=5432;Username=postgres;Password=${FINTRACK_POSTGRES_PASSWORD};Database=FinTrackDb"
       FINTRACKDB_HOST: "FinTrack-Postgres"
       FINTRACKDB_PORT: "5432"
@@ -73,24 +52,26 @@ services:
       FINTRACKDB_JDBCCONNECTIONSTRING: "jdblc:postgresql://FinTrack-Postgres:5432/FinTrackDb"
       FINTRACKDB_DATABASENAME: "FinTrackDb"
       APP_CULTURE: "${APP_CULTURE}"
-      OTEL_EXPORTER_OTLP_ENDPOINT: ""
+      TZ: "${TZ}"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_OTLP_ENDPOINT}"
       OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
       OTEL_SERVICE_NAME: "FinTrackWeb"
     expose:
       - 8080
     depends_on:
-      fintrack-redis:
-        condition: "service_started"
       fintrack-postgres:
         condition: "service_healthy"
     networks:
       - "fintrack"
+      - "proxy" # Remove if not needed
     restart: "unless-stopped"
 networks:
   fintrack:
     driver: "bridge"
+  # Shared with the reverse proxy, remove if not needed
+  proxy:
+    name: "${FINTRACK_PROXY_NETWORK:-proxy-net}"
+    external: true
 volumes:
-  FinTrack-Redis-data:
-    driver: "local"
   FinTrack-Postgres-data:
     driver: "local"

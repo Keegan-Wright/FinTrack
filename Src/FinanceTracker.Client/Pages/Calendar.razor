@@ -13,12 +13,12 @@
 
 <MudGrid Spacing="4">
     <MudItem xs="4">
-        <MudDatePicker bind-Date="_selectedMonthYear" DateChanged="@SelectedDateUpdatedAsync"></MudDatePicker>
+        <MudDatePicker Date="@Month" DateChanged="@SelectedDateUpdatedAsync"></MudDatePicker>
     </MudItem>
 
     <MudFlexBreak/>
 
-    @foreach (var calenderItem in _calendarItems)
+    @foreach (var calenderItem in Days ?? [])
     {
         <MudItem xs="12" sm="6" md="4" lg="3">
             <MudCard Class="h-100">
@@ -96,14 +96,24 @@
 
 @code {
 
-    private readonly List<CalendarItems> _calendarItems = [];
-    private DateTime _selectedMonthYear;
+    /// <summary>
+    /// The month shown, this month (server time) to start with. Persisted with <see cref="Days"/> so the browser
+    /// shows the month the server loaded.
+    /// </summary>
+    [PersistentState]
+    public DateTime? Month { get; set; }
+
+    /// <summary>
+    /// Each day of <see cref="Month"/>, loaded once, see <see cref="PageComponent.LoadOnceAsync{T}"/>.
+    /// </summary>
+    [PersistentState]
+    public List<CalendarItems>? Days { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
-        _selectedMonthYear = TimeProvider.GetUtcNow().UtcDateTime;
         await base.OnInitializedAsync();
-        await LoadSelectedCalendarMonthAsync();
+        Month ??= TimeProvider.GetLocalNow().DateTime;
+        Days = await LoadOnceAsync(Days, "Loading your calendar", LoadMonthAsync);
     }
 
     private async Task SelectedDateUpdatedAsync(DateTime? obj)
@@ -111,19 +121,17 @@
         if (obj is null)
             return;
 
-        _selectedMonthYear = obj.Value;
-        await LoadSelectedCalendarMonthAsync();
+        Month = obj.Value;
+        SetLoadingState(true, "Loading your calendar");
+        Days = await LoadMonthAsync(_cts.Token);
+        SetLoadingState(false);
     }
 
-    private async Task LoadSelectedCalendarMonthAsync()
+    private Task<List<CalendarItems>> LoadMonthAsync(CancellationToken cancellationToken)
     {
-        SetLoadingState(true, "Loading your calendar");
-        await foreach (var monthItem in CalendarService.GetMonthItemsAsync(_selectedMonthYear.Month, _selectedMonthYear.Year, _cts.Token))
-        {
-            _calendarItems.Add(monthItem);
-        }
-
-        SetLoadingState(false);
+        DateTime month = Month!.Value;
+        return CalendarService.GetMonthItemsAsync(month.Month, month.Year, cancellationToken)
+            .ToListAsync(cancellationToken).AsTask();
     }
 
 }

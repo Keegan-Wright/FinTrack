@@ -14,18 +14,14 @@ public interface ITransactionsService
     /// The user's transactions matching <paramref name="filterTransactions"/>, newest first.
     /// </summary>
     /// <param name="filterTransactions">The filters, empty ones match everything.</param>
-    /// <param name="syncTypes">Not used yet, every transaction is considered.</param>
     /// <param name="cancellationToken">Cancels the lookup.</param>
-    IAsyncEnumerable<Transaction> GetAllTransactionsAsync(
-        FilterTransactions filterTransactions, SyncTypes syncTypes,
+    IAsyncEnumerable<Transaction> GetAllTransactionsAsync(FilterTransactions filterTransactions,
         CancellationToken cancellationToken);
 
     /// <summary>
     /// The user's accounts, for the account filter.
     /// </summary>
-    /// <param name="syncTypes">Not used yet, every account is returned.</param>
-    /// <param name="cancellationToken">Cancels the lookup.</param>
-    IAsyncEnumerable<TransactionAccountFilter> GetAccountsForTransactionFiltersAsync(SyncTypes syncTypes,
+    IAsyncEnumerable<TransactionAccountFilter> GetAccountsForTransactionFiltersAsync(
         CancellationToken cancellationToken);
 
     /// <summary>

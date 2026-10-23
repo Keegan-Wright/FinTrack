@@ -1,0 +1,24 @@
+@using FinanceTracker.Client.Layout
+
+@* Routes the client's pages, in the browser and while the server prerenders them. The Identity pages live in the
+   server and only ever render statically there, interactive navigation to them falls back to a full page load. *@
+<Router AppAssembly="typeof(Program).Assembly">
+    <Found Context="routeData">
+        <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(MainLayout)">
+            <NotAuthorized>
+                @* Signed in but missing a role, e.g. a page only admins can use *@
+                @if (context.User.Identity?.IsAuthenticated == true)
+                {
+                    <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mt-4">
+                        You do not have access to this page.
+                    </MudAlert>
+                }
+                else
+                {
+                    <RedirectToLogin/>
+                }
+            </NotAuthorized>
+        </AuthorizeRouteView>
+        <FocusOnNavigate RouteData="routeData" Selector="h1"/>
+    </Found>
+</Router>

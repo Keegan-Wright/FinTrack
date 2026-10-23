@@ -28,6 +28,33 @@ public class PageComponent : ComponentBase, IDisposable
     }
 
     /// <summary>
+    /// A page's initial data, loaded once. The server loads it while prerendering, and the browser picks up that copy
+    /// from the page's <see cref="PersistentStateAttribute"/> property rather than fetching it again. Without a
+    /// prerender (the browser navigating between pages) it loads here.
+    /// </summary>
+    /// <param name="persisted">The page's <see cref="PersistentStateAttribute"/> property, null until loaded.</param>
+    /// <param name="loadingMessage">Shown under the loading overlay while loading.</param>
+    /// <param name="load">Loads the data, with the page's cancellation token.</param>
+    internal async Task<T> LoadOnceAsync<T>(T? persisted, string loadingMessage, Func<CancellationToken, Task<T>> load)
+        where T : class
+    {
+        if (persisted is not null)
+        {
+            return persisted;
+        }
+
+        SetLoadingState(true, loadingMessage);
+        try
+        {
+            return await load(_cts.Token);
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
+    /// <summary>
     /// Shows or hides the loading overlay, with <paramref name="message"/> under the spinner.
     /// </summary>
     internal void SetLoadingState(bool loading, string? message = null)

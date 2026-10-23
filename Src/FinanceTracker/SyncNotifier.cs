@@ -1,59 +1,33 @@
-using System.Collections.Concurrent;
-using System.Collections.Immutable;
+using FinanceTracker.Api;
+using FinanceTracker.Contracts.Api;
+using Microsoft.AspNetCore.SignalR;
 
 namespace FinanceTracker;
 
 /// <summary>
-/// In memory <see cref="ISyncNotifier"/>, subscriptions are keyed by user.
+/// <see cref="ISyncNotifier"/> through <see cref="SyncHub"/>, every connection of the user hears about the sync.
 /// </summary>
 public class SyncNotifier : ISyncNotifier
 {
-    private readonly ConcurrentDictionary<Guid, ImmutableList<Func<Task>>> _subscribers = new();
+    private readonly IHubContext<SyncHub> _hubContext;
     private readonly ILogger<SyncNotifier> _logger;
 
-    public SyncNotifier(ILogger<SyncNotifier> logger)
+    public SyncNotifier(IHubContext<SyncHub> hubContext, ILogger<SyncNotifier> logger)
     {
+        _hubContext = hubContext;
         _logger = logger;
-    }
-
-    public IDisposable Subscribe(Guid userId, Func<Task> onSyncComplete)
-    {
-        _subscribers.AddOrUpdate(userId, [onSyncComplete], (_, existing) => existing.Add(onSyncComplete));
-        return new SyncNotifierSubscription(this, userId, onSyncComplete);
     }
 
     public async Task NotifyAsync(Guid userId)
     {
-        if (!_subscribers.TryGetValue(userId, out ImmutableList<Func<Task>>? callbacks))
-            return;
-
-        foreach (Func<Task> callback in callbacks)
+        try
         {
-            try
-            {
-                await callback();
-            }
-            catch (Exception ex)
-            {
-                // One broken circuit shouldn't stop the user's other tabs hearing about the sync
-                _logger.LogSyncNotificationFailed(ex, userId);
-            }
+            await _hubContext.Clients.User(userId.ToString()).SendAsync(SyncHubContract.SyncComplete);
         }
-    }
-
-    internal void Unsubscribe(Guid userId, Func<Task> callback)
-    {
-        // A concurrent subscribe can swap the list out from under us, so retry until the removal lands
-        while (_subscribers.TryGetValue(userId, out ImmutableList<Func<Task>>? existing))
+        catch (Exception ex)
         {
-            ImmutableList<Func<Task>> remaining = existing.Remove(callback);
-
-            bool removed = remaining.IsEmpty
-                ? _subscribers.TryRemove(KeyValuePair.Create(userId, existing))
-                : _subscribers.TryUpdate(userId, remaining, existing);
-
-            if (removed)
-                return;
+            // The sync itself succeeded, a missed notification only leaves the page's sync time stale
+            _logger.LogSyncNotificationFailed(ex, userId);
         }
     }
 }

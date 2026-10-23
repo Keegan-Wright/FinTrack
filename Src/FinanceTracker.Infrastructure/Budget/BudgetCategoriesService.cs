@@ -30,6 +30,7 @@ public class BudgetCategoriesService : ServiceBase<BudgetCategoriesService>, IBu
         {
             yield return new BudgetCategory
             {
+                Id = budgetCategory.Id,
                 Name = budgetCategory.Name,
                 AvailableFunds = budgetCategory.AvailableFunds,
                 MonthlyStart = budgetCategory.MonthlyStart,
@@ -54,6 +55,7 @@ public class BudgetCategoriesService : ServiceBase<BudgetCategoriesService>, IBu
 
         return new BudgetCategory
         {
+            Id = budgetCategory.Id,
             Name = budgetCategory.Name,
             AvailableFunds = budgetCategory.AvailableFunds,
             MonthlyStart = budgetCategory.MonthlyStart,

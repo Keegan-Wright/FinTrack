@@ -4,7 +4,8 @@ using System.ComponentModel;
 namespace FinanceTracker.Contracts.Transactions;
 
 /// <summary>
-/// Filters for the transactions page. Every filter is optional, empty matches everything.
+/// Which transactions to list or report on, shared by the transactions page and every report. Every filter is
+/// optional, empty matches everything.
 /// </summary>
 public class FilterTransactions
 {

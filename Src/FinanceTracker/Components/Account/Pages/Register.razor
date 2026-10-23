@@ -13,6 +13,7 @@
 @inject IdentityRedirectManager RedirectManager
 @inject NavigationManager NavigationManager
 @inject IValidator<RegisterRequest> Validator
+@inject AdminProvisioner AdminProvisioner
 
 <PageTitle>Register</PageTitle>
 
@@ -120,6 +121,7 @@
 
         Logger.LogUserRegistered();
         await UserManager.AddClaimAsync(user, new Claim(CustomClaims.FirstName, RegisterRequest.FirstName));
+        await AdminProvisioner.GrantIfFirstUserAsync(user);
         await SignInManager.SignInAsync(user, false);
         RedirectManager.RedirectTo(ReturnUrl);
     }

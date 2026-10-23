@@ -1,10 +1,8 @@
-using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.Account;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Infrastructure.Account;
-using FinanceTracker.Infrastructure.OpenBanking;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Fakers;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
@@ -37,7 +35,7 @@ public class AccountServiceTests : InfrastructureTestBase
 
         // Act
         List<AccountAndTransactions> accounts = await subject
-            .GetAccountsAndMostRecentTransactionsAsync(2, SyncTypes.All, CancellationToken)
+            .GetAccountsAndMostRecentTransactionsAsync(2, CancellationToken)
             .ToListAsync(CancellationToken);
 
         // Assert
@@ -61,7 +59,7 @@ public class AccountServiceTests : InfrastructureTestBase
 
         // Act
         AccountAndTransactions account = (await subject
-            .GetAccountsAndMostRecentTransactionsAsync(5, SyncTypes.All, CancellationToken)
+            .GetAccountsAndMostRecentTransactionsAsync(5, CancellationToken)
             .ToListAsync(CancellationToken)).Single();
 
         // Assert
@@ -88,7 +86,7 @@ public class AccountServiceTests : InfrastructureTestBase
 
         // Act
         AccountAndTransactions account = (await subject
-            .GetAccountsAndMostRecentTransactionsAsync(5, SyncTypes.All, CancellationToken)
+            .GetAccountsAndMostRecentTransactionsAsync(5, CancellationToken)
             .ToListAsync(CancellationToken)).Single();
 
         // Assert
@@ -115,7 +113,7 @@ public class AccountServiceTests : InfrastructureTestBase
 
         // Act
         AccountAndTransactions account = (await subject
-            .GetAccountsAndMostRecentTransactionsAsync(5, SyncTypes.All, CancellationToken)
+            .GetAccountsAndMostRecentTransactionsAsync(5, CancellationToken)
             .ToListAsync(CancellationToken)).Single();
 
         // Assert
@@ -141,7 +139,7 @@ public class AccountServiceTests : InfrastructureTestBase
 
         // Act
         List<AccountAndTransactions> accounts = await subject
-            .GetAccountsAndMostRecentTransactionsAsync(10, SyncTypes.All, CancellationToken)
+            .GetAccountsAndMostRecentTransactionsAsync(10, CancellationToken)
             .ToListAsync(CancellationToken);
 
         // Assert
@@ -162,7 +160,7 @@ public class AccountServiceTests : InfrastructureTestBase
 
         // Act
         List<AccountAndTransactions> accounts = await subject
-            .GetAccountsAndMostRecentTransactionsAsync(5, SyncTypes.All, CancellationToken)
+            .GetAccountsAndMostRecentTransactionsAsync(5, CancellationToken)
             .ToListAsync(CancellationToken);
 
         // Assert
@@ -179,13 +177,12 @@ public class AccountServiceTests : InfrastructureTestBase
 
         // Act
         List<AccountAndTransactions> accounts = await subject
-            .GetAccountsAndMostRecentTransactionsAsync(1, SyncTypes.All, CancellationToken)
+            .GetAccountsAndMostRecentTransactionsAsync(1, CancellationToken)
             .ToListAsync(CancellationToken);
 
         // Assert
         await Assert.That(accounts.Count).IsEqualTo(0);
     }
 
-    private AccountService BuildSubject(string username) => new(CurrentUserFor(username), DbContextFactory,
-        Substitute.For<IOpenBankingService>(), NullLogger<AccountService>.Instance);
+    private AccountService BuildSubject(string username) => new(CurrentUserFor(username), DbContextFactory, NullLogger<AccountService>.Instance);
 }

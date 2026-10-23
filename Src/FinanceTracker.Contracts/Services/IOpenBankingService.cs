@@ -7,7 +7,7 @@ namespace FinanceTracker.Contracts.Services;
 /// </summary>
 /// <remarks>
 /// Connecting is a round trip through the provider: pick banks from
-/// <see cref="GetOpenBankingProvidersForClientAsync"/>, send the user to <see cref="BuildAuthUrl"/>, then hand the
+/// <see cref="GetOpenBankingProvidersForClientAsync"/>, send the user to <see cref="BuildAuthUrlAsync"/>, then hand the
 /// access code they come back with to <see cref="AddVendorViaAccessCodeAsync"/>.
 /// </remarks>
 public interface IOpenBankingService
@@ -21,15 +21,15 @@ public interface IOpenBankingService
     /// <summary>
     /// The provider's consent page for the chosen banks and scopes.
     /// </summary>
-    string BuildAuthUrl(ProviderSetupUrl setupProvider);
+    Task<string> BuildAuthUrlAsync(ProviderSetupUrl setupProvider, CancellationToken cancellationToken);
 
     /// <summary>
     /// Exchanges the access code from the provider's consent page for tokens, connects (or reconnects) each bank it
     /// covers, then syncs them.
     /// </summary>
     /// <returns>
-    /// <see langword="true"/> once the banks are connected and synced. Never <see langword="false"/>: a rejected
-    /// code or an unreachable provider throws, from wherever the bad response is first used.
+    /// <see langword="true"/> once the banks are connected and synced. Never <see langword="false"/>, failures throw.
     /// </returns>
+    /// <exception cref="HttpRequestException">The provider rejected the access code, or couldn't be reached.</exception>
     Task<bool> AddVendorViaAccessCodeAsync(AddVendor addVendor, CancellationToken cancellationToken);
 }

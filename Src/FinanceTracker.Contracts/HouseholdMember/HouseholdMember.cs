@@ -6,6 +6,11 @@ namespace FinanceTracker.Contracts.HouseholdMember;
 public class HouseholdMember
 {
     /// <summary>
+    /// The member's id.
+    /// </summary>
+    public required Guid Id { get; init; }
+
+    /// <summary>
     /// The member's first name.
     /// </summary>
     public required string FirstName { get; init; }

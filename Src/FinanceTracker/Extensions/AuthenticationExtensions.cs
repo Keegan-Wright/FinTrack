@@ -1,21 +1,22 @@
-using System.Security.Claims;
 using FinanceTracker.AppHost.ServiceDefaults;
 using FinanceTracker.Components.Account;
 using FinanceTracker.Domain.Identity;
 using FinanceTracker.Infrastructure;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
-using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.Components.Server.Circuits;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 
 namespace FinanceTracker.Extensions;
 
 public static class AuthenticationExtensions
 {
+    /// <summary>
+    /// Where a failed OIDC sign in lands.
+    /// </summary>
+    private const string OidcFailedPath = "/Account/Login?sso=failed";
+
     extension(WebApplicationBuilder builder)
     {
         /// <summary>
@@ -27,7 +28,6 @@ public static class AuthenticationExtensions
             builder.Services.AddCascadingAuthenticationState();
             builder.Services.AddScoped<IdentityUserAccessor>();
             builder.Services.AddScoped<IdentityRedirectManager>();
-            builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
 
             AuthenticationBuilder authBuilder = builder.Services.AddAuthentication(options =>
             {
@@ -50,16 +50,17 @@ public static class AuthenticationExtensions
                     options.SignIn.RequireConfirmedPhoneNumber = false;
                     options.User.RequireUniqueEmail = true;
                 })
+                .AddRoles<FinanceTrackerRole>()
                 .AddEntityFrameworkStores<FinanceTrackerContext>()
                 .AddSignInManager()
                 .AddDefaultTokenProviders();
 
             builder.Services.AddSingleton<IEmailSender<FinanceTrackerUser>, IdentityNoOpEmailSender>();
+            builder.Services.AddScoped<AdminProvisioner>();
+            builder.Services.AddScoped<OidcUserLinker>();
 
-            // Services act for ICurrentUser, set per request by UseCurrentUser, per circuit by the handler, per job
-            // by its scope
+            // Services act for ICurrentUser, set per request by UseCurrentUser and per job by its scope
             builder.Services.AddCurrentUser();
-            builder.Services.TryAddEnumerable(ServiceDescriptor.Scoped<CircuitHandler, CurrentUserCircuitHandler>());
 
             return builder;
         }
@@ -68,9 +69,18 @@ public static class AuthenticationExtensions
     extension(WebApplication app)
     {
         /// <summary>
+        /// Makes sure an existing install has its admin, see <see cref="AdminProvisioner.EnsureAdminAsync"/>. Run
+        /// after migrating, the role tables have to exist.
+        /// </summary>
+        public async Task EnsureAdminAsync()
+        {
+            await using AsyncServiceScope scope = app.Services.CreateAsyncScope();
+            await scope.ServiceProvider.GetRequiredService<AdminProvisioner>().EnsureAdminAsync();
+        }
+
+        /// <summary>
         /// Sets the request's <see cref="CurrentUser"/>. Authentication has already run, so the user is known. Covers
-        /// static and prerendered pages and endpoints, interactive circuits are handled by
-        /// <see cref="CurrentUserCircuitHandler"/>.
+        /// the static Identity pages, prerendering the client's pages, and the API the browser calls.
         /// </summary>
         public WebApplication UseCurrentUser()
         {
@@ -84,7 +94,9 @@ public static class AuthenticationExtensions
         }
 
         /// <summary>
-        /// The endpoint the login page's single sign on button starts an OIDC sign in from, when OIDC is configured.
+        /// The endpoints of an OIDC sign in, when OIDC is configured. The login page's single sign on link starts it
+        /// at <c>/auth/oidc</c>, the provider returns to the handler's <c>/signin-oidc</c>, and
+        /// <c>/auth/oidc/complete</c> signs the local user in.
         /// </summary>
         public WebApplication MapOidcChallenge()
         {
@@ -93,12 +105,38 @@ public static class AuthenticationExtensions
                 return app;
             }
 
-            app.MapGet("/auth/oidc", async (HttpContext context) =>
-            {
-                await context.ChallengeAsync(OpenIdConnectDefaults.AuthenticationScheme, new AuthenticationProperties
+            app.MapGet("/auth/oidc", (HttpContext context, string? returnUrl) =>
+                TypedResults.Challenge(new AuthenticationProperties
                 {
-                    RedirectUri = "/"
-                });
+                    RedirectUri = $"/auth/oidc/complete?returnUrl={Uri.EscapeDataString(LocalPath(context.Request, returnUrl))}"
+                }, [OpenIdConnectDefaults.AuthenticationScheme]));
+
+            // The handler has signed the provider's identity into the external cookie, swap it for the local user's
+            app.MapGet("/auth/oidc/complete", async Task<RedirectHttpResult> (HttpContext context, string? returnUrl,
+                OidcUserLinker linker, UserManager<FinanceTrackerUser> userManager,
+                SignInManager<FinanceTrackerUser> signInManager) =>
+            {
+                AuthenticateResult external = await context.AuthenticateAsync(IdentityConstants.ExternalScheme);
+                await context.SignOutAsync(IdentityConstants.ExternalScheme);
+                if (!external.Succeeded)
+                {
+                    return TypedResults.Redirect(OidcFailedPath);
+                }
+
+                FinanceTrackerUser? user = await linker.FindOrCreateAsync(external.Principal);
+                if (user is null)
+                {
+                    return TypedResults.Redirect(OidcFailedPath);
+                }
+
+                if (await userManager.IsLockedOutAsync(user))
+                {
+                    return TypedResults.Redirect("/Account/Lockout");
+                }
+
+                // Builds the cookie the same way as a password sign in, roles and the first name included
+                await signInManager.SignInAsync(user, isPersistent: false);
+                return TypedResults.Redirect(LocalPath(context.Request, returnUrl));
             });
 
             return app;
@@ -122,75 +160,43 @@ public static class AuthenticationExtensions
         options.ClientId = configuration[FinTrackEnvironment.OidcClientId];
         options.ClientSecret = configuration[FinTrackEnvironment.OidcClientSecret];
 
+        // Authorization code flow with PKCE, signing into Identity's external cookie for /auth/oidc/complete
         options.ResponseType = OpenIdConnectResponseType.Code;
-        options.SaveTokens = true;
+        options.SignInScheme = IdentityConstants.ExternalScheme;
 
         options.Scope.Clear();
         options.Scope.Add("openid");
         options.Scope.Add("profile");
         options.Scope.Add("email");
 
-        options.ClaimActions.MapJsonKey(ClaimTypes.GivenName, "given_name");
-        options.ClaimActions.MapJsonKey(ClaimTypes.Surname, "family_name");
-
-        options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
-        {
-            NameClaimType = "name"
-        };
+        options.GetClaimsFromUserInfoEndpoint = true;
+        options.MapInboundClaims = false;
+        options.ClaimActions.MapUniqueJsonKey(OidcUserLinker.EmailVerified, OidcUserLinker.EmailVerified);
+        options.ClaimActions.MapUniqueJsonKey(OidcUserLinker.PreferredUsername, OidcUserLinker.PreferredUsername);
 
         options.Events = new OpenIdConnectEvents
         {
-            OnTokenValidated = LinkOidcUserAsync
+            // Declining at the provider, or a misconfigured client, comes back as a failure rather than an error page
+            OnRemoteFailure = context =>
+            {
+                context.HttpContext.RequestServices.GetRequiredService<ILogger<OidcUserLinker>>()
+                    .LogOidcRemoteFailure(context.Failure);
+                context.Response.Redirect(OidcFailedPath);
+                context.HandleResponse();
+                return Task.CompletedTask;
+            }
         };
     }
 
     /// <summary>
-    /// Finds or creates the local user for an OIDC sign in and adds their id to the principal, so
-    /// <see cref="UserManager{TUser}"/> recognises the signed in user.
+    /// <paramref name="returnUrl"/> when it's on this site, as a path, otherwise the home page. The login page is
+    /// given absolute urls, see <c>RedirectToLogin</c>.
     /// </summary>
-    private static async Task LinkOidcUserAsync(TokenValidatedContext context)
+    private static string LocalPath(HttpRequest request, string? returnUrl)
     {
-        ClaimsPrincipal? principal = context.Principal;
-        string? oidcSub = principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        string? email = principal?.FindFirst(ClaimTypes.Email)?.Value;
-
-        if (principal is null || string.IsNullOrEmpty(oidcSub)) return;
-
-        // Users are matched and created by email, without one a sign in could link to the wrong account
-        if (string.IsNullOrEmpty(email))
-        {
-            context.Fail("The identity provider did not supply an email address.");
-            return;
-        }
-
-        IDbContextFactory<FinanceTrackerContext> factory = context.HttpContext.RequestServices
-            .GetRequiredService<IDbContextFactory<FinanceTrackerContext>>();
-
-        await using FinanceTrackerContext dbContext = await factory.CreateDbContextAsync();
-
-        FinanceTrackerUser? user = await dbContext.Users.FirstOrDefaultAsync(u => u.OpenIdConnectSubject == oidcSub)
-                                   ?? await dbContext.Users.FirstOrDefaultAsync(u => u.Email == email);
-
-        if (user == null)
-        {
-            string firstName = principal.FindFirst(ClaimTypes.GivenName)?.Value ?? string.Empty;
-            string lastName = principal.FindFirst(ClaimTypes.Surname)?.Value ?? string.Empty;
-
-            user = new FinanceTrackerUser(firstName, lastName, email, oidcSub);
-            dbContext.Users.Add(user);
-        }
-        else if (user.OpenIdConnectSubject == null)
-        {
-            // Link an existing local user account to Authelia upon their first SSO login
-            user.SetOidcSubject(oidcSub);
-            dbContext.Users.Update(user);
-        }
-
-        await dbContext.SaveChangesAsync();
-
-        // Mutate the identity context to inject the ASP.NET Identity claims
-        // This ensures UserManager<FinanceTrackerUser> natively recognizes the logged-in user
-        var claimsIdentity = (ClaimsIdentity)principal.Identity!;
-        claimsIdentity.AddClaim(new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()));
+        Uri site = new($"{request.Scheme}://{request.Host}{request.PathBase}/");
+        return Uri.TryCreate(site, returnUrl, out Uri? target) && target.Authority == site.Authority
+            ? target.PathAndQuery
+            : "/";
     }
 }

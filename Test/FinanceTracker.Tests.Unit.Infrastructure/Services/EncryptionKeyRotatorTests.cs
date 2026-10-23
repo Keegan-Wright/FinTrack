@@ -7,6 +7,7 @@ using FinanceTracker.Infrastructure.Persistence;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Fakers;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -128,6 +129,54 @@ public class EncryptionKeyRotatorTests : InfrastructureTestBase
             .SingleAsync(CancellationToken);
 
         await Assert.That(stale).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task DataProtectionKeys_AreStoredEncrypted()
+    {
+        // Arrange
+        const string keyXml = "<key id=\"1\"><secret>material</secret></key>";
+
+        // Act
+        await using (FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken))
+        {
+            context.DataProtectionKeys.Add(new DataProtectionKey { FriendlyName = "key-1", Xml = keyXml });
+            await context.SaveChangesAsync(CancellationToken);
+        }
+
+        // Assert
+        await using FinanceTrackerContext reader = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        using (Assert.Multiple())
+        {
+            await Assert.That(await ReadRawAsync("DataProtectionKeys", "Xml")).StartsWith("1:");
+            await Assert.That((await reader.DataProtectionKeys.SingleAsync(CancellationToken)).Xml).IsEqualTo(keyXml);
+        }
+    }
+
+    [Test]
+    public async Task RotateAsync_ReencryptsDataProtectionKeys()
+    {
+        // Arrange, their key is an int rather than a Guid like every other table
+        const string keyXml = "<key id=\"1\" />";
+        await using (FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken))
+        {
+            context.DataProtectionKeys.Add(new DataProtectionKey { FriendlyName = "key-1", Xml = keyXml });
+            await context.SaveChangesAsync(CancellationToken);
+        }
+
+        IDbContextFactory<FinanceTrackerContext> rotatedFactory = CreateDbContextFactory(_rotated);
+
+        // Act
+        await new EncryptionKeyRotator(rotatedFactory, NullLogger<EncryptionKeyRotator>.Instance)
+            .RotateAsync(CancellationToken);
+
+        // Assert
+        await using FinanceTrackerContext reader = await rotatedFactory.CreateDbContextAsync(CancellationToken);
+        using (Assert.Multiple())
+        {
+            await Assert.That(await ReadRawAsync("DataProtectionKeys", "Xml")).StartsWith("2:");
+            await Assert.That((await reader.DataProtectionKeys.SingleAsync(CancellationToken)).Xml).IsEqualTo(keyXml);
+        }
     }
 
     private async Task SeedAsync() =>

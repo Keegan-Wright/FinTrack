@@ -10,6 +10,8 @@ using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Fakers.TrueLayer;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Hybrid;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -24,6 +26,8 @@ public class OpenBankingServiceTests : InfrastructureTestBase
     private const string Token = "active-token";
 
     private readonly IOpenBankingApiService _api = Substitute.For<IOpenBankingApiService>();
+    private readonly HybridCache _cache = new ServiceCollection().AddHybridCache().Services.BuildServiceProvider()
+        .GetRequiredService<HybridCache>();
 
     [Before(Test)]
     public void SetupApi() => GivenProviderReturns();
@@ -33,7 +37,7 @@ public class OpenBankingServiceTests : InfrastructureTestBase
     {
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser(Username));
-        _api.GetAvailableProvidersAsync(CancellationToken).Returns(new[]
+        _api.GetAvailableProvidersAsync(Arg.Any<CancellationToken>()).Returns(new[]
         {
             new ExternalOpenBankingProvider { DisplayName = "Zeta" },
             new ExternalOpenBankingProvider { DisplayName = "Alpha" },
@@ -51,11 +55,52 @@ public class OpenBankingServiceTests : InfrastructureTestBase
     }
 
     [Test]
+    public async Task GetOpenBankingProvidersForClientAsync_AsksTheProviderOnceWhileCached()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username));
+        _api.GetAvailableProvidersAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => new[] { new ExternalOpenBankingProvider { DisplayName = "Bank" } }.ToAsyncEnumerable());
+
+        // Act
+        List<OpenBankingProvider> first = await BuildSubject()
+            .GetOpenBankingProvidersForClientAsync(CancellationToken).ToListAsync(CancellationToken);
+        List<OpenBankingProvider> second = await BuildSubject()
+            .GetOpenBankingProvidersForClientAsync(CancellationToken).ToListAsync(CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(second.Select(x => x.DisplayName)).IsEquivalentTo(first.Select(x => x.DisplayName));
+            _api.Received(1).GetAvailableProvidersAsync(Arg.Any<CancellationToken>());
+        }
+    }
+
+    [Test]
+    public async Task GetOpenBankingProvidersForClientAsync_WhenTheProviderFails_DoesNotCacheTheFailure()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username));
+        _api.GetAvailableProvidersAsync(Arg.Any<CancellationToken>()).Returns(
+            _ => throw new HttpRequestException("provider down"),
+            _ => new[] { new ExternalOpenBankingProvider { DisplayName = "Bank" } }.ToAsyncEnumerable());
+
+        // Act
+        await Assert.ThrowsAsync<HttpRequestException>(() => BuildSubject()
+            .GetOpenBankingProvidersForClientAsync(CancellationToken).ToListAsync(CancellationToken).AsTask());
+        List<OpenBankingProvider> retried = await BuildSubject()
+            .GetOpenBankingProvidersForClientAsync(CancellationToken).ToListAsync(CancellationToken);
+
+        // Assert
+        await Assert.That(retried.Select(x => x.DisplayName)).IsEquivalentTo(["Bank"]);
+    }
+
+    [Test]
     public async Task GetOpenBankingProvidersForClientAsync_MapsProviderDetailsAndScopes()
     {
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser(Username));
-        _api.GetAvailableProvidersAsync(CancellationToken).Returns(new[]
+        _api.GetAvailableProvidersAsync(Arg.Any<CancellationToken>()).Returns(new[]
         {
             new ExternalOpenBankingProvider
             {
@@ -105,7 +150,7 @@ public class OpenBankingServiceTests : InfrastructureTestBase
     }
 
     [Test]
-    public async Task BuildAuthUrl_DelegatesProvidersAndScopesToExternalApiService()
+    public async Task BuildAuthUrlAsync_DelegatesProvidersAndScopesToExternalApiService()
     {
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser(Username));
@@ -114,11 +159,11 @@ public class OpenBankingServiceTests : InfrastructureTestBase
         OpenBankingService subject = BuildSubject();
 
         // Act
-        string url = subject.BuildAuthUrl(new ProviderSetupUrl
+        string url = await subject.BuildAuthUrlAsync(new ProviderSetupUrl
         {
             ProviderIds = ["provider-1"],
             Scopes = ["accounts", "transactions"]
-        });
+        }, CancellationToken);
 
         // Assert
         using (Assert.Multiple())
@@ -902,7 +947,7 @@ public class OpenBankingServiceTests : InfrastructureTestBase
         }
 
         CapturingLogger<OpenBankingService> logger = new();
-        OpenBankingService subject = new(CurrentUserFor(Username), DbContextFactory, _api, logger, TimeProvider.System);
+        OpenBankingService subject = new(CurrentUserFor(Username), DbContextFactory, _api, logger, TimeProvider.System, _cache);
 
         // Act
         await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
@@ -1101,5 +1146,5 @@ public class OpenBankingServiceTests : InfrastructureTestBase
 
     private OpenBankingService BuildSubject() =>
         new(CurrentUserFor(Username), DbContextFactory, _api, NullLogger<OpenBankingService>.Instance,
-            TimeProvider.System);
+            TimeProvider.System, _cache);
 }

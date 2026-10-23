@@ -11,7 +11,7 @@ public class SpentInAccountReport : SharedReport
     /// Each year with transactions, in the order first seen.
     /// </summary>
     [Description("Yearly breakdown of spending for the specified time period")]
-    public IList<SpentInAccountReportYearlyBreakdown> YearlyBreakdown { get; } = [];
+    public IList<SpentInAccountReportYearlyBreakdown> YearlyBreakdown { get; init; } = [];
 
     /// <summary>
     /// The account's name.

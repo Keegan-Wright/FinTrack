@@ -11,6 +11,7 @@ using FinanceTracker.Infrastructure.OpenBanking.TrueLayer;
 using FinanceTracker.Infrastructure.OpenBanking.TrueLayer.Contracts;
 using FinanceTracker.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Infrastructure.OpenBanking;
@@ -23,16 +24,27 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
 
     private static readonly TimeSpan TransactionSyncOverlap = TimeSpan.FromDays(7);
 
+    private const string ProvidersCacheKey = "open-banking:providers";
+
+    // The same for every user and rarely changes, so the provider is asked at most every few hours
+    private static readonly HybridCacheEntryOptions ProvidersCacheOptions = new()
+    {
+        Expiration = TimeSpan.FromHours(6),
+        LocalCacheExpiration = TimeSpan.FromHours(6)
+    };
+
     private readonly TimeProvider _timeProvider;
     private readonly IOpenBankingApiService _openBankingApiService;
+    private readonly HybridCache _cache;
 
     public OpenBankingService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
         IOpenBankingApiService openBankingApiService, ILogger<OpenBankingService> logger,
-        TimeProvider timeProvider) : base(currentUser, financeTrackerContextFactory, logger)
+        TimeProvider timeProvider, HybridCache cache) : base(currentUser, financeTrackerContextFactory, logger)
     {
         _openBankingApiService = openBankingApiService;
         _timeProvider = timeProvider;
+        _cache = cache;
     }
 
     private DateTime UtcNow => _timeProvider.GetUtcNow().UtcDateTime;
@@ -40,17 +52,31 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
     public async IAsyncEnumerable<OpenBankingProvider> GetOpenBankingProvidersForClientAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
+        List<OpenBankingProvider> providers = await _cache.GetOrCreateAsync(ProvidersCacheKey, LoadProvidersAsync,
+            ProvidersCacheOptions, cancellationToken: cancellationToken);
+
+        foreach (OpenBankingProvider provider in providers)
+        {
+            yield return provider;
+        }
+    }
+
+    // A failed request throws, so nothing is cached and the next visit asks again
+    private async ValueTask<List<OpenBankingProvider>> LoadProvidersAsync(CancellationToken cancellationToken)
+    {
+        List<OpenBankingProvider> providers = [];
         await foreach (ExternalOpenBankingProvider provider in _openBankingApiService
                            .GetAvailableProvidersAsync(cancellationToken)
                            .OrderBy(static x => x.DisplayName).WithCancellation(cancellationToken))
         {
-            yield return await provider.ToContractAsync(cancellationToken);
+            providers.Add(await provider.ToContractAsync(cancellationToken));
         }
+
+        return providers;
     }
 
-    public string BuildAuthUrl(ProviderSetupUrl setupProvider) =>
-        _openBankingApiService.BuildAuthUrl(setupProvider.ProviderIds,
-            setupProvider.Scopes);
+    public Task<string> BuildAuthUrlAsync(ProviderSetupUrl setupProvider, CancellationToken cancellationToken) =>
+        Task.FromResult(_openBankingApiService.BuildAuthUrl(setupProvider.ProviderIds, setupProvider.Scopes));
 
     public async Task<bool> AddVendorViaAccessCodeAsync(AddVendor addVendor, CancellationToken cancellationToken)
     {

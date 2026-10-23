@@ -86,7 +86,7 @@
         if (firstRender)
         {
             // Only once interactive, a prerender has no circuit to push the update to
-            _syncSubscription = SyncNotifications.Subscribe(() => InvokeAsync(GetLatestSyncTimeAsync));
+            _syncSubscription = await SyncNotifications.SubscribeAsync(() => InvokeAsync(GetLatestSyncTimeAsync), _cts.Token);
 
             await GetLatestSyncTimeAsync();
         }

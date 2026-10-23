@@ -13,13 +13,12 @@
 
   <ItemGroup>
     <PackageReference Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" />
-    <PackageReference Include="Aspire.StackExchange.Redis"  />
-    <PackageReference Include="Aspire.StackExchange.Redis.DistributedCaching" />
-    <PackageReference Include="Aspire.StackExchange.Redis.OutputCaching"/>
     <PackageReference Include="Blazilla"/>
     <PackageReference Include="FluentValidation"/>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect"/>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server"/>
     <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore"/>
+    <PackageReference Include="Microsoft.Extensions.Caching.Hybrid"/>
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
       <PrivateAssets>all</PrivateAssets>

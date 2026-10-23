@@ -9,7 +9,6 @@ public class PageAccessTests : IntegrationTestBase
     [
         "/",
         "/Accounts",
-        "/Automation",
         "/Calendar",
         "/Classifications",
         "/HouseholdMembers",
@@ -49,6 +48,36 @@ public class PageAccessTests : IntegrationTestBase
         {
             await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Redirect);
             await Assert.That(response.Headers.Location?.ToString()).Contains("Account/Login");
+        }
+    }
+
+    [Test]
+    public async Task AutomationPage_RendersForAnAdmin()
+    {
+        // Arrange
+        SignedInUser admin = await RegisterAdminAsync();
+
+        // Act
+        HttpResponseMessage response = await admin.Client.GetAsync("/Automation", CancellationToken);
+
+        // Assert
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+    }
+
+    [Test]
+    public async Task AutomationPage_SendsNonAdminsToAccessDenied()
+    {
+        // Arrange
+        SignedInUser user = await RegisterUserAsync();
+
+        // Act
+        HttpResponseMessage response = await user.Client.GetAsync("/Automation", CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Redirect);
+            await Assert.That(response.Headers.Location?.ToString()).Contains("Account/AccessDenied");
         }
     }
 
