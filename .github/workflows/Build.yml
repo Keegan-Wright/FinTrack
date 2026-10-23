@@ -46,6 +46,17 @@ jobs:
             dotnet test --project Test/FinanceTracker.Tests.Unit.$project -c=release || exit 1
           done
 
+      # Trusted, so Aspire's health check of the app's https endpoint can connect. On Linux trusting writes the
+      # certificate to ~/.aspnet/dev-certs/trust, which OpenSSL only reads once it's on SSL_CERT_DIR. The runner has
+      # no browser certificate stores, so trust is only partial and reported as an error, OpenSSL is all .NET needs
+      - name: Create development certificate
+        run: |
+          dotnet dev-certs https --trust || true
+          echo "SSL_CERT_DIR=$HOME/.aspnet/dev-certs/trust:/usr/lib/ssl/certs" >> "$GITHUB_ENV"
+
+      - name: Integration Tests
+        run: dotnet test --project Test/FinanceTracker.Tests.Integration -c=release
+
       - name: Upload HTML Test Report
         uses: actions/upload-artifact@v4
         if: always()
