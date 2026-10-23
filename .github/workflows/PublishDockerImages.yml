@@ -23,8 +23,12 @@ jobs:
       - name: Restore workloads
         run: dotnet workload restore
 
+      # Trusted, so Aspire's health check of the app's https endpoint can connect. On Linux trusting writes the
+      # certificate to ~/.aspnet/dev-certs/trust, which OpenSSL only reads once it's on SSL_CERT_DIR
       - name: Create development certificate
-        run: dotnet dev-certs https
+        run: |
+          dotnet dev-certs https --trust
+          echo "SSL_CERT_DIR=$HOME/.aspnet/dev-certs/trust:/usr/lib/ssl/certs" >> "$GITHUB_ENV"
 
       - name: Run Integration Tests
         run: dotnet test --project Test/FinanceTracker.Tests.Integration -c=release
