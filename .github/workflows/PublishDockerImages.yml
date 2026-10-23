@@ -4,6 +4,11 @@ on:
   push:
     tags:
       - 'v*'
+  # Runs the integration tests without releasing, the image is only pushed for a tag
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
   tests:
