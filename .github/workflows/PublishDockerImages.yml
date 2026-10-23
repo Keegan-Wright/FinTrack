@@ -4,6 +4,11 @@ on:
   push:
     tags:
       - 'v*'
+  # Runs the integration tests without releasing, the image is only pushed for a tag
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
   integration-tests:
@@ -24,10 +29,11 @@ jobs:
         run: dotnet workload restore
 
       # Trusted, so Aspire's health check of the app's https endpoint can connect. On Linux trusting writes the
-      # certificate to ~/.aspnet/dev-certs/trust, which OpenSSL only reads once it's on SSL_CERT_DIR
+      # certificate to ~/.aspnet/dev-certs/trust, which OpenSSL only reads once it's on SSL_CERT_DIR. The runner has
+      # no browser certificate stores, so trust is only partial and reported as an error, OpenSSL is all .NET needs
       - name: Create development certificate
         run: |
-          dotnet dev-certs https --trust
+          dotnet dev-certs https --trust || true
           echo "SSL_CERT_DIR=$HOME/.aspnet/dev-certs/trust:/usr/lib/ssl/certs" >> "$GITHUB_ENV"
 
       - name: Run Integration Tests
@@ -42,6 +48,7 @@ jobs:
 
   build-and-push-image:
     needs: integration-tests
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
       contents: read
