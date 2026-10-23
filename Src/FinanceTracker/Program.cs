@@ -18,7 +18,7 @@ public partial class Program
         builder.UseConfiguredCulture();
         builder.AddServiceDefaults();
 
-        builder.Services.AddMudServices()
+        builder.Services.AddMudServices();
 
         // The client's pages run in the browser, the Identity pages render statically on the server
         builder.Services.AddRazorComponents()
