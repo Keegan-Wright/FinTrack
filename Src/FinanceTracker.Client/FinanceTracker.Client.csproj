@@ -1,21 +1,21 @@
-<Project Sdk="Microsoft.NET.Sdk.Razor">
-
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AnalysisMode>Recommended</AnalysisMode>
+    <!-- Served by the server project, which owns the launch settings and static web assets -->
+    <NoDefaultLaunchSettingsFile>true</NoDefaultLaunchSettingsFile>
+    <StaticWebAssetProjectMode>Default</StaticWebAssetProjectMode>
   </PropertyGroup>
-
-  <ItemGroup>
-    <SupportedPlatform Include="browser"/>
-  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Extensions.MudBlazor.StaticInput"/>
     <PackageReference Include="Microsoft.AspNetCore.Components.Authorization"/>
     <PackageReference Include="Microsoft.AspNetCore.Components.Web"/>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly"/>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Authentication"/>
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client"/>
     <PackageReference Include="Microsoft.Extensions.Http"/>
     <PackageReference Include="MudBlazor"/>

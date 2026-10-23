@@ -45,8 +45,9 @@ public sealed class EncryptionKeyRotator
                 continue;
             }
 
+            string keyName = entityType.FindPrimaryKey()!.Properties.Single().Name;
             int reencrypted = await (Task<int>)ReencryptMethod.MakeGenericMethod(entityType.ClrType)
-                .Invoke(this, [cancellationToken])!;
+                .Invoke(this, [keyName, cancellationToken])!;
 
             _logger.LogReencrypted(reencrypted, entityType.DisplayName(), context.EncryptionService.CurrentKeyId);
             total += reencrypted;
@@ -92,16 +93,18 @@ public sealed class EncryptionKeyRotator
     /// <summary>
     /// Loads every row and marks its encrypted values changed, so saving writes them back under the current key.
     /// </summary>
-    private async Task<int> ReencryptAsync<TEntity>(CancellationToken cancellationToken) where TEntity : class
+    /// <param name="keyName">The entity's single column primary key, to page by.</param>
+    private async Task<int> ReencryptAsync<TEntity>(string keyName, CancellationToken cancellationToken)
+        where TEntity : class
     {
         int total = 0;
         while (true)
         {
             await using FinanceTrackerContext context = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
 
-            // Rewriting a row doesn't change its id, so paging by id stays stable while saving
+            // Rewriting a row doesn't change its key, so paging by key stays stable while saving
             List<TEntity> batch = await context.Set<TEntity>()
-                .OrderBy(static x => EF.Property<Guid>(x, "Id"))
+                .OrderBy(x => EF.Property<object>(x, keyName))
                 .Skip(total)
                 .Take(BatchSize)
                 .ToListAsync(cancellationToken);

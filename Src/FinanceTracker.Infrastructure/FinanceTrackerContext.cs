@@ -7,6 +7,7 @@ using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Infrastructure.Encryption;
 using FinanceTracker.Infrastructure.Persistence;
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
@@ -17,7 +18,8 @@ using TickerQ.Utilities.Entities;
 
 namespace FinanceTracker.Infrastructure;
 
-public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, FinanceTrackerRole, Guid>, IDesignTimeDbContextFactory<FinanceTrackerContext>
+public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, FinanceTrackerRole, Guid>, IDesignTimeDbContextFactory<FinanceTrackerContext>,
+    IDataProtectionKeyContext
 {
     /// <summary>
     /// How long a database command may run before it's abandoned.
@@ -66,6 +68,13 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
     /// Append only, entries are created through <see cref="BankAccount.RecordSync"/>.
     /// </summary>
     public DbSet<SyncLogEntry> SyncLog { get; private set; }
+
+
+    /// <summary>
+    /// ASP.NET Data Protection's keys, which protect the sign in cookie and antiforgery tokens. Kept here so they
+    /// survive redeploys, with their XML encrypted like any other sensitive column.
+    /// </summary>
+    public DbSet<DataProtectionKey> DataProtectionKeys { get; private set; }
 
 
     #region TickerQ

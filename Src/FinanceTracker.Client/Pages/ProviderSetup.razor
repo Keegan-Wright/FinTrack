@@ -13,7 +13,7 @@
 
 <PageTitle>Provider Setup</PageTitle>
 
-<MudDataGrid T="OpenBankingProvider" Items="OpenBankingProviders"
+<MudDataGrid T="OpenBankingProvider" Items="@(OpenBankingProviders ?? [])"
              MultiSelection="true"
              SortMode="SortMode.Multiple"
              Filterable="true"
@@ -61,7 +61,12 @@
 
 @code {
 
-    private List<OpenBankingProvider> OpenBankingProviders { get; } = [];
+    /// <summary>
+    /// The banks that can be connected, loaded once, see <see cref="PageComponent.LoadOnceAsync{T}"/>.
+    /// </summary>
+    [PersistentState]
+    public List<OpenBankingProvider>? OpenBankingProviders { get; set; }
+
     private string _searchString = string.Empty;
     private string _openBankingAuthUrl = string.Empty;
     private string _vendorAccessToken = string.Empty;
@@ -69,13 +74,9 @@
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
-        SetLoadingState(true, "Loading Providers");
-        await foreach (var provider in OpenBankingService.GetOpenBankingProvidersForClientAsync(_cts.Token))
-        {
-            OpenBankingProviders.Add(provider);
-        }
-
-        SetLoadingState(false);
+        OpenBankingProviders = await LoadOnceAsync(OpenBankingProviders, "Loading Providers", cancellationToken =>
+            OpenBankingService.GetOpenBankingProvidersForClientAsync(cancellationToken)
+                .ToListAsync(cancellationToken).AsTask());
     }
 
     private Func<OpenBankingProvider, bool> QuickFilter =>

@@ -10,7 +10,6 @@
         rel="stylesheet"/>
     <link href=@Assets["_content/MudBlazor/MudBlazor.min.css"] rel="stylesheet"/>
     <link href="css/App.css" rel="stylesheet"/>
-    <link href="css/reconnect-modal.css" rel="stylesheet"/>
     <ImportMap/>
     <link rel="icon" type="image/ico" href="favicon.ico"/>
     <HeadOutlet @rendermode="PageRenderMode"/>
@@ -18,24 +17,16 @@
 
 <body>
 <Routes @rendermode="PageRenderMode"/>
-<div id="components-reconnect-modal">
-    <div class="reconnect-modal-content">
-        <div class="components-reconnect-show">
-            <h3>Connection Lost</h3>
-            <div class="mud-progress-circular"></div>
-            <p>Attempting to reconnect...</p>
-        </div>
-        <div class="components-reconnect-failed">
-            <h3>Connection Failed</h3>
-            <p>Rejoin failed... <a href="javascript:location.reload()">Reload the page</a></p>
-        </div>
-        <div class="components-reconnect-rejected">
-            <h3>Connection Rejected</h3>
-            <p>The server rejected the connection. <a href="javascript:location.reload()">Reload the page</a></p>
-        </div>
-    </div>
-</div>
-<script src="_framework/blazor.web.js"></script>
+<script src="_framework/blazor.web.js" autostart="false"></script>
+<script>
+    const runtime = @((MarkupString)BrowserRuntime.SettingsJson());
+    Blazor.start({
+        webAssembly: {
+            applicationCulture: runtime.culture || undefined,
+            configureRuntime: builder => builder.withEnvironmentVariable("TZ", runtime.timeZone)
+        }
+    });
+</script>
 <script src=@Assets["_content/MudBlazor/MudBlazor.min.js"]></script>
 <script src=@Assets["_content/Extensions.MudBlazor.StaticInput/NavigationObserver.js"]></script>
 </body>
@@ -46,6 +37,6 @@
     [CascadingParameter] private HttpContext HttpContext { get; set; } = null!;
 
     private IComponentRenderMode? PageRenderMode =>
-        HttpContext.AcceptsInteractiveRouting() ? InteractiveServer : null;
+        HttpContext.AcceptsInteractiveRouting() ? InteractiveWebAssembly : null;
 
 }

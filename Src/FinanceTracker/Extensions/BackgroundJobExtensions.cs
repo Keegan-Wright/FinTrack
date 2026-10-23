@@ -14,8 +14,8 @@ public static class BackgroundJobExtensions
     extension(WebApplicationBuilder builder)
     {
         /// <summary>
-        /// TickerQ, the jobs it runs, queuing a user's sync, and the notifier jobs tell users' open tabs about finished
-        /// syncs through.
+        /// TickerQ, the jobs it runs, queuing a user's sync, and the notifier jobs tell users' browsers about finished
+        /// syncs.
         /// </summary>
         public WebApplicationBuilder AddBackgroundJobs()
         {
@@ -39,7 +39,7 @@ public static class BackgroundJobExtensions
 
             builder.Services.AddScoped<IOpenBankingSyncScheduler, TickerQOpenBankingSyncScheduler>();
             builder.Services.AddSingleton<ISyncNotifier, SyncNotifier>();
-            builder.Services.AddScoped<ISyncNotifications, CurrentUserSyncNotifications>();
+            builder.Services.AddScoped<ISyncNotifications, PrerenderSyncNotifications>();
 
             return builder;
         }

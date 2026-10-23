@@ -17,15 +17,20 @@ namespace FinanceTracker.Client.Pages.Reports;
 /// <typeparam name="TReportResponse">The report the page shows, one of the <see cref="IReportService"/> results.</typeparam>
 public class ReportPageBase<TReportResponse> : PageComponent
 {
-    internal readonly List<TransactionAccountFilter> _accountFilterItems = [];
-    internal readonly List<TransactionCategoryFilter> _categoryFilterItems = [];
-
     internal readonly ChartOptions _chartOptions = new();
-    internal readonly List<TransactionProviderFilter> _providerFilterItems = [];
 
     internal readonly string _searchTerm = string.Empty;
-    internal readonly List<TransactionTagFilter> _transactionTagFilterItems = [];
-    internal readonly List<TransactionTypeFilter> _transactionTypeFilterItems = [];
+
+    /// <summary>
+    /// The filter bar's options, loaded once, see <see cref="PageComponent.LoadOnceAsync{T}"/>.
+    /// </summary>
+    [PersistentState]
+    public TransactionFilterOptions? FilterOptions { get; set; }
+
+    /// <summary>
+    /// <see cref="FilterOptions"/>, or none while they load.
+    /// </summary>
+    internal TransactionFilterOptions Filters => FilterOptions ?? TransactionFilterOptions.None;
 
     [Inject]
     private ITransactionsService TransactionsService { get; set; } = null!;
@@ -78,39 +83,6 @@ public class ReportPageBase<TReportResponse> : PageComponent
         }
 
         SetLoadingState(false);
-    }
-
-    private async Task LoadFilterItemsAsync()
-    {
-        await foreach (TransactionAccountFilter account in TransactionsService
-                           .GetAccountsForTransactionFiltersAsync(_cts.Token))
-        {
-            _accountFilterItems.Add(account);
-        }
-
-        await foreach (TransactionCategoryFilter category in TransactionsService
-                           .GetCategoriesForTransactionFiltersAsync(_cts.Token))
-        {
-            _categoryFilterItems.Add(category);
-        }
-
-        await foreach (TransactionProviderFilter provider in TransactionsService
-                           .GetProvidersForTransactionFiltersAsync(_cts.Token))
-        {
-            _providerFilterItems.Add(provider);
-        }
-
-        await foreach (TransactionTypeFilter type in
-                       TransactionsService.GetTypesForTransactionFiltersAsync(_cts.Token))
-        {
-            _transactionTypeFilterItems.Add(type);
-        }
-
-        await foreach (TransactionTagFilter tag in
-                       TransactionsService.GetTagsForTransactionFiltersAsync(_cts.Token))
-        {
-            _transactionTagFilterItems.Add(tag);
-        }
     }
 
 
@@ -237,8 +209,7 @@ public class ReportPageBase<TReportResponse> : PageComponent
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
-        SetLoadingState(true, "Loading filters");
-        await LoadFilterItemsAsync();
-        SetLoadingState(false);
+        FilterOptions = await LoadOnceAsync(FilterOptions, "Loading filters",
+            cancellationToken => TransactionFilterOptions.LoadAsync(TransactionsService, cancellationToken));
     }
 }

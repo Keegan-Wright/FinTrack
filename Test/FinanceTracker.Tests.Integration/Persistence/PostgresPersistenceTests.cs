@@ -13,6 +13,29 @@ namespace FinanceTracker.Tests.Integration.Persistence;
 public class PostgresPersistenceTests : IntegrationTestBase
 {
     [Test]
+    public async Task DataProtectionKeys_ArePersistedEncrypted()
+    {
+        // Arrange, signing in protects the cookie, so the app has created its key by now
+        await RegisterUserAsync();
+
+        // Act
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        List<string> stored = await context.Database
+            .SqlQueryRaw<string>("SELECT \"Xml\" AS \"Value\" FROM \"DataProtectionKeys\"")
+            .ToListAsync(CancellationToken);
+        List<string?> decrypted = await context.DataProtectionKeys.Select(x => x.Xml).ToListAsync(CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(stored).IsNotEmpty();
+            await Assert.That(stored.All(x => x.StartsWith($"{FinTrackAppFixture.EncryptionConfiguration.CurrentKeyId}:", StringComparison.Ordinal))).IsTrue();
+            await Assert.That(stored.Any(x => x.Contains("<key", StringComparison.Ordinal))).IsFalse();
+            await Assert.That(decrypted.All(x => x!.StartsWith("<key", StringComparison.Ordinal))).IsTrue();
+        }
+    }
+
+    [Test]
     public async Task EncryptedColumns_AreNotStoredAsPlaintext()
     {
         // Arrange

@@ -14,7 +14,7 @@ using TUnit.Aspire;
 namespace FinanceTracker.Tests.Integration;
 
 /// <summary>
-/// Runs the AppHost once per test session. Postgres and Redis start without data volumes, TrueLayer is
+/// Runs the AppHost once per test session. Postgres starts without a data volume, TrueLayer is
 /// replaced with <see cref="FakeTrueLayer"/> and the app is given throwaway secrets
 /// </summary>
 public sealed class FinTrackAppFixture : AspireFixture<Projects.FinanceTracker_AppHost>
@@ -55,8 +55,8 @@ public sealed class FinTrackAppFixture : AspireFixture<Projects.FinanceTracker_A
 
     protected override void ConfigureBuilder(IDistributedApplicationTestingBuilder builder)
     {
-        // Each run gets fresh containers rather than the dev data volumes
-        foreach (IResource resource in builder.Resources.Where(x => x.Name is FinTrackResources.Postgres or FinTrackResources.Redis))
+        // Each run gets a fresh container rather than the dev data volume
+        foreach (IResource resource in builder.Resources.Where(x => x.Name is FinTrackResources.Postgres))
         {
             foreach (ContainerMountAnnotation mount in resource.Annotations.OfType<ContainerMountAnnotation>().ToList())
             {

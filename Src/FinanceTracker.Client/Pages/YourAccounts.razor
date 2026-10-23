@@ -10,7 +10,7 @@
 
 <PageTitle>Accounts</PageTitle>
 <MudGrid Spacing="4">
-    @foreach (var account in _accounts)
+    @foreach (var account in Accounts ?? [])
     {
         <MudItem xs="12" md="12" lg="6" xl="4">
             <MudCard Elevation="2" Class="h-100">
@@ -73,18 +73,18 @@
 
 @code {
 
-    private readonly List<AccountAndTransactions> _accounts = [];
+    /// <summary>
+    /// The user's accounts, loaded once, see <see cref="PageComponent.LoadOnceAsync{T}"/>.
+    /// </summary>
+    [PersistentState]
+    public List<AccountAndTransactions>? Accounts { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
-        SetLoadingState(true, "Loading your accounts");
-        await foreach (var account in AccountService.GetAccountsAndMostRecentTransactionsAsync(5, _cts.Token))
-        {
-            _accounts.Add(account);
-        }
-
-        SetLoadingState(false);
+        Accounts = await LoadOnceAsync(Accounts, "Loading your accounts", cancellationToken =>
+            AccountService.GetAccountsAndMostRecentTransactionsAsync(5, cancellationToken)
+                .ToListAsync(cancellationToken).AsTask());
     }
 
 }

@@ -2,6 +2,7 @@
 @using Blazilla
 @using FinanceTracker.Contracts.Auth
 @using FinanceTracker.Domain.Identity
+@using FinanceTracker.Extensions
 @using FluentValidation
 @using Microsoft.AspNetCore.Identity
 
@@ -10,6 +11,7 @@
 @inject NavigationManager NavigationManager
 @inject IdentityRedirectManager RedirectManager
 @inject IValidator<LoginRequest> Validator;
+@inject IConfiguration Configuration
 
 <PageTitle>Log in</PageTitle>
 
@@ -61,8 +63,14 @@
             Href="@(NavigationManager.GetUriWithQueryParameters("Account/Register", new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))">
             Register as a new user
         </MudLink>
-        <br/>
-        <MudLink Href="/auth/oidc">Login with SSO</MudLink>
+        @if (Configuration.IsOidcEnabled())
+        {
+            <br/>
+            <MudLink
+                Href="@(NavigationManager.GetUriWithQueryParameters("auth/oidc", new Dictionary<string, object?> { ["returnUrl"] = ReturnUrl }))">
+                Login with SSO
+            </MudLink>
+        }
     </MudItem>
 </MudGrid>
 
@@ -73,10 +81,23 @@
 
     [SupplyParameterFromForm] private LoginRequest LoginRequest { get; set; } = default!;
 
-    // Form posts bind the property before initialisation, so only create a model when nothing was posted
-    protected override void OnInitialized() => LoginRequest ??= new();
-
     [SupplyParameterFromQuery] private string? ReturnUrl { get; set; }
+
+    /// <summary>
+    /// <c>failed</c> when an OIDC sign in came back without signing anyone in, the server logs why.
+    /// </summary>
+    [SupplyParameterFromQuery(Name = "sso")] private string? Sso { get; set; }
+
+    protected override void OnInitialized()
+    {
+        // Form posts bind the property before initialisation, so only create a model when nothing was posted
+        LoginRequest ??= new();
+
+        if (Sso == "failed")
+        {
+            errorMessage = "Single sign on failed.";
+        }
+    }
 
     public async Task LoginUser()
     {

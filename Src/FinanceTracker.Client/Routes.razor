@@ -1,8 +1,8 @@
-﻿@using FinanceTracker.Components.Account.Shared
-@using FinanceTracker.Client
 @using FinanceTracker.Client.Layout
-@* Identity pages are in this assembly, every other page is in the client's *@
-<Router AppAssembly="typeof(Program).Assembly" AdditionalAssemblies="[typeof(ApplicationState).Assembly]">
+
+@* Routes the client's pages, in the browser and while the server prerenders them. The Identity pages live in the
+   server and only ever render statically there, interactive navigation to them falls back to a full page load. *@
+<Router AppAssembly="typeof(Program).Assembly">
     <Found Context="routeData">
         <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(MainLayout)">
             <NotAuthorized>

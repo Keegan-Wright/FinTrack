@@ -18,20 +18,25 @@ public partial class Program
         builder.UseConfiguredCulture();
         builder.AddServiceDefaults();
 
-        builder.Services.AddMudServices();
+        builder.Services.AddMudServices()
+
+        // The client's pages run in the browser, the Identity pages render statically on the server
         builder.Services.AddRazorComponents()
-            .AddInteractiveServerComponents();
+            .AddInteractiveWebAssemblyComponents()
+            .AddAuthenticationStateSerialization(options =>
+                options.SerializationCallback = BrowserAuthenticationState.SerializeAsync);
+
         builder.Services.AddSignalR();
         builder.Services.AddCascadingValue(_ => new ApplicationState());
 
         builder.AddFinTrackAuthentication()
             .AddFinTrackPersistence()
+            .AddFinTrackDataProtection()
             .AddOpenBanking()
             .AddBackgroundJobs();
 
-        builder.AddRedisClient(FinTrackResources.Redis);
-        builder.AddRedisDistributedCache(FinTrackResources.Redis);
-        builder.AddRedisOutputCache(FinTrackResources.Redis);
+        // Only for data that isn't sensitive, fields running encryption should NOT enter the cache.
+        builder.Services.AddHybridCache();
 
         builder.Services.AddSingleton(TimeProvider.System);
 
@@ -45,6 +50,7 @@ public partial class Program
         if (app.Environment.IsDevelopment())
         {
             app.UseMigrationsEndPoint();
+            app.UseWebAssemblyDebugging();
         }
         else
         {
@@ -66,10 +72,9 @@ public partial class Program
         app.UseTickerQ();
         app.MapStaticAssets();
         app.MapRazorComponents<App>()
-            .AddInteractiveServerRenderMode()
+            .AddInteractiveWebAssemblyRenderMode()
             .AddAdditionalAssemblies(typeof(ApplicationState).Assembly);
 
-        app.UseOutputCache();
         app.MapAdditionalIdentityEndpoints();
         app.MapFinTrackApi();
 

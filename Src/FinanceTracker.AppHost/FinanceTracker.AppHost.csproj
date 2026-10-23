@@ -21,8 +21,6 @@
     <PackageReference Include="Aspire.Hosting.AppHost"/>
     <PackageReference Include="Aspire.Hosting.Docker"/>
     <PackageReference Include="Aspire.Hosting.PostgreSQL"/>
-    <PackageReference Include="Aspire.Hosting.Redis"/>
-    <PackageReference Include="Aspire.StackExchange.Redis"/>
     <!-- Transitive via Aspire.Hosting, referenced directly to lift it to a patched version -->
     <PackageReference Include="MessagePack"/>
   </ItemGroup>

@@ -18,7 +18,7 @@
                OnClick="@AddClassification">Add Classification / Tag
 </MudIconButton>
 
-<MudDataGrid T="Classification" Items="_classifications"
+<MudDataGrid T="Classification" Items="@(Classifications ?? [])"
              MultiSelection="true"
              SortMode="SortMode.Multiple"
              Filterable="true"
@@ -45,20 +45,21 @@
 
 @code {
 
-    private readonly List<Classification> _classifications = [];
+    /// <summary>
+    /// The user's classifications, loaded once, see <see cref="PageComponent.LoadOnceAsync{T}"/>.
+    /// </summary>
+    [PersistentState]
+    public List<Classification>? Classifications { get; set; }
+
     private string? _classificationsSearchTerm;
 
 
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
-        SetLoadingState(true, "Loading classifications");
-        await foreach (var classification in ClassificationService.GetAllCustomClassificationsAsync(_cts.Token))
-        {
-            _classifications.Add(classification);
-        }
-
-        SetLoadingState(false);
+        Classifications = await LoadOnceAsync(Classifications, "Loading classifications", cancellationToken =>
+            ClassificationService.GetAllCustomClassificationsAsync(cancellationToken)
+                .ToListAsync(cancellationToken).AsTask());
     }
 
 
@@ -88,7 +89,7 @@
             {
                 SetLoadingState(true, "Adding Classification / Tag");
                 var classification = await ClassificationService.AddCustomClassificationAsync((AddClassifications)dialogActionResult.Data!, _cts.Token);
-                _classifications.Add(classification);
+                (Classifications ??= []).Add(classification);
             }
             catch (Exception)
             {

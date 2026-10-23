@@ -14,7 +14,7 @@
 
 <PageTitle>Automation</PageTitle>
 
-<MudDataGrid T="AutomationCron" Items="_cronResponses"
+<MudDataGrid T="AutomationCron" Items="@(Jobs ?? [])"
              MultiSelection="true"
              SortMode="SortMode.Multiple"
              Filterable="true"
@@ -62,28 +62,23 @@
 
 @code {
 
-    private readonly List<AutomationCron> _cronResponses = [];
+    /// <summary>
+    /// The background jobs, loaded once, see <see cref="PageComponent.LoadOnceAsync{T}"/>.
+    /// </summary>
+    [PersistentState]
+    public List<AutomationCron>? Jobs { get; set; }
+
     private AutomationCron? _contextMenuRow;
     private MudMenu _contextMenu = null!;
 
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
-        SetLoadingState(true, "Loading jobs");
-
-        await LoadJobs();
-
-        SetLoadingState(false);
+        Jobs = await LoadOnceAsync(Jobs, "Loading jobs", LoadJobsAsync);
     }
 
-    private async Task LoadJobs()
-    {
-        _cronResponses.Clear();
-        await foreach (var cron in AutomationService.GetJobsAsync(_cts.Token))
-        {
-            _cronResponses.Add(cron);
-        }
-    }
+    private Task<List<AutomationCron>> LoadJobsAsync(CancellationToken cancellationToken) =>
+        AutomationService.GetJobsAsync(cancellationToken).ToListAsync(cancellationToken).AsTask();
 
     private async Task OpenContextMenu(DataGridRowClickEventArgs<AutomationCron> row)
     {
@@ -134,7 +129,7 @@
             finally
             {
                 SetLoadingState(false);
-                await LoadJobs();
+                Jobs = await LoadJobsAsync(_cts.Token);
             }
         }
     }

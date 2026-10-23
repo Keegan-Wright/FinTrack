@@ -9,5 +9,4 @@ public static class FinTrackResources
     public const string Web = "FinTrackWeb";
     public const string Postgres = "FinTrack-Postgres";
     public const string Database = "FinTrackDb";
-    public const string Redis = "FinTrack-Redis";
 }

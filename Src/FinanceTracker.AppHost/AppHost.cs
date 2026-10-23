@@ -38,15 +38,6 @@ IResourceBuilder<ParameterResource> openBankingPublicIpAddress =
 
 
 
-IResourceBuilder<RedisResource> redis = builder.AddRedis(FinTrackResources.Redis)
-    .WithDataVolume()
-    .WithPersistence(TimeSpan.FromMinutes(5))
-    .PublishAsDockerComposeService((resource, service) =>
-    {
-        service.Restart = "unless-stopped";
-    });
-
-
 IResourceBuilder<PostgresServerResource> postgres = builder.AddPostgres(FinTrackResources.Postgres)
     .WithDataVolume(isReadOnly: false)
     .PublishAsDockerComposeService((resource, service) =>
@@ -69,9 +60,7 @@ IResourceBuilder<ProjectResource> finTrack = builder.AddProject<Projects.Finance
     .WithEnvironment(FinTrackEnvironment.TrueLayerClientSecret, openBankingClientSecret)
     .WithEnvironment(FinTrackEnvironment.PublicIpAddress, openBankingPublicIpAddress)
     .WithEnvironment(FinTrackEnvironment.Culture, "en-GB")
-    .WithReference(redis)
     .WithReference(postgresDb)
-    .WaitFor(redis)
     .WaitFor(postgresDb)
     .PublishAsDockerComposeService((resource, service) =>
     {

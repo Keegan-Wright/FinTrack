@@ -224,6 +224,9 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
             await httpClient.GetAsync($"api/providers?client_id={_trueLayerOpenBankingConfiguration.ClientId}",
                 cancellationToken);
 
+        // The list is cached, a failure has to throw rather than read as no providers
+        response.EnsureSuccessStatusCode();
+
         await foreach (ExternalOpenBankingProvider? provider in response.Content
                            .ReadFromJsonAsAsyncEnumerable<ExternalOpenBankingProvider>(cancellationToken))
         {
