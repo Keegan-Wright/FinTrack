@@ -1,7 +1,6 @@
 @page "/"
 @* The dashboard: in/out KPIs, cash flow, top categories, upcoming payments, budgets and an accounts
    snapshot, for a chosen date range. *@
-@using System.Collections.Immutable
 @using FinanceTracker.Client.Components.Dashboard
 @using FinanceTracker.Contracts.Auth
 @using FinanceTracker.Contracts.Account
@@ -187,11 +186,11 @@
         {
             FromDate = fromDate.ToUniversalTime(),
             ToDate = toDate.ToUniversalTime(),
-            AccountIds = ImmutableList<Guid>.Empty,
-            ProviderIds = ImmutableList<Guid>.Empty,
-            Categories = ImmutableList<string>.Empty,
-            Types = ImmutableList<string>.Empty,
-            Tags = ImmutableList<string>.Empty
+            AccountIds = [],
+            ProviderIds = [],
+            Categories = [],
+            Types = [],
+            Tags = []
         };
 
         var transactions = new List<Transaction>(512);

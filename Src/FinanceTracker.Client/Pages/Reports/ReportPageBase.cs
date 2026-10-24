@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using System.Globalization;
 using FinanceTracker.Client.Components.Transactions;
 using FinanceTracker.Contracts;
@@ -56,14 +55,14 @@ public class ReportPageBase<TReportResponse> : PageComponent
         ReportItems.Clear();
         FilterTransactions report = new()
         {
-            AccountIds = filters.AccountIds.ToImmutableList(),
-            ProviderIds = filters.ProviderIds.ToImmutableList(),
-            Categories = filters.Categories.ToImmutableList(),
-            Types = filters.TransactionTypes.ToImmutableList(),
+            AccountIds = filters.AccountIds.ToList(),
+            ProviderIds = filters.ProviderIds.ToList(),
+            Categories = filters.Categories.ToList(),
+            Types = filters.TransactionTypes.ToList(),
             SearchTerm = filters.SearchTerm,
             FromDate = filters.DateRange?.Start,
             ToDate = filters.DateRange?.End,
-            Tags = filters.TransactionTags.ToImmutableList()
+            Tags = filters.TransactionTags.ToList()
         };
 
         ReportResponseEnumerable = reportType switch
