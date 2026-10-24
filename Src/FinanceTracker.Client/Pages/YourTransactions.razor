@@ -1,7 +1,6 @@
 @page "/Transactions"
 @* Every transaction, filterable, with custom classifications applied from here
    (ITransactionsService, IClassificationService). *@
-@using System.Collections.Immutable
 @using System.Globalization
 @using FinanceTracker.Client.Components.Dialogs
 @using FinanceTracker.Client.Components.Transactions
@@ -115,14 +114,14 @@
         _transactions.Clear();
         var transactionRequest = new FilterTransactions
         {
-            AccountIds = filters.AccountIds.ToImmutableList(),
-            ProviderIds = filters.ProviderIds.ToImmutableList(),
-            Categories = filters.Categories.ToImmutableList(),
-            Types = filters.TransactionTypes.ToImmutableList(),
+            AccountIds = filters.AccountIds.ToList(),
+            ProviderIds = filters.ProviderIds.ToList(),
+            Categories = filters.Categories.ToList(),
+            Types = filters.TransactionTypes.ToList(),
             SearchTerm = filters.SearchTerm,
             FromDate = filters.DateRange?.Start,
             ToDate = filters.DateRange?.End,
-            Tags = filters.TransactionTags.ToImmutableList()
+            Tags = filters.TransactionTags.ToList()
         };
 
         await foreach (var transaction in TransactionsService.GetAllTransactionsAsync(transactionRequest, _cts.Token))

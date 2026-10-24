@@ -1,7 +1,6 @@
 @page "/ProviderSetup"
 @* Connects banks: pick providers, consent on the provider's page, then paste back the access code
    (IOpenBankingService). *@
-@using System.Collections.Immutable
 @using FinanceTracker.Contracts.OpenBanking
 @using Microsoft.AspNetCore.Authorization
 @inherits PageComponent
@@ -86,8 +85,8 @@
     {
         var requestModel = new ProviderSetupUrl
         {
-            ProviderIds = selectedProviders.Select(x => x.ProviderId).ToImmutableList(),
-            Scopes = selectedProviders.SelectMany(x => x.Scopes).ToImmutableList()
+            ProviderIds = selectedProviders.Select(x => x.ProviderId).ToList(),
+            Scopes = selectedProviders.SelectMany(x => x.Scopes).ToList()
         };
 
         _openBankingAuthUrl = await OpenBankingService.BuildAuthUrlAsync(requestModel, _cts.Token);

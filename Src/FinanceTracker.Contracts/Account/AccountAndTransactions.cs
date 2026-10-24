@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using System.ComponentModel;
 
 namespace FinanceTracker.Contracts.Account;
@@ -43,5 +42,5 @@ public class AccountAndTransactions
     /// The account's transactions.
     /// </summary>
     [Description("List of transactions for the account")]
-    public IImmutableList<AccountTransaction>? Transactions { get; init; }
+    public IReadOnlyList<AccountTransaction>? Transactions { get; init; }
 }

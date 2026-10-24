@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using System.ComponentModel;
 
 namespace FinanceTracker.Contracts.Transactions;
@@ -13,26 +12,26 @@ public class FilterTransactions
     /// Only these accounts.
     /// </summary>
     [Description("List of account identifiers to filter transactions")]
-    public IImmutableList<Guid>? AccountIds { get; init; } = [];
+    public IReadOnlyList<Guid>? AccountIds { get; init; } = [];
 
     /// <summary>
     /// Only these bank connections, see <see cref="TransactionProviderFilter.ProviderId"/>.
     /// </summary>
     [Description("List of banking provider identifiers to filter transactions")]
-    public IImmutableList<Guid>? ProviderIds { get; init; } = [];
+    public IReadOnlyList<Guid>? ProviderIds { get; init; } = [];
 
     /// <summary>
     /// Only these provider categories, matched exactly.
     /// </summary>
     [Description("List of transaction categories to filter transactions")]
-    public IImmutableList<string>? Categories { get; init; } = [];
+    public IReadOnlyList<string>? Categories { get; init; } = [];
 
     /// <summary>
     /// Only these transaction types, <c>Debit</c> or <c>Credit</c>.
     /// <remarks>Casing ignored.</remarks>
     /// </summary>
     [Description("List of transaction types to filter transactions")]
-    public IImmutableList<string>? Types { get; init; } = [];
+    public IReadOnlyList<string>? Types { get; init; } = [];
 
     /// <summary>
     /// Only transactions whose description contains this.
@@ -57,5 +56,5 @@ public class FilterTransactions
     /// Only transactions with at least one of these tags (provider or custom classifications).
     /// </summary>
     [Description("List of tags to filter transactions")]
-    public IImmutableList<string>? Tags { get; init; } = [];
+    public IReadOnlyList<string>? Tags { get; init; } = [];
 }
