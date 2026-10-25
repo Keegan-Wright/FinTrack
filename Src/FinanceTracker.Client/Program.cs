@@ -1,3 +1,4 @@
+using ApexCharts;
 using FinanceTracker.Client.Api;
 using FinanceTracker.Client.Extensions;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
@@ -23,6 +24,7 @@ public static class Program
         builder.Logging.SetMinimumLevel(LogLevel.Warning);
 
         builder.Services.AddMudServices();
+        builder.Services.AddApexCharts();
         builder.Services.AddCascadingValue(_ => new ApplicationState());
         builder.Services.AddSingleton(TimeProvider.System);
 

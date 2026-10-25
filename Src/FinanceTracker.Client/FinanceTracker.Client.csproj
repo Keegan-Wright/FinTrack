@@ -19,10 +19,15 @@
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client"/>
     <PackageReference Include="Microsoft.Extensions.Http"/>
     <PackageReference Include="MudBlazor"/>
+    <PackageReference Include="Blazor-ApexCharts"/>
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\FinanceTracker.Contracts\FinanceTracker.Contracts.csproj"/>
+    <InternalsVisibleTo Include="FinanceTracker.Tests.Unit.Client"/>
+    <ProjectReference Include="..\Generators\FinanceTracker.Generated.Attributes\FinanceTracker.Generated.Attributes\FinanceTracker.Generated.Attributes.csproj" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false"/>
+    <ProjectReference Include="..\Generators\FinanceTracker.Generated.Enums\FinanceTracker.Generated.Enums\FinanceTracker.Generated.Enums.csproj" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false"/>
+    <ProjectReference Include="..\Generators\FinanceTracker.Generated.DependencyInjection\FinanceTracker.Generated.DependencyInjection\FinanceTracker.Generated.DependencyInjection.csproj" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false"/>
   </ItemGroup>
 
 </Project>
