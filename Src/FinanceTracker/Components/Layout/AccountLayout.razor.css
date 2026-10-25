@@ -1,0 +1,52 @@
+.ft-auth {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    min-height: 100vh;
+    padding: 48px 16px;
+    background-color: var(--mud-palette-background);
+}
+
+.ft-auth__brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--mud-palette-text-primary);
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: .02em;
+    text-decoration: none;
+}
+
+.ft-auth__brand ::deep .mud-icon-root {
+    font-size: 2rem;
+}
+
+.ft-auth__panel {
+    width: min(420px, 100%);
+    padding: 32px;
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--mud-default-borderradius);
+    background-color: var(--mud-palette-surface);
+    color: var(--mud-palette-text-primary);
+}
+
+.ft-auth__version {
+    color: var(--mud-palette-text-secondary);
+    font-size: .6875rem;
+}
+
+/* Mobile panel starts near the top rather than centring in an attempt to stop the keyboard pushing the form off screen */
+@media (max-width: 599.98px) {
+    .ft-auth {
+        justify-content: flex-start;
+        gap: 20px;
+        padding-top: 32px;
+    }
+
+    .ft-auth__panel {
+        padding: 24px 20px;
+    }
+}
