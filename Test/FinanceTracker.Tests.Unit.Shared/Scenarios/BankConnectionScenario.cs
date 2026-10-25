@@ -44,6 +44,12 @@ public sealed class BankConnectionScenario : ScenarioBuilder
             context.Entry(connection).Property(x => x.ConsentGrantedAt).CurrentValue = consentGrantedAt;
         });
 
+    /// <summary>
+    /// Revokes the active token at <paramref name="revokedAt"/>.
+    /// </summary>
+    public Task<TestingScenario> WithRevokedToken(string connectionName, DateTime revokedAt) =>
+        PersistAsync(async context => (await LoadAsync(context, connectionName)).RevokeActiveToken(revokedAt));
+
     private Task<BankConnection> LoadAsync(Infrastructure.FinanceTrackerContext context, string connectionName)
     {
         Guid connectionId = Scenario.ConnectionMappings[connectionName];
