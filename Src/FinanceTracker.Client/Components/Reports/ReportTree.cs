@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using System.Globalization;
 using FinanceTracker.Contracts.Reports;
 using FinanceTracker.Contracts.Reports.Account;
@@ -68,8 +67,8 @@ public static class ReportTree
         Narrow(scope, from: day.Date, to: day.Date.AddDays(1).AddTicks(-1));
 
     // The report's own filters still apply, a narrower account, tag or date replaces the chosen ones
-    private static FilterTransactions Narrow(FilterTransactions request, IImmutableList<Guid>? accountIds = null,
-        IImmutableList<string>? tags = null, DateTime? from = null, DateTime? to = null) => new()
+    private static FilterTransactions Narrow(FilterTransactions request, IReadOnlyList<Guid>? accountIds = null,
+        IReadOnlyList<string>? tags = null, DateTime? from = null, DateTime? to = null) => new()
     {
         AccountIds = accountIds ?? request.AccountIds,
         ProviderIds = request.ProviderIds,

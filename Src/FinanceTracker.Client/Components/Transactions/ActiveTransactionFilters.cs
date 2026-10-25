@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using FinanceTracker.Contracts.Transactions;
 using MudBlazor;
 
@@ -26,11 +25,11 @@ public sealed record ActiveTransactionFilters(
     /// </summary>
     public FilterTransactions ToRequest() => new()
     {
-        AccountIds = AccountIds.ToImmutableList(),
-        ProviderIds = ProviderIds.ToImmutableList(),
-        Categories = Categories.ToImmutableList(),
-        Types = TransactionTypes.ToImmutableList(),
-        Tags = TransactionTags.ToImmutableList(),
+        AccountIds = AccountIds.ToList(),
+        ProviderIds = ProviderIds.ToList(),
+        Categories = Categories.ToList(),
+        Types = TransactionTypes.ToList(),
+        Tags = TransactionTags.ToList(),
         SearchTerm = SearchTerm,
         FromDate = DateRange?.Start?.Date,
         // The end date is a whole day, through to its last tick.
