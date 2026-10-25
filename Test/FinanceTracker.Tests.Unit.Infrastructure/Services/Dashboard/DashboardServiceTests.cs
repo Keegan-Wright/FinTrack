@@ -39,17 +39,17 @@ public class DashboardServiceTests : InfrastructureTestBase
     }
 
     [Test]
-    public async Task GetSpentInTimePeriod_IncludesOneDayEitherSideOfTheRange()
+    public async Task GetSpentInTimePeriod_IncludesTheStartAndLeavesOutTheEnd()
     {
         // Arrange
         DateTime from = new(2026, 3, 10, 0, 0, 0, DateTimeKind.Utc);
         DateTime to = new(2026, 3, 20, 0, 0, 0, DateTimeKind.Utc);
 
         await SeedAccountAsync()
-            .Do(s => s.TransactionScenario.WithTransaction("day-before", "main", Transaction(-1m, from.AddDays(-1))))
-            .Do(s => s.TransactionScenario.WithTransaction("day-after", "main", Transaction(-2m, to.AddDays(1))))
-            .Do(s => s.TransactionScenario.WithTransaction("too-early", "main", Transaction(-4m, from.AddDays(-1).AddSeconds(-1))))
-            .Do(s => s.TransactionScenario.WithTransaction("too-late", "main", Transaction(-8m, to.AddDays(1).AddSeconds(1))));
+            .Do(s => s.TransactionScenario.WithTransaction("at-start", "main", Transaction(-1m, from)))
+            .Do(s => s.TransactionScenario.WithTransaction("before-end", "main", Transaction(-2m, to.AddSeconds(-1))))
+            .Do(s => s.TransactionScenario.WithTransaction("before-start", "main", Transaction(-4m, from.AddSeconds(-1))))
+            .Do(s => s.TransactionScenario.WithTransaction("at-end", "main", Transaction(-8m, to)));
 
         DashboardService subject = BuildSubject();
 

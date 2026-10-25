@@ -267,6 +267,31 @@ public class ReportServiceTests : InfrastructureTestBase
     }
 
     [Test]
+    public async Task GetAccountBreakdownReportAsync_IncludesTransfers()
+    {
+        // Arrange
+        await SeedAccountAsync()
+            .Do(s => s.TransactionScenario.WithTransaction("main-1", "main", Transaction(-10m, January15)))
+            .Do(s => s.TransactionScenario.WithTransaction("main-2", "main",
+                Transaction(250m, January20, BankTransaction.TransferCategory)));
+
+        ReportService subject = BuildSubject();
+
+        // Act
+        List<SpentInAccountReport> reports = await subject.GetAccountBreakdownReportAsync(Request(), CancellationToken)
+            .ToListAsync(CancellationToken);
+
+        // Assert
+        SpentInAccountReport report = reports.Single();
+        using (Assert.Multiple())
+        {
+            await Assert.That(report.TotalTransactions).IsEqualTo(2);
+            await Assert.That(report.TotalIn).IsEqualTo(250m);
+            await Assert.That(report.TotalOut).IsEqualTo(-10m);
+        }
+    }
+
+    [Test]
     public async Task GetAccountBreakdownReportAsync_WhenUserHasNoTransactions_ReturnsEmpty()
     {
         // Arrange

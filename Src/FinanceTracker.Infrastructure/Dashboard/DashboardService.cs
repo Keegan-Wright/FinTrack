@@ -40,8 +40,8 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        DateTime fromUtc = fromDate.AddDays(-1).ToUniversalTime();
-        DateTime toUtc = toDate.AddDays(1).ToUniversalTime();
+        DateTime fromUtc = fromDate.ToUniversalTime();
+        DateTime toUtc = toDate.ToUniversalTime();
 
         List<TransactionLite> items = await context.BankTransactions.OwnedBy(UserId)
             .Select(x => new TransactionLite
@@ -53,7 +53,7 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
             .ToListAsync(cancellationToken);
 
         IEnumerable<decimal> amountsInRange = items
-            .Where(x => x.TransactionTime >= fromUtc && x.TransactionTime <= toUtc)
+            .Where(x => x.TransactionTime >= fromUtc && x.TransactionTime < toUtc)
             .Where(x => x.TransactionCategory != BankTransaction.TransferCategory)
             .Select(x => x.Amount);
 
