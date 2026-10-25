@@ -13,9 +13,9 @@ public class PageAccessTests : IntegrationTestBase
         "/Classifications",
         "/HouseholdMembers",
         "/ProviderSetup",
-        "/Report/ByAccount",
-        "/Report/ByCategory",
-        "/Report/InTimePeriod",
+        "/Reports",
+        "/Reports/accounts",
+        "/Reports/tags",
         "/Transactions"
     ];
 

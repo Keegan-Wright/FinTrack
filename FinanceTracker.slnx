@@ -31,6 +31,7 @@
   </Folder>
   <Folder Name="/Tests/Unit/">
     <Project Path="Test/FinanceTracker.Tests.Unit.Shared/FinanceTracker.Tests.Unit.Shared.csproj" />
+    <Project Path="Test\FinanceTracker.Tests.Unit.Client\FinanceTracker.Tests.Unit.Client.csproj" />
     <Project Path="Test\FinanceTracker.Tests.Unit.Domain\FinanceTracker.Tests.Unit.Domain.csproj" />
     <Project Path="Test\FinanceTracker.Tests.Unit.FinanceTracker\FinanceTracker.Tests.Unit.FinanceTracker.csproj" />
     <Project Path="Test\FinanceTracker.Tests.Unit.Infrastructure\FinanceTracker.Tests.Unit.Infrastructure.csproj" />
