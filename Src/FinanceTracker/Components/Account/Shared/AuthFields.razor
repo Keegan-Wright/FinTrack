@@ -1,0 +1,10 @@
+@* A form's fields and its button, grouped for easy consistant spacing *@
+<div class="ft-auth-fields">
+    @ChildContent
+</div>
+
+@code {
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+}

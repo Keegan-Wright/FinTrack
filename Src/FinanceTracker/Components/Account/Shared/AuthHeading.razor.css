@@ -1,0 +1,6 @@
+.ft-auth-heading {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 24px;
+}

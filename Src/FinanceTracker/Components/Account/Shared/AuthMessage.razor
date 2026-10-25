@@ -1,0 +1,34 @@
+@* An outcome page's content with guidance on where to go next. *@
+<div class="ft-auth-message" role="@(IconColor == Color.Error ? "alert" : "status")">
+    <MudIcon Icon="@Icon" Color="@IconColor" Class="ft-auth-message__icon"/>
+    <MudText Typo="Typo.h5" HtmlTag="h1">@Title</MudText>
+    @if (ChildContent is not null)
+    {
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">@ChildContent</MudText>
+    }
+    @if (ActionHref is not null)
+    {
+        <MudButton Href="@ActionHref" Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Class="mt-4">
+            @ActionText
+        </MudButton>
+    }
+</div>
+
+@code {
+
+    [Parameter, EditorRequired] public string Icon { get; set; } = string.Empty;
+
+    [Parameter] public Color IconColor { get; set; } = Color.Primary;
+
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// Where to go next, back to signing in by default. Null hides the button.
+    /// </summary>
+    [Parameter] public string? ActionHref { get; set; } = "Account/Login";
+
+    [Parameter] public string ActionText { get; set; } = "Back to sign in";
+
+}

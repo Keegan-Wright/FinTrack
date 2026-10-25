@@ -1,5 +1,7 @@
 ﻿@page "/Account/InvalidUser"
 
-<PageTitle>Invalid user</PageTitle>
+<PageTitle>Account not found</PageTitle>
 
-<MudText Typo="Typo.h3" Color="Color.Error" GutterBottom="true" Align="Align.Center">Invalid user</MudText>
+<AuthMessage Icon="@Icons.Material.Outlined.PersonOff" IconColor="Color.Error" Title="We couldn't find that account">
+    Try signing in again.
+</AuthMessage>

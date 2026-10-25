@@ -1,0 +1,15 @@
+.ft-auth-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 20px 0;
+    color: var(--mud-palette-text-secondary);
+    font-size: .75rem;
+}
+
+.ft-auth-divider::before,
+.ft-auth-divider::after {
+    content: "";
+    flex: 1 1 auto;
+    border-top: 1px solid var(--mud-palette-lines-default);
+}
