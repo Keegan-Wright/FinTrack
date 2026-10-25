@@ -6,5 +6,8 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <AnalysisLevel>latest</AnalysisLevel>
     <AnalysisMode>Recommended</AnalysisMode>
+    <!-- Release builds set the version from the git tag (Src/Dockerfile), anything else is a dev build. The SDK adds
+         the commit to the informational version, shown in the app, see AppVersion.cs -->
+    <Version Condition="'$(Version)' == ''">0.0.0-dev</Version>
   </PropertyGroup>
 </Project>

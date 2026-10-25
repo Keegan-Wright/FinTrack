@@ -56,6 +56,7 @@
     <PackageVersion Include="WireMock.Net" Version="2.18.0" />
 
     <PackageVersion Include="Blazilla" Version="2.4.2" />
+    <PackageVersion Include="Blazor-ApexCharts" Version="6.1.0" />
     <PackageVersion Include="FluentValidation" Version="12.2.0" />
     <PackageVersion Include="MudBlazor" Version="9.11.0" />
     <PackageVersion Include="Extensions.MudBlazor.StaticInput" Version="4.1.0" />
