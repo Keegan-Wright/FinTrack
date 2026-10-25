@@ -83,5 +83,6 @@ jobs:
           tags: |
             keeganwright12/fintrackweb:${{steps.tag.outputs.tag}}
           platforms: linux/amd64,linux/arm64
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache,mode=max
+          # GitHub's Actions cache, kept between runs unlike the runner's disk
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
