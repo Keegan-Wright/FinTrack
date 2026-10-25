@@ -3,7 +3,6 @@ using FinanceTracker.Contracts.Auth;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Tests.Integration.Http;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.Tests.Integration;
@@ -75,13 +74,7 @@ public abstract class IntegrationTestBase
     {
         SignedInUser user = await RegisterUserAsync();
 
-        await using (FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken))
-        {
-            Guid adminRoleId = await context.Roles.Where(x => x.Name == FinTrackRoles.Admin).Select(x => x.Id)
-                .SingleAsync(CancellationToken);
-            context.UserRoles.Add(new IdentityUserRole<Guid> { UserId = user.UserId, RoleId = adminRoleId });
-            await context.SaveChangesAsync(CancellationToken);
-        }
+        await Scenario.Do(s => s.UserScenario.WithRole(user.Username, FinTrackRoles.Admin));
 
         FinTrackClient client = CreateClient();
         HttpResponseMessage response = await client.LoginAsync(user.Username, SignedInUser.DefaultPassword, CancellationToken);

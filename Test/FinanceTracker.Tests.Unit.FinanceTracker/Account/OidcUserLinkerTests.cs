@@ -4,6 +4,7 @@ using FinanceTracker.Contracts.Auth;
 using FinanceTracker.Domain.Identity;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Tests.Unit.Shared;
+using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -71,7 +72,7 @@ public class OidcUserLinkerTests : InfrastructureTestBase
     public async Task FindOrCreateAsync_WhenThePreferredUsernameIsTaken_UsesTheEmail()
     {
         // Arrange
-        await CreateUserAsync("jane", "other@test.local");
+        await Scenario.Do(s => s.UserScenario.WithUser("jane"));
 
         // Act
         FinanceTrackerUser? user = await Subject.FindOrCreateAsync(Principal());
@@ -87,16 +88,17 @@ public class OidcUserLinkerTests : InfrastructureTestBase
     [Test]
     public async Task FindOrCreateAsync_ForALinkedSubjectReturnsItsUser()
     {
-        // Arrange
-        FinanceTrackerUser linked = await CreateUserAsync("jdoe", "changed@test.local", OidcSubject);
+        // Arrange, under another email, it may have changed at the provider since
+        await Scenario.Do(s => s.UserScenario.WithUser("jdoe"))
+            .Do(s => s.UserScenario.WithOidcSubject("jdoe", OidcSubject));
 
-        // Act, the email may have changed at the provider since
+        // Act
         FinanceTrackerUser? user = await Subject.FindOrCreateAsync(Principal());
 
         // Assert
         using (Assert.Multiple())
         {
-            await Assert.That(user!.Id).IsEqualTo(linked.Id);
+            await Assert.That(user!.Id).IsEqualTo(Scenario.UserMappings["jdoe"]);
             await Assert.That(await UserManager.Users.CountAsync()).IsEqualTo(1);
         }
     }
@@ -105,16 +107,18 @@ public class OidcUserLinkerTests : InfrastructureTestBase
     public async Task FindOrCreateAsync_ForALocalUserWithTheEmail_LinksThem()
     {
         // Arrange
-        FinanceTrackerUser local = await CreateUserAsync("jdoe", Email);
+        await Scenario.Do(s => s.UserScenario.WithUser("jdoe"))
+            .Do(s => s.UserScenario.WithEmail("jdoe", Email));
+        Guid localId = Scenario.UserMappings["jdoe"];
 
         // Act
         FinanceTrackerUser? user = await Subject.FindOrCreateAsync(Principal());
 
         // Assert
-        FinanceTrackerUser? stored = await UserManager.FindByIdAsync(local.Id.ToString());
+        FinanceTrackerUser? stored = await UserManager.FindByIdAsync(localId.ToString());
         using (Assert.Multiple())
         {
-            await Assert.That(user!.Id).IsEqualTo(local.Id);
+            await Assert.That(user!.Id).IsEqualTo(localId);
             await Assert.That(stored!.OpenIdConnectSubject).IsEqualTo(OidcSubject);
         }
     }
@@ -123,7 +127,9 @@ public class OidcUserLinkerTests : InfrastructureTestBase
     public async Task FindOrCreateAsync_WhenTheEmailsUserIsLinkedElsewhere_Rejects()
     {
         // Arrange
-        await CreateUserAsync("jdoe", Email, "another-subject");
+        await Scenario.Do(s => s.UserScenario.WithUser("jdoe"))
+            .Do(s => s.UserScenario.WithEmail("jdoe", Email))
+            .Do(s => s.UserScenario.WithOidcSubject("jdoe", "another-subject"));
 
         // Act
         FinanceTrackerUser? user = await Subject.FindOrCreateAsync(Principal());
@@ -188,15 +194,5 @@ public class OidcUserLinkerTests : InfrastructureTestBase
         }
 
         return new ClaimsPrincipal(new ClaimsIdentity(claims, "oidc"));
-    }
-
-    private async Task<FinanceTrackerUser> CreateUserAsync(string userName, string email, string? subject = null)
-    {
-        FinanceTrackerUser user = subject is null
-            ? new FinanceTrackerUser("Jane", "Doe", email, userName)
-            : new FinanceTrackerUser("Jane", "Doe", email, userName, subject);
-        IdentityResult result = await UserManager.CreateAsync(user);
-        await Assert.That(result.Succeeded).IsTrue();
-        return user;
     }
 }
