@@ -27,13 +27,12 @@ public class ReportServiceTests : InfrastructureTestBase
     private static readonly DateTime March1NextYear = new(2026, 3, 1, 10, 0, 0, DateTimeKind.Utc);
 
     [Test]
-    public async Task GetSpentInTimePeriodReportAsync_ReturnsTotalsExcludingTransfers()
+    public async Task GetSpentInTimePeriodReportAsync_ReturnsTotals()
     {
         // Arrange
         await SeedAccountAsync()
             .Do(s => s.TransactionScenario.WithTransaction("income", "main", Transaction(200m, January15)))
-            .Do(s => s.TransactionScenario.WithTransaction("expense", "main", Transaction(-50m, January15)))
-            .Do(s => s.TransactionScenario.WithTransaction("transfer", "main", Transaction(-1000m, January15, "TRANSFER")));
+            .Do(s => s.TransactionScenario.WithTransaction("expense", "main", Transaction(-50m, January15)));
 
         ReportService subject = BuildSubject();
 
@@ -263,31 +262,6 @@ public class ReportServiceTests : InfrastructureTestBase
             await Assert.That(main.YearlyBreakdown.Single().MonthlyBreakdown.Sum(x => x.DailyBreakdown.Count)).IsEqualTo(2);
             await Assert.That(other.AccountName).IsEqualTo("Current");
             await Assert.That(other.TotalOut).IsEqualTo(-5m);
-        }
-    }
-
-    [Test]
-    public async Task GetAccountBreakdownReportAsync_IncludesTransfers()
-    {
-        // Arrange
-        await SeedAccountAsync()
-            .Do(s => s.TransactionScenario.WithTransaction("main-1", "main", Transaction(-10m, January15)))
-            .Do(s => s.TransactionScenario.WithTransaction("main-2", "main",
-                Transaction(250m, January20, BankTransaction.TransferCategory)));
-
-        ReportService subject = BuildSubject();
-
-        // Act
-        List<SpentInAccountReport> reports = await subject.GetAccountBreakdownReportAsync(Request(), CancellationToken)
-            .ToListAsync(CancellationToken);
-
-        // Assert
-        SpentInAccountReport report = reports.Single();
-        using (Assert.Multiple())
-        {
-            await Assert.That(report.TotalTransactions).IsEqualTo(2);
-            await Assert.That(report.TotalIn).IsEqualTo(250m);
-            await Assert.That(report.TotalOut).IsEqualTo(-10m);
         }
     }
 

@@ -60,12 +60,6 @@
 
     private const int MaxTransactionsForCharts = 5000;
 
-    /// <summary>
-    /// The provider's category for money moved between accounts, left out like the server's totals leave it out
-    /// (BankTransaction.TransferCategory).
-    /// </summary>
-    private const string TransferCategory = "TRANSFER";
-
     [CascadingParameter] private Task<AuthenticationState> AuthenticationStateTask { get; set; } = null!;
 
     /// <summary>
@@ -174,9 +168,6 @@
         var transactions = new List<Transaction>(512);
         await foreach (var tx in TransactionsService.GetAllTransactionsAsync(request, cancellationToken))
         {
-            if (tx.TransactionCategory == TransferCategory)
-                continue;
-
             transactions.Add(tx);
             if (transactions.Count >= MaxTransactionsForCharts)
             {

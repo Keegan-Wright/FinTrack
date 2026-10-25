@@ -10,8 +10,7 @@ namespace FinanceTracker.Contracts.Services;
 /// Spending reports over the signed in user's transactions, each broken down by year, month and day.
 /// </summary>
 /// <remarks>
-/// Every report takes the same filters as the transactions page. Totals don't exclude transfers between the user's
-/// own accounts.
+/// Every report takes the same filters as the transactions page.
 /// </remarks>
 public interface IReportService
 {

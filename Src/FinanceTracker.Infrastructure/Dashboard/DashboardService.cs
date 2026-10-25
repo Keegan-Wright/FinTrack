@@ -17,7 +17,6 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
     {
         public decimal Amount { get; init; }
         public DateTime TransactionTime { get; init; }
-        public string TransactionCategory { get; init; } = string.Empty;
     }
 
     private sealed class DirectDebitLite
@@ -47,14 +46,12 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
             .Select(x => new TransactionLite
             {
                 Amount = x.Amount,
-                TransactionTime = x.OccurredAt,
-                TransactionCategory = x.Category
+                TransactionTime = x.OccurredAt
             })
             .ToListAsync(cancellationToken);
 
         IEnumerable<decimal> amountsInRange = items
             .Where(x => x.TransactionTime >= fromUtc && x.TransactionTime < toUtc)
-            .Where(x => x.TransactionCategory != BankTransaction.TransferCategory)
             .Select(x => x.Amount);
 
         return new SpentInTimePeriod

@@ -176,9 +176,8 @@ public class ReportService : ServiceBase<ReportService>, IReportService
     {
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
-        // An account's own money in and out, so moves between the user's accounts count here
         (List<BankTransaction> openBankingTransactions, Dictionary<Guid, string> customTags) =
-            await GetTransactionsForReportAsync(request, context, cancellationToken, includeTransfers: true);
+            await GetTransactionsForReportAsync(request, context, cancellationToken);
 
         Dictionary<Guid, string> accountNames = await context.BankAccounts.OwnedBy(UserId)
             .ToDictionaryAsync(static x => x.Id, static x => x.DisplayName, cancellationToken);
@@ -251,7 +250,7 @@ public class ReportService : ServiceBase<ReportService>, IReportService
 
     private async Task<(List<BankTransaction> Transactions, Dictionary<Guid, string> CustomTags)>
         GetTransactionsForReportAsync(FilterTransactions request, FinanceTrackerContext context,
-            CancellationToken cancellationToken, bool includeTransfers = false)
+            CancellationToken cancellationToken)
     {
         TransactionCriteria criteria = TransactionCriteria.From(request);
         Dictionary<Guid, string> customTags = await context.CustomClassifications.OwnedBy(UserId)
@@ -264,7 +263,6 @@ public class ReportService : ServiceBase<ReportService>, IReportService
 
         // Category and timestamps are encrypted, so filter and sort after decryption
         return (transactions
-            .Where(x => includeTransfers || x.Category != BankTransaction.TransferCategory)
             .Where(x => criteria.MatchesClientFilters(x, customTags))
             .OrderByDescending(static x => x.OccurredAt)
             .ToList(), customTags);

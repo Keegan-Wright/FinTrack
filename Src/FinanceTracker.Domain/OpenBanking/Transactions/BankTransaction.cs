@@ -10,11 +10,6 @@ namespace FinanceTracker.Domain.OpenBanking.Transactions;
 /// </summary>
 public sealed class BankTransaction : AggregateRoot
 {
-    /// <summary>
-    /// The provider's <see cref="Category"/> for money moved between accounts, left out of spending totals.
-    /// </summary>
-    public const string TransferCategory = "TRANSFER";
-
     private readonly List<string> _providerClassifications = [];
     private readonly List<Guid> _customClassificationIds = [];
 

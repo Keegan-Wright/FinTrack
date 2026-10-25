@@ -73,7 +73,7 @@ public class ReportTreeTests
     }
 
     [Test]
-    public async Task From_SpentInTimePeriodReport_KeepsTheFiltersAndLeavesOutTransfers()
+    public async Task From_SpentInTimePeriodReport_KeepsTheFilters()
     {
         // Arrange
         FilterTransactions request = new() { SearchTerm = "coffee", Tags = ["Food"] };
@@ -85,13 +85,12 @@ public class ReportTreeTests
         using (Assert.Multiple())
         {
             await Assert.That(root.Scope).IsSameReferenceAs(request);
-            await Assert.That(root.IncludesTransfers).IsFalse();
             await Assert.That(root.AccountId).IsNull();
         }
     }
 
     [Test]
-    public async Task From_SpentInAccountReport_NarrowsToTheAccountAndCountsTransfers()
+    public async Task From_SpentInAccountReport_NarrowsToTheAccount()
     {
         // Arrange
         FilterTransactions request = new()
@@ -108,7 +107,6 @@ public class ReportTreeTests
         {
             await Assert.That(root.Title).IsEqualTo("Bills");
             await Assert.That(root.AccountId).IsEqualTo(AccountId);
-            await Assert.That(root.IncludesTransfers).IsTrue();
             await Assert.That(root.Scope!.AccountIds!).IsEquivalentTo([AccountId]);
             await Assert.That(root.Scope.SearchTerm).IsEqualTo("coffee");
             await Assert.That(root.Scope.FromDate).IsEqualTo(new DateTime(2026, 1, 1));
@@ -130,7 +128,6 @@ public class ReportTreeTests
         {
             await Assert.That(root.Scope!.Tags!).IsEquivalentTo(["Travel"]);
             await Assert.That(root.Scope.AccountIds!).IsEquivalentTo([AccountId]);
-            await Assert.That(root.IncludesTransfers).IsFalse();
         }
     }
 

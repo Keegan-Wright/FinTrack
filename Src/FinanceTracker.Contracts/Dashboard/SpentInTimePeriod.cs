@@ -3,7 +3,7 @@ using System.ComponentModel;
 namespace FinanceTracker.Contracts.Dashboard;
 
 /// <summary>
-/// Money in and out over a period, transfers excluded.
+/// Money in and out over a period.
 /// </summary>
 public class SpentInTimePeriod
 {

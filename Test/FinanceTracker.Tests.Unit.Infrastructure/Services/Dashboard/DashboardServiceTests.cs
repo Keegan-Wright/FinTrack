@@ -16,14 +16,13 @@ public class DashboardServiceTests : InfrastructureTestBase
     private static readonly DateTime Now = new(2026, 1, 10, 12, 0, 0, DateTimeKind.Utc);
 
     [Test]
-    public async Task GetSpentInTimePeriod_ExcludesTransfers_AndSplitsInOutTotals()
+    public async Task GetSpentInTimePeriod_SplitsInOutTotals()
     {
         // Arrange
         await SeedAccountAsync()
             .Do(s => s.TransactionScenario.WithTransaction("salary", "main", Transaction(100m, Now, "CREDIT")))
             .Do(s => s.TransactionScenario.WithTransaction("shopping", "main", Transaction(-25m, Now, "PURCHASE")))
-            .Do(s => s.TransactionScenario.WithTransaction("bill", "main", Transaction(-10m, Now, "BILL_PAYMENT")))
-            .Do(s => s.TransactionScenario.WithTransaction("transfer", "main", Transaction(-500m, Now, "TRANSFER")));
+            .Do(s => s.TransactionScenario.WithTransaction("bill", "main", Transaction(-10m, Now, "BILL_PAYMENT")));
 
         DashboardService subject = BuildSubject();
 

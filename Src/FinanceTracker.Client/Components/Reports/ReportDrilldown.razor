@@ -135,9 +135,6 @@
 
     private const int MaxPhoneAxisLabels = 6;
 
-    // Left out of the reports that don't count transfers, so the day's list leaves them out too
-    private const string TransferCategory = "TRANSFER";
-
     [CascadingParameter(Name = "IsDarkMode")] public bool IsDarkMode { get; set; }
 
     /// <summary>
@@ -215,7 +212,6 @@
         try
         {
             List<Transaction> transactions = await TransactionsService.GetAllTransactionsAsync(request, cancellationToken)
-                .Where(x => Root.IncludesTransfers || x.TransactionCategory != TransferCategory)
                 .OrderBy(static x => x.TransactionTime)
                 .ToListAsync(cancellationToken);
 
