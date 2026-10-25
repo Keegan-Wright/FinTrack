@@ -1,0 +1,22 @@
+/* A breadcrumb trail as the section's title */
+.ft-trail {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px;
+}
+
+.ft-trail__link {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--mud-palette-primary);
+    font: inherit;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.ft-trail__link:hover {
+    text-decoration: underline;
+}

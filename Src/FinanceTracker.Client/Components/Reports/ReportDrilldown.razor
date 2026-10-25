@@ -1,0 +1,302 @@
+@* One report subject (everything, an account or a tag) drilled into by period: the period's totals, a chart of the
+   periods within it, and the same as a list. A bar or a row goes a level deeper, the trail above goes back. *@
+@using System.Globalization
+@using ApexCharts
+@using FinanceTracker.Contracts.Transactions
+@implements IDisposable
+@inject ITransactionsService TransactionsService
+
+<div class="ft-stack">
+    <StatStrip>
+        <Stat Label="Money in" Value="@Current.TotalIn">@PerDay(Current.TotalIn)</Stat>
+        <Stat Label="Money out" Value="@Math.Abs(Current.TotalOut)">@PerDay(Current.TotalOut)</Stat>
+        <Stat Label="Net" Value="@Current.Net" Signed="true">
+            @($"{Current.TotalTransactions:n0} {(Current.TotalTransactions == 1 ? "transaction" : "transactions")}")
+        </Stat>
+    </StatStrip>
+
+    <Section Caption="@Caption">
+        <TitleContent>
+            <nav class="ft-trail" aria-label="Report period">
+                @for (var i = 0; i < _path.Count; i++)
+                {
+                    var index = i;
+                    var node = _path[i];
+                    if (index < _path.Count - 1)
+                    {
+                        <button type="button" class="ft-trail__link" @onclick="@(() => GoBackTo(index))">@node.Title</button>
+                        <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="MudBlazor.Size.Small" Class="mud-text-secondary"/>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.subtitle1" HtmlTag="span">@node.Title</MudText>
+                    }
+                }
+            </nav>
+        </TitleContent>
+        <ChildContent>
+            @if (Current.Date is not null)
+            {
+                <LoadingFrame Loading="@(_dayTransactions is null)" Message="Digging out the receipts…" MinHeight="160"
+                              Cover="false">
+                    @if (_dayTransactions is { Count: 0 })
+                    {
+                        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                            Couldn't find the transactions behind this day, they may have changed since the report loaded.
+                        </MudText>
+                    }
+                    else if (_dayTransactions is not null)
+                    {
+                        <div class="ft-list ft-list--scroll">
+                            @foreach (var transaction in _dayTransactions)
+                            {
+                                <div class="ft-list__row">
+                                    <div class="ft-list__main">
+                                        <MudText Typo="Typo.body2" Class="text-truncate">
+                                            @transaction.Description
+                                            @if (transaction.Pending)
+                                            {
+                                                <MudChip T="string" Size="MudBlazor.Size.Small" Variant="Variant.Outlined"
+                                                         Color="MudBlazor.Color.Warning" Class="ml-2">Pending</MudChip>
+                                            }
+                                        </MudText>
+                                        <MudText Typo="Typo.caption" Class="mud-text-secondary text-truncate d-block">
+                                            @TransactionDetail(transaction)
+                                        </MudText>
+                                    </div>
+                                    <div class="ft-list__end">
+                                        <MoneyText Value="@transaction.Amount" Signed="true" Typo="Typo.body1"/>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </LoadingFrame>
+            }
+            else if (Current.Children.Count == 0)
+            {
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">Nothing in this period.</MudText>
+            }
+            else
+            {
+                <LoadingFrame Loading="@(!_drawn)" Message="Lining up the bars…" MinHeight="@ChartHeight">
+                    @* Keyed on the options, rebuilt for each period and dark mode toggle, so the chart redraws *@
+                    <ApexChart @key="_options" TItem="ReportNode" Options="@_options" Height="@ChartHeight"
+                               OnRendered="@(() => _drawn = true)" OnDataPointSelection="@OnBarSelected">
+                        <ApexPointSeries TItem="ReportNode" Items="@Current.Children" Name="In"
+                                         SeriesType="SeriesType.Bar"
+                                         XValue="@(static x => x.Label)" YValue="@(static x => x.TotalIn)"/>
+                        <ApexPointSeries TItem="ReportNode" Items="@Current.Children" Name="Out"
+                                         SeriesType="SeriesType.Bar"
+                                         XValue="@(static x => x.Label)" YValue="@(static x => Math.Abs(x.TotalOut))"/>
+                        <ApexPointSeries TItem="ReportNode" Items="@Current.Children" Name="Net"
+                                         SeriesType="SeriesType.Line"
+                                         XValue="@(static x => x.Label)" YValue="@(static x => x.Net)"/>
+                    </ApexChart>
+                </LoadingFrame>
+
+                <div class="ft-list ft-list--scroll mt-4">
+                    @foreach (var child in Current.Children.Where(static x => x.TotalTransactions > 0))
+                    {
+                        <div class="@($"ft-list__row {(child.CanDrillInto ? "ft-list__row--link" : string.Empty)}")"
+                             role="@(child.CanDrillInto ? "button" : null)"
+                             tabindex="@(child.CanDrillInto ? 0 : null)"
+                             @onclick="@(() => DrillInto(child))"
+                             @onkeyup="@(e => OnRowKeyUp(e, child))">
+                            <div class="ft-list__main">
+                                <MudText Typo="Typo.body2" Class="text-truncate">@child.Title</MudText>
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                    @($"{child.TotalTransactions:n0} {(child.TotalTransactions == 1 ? "transaction" : "transactions")}")
+                                </MudText>
+                            </div>
+                            <div class="ft-list__end">
+                                <MoneyText Value="@child.Net" Signed="true" Typo="Typo.body1"/>
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary ft-money">
+                                    @CurrencyFormatter.Format(child.TotalIn) in · @CurrencyFormatter.Format(Math.Abs(child.TotalOut)) out
+                                </MudText>
+                            </div>
+                            @if (child.CanDrillInto)
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Class="mud-text-secondary"/>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        </ChildContent>
+    </Section>
+</div>
+
+@code {
+
+    private const int ChartHeight = 300;
+
+    private const int MaxAxisLabels = 16;
+
+    private const int MaxPhoneAxisLabels = 6;
+
+    // Left out of the reports that don't count transfers, so the day's list leaves them out too
+    private const string TransferCategory = "TRANSFER";
+
+    [CascadingParameter(Name = "IsDarkMode")] public bool IsDarkMode { get; set; }
+
+    /// <summary>
+    /// The subject's whole report, all time.
+    /// </summary>
+    [Parameter, EditorRequired] public ReportNode Root { get; set; } = null!;
+
+    private readonly List<ReportNode> _path = [];
+    private ApexChartOptions<ReportNode> _options = new();
+    private ReportNode? _optionsFor;
+    private bool? _optionsDarkMode;
+    private bool _drawn;
+    private ReportNode? _root;
+    private List<Transaction>? _dayTransactions;
+    private CancellationTokenSource? _dayCts;
+
+    private ReportNode Current => _path[^1];
+
+    private string Caption => Current.ChildPeriod is not null
+        ? $"Money in and out by {Current.ChildPeriod}, pick a bar or a row to see inside it"
+        : Current.Date is not null ? "Everything in and out on the day" : string.Empty;
+
+    protected override void OnParametersSet()
+    {
+        if (!ReferenceEquals(_root, Root))
+        {
+            _root = Root;
+            _path.Clear();
+            _path.Add(Root);
+
+            // Nothing to compare a lone year against, so start inside it
+            while (Current.ChildPeriod == "year" && Current.Children.Count(static x => x.TotalTransactions > 0) == 1)
+                _path.Add(Current.Children.First(static x => x.TotalTransactions > 0));
+
+            OnPathChanged();
+            return;
+        }
+
+        RebuildOptionsIfNeeded();
+    }
+
+    private void DrillInto(ReportNode node)
+    {
+        if (!node.CanDrillInto)
+            return;
+
+        _path.Add(node);
+        OnPathChanged();
+    }
+
+    private void GoBackTo(int index)
+    {
+        _path.RemoveRange(index + 1, _path.Count - index - 1);
+        OnPathChanged();
+    }
+
+    private void OnPathChanged()
+    {
+        RebuildOptionsIfNeeded();
+
+        _dayCts?.Cancel();
+        _dayCts?.Dispose();
+        _dayCts = null;
+        _dayTransactions = null;
+
+        if (Current.Date is { } day && Root.Scope is { } scope)
+        {
+            _dayCts = new CancellationTokenSource();
+            _ = LoadDayAsync(ReportTree.ForDay(scope, day), _dayCts.Token);
+        }
+    }
+
+    private async Task LoadDayAsync(FilterTransactions request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            List<Transaction> transactions = await TransactionsService.GetAllTransactionsAsync(request, cancellationToken)
+                .Where(x => Root.IncludesTransfers || x.TransactionCategory != TransferCategory)
+                .OrderBy(static x => x.TransactionTime)
+                .ToListAsync(cancellationToken);
+
+            _dayTransactions = transactions;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Left the day before it loaded
+        }
+    }
+
+    private static string TransactionDetail(Transaction transaction)
+    {
+        var parts = new List<string>
+        {
+            transaction.TransactionTime.ToLocalTime().ToString("HH:mm", CultureInfo.CurrentCulture),
+            DisplayText.ToTitle(transaction.TransactionCategory)
+        };
+        parts.AddRange(transaction.Tags);
+        return string.Join(" · ", parts.Where(static x => !string.IsNullOrWhiteSpace(x)).Distinct());
+    }
+
+    public void Dispose()
+    {
+        _dayCts?.Cancel();
+        _dayCts?.Dispose();
+    }
+
+    private void OnBarSelected(SelectedData<ReportNode> selected)
+    {
+        if (selected.DataPointIndex >= 0 && selected.DataPointIndex < Current.Children.Count)
+            DrillInto(Current.Children[selected.DataPointIndex]);
+    }
+
+    private void OnRowKeyUp(KeyboardEventArgs e, ReportNode node)
+    {
+        if (e.Key is "Enter" or " ")
+            DrillInto(node);
+    }
+
+    private void RebuildOptionsIfNeeded()
+    {
+        if (ReferenceEquals(_optionsFor, Current) && _optionsDarkMode == IsDarkMode)
+            return;
+
+        _optionsFor = Current;
+        _optionsDarkMode = IsDarkMode;
+        _options = CreateOptions();
+        _drawn = false;
+    }
+
+    private ApexChartOptions<ReportNode> CreateOptions()
+    {
+        var points = Current.Children.Count;
+        var options = ChartDefaults.Create<ReportNode>(IsDarkMode);
+        options.Colors = [ChartDefaults.MoneyInColor, ChartDefaults.MoneyOutColor, ChartDefaults.NeutralColor];
+        options.PlotOptions = new PlotOptions { Bar = new PlotOptionsBar { ColumnWidth = "70%", BorderRadius = 2 } };
+        options.Stroke = new Stroke { Width = new List<double> { 0, 0, 2 }, Curve = Curve.Smooth };
+        options.States = new States { Active = new StatesActive { Filter = new StatesFilter { Type = StatesFilterType.none } } };
+        options.Xaxis = new XAxis
+        {
+            TickAmount = Math.Min(points, MaxAxisLabels),
+            Labels = new XAxisLabels { Rotate = 0, HideOverlappingLabels = true }
+        };
+        options.Responsive =
+        [
+            new Responsive<ReportNode>
+            {
+                Breakpoint = ChartDefaults.PhoneBreakpoint,
+                Options = new ApexChartOptions<ReportNode>
+                {
+                    Xaxis = new XAxis { TickAmount = Math.Min(points, MaxPhoneAxisLabels) },
+                    Legend = new Legend { Position = LegendPosition.Bottom, HorizontalAlign = ApexCharts.Align.Center }
+                }
+            }
+        ];
+        return options;
+    }
+
+    private string PerDay(decimal total) =>
+        Current.Days > 1 ? $"{CurrencyFormatter.Format(Math.Abs(total) / Current.Days)} a day on average" : string.Empty;
+
+}
