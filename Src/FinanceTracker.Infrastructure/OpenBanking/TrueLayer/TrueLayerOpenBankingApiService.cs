@@ -9,7 +9,7 @@ using FinanceTracker.Infrastructure.OpenBanking.TrueLayer.Contracts;
 
 namespace FinanceTracker.Infrastructure.OpenBanking.TrueLayer;
 
-[InjectionCategory(InjectionCategoryType.External)]
+[InjectionCategory(InjectionCategoryType.External, ServiceDestinationType.Server)]
 [Scoped<IOpenBankingApiService>]
 public class TrueLayerOpenBankingApiService : IOpenBankingApiService
 {

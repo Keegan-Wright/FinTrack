@@ -11,7 +11,7 @@ namespace FinanceTracker.Client.Api;
 /// <see cref="IClassificationService"/> over <see cref="ApiRoutes.Classifications"/>. The API's 404s come back as the
 /// <see cref="InvalidOperationException"/> the interface documents.
 /// </summary>
-[InjectionCategory(InjectionCategoryType.ApiClient)]
+[InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Client)]
 [Scoped<IClassificationService>]
 public sealed class ClassificationApiClient : IClassificationService
 {

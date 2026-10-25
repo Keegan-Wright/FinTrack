@@ -9,7 +9,7 @@ namespace FinanceTracker.Client.Api;
 /// <summary>
 /// <see cref="ICalendarService"/> over <see cref="ApiRoutes.Calendar"/>.
 /// </summary>
-[InjectionCategory(InjectionCategoryType.ApiClient)]
+[InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Client)]
 [Scoped<ICalendarService>]
 public sealed class CalendarApiClient : ICalendarService
 {

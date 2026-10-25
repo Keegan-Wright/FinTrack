@@ -1,4 +1,6 @@
 using FinanceTracker.Contracts.Auth;
+using FinanceTracker.Generated.Attributes;
+using FinanceTracker.Generated.Enums;
 using FluentValidation;
 
 namespace FinanceTracker.Contracts.Validation;
@@ -6,6 +8,8 @@ namespace FinanceTracker.Contracts.Validation;
 /// <summary>
 /// Requires every field, a valid email, and matching passwords.
 /// </summary>
+[InjectionCategory(InjectionCategoryType.Validator, ServiceDestinationType.Server | ServiceDestinationType.Client)]
+[Scoped<IValidator<RegisterRequest>>]
 public class RegisterRequestValidator : AbstractValidator<RegisterRequest>
 {
     /// <summary>

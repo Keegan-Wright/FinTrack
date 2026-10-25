@@ -9,7 +9,7 @@ namespace FinanceTracker.Client.Api;
 /// <summary>
 /// <see cref="IOpenBankingService"/> over <see cref="ApiRoutes.OpenBanking"/>.
 /// </summary>
-[InjectionCategory(InjectionCategoryType.ApiClient)]
+[InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Client)]
 [Scoped<IOpenBankingService>]
 public sealed class OpenBankingApiClient : IOpenBankingService
 {

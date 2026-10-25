@@ -1,4 +1,6 @@
 using FinanceTracker.Contracts.Automation;
+using FinanceTracker.Generated.Attributes;
+using FinanceTracker.Generated.Enums;
 using FluentValidation;
 
 namespace FinanceTracker.Contracts.Validation;
@@ -6,6 +8,8 @@ namespace FinanceTracker.Contracts.Validation;
 /// <summary>
 /// Requires a description, a 6 part cron expression and retry intervals of 0 or more.
 /// </summary>
+[InjectionCategory(InjectionCategoryType.Validator, ServiceDestinationType.Server | ServiceDestinationType.Client)]
+[Scoped<IValidator<UpdateCronJob>>]
 public class CronJobUpdateRequestValidator : AbstractValidator<UpdateCronJob>
 {
     /// <summary>

@@ -9,7 +9,7 @@ namespace FinanceTracker.Client.Api;
 /// <summary>
 /// <see cref="ITransactionsService"/> over <see cref="ApiRoutes.Transactions"/>.
 /// </summary>
-[InjectionCategory(InjectionCategoryType.ApiClient)]
+[InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Client)]
 [Scoped<ITransactionsService>]
 public sealed class TransactionsApiClient : ITransactionsService
 {

@@ -12,7 +12,7 @@ namespace FinanceTracker.Client.Api;
 /// <summary>
 /// <see cref="IReportService"/> over <see cref="ApiRoutes.Reports"/>.
 /// </summary>
-[InjectionCategory(InjectionCategoryType.ApiClient)]
+[InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Client)]
 [Scoped<IReportService>]
 public sealed class ReportApiClient : IReportService
 {

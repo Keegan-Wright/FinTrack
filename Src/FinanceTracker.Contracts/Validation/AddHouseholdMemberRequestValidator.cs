@@ -1,4 +1,6 @@
 using FinanceTracker.Contracts.HouseholdMember;
+using FinanceTracker.Generated.Attributes;
+using FinanceTracker.Generated.Enums;
 using FluentValidation;
 
 namespace FinanceTracker.Contracts.Validation;
@@ -6,6 +8,8 @@ namespace FinanceTracker.Contracts.Validation;
 /// <summary>
 /// Requires both names and an income of 0 or more.
 /// </summary>
+[InjectionCategory(InjectionCategoryType.Validator, ServiceDestinationType.Server | ServiceDestinationType.Client)]
+[Scoped<IValidator<AddHouseholdMember>>]
 public class AddHouseholdMemberRequestValidator : AbstractValidator<AddHouseholdMember>
 {
     /// <summary>

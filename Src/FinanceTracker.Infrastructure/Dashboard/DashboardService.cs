@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Infrastructure.Dashboard;
 
-[InjectionCategory(InjectionCategoryType.Service)]
+[InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<IDashboardService>]
 public class DashboardService : ServiceBase<DashboardService>, IDashboardService
 {

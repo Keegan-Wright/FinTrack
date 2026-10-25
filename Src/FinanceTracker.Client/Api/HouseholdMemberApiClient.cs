@@ -10,7 +10,7 @@ namespace FinanceTracker.Client.Api;
 /// <summary>
 /// <see cref="IHouseholdMemberService"/> over <see cref="ApiRoutes.HouseholdMembers"/>.
 /// </summary>
-[InjectionCategory(InjectionCategoryType.ApiClient)]
+[InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Client)]
 [Scoped<IHouseholdMemberService>]
 public sealed class HouseholdMemberApiClient : IHouseholdMemberService
 {

@@ -10,7 +10,7 @@ namespace FinanceTracker.Client.Api;
 /// <summary>
 /// <see cref="IDashboardService"/> over <see cref="ApiRoutes.Dashboard"/>.
 /// </summary>
-[InjectionCategory(InjectionCategoryType.ApiClient)]
+[InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Client)]
 [Scoped<IDashboardService>]
 public sealed class DashboardApiClient : IDashboardService
 {

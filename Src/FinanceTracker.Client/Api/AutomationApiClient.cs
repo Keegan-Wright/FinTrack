@@ -12,7 +12,7 @@ namespace FinanceTracker.Client.Api;
 /// <see cref="IAutomationService"/> over <see cref="ApiRoutes.AutomationJobs"/> and
 /// <see cref="ApiRoutes.Sync"/>.
 /// </summary>
-[InjectionCategory(InjectionCategoryType.ApiClient)]
+[InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Client)]
 [Scoped<IAutomationService>]
 public sealed class AutomationApiClient : IAutomationService
 {

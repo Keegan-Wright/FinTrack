@@ -9,7 +9,7 @@ using BudgetCategory = FinanceTracker.Contracts.Budget.BudgetCategory;
 
 namespace FinanceTracker.Infrastructure.Budget;
 
-[InjectionCategory(InjectionCategoryType.Service)]
+[InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<IBudgetCategoriesService>]
 public class BudgetCategoriesService : ServiceBase<BudgetCategoriesService>, IBudgetCategoriesService
 {

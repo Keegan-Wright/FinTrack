@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Infrastructure.Transactions;
 
-[InjectionCategory(InjectionCategoryType.Service)]
+[InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<ITransactionsService>]
 public class TransactionsService : ServiceBase<TransactionsService>, ITransactionsService
 {

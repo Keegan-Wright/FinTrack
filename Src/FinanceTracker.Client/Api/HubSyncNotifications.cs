@@ -10,7 +10,7 @@ namespace FinanceTracker.Client.Api;
 /// <see cref="ISyncNotifications"/> over the server's sync hub. The first subscription starts the shared connection,
 /// which then reconnects by itself.
 /// </summary>
-[InjectionCategory(InjectionCategoryType.ApiClient)]
+[InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Client)]
 [Singleton<ISyncNotifications>]
 public sealed class HubSyncNotifications : ISyncNotifications, IDisposable
 {

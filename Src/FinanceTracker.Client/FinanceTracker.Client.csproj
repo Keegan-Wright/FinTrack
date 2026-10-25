@@ -8,6 +8,9 @@
     <!-- Served by the server project, which owns the launch settings and static web assets -->
     <NoDefaultLaunchSettingsFile>true</NoDefaultLaunchSettingsFile>
     <StaticWebAssetProjectMode>Default</StaticWebAssetProjectMode>
+
+    <!-- The [InjectionCategory] destination the source generators register in Program -->
+    <FinTrackServiceDestination>Client</FinTrackServiceDestination>
   </PropertyGroup>
 
   <ItemGroup>
@@ -28,6 +31,8 @@
     <ProjectReference Include="..\Generators\FinanceTracker.Generated.Attributes\FinanceTracker.Generated.Attributes\FinanceTracker.Generated.Attributes.csproj" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false"/>
     <ProjectReference Include="..\Generators\FinanceTracker.Generated.Enums\FinanceTracker.Generated.Enums\FinanceTracker.Generated.Enums.csproj" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false"/>
     <ProjectReference Include="..\Generators\FinanceTracker.Generated.DependencyInjection\FinanceTracker.Generated.DependencyInjection\FinanceTracker.Generated.DependencyInjection.csproj" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false"/>
+
+    <CompilerVisibleProperty Include="FinTrackServiceDestination"/>
   </ItemGroup>
 
 </Project>
