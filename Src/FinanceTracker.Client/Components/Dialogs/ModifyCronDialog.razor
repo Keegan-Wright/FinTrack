@@ -3,37 +3,37 @@
 @using FinanceTracker.Client.Extensions
 @using FluentValidation
 @inject IValidator<UpdateCronJob> Validator
-<DialogBase TResponse="UpdateCronJob" Title="Update automated job"
+<DialogBase TResponse="UpdateCronJob" Title="Edit job"
             ResponseConstructor="BuildResponseModel">
     <Content>
         <MudForm @ref="_form" Model="@_model">
             <MudGrid>
-                <MudItem xs="6">
-                    <MudTextField @bind-Value="_model.Description" Label="Description" Placeholder="Description"
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="_model.Description" Label="Description"
                                   For="@(() => _model.Description)"
                                   Validation="@(Validator.ValidateValue(_model, nameof(UpdateCronJob.Description)))"
                                   Immediate="true"></MudTextField>
                 </MudItem>
-                <MudItem xs="6">
-                    <MudTextField @bind-Value="_model.Expression" Label="Expression" Placeholder="Expression"
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="_model.Expression" Label="Cron schedule"
                                   For="@(() => _model.Expression)"
                                   Validation="@(Validator.ValidateValue(_model, nameof(UpdateCronJob.Expression)))"
                                   Immediate="true"></MudTextField>
                 </MudItem>
-                <MudItem xs="6">
-                    <MudTextField T="int" @bind-Value="_model.Retries" Label="Retries" Placeholder="Retries"
+                <MudItem xs="12" sm="6">
+                    <MudTextField T="int" @bind-Value="_model.Retries" Label="Retries"
                                   For="@(() => _model.Retries)"
                                   Validation="@(Validator.ValidateValue(_model, nameof(UpdateCronJob.Retries)))"
                                   Immediate="true"></MudTextField>
                 </MudItem>
-                <MudItem xs="6">
-                    <MudTextField T="string" @bind-Value="RetryIntervalsString" Label="Retry Intervals"
-                                  Placeholder="Retry Intervals (comma-separated, e.g. 10, 20, 30)"
+                <MudItem xs="12" sm="6">
+                    <MudTextField T="string" @bind-Value="RetryIntervalsString" Label="Retry after (seconds)"
+                                  Placeholder="e.g. 10, 20, 30"
                                   For="@(() => RetryIntervalsString)"
                                   Validation="@(Validator.ValidateValue(_model, nameof(UpdateCronJob.RetryIntervals)))"
                                   Immediate="true"></MudTextField>
                 </MudItem>
-                <MudItem xs="6">
+                <MudItem xs="12" sm="6">
                     <MudCheckBox T="bool" @bind-Value="_model.IsEnabled" Label="Enabled"></MudCheckBox>
                 </MudItem>
             </MudGrid>

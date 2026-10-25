@@ -1,0 +1,121 @@
+@* The dashboard's biggest spending tags over the selected range, as a ranked horizontal bar chart. *@
+@using ApexCharts
+@using FinanceTracker.Contracts.Transactions
+<Section Title="Top spending" Caption="Money out by tag" Class="h-100">
+    @if (_items.Count == 0)
+    {
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">No tagged spending in this range.</MudText>
+    }
+    else
+    {
+        @* Keyed on the options, which are rebuilt for new data or a dark mode toggle, so the chart redraws with them *@
+        <LoadingFrame Loading="@(!_drawn)" Message="Working out where it all went…" MinHeight="@ChartHeight">
+            <ApexChart @key="_options" TItem="TagSpend" Options="@_options" Height="@ChartHeight"
+                       OnRendered="@(() => _drawn = true)">
+                <ApexPointSeries TItem="TagSpend" Items="@_items" Name="Money out" SeriesType="SeriesType.Bar"
+                                 XValue="@(static x => x.Tag)" YValue="@(static x => x.Total)"/>
+            </ApexChart>
+        </LoadingFrame>
+    }
+</Section>
+
+@code {
+
+    private const int CategoriesToShow = 8;
+
+    private const int BarRowHeight = 34;
+
+    [CascadingParameter(Name = "IsDarkMode")] public bool IsDarkMode { get; set; }
+
+    [Parameter, EditorRequired] public IReadOnlyList<Transaction> Transactions { get; set; } = [];
+
+    private List<TagSpend> _items = [];
+    private ApexChartOptions<TagSpend> _options = new();
+    private IReadOnlyList<Transaction>? _builtFrom;
+    private bool? _optionsDarkMode;
+    private bool _drawn;
+
+    // Room for each bar plus the value axis
+    private int ChartHeight => _items.Count * BarRowHeight + 60;
+
+    protected override void OnParametersSet()
+    {
+        // The parent re-renders while loading, only rebuild when it hands over a new set of transactions
+        if (!ReferenceEquals(_builtFrom, Transactions))
+        {
+            _builtFrom = Transactions;
+            Build();
+            _optionsDarkMode = null;
+        }
+
+        if (_optionsDarkMode != IsDarkMode)
+        {
+            _optionsDarkMode = IsDarkMode;
+            _options = CreateOptions();
+            _drawn = false;
+        }
+    }
+
+    private ApexChartOptions<TagSpend> CreateOptions()
+    {
+        var options = ChartDefaults.Create<TagSpend>(IsDarkMode);
+        options.Colors = [ChartDefaults.NeutralColor];
+        options.Legend = new Legend { Show = false };
+        options.PlotOptions = new PlotOptions
+        {
+            Bar = new PlotOptionsBar { Horizontal = true, BarHeight = "65%", BorderRadius = 3 }
+        };
+
+        // Horizontal bars swap the axes: tags run down the y axis and money along the x axis
+        options.Yaxis = [new YAxis { Labels = new YAxisLabels { MaxWidth = 140 } }];
+        options.Xaxis = new XAxis
+        {
+            TickAmount = 4,
+            Labels = new XAxisLabels { Formatter = ChartDefaults.MoneyFormatter(0) }
+        };
+        options.Grid = new Grid
+        {
+            BorderColor = IsDarkMode ? "#2A2A2A" : "#EEEEEE",
+            StrokeDashArray = 4,
+            Xaxis = new GridXAxis { Lines = new Lines { Show = true } },
+            Yaxis = new GridYAxis { Lines = new Lines { Show = false } }
+        };
+
+        // On phones the tag names would take half the width, leave the bars the room
+        options.Responsive =
+        [
+            new Responsive<TagSpend>
+            {
+                Breakpoint = ChartDefaults.PhoneBreakpoint,
+                Options = new ApexChartOptions<TagSpend>
+                {
+                    Yaxis = [new YAxis { Labels = new YAxisLabels { MaxWidth = 90 } }],
+                    Xaxis = new XAxis { TickAmount = 2 }
+                }
+            }
+        ];
+        return options;
+    }
+
+    private void Build()
+    {
+        // A transaction counts towards every tag it carries
+        var totals = new Dictionary<string, decimal>();
+        foreach (var tx in Transactions)
+        {
+            if (tx.Amount >= 0)
+                continue;
+
+            foreach (var tag in tx.Tags.Distinct())
+                totals[tag] = totals.GetValueOrDefault(tag) + Math.Abs(tx.Amount);
+        }
+
+        _items = totals
+            .Where(static x => x.Value > 0)
+            .OrderByDescending(static x => x.Value)
+            .Take(CategoriesToShow)
+            .Select(static x => new TagSpend(x.Key, x.Value))
+            .ToList();
+    }
+
+}

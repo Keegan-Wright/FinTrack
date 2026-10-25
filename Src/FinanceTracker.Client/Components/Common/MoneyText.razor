@@ -1,0 +1,31 @@
+@* An amount of money in tabular figures, so amounts line up. With Signed set money in shows green and money out
+   red. *@
+<MudText Typo="Typo" Color="@ResolvedColor" Inline="Inline" Class="@($"ft-money {Class}")">@CurrencyFormatter.Format(Value)</MudText>
+
+@code {
+
+    [Parameter, EditorRequired] public decimal Value { get; set; }
+
+    [Parameter] public Typo Typo { get; set; } = Typo.body2;
+
+    /// <summary>
+    /// Colours the amount by its sign, ignored when <see cref="Color"/> is set.
+    /// </summary>
+    [Parameter] public bool Signed { get; set; }
+
+    [Parameter] public Color? Color { get; set; }
+
+    [Parameter] public bool Inline { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    private Color ResolvedColor => Color ?? (Signed
+        ? Value switch
+        {
+            < 0 => MudBlazor.Color.Error,
+            > 0 => MudBlazor.Color.Success,
+            _ => MudBlazor.Color.Default
+        }
+        : MudBlazor.Color.Default);
+
+}

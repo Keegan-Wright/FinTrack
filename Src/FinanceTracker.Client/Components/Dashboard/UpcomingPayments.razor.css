@@ -1,0 +1,22 @@
+.ft-date-badge {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    align-items: center;
+    width: 40px;
+    padding: 4px 0;
+    border-radius: var(--mud-default-borderradius);
+    background-color: var(--mud-palette-background-gray);
+    line-height: 1.1;
+}
+
+.ft-date-badge__day {
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.ft-date-badge__month {
+    font-size: .6875rem;
+    text-transform: uppercase;
+    color: var(--mud-palette-text-secondary);
+}

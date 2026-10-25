@@ -9,67 +9,86 @@
 @inject IAccountService AccountService
 
 <PageTitle>Accounts</PageTitle>
-<MudGrid Spacing="4">
-    @foreach (var account in Accounts ?? [])
-    {
-        <MudItem xs="12" md="12" lg="6" xl="4">
-            <MudCard Elevation="2" Class="h-100">
-                <MudCardHeader>
-                    <CardHeaderAvatar>
-                        <MudAvatar Square="true" Style="width: 48px; height: 48px; background-color: transparent;">
-                            <MudImage Src="@($"data:image/svg+xml;base64, {Convert.ToBase64String(account.Logo)}")"/>
-                        </MudAvatar>
-                    </CardHeaderAvatar>
-                    <CardHeaderContent>
-                        <MudText Typo="Typo.h6">@account.AccountName</MudText>
-                        <MudText Typo="Typo.caption">@account.AccountType</MudText>
-                    </CardHeaderContent>
-                </MudCardHeader>
-                <MudCardContent>
-                    <MudGrid Justify="Justify.SpaceEvenly" Class="mb-4">
-                        <MudItem>
-                            <MudStack AlignItems="AlignItems.Center" Spacing="0">
-                                <MudText Typo="Typo.caption">Current Balance</MudText>
-                                <MudText Typo="Typo.h6"
-                                         Color="Color.Primary">
-                                    @account.AccountBalance.ToString("C", CultureInfo.CurrentCulture)
-                                </MudText>
-                            </MudStack>
-                        </MudItem>
-                        <MudItem>
-                            <MudStack AlignItems="AlignItems.Center" Spacing="0">
-                                <MudText Typo="Typo.caption">Available Balance</MudText>
-                                <MudText Typo="Typo.h6"
-                                         Color="Color.Secondary">@account.AvailableBalance.ToString("C", CultureInfo.CurrentCulture)</MudText>
-                            </MudStack>
-                        </MudItem>
-                    </MudGrid>
+<PageHeader Title="Accounts" Subtitle="@Subtitle">
+    <Actions>
+        <MudButton Href="ProviderSetup" Variant="Variant.Outlined" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Outlined.Add">Connect a bank</MudButton>
+    </Actions>
+</PageHeader>
 
-                    <MudText Typo="Typo.subtitle2" Class="mb-2">Recent Transactions</MudText>
-                    <MudDataGrid T="AccountTransaction" Items="account.Transactions"
-                                 SortMode="SortMode.None"
-                                 Filterable="false"
-                                 Hideable="false"
-                                 Hover="true"
-                                 Dense="true">
-                        <Columns>
-                            <PropertyColumn Property="x => x.Description" Title="Description"/>
-                            <PropertyColumn Format="c" Property="x => x.Amount" Title="Amount">
-                                <CellTemplate>
-                                    <MudText Color="@(context.Item.Amount < 0 ? Color.Error : Color.Success)"
-                                             Typo="Typo.body2">
-                                        @context.Item.Amount.ToString("C", CultureInfo.CurrentCulture)
-                                    </MudText>
-                                </CellTemplate>
-                            </PropertyColumn>
-                            <PropertyColumn Property="x => x.Time" Title="Date" Format="dd/MM/yyyy"/>
-                        </Columns>
-                    </MudDataGrid>
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
-    }
-</MudGrid>
+@if (Accounts is { Count: 0 })
+{
+    <Section>
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+            No accounts yet. Connect a bank and they'll show up here after the first sync.
+        </MudText>
+    </Section>
+}
+else
+{
+    <MudGrid Spacing="4">
+        @foreach (var account in (Accounts ?? []).OrderByDescending(static x => x.AccountBalance))
+        {
+            <MudItem xs="12" md="6" xl="4">
+                <Section Class="h-100">
+                    <TitleContent>
+                        <div class="ft-account-heading">
+                            <AccountLogo Logo="@account.Logo"/>
+                            <div class="ft-list__main">
+                                <MudText Typo="Typo.subtitle1" Class="text-truncate">@account.AccountName</MudText>
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                    @DisplayText.ToTitle(account.AccountType)
+                                </MudText>
+                            </div>
+                        </div>
+                    </TitleContent>
+                    <ChildContent>
+                        <div class="ft-balances">
+                            <div>
+                                <div class="ft-label">Balance</div>
+                                <MoneyText Value="@account.AccountBalance" Typo="Typo.h5"/>
+                            </div>
+                            @if (account.AvailableBalance != account.AccountBalance)
+                            {
+                                <div>
+                                    <div class="ft-label">Available</div>
+                                    <MoneyText Value="@account.AvailableBalance" Typo="Typo.h6"
+                                               Class="mud-text-secondary"/>
+                                </div>
+                            }
+                        </div>
+
+                        <div class="ft-label mt-4">Recent activity</div>
+                        @if (account.Transactions is null || !account.Transactions.Any())
+                        {
+                            <MudText Typo="Typo.body2" Class="mud-text-secondary">Nothing yet.</MudText>
+                        }
+                        else
+                        {
+                            <div class="ft-list">
+                                @foreach (var transaction in account.Transactions.OrderByDescending(static x => x.Time))
+                                {
+                                    <div class="ft-list__row">
+                                        <div class="ft-list__main">
+                                            <MudText Typo="Typo.body2" Class="text-truncate">@transaction.Description</MudText>
+                                            <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                                @transaction.Time.ToLocalTime().ToString("d MMM", CultureInfo.CurrentCulture)
+                                                · @DisplayText.ToTitle(transaction.Status)
+                                            </MudText>
+                                        </div>
+                                        <div class="ft-list__end">
+                                            <MoneyText Value="@transaction.Amount" Signed="true"/>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </ChildContent>
+                </Section>
+            </MudItem>
+        }
+    </MudGrid>
+}
 
 @code {
 
@@ -78,6 +97,11 @@
     /// </summary>
     [PersistentState]
     public List<AccountAndTransactions>? Accounts { get; set; }
+
+    private string Subtitle => Accounts is null or { Count: 0 }
+        ? "Your connected accounts"
+        : $"{Accounts.Count} {(Accounts.Count == 1 ? "account" : "accounts")} · " +
+          $"{CurrencyFormatter.Format(Accounts.Sum(static x => x.AccountBalance))} in total";
 
     protected override async Task OnInitializedAsync()
     {

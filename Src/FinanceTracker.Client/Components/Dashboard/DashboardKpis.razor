@@ -1,26 +1,20 @@
-@* The dashboard's headline figures: money in, money out, net (against household income when known) and total
-   balance. *@
+@* The dashboard's headline figures: money in, money out, net and total balance (against household income when
+   known). *@
 @using FinanceTracker.Contracts.Dashboard
-
-<MudGrid Spacing="3">
-    <MudItem xs="12" md="6" lg="3">
-        <KpiCard TTrendType="decimal?" Icon="@Icons.Material.Filled.SouthWest" Label="Money In"
-                 Value="@Spent?.TotalIn" Trend="@TrendIn"
-                 Color="Color.Success"/>
-    </MudItem>
-    <MudItem xs="12" md="6" lg="3">
-        <KpiCard TTrendType="decimal?" Icon="@Icons.Material.Filled.NorthEast" Label="Money Out"
-                 Value="@Spent?.TotalOut" Trend="@TrendOut" Color="Color.Error"/>
-    </MudItem>
-    <MudItem xs="12" md="6" lg="3">
-        <KpiCard TTrendType="string" Icon="@Icons.Material.Filled.ShowChart" Label="Net" Value="@Net"
-                 Trend="@($"{TransactionCount:n0} transactions in range")" Color="Color.Tertiary"/>
-    </MudItem>
-    <MudItem xs="12" md="6" lg="3">
-        <KpiCard TTrendType="string" Icon="@Icons.Material.Filled.SouthWest" Label="Total Balance"
-                 Value="@TotalBalance" Trend="@GetBalanceMeta()" Color="Color.Secondary"/>
-    </MudItem>
-</MudGrid>
+<StatStrip>
+    <Stat Label="Money in" Value="@(Spent?.TotalIn ?? 0)">
+        <TrendText Value="@TrendIn"/>
+    </Stat>
+    <Stat Label="Money out" Value="@Math.Abs(Spent?.TotalOut ?? 0)">
+        <TrendText Value="@TrendOut" HigherIsBetter="false"/>
+    </Stat>
+    <Stat Label="Net" Value="@Net" Signed="true">
+        @($"{TransactionCount:n0} transactions in range")
+    </Stat>
+    <Stat Label="Total balance" Value="@TotalBalance">
+        @GetBalanceMeta()
+    </Stat>
+</StatStrip>
 
 @code {
 
@@ -47,13 +41,13 @@
 
     [Parameter] public decimal? HouseholdIncome { get; set; }
 
-    private string? GetBalanceMeta()
+    private string GetBalanceMeta()
     {
         if (HouseholdIncome is null or 0)
-            return null;
+            return "Across all connected accounts";
 
         var netAfterOut = HouseholdIncome.Value - Math.Abs(Spent?.TotalOut ?? 0);
-        return $"Household income: {CurrencyFormatter.Format(HouseholdIncome.Value)} · After out: {CurrencyFormatter.Format(netAfterOut)}";
+        return $"Household income {CurrencyFormatter.Format(HouseholdIncome.Value)} · {CurrencyFormatter.Format(netAfterOut)} after money out";
     }
 
 }

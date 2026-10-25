@@ -1,0 +1,53 @@
+.ft-section {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    padding: 20px;
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--mud-default-borderradius);
+    background-color: var(--mud-palette-surface);
+    color: var(--mud-palette-text-primary);
+}
+
+.ft-section__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.ft-section__heading {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.ft-section__body {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+/* ScrollBody: capped when stacked. On wide screens it fills the section's height instead, size stops the
+   content sizing the row so whatever sits beside the section sets it */
+.ft-section--scroll .ft-section__body {
+    max-height: 480px;
+    margin-right: -8px;
+    padding-right: 8px;
+    overflow-y: auto;
+}
+
+@media (min-width: 1280px) {
+    .ft-section--scroll .ft-section__body {
+        max-height: none;
+        min-height: 0;
+        flex: 1 1 0;
+        contain: size;
+    }
+}
+
+@media (max-width: 599.98px) {
+    .ft-section {
+        padding: 16px;
+    }
+}

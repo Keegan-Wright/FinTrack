@@ -1,0 +1,7 @@
+.ft-search {
+    width: min(240px, 100%);
+}
+
+.ft-search ::deep .mud-input-control {
+    margin-top: 0;
+}

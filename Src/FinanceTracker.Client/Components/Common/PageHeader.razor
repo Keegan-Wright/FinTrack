@@ -1,0 +1,33 @@
+@* A page's title row, the title, an optional line under it. Page actions on the right. Anything that
+   belongs with it (a filter bar) underneath. Sticks under the app bar from tablet width up. *@
+<div class="ft-page-header">
+    <header class="ft-page-header__row">
+        <div class="ft-page-header__text">
+            <MudText Typo="Typo.h4" Class="ft-page-header__title">@Title</MudText>
+            @if (!string.IsNullOrWhiteSpace(Subtitle))
+            {
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">@Subtitle</MudText>
+            }
+        </div>
+        @if (Actions is not null)
+        {
+            <div class="ft-page-header__actions">@Actions</div>
+        }
+    </header>
+    @ChildContent
+</div>
+
+@code {
+
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+
+    [Parameter] public string? Subtitle { get; set; }
+
+    [Parameter] public RenderFragment? Actions { get; set; }
+
+    /// <summary>
+    /// Kept in view with the title, e.g. the filter bar.
+    /// </summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+}

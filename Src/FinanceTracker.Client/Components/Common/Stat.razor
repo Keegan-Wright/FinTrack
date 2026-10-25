@@ -1,0 +1,27 @@
+@* One headline amount in a StatStrip: a label, the amount, and a line of context under it. *@
+<div class="ft-stat">
+    <MudText Typo="Typo.overline" Class="ft-stat__label">@Label</MudText>
+    <MoneyText Value="@Value" Typo="Typo.h5" Signed="@Signed" Color="@Color"/>
+    @if (ChildContent is not null)
+    {
+        <div class="ft-stat__hint">@ChildContent</div>
+    }
+</div>
+
+@code {
+
+    [Parameter, EditorRequired] public string Label { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired] public decimal Value { get; set; }
+
+    /// <inheritdoc cref="MoneyText.Signed"/>
+    [Parameter] public bool Signed { get; set; }
+
+    [Parameter] public Color? Color { get; set; }
+
+    /// <summary>
+    /// The context line, e.g. a <see cref="TrendText"/>.
+    /// </summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+}

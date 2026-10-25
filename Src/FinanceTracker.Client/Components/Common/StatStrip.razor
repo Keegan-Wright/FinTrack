@@ -1,0 +1,13 @@
+@* A row of Stats on one surface, split by hairlines. All in one row on wide screens, two a row on medium, one on
+   small. *@
+<div class="@($"ft-stat-strip {Class}")">
+    @ChildContent
+</div>
+
+@code {
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+}

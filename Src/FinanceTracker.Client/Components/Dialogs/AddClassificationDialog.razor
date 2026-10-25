@@ -3,14 +3,14 @@
 @using FinanceTracker.Client.Extensions
 @using FluentValidation
 @inject IValidator<AddClassifications> Validator
-<DialogBase TResponse="AddClassifications" Title="Add Classification / Tag"
+<DialogBase TResponse="AddClassifications" Title="New tag"
             ResponseConstructor="BuildResponseModel">
     <Content>
         <MudForm @ref="_form" Model="@_model">
             <MudGrid>
                 <MudItem xs="12">
-                    <MudTextField @bind-Value="_model.Tag" Label="Classification / Tag"
-                                  Placeholder="Classification / Tag"
+                    <MudTextField @bind-Value="_model.Tag" Label="Tag"
+                                  Placeholder="e.g. Holiday"
                                   For="@(() => _model.Tag)"
                                   Validation="@(Validator.ValidateValue(_model, nameof(AddClassifications.Tag)))"
                                   Immediate="true"></MudTextField>

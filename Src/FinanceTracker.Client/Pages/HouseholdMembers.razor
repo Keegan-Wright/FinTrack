@@ -1,6 +1,5 @@
 @page "/HouseholdMembers"
 @* Adds and removes the people in the user's household and their incomes (IHouseholdMemberService). *@
-@using System.Globalization
 @using FinanceTracker.Client.Components.Dialogs
 @using FinanceTracker.Contracts.HouseholdMember
 @using Microsoft.AspNetCore.Authorization
@@ -12,36 +11,48 @@
 @inject ISnackbar Snackbar
 
 <PageTitle>Household</PageTitle>
-<MudIconButton Icon="@Icons.Material.Filled.PersonAdd" Variant="Variant.Filled" Color="Color.Primary"
-               OnClick="@AddHouseholdMember">Add Member
-</MudIconButton>
+<PageHeader Title="Household" Subtitle="@Subtitle">
+    <Actions>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.PersonAdd"
+                   OnClick="@AddHouseholdMember">Add person</MudButton>
+    </Actions>
+</PageHeader>
 
-<MudGrid Class="my-2">
-    @foreach (var member in Members ?? [])
+<Section Title="People" Caption="Their incomes count towards the dashboard's household income">
+    @if (Members is null or { Count: 0 })
     {
-        <MudItem xs="12" md="12" lg="6" xl="4" Class="d-flex">
-
-            <MudCard Elevation="1">
-                <MudCardContent Class="my-2">
-
-                    <MudGrid>
-                        <MudItem xs="1">
-                            <MudIcon Icon="@Icons.Material.Filled.Person"></MudIcon>
-                        </MudItem>
-                        <MudItem xs="11">
-                            <MudText Typo="Typo.h6">
-                                @member.FirstName @member.LastName
-                            </MudText>
-                            <MudText Typo="Typo.caption">
-                                @member.Income?.ToString("C", CultureInfo.CurrentCulture)
-                            </MudText>
-                        </MudItem>
-                    </MudGrid>
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+            Just you so far. Add the people you share money with to see your household income on the dashboard.
+        </MudText>
     }
-</MudGrid>
+    else
+    {
+        <div class="ft-list">
+            @foreach (var member in Members.OrderBy(static x => x.FirstName))
+            {
+                <div class="ft-list__row">
+                    <MudAvatar Color="Color.Primary" Variant="Variant.Outlined" Size="Size.Medium">
+                        @Initials(member)
+                    </MudAvatar>
+                    <div class="ft-list__main">
+                        <MudText Typo="Typo.body2" Class="text-truncate">@member.FirstName @member.LastName</MudText>
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary">Income</MudText>
+                    </div>
+                    <div class="ft-list__end">
+                        @if (member.Income is { } income)
+                        {
+                            <MoneyText Value="@income" Typo="Typo.body1"/>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2" Class="mud-text-secondary">Not set</MudText>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</Section>
 
 @code {
 
@@ -50,6 +61,14 @@
     /// </summary>
     [PersistentState]
     public List<HouseholdMember>? Members { get; set; }
+
+    private string Subtitle => Members is null or { Count: 0 }
+        ? "The people you share money with"
+        : $"{Members.Count} {(Members.Count == 1 ? "person" : "people")} · " +
+          $"{CurrencyFormatter.Format(Members.Sum(static x => x.Income ?? 0))} combined income";
+
+    private static string Initials(HouseholdMember member) =>
+        $"{member.FirstName.FirstOrDefault()}{member.LastName.FirstOrDefault()}".ToUpperInvariant();
 
     protected override async Task OnInitializedAsync()
     {
@@ -63,29 +82,24 @@
         var dialogRef = await DialogService.ShowAsync<AddHouseholdMemberDialog>();
         var dialogActionResult = await dialogRef.Result;
 
-        if (dialogActionResult is null)
+        if (dialogActionResult is null || dialogActionResult.Canceled)
             return;
 
-        if (dialogActionResult.Canceled)
+        try
         {
-            Snackbar.Add("Household member creation cancelled");
+            SetLoadingState(true, "Making room at the table…");
+            var householdMember = await HouseholdMemberService.AddHouseholdMemberAsync(
+                (AddHouseholdMember)dialogActionResult.Data!, _cts.Token);
+            (Members ??= []).Add(householdMember);
+            Snackbar.Add($"{householdMember.FirstName} added", Severity.Success);
         }
-        else
+        catch (Exception)
         {
-            try
-            {
-                SetLoadingState(true, "Adding member");
-                var householdMember = await HouseholdMemberService.AddHouseholdMemberAsync((AddHouseholdMember)dialogActionResult.Data!, _cts.Token);
-                (Members ??= []).Add(householdMember);
-            }
-            catch (Exception)
-            {
-                Snackbar.Add("Error occured adding household member");
-            }
-            finally
-            {
-                SetLoadingState(false);
-            }
+            Snackbar.Add("Couldn't add them, try again", Severity.Error);
+        }
+        finally
+        {
+            SetLoadingState(false);
         }
     }
 

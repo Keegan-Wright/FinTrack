@@ -4,30 +4,24 @@
 @using FluentValidation
 @inject IValidator<AddCustomClassificationsToTransaction> Validator
 
-<DialogBase TResponse="AddCustomClassificationsToTransaction" Title="Add Classification / Tag To Transaction"
+<DialogBase TResponse="AddCustomClassificationsToTransaction" Title="Add tags"
             ResponseConstructor="BuildResponseModel">
     <Content>
         <MudForm @ref="_form" Model="@_model">
-            <MudDataGrid T="Classification" MultiSelection="true" Items="@Classifications"
-                         SortMode="SortMode.Multiple" Filterable="true" QuickFilter="@QuickFilter"
-                         Hideable="false"
-                         SelectedItemsChanged="@SelectedItemsChanged">
-                <ToolBarContent>
-                    <MudText Typo="Typo.h6">Classifications / Tags</MudText>
-                    <MudSpacer/>
-                    <MudTextField @bind-Value="_searchString" Placeholder="Search classifications / tags"
-                                  Adornment="Adornment.Start" Immediate="true"
-                                  AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium"
-                                  Class="mt-0"></MudTextField>
-                </ToolBarContent>
-                <Columns>
-                    <SelectColumn T="Classification"/>
-                    <PropertyColumn Property="x => x.Tag" Title="Classification / Tag" Sortable="true" Filterable="true"/>
-                </Columns>
-                <PagerContent>
-                    <MudDataGridPager T="Classification"/>
-                </PagerContent>
-            </MudDataGrid>
+            @if (Classifications.Count() > 8)
+            {
+                <MudTextField @bind-Value="_searchString" Placeholder="Search tags" Immediate="true" Clearable="true"
+                              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Search"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" Class="mb-2"/>
+            }
+            <div class="ft-list ft-list--scroll">
+                @foreach (var classification in Classifications.Where(QuickFilter).OrderBy(static x => x.Tag))
+                {
+                    <MudCheckBox T="bool" Value="@_selected.Contains(classification.ClassificationId)"
+                                 ValueChanged="@(checkedNow => ToggleAsync(classification, checkedNow))"
+                                 Label="@classification.Tag" Color="Color.Primary" Dense="true"/>
+                }
+            </div>
             <MudTextField T="IEnumerable<SelectedCustomClassification>"
                           @bind-Value="_model.Classifications"
                           For="@(() => _model.Classifications)"
@@ -47,6 +41,7 @@
     [Parameter] public IEnumerable<Classification> Classifications { get; set; } = null!;
 
     private string _searchString = string.Empty;
+    private readonly HashSet<Guid> _selected = [];
 
     protected override void OnInitialized()
     {
@@ -74,9 +69,16 @@
         return _model;
     }
 
-    private async Task SelectedItemsChanged(HashSet<Classification> items)
+    private async Task ToggleAsync(Classification classification, bool isChecked)
     {
-        _model.Classifications = items.Select(x => new SelectedCustomClassification { ClassificationId = x.ClassificationId }).ToList();
+        if (isChecked)
+            _selected.Add(classification.ClassificationId);
+        else
+            _selected.Remove(classification.ClassificationId);
+
+        _model.Classifications = _selected
+            .Select(static x => new SelectedCustomClassification { ClassificationId = x })
+            .ToList();
         await _form.ValidateAsync();
     }
 

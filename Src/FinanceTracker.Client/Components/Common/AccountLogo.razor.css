@@ -1,0 +1,9 @@
+.ft-logo {
+    flex: 0 0 auto;
+    width: 44px;
+    height: 44px;
+    padding: 4px;
+    border-radius: var(--mud-default-borderradius);
+    background-color: #fff;
+    object-fit: contain;
+}

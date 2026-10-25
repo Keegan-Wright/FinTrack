@@ -1,5 +1,5 @@
 @page "/ProviderSetup"
-@* Connects banks: pick providers, consent on the provider's page, then paste back the access code
+@* Connects banks in three steps pick providers, consent on the provider's page, then paste back the access code
    (IOpenBankingService). *@
 @using System.Collections.Immutable
 @using FinanceTracker.Contracts.OpenBanking
@@ -11,53 +11,71 @@
 @inject ISnackbar Snackbar
 @inject IOpenBankingService OpenBankingService
 
-<PageTitle>Provider Setup</PageTitle>
+<PageTitle>Bank connections</PageTitle>
+<PageHeader Title="Connect a bank" Subtitle="Three steps, and your accounts appear after the next sync"/>
 
-<MudDataGrid T="OpenBankingProvider" Items="@(OpenBankingProviders ?? [])"
-             MultiSelection="true"
-             SortMode="SortMode.Multiple"
-             Filterable="true"
-             QuickFilter="@QuickFilter"
-             Hideable="true"
-             Hover="true"
-             RowsPerPage="10"
-             SelectedItemsChanged="SelectedItemsChanged">
-    <ToolBarContent>
-        <MudText Typo="Typo.h6">Providers</MudText>
-        <MudSpacer/>
-        <MudTextField @bind-Value="_searchString" Placeholder="Search" Adornment="Adornment.Start" Immediate="true"
-                      AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
-    </ToolBarContent>
-    <Columns>
-        <SelectColumn Class="col-1" T="OpenBankingProvider" HeaderStyle="width: 2rem"/>
-        <TemplateColumn HeaderStyle="width: 10rem">
-            <HeaderTemplate>
-                <MudText>Logo</MudText>
-            </HeaderTemplate>
-            <CellTemplate>
-                <MudImage Src="@context.Item?.LogoUrl" Fluid="true"></MudImage>
-            </CellTemplate>
-        </TemplateColumn>
-        <PropertyColumn Property="x => x.DisplayName" Title="Name" Sortable="true" Filterable="true"/>
-        <PropertyColumn Property="x => x.Country.ToUpper()" Title="Country" Sortable="true" Filterable="true"/>
-    </Columns>
-    <PagerContent>
-        <MudDataGridPager T="OpenBankingProvider"/>
-    </PagerContent>
-</MudDataGrid>
-
-@if (!string.IsNullOrEmpty(_openBankingAuthUrl))
-{
-    <MudStack>
-        <MudText Typo="Typo.body1">Open the below link to add your providers</MudText>
-        <MudLink Href="@_openBankingAuthUrl" Typo="Typo.body2" Target="_blank">Provider Setup</MudLink>
-    </MudStack>
-
-    <MudStack>
-        <MudTextField T="string" Placeholder="Access Code" @bind-Value="_vendorAccessToken"/>
-        <MudButton Color="Color.Primary" Variant="Variant.Filled" onClick="@AddProviderAsync">Add Provider</MudButton>
-    </MudStack>
-}
+<MudGrid Spacing="4">
+    <MudItem xs="12" lg="7">
+        <Section Title="1. Choose your banks"
+                 Caption="@(_selected.Count == 0 ? "Pick one or more" : $"{_selected.Count} chosen")" Class="h-100">
+            <Actions>
+                <SearchField @bind-Value="_searchString" Placeholder="Search banks"/>
+            </Actions>
+            <ChildContent>
+                @{
+                    var shown = (OpenBankingProviders ?? []).Where(QuickFilter).OrderBy(static x => x.DisplayName).ToList();
+                }
+                @if (shown.Count == 0)
+                {
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">No banks match that search.</MudText>
+                }
+                <div class="ft-list ft-list--scroll">
+                    @foreach (var provider in shown)
+                    {
+                        var selected = _selected.Contains(provider);
+                        <div class="@($"ft-list__row ft-list__row--link {(selected ? "ft-list__row--selected" : string.Empty)}")"
+                             role="checkbox" tabindex="0" aria-checked="@(selected ? "true" : "false")"
+                             @onclick="@(() => ToggleAsync(provider))"
+                             @onkeyup="@(e => OnProviderKeyUp(e, provider))">
+                            <AccountLogo Src="@provider.LogoUrl"/>
+                            <div class="ft-list__main">
+                                <MudText Typo="Typo.body2" Class="text-truncate">@provider.DisplayName</MudText>
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">@provider.Country.ToUpperInvariant()</MudText>
+                            </div>
+                            <MudIcon Icon="@(selected ? Icons.Material.Filled.CheckCircle : Icons.Material.Outlined.Circle)"
+                                     Color="@(selected ? Color.Primary : Color.Default)"/>
+                        </div>
+                    }
+                </div>
+            </ChildContent>
+        </Section>
+    </MudItem>
+    <MudItem xs="12" lg="5">
+        <div class="ft-stack h-100">
+            <Section Title="2. Give consent" Caption="Your bank opens in a new tab, approve access there">
+                <MudButton Href="@(string.IsNullOrEmpty(_openBankingAuthUrl) ? null : _openBankingAuthUrl)"
+                           Target="_blank" Variant="Variant.Outlined" Color="Color.Primary"
+                           EndIcon="@Icons.Material.Outlined.OpenInNew"
+                           Disabled="@string.IsNullOrEmpty(_openBankingAuthUrl)">
+                    Open my bank
+                </MudButton>
+                @if (_selected.Count == 0)
+                {
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary d-block mt-2">Choose a bank first.</MudText>
+                }
+            </Section>
+            <Section Title="3. Paste your access code" Caption="Your bank shows it once you've approved access">
+                <div class="ft-code-row">
+                    <MudTextField T="string" @bind-Value="_vendorAccessToken" Placeholder="Access code"
+                                  Immediate="true" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                  Disabled="@string.IsNullOrEmpty(_openBankingAuthUrl)"/>
+                    <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="@AddProviderAsync"
+                               Disabled="@string.IsNullOrWhiteSpace(_vendorAccessToken)">Connect</MudButton>
+                </div>
+            </Section>
+        </div>
+    </MudItem>
+</MudGrid>
 
 @code {
 
@@ -67,6 +85,7 @@
     [PersistentState]
     public List<OpenBankingProvider>? OpenBankingProviders { get; set; }
 
+    private readonly HashSet<OpenBankingProvider> _selected = [];
     private string _searchString = string.Empty;
     private string _openBankingAuthUrl = string.Empty;
     private string _vendorAccessToken = string.Empty;
@@ -82,20 +101,36 @@
     private Func<OpenBankingProvider, bool> QuickFilter =>
         x => string.IsNullOrWhiteSpace(_searchString) || x.DisplayName.Contains(_searchString, StringComparison.OrdinalIgnoreCase);
 
-    async Task SelectedItemsChanged(HashSet<OpenBankingProvider> selectedProviders)
+    private async Task ToggleAsync(OpenBankingProvider provider)
     {
+        if (!_selected.Remove(provider))
+            _selected.Add(provider);
+
+        // The consent link covers every chosen bank, so it changes with the choice
+        if (_selected.Count == 0)
+        {
+            _openBankingAuthUrl = string.Empty;
+            return;
+        }
+
         var requestModel = new ProviderSetupUrl
         {
-            ProviderIds = selectedProviders.Select(x => x.ProviderId).ToImmutableList(),
-            Scopes = selectedProviders.SelectMany(x => x.Scopes).ToImmutableList()
+            ProviderIds = _selected.Select(x => x.ProviderId).ToImmutableList(),
+            Scopes = _selected.SelectMany(x => x.Scopes).Distinct().ToImmutableList()
         };
 
         _openBankingAuthUrl = await OpenBankingService.BuildAuthUrlAsync(requestModel, _cts.Token);
     }
 
+    private async Task OnProviderKeyUp(KeyboardEventArgs e, OpenBankingProvider provider)
+    {
+        if (e.Key is "Enter" or " ")
+            await ToggleAsync(provider);
+    }
+
     async Task AddProviderAsync()
     {
-        SetLoadingState(true, "Adding Provider");
+        SetLoadingState(true, "Shaking hands with your bank…");
 
         var requestModel = new AddVendor
         {
@@ -107,11 +142,12 @@
         SetLoadingState(false);
         if (response)
         {
-            Snackbar.Add("Provider Added", Severity.Success);
+            _vendorAccessToken = string.Empty;
+            Snackbar.Add("Bank connected, your accounts will appear after the next sync", Severity.Success);
         }
         else
         {
-            Snackbar.Add("Error occured", Severity.Error);
+            Snackbar.Add("That code didn't work, try giving consent again", Severity.Error);
         }
     }
 

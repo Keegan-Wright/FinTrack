@@ -1,0 +1,16 @@
+@* A compact search box for filtering a list as you type, sized to sit in a section's actions. *@
+<div class="ft-search">
+    <MudTextField T="string" Value="@Value" ValueChanged="@ValueChanged" Placeholder="@Placeholder" Immediate="true"
+                  Clearable="true" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Search"
+                  Variant="Variant.Outlined" Margin="Margin.Dense"/>
+</div>
+
+@code {
+
+    [Parameter] public string Value { get; set; } = string.Empty;
+
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+
+    [Parameter] public string Placeholder { get; set; } = "Search";
+
+}

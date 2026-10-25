@@ -1,0 +1,41 @@
+@* The change against the previous period, with an arrow, coloured by whether the change is good. *@
+@if (Value is null)
+{
+    <span class="mud-text-secondary">No previous period to compare</span>
+}
+else
+{
+    <span class="ft-trend">
+        <MudIcon Icon="@Arrow" Size="Size.Small" Color="@TrendColor"/>
+        <MudText Typo="Typo.caption" HtmlTag="span" Color="@TrendColor" Class="ft-money">@($"{Math.Abs(Value.Value):P0}")</MudText>
+        <span class="mud-text-secondary">vs previous period</span>
+    </span>
+}
+
+@code {
+
+    /// <summary>
+    /// The change as a fraction, e.g. 0.12 for 12% up, null when there's nothing to compare against.
+    /// </summary>
+    [Parameter, EditorRequired] public decimal? Value { get; set; }
+
+    /// <summary>
+    /// Whether a rise is good news (money in) or bad (money out).
+    /// </summary>
+    [Parameter] public bool HigherIsBetter { get; set; } = true;
+
+    private string Arrow => Value switch
+    {
+        > 0 => Icons.Material.Filled.ArrowUpward,
+        < 0 => Icons.Material.Filled.ArrowDownward,
+        _ => Icons.Material.Filled.Remove
+    };
+
+    private Color TrendColor => Value switch
+    {
+        > 0 => HigherIsBetter ? Color.Success : Color.Error,
+        < 0 => HigherIsBetter ? Color.Error : Color.Success,
+        _ => Color.Default
+    };
+
+}

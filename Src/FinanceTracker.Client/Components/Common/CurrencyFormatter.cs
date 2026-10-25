@@ -1,9 +1,9 @@
 using System.Globalization;
 
-namespace FinanceTracker.Client.Components.Dashboard;
+namespace FinanceTracker.Client.Components.Common;
 
 /// <summary>
-/// Money formatting shared by the dashboard cards.
+/// Money formatting shared across the app, see <see cref="MoneyText"/>.
 /// </summary>
 public static class CurrencyFormatter
 {
