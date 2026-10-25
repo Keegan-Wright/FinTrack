@@ -11,7 +11,7 @@ namespace FinanceTracker.Infrastructure.Encryption;
 /// a random nonce per value means equal values don't look equal when stored at rest. Tag means tampered values fail to
 /// decrypt.
 /// </summary>
-[InjectionCategory(InjectionCategoryType.Service)]
+[InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Singleton<IColumnEncryptionService>]
 public class ColumnEncryptionService : IColumnEncryptionService
 {

@@ -1,0 +1,76 @@
+@* One compact field for a date range, shows the chosen range and opens a calendar with quick picks. Stands in for
+   MudDateRangePicker's own input, which grows far taller than its neighbours elements. *@
+@using System.Globalization
+@inject TimeProvider TimeProvider
+
+<div class="ft-date-range @Class">
+    <div @onclick="@Open">
+        <MudTextField T="string" Value="@Text" Placeholder="Any time" ReadOnly="true" Variant="Variant.Outlined"
+                      Margin="Margin.Dense" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Outlined.DateRange"
+                      OnAdornmentClick="@Open" AdornmentAriaLabel="Choose dates" aria-label="Dates"/>
+    </div>
+    <MudPopover Open="@_open" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft"
+                OverflowBehavior="OverflowBehavior.FlipAlways" Paper="true" Elevation="8">
+        <div class="ft-date-range__panel">
+            <div class="ft-date-range__presets">
+                @foreach ((string label, DateRange range) in Presets)
+                {
+                    <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="@(() => Choose(range))">@label</MudButton>
+                }
+            </div>
+            <MudDateRangePicker DateRange="@_draft" DateRangeChanged="@(r => _draft = r)"
+                                PickerVariant="PickerVariant.Static" ShowToolbar="false" Elevation="0"/>
+            <div class="ft-date-range__actions">
+                <MudButton Variant="Variant.Text" OnClick="@(() => Choose(null))">Any time</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Choose(_draft))">Done</MudButton>
+            </div>
+        </div>
+    </MudPopover>
+    <MudOverlay Visible="@_open" AutoClose="true" OnClosed="@(() => _open = false)"/>
+</div>
+
+@code {
+
+    [Parameter] public DateRange? Value { get; set; }
+
+    [Parameter] public EventCallback<DateRange?> ValueChanged { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    private bool _open;
+    private DateRange? _draft;
+
+    private string Text
+    {
+        get
+        {
+            DateTime? start = Value?.Start;
+            DateTime? end = Value?.End;
+            return (start, end) switch
+            {
+                (null, null) => string.Empty,
+                ({ } s, null) => $"From {Format(s)}",
+                (null, { } e) => $"Until {Format(e)}",
+                ({ } s, { } e) => $"{Format(s)} – {Format(e)}"
+            };
+        }
+    }
+
+    private IReadOnlyList<(string Label, DateRange Range)> Presets =>
+        DateRangePresets.For(TimeProvider.GetLocalNow().DateTime);
+
+    private static string Format(DateTime date) => date.ToString("d MMM yyyy", CultureInfo.CurrentCulture);
+
+    private void Open()
+    {
+        _draft = Value;
+        _open = true;
+    }
+
+    private async Task Choose(DateRange? range)
+    {
+        _open = false;
+        await ValueChanged.InvokeAsync(range);
+    }
+
+}

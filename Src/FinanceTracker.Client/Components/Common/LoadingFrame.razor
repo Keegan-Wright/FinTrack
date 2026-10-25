@@ -1,0 +1,37 @@
+@* Holds slow content at its final height with a spinner and message over it until it's ready, so a section doesn't
+   sit empty or jump when the content arrives. *@
+<div class="ft-loading-frame" style="@($"min-height: {MinHeight}px")">
+    @ChildContent
+    @if (Loading)
+    {
+        <div class="@($"ft-loading-frame__overlay {(Cover ? "ft-loading-frame__overlay--cover" : string.Empty)}")"
+             role="status">
+            <MudProgressCircular Indeterminate="true" Size="Size.Small" Color="Color.Primary"/>
+            <MudText Typo="Typo.caption" Class="mud-text-secondary">@Message</MudText>
+        </div>
+    }
+</div>
+
+@code {
+
+    /// <summary>
+    /// Whether the content is still loading, until then the spinner covers it.
+    /// </summary>
+    [Parameter, EditorRequired] public bool Loading { get; set; }
+
+    [Parameter] public string Message { get; set; } = "Loading…";
+
+    /// <summary>
+    /// Hides the content under the spinner with the surface colour, for content that draws in stages like a chart.
+    /// Off, the spinner sits over whatever is behind it.
+    /// </summary>
+    [Parameter] public bool Cover { get; set; } = true;
+
+    /// <summary>
+    /// The content's height in pixels, kept while it loads so the page doesn't jump.
+    /// </summary>
+    [Parameter] public int MinHeight { get; set; }
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+}

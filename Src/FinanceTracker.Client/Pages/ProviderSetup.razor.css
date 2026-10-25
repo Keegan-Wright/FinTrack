@@ -1,0 +1,11 @@
+.ft-code-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+}
+
+.ft-code-row ::deep .mud-input-control {
+    flex: 1 1 200px;
+    margin-top: 0;
+}

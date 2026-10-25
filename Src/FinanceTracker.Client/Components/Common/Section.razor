@@ -1,0 +1,56 @@
+@* One titled block of a page and the only surface level: content inside groups with spacing and dividers, never
+   another card or paper. *@
+<div class="@($"ft-section {(ScrollBody ? "ft-section--scroll" : string.Empty)} {Class}")">
+    @if (Title is not null || TitleContent is not null || Actions is not null)
+    {
+        <div class="ft-section__header">
+            <div class="ft-section__heading">
+                @if (TitleContent is not null)
+                {
+                    @TitleContent
+                }
+                else
+                {
+                    <MudText Typo="Typo.subtitle1">@Title</MudText>
+                }
+                @if (!string.IsNullOrWhiteSpace(Caption))
+                {
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary">@Caption</MudText>
+                }
+            </div>
+            @Actions
+        </div>
+    }
+    <div class="ft-section__body">@ChildContent</div>
+</div>
+
+@code {
+
+    [Parameter] public string? Title { get; set; }
+
+    /// <summary>
+    /// Shown in place of <see cref="Title"/> when the title needs markup.
+    /// </summary>
+    [Parameter] public RenderFragment? TitleContent { get; set; }
+
+    /// <summary>
+    /// A short line under the title saying what the section shows.
+    /// </summary>
+    [Parameter] public string? Caption { get; set; }
+
+    /// <summary>
+    /// Shown opposite the title.
+    /// </summary>
+    [Parameter] public RenderFragment? Actions { get; set; }
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// Whether the body scrolls rather than growing, within the section's height when it sits beside something taller.
+    /// Capped when stacked. Give the section a height e.g. <c>h-100</c> in a grid row.
+    /// </summary>
+    [Parameter] public bool ScrollBody { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+}

@@ -13,52 +13,65 @@
 @inject IAutomationService AutomationService
 
 <PageTitle>Automation</PageTitle>
+<PageHeader Title="Automation" Subtitle="Background jobs that run for every user, admins only"/>
 
 <MudDataGrid T="AutomationCron" Items="@(Jobs ?? [])"
-             MultiSelection="true"
              SortMode="SortMode.Multiple"
-             Filterable="true"
              Hideable="true"
              Hover="true"
+             Dense="true"
+             Elevation="0"
+             Outlined="true"
              RowsPerPage="50"
-             RowContextMenuClick="OpenContextMenu"
-             RowClick="OpenContextMenu">
-    <ToolBarContent>
-        <MudText Typo="Typo.h6">Automated Jobs</MudText>
-    </ToolBarContent>
+             FixedHeader="true"
+             Class="ft-grid">
+    <NoRecordsContent>
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">No jobs scheduled.</MudText>
+    </NoRecordsContent>
     <Columns>
-        <PropertyColumn Property="x => x.Function" Title="Function" Sortable="true" Filterable="true"/>
-        <PropertyColumn Property="x => x.Description" Title="Description" Sortable="true" Filterable="true"/>
-        <PropertyColumn Property="x => x.Expression" Title="Expression" Sortable="true" Filterable="true"/>
-        <PropertyColumn Property="x => x.Retries" Title="Retries" Sortable="true" Filterable="true"/>
-        <TemplateColumn Sortable="true"
-                        Filterable="false"
-                        SortBy="item => item.RetryIntervals">
-            <HeaderTemplate>
-                <MudText>RetryIntervals</MudText>
-            </HeaderTemplate>
+        <PropertyColumn Property="x => x.Function" Title="Job" Sortable="true">
             <CellTemplate>
-                @if (context.Item.RetryIntervals is not null)
-                {
-                    @foreach (var tag in context.Item.RetryIntervals)
+                <MudText Typo="Typo.body2">@context.Item.Function</MudText>
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">@context.Item.Description</MudText>
+            </CellTemplate>
+        </PropertyColumn>
+        <PropertyColumn Property="x => x.Expression" Title="Schedule" Sortable="true">
+            <CellTemplate>
+                <code class="ft-code">@context.Item.Expression</code>
+            </CellTemplate>
+        </PropertyColumn>
+        <PropertyColumn Property="x => x.Retries" Title="Retries" Sortable="true"/>
+        <TemplateColumn Title="Retry after (s)" Sortable="false">
+            <CellTemplate>
+                <div class="ft-chips">
+                    @foreach (var interval in context.Item.RetryIntervals ?? [])
                     {
-                        <MudChip>@tag</MudChip>
+                        <MudChip T="int" Size="Size.Small" Variant="Variant.Text">@interval</MudChip>
                     }
-                }
-
+                </div>
             </CellTemplate>
         </TemplateColumn>
-        <PropertyColumn Property="x => x.IsEnabled" Title="IsEnabled" Sortable="true" Filterable="true"/>
+        <PropertyColumn Property="x => x.IsEnabled" Title="Status" Sortable="true">
+            <CellTemplate>
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                         Color="@(context.Item.IsEnabled ? Color.Success : Color.Default)">
+                    @(context.Item.IsEnabled ? "Enabled" : "Paused")
+                </MudChip>
+            </CellTemplate>
+        </PropertyColumn>
+        <TemplateColumn Title="" Sortable="false" Hideable="false" CellClass="ft-grid__actions">
+            <CellTemplate>
+                <MudTooltip Text="Edit job">
+                    <MudIconButton Icon="@Icons.Material.Outlined.Edit" Size="Size.Small" aria-label="Edit job"
+                                   OnClick="@(() => EditCronItem(context.Item))"/>
+                </MudTooltip>
+            </CellTemplate>
+        </TemplateColumn>
     </Columns>
     <PagerContent>
         <MudDataGridPager T="AutomationCron"/>
     </PagerContent>
 </MudDataGrid>
-<MudMenu PositionAtCursor="true" @ref="_contextMenu" id="_contextMenu">
-    <MudMenuItem Icon="@Icons.Material.Filled.Add" OnClick="EditCronItem">
-        Edit Cron
-    </MudMenuItem>
-</MudMenu>
 
 @code {
 
@@ -67,9 +80,6 @@
     /// </summary>
     [PersistentState]
     public List<AutomationCron>? Jobs { get; set; }
-
-    private AutomationCron? _contextMenuRow;
-    private MudMenu _contextMenu = null!;
 
     protected override async Task OnInitializedAsync()
     {
@@ -80,59 +90,40 @@
     private Task<List<AutomationCron>> LoadJobsAsync(CancellationToken cancellationToken) =>
         AutomationService.GetJobsAsync(cancellationToken).ToListAsync(cancellationToken).AsTask();
 
-    private async Task OpenContextMenu(DataGridRowClickEventArgs<AutomationCron> row)
+    private async Task EditCronItem(AutomationCron job)
     {
-        _contextMenuRow = row.Item;
-        await _contextMenu.OpenMenuAsync(row.MouseEventArgs);
-    }
-
-    private async Task EditCronItem()
-    {
-        if(_contextMenuRow is null)
-            return;
-
-
-
         var dialogParameters = new DialogParameters<ModifyCronDialog>
         {
-            { x => x.CronId, _contextMenuRow.Id },
-            { x => x.Description, _contextMenuRow.Description },
-            { x => x.Expression, _contextMenuRow.Expression },
-            { x => x.Retries, _contextMenuRow.Retries },
-            { x => x.RetryIntervals, _contextMenuRow.RetryIntervals },
-            { x => x.IsEnabled, _contextMenuRow.IsEnabled }
+            { x => x.CronId, job.Id },
+            { x => x.Description, job.Description },
+            { x => x.Expression, job.Expression },
+            { x => x.Retries, job.Retries },
+            { x => x.RetryIntervals, job.RetryIntervals },
+            { x => x.IsEnabled, job.IsEnabled }
         };
 
         var dialogRef = await DialogService.ShowAsync<ModifyCronDialog>(null, dialogParameters);
         var dialogActionResult = await dialogRef.Result;
 
-        if (dialogActionResult is null)
+        if (dialogActionResult is null || dialogActionResult.Canceled)
             return;
 
-        if (dialogActionResult.Canceled)
+        try
         {
-            Snackbar.Add("Job update cancelled");
+            SetLoadingState(true, "Updating job");
+            var cronJobUpdateRequest = (UpdateCronJob)dialogActionResult.Data!;
+            await AutomationService.UpdateJobSettingsAsync(cronJobUpdateRequest, _cts.Token);
+            Snackbar.Add("Job updated", Severity.Success);
         }
-        else
+        catch (Exception)
         {
-            try
-            {
-                SetLoadingState(true, "Updating job");
-                var cronJobUpdateRequest = (UpdateCronJob)dialogActionResult.Data!;
-                await AutomationService.UpdateJobSettingsAsync(cronJobUpdateRequest, _cts.Token);
-
-            }
-            catch (Exception)
-            {
-                Snackbar.Add("Error occured updating job");
-            }
-            finally
-            {
-                SetLoadingState(false);
-                Jobs = await LoadJobsAsync(_cts.Token);
-            }
+            Snackbar.Add("Couldn't update the job, try again", Severity.Error);
+        }
+        finally
+        {
+            SetLoadingState(false);
+            Jobs = await LoadJobsAsync(_cts.Token);
         }
     }
-
 
 }

@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Infrastructure.Classification;
 
-[InjectionCategory(InjectionCategoryType.Service)]
+[InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<IClassificationService>]
 public class ClassificationService : ServiceBase<ClassificationService>, IClassificationService
 {

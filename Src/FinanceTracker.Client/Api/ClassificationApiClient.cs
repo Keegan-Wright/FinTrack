@@ -2,6 +2,8 @@ using System.Net.Http.Json;
 using FinanceTracker.Contracts.Api;
 using FinanceTracker.Contracts.Classifications;
 using FinanceTracker.Contracts.Services;
+using FinanceTracker.Generated.Attributes;
+using FinanceTracker.Generated.Enums;
 
 namespace FinanceTracker.Client.Api;
 
@@ -9,6 +11,8 @@ namespace FinanceTracker.Client.Api;
 /// <see cref="IClassificationService"/> over <see cref="ApiRoutes.Classifications"/>. The API's 404s come back as the
 /// <see cref="InvalidOperationException"/> the interface documents.
 /// </summary>
+[InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Client)]
+[Scoped<IClassificationService>]
 public sealed class ClassificationApiClient : IClassificationService
 {
     private readonly HttpClient _http;

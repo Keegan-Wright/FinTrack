@@ -8,6 +8,9 @@
     <AnalysisMode>Recommended</AnalysisMode>
     <UserSecretsId>aspnet-FinanceTracker-9a9b6489-4fce-4066-805b-f87a60ca0ad2</UserSecretsId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+
+    <!-- The [InjectionCategory] destination the source generators register in Program -->
+    <FinTrackServiceDestination>Server</FinTrackServiceDestination>
   </PropertyGroup>
 
 
@@ -47,6 +50,8 @@
     <ProjectReference Include="..\FinanceTracker.Infrastructure.Migrations\FinanceTracker.Infrastructure.Migrations.csproj" />
     <ProjectReference Include="..\FinanceTracker.Infrastructure\FinanceTracker.Infrastructure.csproj" />
     <ProjectReference Include="..\Generators\FinanceTracker.Generated.DependencyInjection\FinanceTracker.Generated.DependencyInjection\FinanceTracker.Generated.DependencyInjection.csproj" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false"/>
+
+    <CompilerVisibleProperty Include="FinTrackServiceDestination"/>
   </ItemGroup>
 
 

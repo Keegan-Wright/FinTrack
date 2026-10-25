@@ -1,6 +1,6 @@
 @page "/Transactions"
 @* Every transaction, filterable, with custom classifications applied from here
-   (ITransactionsService, IClassificationService). *@
+   (ITransactionsService, IClassificationService). Loads in the browser only, the list is too big to send twice. *@
 @using System.Globalization
 @using FinanceTracker.Client.Components.Dialogs
 @using FinanceTracker.Client.Components.Transactions
@@ -17,72 +17,87 @@
 @inject ISnackbar Snackbar
 
 <PageTitle>Transactions</PageTitle>
+<PageHeader Title="Transactions" Subtitle="@Subtitle">
+    <TransactionFilters TransactionTagFilterItems="@Filters.Tags"
+                        AccountFilterItems="@Filters.Accounts"
+                        CategoryFilterItems="@Filters.Categories"
+                        ProviderFilterItems="@Filters.Providers"
+                        TransactionTypeFilterItems="@Filters.Types"
+                        SearchTransactions="@SearchTransactionsAsync"/>
+</PageHeader>
 
-<TransactionFilters
-    TransactionTagFilterItems="@Filters.Tags"
-    AccountFilterItems="@Filters.Accounts"
-    CategoryFilterItems="@Filters.Categories"
-    ProviderFilterItems="@Filters.Providers"
-    TransactionTypeFilterItems="@Filters.Types"
-    SearchTerm="@_searchTerm"
-    SearchTransactions="SearchTransactionsAsync"></TransactionFilters>
-
-<MudDataGrid T="Transaction" Items="_transactions"
-             MultiSelection="true"
-             SortMode="SortMode.Multiple"
-             Filterable="true"
-             QuickFilter="@TransactionsQuickFilter"
-             Hideable="true"
-             Hover="true"
-             RowsPerPage="50"
-             RowContextMenuClick="OpenContextMenu"
-             RowClick="OpenContextMenu">
-    <ToolBarContent>
-        <MudText Typo="Typo.h6">Transactions</MudText>
-        <MudSpacer/>
-        <MudTextField @bind-Value="_transactionsSearchTerm" Placeholder="Search" Adornment="Adornment.Start"
-                      Immediate="true"
-                      AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
-    </ToolBarContent>
-    <Columns>
-        <PropertyColumn Property="x => x.Description" Title="Description" Sortable="true" Filterable="true"/>
-        <TemplateColumn Sortable="true"
-                        Filterable="false"
-                        SortBy="item => item.Amount">
-            <HeaderTemplate>
-                <MudText>Amount</MudText>
-            </HeaderTemplate>
-            <CellTemplate>
-                <MudText Color="@(context.Item.Amount < 0 ? Color.Error : Color.Success)">@context.Item.Amount.ToString("c", CultureInfo.CurrentCulture)</MudText>
-            </CellTemplate>
-        </TemplateColumn>
-        <PropertyColumn Property="x => x.TransactionCategory" Title="Category" Sortable="true" Filterable="true"/>
-        <PropertyColumn Property="x => x.TransactionType" Title="Type" Sortable="true" Filterable="true"/>
-        <PropertyColumn Property="x => x.TransactionTime" Title="Date" Sortable="true" Filterable="true"/>
-        <TemplateColumn Sortable="true"
-                        Filterable="false"
-                        SortBy="item => item.Tags">
-            <HeaderTemplate>
-                <MudText>Tags</MudText>
-            </HeaderTemplate>
-            <CellTemplate>
-                @foreach (var tag in context.Item.Tags)
-                {
-                    <MudChip>@tag</MudChip>
-                }
-            </CellTemplate>
-        </TemplateColumn>
-    </Columns>
-    <PagerContent>
-        <MudDataGridPager T="Transaction"/>
-    </PagerContent>
-</MudDataGrid>
-<MudMenu PositionAtCursor="true" @ref="_contextMenu" id="_contextMenu">
-    <MudMenuItem Icon="@Icons.Material.Filled.Add" OnClick="AddClassifications">
-        Add Custom Classifications
-    </MudMenuItem>
-</MudMenu>
-
+<LoadingFrame Loading="@_loading" Message="Fetching every last penny…" MinHeight="320" Cover="false">
+    @if (!_loading)
+    {
+        <MudDataGrid T="Transaction" Items="_transactions"
+                     SortMode="SortMode.Multiple"
+                     Filterable="false"
+                     Hideable="true"
+                     Hover="true"
+                     Dense="true"
+                     Elevation="0"
+                     Outlined="true"
+                     RowsPerPage="50"
+                     FixedHeader="true"
+                     Class="ft-grid">
+            <NoRecordsContent>
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">No transactions match these filters.</MudText>
+            </NoRecordsContent>
+            <Columns>
+                <PropertyColumn Property="x => x.TransactionTime" Title="Date" Sortable="true">
+                    <CellTemplate>
+                        <span class="ft-money">
+                            @context.Item.TransactionTime.ToLocalTime().ToString("d MMM yyyy", CultureInfo.CurrentCulture)
+                        </span>
+                    </CellTemplate>
+                </PropertyColumn>
+                <PropertyColumn Property="x => x.Description" Title="Description" Sortable="true">
+                    <CellTemplate>
+                        <span>@context.Item.Description</span>
+                        @if (context.Item.Pending)
+                        {
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Warning"
+                                     Class="ml-2">Pending</MudChip>
+                        }
+                    </CellTemplate>
+                </PropertyColumn>
+                <PropertyColumn Property="x => x.TransactionCategory" Title="Category" Sortable="true">
+                    <CellTemplate>
+                        <span class="mud-text-secondary">@DisplayText.ToTitle(context.Item.TransactionCategory)</span>
+                    </CellTemplate>
+                </PropertyColumn>
+                <TemplateColumn Title="Tags" Sortable="false">
+                    <CellTemplate>
+                        <div class="ft-chips">
+                            @foreach (var tag in context.Item.Tags)
+                            {
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@tag</MudChip>
+                            }
+                        </div>
+                    </CellTemplate>
+                </TemplateColumn>
+                <PropertyColumn Property="x => x.Amount" Title="Amount" Sortable="true"
+                                HeaderClass="ft-grid__amount" CellClass="ft-grid__amount">
+                    <CellTemplate>
+                        <MoneyText Value="@context.Item.Amount" Signed="true"/>
+                    </CellTemplate>
+                </PropertyColumn>
+                <TemplateColumn Title="" Sortable="false" Hideable="false" CellClass="ft-grid__actions">
+                    <CellTemplate>
+                        <MudTooltip Text="Add tags">
+                            <MudIconButton Icon="@Icons.Material.Outlined.Sell" Size="Size.Small"
+                                           aria-label="Add tags"
+                                           OnClick="@(() => AddClassificationsAsync(context.Item))"/>
+                        </MudTooltip>
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+            <PagerContent>
+                <MudDataGridPager T="Transaction"/>
+            </PagerContent>
+        </MudDataGrid>
+    }
+</LoadingFrame>
 
 @code {
 
@@ -93,11 +108,14 @@
     public TransactionFilterOptions? FilterOptions { get; set; }
 
     private readonly List<Transaction> _transactions = [];
-    private readonly string _searchTerm = string.Empty;
+    private bool _loading = true;
+    private bool _loaded;
 
-    private Transaction? _contextMenuRow;
-    private MudMenu _contextMenu = null!;
-    private string _transactionsSearchTerm = string.Empty;
+    private TransactionFilterOptions Filters => FilterOptions ?? TransactionFilterOptions.None;
+
+    private string Subtitle => _loading
+        ? "Everything in and out of your accounts"
+        : $"{_transactions.Count:n0} {(_transactions.Count == 1 ? "transaction" : "transactions")}";
 
     protected override async Task OnInitializedAsync()
     {
@@ -106,94 +124,76 @@
             cancellationToken => TransactionFilterOptions.LoadAsync(TransactionsService, cancellationToken));
     }
 
-    private TransactionFilterOptions Filters => FilterOptions ?? TransactionFilterOptions.None;
-
-    private async Task SearchTransactionsAsync(TransactionFilters.ActiveTransactionFilters filters)
+    protected override async Task OnParametersSetAsync()
     {
-        SetLoadingState(true, "Loading transactions");
-        _transactions.Clear();
-        var transactionRequest = new FilterTransactions
+        // The prerender shows the spinner, the browser loads the list once it's interactive
+        if (RendererInfo.IsInteractive && !_loaded)
         {
-            AccountIds = filters.AccountIds.ToList(),
-            ProviderIds = filters.ProviderIds.ToList(),
-            Categories = filters.Categories.ToList(),
-            Types = filters.TransactionTypes.ToList(),
-            SearchTerm = filters.SearchTerm,
-            FromDate = filters.DateRange?.Start,
-            ToDate = filters.DateRange?.End,
-            Tags = filters.TransactionTags.ToList()
-        };
+            _loaded = true;
+            await SearchTransactionsAsync(ActiveTransactionFilters.None);
+        }
+    }
 
-        await foreach (var transaction in TransactionsService.GetAllTransactionsAsync(transactionRequest, _cts.Token))
+    private async Task SearchTransactionsAsync(ActiveTransactionFilters filters)
+    {
+        _loading = true;
+        StateHasChanged();
+        _transactions.Clear();
+
+        await foreach (var transaction in TransactionsService.GetAllTransactionsAsync(filters.ToRequest(), _cts.Token))
         {
             _transactions.Add(transaction);
         }
 
-        SetLoadingState(false);
+        _loading = false;
     }
 
-    private Func<Transaction, bool> TransactionsQuickFilter =>
-        x => string.IsNullOrWhiteSpace(_transactionsSearchTerm) || x.Description.Contains(_transactionsSearchTerm, StringComparison.OrdinalIgnoreCase);
-
-
-    private async Task OpenContextMenu(DataGridRowClickEventArgs<Transaction> row)
+    private async Task AddClassificationsAsync(Transaction transaction)
     {
-        _contextMenuRow = row.Item;
-        await _contextMenu.OpenMenuAsync(row.MouseEventArgs);
-    }
-
-    private async Task AddClassifications()
-    {
-        if(_contextMenuRow is null)
-            return;
-
         var classifications = new List<Classification>();
         await foreach (var classification in ClassificationsService.GetAllCustomClassificationsAsync(_cts.Token))
         {
             classifications.Add(classification);
         }
 
+        if (classifications.Count == 0)
+        {
+            Snackbar.Add("You haven't made any tags yet, add some on the Tags page first", Severity.Info);
+            return;
+        }
 
         var dialogParameters = new DialogParameters<AddClassificationsToTransactionDialog>
         {
-            { x => x.TransactionId, _contextMenuRow.TransactionId },
+            { x => x.TransactionId, transaction.TransactionId },
             { x => x.Classifications, classifications }
         };
 
         var dialogRef = await DialogService.ShowAsync<AddClassificationsToTransactionDialog>(null, dialogParameters);
         var dialogActionResult = await dialogRef.Result;
 
-        if (dialogActionResult is null)
+        if (dialogActionResult is null || dialogActionResult.Canceled)
             return;
 
-        if (dialogActionResult.Canceled)
+        try
         {
-            Snackbar.Add("Add classifications cancelled");
+            SetLoadingState(true, "Adding tags");
+            var classificationsToAdd = (AddCustomClassificationsToTransaction)dialogActionResult.Data!;
+            await ClassificationsService.AddCustomClassificationsToTransactionAsync(classificationsToAdd, _cts.Token);
+
+            var added = classificationsToAdd.Classifications.Select(static c => c.ClassificationId).ToHashSet();
+            transaction.Tags = transaction.Tags
+                .Concat(classifications.Where(x => added.Contains(x.ClassificationId)).Select(static x => x.Tag!))
+                .Distinct()
+                .ToList();
+            Snackbar.Add("Tags added", Severity.Success);
         }
-        else
+        catch (Exception)
         {
-            try
-            {
-                SetLoadingState(true, "Adding classifications");
-                var classificationsToAdd = (AddCustomClassificationsToTransaction)dialogActionResult.Data!;
-                await ClassificationsService.AddCustomClassificationsToTransactionAsync(classificationsToAdd, _cts.Token);
-                var rebuiltTags = new List<string>();
-                rebuiltTags.AddRange(_contextMenuRow.Tags);
-
-                rebuiltTags.AddRange(classifications.Where(x => classificationsToAdd.Classifications.Select(c => c.ClassificationId)
-                        .Contains(x.ClassificationId))
-                    .Select(v => v.Tag)!);
-
-                _contextMenuRow.Tags = rebuiltTags;
-            }
-            catch (Exception)
-            {
-                Snackbar.Add("Error occured adding classifications");
-            }
-            finally
-            {
-                SetLoadingState(false);
-            }
+            Snackbar.Add("Couldn't add those tags, try again", Severity.Error);
+        }
+        finally
+        {
+            SetLoadingState(false);
         }
     }
 

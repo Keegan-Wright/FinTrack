@@ -68,9 +68,8 @@ public class MonitorOpenBankingTokenExpirationAsyncTests : InfrastructureTestBas
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
             .Do(s => s.BankConnectionScenario.WithConnection("bank", Username))
             .Do(s => s.BankConnectionScenario.WithAccessToken("bank", revokedAt.AddDays(-1)))
-            .Do(s => s.BankConnectionScenario.WithConsentGrantedAt("bank", Lapsed()));
-
-        await RevokeActiveTokenAsync("bank", revokedAt);
+            .Do(s => s.BankConnectionScenario.WithConsentGrantedAt("bank", Lapsed()))
+            .Do(s => s.BankConnectionScenario.WithRevokedToken("bank", revokedAt));
 
         MonitorOpenBankingTokenExpirationAsync subject = BuildSubject();
 
@@ -137,16 +136,6 @@ public class MonitorOpenBankingTokenExpirationAsyncTests : InfrastructureTestBas
     }
 
     private static DateTime Lapsed() => DateTime.UtcNow - ConsentLifetime - TimeSpan.FromHours(1);
-
-    private async Task RevokeActiveTokenAsync(string connectionName, DateTime revokedAt)
-    {
-        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
-        Guid id = Scenario.ConnectionMappings[connectionName];
-        BankConnection connection = await context.BankConnections.Include(x => x.AccessTokens)
-            .SingleAsync(x => x.Id == id, CancellationToken);
-        connection.RevokeActiveToken(revokedAt);
-        await context.SaveChangesAsync(CancellationToken);
-    }
 
     private async Task<BankConnection> LoadConnectionAsync(string connectionName)
     {

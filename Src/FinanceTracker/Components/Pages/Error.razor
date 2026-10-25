@@ -1,54 +1,26 @@
 ﻿@page "/Error"
 @using System.Diagnostics
+@using FinanceTracker.Client.Components.Common
 @using FinanceTracker.Client.Pages
 @inherits PageComponent
 
-<PageTitle>Error</PageTitle>
+<PageTitle>Something went wrong</PageTitle>
 
-<MudGrid Spacing="4">
-    <MudItem xs="12">
-        <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Elevation="2" Class="mb-4">
-            <MudText Typo="Typo.h5">Error</MudText>
-            <MudText Typo="Typo.body1">An error occurred while processing your request.</MudText>
-        </MudAlert>
-    </MudItem>
+<PageHeader Title="Something went wrong" Subtitle="FinTrack hit an error handling that request"/>
 
-    <MudItem xs="12">
-        <MudCard Elevation="1">
-            <MudCardHeader>
-                <CardHeaderAvatar>
-                    <MudIcon Icon="@Icons.Material.Filled.BugReport" Color="Color.Error"/>
-                </CardHeaderAvatar>
-                <CardHeaderContent>
-                    <MudText Typo="Typo.h6">Technical Details</MudText>
-                </CardHeaderContent>
-            </MudCardHeader>
-            <MudCardContent>
-                @if (ShowRequestId)
-                {
-                    <MudText Typo="Typo.body2" Class="mb-2">
-                        <strong>Request ID:</strong> <code>@RequestId</code>
-                    </MudText>
-                }
-
-                <MudText Typo="Typo.h6" Class="mt-4 mb-2">Development Mode</MudText>
-                <MudText Typo="Typo.body2">
-                    Swapping to <strong>Development</strong> environment will display more detailed information about
-                    the error that occurred.
-                </MudText>
-                <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true" Class="mt-2">
-                    <strong>The Development environment shouldn't be enabled for deployed applications.</strong>
-                    It can result in displaying sensitive information from exceptions to end users.
-                </MudAlert>
-                <MudText Typo="Typo.body2" Class="mt-2">
-                    For local debugging, enable the <strong>Development</strong> environment by setting the <strong>ASPNETCORE_ENVIRONMENT</strong>
-                    environment variable to <strong>Development</strong>
-                    and restarting the app.
-                </MudText>
-            </MudCardContent>
-        </MudCard>
-    </MudItem>
-</MudGrid>
+<Section Title="Details for whoever runs FinTrack">
+    <div class="ft-stack">
+        @if (ShowRequestId)
+        {
+            <MudText Typo="Typo.body2">Request ID: <code>@RequestId</code></MudText>
+        }
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+            Running in the <strong>Development</strong> environment shows the full error. Set
+            <code>ASPNETCORE_ENVIRONMENT</code> to <code>Development</code> and restart to see it, on a local machine
+            only, as it can show sensitive details.
+        </MudText>
+    </div>
+</Section>
 
 @code {
     [CascadingParameter] private HttpContext? HttpContext { get; set; }

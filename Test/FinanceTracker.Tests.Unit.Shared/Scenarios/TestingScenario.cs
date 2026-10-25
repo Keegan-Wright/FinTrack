@@ -21,6 +21,7 @@ public sealed class TestingScenario
     public DebtScenario DebtScenario { get; init; }
     public HouseholdMemberScenario HouseholdMemberScenario { get; init; }
     public AutomationScenario AutomationScenario { get; init; }
+    public DataProtectionScenario DataProtectionScenario { get; init; }
 
     public Dictionary<string, Guid> UserMappings { get; set; } = [];
     public Dictionary<string, Guid> ConnectionMappings { get; set; } = [];
@@ -47,6 +48,7 @@ public sealed class TestingScenario
         DebtScenario = new DebtScenario(this);
         HouseholdMemberScenario = new HouseholdMemberScenario(this);
         AutomationScenario = new AutomationScenario(this);
+        DataProtectionScenario = new DataProtectionScenario(this);
     }
 
 }

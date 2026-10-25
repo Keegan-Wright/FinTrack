@@ -11,7 +11,7 @@ using TickerQ.Utilities.Interfaces.Managers;
 
 namespace FinanceTracker.Infrastructure.Automation;
 
-[InjectionCategory(InjectionCategoryType.Service)]
+[InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<IAutomationService>]
 public class AutomationService :  ServiceBase<AutomationService>, IAutomationService
 {

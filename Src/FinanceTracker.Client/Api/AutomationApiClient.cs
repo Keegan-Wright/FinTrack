@@ -3,6 +3,8 @@ using System.Net.Http.Json;
 using FinanceTracker.Contracts.Api;
 using FinanceTracker.Contracts.Automation;
 using FinanceTracker.Contracts.Services;
+using FinanceTracker.Generated.Attributes;
+using FinanceTracker.Generated.Enums;
 
 namespace FinanceTracker.Client.Api;
 
@@ -10,6 +12,8 @@ namespace FinanceTracker.Client.Api;
 /// <see cref="IAutomationService"/> over <see cref="ApiRoutes.AutomationJobs"/> and
 /// <see cref="ApiRoutes.Sync"/>.
 /// </summary>
+[InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Client)]
+[Scoped<IAutomationService>]
 public sealed class AutomationApiClient : IAutomationService
 {
     private readonly HttpClient _http;

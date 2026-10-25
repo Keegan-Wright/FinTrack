@@ -1,0 +1,32 @@
+.ft-stat {
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    padding: 16px 20px;
+    box-shadow: -1px 0 0 0 var(--mud-palette-lines-default), 0 -1px 0 0 var(--mud-palette-lines-default);
+}
+
+.ft-stat ::deep .ft-stat__label {
+    color: var(--mud-palette-text-secondary);
+    line-height: 1.6;
+}
+
+.ft-stat__hint {
+    font-size: .75rem;
+    color: var(--mud-palette-text-secondary);
+}
+
+@media (max-width: 1279.98px) {
+    .ft-stat {
+        flex-basis: 50%;
+    }
+}
+
+@media (max-width: 599.98px) {
+    .ft-stat {
+        flex-basis: 100%;
+        padding: 12px 16px;
+    }
+}

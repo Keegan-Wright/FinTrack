@@ -4,12 +4,16 @@ using FinanceTracker.Contracts.Reports.Category;
 using FinanceTracker.Contracts.Reports.SpentInTimePeriod;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Transactions;
+using FinanceTracker.Generated.Attributes;
+using FinanceTracker.Generated.Enums;
 
 namespace FinanceTracker.Client.Api;
 
 /// <summary>
 /// <see cref="IReportService"/> over <see cref="ApiRoutes.Reports"/>.
 /// </summary>
+[InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Client)]
+[Scoped<IReportService>]
 public sealed class ReportApiClient : IReportService
 {
     private readonly HttpClient _http;

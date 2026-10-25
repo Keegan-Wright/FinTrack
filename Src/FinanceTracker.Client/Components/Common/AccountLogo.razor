@@ -1,0 +1,21 @@
+@* A bank's or account's logo on a light tile, which keeps dark and wide logos readable on either theme. Takes the SVG
+   bytes an account's provider sends, or a URL. *@
+<img class="@($"ft-logo {Class}")" alt="" src="@Source"/>
+
+@code {
+
+    /// <summary>
+    /// The logo as SVG bytes, used when <see cref="Src"/> isn't set.
+    /// </summary>
+    [Parameter] public byte[] Logo { get; set; } = [];
+
+    /// <summary>
+    /// The logo's URL, e.g. a provider's.
+    /// </summary>
+    [Parameter] public string? Src { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    private string Source => Src ?? $"data:image/svg+xml;base64,{Convert.ToBase64String(Logo)}";
+
+}

@@ -42,7 +42,7 @@ jobs:
 
       - name: Unit Tests
         run: |
-          for project in Domain FinanceTracker Infrastructure; do
+          for project in Client Domain FinanceTracker Infrastructure; do
             dotnet test --project Test/FinanceTracker.Tests.Unit.$project -c=release || exit 1
           done
 

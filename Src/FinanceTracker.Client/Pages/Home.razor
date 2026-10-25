@@ -1,6 +1,7 @@
 @page "/"
-@* The dashboard: in/out KPIs, cash flow, top categories, upcoming payments, budgets and an accounts
-   snapshot, for a chosen date range. *@
+@* The dashboard in/out KPIs, cash flow, top spending, accounts, upcoming payments and budgets, for a chosen
+   date range. *@
+@using System.Globalization
 @using FinanceTracker.Client.Components.Dashboard
 @using FinanceTracker.Contracts.Auth
 @using FinanceTracker.Contracts.Account
@@ -20,69 +21,39 @@
 @inject IHouseholdMemberService HouseholdMemberService
 @inject TimeProvider TimeProvider
 
-<PageTitle>Home</PageTitle>
-
-<MudCard Class="mb-6">
-    <MudCardContent>
-
-        @* Header *@
-        <MudStack Spacing="3" Class="mb-3">
-            <MudStack Row="true">
-                <MudStack Spacing="0">
-                    <MudText Typo="Typo.h4">@GetGreeting()</MudText>
-                    <MudText Typo="Typo.body2">Here's what's happening across your finances</MudText>
-                </MudStack>
-            </MudStack>
-
-            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                <MudButton Variant="@GetPresetButtonVariant(DashboardRangePreset.ThisMonth)"
-                           Size="Size.Small"
-                           OnClick="@(() => SetRangePresetAsync(DashboardRangePreset.ThisMonth))">
-                    This month
-                </MudButton>
-                <MudButton Variant="@GetPresetButtonVariant(DashboardRangePreset.Last30Days)"
-                           Size="Size.Small"
-                           OnClick="@(() => SetRangePresetAsync(DashboardRangePreset.Last30Days))">
-                    Last 30 days
-                </MudButton>
-                <MudButton Variant="@GetPresetButtonVariant(DashboardRangePreset.ThisYear)"
-                           Size="Size.Small"
-                           OnClick="@(() => SetRangePresetAsync(DashboardRangePreset.ThisYear))">
-                    This year
-                </MudButton>
-            </MudStack>
-        </MudStack>
-
+<PageTitle>Dashboard</PageTitle>
+<PageHeader Title="@GetGreeting()" Subtitle="@GetRangeLabel()">
+    <Actions>
+        <MudToggleGroup T="DashboardRangePreset" Value="@View.Preset" ValueChanged="@SetRangePresetAsync"
+                        Size="Size.Small" Color="Color.Primary">
+            <MudToggleItem Value="DashboardRangePreset.ThisMonth" Text="This month"/>
+            <MudToggleItem Value="DashboardRangePreset.Last30Days" Text="Last 30 days"/>
+            <MudToggleItem Value="DashboardRangePreset.ThisYear" Text="This year"/>
+        </MudToggleGroup>
+    </Actions>
+</PageHeader>
+<MudGrid Spacing="4">
+    <MudItem xs="12">
         <DashboardKpis Spent="@View.Spent" TrendIn="@View.TrendIn" TrendOut="@View.TrendOut" Net="@View.Net"
                        TransactionCount="@View.Transactions.Count" TotalBalance="@View.TotalBalance"
                        HouseholdIncome="@View.HouseholdIncome"/>
-
-    </MudCardContent>
-</MudCard>
-
-
-<MudGrid>
-    <MudItem xs="12" lg="6">
+    </MudItem>
+    <MudItem xs="12" lg="8">
         <CashflowChart Transactions="@View.Transactions" FromDate="@View.FromDate" ToDate="@View.ToDate" Note="@View.ChartNote"/>
     </MudItem>
-
-    <MudItem xs="12" lg="6">
-        <TopCategoriesChart Transactions="@View.Transactions"/>
+    <MudItem xs="12" lg="4">
+        <TopCategories Transactions="@View.Transactions"/>
     </MudItem>
-
-    <MudItem xs="12" lg="6">
-        <UpcomingPaymentsCard Payments="@View.UpcomingPayments"/>
-    </MudItem>
-
-    <MudItem xs="12" lg="6">
-        <BudgetsCard BudgetCategories="@View.BudgetCategories"/>
-    </MudItem>
-
-    <MudItem xs="12">
+    <MudItem xs="12" md="6">
         <AccountsSnapshot Accounts="@View.Accounts"/>
     </MudItem>
+    <MudItem xs="12" md="6">
+        <UpcomingPayments Payments="@View.UpcomingPayments"/>
+    </MudItem>
+    <MudItem xs="12">
+        <GoalsAndBudgets BudgetCategories="@View.BudgetCategories"/>
+    </MudItem>
 </MudGrid>
-
 
 @code {
 
@@ -150,7 +121,7 @@
         var previous = await DashboardService.GetSpentInTimePeriod(fromDate.AddDays(-periodDays), fromDate, cancellationToken);
 
         var upcomingPayments = await DashboardService.GetUpcomingPaymentsAsync(8, cancellationToken).ToListAsync(cancellationToken);
-        var accounts = await AccountService.GetAccountsAndMostRecentTransactionsAsync(3, cancellationToken).ToListAsync(cancellationToken);
+        var accounts = await AccountService.GetAccountsAndMostRecentTransactionsAsync(1, cancellationToken).ToListAsync(cancellationToken);
         var budgetCategories = await BudgetCategoriesService.GetBudgetItemsAsync(cancellationToken).ToListAsync(cancellationToken);
 
         decimal householdIncome = 0;
@@ -214,9 +185,14 @@
         return (current - previous) / Math.Abs(previous);
     }
 
-    private Variant GetPresetButtonVariant(DashboardRangePreset preset)
+    private string GetRangeLabel()
     {
-        return preset == View.Preset ? Variant.Filled : Variant.Outlined;
+        if (View.FromDate == default)
+            return "Here's what's happening across your finances";
+
+        var culture = CultureInfo.CurrentCulture;
+        var from = View.FromDate.ToString(View.FromDate.Year == View.ToDate.Year ? "d MMM" : "d MMM yyyy", culture);
+        return $"{from} – {View.ToDate.ToString("d MMM yyyy", culture)}";
     }
 
     private string GetGreeting()

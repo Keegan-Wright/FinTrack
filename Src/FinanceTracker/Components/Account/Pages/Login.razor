@@ -10,72 +10,61 @@
 @inject ILogger<Login> Logger
 @inject NavigationManager NavigationManager
 @inject IdentityRedirectManager RedirectManager
-@inject IValidator<LoginRequest> Validator;
 @inject IConfiguration Configuration
 
-<PageTitle>Log in</PageTitle>
+<PageTitle>Sign in</PageTitle>
 
-<MudText Typo="Typo.h3" GutterBottom="true" Align="Align.Center">Log in</MudText>
+<AuthHeading Title="Sign in" Subtitle="Welcome back, pick up where you left off"/>
+
+@if (_errorMessage is not null)
+{
+    <MudAlert Severity="MudBlazor.Severity.Error" Variant="Variant.Text" Dense="true" Class="mb-4">@_errorMessage</MudAlert>
+}
+
+@if (Configuration.IsOidcEnabled())
+{
+    <MudButton Href="@(NavigationManager.GetUriWithQueryParameters("auth/oidc", new Dictionary<string, object?> { ["returnUrl"] = ReturnUrl }))"
+               Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true"
+               StartIcon="@Icons.Material.Outlined.Key">
+        Sign in with single sign on
+    </MudButton>
+    <AuthDivider Text="or with your username"/>
+}
 
 <EditForm Model="LoginRequest" method="post" OnValidSubmit="LoginUser" FormName="login">
     <FluentValidator/>
+    <AuthFields>
+        <MudStaticTextField For="@(() => LoginRequest.Username)" @bind-Value="LoginRequest.Username"
+                            Label="Username" Variant="Variant.Outlined"
+                            UserAttributes="@(new Dictionary<string, object?> { { "autocomplete", "username" }, { "aria-required", "true" } })"/>
 
-    <MudText GutterBottom="true" Typo="Typo.body1">Use a local account to log in.</MudText>
+        <MudStaticTextField For="@(() => LoginRequest.Password)" @bind-Value="LoginRequest.Password"
+                            Label="Password" InputType="InputType.Password" Variant="Variant.Outlined"
+                            Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Outlined.Visibility"
+                            AdornmentToggledIcon="@Icons.Material.Outlined.VisibilityOff"
+                            AdornmentClickFunction="ftTogglePassword" AdornmentAriaLabel="Show password"
+                            UserAttributes="@(new Dictionary<string, object?> { { "autocomplete", "current-password" }, { "aria-required", "true" } })"/>
 
-    <MudGrid>
-        <MudItem xs="12">
-            <MudStaticTextField For="@(() => LoginRequest.Username)" @bind-Value="LoginRequest.Username"
-                                Label="Username" Placeholder="Username"
-                                UserAttributes="@(new Dictionary<string, object?> { { "autocomplete", "username" }, { "aria-required", "true" } })"/>
-        </MudItem>
-        <MudItem xs="12">
-            <MudStaticTextField For="@(() => LoginRequest.Password)" @bind-Value="LoginRequest.Password"
-                                Label="Password" InputType="InputType.Password" Placeholder="password"
-                                UserAttributes="@(new Dictionary<string, object?> { { "autocomplete", "current-password" }, { "aria-required", "true" } })"/>
-        </MudItem>
-        <MudItem xs="12">
-            <MudStaticCheckBox For="@(() => LoginRequest.RememberMe)" @bind-Value="LoginRequest.RememberMe">Remember
-                me
-            </MudStaticCheckBox>
-        </MudItem>
-        <MudItem xs="12">
-            <MudStaticButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
-                             FormAction="FormAction.Submit">Log in
-            </MudStaticButton>
-        </MudItem>
-    </MudGrid>
+        <div class="ft-login-options">
+            <MudStaticCheckBox For="@(() => LoginRequest.RememberMe)" @bind-Value="LoginRequest.RememberMe"
+                               Color="Color.Primary">Remember me</MudStaticCheckBox>
+            <MudLink Href="Account/ForgotPassword" Typo="Typo.body2">Forgot password?</MudLink>
+        </div>
+
+        <MudStaticButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Size="Size.Large"
+                         FormAction="FormAction.Submit">Sign in</MudStaticButton>
+    </AuthFields>
 </EditForm>
 
-@if (errorMessage is not null)
-{
-    <MudGrid Class="mt-4">
-        <MudItem xs="12">
-            <MudText Align="Align.Center" Color="Color.Error">@errorMessage</MudText>
-        </MudItem>
-    </MudGrid>
-}
-
-<MudGrid Class="mt-4">
-    <MudItem xs="12">
-        <MudLink Href="Account/ForgotPassword">Forgot your password?</MudLink>
-        <br/>
-        <MudLink
-            Href="@(NavigationManager.GetUriWithQueryParameters("Account/Register", new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))">
-            Register as a new user
-        </MudLink>
-        @if (Configuration.IsOidcEnabled())
-        {
-            <br/>
-            <MudLink
-                Href="@(NavigationManager.GetUriWithQueryParameters("auth/oidc", new Dictionary<string, object?> { ["returnUrl"] = ReturnUrl }))">
-                Login with SSO
-            </MudLink>
-        }
-    </MudItem>
-</MudGrid>
+<AuthFooter>
+    New to FinTrack?
+    <MudLink Href="@(NavigationManager.GetUriWithQueryParameters("Account/Register", new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))">
+        Create an account
+    </MudLink>
+</AuthFooter>
 
 @code {
-    private string? errorMessage;
+    private string? _errorMessage;
 
     [CascadingParameter] private HttpContext HttpContext { get; set; } = default!;
 
@@ -95,7 +84,7 @@
 
         if (Sso == "failed")
         {
-            errorMessage = "Single sign on failed.";
+            _errorMessage = "Single sign on failed.";
         }
     }
 
@@ -115,7 +104,7 @@
         }
         else
         {
-            errorMessage = "Invalid login attempt.";
+            _errorMessage = "Invalid login attempt.";
         }
     }
 

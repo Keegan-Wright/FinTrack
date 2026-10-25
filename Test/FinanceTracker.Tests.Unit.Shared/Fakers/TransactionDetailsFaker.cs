@@ -5,7 +5,6 @@ namespace FinanceTracker.Tests.Unit.Shared.Fakers;
 
 /// <summary>
 /// Provider transaction details, amounts are signed to match the transaction type.
-/// Never generates <c>TRANSFER</c>, which most queries exclude.
 /// </summary>
 public sealed class TransactionDetailsFaker : Faker<TransactionDetails>
 {

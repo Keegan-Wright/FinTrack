@@ -158,11 +158,7 @@ public class EncryptionKeyRotatorTests : InfrastructureTestBase
     {
         // Arrange, their key is an int rather than a Guid like every other table
         const string keyXml = "<key id=\"1\" />";
-        await using (FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken))
-        {
-            context.DataProtectionKeys.Add(new DataProtectionKey { FriendlyName = "key-1", Xml = keyXml });
-            await context.SaveChangesAsync(CancellationToken);
-        }
+        await Scenario.Do(s => s.DataProtectionScenario.WithKey("key-1", keyXml));
 
         IDbContextFactory<FinanceTrackerContext> rotatedFactory = CreateDbContextFactory(_rotated);
 

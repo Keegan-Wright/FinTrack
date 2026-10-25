@@ -1,0 +1,16 @@
+/* Group headings, MudBlazor's overline type */
+.ft-nav__heading {
+    padding: 16px 16px 4px;
+    color: var(--mud-palette-text-secondary);
+    font-size: .75rem;
+    font-weight: 500;
+    line-height: 1.5;
+    letter-spacing: .08333em;
+    text-transform: uppercase;
+}
+
+/* The current page, tinted in the primary colour strongly enough to stand out on the light drawer */
+.ft-nav ::deep .mud-nav-link.active:not(.mud-nav-link-disabled) {
+    background-color: rgba(var(--mud-palette-primary-rgb), .12);
+    font-weight: 600;
+}

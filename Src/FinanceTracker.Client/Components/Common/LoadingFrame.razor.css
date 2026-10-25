@@ -1,0 +1,17 @@
+.ft-loading-frame {
+    position: relative;
+}
+
+.ft-loading-frame__overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.ft-loading-frame__overlay--cover {
+    background-color: var(--mud-palette-surface);
+}

@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Infrastructure.Dashboard;
 
-[InjectionCategory(InjectionCategoryType.Service)]
+[InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<IDashboardService>]
 public class DashboardService : ServiceBase<DashboardService>, IDashboardService
 {
@@ -17,7 +17,6 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
     {
         public decimal Amount { get; init; }
         public DateTime TransactionTime { get; init; }
-        public string TransactionCategory { get; init; } = string.Empty;
     }
 
     private sealed class DirectDebitLite
@@ -40,21 +39,19 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        DateTime fromUtc = fromDate.AddDays(-1).ToUniversalTime();
-        DateTime toUtc = toDate.AddDays(1).ToUniversalTime();
+        DateTime fromUtc = fromDate.ToUniversalTime();
+        DateTime toUtc = toDate.ToUniversalTime();
 
         List<TransactionLite> items = await context.BankTransactions.OwnedBy(UserId)
             .Select(x => new TransactionLite
             {
                 Amount = x.Amount,
-                TransactionTime = x.OccurredAt,
-                TransactionCategory = x.Category
+                TransactionTime = x.OccurredAt
             })
             .ToListAsync(cancellationToken);
 
         IEnumerable<decimal> amountsInRange = items
-            .Where(x => x.TransactionTime >= fromUtc && x.TransactionTime <= toUtc)
-            .Where(x => x.TransactionCategory != BankTransaction.TransferCategory)
+            .Where(x => x.TransactionTime >= fromUtc && x.TransactionTime < toUtc)
             .Select(x => x.Amount);
 
         return new SpentInTimePeriod

@@ -16,7 +16,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Infrastructure.OpenBanking;
 
-[InjectionCategory(InjectionCategoryType.Service)]
+[InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<IOpenBankingService>]
 [Scoped<IOpenBankingSyncService>]
 public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingService, IOpenBankingSyncService

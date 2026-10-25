@@ -1,6 +1,8 @@
 using FinanceTracker.Contracts.Api;
 using FinanceTracker.Contracts.HouseholdMember;
 using FinanceTracker.Contracts.Services;
+using FinanceTracker.Generated.Attributes;
+using FinanceTracker.Generated.Enums;
 using HouseholdMember = FinanceTracker.Contracts.HouseholdMember.HouseholdMember;
 
 namespace FinanceTracker.Client.Api;
@@ -8,6 +10,8 @@ namespace FinanceTracker.Client.Api;
 /// <summary>
 /// <see cref="IHouseholdMemberService"/> over <see cref="ApiRoutes.HouseholdMembers"/>.
 /// </summary>
+[InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Client)]
+[Scoped<IHouseholdMemberService>]
 public sealed class HouseholdMemberApiClient : IHouseholdMemberService
 {
     private readonly HttpClient _http;

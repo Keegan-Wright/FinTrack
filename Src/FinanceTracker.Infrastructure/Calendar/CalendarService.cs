@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Infrastructure.Calendar;
 
-[InjectionCategory(InjectionCategoryType.Service)]
+[InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<ICalendarService>]
 public class CalendarService : ServiceBase<CalendarService>, ICalendarService
 {

@@ -1,12 +1,16 @@
 using FinanceTracker.Contracts.Api;
 using FinanceTracker.Contracts.Budget;
 using FinanceTracker.Contracts.Services;
+using FinanceTracker.Generated.Attributes;
+using FinanceTracker.Generated.Enums;
 
 namespace FinanceTracker.Client.Api;
 
 /// <summary>
 /// <see cref="IBudgetCategoriesService"/> over <see cref="ApiRoutes.BudgetCategories"/>.
 /// </summary>
+[InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Client)]
+[Scoped<IBudgetCategoriesService>]
 public sealed class BudgetCategoriesApiClient : IBudgetCategoriesService
 {
     private readonly HttpClient _http;

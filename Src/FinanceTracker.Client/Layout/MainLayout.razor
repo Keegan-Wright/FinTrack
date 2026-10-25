@@ -4,31 +4,35 @@
 @* The signed in app's shell: app bar, navigation, the shared loading overlay, and when the user's accounts last
    synced, with a button to sync them now *@
 
+@using System.Globalization
 @inject IAutomationService AutomationService
 @inject ISyncNotifications SyncNotifications
 
 <MudThemeProvider @ref="@_mudThemeProvider" Theme="_theme" @bind-IsDarkMode="_isDarkMode" DefaultScrollbar="true"/>
 <MudPopoverProvider/>
-<MudDialogProvider/>
+<MudDialogProvider FullWidth="true" MaxWidth="MaxWidth.Small" CloseButton="true"/>
 <MudSnackbarProvider/>
 
 <MudLayout>
     <MudAppBar Elevation="@(_isDarkMode ? 0 : 1)">
         <MudStaticNavDrawerToggle DrawerId="nav-drawer" Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit"
                                   Edge="Edge.Start"/>
-        <MudText Typo="Typo.h6" Color="Color.Primary" Class="ml-3 font-bold" Style="letter-spacing: 0.5px;">FinTrack
-        </MudText>
+        <span class="ft-brand">FinTrack</span>
         <MudSpacer/>
-        <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
-                       Color="Color.Inherit" OnClick="@DarkModeToggle"/>
-        <MudMenu Icon="@Icons.Material.Filled.MoreVert" Style="align-self: auto;" Color="Color.Inherit">
+        <MudTooltip Text="@(_isDarkMode ? "Switch to light mode" : "Switch to dark mode")">
+            <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Outlined.LightMode : Icons.Material.Outlined.DarkMode)"
+                           Color="Color.Inherit" OnClick="@DarkModeToggle" aria-label="Toggle dark mode"/>
+        </MudTooltip>
+        <MudMenu Icon="@Icons.Material.Outlined.AccountCircle" Color="Color.Inherit" AnchorOrigin="Origin.BottomRight"
+                 TransformOrigin="Origin.TopRight" aria-label="Account">
             <MudMenuItem>
                 @* ReSharper disable once Html.PathError *@
                 <form action="Account/Logout" method="post">
                     <AntiforgeryToken/>
                     <input type="hidden" name="ReturnUrl"/>
-                    <button type="submit" class="nav-link">
-                        Logout
+                    <button type="submit" class="ft-menu-button">
+                        <MudIcon Icon="@Icons.Material.Outlined.Logout" Size="Size.Small"/>
+                        Sign out
                     </button>
                 </form>
             </MudMenuItem>
@@ -39,34 +43,49 @@
         <MudSpacer/>
         @if (BackgroundSyncTime != null)
         {
-            <MudStack Class="px-4 py-2" Spacing="0">
+            <div class="ft-sync-status">
+                <div class="ft-list__main">
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary d-block">
+                        @(UpdatingBackgroundSync ? "Syncing your accounts…" : "Last synced")
+                    </MudText>
+                    @if (!UpdatingBackgroundSync)
+                    {
+                        <MudText Typo="Typo.caption" Class="d-block">
+                            @BackgroundSyncTime.Value.ToString("d MMM, HH:mm", CultureInfo.CurrentCulture)
+                        </MudText>
+                    }
+                </div>
                 @if (UpdatingBackgroundSync)
                 {
-                    <MudSkeleton SkeletonType="SkeletonType.Text" Width="100%" Height="40px"></MudSkeleton>
+                    <MudProgressCircular Indeterminate="true" Size="Size.Small" Color="Color.Primary"/>
                 }
                 else
                 {
-                    <MudText Typo="Typo.caption" Class="mud-text-secondary">Last Synchronised at</MudText>
-                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="4">
-                        <MudText Typo="Typo.caption" Style="line-height: 1.5;">@BackgroundSyncTime.Value.ToShortDateString() @BackgroundSyncTime.Value.ToShortTimeString()</MudText>
-                        <MudIconButton Size="Size.Small" Icon="@Icons.Material.Filled.Refresh" OnClick="@RequestResync" Class="pa-0" Style="margin-top: -2px;"></MudIconButton>
-                    </MudStack>
+                    <MudTooltip Text="Sync now">
+                        <MudIconButton Size="Size.Small" Icon="@Icons.Material.Outlined.Sync" OnClick="@RequestResync"
+                                       aria-label="Sync now"/>
+                    </MudTooltip>
                 }
-            </MudStack>
+            </div>
         }
+        <div class="ft-version" title="@AppVersion.Full">FinTrack @AppVersion.Display</div>
     </MudDrawer>
-    <MudMainContent Class="pt-16 pa-4 mt-4">
+    <MudMainContent>
         <MudContainer MaxWidth="MaxWidth.ExtraExtraLarge">
-            <CascadingValue Value="@ApplicationState.Loading">
-                <MudOverlay Visible="@ApplicationState.Loading" DarkBackground="@(_isDarkMode)"
-                            LightBackground="@(!_isDarkMode)" AutoClose="false">
-                    <MudItem Class="d-flex flex-column align-center">
-                        <MudProgressCircular Color="Color.Primary" Indeterminate="true"/>
-                        <MudText Typo="Typo.h6">@ApplicationState.LoadingMessage</MudText>
-                    </MudItem>
-                </MudOverlay>
-                @Body
-            </CascadingValue>
+            <div class="ft-page">
+                <CascadingValue Value="@ApplicationState.Loading">
+                    <MudOverlay Visible="@ApplicationState.Loading" DarkBackground="@(_isDarkMode)"
+                                LightBackground="@(!_isDarkMode)" AutoClose="false">
+                        <MudItem Class="d-flex flex-column align-center">
+                            <MudProgressCircular Color="Color.Primary" Indeterminate="true"/>
+                            <MudText Typo="Typo.h6">@ApplicationState.LoadingMessage</MudText>
+                        </MudItem>
+                    </MudOverlay>
+                    <CascadingValue Value="@_isDarkMode" Name="IsDarkMode">
+                        @Body
+                    </CascadingValue>
+                </CascadingValue>
+            </div>
         </MudContainer>
     </MudMainContent>
 </MudLayout>

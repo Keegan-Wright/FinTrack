@@ -12,36 +12,47 @@
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 
-<PageTitle>Classifications</PageTitle>
+<PageTitle>Tags</PageTitle>
+<PageHeader Title="Tags" Subtitle="Your own labels for transactions, on top of the ones your bank sends">
+    <Actions>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Add"
+                   OnClick="@AddClassification">New tag</MudButton>
+    </Actions>
+</PageHeader>
 
-<MudIconButton Icon="@Icons.Material.Filled.Tag" Variant="Variant.Filled" Color="Color.Primary"
-               OnClick="@AddClassification">Add Classification / Tag
-</MudIconButton>
-
-<MudDataGrid T="Classification" Items="@(Classifications ?? [])"
-             MultiSelection="true"
-             SortMode="SortMode.Multiple"
-             Filterable="true"
-             QuickFilter="@ClassificationsQuickFilter"
-             Hideable="true"
-             Hover="true"
-             RowsPerPage="50">
-    <ToolBarContent>
-        <MudText Typo="Typo.h6">Classifications / Tags</MudText>
-        <MudSpacer/>
-        <MudTextField @bind-Value="_classificationsSearchTerm" Placeholder="Search" Adornment="Adornment.Start"
-                      Immediate="true"
-                      AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
-    </ToolBarContent>
-    <Columns>
-        <PropertyColumn Property="x => x.Tag" Title="Classification / Tag" Sortable="true" Filterable="true"/>
-    </Columns>
-    <PagerContent>
-        <MudDataGridPager T="Classification"/>
-    </PagerContent>
-</MudDataGrid>
-
-
+<Section Title="@($"{Classifications?.Count ?? 0} {(Classifications?.Count == 1 ? "tag" : "tags")}")"
+         Caption="Add them to transactions from the Transactions page">
+    <Actions>
+        @if (Classifications is { Count: > 8 })
+        {
+            <SearchField @bind-Value="_classificationsSearchTerm" Placeholder="Search tags"/>
+        }
+    </Actions>
+    <ChildContent>
+        @if (Classifications is null or { Count: 0 })
+        {
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                No tags yet. Make one for anything you want to track, like "Holiday" or "Kids".
+            </MudText>
+        }
+        else
+        {
+            var shown = Classifications.Where(ClassificationsQuickFilter).OrderBy(static x => x.Tag).ToList();
+            if (shown.Count == 0)
+            {
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">No tags match that search.</MudText>
+            }
+            <div class="ft-chips">
+                @foreach (var classification in shown)
+                {
+                    <MudChip T="string" Variant="Variant.Outlined" Icon="@Icons.Material.Outlined.Sell">
+                        @classification.Tag
+                    </MudChip>
+                }
+            </div>
+        }
+    </ChildContent>
+</Section>
 
 @code {
 
@@ -76,29 +87,24 @@
         var dialogRef = await DialogService.ShowAsync<AddClassificationDialog>();
         var dialogActionResult = await dialogRef.Result;
 
-        if (dialogActionResult is null)
+        if (dialogActionResult is null || dialogActionResult.Canceled)
             return;
 
-        if (dialogActionResult.Canceled)
+        try
         {
-            Snackbar.Add("Classification / Tag creation cancelled");
+            SetLoadingState(true, "Printing a fresh label…");
+            var classification = await ClassificationService.AddCustomClassificationAsync(
+                (AddClassifications)dialogActionResult.Data!, _cts.Token);
+            (Classifications ??= []).Add(classification);
+            Snackbar.Add($"Tag \"{classification.Tag}\" added", Severity.Success);
         }
-        else
+        catch (Exception)
         {
-            try
-            {
-                SetLoadingState(true, "Adding Classification / Tag");
-                var classification = await ClassificationService.AddCustomClassificationAsync((AddClassifications)dialogActionResult.Data!, _cts.Token);
-                (Classifications ??= []).Add(classification);
-            }
-            catch (Exception)
-            {
-                Snackbar.Add("Error occured adding classification / tag");
-            }
-            finally
-            {
-                SetLoadingState(false);
-            }
+            Snackbar.Add("Couldn't add that tag, try again", Severity.Error);
+        }
+        finally
+        {
+            SetLoadingState(false);
         }
     }
 

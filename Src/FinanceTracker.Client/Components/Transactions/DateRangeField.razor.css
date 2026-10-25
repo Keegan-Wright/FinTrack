@@ -1,0 +1,29 @@
+.ft-date-range {
+    position: relative;
+    min-width: 0;
+}
+
+.ft-date-range ::deep .mud-input,
+.ft-date-range ::deep input {
+    cursor: pointer;
+}
+
+.ft-date-range__panel {
+    display: flex;
+    flex-direction: column;
+    max-width: calc(100vw - 32px);
+}
+
+.ft-date-range__presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 8px 8px 0;
+}
+
+.ft-date-range__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 0 8px 8px;
+}

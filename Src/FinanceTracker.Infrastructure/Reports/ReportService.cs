@@ -15,7 +15,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Infrastructure.Reports;
 
-[InjectionCategory(InjectionCategoryType.Service)]
+[InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<IReportService>]
 public class ReportService : ServiceBase<ReportService>, IReportService
 {
@@ -196,6 +196,7 @@ public class ReportService : ServiceBase<ReportService>, IReportService
                 TotalIn = totalIn,
                 TotalOut = totalOut,
                 TotalTransactions = totalTransactions,
+                AccountId = accountGrouping.Key,
                 AccountName = accountNames[accountGrouping.Key]
             };
 
@@ -262,7 +263,6 @@ public class ReportService : ServiceBase<ReportService>, IReportService
 
         // Category and timestamps are encrypted, so filter and sort after decryption
         return (transactions
-            .Where(static x => x.Category != BankTransaction.TransferCategory)
             .Where(x => criteria.MatchesClientFilters(x, customTags))
             .OrderByDescending(static x => x.OccurredAt)
             .ToList(), customTags);

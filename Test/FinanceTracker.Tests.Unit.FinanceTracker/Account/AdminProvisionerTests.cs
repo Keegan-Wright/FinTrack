@@ -3,6 +3,7 @@ using FinanceTracker.Contracts.Auth;
 using FinanceTracker.Domain.Identity;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Tests.Unit.Shared;
+using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -44,7 +45,8 @@ public class AdminProvisionerTests : InfrastructureTestBase
     public async Task GrantIfFirstUserAsync_ForTheFirstUser_GrantsAdmin()
     {
         // Arrange
-        FinanceTrackerUser first = await CreateUserAsync("first");
+        await Scenario.Do(s => s.UserScenario.WithUser("first"));
+        FinanceTrackerUser first = await FindUserAsync("first");
 
         // Act
         await Subject.GrantIfFirstUserAsync(first);
@@ -57,8 +59,9 @@ public class AdminProvisionerTests : InfrastructureTestBase
     public async Task GrantIfFirstUserAsync_ForALaterUser_DoesNotGrantAdmin()
     {
         // Arrange
-        await CreateUserAsync("first");
-        FinanceTrackerUser second = await CreateUserAsync("second");
+        await Scenario.Do(s => s.UserScenario.WithUser("first"))
+            .Do(s => s.UserScenario.WithUser("second"));
+        FinanceTrackerUser second = await FindUserAsync("second");
 
         // Act
         await Subject.GrantIfFirstUserAsync(second);
@@ -71,21 +74,21 @@ public class AdminProvisionerTests : InfrastructureTestBase
     public async Task EnsureAdminAsync_WithASingleUserAndNoAdmin_GrantsThemAdmin()
     {
         // Arrange, a user from before the admin role existed
-        FinanceTrackerUser existing = await CreateUserAsync("existing");
+        await Scenario.Do(s => s.UserScenario.WithUser("existing"));
 
         // Act
         await Subject.EnsureAdminAsync();
 
         // Assert
-        await Assert.That(await UserManager.IsInRoleAsync(existing, FinTrackRoles.Admin)).IsTrue();
+        await Assert.That(await UserManager.IsInRoleAsync(await FindUserAsync("existing"), FinTrackRoles.Admin)).IsTrue();
     }
 
     [Test]
     public async Task EnsureAdminAsync_WithSeveralUsersAndNoAdmin_GrantsNobody()
     {
         // Arrange
-        await CreateUserAsync("one");
-        await CreateUserAsync("two");
+        await Scenario.Do(s => s.UserScenario.WithUser("one"))
+            .Do(s => s.UserScenario.WithUser("two"));
 
         // Act
         await Subject.EnsureAdminAsync();
@@ -98,27 +101,18 @@ public class AdminProvisionerTests : InfrastructureTestBase
     public async Task EnsureAdminAsync_WithAnAdmin_LeavesTheRoleAlone()
     {
         // Arrange
-        FinanceTrackerUser admin = await CreateUserAsync("admin");
-        await Subject.GrantIfFirstUserAsync(admin);
-        await CreateUserAsync("other");
+        await Scenario.Do(s => s.UserScenario.WithUser("admin"))
+            .Do(s => s.UserScenario.WithRole("admin", FinTrackRoles.Admin))
+            .Do(s => s.UserScenario.WithUser("other"));
 
         // Act
         await Subject.EnsureAdminAsync();
 
         // Assert
         await Assert.That((await UserManager.GetUsersInRoleAsync(FinTrackRoles.Admin)).Select(x => x.Id))
-            .IsEquivalentTo([admin.Id]);
+            .IsEquivalentTo([Scenario.UserMappings["admin"]]);
     }
 
-    private async Task<FinanceTrackerUser> CreateUserAsync(string username)
-    {
-        FinanceTrackerUser user = new("Test", "User", $"{username}@fintrack.test", username);
-        IdentityResult result = await UserManager.CreateAsync(user);
-        if (!result.Succeeded)
-        {
-            throw new InvalidOperationException(string.Join(", ", result.Errors.Select(x => x.Description)));
-        }
-
-        return user;
-    }
+    private async Task<FinanceTrackerUser> FindUserAsync(string username) =>
+        (await UserManager.FindByIdAsync(Scenario.UserMappings[username].ToString()))!;
 }

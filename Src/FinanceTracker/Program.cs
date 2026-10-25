@@ -1,3 +1,4 @@
+using ApexCharts;
 using FinanceTracker.Api;
 using FinanceTracker.AppHost.ServiceDefaults;
 using FinanceTracker.Client;
@@ -19,6 +20,7 @@ public partial class Program
         builder.AddServiceDefaults();
 
         builder.Services.AddMudServices();
+        builder.Services.AddApexCharts();
 
         // The client's pages run in the browser, the Identity pages render statically on the server
         builder.Services.AddRazorComponents()

@@ -1,0 +1,9 @@
+.ft-auth-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.ft-auth-fields ::deep .mud-input-control {
+    margin-top: 0;
+}

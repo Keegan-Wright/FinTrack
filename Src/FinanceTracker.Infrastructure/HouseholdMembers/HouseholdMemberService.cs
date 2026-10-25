@@ -9,7 +9,7 @@ using HouseholdMember = FinanceTracker.Contracts.HouseholdMember.HouseholdMember
 
 namespace FinanceTracker.Infrastructure.HouseholdMembers;
 
-[InjectionCategory(InjectionCategoryType.Service)]
+[InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<IHouseholdMemberService>]
 public class HouseholdMemberService : ServiceBase<HouseholdMemberService>, IHouseholdMemberService
 {

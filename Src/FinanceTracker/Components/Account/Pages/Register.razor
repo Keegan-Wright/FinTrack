@@ -15,79 +15,60 @@
 @inject IValidator<RegisterRequest> Validator
 @inject AdminProvisioner AdminProvisioner
 
-<PageTitle>Register</PageTitle>
+<PageTitle>Create an account</PageTitle>
 
-<MudText Typo="Typo.h3" GutterBottom="true" Align="Align.Center">Register</MudText>
+<AuthHeading Title="Create an account" Subtitle="A few details and you're in"/>
+
+@if (identityErrors != null)
+{
+    <MudAlert Severity="MudBlazor.Severity.Error" Variant="Variant.Text" Dense="true" Class="mb-4">
+        @foreach (var error in identityErrors)
+        {
+            <div>@error.Description</div>
+        }
+    </MudAlert>
+}
 
 <EditForm Model="@RegisterRequest" asp-route-returnUrl="@ReturnUrl" method="post" OnValidSubmit="@RegisterUser"
           FormName="register">
     <FluentValidator/>
-    <MudText Typo="Typo.body1" GutterBottom="true">Create a new account.</MudText>
-
-    <MudGrid>
-        <MudItem xs="12">
-            <MudStaticTextField For="@(() => RegisterRequest.Username)" @bind-Value="RegisterRequest.Username"
-                                Label="Username" Placeholder="Username"
-                                UserAttributes="@(new Dictionary<string, object?> { { "autocomplete", "username" }, { "aria-required", "true" } })"/>
-            <ValidationMessage For="@(() => RegisterRequest.Username)"/>
-        </MudItem>
-        <MudItem xs="12">
+    <AuthFields>
+        <div class="ft-register-names">
             <MudStaticTextField For="@(() => RegisterRequest.FirstName)" @bind-Value="RegisterRequest.FirstName"
-                                Label="FirstName" Placeholder="FirstName"
-                                UserAttributes="@(new Dictionary<string, object?> { { "autocomplete", "firstname" }, { "aria-required", "true" } })"/>
-            <ValidationMessage For="@(() => RegisterRequest.FirstName)"/>
-        </MudItem>
-        <MudItem xs="12">
+                                Label="First name" Variant="Variant.Outlined"
+                                UserAttributes="@(new Dictionary<string, object?> { { "autocomplete", "given-name" }, { "aria-required", "true" } })"/>
             <MudStaticTextField For="@(() => RegisterRequest.LastName)" @bind-Value="RegisterRequest.LastName"
-                                Label="LastName" Placeholder="LastName"
-                                UserAttributes="@(new Dictionary<string, object?> { { "autocomplete", "LastName" }, { "aria-required", "true" } })"/>
-            <ValidationMessage For="@(() => RegisterRequest.LastName)"/>
-        </MudItem>
-        <MudItem xs="12">
-            <MudStaticTextField For="@(() => RegisterRequest.Email)" @bind-Value="RegisterRequest.Email"
-                                Label="Email" Placeholder="name@example.com"
-                                UserAttributes="@(new Dictionary<string, object?> { { "autocomplete", "email" }, { "aria-required", "true" } })"/>
-            <ValidationMessage For="@(() => RegisterRequest.Email)"/>
-        </MudItem>
-        <MudItem xs="12">
-            <MudStaticTextField For="@(() => RegisterRequest.Password)" @bind-Value="RegisterRequest.Password"
-                                Label="Password" InputType="InputType.Password" Placeholder="Password"
-                                UserAttributes="@(new Dictionary<string, object?> { { "autocomplete", "new-password" }, { "aria-required", "true" } })"/>
-        </MudItem>
-        <MudItem xs="12">
-            <MudStaticTextField For="@(() => RegisterRequest.ConfirmPassword)"
-                                @bind-Value="RegisterRequest.ConfirmPassword"
-                                Label="Confirm Password" InputType="InputType.Password" Placeholder="Confirm password"
-                                UserAttributes="@(new Dictionary<string, object?> { { "aria-required", "true" } })"/>
-        </MudItem>
-        <MudItem xs="12">
-            <MudStaticButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
-                             FormAction="FormAction.Submit">Register
-            </MudStaticButton>
-        </MudItem>
-    </MudGrid>
+                                Label="Last name" Variant="Variant.Outlined"
+                                UserAttributes="@(new Dictionary<string, object?> { { "autocomplete", "family-name" }, { "aria-required", "true" } })"/>
+        </div>
+        <MudStaticTextField For="@(() => RegisterRequest.Username)" @bind-Value="RegisterRequest.Username"
+                            Label="Username" Variant="Variant.Outlined"
+                            UserAttributes="@(new Dictionary<string, object?> { { "autocomplete", "username" }, { "aria-required", "true" } })"/>
+        <MudStaticTextField For="@(() => RegisterRequest.Email)" @bind-Value="RegisterRequest.Email"
+                            Label="Email" Placeholder="name@example.com" InputType="InputType.Email"
+                            Variant="Variant.Outlined"
+                            UserAttributes="@(new Dictionary<string, object?> { { "autocomplete", "email" }, { "aria-required", "true" } })"/>
+        <MudStaticTextField For="@(() => RegisterRequest.Password)" @bind-Value="RegisterRequest.Password"
+                            Label="Password" InputType="InputType.Password" Variant="Variant.Outlined"
+                            Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Outlined.Visibility"
+                            AdornmentToggledIcon="@Icons.Material.Outlined.VisibilityOff"
+                            AdornmentClickFunction="ftTogglePassword" AdornmentAriaLabel="Show password"
+                            UserAttributes="@(new Dictionary<string, object?> { { "autocomplete", "new-password" }, { "aria-required", "true" } })"/>
+        <MudStaticTextField For="@(() => RegisterRequest.ConfirmPassword)"
+                            @bind-Value="RegisterRequest.ConfirmPassword"
+                            Label="Confirm password" InputType="InputType.Password" Variant="Variant.Outlined"
+                            UserAttributes="@(new Dictionary<string, object?> { { "autocomplete", "new-password" }, { "aria-required", "true" } })"/>
+        <MudStaticButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Size="Size.Large"
+                         FormAction="FormAction.Submit">Create account</MudStaticButton>
+    </AuthFields>
 </EditForm>
 
-@if (identityErrors != null)
-{
-    <MudGrid Class="mt-4">
-        @foreach (var error in identityErrors)
-        {
-            <MudItem xs="12">
-                <MudText Typo="Typo.body2" Align="Align.Center" Color="Color.Error" GutterBottom="true">@error.Description</MudText>
-            </MudItem>
-        }
-    </MudGrid>
-}
-
-<MudGrid Class="mt-4">
-    <MudItem xs="12">
-        <MudLink
-            Href="@(NavigationManager.GetUriWithQueryParameters("Account/Login", new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))">
-            Already a user?
-        </MudLink>
-    </MudItem>
-</MudGrid>
+<AuthFooter>
+    Already have an account?
+    <MudLink Href="@(NavigationManager.GetUriWithQueryParameters("Account/Login", new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))">
+        Sign in
+    </MudLink>
+</AuthFooter>
 
 @code {
     private IEnumerable<IdentityError>? identityErrors;

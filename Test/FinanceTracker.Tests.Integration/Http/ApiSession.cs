@@ -17,7 +17,8 @@ public sealed class ApiSession : IAsyncDisposable
     {
         ServiceCollection services = new();
 
-        services.AddFinTrackApiClients(client.BaseAddress, hub =>
+        Client.Program.AddFinanceTrackerServices(services);
+        services.AddFinTrackServerConnections(client.BaseAddress, hub =>
             {
                 hub.Cookies = client.Cookies;
                 // The development certificate may not be trusted, long polling keeps to plain HTTP requests

@@ -1,0 +1,16 @@
+@* The panel's title and a line under it. *@
+<div class="ft-auth-heading">
+    <MudText Typo="Typo.h5" HtmlTag="h1">@Title</MudText>
+    @if (!string.IsNullOrWhiteSpace(Subtitle))
+    {
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">@Subtitle</MudText>
+    }
+</div>
+
+@code {
+
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+
+    [Parameter] public string? Subtitle { get; set; }
+
+}

@@ -1,0 +1,58 @@
+.ft-page-header {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.ft-page-header__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.ft-page-header__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+/* MudBlazor's small toggle items sit too tight */
+.ft-page-header__actions ::deep .mud-toggle-item {
+    padding: 4px 14px;
+    white-space: nowrap;
+}
+
+/* Tablet the header and what's under it stay below the app bar. The title tightens once the page scrolls
+   (.ft-scrolled, set by js/app.js). Not sticky for most mobiles. */
+@media (min-width: 600px) {
+    .ft-page-header {
+        position: sticky;
+        top: var(--mud-appbar-height);
+        z-index: 20;
+        padding: 12px 0;
+        background-color: var(--mud-palette-background);
+        transition: box-shadow .15s ease;
+    }
+
+    .ft-page-header ::deep .ft-page-header__title {
+        transition: font-size .15s ease;
+    }
+
+    .ft-scrolled .ft-page-header {
+        box-shadow: 0 1px 0 var(--mud-palette-lines-default);
+    }
+
+    .ft-scrolled .ft-page-header ::deep .ft-page-header__title {
+        font-size: 1.5rem;
+    }
+}
+
+@media (max-width: 599.98px) {
+    .ft-page-header {
+        margin-bottom: 16px;
+    }
+}

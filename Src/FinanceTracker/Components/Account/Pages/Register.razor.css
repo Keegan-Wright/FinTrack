@@ -1,0 +1,16 @@
+/* First and last name side by side, stacked on phones */
+.ft-register-names {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.ft-register-names ::deep .mud-input-control {
+    margin-top: 0;
+}
+
+@media (max-width: 599.98px) {
+    .ft-register-names {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}

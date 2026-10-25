@@ -1,0 +1,13 @@
+.ft-auth-message {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    text-align: center;
+}
+
+.ft-auth-message ::deep .ft-auth-message__icon {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 4px;
+}

@@ -1,0 +1,10 @@
+@* Content for under the forms content to support additional actions / redirects. *@
+<p class="ft-auth-footer">
+    @ChildContent
+</p>
+
+@code {
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+}

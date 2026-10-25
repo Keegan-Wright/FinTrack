@@ -1,12 +1,19 @@
 using FinanceTracker.Domain.Identity;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Tests.Unit.Shared.Fakers;
-using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.Tests.Unit.Shared.Scenarios;
 
+/// <summary>
+/// Seeds users as Identity's <see cref="UserManager{TUser}"/> stores them, normalised names and a security stamp
+/// included, so its lookups find them.
+/// </summary>
 public sealed class UserScenario : ScenarioBuilder
 {
+    private static readonly UpperInvariantLookupNormalizer Normalizer = new();
+
     public UserScenario(TestingScenario scenario) : base(scenario)
     {
     }
@@ -20,16 +27,57 @@ public sealed class UserScenario : ScenarioBuilder
     public Task<TestingScenario> WithUser(string username) =>
         WithUser(new FinanceTrackerUserFaker(username).Generate());
 
-    private async Task<TestingScenario> WithUser(FinanceTrackerUser user)
+    public Task<TestingScenario> WithEmail(string username, string email) =>
+        PersistAsync(async context =>
+        {
+            FinanceTrackerUser user = await LoadAsync(context, username);
+            user.Email = email;
+            user.NormalizedEmail = Normalizer.NormalizeEmail(email);
+        });
+
+    /// <summary>
+    /// Links the user to an OpenID Connect provider's <paramref name="subject"/>.
+    /// </summary>
+    public Task<TestingScenario> WithOidcSubject(string username, string subject) =>
+        PersistAsync(async context => (await LoadAsync(context, username)).SetOidcSubject(subject));
+
+    /// <summary>
+    /// Puts the user in the <paramref name="role"/>, adding the role when it doesn't exist yet.
+    /// </summary>
+    public Task<TestingScenario> WithRole(string username, string role) =>
+        PersistAsync(async context =>
+        {
+            string normalizedRole = Normalizer.NormalizeName(role);
+            FinanceTrackerRole? existing = await context.Roles
+                .SingleOrDefaultAsync(x => x.NormalizedName == normalizedRole, Scenario.CancellationToken);
+
+            if (existing is null)
+            {
+                existing = new FinanceTrackerRole { Id = Guid.NewGuid(), Name = role, NormalizedName = normalizedRole };
+                context.Roles.Add(existing);
+            }
+
+            context.UserRoles.Add(new IdentityUserRole<Guid>
+            {
+                UserId = Scenario.UserMappings[username],
+                RoleId = existing.Id
+            });
+        });
+
+    private Task<TestingScenario> WithUser(FinanceTrackerUser user)
     {
-        await using FinanceTrackerContext context = await Scenario.DbContextFactory.CreateDbContextAsync(Scenario.CancellationToken);
+        user.Id = Guid.NewGuid();
+        user.NormalizedUserName = Normalizer.NormalizeName(user.UserName);
+        user.NormalizedEmail = Normalizer.NormalizeEmail(user.Email);
+        user.SecurityStamp = Guid.NewGuid().ToString();
 
-        EntityEntry<FinanceTrackerUser> savedUser = await context.Users.AddAsync(user, Scenario.CancellationToken);
+        Scenario.UserMappings.Add(user.UserName!, user.Id);
+        return PersistAsync(context => context.Users.Add(user));
+    }
 
-        await context.SaveChangesAsync(Scenario.CancellationToken);
-
-        Scenario.UserMappings.Add(savedUser.Entity.UserName!, savedUser.Entity.Id);
-
-        return Scenario;
+    private Task<FinanceTrackerUser> LoadAsync(FinanceTrackerContext context, string username)
+    {
+        Guid userId = Scenario.UserMappings[username];
+        return context.Users.SingleAsync(x => x.Id == userId, Scenario.CancellationToken);
     }
 }

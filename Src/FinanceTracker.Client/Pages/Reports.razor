@@ -1,0 +1,218 @@
+@page "/Reports"
+@page "/Reports/{BreakdownSlug}"
+
+@* Money in and out for the filtered transactions, over time, by account or by tag (IReportService), drilled into
+   from all time down to a day. *@
+
+@using FinanceTracker.Client.Components.Reports
+@using FinanceTracker.Client.Components.Transactions
+@using Microsoft.AspNetCore.Authorization
+
+@inherits PageComponent
+@attribute [Authorize]
+
+@inject IReportService ReportService
+@inject ITransactionsService TransactionsService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Reports</PageTitle>
+<PageHeader Title="Reports" Subtitle="Where your money came from and where it went">
+    <Actions>
+        <MudToggleGroup T="ReportBreakdown" Value="@_breakdown" ValueChanged="@OnBreakdownChanged"
+                        Size="Size.Small" Color="Color.Primary">
+            <MudToggleItem Value="ReportBreakdown.OverTime" Text="Over time"/>
+            <MudToggleItem Value="ReportBreakdown.ByAccount" Text="By account"/>
+            <MudToggleItem Value="ReportBreakdown.ByTag" Text="By tag"/>
+        </MudToggleGroup>
+    </Actions>
+    <ChildContent>
+        <TransactionFilters AccountFilterItems="@Filters.Accounts"
+                            CategoryFilterItems="@Filters.Categories"
+                            ProviderFilterItems="@Filters.Providers"
+                            TransactionTagFilterItems="@Filters.Tags"
+                            TransactionTypeFilterItems="@Filters.Types"
+                            SearchTransactions="@ApplyFiltersAsync"/>
+    </ChildContent>
+</PageHeader>
+
+<LoadingFrame Loading="@_loading" Message="@LoadingMessage" MinHeight="320" Cover="false">
+    @if (!_loading)
+    {
+        if (!_subjects.Any(static x => x.TotalTransactions > 0))
+        {
+            <Section>
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                    No transactions match these filters.
+                </MudText>
+            </Section>
+        }
+        else if (_breakdown == ReportBreakdown.OverTime)
+        {
+            <ReportDrilldown Root="@_subjects[0]"/>
+        }
+        else
+        {
+            <MudGrid Spacing="4">
+                <MudItem xs="12" lg="4">
+                    <Section Title="@(_breakdown == ReportBreakdown.ByAccount ? "Accounts" : "Tags")" Class="h-100">
+                        <div class="ft-list ft-list--scroll">
+                            @foreach (var subject in _subjects)
+                            {
+                                var selected = ReferenceEquals(subject, _selected);
+                                if (subject.TotalTransactions == 0)
+                                {
+                                    <div class="ft-list__row">
+                                        <div class="ft-list__main">
+                                            <MudText Typo="Typo.body2" Class="text-truncate mud-text-secondary">@subject.Title</MudText>
+                                            <MudText Typo="Typo.caption" Class="mud-text-secondary">Nothing matching these filters</MudText>
+                                        </div>
+                                    </div>
+                                    continue;
+                                }
+                                <div class="@($"ft-list__row ft-list__row--link {(selected ? "ft-list__row--selected" : string.Empty)}")"
+                                     role="button" tabindex="0" aria-pressed="@(selected ? "true" : "false")"
+                                     @onclick="@(() => _selected = subject)"
+                                     @onkeyup="@(e => OnSubjectKeyUp(e, subject))">
+                                    <div class="ft-list__main">
+                                        <MudText Typo="Typo.body2" Class="text-truncate">@subject.Title</MudText>
+                                        <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                            @($"{subject.TotalTransactions:n0} {(subject.TotalTransactions == 1 ? "transaction" : "transactions")}")
+                                        </MudText>
+                                    </div>
+                                    <div class="ft-list__end">
+                                        <MoneyText Value="@Math.Abs(subject.TotalOut)"/>
+                                        <MudText Typo="Typo.caption" Class="mud-text-secondary">out</MudText>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </Section>
+                </MudItem>
+                <MudItem xs="12" lg="8">
+                    @if (_selected is not null)
+                    {
+                        <ReportDrilldown Root="@_selected"/>
+                    }
+                </MudItem>
+            </MudGrid>
+        }
+    }
+</LoadingFrame>
+
+@code {
+
+    /// <summary>
+    /// The breakdown in the address, <c>accounts</c> or <c>tags</c>, anything else is over time.
+    /// </summary>
+    [Parameter] public string? BreakdownSlug { get; set; }
+
+    /// <summary>
+    /// The filter bar's options, loaded once, see <see cref="PageComponent.LoadOnceAsync{T}"/>.
+    /// </summary>
+    [PersistentState]
+    public TransactionFilterOptions? FilterOptions { get; set; }
+
+    private TransactionFilterOptions Filters => FilterOptions ?? TransactionFilterOptions.None;
+
+    private ReportBreakdown _breakdown;
+    private ReportBreakdown? _loadedBreakdown;
+    private ActiveTransactionFilters _filters = ActiveTransactionFilters.None;
+    private List<ReportNode> _subjects = [];
+    private ReportNode? _selected;
+    private bool _loading = true;
+    private CancellationTokenSource? _loadCts;
+
+    private string LoadingMessage => _breakdown switch
+    {
+        ReportBreakdown.ByAccount => "Tallying up each account…",
+        ReportBreakdown.ByTag => "Sorting your spending into its tags…",
+        _ => "Crunching the numbers…"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        FilterOptions = await LoadOnceAsync(FilterOptions, "Loading filters",
+            cancellationToken => TransactionFilterOptions.LoadAsync(TransactionsService, cancellationToken));
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _breakdown = BreakdownSlug?.ToLowerInvariant() switch
+        {
+            "accounts" => ReportBreakdown.ByAccount,
+            "tags" => ReportBreakdown.ByTag,
+            _ => ReportBreakdown.OverTime
+        };
+
+        if (RendererInfo.IsInteractive && _loadedBreakdown != _breakdown)
+            await LoadAsync();
+    }
+
+    private void OnBreakdownChanged(ReportBreakdown breakdown)
+    {
+        var slug = breakdown switch
+        {
+            ReportBreakdown.ByAccount => "Reports/accounts",
+            ReportBreakdown.ByTag => "Reports/tags",
+            _ => "Reports"
+        };
+        NavigationManager.NavigateTo(slug);
+    }
+
+    private async Task ApplyFiltersAsync(ActiveTransactionFilters filters)
+    {
+        _filters = filters;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        // A newer request terminates the one still running
+        if (_loadCts is not null)
+            await _loadCts.CancelAsync();
+
+        _loadCts = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token);
+        var cancellationToken = _loadCts.Token;
+        var breakdown = _breakdown;
+
+        _loading = true;
+        StateHasChanged();
+        try
+        {
+            var request = _filters.ToRequest();
+            var subjects = breakdown switch
+            {
+                ReportBreakdown.ByAccount => await ReportService.GetAccountBreakdownReportAsync(request, cancellationToken)
+                    .Select(x => ReportTree.From(x, request)).ToListAsync(cancellationToken),
+                ReportBreakdown.ByTag => await ReportService.GetCategoryBreakdownReportAsync(request, cancellationToken)
+                    .Select(x => ReportTree.From(x, request)).ToListAsync(cancellationToken),
+                _ => await ReportService.GetSpentInTimePeriodReportAsync(request, cancellationToken)
+                    .Select(x => ReportTree.From(x, request)).ToListAsync(cancellationToken)
+            };
+
+            if (breakdown == ReportBreakdown.ByAccount)
+                subjects.AddRange(ReportTree.EmptyAccounts(subjects, Filters.Accounts, request));
+
+            _subjects = subjects
+                .Where(x => x.TotalTransactions > 0 || x.AccountId is not null)
+                .OrderBy(static x => x.TotalTransactions == 0)
+                .ThenBy(static x => x.TotalOut)
+                .ToList();
+            _selected = _subjects.FirstOrDefault(static x => x.TotalTransactions > 0);
+            _loadedBreakdown = breakdown;
+            _loading = false;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Replaced by a newer load, which clears the spinner
+        }
+    }
+
+    private void OnSubjectKeyUp(KeyboardEventArgs e, ReportNode subject)
+    {
+        if (e.Key is "Enter" or " ")
+            _selected = subject;
+    }
+
+}
