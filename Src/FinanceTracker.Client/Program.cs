@@ -1,6 +1,5 @@
 using ApexCharts;
 using FinanceTracker.Client.Api;
-using FinanceTracker.Client.Extensions;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.Logging;
 using MudBlazor.Services;
@@ -15,7 +14,7 @@ namespace FinanceTracker.Client;
 /// The culture and local time zone are the server's, set by <c>App.razor</c> before the runtime starts, so dates and
 /// amounts read the same in the browser as on the server.
 /// </remarks>
-public static class Program
+public static partial class Program
 {
     public static async Task Main(string[] args)
     {
@@ -32,8 +31,11 @@ public static class Program
         builder.Services.AddCascadingAuthenticationState();
         builder.Services.AddAuthenticationStateDeserialization();
 
-        builder.Services.AddContractValidators();
-        builder.Services.AddFinTrackApiClients(new Uri(builder.HostEnvironment.BaseAddress));
+        AddFinanceTrackerServices(builder.Services);
+        AddFinanceTrackerValidators(builder.Services);
+        AddFinanceTrackerExternalServices(builder.Services);
+
+        builder.Services.AddFinTrackServerConnections(new Uri(builder.HostEnvironment.BaseAddress));
 
         await builder.Build().RunAsync();
     }
