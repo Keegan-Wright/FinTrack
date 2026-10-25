@@ -3,25 +3,27 @@
 @implements IDisposable
 @inject NavigationManager NavigationManager
 
-<MudNavMenu Class="ft-nav">
-    <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Dashboard">Dashboard</MudNavLink>
+<div class="ft-nav">
+    <MudNavMenu Color="Color.Primary">
+        <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Dashboard">Dashboard</MudNavLink>
 
-    <div class="ft-nav__heading">Money</div>
-    <MudNavLink Href="Accounts" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.AccountBalance">Accounts</MudNavLink>
-    <MudNavLink Href="Transactions" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.ReceiptLong">Transactions</MudNavLink>
-    <MudNavLink Href="Calendar" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.CalendarMonth">Calendar</MudNavLink>
+        <div class="ft-nav__heading">Money</div>
+        <MudNavLink Href="Accounts" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.AccountBalance">Accounts</MudNavLink>
+        <MudNavLink Href="Transactions" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.ReceiptLong">Transactions</MudNavLink>
+        <MudNavLink Href="Calendar" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.CalendarMonth">Calendar</MudNavLink>
 
-    <div class="ft-nav__heading">Insights</div>
-    <MudNavLink Href="Reports" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Insights">Reports</MudNavLink>
+        <div class="ft-nav__heading">Insights</div>
+        <MudNavLink Href="Reports" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Insights">Reports</MudNavLink>
 
-    <div class="ft-nav__heading">Settings</div>
-    <MudNavLink Href="ProviderSetup" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.AccountTree">Bank connections</MudNavLink>
-    <MudNavLink Href="HouseholdMembers" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.People">Household</MudNavLink>
-    <MudNavLink Href="Classifications" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Sell">Tags</MudNavLink>
-    <AuthorizeView Roles="@FinTrackRoles.Admin">
-        <MudNavLink Href="Automation" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Schedule">Automation</MudNavLink>
-    </AuthorizeView>
-</MudNavMenu>
+        <div class="ft-nav__heading">Settings</div>
+        <MudNavLink Href="ProviderSetup" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.AccountTree">Bank connections</MudNavLink>
+        <MudNavLink Href="HouseholdMembers" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.People">Household</MudNavLink>
+        <MudNavLink Href="Classifications" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Sell">Tags</MudNavLink>
+        <AuthorizeView Roles="@FinTrackRoles.Admin">
+            <MudNavLink Href="Automation" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Schedule">Automation</MudNavLink>
+        </AuthorizeView>
+    </MudNavMenu>
+</div>
 
 @code {
 

@@ -26,6 +26,10 @@ public static class AppTheme
                 TextSecondary = "#757575",
                 ActionDefault = "#546E7A",
                 ActionDisabled = "#BDBDBD",
+                // Every *-hover colour is its colour at this opacity, MudBlazor's 6% barely shows
+                HoverOpacity = 0.1,
+                // Tables have their own hover, matched to ActionDefault's
+                TableHover = "rgba(84,110,122,0.1)",
                 Divider = "#E0E0E0",
                 TableLines = "#F5F5F5",
                 LinesDefault = "#EEEEEE",
@@ -50,6 +54,9 @@ public static class AppTheme
                 TextSecondary = "#B0B0B0",
                 ActionDefault = "#90A4AE",
                 ActionDisabled = "#424242",
+                HoverOpacity = 0.1,
+                // MudBlazor's default darkens the row, which doesn't show on a dark surface
+                TableHover = "rgba(144,164,174,0.1)",
                 Divider = "#2A2A2A",
                 TableLines = "#1A1A1A",
                 LinesDefault = "#2A2A2A",
