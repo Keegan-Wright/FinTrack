@@ -1,6 +1,8 @@
 @page "/Calendar"
-@* A month view of the user's transactions and savings goal dates (ICalendarService). *@
+@* A month view of the user's transactions and savings goal dates (ICalendarService). A grid of days with each day's
+   net, and the chosen day's transactions and goals beside it. *@
 @using System.Globalization
+@using FinanceTracker.Client.Components.Calendar
 @using FinanceTracker.Contracts.Calendar
 @using Microsoft.AspNetCore.Authorization
 @inherits PageComponent
@@ -10,88 +12,116 @@
 @inject TimeProvider TimeProvider
 
 <PageTitle>Calendar</PageTitle>
+<PageHeader Title="Calendar" Subtitle="@MonthStart.ToString("MMMM yyyy", CultureInfo.CurrentCulture)">
+    <Actions>
+        <MudTooltip Text="Previous month">
+            <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" aria-label="Previous month"
+                           OnClick="@(() => ChangeMonthAsync(-1))"/>
+        </MudTooltip>
+        <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@GoToTodayAsync"
+                   Disabled="@IsCurrentMonth">Today</MudButton>
+        <MudTooltip Text="Next month">
+            <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" aria-label="Next month"
+                           OnClick="@(() => ChangeMonthAsync(1))"/>
+        </MudTooltip>
+    </Actions>
+</PageHeader>
 
 <MudGrid Spacing="4">
-    <MudItem xs="4">
-        <MudDatePicker Date="@Month" DateChanged="@SelectedDateUpdatedAsync"></MudDatePicker>
+    <MudItem xs="12" lg="8">
+        <Section>
+            <div class="ft-calendar" role="grid" aria-label="@MonthStart.ToString("MMMM yyyy", CultureInfo.CurrentCulture)">
+                @foreach (var dayName in WeekdayNames)
+                {
+                    <div class="ft-calendar__weekday" role="columnheader">@dayName</div>
+                }
+                @for (var i = 0; i < LeadingBlanks; i++)
+                {
+                    <div class="ft-calendar__blank"></div>
+                }
+                @foreach (var day in Days ?? [])
+                {
+                    var date = day.Date.Date;
+                    var net = day.Transactions.Sum(static x => x.Amount);
+                    var hasTransactions = day.Transactions.Any();
+                    var selected = date == _selectedDate;
+                    <button type="button" role="gridcell" aria-selected="@(selected ? "true" : "false")"
+                            class="@DayClass(date, selected)" @onclick="@(() => _selectedDate = date)">
+                        <span class="ft-calendar__number">@date.Day</span>
+                        @if (hasTransactions)
+                        {
+                            var moneyIn = day.Transactions.Where(static x => x.Amount > 0).Sum(static x => x.Amount);
+                            var moneyOut = day.Transactions.Where(static x => x.Amount < 0).Sum(static x => x.Amount);
+                            <span class="ft-calendar__net">
+                                <MoneyText Value="@net" Signed="true" Typo="Typo.caption" Inline="true"/>
+                            </span>
+                            <span class="ft-calendar__flow ft-money">
+                                @if (moneyIn > 0)
+                                {
+                                    <span>@CurrencyFormatter.Format(moneyIn) in</span>
+                                }
+                                @if (moneyOut < 0)
+                                {
+                                    <span>@CurrencyFormatter.Format(Math.Abs(moneyOut)) out</span>
+                                }
+                            </span>
+                        }
+                        <span class="ft-calendar__markers">
+                            @if (hasTransactions)
+                            {
+                                <span class="@($"ft-calendar__dot {(net < 0 ? "ft-calendar__dot--out" : "ft-calendar__dot--in")}")"></span>
+                            }
+                            @if (day.Goals.Any())
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.Flag" Size="Size.Small" Color="Color.Warning"
+                                         Class="ft-calendar__goal"/>
+                            }
+                        </span>
+                    </button>
+                }
+            </div>
+        </Section>
     </MudItem>
-
-    <MudFlexBreak/>
-
-    @foreach (var calenderItem in Days ?? [])
-    {
-        <MudItem xs="12" sm="6" md="4" lg="3">
-            <MudCard Class="h-100">
-                <MudCardHeader>
-                    <MudText Typo="Typo.h6">@calenderItem.Date.ToString("dd/MM/yyyy")</MudText>
-                </MudCardHeader>
-                <MudCardContent>
-                    <MudExpansionPanels MultiExpansion="true">
-                        <MudExpansionPanel Text="Transactions">
-                            <MudPaper MaxHeight="300px" Style="overflow-y: auto;" Elevation="0">
-                                @if (!calenderItem.Transactions.Any())
-                                {
-                                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="pa-4">No transactions on this day.</MudText>
-                                }
-                                else
-                                {
-                                    <MudTable Items="calenderItem.Transactions" Hover="true" Breakpoint="Breakpoint.None" Dense="true" Elevation="0">
-                                        <HeaderContent>
-                                            <MudTh>Desc</MudTh>
-                                            <MudTh>Amount</MudTh>
-                                        </HeaderContent>
-                                        <RowTemplate>
-                                            <MudTd DataLabel="Desc">@context.Description</MudTd>
-                                            <MudTd DataLabel="Amount">
-                                                <MudText Color="@(context.Amount < 0 ? Color.Error : Color.Success)" Typo="Typo.body2">
-                                                    @context.Amount.ToString("C", CultureInfo.CurrentCulture)
-                                                </MudText>
-                                            </MudTd>
-                                        </RowTemplate>
-                                    </MudTable>
-                                }
-                            </MudPaper>
-                        </MudExpansionPanel>
-
-                        <MudExpansionPanel Text="Goals">
-                            <MudPaper MaxHeight="200px" Style="overflow-y: auto;" Elevation="0">
-                                @if (!calenderItem.Goals.Any())
-                                {
-                                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="pa-4">No goals ending on this day.</MudText>
-                                }
-                                else
-                                {
-                                    <MudList T="string" Dense="true">
-                                        @foreach (var goal in calenderItem.Goals)
-                                        {
-                                            <MudListItem Text="@goal.Name" Icon="@Icons.Material.Filled.Flag" />
-                                        }
-                                    </MudList>
-                                }
-                            </MudPaper>
-                        </MudExpansionPanel>
-
-                        <MudExpansionPanel Text="Events">
-                            <MudPaper MaxHeight="200px" Style="overflow-y: auto;" Elevation="0">
-                                @if (!calenderItem.Events.Any())
-                                {
-                                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="pa-4">No events on this day.</MudText>
-                                }
-                                else
-                                {
-                                    @foreach (var userEvent in calenderItem.Events)
-                                    {
-                                        // Placeholder
-                                    }
-                                }
-                            </MudPaper>
-                        </MudExpansionPanel>
-                    </MudExpansionPanels>
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
-    }
-
+    <MudItem xs="12" lg="4">
+        @* A busy day scrolls inside the calendar's height beside it *@
+        <Section Title="@_selectedDate.ToString("dddd d MMMM", CultureInfo.CurrentCulture)"
+                 Caption="@SelectedCaption" Class="h-100" ScrollBody="true">
+            @if (SelectedDay is null || (!SelectedDay.Transactions.Any() && !SelectedDay.Goals.Any()))
+            {
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">A quiet day, nothing in or out.</MudText>
+            }
+            else
+            {
+                <div class="ft-list">
+                    @foreach (var goal in SelectedDay.Goals)
+                    {
+                        <div class="ft-list__row">
+                            <MudIcon Icon="@Icons.Material.Filled.Flag" Color="Color.Warning"/>
+                            <div class="ft-list__main">
+                                <MudText Typo="Typo.body2" Class="text-truncate">@goal.Name</MudText>
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">Savings goal due</MudText>
+                            </div>
+                        </div>
+                    }
+                    @foreach (var transaction in SelectedDay.Transactions.OrderBy(static x => x.TransactionTime))
+                    {
+                        <div class="ft-list__row">
+                            <div class="ft-list__main">
+                                <MudText Typo="Typo.body2" Class="text-truncate">@transaction.Description</MudText>
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                    @transaction.TransactionTime.ToLocalTime().ToString("HH:mm", CultureInfo.CurrentCulture)
+                                    · @DisplayText.ToTitle(transaction.TransactionType)
+                                </MudText>
+                            </div>
+                            <div class="ft-list__end">
+                                <MoneyText Value="@transaction.Amount" Signed="true"/>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </Section>
+    </MudItem>
 </MudGrid>
 
 @code {
@@ -109,22 +139,83 @@
     [PersistentState]
     public List<CalendarItems>? Days { get; set; }
 
+    private DateTime _selectedDate;
+
+    private DateTime Today => TimeProvider.GetLocalNow().Date;
+
+    private DateTime MonthStart => new(Month!.Value.Year, Month.Value.Month, 1);
+
+    private bool IsCurrentMonth => MonthStart == new DateTime(Today.Year, Today.Month, 1);
+
+    private CalendarItems? SelectedDay => Days?.FirstOrDefault(x => x.Date.Date == _selectedDate);
+
+    // The week starts on the culture's first day.
+    private static IReadOnlyList<string> WeekdayNames => CalendarGrid.WeekdayNames(CultureInfo.CurrentCulture.DateTimeFormat);
+
+    private int LeadingBlanks =>
+        CalendarGrid.LeadingBlanks(MonthStart, CultureInfo.CurrentCulture.DateTimeFormat.FirstDayOfWeek);
+
+    private string SelectedCaption
+    {
+        get
+        {
+            var count = SelectedDay?.Transactions.Count() ?? 0;
+            if (count == 0)
+                return string.Empty;
+
+            var moneyIn = SelectedDay!.Transactions.Where(static x => x.Amount > 0).Sum(static x => x.Amount);
+            var moneyOut = SelectedDay.Transactions.Where(static x => x.Amount < 0).Sum(static x => x.Amount);
+            return $"{count} {(count == 1 ? "transaction" : "transactions")} · " +
+                   $"{CurrencyFormatter.Format(moneyIn)} in · {CurrencyFormatter.Format(Math.Abs(moneyOut))} out · " +
+                   $"{CurrencyFormatter.Format(moneyIn + moneyOut)} net";
+        }
+    }
+
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
         Month ??= TimeProvider.GetLocalNow().DateTime;
         Days = await LoadOnceAsync(Days, "Loading your calendar", LoadMonthAsync);
+        _selectedDate = DefaultSelectedDate();
     }
 
-    private async Task SelectedDateUpdatedAsync(DateTime? obj)
+    private async Task ChangeMonthAsync(int months)
     {
-        if (obj is null)
-            return;
+        Month = MonthStart.AddMonths(months);
+        await ReloadAsync();
+    }
 
-        Month = obj.Value;
-        SetLoadingState(true, "Loading your calendar");
-        Days = await LoadMonthAsync(_cts.Token);
-        SetLoadingState(false);
+    private async Task GoToTodayAsync()
+    {
+        Month = Today;
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        SetLoadingState(true, "Flipping the calendar…");
+        try
+        {
+            Days = await LoadMonthAsync(_cts.Token);
+            _selectedDate = DefaultSelectedDate();
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
+    // Today in the current month, otherwise the month's first day
+    private DateTime DefaultSelectedDate() => IsCurrentMonth ? Today : MonthStart;
+
+    private string DayClass(DateTime date, bool selected)
+    {
+        var classes = "ft-calendar__day";
+        if (date == Today)
+            classes += " ft-calendar__day--today";
+        if (selected)
+            classes += " ft-calendar__day--selected";
+        return classes;
     }
 
     private Task<List<CalendarItems>> LoadMonthAsync(CancellationToken cancellationToken)
