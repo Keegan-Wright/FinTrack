@@ -1,5 +1,5 @@
 using FinanceTracker.Contracts.Api;
-using FinanceTracker.Contracts.Services;
+using FinanceTracker.Generated;
 using Microsoft.AspNetCore.Http.Connections.Client;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
@@ -28,23 +28,14 @@ public static class ApiClientRegistration
         public IHttpClientBuilder AddFinTrackApiClients(Uri baseAddress,
             Action<HttpConnectionOptions>? configureSyncHub = null)
         {
-            services.AddScoped<IAccountService, AccountApiClient>();
-            services.AddScoped<IAutomationService, AutomationApiClient>();
-            services.AddScoped<IBudgetCategoriesService, BudgetCategoriesApiClient>();
-            services.AddScoped<ICalendarService, CalendarApiClient>();
-            services.AddScoped<IClassificationService, ClassificationApiClient>();
-            services.AddScoped<IDashboardService, DashboardApiClient>();
-            services.AddScoped<IHouseholdMemberService, HouseholdMemberApiClient>();
-            services.AddScoped<IOpenBankingService, OpenBankingApiClient>();
-            services.AddScoped<IReportService, ReportApiClient>();
-            services.AddScoped<ITransactionsService, TransactionsApiClient>();
+            // Every class marked [InjectionCategory(InjectionCategoryType.ApiClient)], by the source generator
+            ApiClientServices.AddFinanceTrackerApiClients(services);
 
             // One connection shared by every subscriber, the container disposes it
             services.AddSingleton(_ => new HubConnectionBuilder()
                 .WithUrl(new Uri(baseAddress, SyncHubContract.Path), options => configureSyncHub?.Invoke(options))
                 .WithAutomaticReconnect()
                 .Build());
-            services.AddSingleton<ISyncNotifications, HubSyncNotifications>();
 
             return services.AddHttpClient(HttpClientName, client =>
             {

@@ -18,6 +18,7 @@ public class InjectionCategoryTypeEnumGenerator : IIncrementalGenerator
                                                     Service,
                                                     Validator,
                                                     External,
+                                                    ApiClient,
                                                 }
                                             }
                                             """;

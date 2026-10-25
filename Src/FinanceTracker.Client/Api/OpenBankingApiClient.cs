@@ -1,12 +1,16 @@
 using FinanceTracker.Contracts.Api;
 using FinanceTracker.Contracts.OpenBanking;
 using FinanceTracker.Contracts.Services;
+using FinanceTracker.Generated.Attributes;
+using FinanceTracker.Generated.Enums;
 
 namespace FinanceTracker.Client.Api;
 
 /// <summary>
 /// <see cref="IOpenBankingService"/> over <see cref="ApiRoutes.OpenBanking"/>.
 /// </summary>
+[InjectionCategory(InjectionCategoryType.ApiClient)]
+[Scoped<IOpenBankingService>]
 public sealed class OpenBankingApiClient : IOpenBankingService
 {
     private readonly HttpClient _http;

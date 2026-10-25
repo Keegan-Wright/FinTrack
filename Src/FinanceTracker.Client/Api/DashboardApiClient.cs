@@ -2,12 +2,16 @@ using System.Globalization;
 using FinanceTracker.Contracts.Api;
 using FinanceTracker.Contracts.Dashboard;
 using FinanceTracker.Contracts.Services;
+using FinanceTracker.Generated.Attributes;
+using FinanceTracker.Generated.Enums;
 
 namespace FinanceTracker.Client.Api;
 
 /// <summary>
 /// <see cref="IDashboardService"/> over <see cref="ApiRoutes.Dashboard"/>.
 /// </summary>
+[InjectionCategory(InjectionCategoryType.ApiClient)]
+[Scoped<IDashboardService>]
 public sealed class DashboardApiClient : IDashboardService
 {
     private readonly HttpClient _http;

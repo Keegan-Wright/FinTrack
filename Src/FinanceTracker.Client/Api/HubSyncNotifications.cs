@@ -1,5 +1,7 @@
 using FinanceTracker.Contracts.Api;
 using FinanceTracker.Contracts.Services;
+using FinanceTracker.Generated.Attributes;
+using FinanceTracker.Generated.Enums;
 using Microsoft.AspNetCore.SignalR.Client;
 
 namespace FinanceTracker.Client.Api;
@@ -8,6 +10,8 @@ namespace FinanceTracker.Client.Api;
 /// <see cref="ISyncNotifications"/> over the server's sync hub. The first subscription starts the shared connection,
 /// which then reconnects by itself.
 /// </summary>
+[InjectionCategory(InjectionCategoryType.ApiClient)]
+[Singleton<ISyncNotifications>]
 public sealed class HubSyncNotifications : ISyncNotifications, IDisposable
 {
     private readonly HubConnection _connection;
