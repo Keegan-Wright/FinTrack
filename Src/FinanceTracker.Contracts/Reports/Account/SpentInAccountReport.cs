@@ -14,6 +14,11 @@ public class SpentInAccountReport : SharedReport
     public IList<SpentInAccountReportYearlyBreakdown> YearlyBreakdown { get; init; } = [];
 
     /// <summary>
+    /// The account's id, to list the transactions behind the report.
+    /// </summary>
+    public Guid AccountId { get; init; }
+
+    /// <summary>
     /// The account's name.
     /// </summary>
     public required string AccountName { get; init; }

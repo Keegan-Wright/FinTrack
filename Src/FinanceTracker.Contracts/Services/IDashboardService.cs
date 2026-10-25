@@ -11,12 +11,9 @@ public interface IDashboardService
     /// Money in and out across all the user's accounts between two dates. Transfers (provider category
     /// <c>TRANSFER</c>) are left out.
     /// </summary>
-    /// <param name="fromDate">The first day of the period.</param>
-    /// <param name="toDate">The last day of the period.</param>
+    /// <param name="fromDate">The start of the period, included.</param>
+    /// <param name="toDate">The end of the period, left out, so back to back periods never share a transaction.</param>
     /// <param name="cancellationToken">Cancels the lookup.</param>
-    /// <remarks>
-    /// The range is widened by a day either side so no time zone loses a day's transactions.
-    /// </remarks>
     Task<SpentInTimePeriod> GetSpentInTimePeriod(DateTime fromDate, DateTime toDate,
         CancellationToken cancellationToken);
 
