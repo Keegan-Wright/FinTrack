@@ -14,9 +14,10 @@ public class InjectionCategoryAttributeGenerator : IIncrementalGenerator
                                                  namespace {{SourceGeneratorConstants.GeneratedNamespace}}.Attributes
                                                  {
                                                      [System.AttributeUsage(System.AttributeTargets.Class)]
-                                                     public class {{SourceGeneratorConstants.InjectionCategoryAttributeName}}({{SourceGeneratorConstants.InjectionCategoryEnumName}} Category) : System.Attribute
+                                                     internal class {{SourceGeneratorConstants.InjectionCategoryAttributeName}}({{SourceGeneratorConstants.InjectionCategoryEnumName}} Category, {{SourceGeneratorConstants.ServiceDestinationEnumName}} Destination) : System.Attribute
                                                      {
                                                          public {{SourceGeneratorConstants.InjectionCategoryEnumName}} Category { get; } = Category;
+                                                         public {{SourceGeneratorConstants.ServiceDestinationEnumName}} Destination { get; } = Destination;
                                                      }
                                                  }
                                                  """;

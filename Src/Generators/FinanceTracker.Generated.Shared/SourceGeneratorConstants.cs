@@ -10,5 +10,9 @@
 
         public const string InjectionCategoryAttributeName = "InjectionCategoryAttribute";
         public const string InjectionCategoryEnumName = "InjectionCategoryType";
+
+        public const string ServiceDestinationEnumName = "ServiceDestinationType";
+
+        public const string ServiceDestinationProperty = "FinTrackServiceDestination";
     }
 }
