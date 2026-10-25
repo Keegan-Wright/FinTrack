@@ -17,6 +17,7 @@ public sealed class ApiSession : IAsyncDisposable
     {
         ServiceCollection services = new();
 
+        Client.Program.AddFinanceTrackerServices(services);
         services.AddFinTrackApiClients(client.BaseAddress, hub =>
             {
                 hub.Cookies = client.Cookies;
