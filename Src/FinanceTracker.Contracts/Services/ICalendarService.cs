@@ -8,7 +8,8 @@ namespace FinanceTracker.Contracts.Services;
 public interface ICalendarService
 {
     /// <summary>
-    /// One <see cref="CalendarItems"/> per day of the month, in date order.
+    /// One <see cref="CalendarItems"/> per day of the month, in date order. Transfers between the user's own accounts
+    /// or within their household aren't income or spending, so aren't included.
     /// </summary>
     /// <param name="month">The month, 1 to 12.</param>
     /// <param name="year">The year.</param>

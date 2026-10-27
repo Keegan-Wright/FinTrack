@@ -10,6 +10,7 @@ using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Transaction = FinanceTracker.Contracts.Transactions.Transaction;
+using FinanceTracker.Domain.OpenBanking.Transfers;
 
 namespace FinanceTracker.Tests.Unit.Infrastructure.Services.Transactions;
 
@@ -67,6 +68,32 @@ public class TransactionsServiceTests : InfrastructureTestBase
             await Assert.That(transaction.TransactionType).IsEqualTo("Debit");
             await Assert.That(transaction.TransactionTime).IsEqualTo(occurredAt);
             await Assert.That(transaction.Tags).IsEquivalentTo(["Food", "Treat"]);
+        }
+    }
+
+    [Test]
+    public async Task GetAllTransactionsAsync_IncludesTransfersAndSaysWhetherEachCounts()
+    {
+        // Arrange
+        await SeedAccountAsync()
+            .Do(s => s.TransactionScenario.WithTransaction("shopping", "main"))
+            .Do(s => s.TransactionScenario.WithTransaction("to-savings", "main"))
+            .Do(s => s.TransactionScenario.WithTransfer("to-savings"))
+            .Do(s => s.TransactionScenario.WithTransaction("to-friend", "main"))
+            .Do(s => s.TransactionScenario.WithTransfer("to-friend", TransferDecision.NeedsReview));
+
+        TransactionsService subject = BuildSubject();
+
+        // Act
+        Dictionary<Guid, bool> counts = (await GetAllAsync(subject, new FilterTransactions()))
+            .ToDictionary(static x => x.TransactionId, static x => x.CountsAsIncomeOrSpending);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(counts[Scenario.TransactionMappings["shopping"]]).IsTrue();
+            await Assert.That(counts[Scenario.TransactionMappings["to-savings"]]).IsFalse();
+            await Assert.That(counts[Scenario.TransactionMappings["to-friend"]]).IsTrue();
         }
     }
 

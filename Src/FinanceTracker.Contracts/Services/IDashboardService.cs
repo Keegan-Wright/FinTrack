@@ -8,7 +8,8 @@ namespace FinanceTracker.Contracts.Services;
 public interface IDashboardService
 {
     /// <summary>
-    /// Money in and out across all the user's accounts between two dates.
+    /// Money in and out across all the user's accounts between two dates. Transfers between their own accounts or
+    /// within their household are left out.
     /// </summary>
     /// <param name="fromDate">The start of the period, included.</param>
     /// <param name="toDate">The end of the period, left out, so back to back periods never share a transaction.</param>

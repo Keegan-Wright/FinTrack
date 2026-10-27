@@ -63,5 +63,12 @@ public sealed class ReportNode
     /// </summary>
     public Guid? AccountId { get; init; }
 
+    /// <summary>
+    /// Whether the totals count transfers between the user's own accounts or within their household, set on the root
+    /// only. Account reports do, an account's own money in and out, the rest leave them out so they aren't counted as
+    /// income or spending.
+    /// </summary>
+    public bool IncludesTransfers { get; init; }
+
     public bool CanDrillInto => TotalTransactions > 0 && (Children.Count > 0 || Date is not null);
 }

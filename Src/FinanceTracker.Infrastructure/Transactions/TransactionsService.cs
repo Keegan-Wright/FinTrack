@@ -50,7 +50,8 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
                 TransactionId = transaction.Id,
                 TransactionTime = transaction.OccurredAt,
                 TransactionType = transaction.Type.ToString(),
-                Tags = TransactionCriteria.GetTags(transaction, customTags).ToList()
+                Tags = TransactionCriteria.GetTags(transaction, customTags).ToList(),
+                CountsAsIncomeOrSpending = transaction.CountsAsIncomeOrSpending
             };
         }
     }

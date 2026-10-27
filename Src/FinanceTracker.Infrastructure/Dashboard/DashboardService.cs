@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using FinanceTracker.Contracts.Dashboard;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Domain.OpenBanking.Transactions;
+using FinanceTracker.Domain.OpenBanking.Transfers;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -17,6 +18,7 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
     {
         public decimal Amount { get; init; }
         public DateTime TransactionTime { get; init; }
+        public bool IsTransfer { get; init; }
     }
 
     private sealed class DirectDebitLite
@@ -46,12 +48,14 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
             .Select(x => new TransactionLite
             {
                 Amount = x.Amount,
-                TransactionTime = x.OccurredAt
+                TransactionTime = x.OccurredAt,
+                // BankTransaction.CountsAsIncomeOrSpending, in a form the database can read
+                IsTransfer = x.Transfer != null && x.Transfer.Decision == TransferDecision.Transfer
             })
             .ToListAsync(cancellationToken);
 
         IEnumerable<decimal> amountsInRange = items
-            .Where(x => x.TransactionTime >= fromUtc && x.TransactionTime < toUtc)
+            .Where(x => !x.IsTransfer && x.TransactionTime >= fromUtc && x.TransactionTime < toUtc)
             .Select(x => x.Amount);
 
         return new SpentInTimePeriod

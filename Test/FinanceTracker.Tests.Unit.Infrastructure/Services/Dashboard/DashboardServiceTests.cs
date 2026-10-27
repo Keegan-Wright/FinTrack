@@ -5,6 +5,7 @@ using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Fakers;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.Extensions.Logging.Abstractions;
+using FinanceTracker.Domain.OpenBanking.Transfers;
 
 namespace FinanceTracker.Tests.Unit.Infrastructure.Services.Dashboard;
 
@@ -34,6 +35,30 @@ public class DashboardServiceTests : InfrastructureTestBase
         {
             await Assert.That(result.TotalIn).IsEqualTo(100m);
             await Assert.That(result.TotalOut).IsEqualTo(-35m);
+        }
+    }
+
+    [Test]
+    public async Task GetSpentInTimePeriod_LeavesOutTransfersButCountsThoseUpForReview()
+    {
+        // Arrange
+        await SeedAccountAsync()
+            .Do(s => s.TransactionScenario.WithTransaction("salary", "main", Transaction(100m, Now, "CREDIT")))
+            .Do(s => s.TransactionScenario.WithTransaction("to-savings", "main", Transaction(-500m, Now, "TRANSFER")))
+            .Do(s => s.TransactionScenario.WithTransfer("to-savings"))
+            .Do(s => s.TransactionScenario.WithTransaction("to-friend", "main", Transaction(-20m, Now, "TRANSFER")))
+            .Do(s => s.TransactionScenario.WithTransfer("to-friend", TransferDecision.NeedsReview));
+
+        DashboardService subject = BuildSubject();
+
+        // Act
+        SpentInTimePeriod result = await subject.GetSpentInTimePeriod(Now.AddDays(-1), Now.AddDays(1), CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(result.TotalIn).IsEqualTo(100m);
+            await Assert.That(result.TotalOut).IsEqualTo(-20m);
         }
     }
 

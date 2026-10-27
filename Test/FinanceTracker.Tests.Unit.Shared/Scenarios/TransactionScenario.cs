@@ -1,6 +1,7 @@
 using FinanceTracker.Domain.Classifications;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Transactions;
+using FinanceTracker.Domain.OpenBanking.Transfers;
 using FinanceTracker.Tests.Unit.Shared.Fakers;
 using Microsoft.EntityFrameworkCore;
 
@@ -52,6 +53,23 @@ public sealed class TransactionScenario : ScenarioBuilder
                 .SingleAsync(x => x.Id == classificationId, Scenario.CancellationToken);
 
             transaction.Classify(classification);
+        });
+
+    /// <summary>
+    /// Records the matcher's <paramref name="decision"/> on the transaction, <see cref="TransferDecision.Transfer"/>
+    /// leaves it out of income and spending, <see cref="TransferDecision.NeedsReview"/> still counts it.
+    /// </summary>
+    public Task<TestingScenario> WithTransfer(string transactionName,
+        TransferDecision decision = TransferDecision.Transfer) =>
+        PersistAsync(async context =>
+        {
+            Guid transactionId = Scenario.TransactionMappings[transactionName];
+            BankTransaction transaction = await context.BankTransactions
+                .SingleAsync(x => x.Id == transactionId, Scenario.CancellationToken);
+
+            transaction.DecideTransfer(decision == TransferDecision.Transfer
+                ? TransferInfo.Matched(TransferReason.MirrorPair, null, Guid.NewGuid(), DateTime.UtcNow)
+                : TransferInfo.ToReview(TransferReason.BankTransferLabel, null, null, DateTime.UtcNow));
         });
 
     private Task<BankAccount> LoadAccountAsync(Infrastructure.FinanceTrackerContext context, string accountName)

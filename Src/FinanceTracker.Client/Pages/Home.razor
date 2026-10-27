@@ -21,7 +21,7 @@
 @inject IHouseholdMemberService HouseholdMemberService
 @inject TimeProvider TimeProvider
 
-<PageTitle>Dashboard</PageTitle>
+<PageTitle>FinTrack - Dashboard</PageTitle>
 <PageHeader Title="@GetGreeting()" Subtitle="@GetRangeLabel()">
     <Actions>
         <MudToggleGroup T="DashboardRangePreset" Value="@View.Preset" ValueChanged="@SetRangePresetAsync"
@@ -167,6 +167,10 @@
         var transactions = new List<Transaction>(512);
         await foreach (var tx in TransactionsService.GetAllTransactionsAsync(request, cancellationToken))
         {
+            // Charted as income and spending, like the server's totals
+            if (!tx.CountsAsIncomeOrSpending)
+                continue;
+
             transactions.Add(tx);
             if (transactions.Count >= MaxTransactionsForCharts)
             {
