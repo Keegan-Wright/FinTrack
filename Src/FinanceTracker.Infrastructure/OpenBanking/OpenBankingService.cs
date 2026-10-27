@@ -278,9 +278,10 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
             static x => x.Results,
             ex => Logger.LogErrorSyncingTransactions(ex, connection.Id, accountId, UserId), cancellationToken);
 
+        // Always the full pending list, stored pending rows missing from it are removed as stale
         Task<List<ExternalOpenBankingAccountTransaction>?> pendingTransactions = FetchAsync(syncFlags,
             SyncTypes.Transactions,
-            () => _openBankingApiService.GetAccountPendingTransactionsAsync(externalId, authToken, transactionsFrom,
+            () => _openBankingApiService.GetAccountPendingTransactionsAsync(externalId, authToken, null,
                 cancellationToken),
             static x => x.Results,
             ex => Logger.LogErrorSyncingPendingTransactions(ex, connection.Id, accountId, UserId), cancellationToken);
@@ -315,7 +316,7 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
         }
     }
 
-    private static async Task ApplySnapshotAsync(FinanceTrackerContext context, BankAccount account,
+    private async Task ApplySnapshotAsync(FinanceTrackerContext context, BankAccount account,
         AccountSnapshot snapshot, DateTime syncedAt, CancellationToken cancellationToken)
     {
         if (snapshot.Balances is not null)
@@ -375,11 +376,40 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
             }
         }
 
+        // A failed pending fetch is null, so stored pending rows are only removed against a list we actually got
+        if (snapshot.PendingTransactions is not null)
+        {
+            await RemoveStalePendingTransactionsAsync(context, account, incoming.Keys, cancellationToken);
+        }
+
         // Only once booked transactions are in, the log marks where the next sync fetches from
         if (snapshot.Transactions is not null)
         {
             context.SyncLog.Add(account.RecordSync(SyncType.Transactions, syncedAt));
         }
+    }
+
+    /// <summary>
+    /// Removes pending transactions the provider no longer reports. A bank can settle a pending transaction under a
+    /// different id, which would otherwise leave the pending copy counted alongside the booked one.
+    /// </summary>
+    private async Task RemoveStalePendingTransactionsAsync(FinanceTrackerContext context, BankAccount account,
+        IReadOnlyCollection<string> reportedExternalIds, CancellationToken cancellationToken)
+    {
+        // ExternalId is encrypted, so the account's pending rows are loaded and compared in memory
+        List<BankTransaction> stale = (await context.BankTransactions
+                .Where(x => x.AccountId == account.Id && x.IsPending)
+                .ToListAsync(cancellationToken))
+            .Where(x => !reportedExternalIds.Contains(x.ExternalId))
+            .ToList();
+
+        if (stale.Count == 0)
+        {
+            return;
+        }
+
+        context.BankTransactions.RemoveRange(stale);
+        Logger.LogRemovedStalePendingTransactions(stale.Count, account.Id, UserId);
     }
 
     private static bool ShouldSynchronise(SyncTypes syncFlags, SyncTypes typeToCheck) =>

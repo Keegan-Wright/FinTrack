@@ -424,14 +424,13 @@ public class TrueLayerOpenBankingApiServiceTests : UnitTestBase
     }
 
     [Test]
-    public async Task GetAccountPendingTransactionsAsync_FailedRequest_ReturnsEmptyResponse()
+    public async Task GetAccountPendingTransactionsAsync_FailedRequest_Throws()
     {
+        // An empty response would remove every stored pending transaction, so a failure must not look like one
         TrueLayerOpenBankingApiService subject = BuildSubject(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError)));
 
-        ExternalOpenBankingAccountTransactionsResponse result =
-            await subject.GetAccountPendingTransactionsAsync("acc-1", "token", null, CancellationToken);
-
-        await Assert.That((object?)result.Results).IsNull();
+        await Assert.ThrowsAsync<HttpRequestException>(() =>
+            subject.GetAccountPendingTransactionsAsync("acc-1", "token", null, CancellationToken));
     }
 
     [Test]

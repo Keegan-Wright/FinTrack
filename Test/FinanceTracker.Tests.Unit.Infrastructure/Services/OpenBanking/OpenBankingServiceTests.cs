@@ -536,7 +536,7 @@ public class OpenBankingServiceTests : InfrastructureTestBase
     }
 
     [Test]
-    public async Task SyncConnectionAsync_WithPreviousTransactionSync_RequestsFromSevenDaysEarlier()
+    public async Task SyncConnectionAsync_WithPreviousTransactionSync_RequestsBookedFromSevenDaysEarlier()
     {
         // Arrange
         ExternalOpenBankingAccount externalAccount = new ExternalOpenBankingAccountFaker().Generate();
@@ -563,9 +563,109 @@ public class OpenBankingServiceTests : InfrastructureTestBase
         {
             await _api.Received(1).GetAccountTransactionsAsync(externalAccount.AccountId, Token,
                 Arg.Is<DateTime?>(x => x == expectedFrom), CancellationToken);
-            await _api.Received(1).GetAccountPendingTransactionsAsync(externalAccount.AccountId, Token,
-                Arg.Is<DateTime?>(x => x == expectedFrom), CancellationToken);
+            await _api.Received(1).GetAccountPendingTransactionsAsync(externalAccount.AccountId, Token, null,
+                CancellationToken);
         }
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_PendingTransactionNoLongerReported_IsRemoved()
+    {
+        // Arrange
+        ExternalOpenBankingAccount externalAccount = new ExternalOpenBankingAccountFaker().Generate();
+        ExternalOpenBankingAccountTransaction stillPending = new ExternalOpenBankingAccountTransactionFaker().Generate();
+        ExternalOpenBankingAccountTransaction settled = new ExternalOpenBankingAccountTransactionFaker().Generate();
+
+        await SeedAccountAsync(externalAccount)
+            .Do(s => s.TransactionScenario.WithTransaction("stale", "main", PendingDetails("stale-pending-id")))
+            .Do(s => s.TransactionScenario.WithTransaction("still-pending", "main",
+                PendingDetails(stillPending.TransactionId)));
+
+        // The bank settled the stale one under a different id
+        GivenProviderReturns(accounts: [externalAccount], transactions: [settled], pendingTransactions: [stillPending]);
+
+        CapturingLogger<OpenBankingService> logger = new();
+        OpenBankingService subject = new(CurrentUserFor(Username), DbContextFactory, _api, logger, TimeProvider.System, _cache);
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        List<string> stored = (await LoadTransactionsAsync()).Select(x => x.ExternalId).ToList();
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(stored).IsEquivalentTo([stillPending.TransactionId, settled.TransactionId]);
+            await Assert.That(logger.Entries.Any(x => x.Message.Contains("Removed 1 stale pending transactions")))
+                .IsTrue();
+        }
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_PendingFetchFails_KeepsStoredPendingTransactions()
+    {
+        // Arrange
+        ExternalOpenBankingAccount externalAccount = new ExternalOpenBankingAccountFaker().Generate();
+
+        await SeedAccountAsync(externalAccount)
+            .Do(s => s.TransactionScenario.WithTransaction("pending", "main", PendingDetails("pending-id")));
+
+        GivenProviderReturns(accounts: [externalAccount],
+            transactions: [new ExternalOpenBankingAccountTransactionFaker().Generate()]);
+        _api.GetAccountPendingTransactionsAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<DateTime?>(),
+            Arg.Any<CancellationToken>()).ThrowsAsync(new HttpRequestException("provider down"));
+
+        OpenBankingService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        await Assert.That((await LoadTransactionsAsync()).Select(x => x.ExternalId)).Contains("pending-id");
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_BookedTransactionNoLongerReported_IsKept()
+    {
+        // Arrange
+        ExternalOpenBankingAccount externalAccount = new ExternalOpenBankingAccountFaker().Generate();
+
+        await SeedAccountAsync(externalAccount)
+            .Do(s => s.TransactionScenario.WithTransaction("booked", "main",
+                PendingDetails("booked-id") with { IsPending = false }));
+
+        GivenProviderReturns(accounts: [externalAccount]);
+
+        OpenBankingService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        await Assert.That((await LoadTransactionsAsync()).Select(x => x.ExternalId)).Contains("booked-id");
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_PendingTransactionsOnAnotherAccount_AreKept()
+    {
+        // Arrange
+        ExternalOpenBankingAccount externalAccount = new ExternalOpenBankingAccountFaker().Generate();
+
+        await SeedAccountAsync(externalAccount)
+            .Do(s => s.BankAccountScenario.WithAccount("other", "bank", (userId, connectionId) =>
+                new BankAccount(userId, connectionId, "other-external-id", "TRANSACTION", "Other", "GBP")))
+            .Do(s => s.TransactionScenario.WithTransaction("other-pending", "other", PendingDetails("other-pending-id")));
+
+        // Only the main account is reported, so the other account is not synced
+        GivenProviderReturns(accounts: [externalAccount]);
+
+        OpenBankingService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        await Assert.That((await LoadTransactionsAsync()).Select(x => x.ExternalId)).Contains("other-pending-id");
     }
 
     [Test]
@@ -1083,6 +1183,14 @@ public class OpenBankingServiceTests : InfrastructureTestBase
         await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
         await Assert.That((await context.BankConnections.SingleAsync(CancellationToken)).Scopes.Count).IsEqualTo(0);
     }
+
+    private Task<TestingScenario> SeedAccountAsync(ExternalOpenBankingAccount externalAccount) =>
+        SeedConnectionAsync()
+            .Do(s => s.BankAccountScenario.WithAccount("main", "bank", (userId, connectionId) =>
+                new BankAccount(userId, connectionId, externalAccount.AccountId, "TRANSACTION", "Main", "GBP")));
+
+    private static TransactionDetails PendingDetails(string externalId) =>
+        new(externalId, "Card purchase", TransactionType.Debit, "PURCHASE", -1m, "GBP", DateTime.UtcNow, true, []);
 
     private Task<TestingScenario> SeedConnectionAsync() =>
         Scenario.Do(s => s.UserScenario.WithUser(Username))

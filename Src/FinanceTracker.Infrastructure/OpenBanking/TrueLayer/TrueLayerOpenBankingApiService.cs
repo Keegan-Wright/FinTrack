@@ -159,11 +159,9 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
             urlBuilder.Append(CultureInfo.CurrentCulture, $"?from={transactionsStartingDate:yyyy-MM-dd}&to={_timeProvider.GetLocalNow():yyyy-MM-dd}");
         }
 
+        // Throws rather than returning empty, an empty pending list removes every stored pending transaction
         HttpResponseMessage response = await httpClient.GetAsync(urlBuilder.ToString(), cancellationToken);
-        if (!response.IsSuccessStatusCode)
-        {
-            return new ExternalOpenBankingAccountTransactionsResponse();
-        }
+        response.EnsureSuccessStatusCode();
 
         ExternalOpenBankingAccountTransactionsResponse? responseBody =
             await response.Content.ReadFromJsonAsync<ExternalOpenBankingAccountTransactionsResponse>(cancellationToken);
