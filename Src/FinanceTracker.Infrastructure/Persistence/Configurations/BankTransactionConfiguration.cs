@@ -45,6 +45,7 @@ internal sealed class BankTransactionConfiguration : AggregateRootConfiguration<
             transfer.Property(x => x.Reason).HasColumnName("Transfer_Reason").HasConversion<string>();
             transfer.Property(x => x.PartnerTransactionId).HasColumnName("Transfer_PartnerTransactionId");
             transfer.Property(x => x.PartnerAccountId).HasColumnName("Transfer_PartnerAccountId");
+            transfer.Property(x => x.PartnerHouseholdMemberId).HasColumnName("Transfer_PartnerHouseholdMemberId");
             transfer.Property(x => x.DecidedAt).HasColumnName("Transfer_DecidedAt");
         });
 

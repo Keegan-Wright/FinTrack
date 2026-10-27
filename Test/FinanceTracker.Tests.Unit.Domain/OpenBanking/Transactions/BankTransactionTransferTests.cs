@@ -31,7 +31,7 @@ public class BankTransactionTransferTests
     {
         BankTransaction transaction = Build();
 
-        transaction.DecideTransfer(new TransferInfo(decision, DecisionSource.Matcher, null, null, null, At));
+        transaction.DecideTransfer(new TransferInfo(decision, DecisionSource.Matcher, null, null, null, null, At));
 
         await Assert.That(transaction.CountsAsIncomeOrSpending).IsEqualTo(counts);
     }
@@ -98,7 +98,7 @@ public class BankTransactionTransferTests
         transaction.MarkAsTransfer(At);
 
         await Assert.That(transaction.Transfer).IsEqualTo(new TransferInfo(TransferDecision.Transfer,
-            DecisionSource.User, TransferReason.MirrorPair, partnerId, partnerAccountId, At));
+            DecisionSource.User, TransferReason.MirrorPair, partnerId, partnerAccountId, null, At));
     }
 
     [Test]
@@ -113,7 +113,7 @@ public class BankTransactionTransferTests
         using (Assert.Multiple())
         {
             await Assert.That(transaction.Transfer).IsEqualTo(new TransferInfo(TransferDecision.NotATransfer,
-                DecisionSource.User, null, null, null, At));
+                DecisionSource.User, null, null, null, null, At));
             await Assert.That(transaction.CountsAsIncomeOrSpending).IsTrue();
         }
     }
@@ -132,7 +132,7 @@ public class BankTransactionTransferTests
     }
 
     private static TransferInfo Info(DecisionSource source) =>
-        new(TransferDecision.Transfer, source, null, null, null, At);
+        new(TransferDecision.Transfer, source, null, null, null, null, At);
 
     private static BankTransaction Build() =>
         BankTransaction.Import(new BankAccount(Guid.NewGuid(), Guid.NewGuid(), "acc-1", "TRANSACTION", "Main", "GBP"),

@@ -1,4 +1,5 @@
 using FinanceTracker.Domain.Common;
+using FinanceTracker.Domain.Household;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 
@@ -6,13 +7,15 @@ namespace FinanceTracker.Domain.OpenBanking.Transfers;
 
 /// <summary>
 /// Decides which of a user's transactions are money moved between their own accounts, recording the decision on both
-/// halves of a pair. Three steps, each only looking at what the steps before it left undecided:
+/// halves of a pair. Four steps, each only looking at what the steps before it left undecided:
 /// <list type="number">
 /// <item>The bank's reference names another of the user's accounts, a transfer, paired with its mirror in that
 /// account when there's exactly one.</item>
 /// <item>An equal and opposite amount on another account within <see cref="MaxDaysApart"/> days a transfer when the
 /// provider labels either half one (<see cref="BankTransaction.LabelledAsTransfer"/>), otherwise up for review.
 /// Equally good candidates are all put up for review rather than guessed.</item>
+/// <item>A household member is recognised (<see cref="HouseholdMember.Recognises"/>), a transfer to or from them.
+/// </item>
 /// <item>Anything else the provider labels a transfer is put up for review.</item>
 /// </list>
 /// </summary>
@@ -39,12 +42,14 @@ public static class TransferMatcher
 
     /// <summary>
     /// Matches <paramref name="transactions"/> against their
-    /// <paramref name="accounts"/>.
+    /// <paramref name="accounts"/> and the user's <paramref name="householdMembers"/>.
     /// </summary>
     public static TransferMatchSummary Match(IReadOnlyCollection<BankAccount> accounts,
-        IReadOnlyCollection<BankTransaction> transactions, DateTime decidedAt)
+        IReadOnlyCollection<HouseholdMember> householdMembers, IReadOnlyCollection<BankTransaction> transactions,
+        DateTime decidedAt)
     {
         ArgumentNullException.ThrowIfNull(accounts);
+        ArgumentNullException.ThrowIfNull(householdMembers);
         ArgumentNullException.ThrowIfNull(transactions);
 
         // A decision the user or a rule made can name a partner, e.g. when the user confirms a match. That partner
@@ -75,7 +80,10 @@ public static class TransferMatcher
         // Step 2
         MatchMirrorPairs(open, decisions, decidedAt);
 
-        // Step 3, labelled a transfer but nothing on the user's accounts matches it. Often a real payment to someone
+        // Step 3
+        MatchHouseholdMembers(householdMembers, open, decisions, decidedAt);
+
+        // Step 4, labelled a transfer but nothing on the user's accounts matches it. Often a real payment to someone
         // else, so it stays counted until the user says otherwise
         foreach (BankTransaction transaction in open.Where(x => !decisions.ContainsKey(x.Id) && x.LabelledAsTransfer))
         {
@@ -182,6 +190,28 @@ public static class TransferMatcher
 
             decisions[outgoing.Id] = Decide(confident, partner, decidedAt);
             decisions[partner.Id] = Decide(confident, outgoing, decidedAt);
+        }
+    }
+
+    /// <summary>
+    /// Step 3. Money to or from a household member whose account isn't connected, so there's no other half to find.
+    /// Naming the member is a stronger sign than the bank's label, so the label isn't needed. After the user's own
+    /// accounts so a pair found there always wins, e.g. once the member's account is connected.
+    /// </summary>
+    private static void MatchHouseholdMembers(IReadOnlyCollection<HouseholdMember> householdMembers,
+        List<BankTransaction> open, Dictionary<Guid, TransferInfo> decisions, DateTime decidedAt)
+    {
+        foreach (BankTransaction transaction in open.Where(x => !decisions.ContainsKey(x.Id)))
+        {
+            // Several members recognising it, e.g. sharing a payee name, would be a guess, so like NamedAccount it
+            // stops at two and only one counts
+            if (householdMembers
+                    .Where(x => x.Recognises(transaction.Description, transaction.Metadata.ProviderReference))
+                    .Take(2)
+                    .ToList() is [var member])
+            {
+                decisions[transaction.Id] = TransferInfo.WithHouseholdMember(member.Id, decidedAt);
+            }
         }
     }
 

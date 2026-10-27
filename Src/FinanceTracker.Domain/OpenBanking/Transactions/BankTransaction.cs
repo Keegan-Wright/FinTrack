@@ -152,13 +152,14 @@ public sealed class BankTransaction : AggregateRoot
     /// </summary>
     public void MarkAsTransfer(DateTime decidedAt) =>
         Transfer = new TransferInfo(TransferDecision.Transfer, DecisionSource.User, Transfer?.Reason,
-            Transfer?.PartnerTransactionId, Transfer?.PartnerAccountId, decidedAt);
+            Transfer?.PartnerTransactionId, Transfer?.PartnerAccountId, Transfer?.PartnerHouseholdMemberId, decidedAt);
 
     /// <summary>
     /// The user says this counts as income or spending, which the matcher then leaves alone.
     /// </summary>
     public void MarkNotATransfer(DateTime decidedAt) =>
-        Transfer = new TransferInfo(TransferDecision.NotATransfer, DecisionSource.User, null, null, null, decidedAt);
+        Transfer = new TransferInfo(TransferDecision.NotATransfer, DecisionSource.User, null, null, null, null,
+            decidedAt);
 
     public void Classify(CustomClassification classification)
     {

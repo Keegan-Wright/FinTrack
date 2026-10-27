@@ -100,6 +100,45 @@ public class TransferMatchingServiceTests : InfrastructureTestBase
         }
     }
 
+    [Test]
+    public async Task MatchAsync_RecognisesTheUsersHouseholdMembers()
+    {
+        // Arrange
+        await SeedAccountsAsync(Username, "mine")
+            .Do(s => s.HouseholdMemberScenario.WithHouseholdMember("partner", Username))
+            .Do(s => s.HouseholdMemberScenario.WithPayeeName("partner", "J Smith"))
+            .Do(s => s.HouseholdMemberScenario.WithLinkedAccount("partner", "112233", "12345678"))
+            .Do(s => s.TransactionScenario.WithTransaction("by-name", "mine-current",
+                Details(300m, description: "J Smith 01JAN26")))
+            .Do(s => s.TransactionScenario.WithTransaction("by-account", "mine-current",
+                Details(-50m, reference: "112233 12345678")));
+
+        await SeedAccountsAsync(OtherUsername, "theirs")
+            .Do(s => s.HouseholdMemberScenario.WithHouseholdMember("their-partner", OtherUsername))
+            .Do(s => s.HouseholdMemberScenario.WithPayeeName("their-partner", "Tesco"))
+            .Do(s => s.TransactionScenario.WithTransaction("shopping", "mine-current",
+                Details(-20m, description: "Tesco")));
+
+        TransferMatchingService subject = BuildSubject(Username);
+
+        // Act
+        TransferMatchSummary summary = await subject.MatchAsync(CancellationToken);
+
+        // Assert
+        Dictionary<Guid, BankTransaction> stored = (await LoadTransactionsAsync()).ToDictionary(x => x.Id);
+        Guid partnerId = Scenario.HouseholdMemberMappings["partner"];
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(summary).IsEqualTo(new TransferMatchSummary(2, 0, 0));
+            await Assert.That(stored[Scenario.TransactionMappings["by-name"]].Transfer!.PartnerHouseholdMemberId)
+                .IsEqualTo(partnerId);
+            await Assert.That(stored[Scenario.TransactionMappings["by-account"]].Transfer!.PartnerHouseholdMemberId)
+                .IsEqualTo(partnerId);
+            await Assert.That(stored[Scenario.TransactionMappings["shopping"]].Transfer).IsNull();
+        }
+    }
+
     /// <summary>
     /// A current account and a savings account named <c>{prefix}-current</c> and <c>{prefix}-savings</c>, the
     /// savings one with sort code 222222 and number 22222222.
@@ -115,9 +154,11 @@ public class TransferMatchingServiceTests : InfrastructureTestBase
                 return account;
             }));
 
-    private static TransactionDetails Details(decimal amount, bool labelled = false, string? reference = null) =>
+    private static TransactionDetails Details(decimal amount, bool labelled = false, string? reference = null,
+        string description = "Description") =>
         new TransactionDetailsFaker().Generate() with
         {
+            Description = description,
             Amount = amount,
             Type = amount < 0 ? TransactionType.Debit : TransactionType.Credit,
             Category = "PURCHASE",

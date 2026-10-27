@@ -1,5 +1,5 @@
 @page "/HouseholdMembers"
-@* Adds and removes the people in the user's household and their incomes (IHouseholdMemberService). *@
+@* Adds the people in the user's household and their incomes, and how to recognise money moved to or from them.*@
 @using FinanceTracker.Client.Components.Dialogs
 @using FinanceTracker.Contracts.HouseholdMember
 @using Microsoft.AspNetCore.Authorization
@@ -36,7 +36,9 @@
                     </MudAvatar>
                     <div class="ft-list__main">
                         <MudText Typo="Typo.body2" Class="text-truncate">@member.FirstName @member.LastName</MudText>
-                        <MudText Typo="Typo.caption" Class="mud-text-secondary">Income</MudText>
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary text-truncate">
+                            @RecognitionSummary(member)
+                        </MudText>
                     </div>
                     <div class="ft-list__end">
                         @if (member.Income is { } income)
@@ -48,6 +50,11 @@
                             <MudText Typo="Typo.body2" Class="mud-text-secondary">Not set</MudText>
                         }
                     </div>
+                    <MudTooltip Text="Recognise their payments">
+                        <MudIconButton Icon="@Icons.Material.Outlined.PersonSearch" Size="Size.Small"
+                                       aria-label="@($"Recognise {member.FirstName}'s payments")"
+                                       OnClick="@(() => RecognisePayments(member))"/>
+                    </MudTooltip>
                 </div>
             }
         </div>
@@ -66,6 +73,27 @@
         ? "The people you share money with"
         : $"{Members.Count} {(Members.Count == 1 ? "person" : "people")} · " +
           $"{CurrencyFormatter.Format(Members.Sum(static x => x.Income ?? 0))} combined income";
+
+    /// <summary>
+    /// Whether money to or from <paramref name="member"/> is recognised, labelling the income shown beside it.
+    /// </summary>
+    internal static string RecognitionSummary(HouseholdMember member)
+    {
+        List<string> parts = [];
+        if (member.PayeeNames.Count > 0)
+        {
+            parts.Add(member.PayeeNames.Count == 1 ? "1 name" : $"{member.PayeeNames.Count} names");
+        }
+
+        if (member.LinkedAccounts.Count > 0)
+        {
+            parts.Add(member.LinkedAccounts.Count == 1 ? "1 account" : $"{member.LinkedAccounts.Count} accounts");
+        }
+
+        return parts.Count == 0
+            ? "Income · payments not recognised"
+            : $"Income · payments recognised by {string.Join(" and ", parts)}";
+    }
 
     private static string Initials(HouseholdMember member) =>
         $"{member.FirstName.FirstOrDefault()}{member.LastName.FirstOrDefault()}".ToUpperInvariant();
@@ -96,6 +124,39 @@
         catch (Exception)
         {
             Snackbar.Add("Couldn't add them, try again", Severity.Error);
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
+    private async Task RecognisePayments(HouseholdMember member)
+    {
+        var dialogParameters = new DialogParameters<RecogniseHouseholdMemberDialog> { { x => x.Member, member } };
+        var dialogRef = await DialogService.ShowAsync<RecogniseHouseholdMemberDialog>(null, dialogParameters);
+        var dialogActionResult = await dialogRef.Result;
+
+        if (dialogActionResult is null || dialogActionResult.Canceled)
+            return;
+
+        try
+        {
+            SetLoadingState(true, $"Looking for {member.FirstName}'s payments…");
+            HouseholdMemberRecognitionSaved saved = await HouseholdMemberService.UpdateRecognitionAsync(member.Id,
+                (UpdateHouseholdMemberRecognition)dialogActionResult.Data!, _cts.Token);
+
+            Members![Members.IndexOf(member)] = saved.Member;
+            Snackbar.Add(saved.RecognisedTransactions switch
+            {
+                0 => $"Saved, none of your payments are {member.FirstName}'s yet",
+                1 => $"Saved, 1 payment is {member.FirstName}'s and no longer counts as income or spending",
+                var count => $"Saved, {count} payments are {member.FirstName}'s and no longer count as income or spending"
+            }, Severity.Success);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't save that, try again", Severity.Error);
         }
         finally
         {

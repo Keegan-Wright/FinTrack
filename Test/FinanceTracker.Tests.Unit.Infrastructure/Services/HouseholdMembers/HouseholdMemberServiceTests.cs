@@ -1,7 +1,10 @@
 using FinanceTracker.Contracts.HouseholdMember;
+using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.HouseholdMembers;
+using FinanceTracker.Infrastructure.OpenBanking.Transfers;
 using FinanceTracker.Tests.Unit.Shared;
+using FinanceTracker.Tests.Unit.Shared.Fakers;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -162,6 +165,104 @@ public class HouseholdMemberServiceTests : InfrastructureTestBase
         }
     }
 
+    [Test]
+    public async Task UpdateRecognitionAsync_SavesAndRecognisesTheirTransactionsStraightAway()
+    {
+        // Arrange
+        await SeedAccountAsync()
+            .Do(s => s.HouseholdMemberScenario.WithHouseholdMember("partner", Username))
+            .Do(s => s.TransactionScenario.WithTransaction("by-name", "joint", Details("J Smith 01JAN26")))
+            .Do(s => s.TransactionScenario.WithTransaction("by-account", "joint",
+                Details("Bills", reference: "112233 12345678")))
+            .Do(s => s.TransactionScenario.WithTransaction("shopping", "joint", Details("Tesco")));
+
+        Guid partnerId = Scenario.HouseholdMemberMappings["partner"];
+        HouseholdMemberService subject = BuildSubject();
+
+        // Act
+        HouseholdMemberRecognitionSaved saved = await subject.UpdateRecognitionAsync(partnerId,
+            new UpdateHouseholdMemberRecognition
+            {
+                PayeeNames = [" J Smith "],
+                LinkedAccounts = [new LinkedAccount { SortCode = "11-22-33", Number = "12345678" }]
+            }, CancellationToken);
+
+        // Assert
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        Domain.Household.HouseholdMember persisted = await context.HouseholdMembers.SingleAsync(CancellationToken);
+        Dictionary<Guid, BankTransaction> transactions =
+            await context.BankTransactions.ToDictionaryAsync(x => x.Id, CancellationToken);
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(saved.RecognisedTransactions).IsEqualTo(2);
+            await Assert.That(saved.Member.PayeeNames).IsEquivalentTo(["J Smith"]);
+            await Assert.That(saved.Member.LinkedAccounts.Single().SortCode).IsEqualTo("112233");
+            await Assert.That(persisted.PayeeNames).IsEquivalentTo(["J Smith"]);
+            await Assert.That(transactions[Scenario.TransactionMappings["by-name"]].Transfer!.PartnerHouseholdMemberId)
+                .IsEqualTo(partnerId);
+            await Assert.That(transactions[Scenario.TransactionMappings["shopping"]].Transfer).IsNull();
+        }
+    }
+
+    [Test]
+    public async Task UpdateRecognitionAsync_WhenOwnedByAnotherUser_ThrowsAndChangesNothing()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.UserScenario.WithUser(OtherUsername))
+            .Do(s => s.HouseholdMemberScenario.WithHouseholdMember("theirs", OtherUsername));
+
+        HouseholdMemberService subject = BuildSubject();
+
+        // Act
+        await Assert.ThrowsAsync<InvalidOperationException>(() => subject.UpdateRecognitionAsync(
+            Scenario.HouseholdMemberMappings["theirs"],
+            new UpdateHouseholdMemberRecognition { PayeeNames = ["Someone"] }, CancellationToken));
+
+        // Assert
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        await Assert.That((await context.HouseholdMembers.SingleAsync(CancellationToken)).PayeeNames).IsEmpty();
+    }
+
+    [Test]
+    public async Task DeleteHouseholdMemberAsync_TheirTransactionsCountAgain()
+    {
+        // Arrange
+        await SeedAccountAsync()
+            .Do(s => s.HouseholdMemberScenario.WithHouseholdMember("partner", Username))
+            .Do(s => s.HouseholdMemberScenario.WithPayeeName("partner", "J Smith"))
+            .Do(s => s.TransactionScenario.WithTransaction("by-name", "joint", Details("J Smith")));
+
+        HouseholdMemberService subject = BuildSubject();
+        await BuildMatcher().MatchAsync(CancellationToken);
+
+        // Act
+        await subject.DeleteHouseholdMemberAsync(Scenario.HouseholdMemberMappings["partner"], CancellationToken);
+
+        // Assert
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        await Assert.That((await context.BankTransactions.SingleAsync(CancellationToken)).Transfer).IsNull();
+    }
+
+    private Task<TestingScenario> SeedAccountAsync() =>
+        Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("bank", Username))
+            .Do(s => s.BankAccountScenario.WithAccount("joint", "bank"));
+
+    private static TransactionDetails Details(string description, string? reference = null) =>
+        new TransactionDetailsFaker().Generate() with
+        {
+            Description = description,
+            IsPending = false,
+            LabelledAsTransfer = false,
+            Metadata = new TransactionMetadata(reference, null, null, null, null)
+        };
+
+    private TransferMatchingService BuildMatcher() =>
+        new(CurrentUserFor(Username), DbContextFactory, NullLogger<TransferMatchingService>.Instance,
+            TimeProvider.System);
+
     private HouseholdMemberService BuildSubject() =>
-        new(CurrentUserFor(Username), DbContextFactory, NullLogger<HouseholdMemberService>.Instance);
+        new(CurrentUserFor(Username), DbContextFactory, NullLogger<HouseholdMemberService>.Instance, BuildMatcher());
 }

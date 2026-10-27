@@ -178,6 +178,11 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                         .HasColumnType("text")
                         .HasAnnotation("FinanceTracker.EncrptedColumn", true);
 
+                    b.PrimitiveCollection<string>("PayeeNames")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
                     b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
@@ -1058,6 +1063,39 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.OwnsMany("FinanceTracker.Domain.OpenBanking.Accounts.AccountIdentifier", "LinkedAccounts", b1 =>
+                        {
+                            b1.Property<Guid>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("uuid");
+
+                            b1.Property<Guid>("HouseholdMemberId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("Iban")
+                                .HasColumnType("text")
+                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                            b1.Property<string>("Number")
+                                .HasColumnType("text")
+                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                            b1.Property<string>("SortCode")
+                                .HasColumnType("text")
+                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                            b1.HasKey("Id");
+
+                            b1.HasIndex("HouseholdMemberId");
+
+                            b1.ToTable("HouseholdMemberLinkedAccounts", (string)null);
+
+                            b1.WithOwner()
+                                .HasForeignKey("HouseholdMemberId");
+                        });
+
+                    b.Navigation("LinkedAccounts");
                 });
 
             modelBuilder.Entity("FinanceTracker.Domain.OpenBanking.Accounts.BankAccount", b =>
@@ -1252,6 +1290,10 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                             b1.Property<Guid?>("PartnerAccountId")
                                 .HasColumnType("uuid")
                                 .HasColumnName("Transfer_PartnerAccountId");
+
+                            b1.Property<Guid?>("PartnerHouseholdMemberId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("Transfer_PartnerHouseholdMemberId");
 
                             b1.Property<Guid?>("PartnerTransactionId")
                                 .HasColumnType("uuid")

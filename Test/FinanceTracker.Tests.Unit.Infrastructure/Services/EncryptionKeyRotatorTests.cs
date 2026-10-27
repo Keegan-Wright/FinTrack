@@ -58,6 +58,7 @@ public class EncryptionKeyRotatorTests : InfrastructureTestBase
             await Assert.That(await ReadRawAsync("BankAccounts", "Balance_Current")).StartsWith("2:");
             await Assert.That(await ReadRawAsync("StandingOrders", "Payee")).StartsWith("2:");
             await Assert.That(await ReadRawAsync("AccessTokens", "Token")).StartsWith("2:");
+            await Assert.That(await ReadRawAsync("HouseholdMemberLinkedAccounts", "Number")).StartsWith("2:");
         }
     }
 
@@ -183,6 +184,8 @@ public class EncryptionKeyRotatorTests : InfrastructureTestBase
             .Do(s => s.BankAccountScenario.WithBalance("main"))
             .Do(s => s.BankAccountScenario.WithStandingOrders("main", new StandingOrderDetailsFaker().Generate()))
             .Do(s => s.TransactionScenario.WithTransactions("main", 1))
+            .Do(s => s.HouseholdMemberScenario.WithHouseholdMember("partner", Username))
+            .Do(s => s.HouseholdMemberScenario.WithLinkedAccount("partner", "112233", "12345678"))
             .Do(s => s.BudgetCategoryScenario.WithBudgetCategory("budget", Username, userId =>
                 new BudgetCategory(userId, "Holidays", 1, 1, 1, null)));
 

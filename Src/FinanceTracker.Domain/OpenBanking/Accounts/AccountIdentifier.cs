@@ -54,10 +54,10 @@ public sealed record AccountIdentifier
 
     /// <summary>
     /// Whether <paramref name="reference"/> names this account, by its IBAN or by the sort code followed by the
-    /// number however they're separated, e.g. <c>11-11-11 11111111</c>.
+    /// number however they're separated, e.g. <c>11-22-33 12345678</c>.
     /// </summary>
     /// <remarks>
-    /// Banks format references differently (<c>11-11-11 11111111</c>, <c>11-11-11 11111111</c>, an IBAN in groups of
+    /// Banks format references differently (<c>11-22-33 12345678</c>, <c>112233 12345678</c>, an IBAN in groups of
     /// four) and add other text around them, so both sides are reduced to the same characters and the reference only
     /// has to contain the account. The sort code and number together are 14 digits, too long to turn up by chance.
     /// </remarks>

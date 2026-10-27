@@ -1,4 +1,5 @@
 using FinanceTracker.Domain.Common;
+using FinanceTracker.Domain.Household;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.OpenBanking.Transfers;
@@ -15,6 +16,7 @@ public class TransferMatcherTests
     private readonly BankAccount _current = Account("Current", "111111", "11111111");
     private readonly BankAccount _savings = Account("Savings", "222222", "22222222");
     private readonly BankAccount _joint = Account("Joint", "333333", "33333333");
+    private readonly HouseholdMember _partner = Member("444444", "44444444", "Jane Smith", "J Smith");
 
     [Test]
     public async Task Match_ReferenceNamesOwnAccount_PairsWithItsMirror()
@@ -72,7 +74,7 @@ public class TransferMatcherTests
             reference: "222222 22222222");
         BankTransaction incoming = Transaction(pot, 50m, Monday.AddHours(1));
 
-        TransferMatcher.Match([_current, _savings, pot], [outgoing, incoming], DecidedAt);
+        TransferMatcher.Match([_current, _savings, pot], [], [outgoing, incoming], DecidedAt);
 
         using (Assert.Multiple())
         {
@@ -309,7 +311,7 @@ public class TransferMatcherTests
         Match(outgoing, incoming, labelled);
         TransferInfo?[] before = [outgoing.Transfer, incoming.Transfer, labelled.Transfer];
 
-        TransferMatchSummary summary = TransferMatcher.Match([_current, _savings, _joint],
+        TransferMatchSummary summary = TransferMatcher.Match([_current, _savings, _joint], [_partner],
             [outgoing, incoming, labelled], DecidedAt.AddDays(1));
 
         using (Assert.Multiple())
@@ -340,7 +342,7 @@ public class TransferMatcherTests
     public async Task Match_RuleDecision_IsNotReplaced()
     {
         BankTransaction outgoing = Transaction(_current, -50m, Monday, labelled: true);
-        TransferInfo ruled = new(TransferDecision.NotATransfer, DecisionSource.Rule, null, null, null, Monday);
+        TransferInfo ruled = new(TransferDecision.NotATransfer, DecisionSource.Rule, null, null, null, null, Monday);
         outgoing.DecideTransfer(ruled);
 
         Match(outgoing, Transaction(_savings, 50m, Monday));
@@ -348,8 +350,75 @@ public class TransferMatcherTests
         await Assert.That(outgoing.Transfer).IsEqualTo(ruled);
     }
 
+    [Test]
+    [Arguments("Jane Smith", null)]
+    [Arguments("J Smith 01JAN26", null)]
+    [Arguments("Bills", "444444 44444444")]
+    public async Task Match_RecognisesAHouseholdMember_IsATransferToThem(string description, string? reference)
+    {
+        BankTransaction payment = Transaction(_joint, -300m, Monday, reference: reference, description: description);
+
+        TransferMatchSummary summary = Match(payment);
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(payment.Transfer).IsEqualTo(TransferInfo.WithHouseholdMember(_partner.Id, DecidedAt));
+            await Assert.That(payment.CountsAsIncomeOrSpending).IsFalse();
+            await Assert.That(summary).IsEqualTo(new TransferMatchSummary(1, 0, 0));
+        }
+    }
+
+    [Test]
+    public async Task Match_HouseholdMemberLabelledATransfer_IsStillTheirsNotUpForReview()
+    {
+        BankTransaction payment = Transaction(_joint, 300m, Monday, labelled: true, description: "Jane Smith");
+
+        Match(payment);
+
+        await Assert.That(payment.Transfer).IsEqualTo(TransferInfo.WithHouseholdMember(_partner.Id, DecidedAt));
+    }
+
+    [Test]
+    public async Task Match_HouseholdMemberAndAMirrorPair_PrefersThePair()
+    {
+        BankTransaction outgoing = Transaction(_current, -50m, Monday, labelled: true, description: "J Smith");
+        BankTransaction incoming = Transaction(_savings, 50m, Monday.AddMinutes(1));
+
+        Match(outgoing, incoming);
+
+        await Assert.That(outgoing.Transfer).IsEqualTo(
+            TransferInfo.Matched(TransferReason.MirrorPair, incoming.Id, _savings.Id, DecidedAt));
+    }
+
+    [Test]
+    public async Task Match_SeveralHouseholdMembersRecogniseIt_IsLeftForTheLabel()
+    {
+        HouseholdMember namesake = Member("555555", "55555555", "J Smith");
+        BankTransaction payment = Transaction(_joint, -300m, Monday, labelled: true, description: "J Smith");
+
+        TransferMatcher.Match([_current, _savings, _joint], [_partner, namesake], [payment], DecidedAt);
+
+        await Assert.That(payment.Transfer).IsEqualTo(
+            TransferInfo.ToReview(TransferReason.BankTransferLabel, null, null, DecidedAt));
+    }
+
+    [Test]
+    public async Task Match_HouseholdMemberRemoved_ClearsTheMatchersDecision()
+    {
+        BankTransaction payment = Transaction(_joint, -300m, Monday, description: "Jane Smith");
+        Match(payment);
+
+        TransferMatchSummary summary = TransferMatcher.Match([_current, _savings, _joint], [], [payment], DecidedAt);
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(payment.Transfer).IsNull();
+            await Assert.That(summary).IsEqualTo(new TransferMatchSummary(0, 0, 1));
+        }
+    }
+
     private TransferMatchSummary Match(params BankTransaction[] transactions) =>
-        TransferMatcher.Match([_current, _savings, _joint], transactions, DecidedAt);
+        TransferMatcher.Match([_current, _savings, _joint], [_partner], transactions, DecidedAt);
 
     private static BankAccount Account(string name, string sortCode, string number)
     {
@@ -358,9 +427,22 @@ public class TransferMatcherTests
         return account;
     }
 
+    private static HouseholdMember Member(string sortCode, string number, params string[] payeeNames)
+    {
+        HouseholdMember member = new(UserId, "Jane", "Smith", null);
+        member.LinkAccount(AccountIdentifier.Create(sortCode, number, null)!);
+        foreach (string payeeName in payeeNames)
+        {
+            member.AddPayeeName(payeeName);
+        }
+
+        return member;
+    }
+
     private static BankTransaction Transaction(BankAccount account, decimal amount, DateTime occurredAt,
-        bool labelled = false, string? reference = null, string currency = "GBP", bool pending = false) =>
-        BankTransaction.Import(account, new TransactionDetails($"tx-{Guid.NewGuid()}", "Description",
+        bool labelled = false, string? reference = null, string currency = "GBP", bool pending = false,
+        string description = "Description") =>
+        BankTransaction.Import(account, new TransactionDetails($"tx-{Guid.NewGuid()}", description,
             amount < 0 ? TransactionType.Debit : TransactionType.Credit, "PURCHASE", amount, currency, occurredAt,
             pending, [], new TransactionMetadata(reference, null, null, null, null), labelled));
 }

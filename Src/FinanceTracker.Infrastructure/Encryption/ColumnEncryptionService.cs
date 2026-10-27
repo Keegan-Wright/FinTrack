@@ -86,7 +86,9 @@ public class ColumnEncryptionService : IColumnEncryptionService
     {
         if (string.IsNullOrEmpty(cipherText))
         {
-            return default;
+            // An empty collection encrypts as [], so an empty value is a column a migration added with an empty
+            // default. Those rows have none rather than null, which the domain's collections never are
+            return IsJsonCollection(typeof(T)) ? FromPlainText<T>("[]") : default;
         }
 
         int separator = cipherText.IndexOf(KeyIdSeparator, StringComparison.Ordinal);
@@ -166,6 +168,10 @@ public class ColumnEncryptionService : IColumnEncryptionService
         IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture),
         _ => value.ToString()
     };
+
+    private static bool IsJsonCollection(Type type) =>
+        type != typeof(string) && type != typeof(byte[]) &&
+        typeof(System.Collections.IEnumerable).IsAssignableFrom(type);
 
     private static T FromPlainText<T>(string plainText)
     {

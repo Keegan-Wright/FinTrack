@@ -10,6 +10,8 @@ namespace FinanceTracker.Domain.OpenBanking.Transfers;
 /// <param name="Reason">Why the matcher decided, null for the user's decisions.</param>
 /// <param name="PartnerTransactionId">The other half of the transfer, or for review the suggested one.</param>
 /// <param name="PartnerAccountId">The account the money moved to or from.</param>
+/// <param name="PartnerHouseholdMemberId">The household member the money moved to or from, when their account isn't
+/// connected so there's no transaction or account to name.</param>
 /// <param name="DecidedAt">When it was decided.</param>
 public sealed record TransferInfo(
     TransferDecision Decision,
@@ -17,17 +19,22 @@ public sealed record TransferInfo(
     TransferReason? Reason,
     Guid? PartnerTransactionId,
     Guid? PartnerAccountId,
+    Guid? PartnerHouseholdMemberId,
     DateTime DecidedAt)
 {
     public static TransferInfo Matched(TransferReason reason, Guid? partnerTransactionId, Guid partnerAccountId,
         DateTime decidedAt) =>
-        new(TransferDecision.Transfer, DecisionSource.Matcher, reason, partnerTransactionId, partnerAccountId,
+        new(TransferDecision.Transfer, DecisionSource.Matcher, reason, partnerTransactionId, partnerAccountId, null,
             decidedAt);
 
     public static TransferInfo ToReview(TransferReason reason, Guid? partnerTransactionId, Guid? partnerAccountId,
         DateTime decidedAt) =>
-        new(TransferDecision.NeedsReview, DecisionSource.Matcher, reason, partnerTransactionId, partnerAccountId,
+        new(TransferDecision.NeedsReview, DecisionSource.Matcher, reason, partnerTransactionId, partnerAccountId, null,
             decidedAt);
+
+    public static TransferInfo WithHouseholdMember(Guid householdMemberId, DateTime decidedAt) =>
+        new(TransferDecision.Transfer, DecisionSource.Matcher, TransferReason.HouseholdMember, null, null,
+            householdMemberId, decidedAt);
 
     /// <summary>
     /// Whether this says the same as <paramref name="other"/>, whenever each was decided.

@@ -1,0 +1,165 @@
+@* Edits how money to or from a household member is recognised, the names they're paid as and their own accounts. *@
+@using FinanceTracker.Contracts.HouseholdMember
+@using FinanceTracker.Client.Extensions
+@using FluentValidation
+@inject IValidator<LinkedAccount> LinkedAccountValidator
+
+<DialogBase TResponse="UpdateHouseholdMemberRecognition" Title="@($"Recognise {Member.FirstName}'s payments")"
+            ResponseConstructor="BuildResponseModel">
+    <Content>
+        <div class="ft-recognise">
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                Money to or from @Member.FirstName counts as moved within your household, not as income or spending.
+            </MudText>
+
+            <div class="ft-recognise__group">
+                <MudText Typo="Typo.subtitle2">Names on their payments</MudText>
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                    A description starting with one of these in any case, e.g. "J Smith" for "J SMITH 01JAN26".
+                </MudText>
+                @if (_payeeNames.Count > 0)
+                {
+                    <div class="ft-chips ft-recognise__chips">
+                        @foreach (string payeeName in _payeeNames)
+                        {
+                            <MudChip T="string" Value="@payeeName" Size="Size.Small"
+                                     OnClose="@(_ => _payeeNames.Remove(payeeName))">@payeeName</MudChip>
+                        }
+                    </div>
+                }
+                <div class="ft-recognise__add">
+                    <MudTextField @bind-Value="_newPayeeName" Label="Name" Immediate="true" Class="ft-recognise__field"
+                                  OnKeyUp="@(x => OnEnter(x, AddPayeeName))"/>
+                    <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="@AddPayeeName"
+                               Disabled="@string.IsNullOrWhiteSpace(_newPayeeName)">Add name</MudButton>
+                </div>
+            </div>
+
+            <div class="ft-recognise__group">
+                <MudText Typo="Typo.subtitle2">Their accounts</MudText>
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                    Payments whose reference has one of these, as some banks show the other account.
+                </MudText>
+                @if (_linkedAccounts.Count > 0)
+                {
+                    <div class="ft-chips ft-recognise__chips">
+                        @foreach (LinkedAccount account in _linkedAccounts)
+                        {
+                            <MudChip T="string" Value="@Display(account)" Size="Size.Small"
+                                     OnClose="@(_ => _linkedAccounts.Remove(account))">@Display(account)</MudChip>
+                        }
+                    </div>
+                }
+                <MudForm @ref="_accountForm" Model="@_newAccount">
+                    <div class="ft-recognise__add">
+                        <MudTextField @bind-Value="_newAccount.SortCode" Label="Sort code" Immediate="true"
+                                      Class="ft-recognise__field ft-recognise__field--short" InputMode="InputMode.numeric"
+                                      For="@(() => _newAccount.SortCode)"
+                                      Validation="@(LinkedAccountValidator.ValidateValue(_newAccount, nameof(LinkedAccount.SortCode)))"/>
+                        <MudTextField @bind-Value="_newAccount.Number" Label="Account number" Immediate="true"
+                                      Class="ft-recognise__field" InputMode="InputMode.numeric"
+                                      For="@(() => _newAccount.Number)"
+                                      Validation="@(LinkedAccountValidator.ValidateValue(_newAccount, nameof(LinkedAccount.Number)))"
+                                      OnKeyUp="@(x => OnEnter(x, AddAccountAsync))"/>
+                        <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="@AddAccountAsync"
+                                   Disabled="@(!HasAccountInput)">Add account</MudButton>
+                    </div>
+                </MudForm>
+            </div>
+        </div>
+    </Content>
+</DialogBase>
+
+@code {
+
+    [Parameter] [EditorRequired] public required HouseholdMember Member { get; set; }
+
+    private MudForm _accountForm = null!;
+    private List<string> _payeeNames = [];
+    private List<LinkedAccount> _linkedAccounts = [];
+    private string _newPayeeName = string.Empty;
+    private readonly LinkedAccount _newAccount = new() { SortCode = string.Empty, Number = string.Empty };
+
+    private bool HasAccountInput =>
+        !string.IsNullOrWhiteSpace(_newAccount.SortCode) || !string.IsNullOrWhiteSpace(_newAccount.Number);
+
+    protected override void OnInitialized()
+    {
+        _payeeNames = Member.PayeeNames.ToList();
+        _linkedAccounts = Member.LinkedAccounts
+            .Select(static x => new LinkedAccount { SortCode = x.SortCode, Number = x.Number })
+            .ToList();
+    }
+
+    /// <summary>
+    /// <c>11-22-33 12345678</c>, as the sort code is usually written.
+    /// </summary>
+    internal static string Display(LinkedAccount account)
+    {
+        string sortCode = Digits(account.SortCode);
+        return sortCode.Length == 6
+            ? $"{sortCode[..2]}-{sortCode[2..4]}-{sortCode[4..]} {Digits(account.Number)}"
+            : $"{account.SortCode} {account.Number}";
+    }
+
+    private static string Digits(string value) => string.Concat(value.Where(char.IsAsciiDigit));
+
+    private static async Task OnEnter(KeyboardEventArgs args, Func<Task> add)
+    {
+        if (args.Key == "Enter")
+        {
+            await add();
+        }
+    }
+
+    private Task AddPayeeName()
+    {
+        string payeeName = _newPayeeName.Trim();
+        if (payeeName.Length > 0 && !_payeeNames.Contains(payeeName, StringComparer.OrdinalIgnoreCase))
+        {
+            _payeeNames.Add(payeeName);
+        }
+
+        _newPayeeName = string.Empty;
+        return Task.CompletedTask;
+    }
+
+    /// <returns>Whether the account typed in was valid, it's added unless it's already there.</returns>
+    private async Task<bool> TryAddAccountAsync()
+    {
+        await _accountForm.ValidateAsync();
+        if (!_accountForm.IsValid)
+        {
+            return false;
+        }
+
+        LinkedAccount account = new() { SortCode = Digits(_newAccount.SortCode), Number = Digits(_newAccount.Number) };
+        if (!_linkedAccounts.Any(x => Digits(x.SortCode) == account.SortCode && Digits(x.Number) == account.Number))
+        {
+            _linkedAccounts.Add(account);
+        }
+
+        _newAccount.SortCode = string.Empty;
+        _newAccount.Number = string.Empty;
+        await _accountForm.ResetValidationAsync();
+        return true;
+    }
+
+    private Task AddAccountAsync() => TryAddAccountAsync();
+
+    /// <summary>
+    /// What's on screen, including a name or account typed in but not yet added. An account typed in that isn't valid
+    /// keeps the dialog open to fix it.
+    /// </summary>
+    private async Task<UpdateHouseholdMemberRecognition?> BuildResponseModel()
+    {
+        await AddPayeeName();
+        if (HasAccountInput && !await TryAddAccountAsync())
+        {
+            return null;
+        }
+
+        return new UpdateHouseholdMemberRecognition { PayeeNames = _payeeNames, LinkedAccounts = _linkedAccounts };
+    }
+
+}

@@ -23,5 +23,11 @@ public enum TransferReason
     /// <summary>
     /// The bank labels it a transfer but no other half was found.
     /// </summary>
-    BankTransferLabel = 4
+    BankTransferLabel = 4,
+
+    /// <summary>
+    /// The reference names one of a household member's accounts, or the description starts with one of their payee
+    /// names.
+    /// </summary>
+    HouseholdMember = 5
 }

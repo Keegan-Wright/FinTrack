@@ -1,3 +1,4 @@
+using FinanceTracker.Domain.Household;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.OpenBanking.Transfers;
@@ -33,8 +34,11 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
         List<BankTransaction> transactions =
             await context.BankTransactions.OwnedBy(UserId).ToListAsync(cancellationToken);
 
-        TransferMatchSummary summary =
-            TransferMatcher.Match(accounts, transactions, _timeProvider.GetUtcNow().UtcDateTime);
+        List<HouseholdMember> householdMembers =
+            await context.HouseholdMembers.OwnedBy(UserId).ToListAsync(cancellationToken);
+
+        TransferMatchSummary summary = TransferMatcher.Match(accounts, householdMembers, transactions,
+            _timeProvider.GetUtcNow().UtcDateTime);
 
         await context.SaveChangesAsync(cancellationToken);
         Logger.LogMatchedTransfers(UserId, summary.Transfers, summary.ToReview, summary.Cleared);
