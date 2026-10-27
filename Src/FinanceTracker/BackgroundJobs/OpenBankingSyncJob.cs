@@ -4,12 +4,14 @@ using FinanceTracker.Contracts;
 using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.OpenBanking;
+using FinanceTracker.Infrastructure.OpenBanking.Transfers;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.BackgroundJobs;
 
 /// <summary>
-/// Syncs a set of connections, each as its owner, then tells those owners the sync has finished.
+/// Syncs a set of connections, each as its owner, matches each owner's transfers, then tells those owners the sync has
+/// finished.
 /// </summary>
 public abstract class OpenBankingSyncJob
 {
@@ -26,8 +28,9 @@ public abstract class OpenBankingSyncJob
     }
 
     /// <summary>
-    /// Syncs every connection matching <paramref name="connections"/>. A connection that fails to sync doesn't stop
-    /// the rest.
+    /// Syncs every connection matching <paramref name="connections"/>, then matches transfers once for each owner so
+    /// pairs across their banks are found. A connection that fails to sync, or an owner whose matching fails, doesn't
+    /// stop the rest.
     /// </summary>
     /// <returns>The owners of the synced connections.</returns>
     protected async Task<IReadOnlySet<Guid>> SyncConnectionsAsync(Expression<Func<BankConnection, bool>> connections,
@@ -71,9 +74,33 @@ public abstract class OpenBankingSyncJob
             }
         }
 
+        HashSet<Guid> owners = toSync.Select(static x => x.UserId).ToHashSet();
+        foreach (Guid userId in owners)
+        {
+            await MatchTransfersAsync(userId, performingBackgroundSyncActivity, cancellationToken);
+        }
+
         performingBackgroundSyncActivity?.AddEvent(new ActivityEvent("Background sync completed"));
 
-        return toSync.Select(static x => x.UserId).ToHashSet();
+        return owners;
+    }
+
+    private async Task MatchTransfersAsync(Guid userId, Activity? activity, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using AsyncServiceScope scope = _scopeFactory.CreateUserScope(userId);
+            ITransferMatchingService transferMatchingService =
+                scope.ServiceProvider.GetRequiredService<ITransferMatchingService>();
+
+            await transferMatchingService.MatchAsync(cancellationToken);
+
+            activity?.AddEvent(new ActivityEvent($"Matched transfers for User {userId}"));
+        }
+        catch (Exception ex)
+        {
+            activity?.AddException(ex);
+        }
     }
 
     protected async Task NotifyAsync(IEnumerable<Guid> userIds)

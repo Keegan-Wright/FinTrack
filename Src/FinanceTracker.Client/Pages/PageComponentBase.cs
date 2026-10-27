@@ -55,6 +55,11 @@ public class PageComponent : ComponentBase, IDisposable
     }
 
     /// <summary>
+    /// Shows the user's accounts as syncing in the layout, after queuing a sync. Cleared when the sync finishes.
+    /// </summary>
+    internal void ShowSyncing() => ApplicationState.Syncing = true;
+
+    /// <summary>
     /// Shows or hides the loading overlay, with <paramref name="message"/> under the spinner.
     /// </summary>
     internal void SetLoadingState(bool loading, string? message = null)

@@ -22,6 +22,9 @@ public static partial class LoggerMessages
     [LoggerMessage(LogLevel.Information, "Removed {count} stale pending transactions from account {accountId} for user {userId}")]
     public static partial void LogRemovedStalePendingTransactions(this ILogger logger, int count, Guid accountId, Guid userId);
 
+    [LoggerMessage(LogLevel.Information, "Matched transfers for user {userId}: {transfers} transfers, {toReview} to review, {cleared} cleared")]
+    public static partial void LogMatchedTransfers(this ILogger logger, Guid userId, int transfers, int toReview, int cleared);
+
     [LoggerMessage(LogLevel.Warning, "Connection {connectionId} for user {userId} has no active consent, re-authentication is required before it can sync")]
     public static partial void LogConnectionNotAuthenticated(this ILogger logger, Guid connectionId, Guid userId);
 

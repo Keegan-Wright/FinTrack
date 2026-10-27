@@ -26,6 +26,7 @@ public class OpenBankingServiceTests : InfrastructureTestBase
     private const string Token = "active-token";
 
     private readonly IOpenBankingApiService _api = Substitute.For<IOpenBankingApiService>();
+    private readonly IOpenBankingSyncScheduler _syncScheduler = Substitute.For<IOpenBankingSyncScheduler>();
     private readonly HybridCache _cache = new ServiceCollection().AddHybridCache().Services.BuildServiceProvider()
         .GetRequiredService<HybridCache>();
 
@@ -306,6 +307,28 @@ public class OpenBankingServiceTests : InfrastructureTestBase
     }
 
     [Test]
+    [Arguments("TRANSFER", true)]
+    [Arguments("transfer", true)]
+    [Arguments("PURCHASE", false)]
+    public async Task SyncConnectionAsync_TrueLayersTransferCategory_LabelsTheTransactionATransfer(string category,
+        bool labelled)
+    {
+        // Arrange
+        await SeedConnectionAsync();
+        ExternalOpenBankingAccountTransaction transaction = new ExternalOpenBankingAccountTransactionFaker().Generate();
+        transaction.TransactionCategory = category;
+        GivenProviderReturns(accounts: [new ExternalOpenBankingAccountFaker().Generate()], transactions: [transaction]);
+
+        OpenBankingService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        await Assert.That((await LoadTransactionsAsync()).Single().LabelledAsTransfer).IsEqualTo(labelled);
+    }
+
+    [Test]
     public async Task SyncConnectionAsync_TransactionWithoutMetadata_LoadsWithNone()
     {
         // Arrange
@@ -485,7 +508,7 @@ public class OpenBankingServiceTests : InfrastructureTestBase
                 new BankAccount(userId, connectionId, externalAccount.AccountId, "TRANSACTION", "Main", "GBP")))
             .Do(s => s.TransactionScenario.WithTransaction("pending", "main", new TransactionDetails(
                 transaction.TransactionId, "Pending description", TransactionType.Debit, "PURCHASE", -1m, "GBP",
-                DateTime.UtcNow, true, [], TransactionMetadata.None)));
+                DateTime.UtcNow, true, [], TransactionMetadata.None, false)));
 
         GivenProviderReturns(accounts: [externalAccount], transactions: [transaction]);
 
@@ -673,7 +696,8 @@ public class OpenBankingServiceTests : InfrastructureTestBase
         GivenProviderReturns(accounts: [externalAccount], transactions: [settled], pendingTransactions: [stillPending]);
 
         CapturingLogger<OpenBankingService> logger = new();
-        OpenBankingService subject = new(CurrentUserFor(Username), DbContextFactory, _api, logger, TimeProvider.System, _cache);
+        OpenBankingService subject = new(CurrentUserFor(Username), DbContextFactory, _api, logger, TimeProvider.System, _cache,
+            _syncScheduler);
 
         // Act
         await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
@@ -845,7 +869,7 @@ public class OpenBankingServiceTests : InfrastructureTestBase
     }
 
     [Test]
-    public async Task AddVendorViaAccessCodeAsync_ExistingConnection_ReauthenticatesIssuesTokenAndSyncs()
+    public async Task AddVendorViaAccessCodeAsync_ExistingConnection_ReauthenticatesIssuesTokenAndQueuesASync()
     {
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
@@ -877,12 +901,13 @@ public class OpenBankingServiceTests : InfrastructureTestBase
             await Assert.That(connection.AccessCode).IsEqualTo("new-code");
             await Assert.That(connection.ActiveToken!.Token).IsEqualTo(Token);
             await Assert.That(connection.AccessTokens.Single(x => x.Token == "old-token").IsRevoked).IsTrue();
-            await _api.Received(1).GetAllAccountsAsync(Token, CancellationToken);
+            await _syncScheduler.Received(1)
+                .ScheduleUserSyncAsync(Scenario.UserMappings[Username], CancellationToken);
         }
     }
 
     [Test]
-    public async Task AddVendorViaAccessCodeAsync_NewProvider_CreatesConnectionWithLogoAndTokenThenSyncs()
+    public async Task AddVendorViaAccessCodeAsync_NewProvider_CreatesConnectionWithLogoAndTokenAndQueuesASync()
     {
         // Arrange
         byte[] logo = [137, 80, 78, 71];
@@ -896,7 +921,6 @@ public class OpenBankingServiceTests : InfrastructureTestBase
             Results = new[] { external }.ToAsyncEnumerable()
         });
         _api.GetProviderLogoAsync(external.Provider!.LogoUri, CancellationToken).Returns(logo);
-        GivenProviderReturns(accounts: [new ExternalOpenBankingAccountFaker().Generate()]);
 
         OpenBankingService subject = BuildSubject();
         DateTime before = DateTime.UtcNow;
@@ -908,7 +932,6 @@ public class OpenBankingServiceTests : InfrastructureTestBase
         await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
         BankConnection connection = await context.BankConnections.Include(x => x.AccessTokens)
             .SingleAsync(CancellationToken);
-        BankAccount account = await context.BankAccounts.SingleAsync(CancellationToken);
 
         using (Assert.Multiple())
         {
@@ -923,13 +946,13 @@ public class OpenBankingServiceTests : InfrastructureTestBase
             await Assert.That(connection.ActiveToken!.Token).IsEqualTo(Token);
             await Assert.That(connection.ActiveToken.RefreshToken).IsEqualTo("refresh");
             await Assert.That(connection.ActiveToken.IssuedAt).IsGreaterThanOrEqualTo(before);
-            await Assert.That(account.ConnectionId).IsEqualTo(connection.Id);
-            await _api.Received(1).GetAllAccountsAsync(Token, CancellationToken);
+            await _syncScheduler.Received(1)
+                .ScheduleUserSyncAsync(Scenario.UserMappings[Username], CancellationToken);
         }
     }
 
     [Test]
-    public async Task AddVendorViaAccessCodeAsync_SeveralProvidersOnOneConsent_CreatesAndSyncsEach()
+    public async Task AddVendorViaAccessCodeAsync_SeveralProvidersOnOneConsent_CreatesEachAndQueuesOneSync()
     {
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser(Username));
@@ -953,8 +976,32 @@ public class OpenBankingServiceTests : InfrastructureTestBase
         using (Assert.Multiple())
         {
             await Assert.That(await context.BankConnections.CountAsync(CancellationToken)).IsEqualTo(2);
-            await _api.Received(2).GetAllAccountsAsync(Token, CancellationToken);
+            await _syncScheduler.Received(1)
+                .ScheduleUserSyncAsync(Scenario.UserMappings[Username], CancellationToken);
         }
+    }
+
+    [Test]
+    public async Task AddVendorViaAccessCodeAsync_DoesNotSyncWhileConnecting()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username));
+
+        _api.ExchangeCodeForAccessTokenAsync("new-code", CancellationToken).Returns(
+            new ExternalOpenBankingAccessResponse { AccessToken = Token, RefreshToken = "refresh", ExpiresIn = 3600 });
+        _api.GetProviderInformation(Token, CancellationToken).Returns(new ExternalOpenBankingAccountConnectionResponse
+        {
+            Results = new[] { new ExternalOpenBankingAccountConnectionFaker().Generate() }.ToAsyncEnumerable()
+        });
+        _api.GetProviderLogoAsync(Arg.Any<string>(), CancellationToken).Returns([1]);
+
+        OpenBankingService subject = BuildSubject();
+
+        // Act
+        await subject.AddVendorViaAccessCodeAsync(new AddVendor { AccessCode = "new-code" }, CancellationToken);
+
+        // Assert
+        await _api.DidNotReceiveWithAnyArgs().GetAllAccountsAsync(default!, default);
     }
 
     [Test]
@@ -1004,7 +1051,12 @@ public class OpenBankingServiceTests : InfrastructureTestBase
 
         // Assert
         await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
-        await Assert.That(await context.BankConnections.CountAsync(CancellationToken)).IsEqualTo(0);
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(await context.BankConnections.CountAsync(CancellationToken)).IsEqualTo(0);
+            await _syncScheduler.DidNotReceiveWithAnyArgs().ScheduleUserSyncAsync(default, default);
+        }
     }
 
     [Test]
@@ -1045,7 +1097,7 @@ public class OpenBankingServiceTests : InfrastructureTestBase
                 new BankAccount(userId, connectionId, externalAccount.AccountId, "TRANSACTION", "Main", "GBP")))
             .Do(s => s.TransactionScenario.WithTransaction("existing", "main", new TransactionDetails(
                 transaction.TransactionId, "Description", TransactionType.Debit, "PURCHASE", -1m, "GBP",
-                DateTime.UtcNow, false, ["Old"], TransactionMetadata.None)));
+                DateTime.UtcNow, false, ["Old"], TransactionMetadata.None, false)));
 
         GivenProviderReturns(accounts: [externalAccount], transactions: [transaction]);
 
@@ -1135,7 +1187,8 @@ public class OpenBankingServiceTests : InfrastructureTestBase
         }
 
         CapturingLogger<OpenBankingService> logger = new();
-        OpenBankingService subject = new(CurrentUserFor(Username), DbContextFactory, _api, logger, TimeProvider.System, _cache);
+        OpenBankingService subject = new(CurrentUserFor(Username), DbContextFactory, _api, logger, TimeProvider.System, _cache,
+            _syncScheduler);
 
         // Act
         await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
@@ -1279,7 +1332,7 @@ public class OpenBankingServiceTests : InfrastructureTestBase
 
     private static TransactionDetails PendingDetails(string externalId) =>
         new(externalId, "Card purchase", TransactionType.Debit, "PURCHASE", -1m, "GBP", DateTime.UtcNow, true, [],
-            TransactionMetadata.None);
+            TransactionMetadata.None, false);
 
     private Task<TestingScenario> SeedConnectionAsync() =>
         Scenario.Do(s => s.UserScenario.WithUser(Username))
@@ -1343,5 +1396,5 @@ public class OpenBankingServiceTests : InfrastructureTestBase
 
     private OpenBankingService BuildSubject() =>
         new(CurrentUserFor(Username), DbContextFactory, _api, NullLogger<OpenBankingService>.Instance,
-            TimeProvider.System, _cache);
+            TimeProvider.System, _cache, _syncScheduler);
 }

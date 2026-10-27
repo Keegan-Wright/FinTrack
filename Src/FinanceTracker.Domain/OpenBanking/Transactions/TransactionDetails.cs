@@ -13,4 +13,5 @@ public sealed record TransactionDetails(
     DateTime OccurredAt,
     bool IsPending,
     IReadOnlyCollection<string> ProviderClassifications,
-    TransactionMetadata Metadata);
+    TransactionMetadata Metadata,
+    bool LabelledAsTransfer);

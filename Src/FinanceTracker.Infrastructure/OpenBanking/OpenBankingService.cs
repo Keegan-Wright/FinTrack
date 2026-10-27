@@ -36,15 +36,18 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
     private readonly TimeProvider _timeProvider;
     private readonly IOpenBankingApiService _openBankingApiService;
     private readonly HybridCache _cache;
+    private readonly IOpenBankingSyncScheduler _syncScheduler;
 
     public OpenBankingService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
         IOpenBankingApiService openBankingApiService, ILogger<OpenBankingService> logger,
-        TimeProvider timeProvider, HybridCache cache) : base(currentUser, financeTrackerContextFactory, logger)
+        TimeProvider timeProvider, HybridCache cache, IOpenBankingSyncScheduler syncScheduler)
+        : base(currentUser, financeTrackerContextFactory, logger)
     {
         _openBankingApiService = openBankingApiService;
         _timeProvider = timeProvider;
         _cache = cache;
+        _syncScheduler = syncScheduler;
     }
 
     private DateTime UtcNow => _timeProvider.GetUtcNow().UtcDateTime;
@@ -85,7 +88,6 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
             ExternalOpenBankingAccountConnectionResponse providerInformation =
             await _openBankingApiService.GetProviderInformation(providerAccessToken.AccessToken, cancellationToken);
 
-        List<Guid> connectionIds = [];
         await using (FinanceTrackerContext context =
                      await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken))
         {
@@ -119,16 +121,13 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
 
                 connection.IssueToken(providerAccessToken.AccessToken, providerAccessToken.RefreshToken,
                     UtcNow, providerAccessToken.ExpiresIn);
-                connectionIds.Add(connection.Id);
             }
 
             await context.SaveChangesAsync(cancellationToken);
         }
 
-        foreach (Guid connectionId in connectionIds)
-        {
-            await SyncConnectionAsync(connectionId, SyncTypes.All, cancellationToken);
-        }
+        // Synced by the background job like any other sync, so transfers are matched and the user is told when it's done
+        await _syncScheduler.ScheduleUserSyncAsync(UserId, cancellationToken);
 
         return true;
     }

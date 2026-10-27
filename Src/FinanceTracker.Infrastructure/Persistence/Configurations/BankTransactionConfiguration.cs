@@ -37,6 +37,17 @@ internal sealed class BankTransactionConfiguration : AggregateRootConfiguration<
         });
         builder.Navigation(x => x.Metadata).IsRequired();
 
+        // Not encrypted, like IsPending, so the transactions to review can be found and counted in the database
+        builder.OwnsOne(x => x.Transfer, transfer =>
+        {
+            transfer.Property(x => x.Decision).HasColumnName("Transfer_Decision").HasConversion<string>();
+            transfer.Property(x => x.Source).HasColumnName("Transfer_Source").HasConversion<string>();
+            transfer.Property(x => x.Reason).HasColumnName("Transfer_Reason").HasConversion<string>();
+            transfer.Property(x => x.PartnerTransactionId).HasColumnName("Transfer_PartnerTransactionId");
+            transfer.Property(x => x.PartnerAccountId).HasColumnName("Transfer_PartnerAccountId");
+            transfer.Property(x => x.DecidedAt).HasColumnName("Transfer_DecidedAt");
+        });
+
         string externalIdBlindIndex = builder.HasBlindIndex(x => x.ExternalId);
         builder.HasIndex(nameof(BankTransaction.AccountId), externalIdBlindIndex).IsUnique();
 

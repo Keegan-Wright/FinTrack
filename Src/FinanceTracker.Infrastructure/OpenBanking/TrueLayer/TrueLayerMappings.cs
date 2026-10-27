@@ -10,6 +10,9 @@ namespace FinanceTracker.Infrastructure.OpenBanking.TrueLayer;
 /// </summary>
 internal static class TrueLayerMappings
 {
+    // TrueLayer's own category for transfers, whichever bank the transaction came from
+    private const string TransferCategory = "TRANSFER";
+
     extension(ExternalOpenBankingAccountStandingOrder standingOrder)
     {
         public StandingOrderDetails ToDetails() => new(
@@ -62,7 +65,8 @@ internal static class TrueLayerMappings
                     NullIfBlank(transaction.Meta?.ProviderCategory),
                     NullIfBlank(transaction.MerchantName),
                     NullIfBlank(transaction.Meta?.CounterPartyPreferredName),
-                    NullIfBlank(transaction.Meta?.DebtorAccountName)));
+                    NullIfBlank(transaction.Meta?.DebtorAccountName)),
+                string.Equals(transaction.TransactionCategory, TransferCategory, StringComparison.OrdinalIgnoreCase));
         }
     }
 

@@ -27,6 +27,7 @@ public sealed class TransactionDetailsFaker : Faker<TransactionDetails>
                 f.Date.Recent(30, DateTime.UtcNow),
                 false,
                 f.Random.ListItems(Classifications, f.Random.Int(0, 2)).ToList(),
-                TransactionMetadata.None);
+                TransactionMetadata.None,
+                false);
         });
 }

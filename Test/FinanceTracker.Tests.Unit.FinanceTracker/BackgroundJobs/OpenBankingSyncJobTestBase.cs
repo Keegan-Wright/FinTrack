@@ -1,6 +1,7 @@
 using FinanceTracker.Contracts;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.OpenBanking;
+using FinanceTracker.Infrastructure.OpenBanking.Transfers;
 using FinanceTracker.Tests.Unit.Shared;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
@@ -19,8 +20,14 @@ public abstract class OpenBankingSyncJobTestBase : InfrastructureTestBase
     /// </summary>
     private ICurrentUser? _resolvedFor;
 
+    /// <summary>
+    /// The user of the scope <see cref="TransferMatchingService"/> was last resolved from.
+    /// </summary>
+    private ICurrentUser? _matchingFor;
+
     protected IOpenBankingSyncService OpenBankingService { get; } = Substitute.For<IOpenBankingSyncService>();
     protected ISyncNotifier SyncNotifier { get; } = Substitute.For<ISyncNotifier>();
+    protected ITransferMatchingService TransferMatchingService { get; } = Substitute.For<ITransferMatchingService>();
 
     /// <summary>
     /// Scopes the jobs resolve <see cref="OpenBankingService"/> from, with a real <see cref="CurrentUser"/>.
@@ -32,6 +39,11 @@ public abstract class OpenBankingSyncJobTestBase : InfrastructureTestBase
     /// </summary>
     protected List<(Guid UserId, Guid ConnectionId)> Synced { get; } = [];
 
+    /// <summary>
+    /// Each user whose transfers were matched, with how many connections had synced by then.
+    /// </summary>
+    protected List<(Guid UserId, int SyncedBefore)> Matched { get; } = [];
+
     [Before(Test)]
     public void SetupOpenBankingService()
     {
@@ -42,7 +54,22 @@ public abstract class OpenBankingSyncJobTestBase : InfrastructureTestBase
                 _resolvedFor = sp.GetRequiredService<ICurrentUser>();
                 return OpenBankingService;
             })
+            .AddScoped(sp =>
+            {
+                _matchingFor = sp.GetRequiredService<ICurrentUser>();
+                return TransferMatchingService;
+            })
             .BuildServiceProvider();
+
+        TransferMatchingService
+            .When(x => x.MatchAsync(Arg.Any<CancellationToken>()))
+            .Do(_ =>
+            {
+                if (_matchingFor is not null)
+                {
+                    Matched.Add((_matchingFor.UserId, Synced.Count));
+                }
+            });
 
         OpenBankingService
             .When(x => x.SyncConnectionAsync(Arg.Any<Guid>(), Arg.Any<SyncTypes>(), Arg.Any<CancellationToken>()))

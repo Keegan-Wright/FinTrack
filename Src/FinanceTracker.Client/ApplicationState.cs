@@ -5,7 +5,7 @@ namespace FinanceTracker.Client;
 
 /// <summary>
 /// UI state shared by the layout and the page inside it, cascaded from the root. Pages set it through
-/// <see cref="Pages.PageComponent"/>, the layout listens for changes and shows the loading overlay.
+/// <see cref="Pages.PageComponent"/>, the layout listens for changes and shows the loading overlay and sync status.
 /// </summary>
 /// <remarks>
 /// One instance per circuit (each browser tab).
@@ -49,7 +49,26 @@ public sealed class ApplicationState : INotifyPropertyChanged
     }
 
     /// <summary>
-    /// Raised when <see cref="Loading"/> or <see cref="LoadingMessage"/> actually changes.
+    /// Whether a sync of the user's accounts has been queued and not yet finished, until the sync notification
+    /// arrives.
+    /// </summary>
+    public bool Syncing
+    {
+        get;
+        set
+        {
+            if (value == field)
+            {
+                return;
+            }
+
+            field = value;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>
+    /// Raised when a property actually changes.
     /// </summary>
     public event PropertyChangedEventHandler? PropertyChanged;
 

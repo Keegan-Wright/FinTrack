@@ -675,6 +675,9 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.Property<bool>("IsPending")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("LabelledAsTransfer")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("OccurredAt")
                         .IsRequired()
                         .HasColumnType("text")
@@ -1232,8 +1235,49 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                                 .HasForeignKey("BankTransactionId");
                         });
 
+                    b.OwnsOne("FinanceTracker.Domain.OpenBanking.Transfers.TransferInfo", "Transfer", b1 =>
+                        {
+                            b1.Property<Guid>("BankTransactionId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<DateTime>("DecidedAt")
+                                .HasColumnType("timestamp with time zone")
+                                .HasColumnName("Transfer_DecidedAt");
+
+                            b1.Property<string>("Decision")
+                                .IsRequired()
+                                .HasColumnType("text")
+                                .HasColumnName("Transfer_Decision");
+
+                            b1.Property<Guid?>("PartnerAccountId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("Transfer_PartnerAccountId");
+
+                            b1.Property<Guid?>("PartnerTransactionId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("Transfer_PartnerTransactionId");
+
+                            b1.Property<string>("Reason")
+                                .HasColumnType("text")
+                                .HasColumnName("Transfer_Reason");
+
+                            b1.Property<string>("Source")
+                                .IsRequired()
+                                .HasColumnType("text")
+                                .HasColumnName("Transfer_Source");
+
+                            b1.HasKey("BankTransactionId");
+
+                            b1.ToTable("BankTransactions");
+
+                            b1.WithOwner()
+                                .HasForeignKey("BankTransactionId");
+                        });
+
                     b.Navigation("Metadata")
                         .IsRequired();
+
+                    b.Navigation("Transfer");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>

@@ -142,6 +142,7 @@
         if (response)
         {
             _vendorAccessToken = string.Empty;
+            ShowSyncing();
             Snackbar.Add("Bank connected, your accounts will appear after the next sync", Severity.Success);
         }
         else

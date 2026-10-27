@@ -73,7 +73,7 @@ public class FinanceTrackerContextTests : InfrastructureTestBase
             .Do(s => s.BankAccountScenario.WithAccount("main", "bank"))
             .Do(s => s.TransactionScenario.WithTransaction("payment", "main", new TransactionDetails("ext-1", "Payment",
                 TransactionType.Credit, "CREDIT", 12.34m, "GBP", occurredAt, true, ["Food", "Bills"],
-                TransactionMetadata.None)));
+                TransactionMetadata.None, false)));
 
         // Act
         await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);

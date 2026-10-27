@@ -2,11 +2,12 @@
 @implements IDisposable
 
 @* The signed in app's shell: app bar, navigation, the shared loading overlay, and when the user's accounts last
-   synced, with a button to sync them now *@
+   synced, with a button to sync them now. Says when a sync finishes, whoever started it *@
 
 @using System.Globalization
 @inject IAutomationService AutomationService
 @inject ISyncNotifications SyncNotifications
+@inject ISnackbar Snackbar
 
 <MudThemeProvider @ref="@_mudThemeProvider" Theme="_theme" @bind-IsDarkMode="_isDarkMode" DefaultScrollbar="true"/>
 <MudPopoverProvider/>
@@ -41,21 +42,21 @@
     <MudDrawer id="nav-drawer" @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="0">
         <NavMenu/>
         <MudSpacer/>
-        @if (BackgroundSyncTime != null)
+        @if (BackgroundSyncTime != null || ApplicationState.Syncing)
         {
             <div class="ft-sync-status">
                 <div class="ft-list__main">
                     <MudText Typo="Typo.caption" Class="mud-text-secondary d-block">
-                        @(UpdatingBackgroundSync ? "Syncing your accounts…" : "Last synced")
+                        @(ApplicationState.Syncing ? "Syncing your accounts…" : "Last synced")
                     </MudText>
-                    @if (!UpdatingBackgroundSync)
+                    @if (!ApplicationState.Syncing)
                     {
                         <MudText Typo="Typo.caption" Class="d-block">
-                            @BackgroundSyncTime.Value.ToString("d MMM, HH:mm", CultureInfo.CurrentCulture)
+                            @BackgroundSyncTime?.ToString("d MMM, HH:mm", CultureInfo.CurrentCulture)
                         </MudText>
                     }
                 </div>
-                @if (UpdatingBackgroundSync)
+                @if (ApplicationState.Syncing)
                 {
                     <MudProgressCircular Indeterminate="true" Size="Size.Small" Color="Color.Primary"/>
                 }
@@ -96,7 +97,6 @@
 
     internal readonly CancellationTokenSource _cts = new();
 
-    private bool UpdatingBackgroundSync { get; set; }
     private DateTime? BackgroundSyncTime { get; set; }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -105,24 +105,29 @@
         if (firstRender)
         {
             // Only once interactive, a prerender has no circuit to push the update to
-            _syncSubscription = await SyncNotifications.SubscribeAsync(() => InvokeAsync(GetLatestSyncTimeAsync), _cts.Token);
+            _syncSubscription = await SyncNotifications.SubscribeAsync(() => InvokeAsync(OnSyncCompletedAsync), _cts.Token);
 
             await GetLatestSyncTimeAsync();
         }
     }
 
+    private async Task OnSyncCompletedAsync()
+    {
+        ApplicationState.Syncing = false;
+        await GetLatestSyncTimeAsync();
+        Snackbar.Add("Your accounts have been synced", Severity.Success);
+    }
+
     private async Task GetLatestSyncTimeAsync()
     {
-        DateTime? syncTime = await AutomationService.GetLastSyncTimeAsync(_cts.Token);
-        BackgroundSyncTime = syncTime;
-        UpdatingBackgroundSync = false;
+        BackgroundSyncTime = await AutomationService.GetLastSyncTimeAsync(_cts.Token);
         await InvokeAsync(StateHasChanged);
     }
 
     public async Task RequestResync()
     {
         // Cleared when the sync notification arrives
-        UpdatingBackgroundSync = true;
+        ApplicationState.Syncing = true;
         await AutomationService.RequestSyncAsync(_cts.Token);
     }
 

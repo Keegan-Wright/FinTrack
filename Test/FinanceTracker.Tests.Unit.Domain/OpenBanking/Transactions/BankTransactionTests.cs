@@ -74,7 +74,7 @@ public class BankTransactionTests
             IsPending = true, ProviderClassifications = ["Old"]
         });
         var updated = new TransactionDetails("tx-1", "Updated", TransactionType.Credit, "CREDIT", 99m, "EUR",
-            OccurredAt.AddDays(1), false, ["New"], TransactionMetadata.None);
+            OccurredAt.AddDays(1), false, ["New"], TransactionMetadata.None, true);
 
         transaction.UpdateFromSync(updated);
 
@@ -205,5 +205,5 @@ public class BankTransactionTests
 
     private static TransactionDetails Details(string externalId) =>
         new(externalId, "Coffee", TransactionType.Debit, "PURCHASE", -3.5m, "GBP", OccurredAt, false, ["Food"],
-            TransactionMetadata.None);
+            TransactionMetadata.None, false);
 }

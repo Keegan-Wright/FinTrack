@@ -54,12 +54,19 @@ public sealed record AccountIdentifier
 
     /// <summary>
     /// Whether <paramref name="reference"/> names this account, by its IBAN or by the sort code followed by the
-    /// number however they're separated, e.g. <c>11-22-33 12345678</c>.
+    /// number however they're separated, e.g. <c>11-11-11 11111111</c>.
     /// </summary>
+    /// <remarks>
+    /// Banks format references differently (<c>11-11-11 11111111</c>, <c>11-11-11 11111111</c>, an IBAN in groups of
+    /// four) and add other text around them, so both sides are reduced to the same characters and the reference only
+    /// has to contain the account. The sort code and number together are 14 digits, too long to turn up by chance.
+    /// </remarks>
     public bool IsNamedIn(string? reference) =>
         (SortCode is not null && Digits(reference).Contains(SortCode + Number, StringComparison.Ordinal)) ||
         (Iban is not null && Alphanumeric(reference).Contains(Iban, StringComparison.Ordinal));
 
+    // Only a 22 character GB IBAN whose last 14 characters are all digits, anything else (another country's, or a
+    // malformed one) keeps its sort code and number unknown
     private static (string? SortCode, string? Number) FromUkIban(string? iban) =>
         iban is { Length: UkIbanLength } && iban.StartsWith("GB", StringComparison.Ordinal) &&
         iban.AsSpan(UkIbanSortCodeStart).ContainsAnyExceptInRange('0', '9') is false
