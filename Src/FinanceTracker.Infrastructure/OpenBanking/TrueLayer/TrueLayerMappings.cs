@@ -56,9 +56,18 @@ internal static class TrueLayerMappings
                 transaction.Currency,
                 transaction.Timestamp.ToUtc(),
                 isPending,
-                classifications);
+                classifications,
+                new TransactionMetadata(
+                    NullIfBlank(transaction.Meta?.ProviderReference),
+                    NullIfBlank(transaction.Meta?.ProviderCategory),
+                    NullIfBlank(transaction.MerchantName),
+                    NullIfBlank(transaction.Meta?.CounterPartyPreferredName),
+                    NullIfBlank(transaction.Meta?.DebtorAccountName)));
         }
     }
+
+    // Banks leave out the fields they don't fill, which deserialise as empty
+    private static string? NullIfBlank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value;
 
     extension(ExternalOpenBankingProvider provider)
     {

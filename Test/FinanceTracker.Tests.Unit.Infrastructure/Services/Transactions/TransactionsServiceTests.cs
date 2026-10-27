@@ -43,7 +43,7 @@ public class TransactionsServiceTests : InfrastructureTestBase
         // Arrange
         DateTime occurredAt = new(2026, 4, 1, 9, 30, 0, DateTimeKind.Utc);
         TransactionDetails details = new("ext-1", "Coffee Shop", TransactionType.Debit, "PURCHASE", -4.20m, "GBP",
-            occurredAt, true, ["Food"]);
+            occurredAt, true, ["Food"], TransactionMetadata.None);
 
         await SeedAccountAsync()
             .Do(s => s.ClassificationScenario.WithClassification("treat", Username, "Treat"))

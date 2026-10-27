@@ -1102,7 +1102,37 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                                 .HasForeignKey("BankAccountId");
                         });
 
+                    b.OwnsOne("FinanceTracker.Domain.OpenBanking.Accounts.AccountIdentifier", "Identifier", b1 =>
+                        {
+                            b1.Property<Guid>("BankAccountId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("Iban")
+                                .HasColumnType("text")
+                                .HasColumnName("Identifier_Iban")
+                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                            b1.Property<string>("Number")
+                                .HasColumnType("text")
+                                .HasColumnName("Identifier_Number")
+                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                            b1.Property<string>("SortCode")
+                                .HasColumnType("text")
+                                .HasColumnName("Identifier_SortCode")
+                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                            b1.HasKey("BankAccountId");
+
+                            b1.ToTable("BankAccounts");
+
+                            b1.WithOwner()
+                                .HasForeignKey("BankAccountId");
+                        });
+
                     b.Navigation("Balance");
+
+                    b.Navigation("Identifier");
                 });
 
             modelBuilder.Entity("FinanceTracker.Domain.OpenBanking.Accounts.DirectDebit", b =>
@@ -1162,6 +1192,47 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.OwnsOne("FinanceTracker.Domain.OpenBanking.Transactions.TransactionMetadata", "Metadata", b1 =>
+                        {
+                            b1.Property<Guid>("BankTransactionId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("CounterPartyPreferredName")
+                                .HasColumnType("text")
+                                .HasColumnName("Meta_CounterPartyPreferredName")
+                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                            b1.Property<string>("DebtorAccountName")
+                                .HasColumnType("text")
+                                .HasColumnName("Meta_DebtorAccountName")
+                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                            b1.Property<string>("MerchantName")
+                                .HasColumnType("text")
+                                .HasColumnName("Meta_MerchantName")
+                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                            b1.Property<string>("ProviderCategory")
+                                .HasColumnType("text")
+                                .HasColumnName("Meta_ProviderCategory")
+                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                            b1.Property<string>("ProviderReference")
+                                .HasColumnType("text")
+                                .HasColumnName("Meta_ProviderReference")
+                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                            b1.HasKey("BankTransactionId");
+
+                            b1.ToTable("BankTransactions");
+
+                            b1.WithOwner()
+                                .HasForeignKey("BankTransactionId");
+                        });
+
+                    b.Navigation("Metadata")
                         .IsRequired();
                 });
 

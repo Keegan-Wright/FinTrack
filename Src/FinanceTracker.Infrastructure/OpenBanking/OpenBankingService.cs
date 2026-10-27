@@ -203,6 +203,8 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
                 accounts.Add(externalAccount.AccountId, account);
             }
 
+            account.UpdateIdentifier(AccountIdentifier.Create(externalAccount.AccountNumber?.SortCode,
+                externalAccount.AccountNumber?.Number, externalAccount.AccountNumber?.Iban));
             context.SyncLog.Add(account.RecordSync(SyncType.Account, now));
 
             DateTime? transactionsFrom = lastTransactionSync.TryGetValue(account.Id, out DateTime lastSync)

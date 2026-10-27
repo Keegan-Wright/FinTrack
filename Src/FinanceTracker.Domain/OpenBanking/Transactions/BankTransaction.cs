@@ -48,6 +48,11 @@ public sealed class BankTransaction : AggregateRoot
     public bool IsPending { get; private set; }
 
     /// <summary>
+    /// The provider's raw details of who the transaction was with.
+    /// </summary>
+    public TransactionMetadata Metadata { get; private set; }
+
+    /// <summary>
     /// Tags supplied by the provider.
     /// </summary>
     public IReadOnlyCollection<string> ProviderClassifications => _providerClassifications.AsReadOnly();
@@ -65,7 +70,7 @@ public sealed class BankTransaction : AggregateRoot
         return new BankTransaction(account.UserId, account.Id, details);
     }
 
-    [MemberNotNull(nameof(Description), nameof(Category), nameof(Currency))]
+    [MemberNotNull(nameof(Description), nameof(Category), nameof(Currency), nameof(Metadata))]
     public void UpdateFromSync(TransactionDetails details)
     {
         ArgumentNullException.ThrowIfNull(details);
@@ -82,6 +87,7 @@ public sealed class BankTransaction : AggregateRoot
         Currency = details.Currency;
         OccurredAt = details.OccurredAt;
         IsPending = details.IsPending;
+        Metadata = details.Metadata;
 
         _providerClassifications.Clear();
         _providerClassifications.AddRange(details.ProviderClassifications.Distinct());

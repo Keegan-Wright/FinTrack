@@ -26,6 +26,7 @@ public sealed class TransactionDetailsFaker : Faker<TransactionDetails>
                 "GBP",
                 f.Date.Recent(30, DateTime.UtcNow),
                 false,
-                f.Random.ListItems(Classifications, f.Random.Int(0, 2)).ToList());
+                f.Random.ListItems(Classifications, f.Random.Int(0, 2)).ToList(),
+                TransactionMetadata.None);
         });
 }

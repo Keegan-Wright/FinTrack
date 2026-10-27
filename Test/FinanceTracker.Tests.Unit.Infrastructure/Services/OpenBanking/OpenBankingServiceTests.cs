@@ -236,6 +236,94 @@ public class OpenBankingServiceTests : InfrastructureTestBase
     }
 
     [Test]
+    public async Task SyncConnectionAsync_StoresTheAccountIdentifier()
+    {
+        // Arrange
+        await SeedConnectionAsync();
+        ExternalOpenBankingAccount external = new ExternalOpenBankingAccountFaker().Generate();
+        external.AccountNumber = new ExternalOpenBankingAccountNumber
+        {
+            SortCode = "12-34-56", Number = "12345678", Iban = "GB29 NWBK 1234 5612 3456 78"
+        };
+        GivenProviderReturns(accounts: [external]);
+
+        OpenBankingService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        AccountIdentifier? stored = (await LoadAccountsAsync()).Single().Identifier;
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(stored!.SortCode).IsEqualTo("123456");
+            await Assert.That(stored.Number).IsEqualTo("12345678");
+            await Assert.That(stored.Iban).IsEqualTo("GB29NWBK12345612345678");
+        }
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_AccountWithoutAnIdentifier_StoresNone()
+    {
+        // Arrange
+        await SeedConnectionAsync();
+        GivenProviderReturns(accounts: [new ExternalOpenBankingAccountFaker().Generate()]);
+
+        OpenBankingService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        await Assert.That((await LoadAccountsAsync()).Single().Identifier).IsNull();
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_StoresTheTransactionsMetadata()
+    {
+        // Arrange
+        await SeedConnectionAsync();
+        ExternalOpenBankingAccountTransaction transfer = new ExternalOpenBankingAccountTransactionFaker().Generate();
+        transfer.MerchantName = "Coffee Co";
+        transfer.Meta = new ExternalOpenBankingTransactionMetadata
+        {
+            ProviderReference = "123456 12345678",
+            ProviderCategory = "TFR",
+            CounterPartyPreferredName = "C Example",
+            DebtorAccountName = "J Example"
+        };
+        GivenProviderReturns(accounts: [new ExternalOpenBankingAccountFaker().Generate()], transactions: [transfer]);
+
+        OpenBankingService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        await Assert.That((await LoadTransactionsAsync()).Single().Metadata).IsEqualTo(
+            new TransactionMetadata("123456 12345678", "TFR", "Coffee Co", "C Example", "J Example"));
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_TransactionWithoutMetadata_LoadsWithNone()
+    {
+        // Arrange
+        await SeedConnectionAsync();
+        ExternalOpenBankingAccountTransaction transaction = new ExternalOpenBankingAccountTransactionFaker().Generate();
+        transaction.Meta = new ExternalOpenBankingTransactionMetadata { ProviderId = "ignored" };
+        GivenProviderReturns(accounts: [new ExternalOpenBankingAccountFaker().Generate()], transactions: [transaction]);
+
+        OpenBankingService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        await Assert.That((await LoadTransactionsAsync()).Single().Metadata).IsEqualTo(TransactionMetadata.None);
+    }
+
+    [Test]
     public async Task SyncConnectionAsync_KnownProviderAccount_UpdatesExistingAccount()
     {
         // Arrange
@@ -397,7 +485,7 @@ public class OpenBankingServiceTests : InfrastructureTestBase
                 new BankAccount(userId, connectionId, externalAccount.AccountId, "TRANSACTION", "Main", "GBP")))
             .Do(s => s.TransactionScenario.WithTransaction("pending", "main", new TransactionDetails(
                 transaction.TransactionId, "Pending description", TransactionType.Debit, "PURCHASE", -1m, "GBP",
-                DateTime.UtcNow, true, [])));
+                DateTime.UtcNow, true, [], TransactionMetadata.None)));
 
         GivenProviderReturns(accounts: [externalAccount], transactions: [transaction]);
 
@@ -957,7 +1045,7 @@ public class OpenBankingServiceTests : InfrastructureTestBase
                 new BankAccount(userId, connectionId, externalAccount.AccountId, "TRANSACTION", "Main", "GBP")))
             .Do(s => s.TransactionScenario.WithTransaction("existing", "main", new TransactionDetails(
                 transaction.TransactionId, "Description", TransactionType.Debit, "PURCHASE", -1m, "GBP",
-                DateTime.UtcNow, false, ["Old"])));
+                DateTime.UtcNow, false, ["Old"], TransactionMetadata.None)));
 
         GivenProviderReturns(accounts: [externalAccount], transactions: [transaction]);
 
@@ -1190,7 +1278,8 @@ public class OpenBankingServiceTests : InfrastructureTestBase
                 new BankAccount(userId, connectionId, externalAccount.AccountId, "TRANSACTION", "Main", "GBP")));
 
     private static TransactionDetails PendingDetails(string externalId) =>
-        new(externalId, "Card purchase", TransactionType.Debit, "PURCHASE", -1m, "GBP", DateTime.UtcNow, true, []);
+        new(externalId, "Card purchase", TransactionType.Debit, "PURCHASE", -1m, "GBP", DateTime.UtcNow, true, [],
+            TransactionMetadata.None);
 
     private Task<TestingScenario> SeedConnectionAsync() =>
         Scenario.Do(s => s.UserScenario.WithUser(Username))

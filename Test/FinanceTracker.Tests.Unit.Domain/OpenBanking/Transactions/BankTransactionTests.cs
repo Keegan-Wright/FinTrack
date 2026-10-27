@@ -74,7 +74,7 @@ public class BankTransactionTests
             IsPending = true, ProviderClassifications = ["Old"]
         });
         var updated = new TransactionDetails("tx-1", "Updated", TransactionType.Credit, "CREDIT", 99m, "EUR",
-            OccurredAt.AddDays(1), false, ["New"]);
+            OccurredAt.AddDays(1), false, ["New"], TransactionMetadata.None);
 
         transaction.UpdateFromSync(updated);
 
@@ -179,9 +179,31 @@ public class BankTransactionTests
         await Assert.That(transaction.CustomClassificationIds.Count).IsEqualTo(0);
     }
 
+    [Test]
+    public async Task BankTransaction_UpdateFromSync_ReplacesMetadata()
+    {
+        var transaction = BankTransaction.Import(BuildAccount(), Details("tx-1"));
+        TransactionMetadata metadata = new("123456 12345678", "TFR", null, null, null);
+
+        transaction.UpdateFromSync(Details("tx-1") with { Metadata = metadata });
+
+        await Assert.That(transaction.Metadata).IsEqualTo(metadata);
+    }
+
+    [Test]
+    public async Task BankTransaction_Import_SetsMetadata()
+    {
+        TransactionMetadata metadata = new(null, "mastercard", "Coffee Co", null, null);
+
+        var transaction = BankTransaction.Import(BuildAccount(), Details("tx-1") with { Metadata = metadata });
+
+        await Assert.That(transaction.Metadata).IsEqualTo(metadata);
+    }
+
     private static BankAccount BuildAccount() =>
         new(Guid.NewGuid(), Guid.NewGuid(), "acc-1", "TRANSACTION", "Main", "GBP");
 
     private static TransactionDetails Details(string externalId) =>
-        new(externalId, "Coffee", TransactionType.Debit, "PURCHASE", -3.5m, "GBP", OccurredAt, false, ["Food"]);
+        new(externalId, "Coffee", TransactionType.Debit, "PURCHASE", -3.5m, "GBP", OccurredAt, false, ["Food"],
+            TransactionMetadata.None);
 }

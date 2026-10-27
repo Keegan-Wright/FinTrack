@@ -29,6 +29,13 @@ internal sealed class BankAccountConfiguration : AggregateRootConfiguration<Bank
             balance.Property(x => x.AsOf).HasColumnName("Balance_AsOf").Encrypted();
         });
 
+        builder.OwnsOne(x => x.Identifier, identifier =>
+        {
+            identifier.Property(x => x.SortCode).HasColumnName("Identifier_SortCode").Encrypted();
+            identifier.Property(x => x.Number).HasColumnName("Identifier_Number").Encrypted();
+            identifier.Property(x => x.Iban).HasColumnName("Identifier_Iban").Encrypted();
+        });
+
         builder.HasMany(x => x.StandingOrders)
             .WithOne()
             .HasForeignKey("AccountId")

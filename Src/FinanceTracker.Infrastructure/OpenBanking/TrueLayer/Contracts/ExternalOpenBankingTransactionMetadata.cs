@@ -4,6 +4,9 @@ namespace FinanceTracker.Infrastructure.OpenBanking.TrueLayer.Contracts;
 
 public class ExternalOpenBankingTransactionMetadata
 {
+    [JsonPropertyName("provider_reference")]
+    public string ProviderReference { get; set; } = string.Empty;
+
     [JsonPropertyName("provider_category")]
     public string ProviderCategory { get; set; } = string.Empty;
 
