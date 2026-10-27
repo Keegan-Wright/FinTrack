@@ -1,0 +1,38 @@
+name: Issue
+description: Describe a problem, how things work today, and the proposed resolution.
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What is the problem that needs solving?
+    validations:
+      required: true
+
+  - type: textarea
+    id: today
+    attributes:
+      label: Today
+      description: How does this currently work (or not work)?
+    validations:
+      required: true
+
+  - type: textarea
+    id: resolution
+    attributes:
+      label: Resolution
+      description: What should be done to resolve the problem?
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      description: One criterion per line.
+      value: |
+        - [ ]
+        - [ ]
+        - [ ]
+    validations:
+      required: true
