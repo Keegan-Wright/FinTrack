@@ -19,6 +19,9 @@ public static partial class LoggerMessages
     [LoggerMessage(LogLevel.Error, "Error occured syncing pending transactions for provider {providerId} with account {accountId} for user {userId}")]
     public static partial void LogErrorSyncingPendingTransactions(this ILogger logger, Exception exception, Guid providerId, string accountId, Guid userId);
 
+    [LoggerMessage(LogLevel.Information, "Removed {count} stale pending transactions from account {accountId} for user {userId}")]
+    public static partial void LogRemovedStalePendingTransactions(this ILogger logger, int count, Guid accountId, Guid userId);
+
     [LoggerMessage(LogLevel.Warning, "Connection {connectionId} for user {userId} has no active consent, re-authentication is required before it can sync")]
     public static partial void LogConnectionNotAuthenticated(this ILogger logger, Guid connectionId, Guid userId);
 
