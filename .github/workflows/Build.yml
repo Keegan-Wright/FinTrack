@@ -8,6 +8,11 @@ on:
     branches:
       - main
 
+# The GITHUB_TOKEN only needs to check out the code. Artifact uploads and the Docker build cache use the runner's own
+# token
+permissions:
+  contents: read
+
 jobs:
   build:
     name: Build
