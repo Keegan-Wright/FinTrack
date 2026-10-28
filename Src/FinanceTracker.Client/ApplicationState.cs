@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using FinanceTracker.Contracts.OpenBanking;
 
 namespace FinanceTracker.Client;
 
@@ -85,6 +86,31 @@ public sealed class ApplicationState : INotifyPropertyChanged
             OnPropertyChanged();
         }
     }
+
+    /// <summary>
+    /// How many bank connections need their consent renewing soon or already have lapsed, shown in the navigation and
+    /// a banner. Refreshed after each sync or renewal.
+    /// </summary>
+    public int ConnectionsToRenew
+    {
+        get;
+        set
+        {
+            if (value == field)
+            {
+                return;
+            }
+
+            field = value;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>
+    /// Sets <see cref="ConnectionsToRenew"/> from the user's connections: those not <see cref="ConsentState.Active"/>.
+    /// </summary>
+    public void CountConnectionsToRenew(IEnumerable<BankConnectionSummary> connections) =>
+        ConnectionsToRenew = connections.Count(static x => x.ConsentState != ConsentState.Active);
 
     /// <summary>
     /// Raised when a property actually changes.

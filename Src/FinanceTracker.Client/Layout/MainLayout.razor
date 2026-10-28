@@ -5,9 +5,11 @@
    synced, with a button to sync them now. Says when a sync finishes, whoever started it *@
 
 @using System.Globalization
+@using FinanceTracker.Contracts.OpenBanking
 @inject IAutomationService AutomationService
 @inject ISyncNotifications SyncNotifications
 @inject ITransfersService TransfersService
+@inject IOpenBankingService OpenBankingService
 @inject ISnackbar Snackbar
 
 <MudThemeProvider @ref="@_mudThemeProvider" Theme="_theme" @bind-IsDarkMode="_isDarkMode" DefaultScrollbar="true"/>
@@ -45,7 +47,8 @@
        drawer is already handled *@
     <MudDrawer id="nav-drawer" @bind-Open="_drawerOpen" Breakpoint="@LayoutBase.DrawerBreakpoint"
                ClipMode="DrawerClipMode.Always" Elevation="0" data-mud-static-monitored="true">
-        <NavMenu TransfersToReview="@ApplicationState.TransfersToReview"/>
+        <NavMenu TransfersToReview="@ApplicationState.TransfersToReview"
+                 ConnectionsToRenew="@ApplicationState.ConnectionsToRenew"/>
         <MudSpacer/>
         @if (BackgroundSyncTime != null || ApplicationState.Syncing)
         {
@@ -87,6 +90,10 @@
                             <MudText Typo="Typo.h6">@ApplicationState.LoadingMessage</MudText>
                         </MudItem>
                     </MudOverlay>
+                    @if (ApplicationState.ConnectionsToRenew > 0)
+                    {
+                        <RenewConnectionsBanner Count="@ApplicationState.ConnectionsToRenew"/>
+                    }
                     <CascadingValue Value="@_isDarkMode" Name="IsDarkMode">
                         @Body
                     </CascadingValue>
@@ -125,10 +132,11 @@
     }
 
     /// <summary>
-    /// When the accounts last synced and how many transfers wait for review, fetched together as neither needs the
-    /// other.
+    /// When the accounts last synced, how many transfers wait for review and how many connections need renewing,
+    /// fetched together as none needs the others.
     /// </summary>
-    private Task RefreshSyncDetailsAsync() => Task.WhenAll(GetLatestSyncTimeAsync(), GetTransfersToReviewAsync());
+    private Task RefreshSyncDetailsAsync() =>
+        Task.WhenAll(GetLatestSyncTimeAsync(), GetTransfersToReviewAsync(), GetConnectionsToRenewAsync());
 
     private async Task GetLatestSyncTimeAsync()
     {
@@ -145,6 +153,20 @@
         catch (HttpRequestException)
         {
             // Only the navigation's count, the page itself still works
+        }
+    }
+
+    private async Task GetConnectionsToRenewAsync()
+    {
+        try
+        {
+            List<BankConnectionSummary> connections =
+                await OpenBankingService.GetConnectionsAsync(_cts.Token).ToListAsync(_cts.Token);
+            ApplicationState.CountConnectionsToRenew(connections);
+        }
+        catch (HttpRequestException)
+        {
+            // Only the navigation's count and the banner, the pages themselves still work
         }
     }
 

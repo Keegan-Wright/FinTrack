@@ -53,6 +53,7 @@ public class EncryptionModelConfigurationTests : InfrastructureTestBase
 
     [Test]
     [Arguments(typeof(BankConnection), nameof(BankConnection.ConsentGrantedAt))]
+    [Arguments(typeof(BankConnection), nameof(BankConnection.ConsentExpiresAt))]
     [Arguments(typeof(AccessToken), nameof(AccessToken.ExpiresAt))]
     [Arguments(typeof(AccessToken), nameof(AccessToken.RevokedAt))]
     public async Task Model_QueriedProperties_AreNotEncrypted(Type entityType, string propertyName)

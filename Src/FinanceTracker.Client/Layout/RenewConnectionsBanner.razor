@@ -1,0 +1,24 @@
+@* Above every page while a bank connection's consent ends soon or has ended, linking to where it's renewed. *@
+
+<div class="ft-renew-banner">
+    @* A soft tint rather than a solid bar, it's a reminder on every page rather than an error. Styled like the
+       navigation's count, with the link in the theme's primary colour so it stands out *@
+    <MudAlert Severity="Severity.Warning" Variant="Variant.Text" Dense="true">
+        @Message
+        <MudLink Href="ProviderSetup" Color="Color.Primary" Underline="Underline.Always"
+                 Class="ft-renew-banner__link">Renew access</MudLink>
+    </MudAlert>
+</div>
+
+@code {
+
+    /// <summary>
+    /// How many connections need renewing, see <see cref="ApplicationState.ConnectionsToRenew"/>.
+    /// </summary>
+    [Parameter] public int Count { get; set; }
+
+    private string Message => Count == 1
+        ? "A bank connection needs renewing to keep syncing."
+        : $"{Count} bank connections need renewing to keep syncing.";
+
+}

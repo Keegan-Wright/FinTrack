@@ -10,6 +10,14 @@ public interface IOpenBankingApiService
     Task<ExternalOpenBankingAccessResponse> GetAccessTokenByRefreshTokenAsync(string refreshToken,
         CancellationToken cancellationToken);
 
+    /// <summary>
+    /// A link that signs the user in to their bank again to renew the consent behind
+    /// <paramref name="refreshToken"/>, keeping the same connection. They come back with an access code, as when
+    /// connecting.
+    /// </summary>
+    /// <exception cref="HttpRequestException">The provider refused.</exception>
+    Task<string> GetReauthenticationUrlAsync(string refreshToken, CancellationToken cancellationToken);
+
     Task<ExternalOpenBankingListAllAccountsResponse> GetAllAccountsAsync(string authToken,
         CancellationToken cancellationToken);
 

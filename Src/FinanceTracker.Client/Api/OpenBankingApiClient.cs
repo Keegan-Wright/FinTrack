@@ -28,4 +28,11 @@ public sealed class OpenBankingApiClient : IOpenBankingService
 
     public Task<bool> AddVendorViaAccessCodeAsync(AddVendor addVendor, CancellationToken cancellationToken) =>
         _http.PostReadAsync<AddVendor, bool>($"{ApiRoutes.OpenBanking}/connections", addVendor, cancellationToken);
+
+    public IAsyncEnumerable<BankConnectionSummary> GetConnectionsAsync(CancellationToken cancellationToken) =>
+        _http.GetStreamAsync<BankConnectionSummary>($"{ApiRoutes.OpenBanking}/connections", cancellationToken);
+
+    public Task<string> GetRenewalUrlAsync(Guid connectionId, CancellationToken cancellationToken) =>
+        _http.PostReadAsync<object?, string>($"{ApiRoutes.OpenBanking}/connections/{connectionId}/renewal-url", null,
+            cancellationToken);
 }

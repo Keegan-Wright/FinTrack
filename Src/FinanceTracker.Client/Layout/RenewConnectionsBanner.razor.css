@@ -1,0 +1,15 @@
+.ft-renew-banner {
+    margin-bottom: 16px;
+}
+
+/* The same tint and text as the navigation's count, the icon keeps the warning colour. */
+.ft-renew-banner ::deep .mud-alert-text-warning {
+    background-color: rgba(var(--mud-palette-warning-rgb), .24);
+    color: var(--mud-palette-text-primary);
+}
+
+.ft-renew-banner ::deep .ft-renew-banner__link {
+    margin-left: 4px;
+    font-weight: 600;
+    white-space: nowrap;
+}

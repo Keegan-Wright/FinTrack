@@ -1,6 +1,8 @@
 @page "/ProviderSetup"
-@* Connects banks in three steps pick providers, consent on the provider's page, then paste back the access code
-   (IOpenBankingService). *@
+@* The user's connected banks, with when each one's consent ends and a way to renew it, and connecting more in three
+   steps: pick providers, consent on the provider's page, then paste back the access code (IOpenBankingService).
+   Renewing is the same round trip from a renewal link, sharing the paste step. *@
+@using System.Globalization
 @using FinanceTracker.Contracts.OpenBanking
 @using Microsoft.AspNetCore.Authorization
 @inherits PageComponent
@@ -11,9 +13,51 @@
 @inject IOpenBankingService OpenBankingService
 
 <PageTitle>FinTrack - Bank connections</PageTitle>
-<PageHeader Title="Connect a bank" Subtitle="Three steps, and your accounts appear after the next sync"/>
+<PageHeader Title="Bank connections" Subtitle="Keep your banks syncing, or connect another in three steps"/>
 
 <MudGrid Spacing="4">
+    @if (Connections is { Count: > 0 })
+    {
+        <MudItem xs="12">
+            <Section Title="Your banks" Caption="Banks ask you to renew access every 90 days">
+                <div class="ft-list">
+                    @foreach (BankConnectionSummary connection in Connections)
+                    {
+                        bool renewing = _renewing?.ConnectionId == connection.ConnectionId;
+                        <div class="ft-list__row">
+                            <AccountLogo Logo="@connection.Logo"/>
+                            <div class="ft-list__main">
+                                <MudText Typo="Typo.body2" Class="text-truncate">@connection.Name</MudText>
+                                <MudText Typo="Typo.caption" Class="@ConsentClass(connection)">@ConsentText(connection)</MudText>
+                            </div>
+                            @if (renewing)
+                            {
+                                <MudButton Href="@_renewalUrl" Target="_blank" Variant="Variant.Filled"
+                                           Color="Color.Primary" Size="Size.Small"
+                                           EndIcon="@Icons.Material.Outlined.OpenInNew">
+                                    Open my bank
+                                </MudButton>
+                            }
+                            else
+                            {
+                                <MudButton Variant="@(NeedsRenewal(connection) ? Variant.Filled : Variant.Text)"
+                                           Color="Color.Primary" Size="Size.Small"
+                                           OnClick="@(() => StartRenewalAsync(connection))">
+                                    Renew
+                                </MudButton>
+                            }
+                        </div>
+                    }
+                </div>
+                @if (_renewing is not null)
+                {
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary d-block mt-2">
+                        Sign in to @_renewing.Name in the new tab, then paste the access code in step 3.
+                    </MudText>
+                }
+            </Section>
+        </MudItem>
+    }
     <MudItem xs="12" lg="7">
         <Section Title="1. Choose your banks"
                  Caption="@(_selected.Count == 0 ? "Pick one or more" : $"{_selected.Count} chosen")" Class="h-100">
@@ -67,7 +111,7 @@
                 <div class="ft-code-row">
                     <MudTextField T="string" @bind-Value="_vendorAccessToken" Placeholder="Access code"
                                   Immediate="true" Variant="Variant.Outlined" Margin="Margin.Dense"
-                                  Disabled="@string.IsNullOrEmpty(_openBankingAuthUrl)"/>
+                                  Disabled="@(string.IsNullOrEmpty(_openBankingAuthUrl) && _renewing is null)"/>
                     <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="@AddProviderAsync"
                                Disabled="@string.IsNullOrWhiteSpace(_vendorAccessToken)">Connect</MudButton>
                 </div>
@@ -84,10 +128,22 @@
     [PersistentState]
     public List<OpenBankingProvider>? OpenBankingProviders { get; set; }
 
+    /// <summary>
+    /// The user's connected banks, loaded once, see <see cref="PageComponent.LoadOnceAsync{T}"/>.
+    /// </summary>
+    [PersistentState]
+    public List<BankConnectionSummary>? Connections { get; set; }
+
     private readonly HashSet<OpenBankingProvider> _selected = [];
     private string _searchString = string.Empty;
     private string _openBankingAuthUrl = string.Empty;
     private string _vendorAccessToken = string.Empty;
+
+    /// <summary>
+    /// The connection being renewed once its renewal link has been fetched.
+    /// </summary>
+    private BankConnectionSummary? _renewing;
+    private string _renewalUrl = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
@@ -95,7 +151,54 @@
         OpenBankingProviders = await LoadOnceAsync(OpenBankingProviders, "Loading Providers", cancellationToken =>
             OpenBankingService.GetOpenBankingProvidersForClientAsync(cancellationToken)
                 .ToListAsync(cancellationToken).AsTask());
+        Connections = await LoadOnceAsync(Connections, "Loading your banks", cancellationToken =>
+            OpenBankingService.GetConnectionsAsync(cancellationToken).ToListAsync(cancellationToken).AsTask());
     }
+
+    private async Task StartRenewalAsync(BankConnectionSummary connection)
+    {
+        SetLoadingState(true, $"Asking {connection.Name} for a renewal link…");
+        try
+        {
+            _renewalUrl = await OpenBankingService.GetRenewalUrlAsync(connection.ConnectionId, _cts.Token);
+            _renewing = connection;
+        }
+        catch (HttpRequestException)
+        {
+            Snackbar.Add($"{connection.Name} can't be renewed from here, connect it again below", Severity.Error);
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
+    private async Task ReloadConnectionsAsync()
+    {
+        Connections = await OpenBankingService.GetConnectionsAsync(_cts.Token).ToListAsync(_cts.Token);
+        RefreshConnectionsToRenew(Connections);
+    }
+
+    private static bool NeedsRenewal(BankConnectionSummary connection) =>
+        connection.ConsentState != ConsentState.Active;
+
+    internal static string ConsentText(BankConnectionSummary connection)
+    {
+        string date = connection.ConsentExpiresAt.ToLocalTime().ToString("d MMM yyyy", CultureInfo.CurrentCulture);
+        return connection.ConsentState switch
+        {
+            ConsentState.Lapsed => $"Access ended {date}, renew to sync again",
+            ConsentState.RenewSoon => $"Access ends {date}, renew to keep syncing",
+            _ => $"Access until {date}"
+        };
+    }
+
+    private static string ConsentClass(BankConnectionSummary connection) => connection.ConsentState switch
+    {
+        ConsentState.Lapsed => "mud-error-text",
+        ConsentState.RenewSoon => "mud-warning-text",
+        _ => "mud-text-secondary"
+    };
 
     private Func<OpenBankingProvider, bool> QuickFilter =>
         x => string.IsNullOrWhiteSpace(_searchString) || x.DisplayName.Contains(_searchString, StringComparison.OrdinalIgnoreCase);
@@ -143,7 +246,18 @@
         {
             _vendorAccessToken = string.Empty;
             ShowSyncing();
-            Snackbar.Add("Bank connected, your accounts will appear after the next sync", Severity.Success);
+            if (_renewing is null)
+            {
+                Snackbar.Add("Bank connected, your accounts will appear after the next sync", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add($"Access renewed for {_renewing.Name}", Severity.Success);
+                _renewing = null;
+                _renewalUrl = string.Empty;
+            }
+
+            await ReloadConnectionsAsync();
         }
         else
         {

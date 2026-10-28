@@ -13,6 +13,11 @@ namespace FinanceTracker.Domain.OpenBanking.Connections;
 /// </remarks>
 public sealed class BankConnection : AggregateRoot
 {
+    /// <summary>
+    /// How long before consent ends the user is asked to renew it.
+    /// </summary>
+    public static readonly TimeSpan RenewalWindow = TimeSpan.FromDays(14);
+
     private readonly List<string> _scopes = [];
     private readonly List<AccessToken> _accessTokens = [];
 
@@ -24,7 +29,7 @@ public sealed class BankConnection : AggregateRoot
 #pragma warning restore CS8618
 
     public BankConnection(Guid userId, string externalProviderId, string name, string accessCode,
-        IEnumerable<string> scopes, byte[] logo, DateTime consentGrantedAt) : base(userId)
+        IEnumerable<string> scopes, byte[] logo, DateTime consentGrantedAt, DateTime consentExpiresAt) : base(userId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(externalProviderId);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
@@ -33,7 +38,7 @@ public sealed class BankConnection : AggregateRoot
         ExternalProviderId = externalProviderId;
         Name = name;
         Logo = logo;
-        Reauthenticate(accessCode, scopes, consentGrantedAt);
+        Reauthenticate(accessCode, scopes, consentGrantedAt, consentExpiresAt);
     }
 
     public string ExternalProviderId { get; private set; }
@@ -53,21 +58,50 @@ public sealed class BankConnection : AggregateRoot
     /// </summary>
     public DateTime ConsentGrantedAt { get; private set; }
 
+    /// <summary>
+    /// When the consent ends, as the provider reports it. The user has to renew it before then to keep syncing.
+    /// </summary>
+    public DateTime ConsentExpiresAt { get; private set; }
+
     public AccessToken? ActiveToken => _accessTokens.SingleOrDefault(x => !x.IsRevoked);
 
-    public bool HasConsentLapsed(DateTime now, TimeSpan consentLifetime) => now >= ConsentGrantedAt + consentLifetime;
+    public bool HasConsentLapsed(DateTime now) => now >= ConsentExpiresAt;
+
+    /// <summary>
+    /// Consent ends within <see cref="RenewalWindow"/>, or already has, so the user should renew it.
+    /// </summary>
+    public bool NeedsRenewal(DateTime now) => now >= ConsentExpiresAt - RenewalWindow;
+
+    /// <summary>
+    /// The refresh token to renew the consent with: the latest one issued, revoked or not, as renewing works for a
+    /// while after consent has lapsed. Needs the latest token loaded.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">No token has been issued for the connection.</exception>
+    public string RefreshTokenForRenewal()
+    {
+        AccessToken? latest = _accessTokens.MaxBy(static x => x.IssuedAt);
+        if (latest is null)
+        {
+            throw new InvalidOperationException($"Connection {Id} has no token to renew with.");
+        }
+
+        return latest.RefreshToken;
+    }
 
     /// <summary>
     /// Replaces the consent for this connection. Any active token belongs to the old consent and is revoked.
     /// </summary>
     [MemberNotNull(nameof(AccessCode))]
-    public void Reauthenticate(string accessCode, IEnumerable<string> scopes, DateTime reauthenticatedAt)
+    public void Reauthenticate(string accessCode, IEnumerable<string> scopes, DateTime reauthenticatedAt,
+        DateTime consentExpiresAt)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(accessCode);
         ArgumentNullException.ThrowIfNull(scopes);
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(consentExpiresAt, reauthenticatedAt);
 
         AccessCode = accessCode;
         ConsentGrantedAt = reauthenticatedAt;
+        ConsentExpiresAt = consentExpiresAt;
         _scopes.Clear();
         _scopes.AddRange(scopes.Distinct());
         ActiveToken?.Revoke(reauthenticatedAt);

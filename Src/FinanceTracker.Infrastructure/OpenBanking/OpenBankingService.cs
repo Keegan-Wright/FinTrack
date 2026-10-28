@@ -24,6 +24,11 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
 
     private static readonly TimeSpan TransactionSyncOverlap = TimeSpan.FromDays(7);
 
+    /// <summary>
+    /// How long consent lasts.
+    /// </summary>
+    private static readonly TimeSpan DefaultConsentLifetime = TimeSpan.FromDays(90);
+
     private const string ProvidersCacheKey = "open-banking:providers";
 
     // The same for every user and rarely changes, so the provider is asked at most every few hours
@@ -106,17 +111,19 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
                     .Include(x => x.AccessTokens.Where(t => t.RevokedAt == null))
                     .SingleOrDefaultAsync(cancellationToken);
 
+                DateTime consentExpiresAt = ConsentExpiresAt(externalConnection);
                 if (connection is null)
                 {
                     connection = new BankConnection(UserId, provider.ProviderId, provider.DisplayName,
                         addVendor.AccessCode, scopes,
-                        await _openBankingApiService.GetProviderLogoAsync(provider.LogoUri, cancellationToken), UtcNow);
+                        await _openBankingApiService.GetProviderLogoAsync(provider.LogoUri, cancellationToken), UtcNow,
+                        consentExpiresAt);
                     context.BankConnections.Add(connection);
                 }
                 else
                 {
-                    // Adding a provider that is already connected re-authenticates it
-                    connection.Reauthenticate(addVendor.AccessCode, scopes, UtcNow);
+                    // Adding a provider that is already connected re-authenticates it, as does renewing it
+                    connection.Reauthenticate(addVendor.AccessCode, scopes, UtcNow, consentExpiresAt);
                 }
 
                 connection.IssueToken(providerAccessToken.AccessToken, providerAccessToken.RefreshToken,
@@ -147,6 +154,75 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
         {
             await SyncConnectionAsync(connectionId, syncFlags, cancellationToken);
         }
+    }
+
+    public async IAsyncEnumerable<BankConnectionSummary> GetConnectionsAsync(
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        await using FinanceTrackerContext context =
+            await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+
+        // Names are encrypted, so they're sorted in memory
+        List<BankConnection> connections = await context.BankConnections.OwnedBy(UserId)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        DateTime now = UtcNow;
+        foreach (BankConnection connection in connections.OrderBy(static x => x.Name))
+        {
+            yield return new BankConnectionSummary
+            {
+                ConnectionId = connection.Id,
+                Name = connection.Name,
+                Logo = connection.Logo,
+                ConsentExpiresAt = connection.ConsentExpiresAt,
+                ConsentState = ConsentStateOf(connection, now)
+            };
+        }
+    }
+
+    public async Task<string> GetRenewalUrlAsync(Guid connectionId, CancellationToken cancellationToken)
+    {
+        await using FinanceTrackerContext context =
+            await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+
+        // Only the latest token, revoked or not, renewing works for a while after consent has lapsed
+        BankConnection connection = await context.BankConnections.OwnedBy(UserId)
+            .AsNoTracking()
+            .Include(x => x.AccessTokens.OrderByDescending(t => t.IssuedAt).Take(1))
+            .SingleAsync(x => x.Id == connectionId, cancellationToken);
+
+        return await _openBankingApiService.GetReauthenticationUrlAsync(connection.RefreshTokenForRenewal(),
+            cancellationToken);
+    }
+
+    private static ConsentState ConsentStateOf(BankConnection connection, DateTime now)
+    {
+        if (connection.HasConsentLapsed(now))
+        {
+            return ConsentState.Lapsed;
+        }
+
+        if (connection.NeedsRenewal(now))
+        {
+            return ConsentState.RenewSoon;
+        }
+
+        return ConsentState.Active;
+    }
+
+    /// <summary>
+    /// When the provider says the consent ends, or the usual lifetime from now if it doesn't say.
+    /// </summary>
+    private DateTime ConsentExpiresAt(ExternalOpenBankingAccountConnection externalConnection)
+    {
+        DateTime reported = externalConnection.ConsentExpiresAt.ToUtc();
+        if (reported > UtcNow)
+        {
+            return reported;
+        }
+
+        return UtcNow + DefaultConsentLifetime;
     }
 
     public async Task SyncConnectionAsync(Guid connectionId, SyncTypes syncFlags, CancellationToken cancellationToken)

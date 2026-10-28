@@ -1,3 +1,4 @@
+using FinanceTracker.Contracts.OpenBanking;
 using FinanceTracker.Contracts.Services;
 using Microsoft.AspNetCore.Components;
 
@@ -65,6 +66,12 @@ public class PageComponent : ComponentBase, IDisposable
     /// </summary>
     internal async Task RefreshTransfersToReviewAsync(ITransfersService transfersService) =>
         ApplicationState.TransfersToReview = await transfersService.GetReviewCountAsync(_cts.Token);
+
+    /// <summary>
+    /// Updates the count of connections to renew in the navigation and banner.
+    /// </summary>
+    internal void RefreshConnectionsToRenew(IEnumerable<BankConnectionSummary> connections) =>
+        ApplicationState.CountConnectionsToRenew(connections);
 
     /// <summary>
     /// Shows or hides the loading overlay, with <paramref name="message"/> under the spinner.

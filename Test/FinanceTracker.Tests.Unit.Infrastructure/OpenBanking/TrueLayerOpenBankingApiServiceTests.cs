@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.OpenBanking.TrueLayer;
 using FinanceTracker.Infrastructure.OpenBanking.TrueLayer.Contracts;
@@ -161,6 +162,57 @@ public class TrueLayerOpenBankingApiServiceTests : UnitTestBase
             await Assert.That(formBody).Contains("refresh_token=refresh-token");
             await Assert.That(formBody).Contains("client_id=client-id");
         }
+    }
+
+    [Test]
+    public async Task GetReauthenticationUrlAsync_PostsTheRefreshTokenAndReturnsTheLink()
+    {
+        // Arrange
+        HttpRequestMessage? capturedRequest = null;
+        string? capturedBody = null;
+        TrueLayerOpenBankingApiService subject = BuildSubject(async request =>
+        {
+            capturedRequest = request;
+            capturedBody = await request.Content!.ReadAsStringAsync();
+            return Json(new { result = "https://bank.example.test/reauth", success = true });
+        });
+
+        // Act
+        string url = await subject.GetReauthenticationUrlAsync("refresh-token", CancellationToken);
+
+        // Assert
+        using JsonDocument body = JsonDocument.Parse(capturedBody!);
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(url).IsEqualTo("https://bank.example.test/reauth");
+            await Assert.That(capturedRequest!.Method).IsEqualTo(HttpMethod.Post);
+            await Assert.That(capturedRequest.RequestUri!.ToString()).IsEqualTo("https://auth.example.com/v1/reauthuri");
+            await Assert.That(body.RootElement.GetProperty("response_type").GetString()).IsEqualTo("code");
+            await Assert.That(body.RootElement.GetProperty("refresh_token").GetString()).IsEqualTo("refresh-token");
+            await Assert.That(body.RootElement.GetProperty("redirect_uri").GetString())
+                .IsEqualTo("https://localhost/callback");
+        }
+    }
+
+    [Test]
+    public async Task GetReauthenticationUrlAsync_Refused_Throws()
+    {
+        TrueLayerOpenBankingApiService subject = BuildSubject(_ =>
+            Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized)));
+
+        await Assert.ThrowsAsync<HttpRequestException>(() =>
+            subject.GetReauthenticationUrlAsync("refresh-token", CancellationToken));
+    }
+
+    [Test]
+    public async Task GetReauthenticationUrlAsync_NotSuccessful_Throws()
+    {
+        TrueLayerOpenBankingApiService subject =
+            BuildSubject(_ => Task.FromResult(Json(new { result = string.Empty, success = false })));
+
+        await Assert.ThrowsAsync<HttpRequestException>(() =>
+            subject.GetReauthenticationUrlAsync("refresh-token", CancellationToken));
     }
 
     [Test]
