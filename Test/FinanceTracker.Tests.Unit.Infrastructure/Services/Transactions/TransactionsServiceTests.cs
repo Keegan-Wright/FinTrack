@@ -11,6 +11,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Transaction = FinanceTracker.Contracts.Transactions.Transaction;
 using FinanceTracker.Domain.OpenBanking.Transfers;
+using FinanceTracker.Domain.Household;
+using FinanceTracker.Infrastructure.OpenBanking.Transfers;
 
 namespace FinanceTracker.Tests.Unit.Infrastructure.Services.Transactions;
 
@@ -137,6 +139,51 @@ public class TransactionsServiceTests : InfrastructureTestBase
 
         // Assert
         await Assert.That(transactions.Select(static x => x.Description)).IsEquivalentTo(["Long ago", "Before"]);
+    }
+
+    [Test]
+    public async Task GetAllTransactionsAsync_NamesTheAccountAndWhoATransferWasWith()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("bank", Username))
+            .Do(s => s.BankAccountScenario.WithAccount("main", "bank", static (userId, connectionId) =>
+                new BankAccount(userId, connectionId, "acc-main", "TRANSACTION", "Joint", "GBP")))
+            .Do(s => s.HouseholdMemberScenario.WithHouseholdMember("partner", Username, static userId =>
+                new HouseholdMember(userId, "Jane", "Smith", null)))
+            .Do(s => s.HouseholdMemberScenario.WithPayeeName("partner", "J Smith"))
+            .Do(s => s.TransactionScenario.WithTransaction("rent", "main", Details("J SMITH 01JAN26")));
+
+        await new TransferMatchingService(CurrentUserFor(Username), DbContextFactory,
+            NullLogger<TransferMatchingService>.Instance, TimeProvider.System).MatchAsync(CancellationToken);
+
+        TransactionsService subject = BuildSubject();
+
+        // Act
+        Transaction transaction = (await GetAllAsync(subject, new FilterTransactions())).Single();
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(transaction.AccountId).IsEqualTo(Scenario.AccountMappings["main"]);
+            await Assert.That(transaction.AccountName).IsEqualTo("Joint");
+            await Assert.That(transaction.Transfer!.State).IsEqualTo(TransferState.Transfer);
+            await Assert.That(transaction.Transfer.Reason).IsEqualTo(TransferMatchReason.HouseholdMember);
+            await Assert.That(transaction.Transfer.PartnerHouseholdMemberName).IsEqualTo("Jane Smith");
+        }
+    }
+
+    [Test]
+    public async Task TransferMatchReason_HasTheSameNamesAndValuesAsTheDomains()
+    {
+        // Act
+        List<string> mapped = Enum.GetValues<Domain.OpenBanking.Transfers.TransferReason>()
+            .Select(static x => ((TransferMatchReason)(int)x).ToString())
+            .ToList();
+
+        // Assert
+        await Assert.That(mapped)
+            .IsEquivalentTo(Enum.GetNames<Domain.OpenBanking.Transfers.TransferReason>());
     }
 
     [Test]

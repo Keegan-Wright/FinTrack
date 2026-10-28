@@ -66,4 +66,9 @@ public static class ApiRoutes
     /// <see cref="Services.ITransactionsService"/>.
     /// </summary>
     public const string Transactions = "api/transactions";
+
+    /// <summary>
+    /// <see cref="Services.ITransfersService"/>.
+    /// </summary>
+    public const string Transfers = "api/transfers";
 }

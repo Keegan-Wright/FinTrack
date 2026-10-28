@@ -1,6 +1,6 @@
 @page "/Transactions"
-@* Every transaction, filterable, with custom classifications applied from here
-   (ITransactionsService, IClassificationService). Loads in the browser only, the list is too big to send twice. *@
+@* Every transaction, filterable, with custom classifications applied from here and whether each is a transfer decided. Loads in the browser only, the list is too big to
+   send twice. *@
 @using System.Globalization
 @using FinanceTracker.Client.Components.Dialogs
 @using FinanceTracker.Client.Components.Transactions
@@ -13,6 +13,7 @@
 @attribute [Authorize]
 @inject ITransactionsService TransactionsService
 @inject IClassificationService ClassificationsService
+@inject ITransfersService TransfersService
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 
@@ -59,6 +60,13 @@
                             <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Warning"
                                      Class="ml-2">Pending</MudChip>
                         }
+                        <TransferChip Transfer="@context.Item.Transfer"
+                                      OnAction="@(action => DecideTransferAsync(context.Item, action))"/>
+                    </CellTemplate>
+                </PropertyColumn>
+                <PropertyColumn Property="x => x.AccountName" Title="Account" Sortable="true">
+                    <CellTemplate>
+                        <span class="mud-text-secondary">@context.Item.AccountName</span>
                     </CellTemplate>
                 </PropertyColumn>
                 <PropertyColumn Property="x => x.TransactionCategory" Title="Category" Sortable="true">
@@ -89,6 +97,15 @@
                                            aria-label="Add tags"
                                            OnClick="@(() => AddClassificationsAsync(context.Item))"/>
                         </MudTooltip>
+                        @* Once there's a decision its chip holds the choices *@
+                        @if (context.Item.Transfer is null)
+                        {
+                            <MudTooltip Text="Mark as transfer">
+                                <MudIconButton Icon="@Icons.Material.Outlined.SwapHoriz" Size="Size.Small"
+                                               aria-label="Mark as transfer"
+                                               OnClick="@(() => MarkAsTransferAsync(context.Item))"/>
+                            </MudTooltip>
+                        }
                     </CellTemplate>
                 </TemplateColumn>
             </Columns>
@@ -146,6 +163,49 @@
         }
 
         _loading = false;
+    }
+
+    private Task MarkAsTransferAsync(Transaction transaction) =>
+        DecideTransferAsync(transaction, TransferAction.MarkAsTransfer);
+
+    private async Task DecideTransferAsync(Transaction transaction, TransferAction action)
+    {
+        try
+        {
+            SetLoadingState(true, "Updating transfers");
+            var id = transaction.TransactionId;
+            IReadOnlyList<Transaction> changed = action switch
+            {
+                TransferAction.MarkAsTransfer => await TransfersService.MarkAsTransferAsync(id, _cts.Token),
+                TransferAction.NotATransfer => await TransfersService.MarkNotATransferAsync(id, _cts.Token),
+                _ => await TransfersService.ResetTransferAsync(id, _cts.Token)
+            };
+
+            // The decision can change the other half too, swap in each that's listed
+            foreach (var updated in changed)
+            {
+                var index = _transactions.FindIndex(x => x.TransactionId == updated.TransactionId);
+                if (index >= 0)
+                {
+                    _transactions[index] = updated;
+                }
+            }
+
+            Snackbar.Add(action switch
+            {
+                TransferAction.MarkAsTransfer => "Marked as a transfer, it no longer counts as income or spending",
+                TransferAction.NotATransfer => "It counts as income or spending now",
+                _ => "FinTrack will decide this one"
+            }, Severity.Success);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't update that, try again", Severity.Error);
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
     }
 
     private async Task AddClassificationsAsync(Transaction transaction)

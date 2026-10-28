@@ -19,4 +19,11 @@ public interface ITransferMatchingService
     /// </summary>
     /// <returns>Null when nothing has changed, so there was nothing to match.</returns>
     Task<TransferMatchSummary?> MatchChangesAsync(CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Matches around <paramref name="transactionIds"/>, e.g. after the user decides about them, so the pairs they
+    /// affect update straight away. Leaves when the last run was alone, so it doesn't stand in for matching a sync.
+    /// </summary>
+    Task<TransferMatchSummary> MatchAroundAsync(IReadOnlyCollection<Guid> transactionIds,
+        CancellationToken cancellationToken);
 }

@@ -278,6 +278,31 @@ public class TransferMatchingServiceTests : InfrastructureTestBase
         await Assert.That(recent.Transfer!.PartnerTransactionId).IsEqualTo(Scenario.TransactionMappings["old"]);
     }
 
+    [Test]
+    public async Task MatchAroundAsync_LeavesTheCheckpointForTheNextSyncsChanges()
+    {
+        // Arrange
+        await SeedAccountsAsync(Username, "mine")
+            .Do(s => s.TransactionScenario.WithTransaction("decided", "mine-current",
+                Details(-5m, occurredAt: DaysAgo(1))));
+
+        TransferMatchingService subject = BuildSubject(Username);
+        await subject.MatchChangesAsync(CancellationToken);
+
+        // A sync saves older history, then the user decides about something recent before the sync's matching runs
+        await Scenario.Do(s => s.TransactionScenario.WithTransaction("out", "mine-current",
+                Details(-50m, labelled: true, occurredAt: DaysAgo(100))))
+            .Do(s => s.TransactionScenario.WithTransaction("in", "mine-savings",
+                Details(50m, occurredAt: DaysAgo(100))));
+        await subject.MatchAroundAsync([Scenario.TransactionMappings["decided"]], CancellationToken);
+
+        // Act
+        TransferMatchSummary? summary = await subject.MatchChangesAsync(CancellationToken);
+
+        // Assert
+        await Assert.That(summary).IsEqualTo(new TransferMatchSummary(2, 0, 0));
+    }
+
     /// <summary>
     /// A current account and a savings account named <c>{prefix}-current</c> and <c>{prefix}-savings</c>, the
     /// savings one with sort code 222222 and number 22222222.

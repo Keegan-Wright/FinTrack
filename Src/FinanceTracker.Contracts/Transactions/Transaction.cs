@@ -67,4 +67,22 @@ public class Transaction
     /// </summary>
     [Description("Whether the transaction counts as income or spending rather than a transfer")]
     public bool CountsAsIncomeOrSpending { get; init; } = true;
+
+    /// <summary>
+    /// The account it's on.
+    /// </summary>
+    [Description("The account the transaction is on")]
+    public Guid AccountId { get; init; }
+
+    /// <summary>
+    /// That account's name.
+    /// </summary>
+    [Description("Name of the account the transaction is on")]
+    public string AccountName { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Whether it's a transfer and why, null when nothing suggests it is one.
+    /// </summary>
+    [Description("Whether the transaction is a transfer and why")]
+    public TransactionTransfer? Transfer { get; init; }
 }

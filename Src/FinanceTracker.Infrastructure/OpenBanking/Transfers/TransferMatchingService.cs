@@ -15,6 +15,7 @@ namespace FinanceTracker.Infrastructure.OpenBanking.Transfers;
 public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITransferMatchingService
 {
     private readonly TimeProvider _timeProvider;
+    private DateTime Now => _timeProvider.GetUtcNow().UtcDateTime;
 
     public TransferMatchingService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<TransferMatchingService> logger,
@@ -34,7 +35,7 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
         List<BankTransaction> transactions =
             await context.BankTransactions.OwnedBy(UserId).ToListAsync(cancellationToken);
 
-        return await MatchAndSaveAsync(context, transactions, startedAt, cancellationToken);
+        return await MatchAndSaveAsync(context, transactions, startedAt, recordCheckpoint: true, cancellationToken);
     }
 
     public async Task<TransferMatchSummary?> MatchChangesAsync(CancellationToken cancellationToken)
@@ -49,7 +50,7 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
         {
             List<BankTransaction> everything =
                 await context.BankTransactions.OwnedBy(UserId).ToListAsync(cancellationToken);
-            return await MatchAndSaveAsync(context, everything, startedAt, cancellationToken);
+            return await MatchAndSaveAsync(context, everything, startedAt, recordCheckpoint: true, cancellationToken);
         }
 
         DateTime since = checkpoint.MatchedFrom;
@@ -64,10 +65,41 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
             return null;
         }
 
-        // A change can only affect transactions close enough to be its mirror, so the window runs that far either side
-        // of the changes, and up to now as late ones are the likeliest to change
-        DateTime from = changed.Min().AddDays(-TransferMatcher.MaxDaysApart);
-        DateTime to = (changed.Max() > startedAt ? changed.Max() : startedAt).AddDays(TransferMatcher.MaxDaysApart);
+        return await MatchAroundAsync(context, changed, startedAt, recordCheckpoint: true, cancellationToken);
+    }
+
+    public async Task<TransferMatchSummary> MatchAroundAsync(IReadOnlyCollection<Guid> transactionIds,
+        CancellationToken cancellationToken)
+    {
+        await using FinanceTrackerContext context =
+            await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+
+        DateTime startedAt = Now;
+
+        List<DateTime> dates = await context.BankTransactions.OwnedBy(UserId)
+            .Where(x => transactionIds.Contains(x.Id))
+            .Select(static x => x.OccurredAt)
+            .ToListAsync(cancellationToken);
+
+        if (dates.Count == 0)
+        {
+            return new TransferMatchSummary(0, 0, 0);
+        }
+
+        // A sync saved since the last run hasn't been matched yet, so the checkpoint stays put for that run to find it
+        return await MatchAroundAsync(context, dates, startedAt, recordCheckpoint: false, cancellationToken);
+    }
+
+    /// <summary>
+    /// Matches the transactions near <paramref name="dates"/>. Something on those dates can only affect transactions
+    /// close enough to be its mirror, so the window runs that far either side, and up to now as late ones are the
+    /// likeliest to change.
+    /// </summary>
+    private async Task<TransferMatchSummary> MatchAroundAsync(FinanceTrackerContext context, List<DateTime> dates,
+        DateTime startedAt, bool recordCheckpoint, CancellationToken cancellationToken)
+    {
+        DateTime from = dates.Min().AddDays(-TransferMatcher.MaxDaysApart);
+        DateTime to = (dates.Max() > startedAt ? dates.Max() : startedAt).AddDays(TransferMatcher.MaxDaysApart);
 
         List<BankTransaction> transactions = await context.BankTransactions.OwnedBy(UserId)
             .WhereEncryptedDayBetween(x => x.OccurredAt, from, to, context)
@@ -75,10 +107,8 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
 
         transactions.AddRange(await LoadPartnersOutsideAsync(context, transactions, cancellationToken));
 
-        return await MatchAndSaveAsync(context, transactions, startedAt, cancellationToken);
+        return await MatchAndSaveAsync(context, transactions, startedAt, recordCheckpoint, cancellationToken);
     }
-
-    private DateTime Now => _timeProvider.GetUtcNow().UtcDateTime;
 
     /// <summary>
     /// The transactions paired with <paramref name="loaded"/> that it doesn't include, either way round. The matcher
@@ -106,11 +136,12 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
     }
 
     /// <summary>
-    /// Matches <paramref name="transactions"/>, saves the decisions and records that it ran from
-    /// <paramref name="startedAt"/>.
+    /// Matches <paramref name="transactions"/>, saves the decisions and, with <paramref name="recordCheckpoint"/>,
+    /// records that it ran from <paramref name="startedAt"/>.
     /// </summary>
     private async Task<TransferMatchSummary> MatchAndSaveAsync(FinanceTrackerContext context,
-        List<BankTransaction> transactions, DateTime startedAt, CancellationToken cancellationToken)
+        List<BankTransaction> transactions, DateTime startedAt, bool recordCheckpoint,
+        CancellationToken cancellationToken)
     {
         List<BankAccount> accounts = await context.BankAccounts.OwnedBy(UserId).ToListAsync(cancellationToken);
 
@@ -119,7 +150,23 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
 
         TransferMatchSummary summary = TransferMatcher.Match(accounts, householdMembers, transactions, Now);
 
-        // From when it started rather than finished, so a transaction synced while it ran is picked up next time
+        if (recordCheckpoint)
+        {
+            await RecordCheckpointAsync(context, startedAt, cancellationToken);
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
+        Logger.LogMatchedTransfers(UserId, transactions.Count, summary.Transfers, summary.ToReview, summary.Cleared);
+
+        return summary;
+    }
+
+    /// <summary>
+    /// From when the run started rather than finished, so a transaction synced while it ran is picked up next time.
+    /// </summary>
+    private async Task RecordCheckpointAsync(FinanceTrackerContext context, DateTime startedAt,
+        CancellationToken cancellationToken)
+    {
         TransferMatchCheckpoint? checkpoint = await context.TransferMatchCheckpoints.OwnedBy(UserId)
             .SingleOrDefaultAsync(cancellationToken);
         if (checkpoint is null)
@@ -130,10 +177,5 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
         {
             checkpoint.Record(startedAt);
         }
-
-        await context.SaveChangesAsync(cancellationToken);
-        Logger.LogMatchedTransfers(UserId, transactions.Count, summary.Transfers, summary.ToReview, summary.Cleared);
-
-        return summary;
     }
 }

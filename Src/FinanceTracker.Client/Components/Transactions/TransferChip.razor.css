@@ -1,0 +1,26 @@
+/* The menu's explanation wraps rather than stretching the menu across the screen */
+.ft-transfer {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-width: min(320px, 85vw);
+    padding: 8px 16px;
+    white-space: normal;
+}
+
+/* A long account name shortens rather than widening the description column on a phone */
+.ft-transfer-anchor {
+    display: inline-flex;
+    max-width: 100%;
+    vertical-align: middle;
+}
+
+.ft-transfer-anchor ::deep .mud-chip {
+    max-width: 100%;
+}
+
+.ft-transfer-anchor ::deep .mud-chip-content {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
