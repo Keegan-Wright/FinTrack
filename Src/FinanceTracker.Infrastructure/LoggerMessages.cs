@@ -28,8 +28,17 @@ public static partial class LoggerMessages
     [LoggerMessage(LogLevel.Debug, "No transactions changed for user {userId} since transfers were last matched")]
     public static partial void LogNoTransferChanges(this ILogger logger, Guid userId);
 
+    [LoggerMessage(LogLevel.Warning, "TrueLayer refused the {requested} request with {statusCode} {reasonPhrase}, tl-trace-id {traceId}")]
+    public static partial void LogTrueLayerRequestRefused(this ILogger logger, string requested, int statusCode, string? reasonPhrase, string traceId);
+
     [LoggerMessage(LogLevel.Warning, "Connection {connectionId} for user {userId} has no active consent, re-authentication is required before it can sync")]
     public static partial void LogConnectionNotAuthenticated(this ILogger logger, Guid connectionId, Guid userId);
+
+    [LoggerMessage(LogLevel.Information, "Updated {refreshed} balance snapshots for {day} for user {userId}, {stale} of the day's snapshots are stale")]
+    public static partial void LogSnapshotBalances(this ILogger logger, Guid userId, DateOnly day, int refreshed, int stale);
+
+    [LoggerMessage(LogLevel.Debug, "No account has a balance to snapshot for {day} for user {userId}")]
+    public static partial void LogNoBalancesToSnapshot(this ILogger logger, Guid userId, DateOnly day);
 
     [LoggerMessage(LogLevel.Information, "Re-encrypted {count} {entityType} rows with encryption key {keyId}")]
     public static partial void LogReencrypted(this ILogger logger, int count, string entityType, int keyId);

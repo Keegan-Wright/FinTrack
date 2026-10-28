@@ -2,7 +2,9 @@ using FinanceTracker.Domain.Budgeting;
 using FinanceTracker.Domain.Classifications;
 using FinanceTracker.Domain.Household;
 using FinanceTracker.Domain.Identity;
+using FinanceTracker.Domain.NetWorth;
 using FinanceTracker.Domain.OpenBanking.Accounts;
+using FinanceTracker.Domain.OpenBanking.Balances;
 using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.OpenBanking.Transfers;
@@ -64,6 +66,8 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
     public DbSet<Debt> Debts { get; private set; }
     public DbSet<HouseholdMember> HouseholdMembers { get; private set; }
     public DbSet<TransferMatchCheckpoint> TransferMatchCheckpoints { get; private set; }
+    public DbSet<BalanceSnapshot> BalanceSnapshots { get; private set; }
+    public DbSet<NetWorthSnapshot> NetWorthSnapshots { get; private set; }
     #endregion
 
     /// <summary>

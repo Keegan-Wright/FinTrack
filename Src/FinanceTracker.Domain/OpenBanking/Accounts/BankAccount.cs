@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using FinanceTracker.Domain.Common;
+using FinanceTracker.Domain.OpenBanking.Balances;
 
 namespace FinanceTracker.Domain.OpenBanking.Accounts;
 
@@ -118,4 +119,23 @@ public sealed class BankAccount : AggregateRoot
     /// Creates a log entry for a completed sync.
     /// </summary>
     public SyncLogEntry RecordSync(SyncType type, DateTime occurredAt) => new(Id, type, occurredAt);
+
+    /// <summary>
+    /// Takes the account's first snapshot for <paramref name="day"/>, from its stored balance. Later syncs that day
+    /// update it with <see cref="BalanceSnapshot.Refresh"/>.
+    /// </summary>
+    /// <param name="synced">
+    /// Whether the balance synced this time. When it didn't, the snapshot holds the last stored balance, flagged as
+    /// stale.
+    /// </param>
+    /// <exception cref="InvalidOperationException">The account has never had a balance.</exception>
+    public BalanceSnapshot SnapshotBalance(DateOnly day, bool synced)
+    {
+        if (Balance is null)
+        {
+            throw new InvalidOperationException($"Account {Id} has no balance to snapshot.");
+        }
+
+        return new BalanceSnapshot(UserId, Id, day, Balance with { }, BalanceSnapshotSource.Synced, isStale: !synced);
+    }
 }
