@@ -12,11 +12,6 @@ namespace FinanceTracker.BackgroundJobs;
 // Background job, ignore the warning
 public class MonitorOpenBankingTokenExpirationAsync : ITickerFunction
 {
-    /// <summary>
-    /// Open banking consent must be renewed by the user every 90 days.
-    /// </summary>
-    private static readonly TimeSpan ConsentLifetime = TimeSpan.FromDays(90);
-
     private readonly IDbContextFactory<FinanceTrackerContext> _dbContextFactory;
     private readonly TimeProvider _timeProvider;
 
@@ -38,10 +33,8 @@ public class MonitorOpenBankingTokenExpirationAsync : ITickerFunction
         await using FinanceTrackerContext dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
 
         DateTime now = _timeProvider.GetUtcNow().UtcDateTime;
-        DateTime lapsedBefore = now - ConsentLifetime;
-
         List<BankConnection> lapsedConnections = await dbContext.BankConnections
-            .Where(x => x.ConsentGrantedAt <= lapsedBefore && x.AccessTokens.Any(t => t.RevokedAt == null))
+            .Where(x => x.ConsentExpiresAt <= now && x.AccessTokens.Any(t => t.RevokedAt == null))
             .Include(x => x.AccessTokens.Where(t => t.RevokedAt == null))
             .ToListAsync(cancellationToken);
 

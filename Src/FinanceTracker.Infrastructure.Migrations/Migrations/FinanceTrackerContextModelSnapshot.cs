@@ -668,6 +668,9 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                         .HasColumnType("text")
                         .HasAnnotation("FinanceTracker.EncrptedColumn", true);
 
+                    b.Property<DateTime>("ConsentExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime>("ConsentGrantedAt")
                         .HasColumnType("timestamp with time zone");
 

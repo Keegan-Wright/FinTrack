@@ -50,7 +50,7 @@ public class AccountServiceTests : InfrastructureTestBase
         byte[] logo = [9, 8, 7];
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
             .Do(s => s.BankConnectionScenario.WithConnection("bank", Username, userId =>
-                new BankConnection(userId, "ob-bank", "Bank", "code", ["accounts"], logo, DateTime.UtcNow)))
+                new BankConnection(userId, "ob-bank", "Bank", "code", ["accounts"], logo, DateTime.UtcNow, DateTime.UtcNow.AddDays(90))))
             .Do(s => s.BankAccountScenario.WithAccount("main", "bank", (userId, connectionId) =>
                 new BankAccount(userId, connectionId, "acc-1", "TRANSACTION", "Main Account", "GBP")))
             .Do(s => s.BankAccountScenario.WithBalance("main", new AccountBalance(90m, 100m, DateTime.UtcNow)));

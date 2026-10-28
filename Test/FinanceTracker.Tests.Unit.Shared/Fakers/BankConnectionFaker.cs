@@ -13,5 +13,5 @@ public sealed class BankConnectionFaker : Faker<BankConnection>
             f.Company.CompanyName(),
             f.Random.AlphaNumeric(32),
             Scopes,
-            f.Random.Bytes(16), DateTime.UtcNow));
+            f.Random.Bytes(16), DateTime.UtcNow, DateTime.UtcNow.AddDays(90)));
 }

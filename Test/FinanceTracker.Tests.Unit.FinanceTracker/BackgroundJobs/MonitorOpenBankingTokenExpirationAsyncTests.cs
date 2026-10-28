@@ -12,8 +12,6 @@ public class MonitorOpenBankingTokenExpirationAsyncTests : InfrastructureTestBas
     private const string Username = "primary";
     private const string OtherUsername = "secondary";
 
-    private static readonly TimeSpan ConsentLifetime = TimeSpan.FromDays(90);
-
     [Test]
     public async Task ExecuteAsync_ConsentLapsed_RevokesActiveToken()
     {
@@ -21,7 +19,7 @@ public class MonitorOpenBankingTokenExpirationAsyncTests : InfrastructureTestBas
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
             .Do(s => s.BankConnectionScenario.WithConnection("bank", Username))
             .Do(s => s.BankConnectionScenario.WithAccessToken("bank"))
-            .Do(s => s.BankConnectionScenario.WithConsentGrantedAt("bank", Lapsed()));
+            .Do(s => s.BankConnectionScenario.WithConsentExpiresAt("bank", Lapsed()));
 
         MonitorOpenBankingTokenExpirationAsync subject = BuildSubject();
         DateTime before = DateTime.UtcNow;
@@ -46,8 +44,7 @@ public class MonitorOpenBankingTokenExpirationAsyncTests : InfrastructureTestBas
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
             .Do(s => s.BankConnectionScenario.WithConnection("bank", Username))
             .Do(s => s.BankConnectionScenario.WithAccessToken("bank"))
-            .Do(s => s.BankConnectionScenario.WithConsentGrantedAt("bank",
-                DateTime.UtcNow - ConsentLifetime + TimeSpan.FromHours(1)));
+            .Do(s => s.BankConnectionScenario.WithConsentExpiresAt("bank", DateTime.UtcNow.AddHours(1)));
 
         MonitorOpenBankingTokenExpirationAsync subject = BuildSubject();
 
@@ -68,7 +65,7 @@ public class MonitorOpenBankingTokenExpirationAsyncTests : InfrastructureTestBas
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
             .Do(s => s.BankConnectionScenario.WithConnection("bank", Username))
             .Do(s => s.BankConnectionScenario.WithAccessToken("bank", revokedAt.AddDays(-1)))
-            .Do(s => s.BankConnectionScenario.WithConsentGrantedAt("bank", Lapsed()))
+            .Do(s => s.BankConnectionScenario.WithConsentExpiresAt("bank", Lapsed()))
             .Do(s => s.BankConnectionScenario.WithRevokedToken("bank", revokedAt));
 
         MonitorOpenBankingTokenExpirationAsync subject = BuildSubject();
@@ -89,12 +86,12 @@ public class MonitorOpenBankingTokenExpirationAsyncTests : InfrastructureTestBas
             .Do(s => s.UserScenario.WithUser(OtherUsername))
             .Do(s => s.BankConnectionScenario.WithConnection("lapsed", Username))
             .Do(s => s.BankConnectionScenario.WithAccessToken("lapsed"))
-            .Do(s => s.BankConnectionScenario.WithConsentGrantedAt("lapsed", Lapsed()))
+            .Do(s => s.BankConnectionScenario.WithConsentExpiresAt("lapsed", Lapsed()))
             .Do(s => s.BankConnectionScenario.WithConnection("valid", Username))
             .Do(s => s.BankConnectionScenario.WithAccessToken("valid"))
             .Do(s => s.BankConnectionScenario.WithConnection("their-lapsed", OtherUsername))
             .Do(s => s.BankConnectionScenario.WithAccessToken("their-lapsed"))
-            .Do(s => s.BankConnectionScenario.WithConsentGrantedAt("their-lapsed", Lapsed()));
+            .Do(s => s.BankConnectionScenario.WithConsentExpiresAt("their-lapsed", Lapsed()));
 
         MonitorOpenBankingTokenExpirationAsync subject = BuildSubject();
 
@@ -118,7 +115,7 @@ public class MonitorOpenBankingTokenExpirationAsyncTests : InfrastructureTestBas
             .Do(s => s.BankConnectionScenario.WithConnection("bank", Username))
             .Do(s => s.BankConnectionScenario.WithAccessToken("bank", DateTime.UtcNow.AddDays(-100)))
             .Do(s => s.BankConnectionScenario.WithAccessToken("bank"))
-            .Do(s => s.BankConnectionScenario.WithConsentGrantedAt("bank", Lapsed()));
+            .Do(s => s.BankConnectionScenario.WithConsentExpiresAt("bank", Lapsed()));
 
         MonitorOpenBankingTokenExpirationAsync subject = BuildSubject();
 
@@ -135,7 +132,7 @@ public class MonitorOpenBankingTokenExpirationAsyncTests : InfrastructureTestBas
         }
     }
 
-    private static DateTime Lapsed() => DateTime.UtcNow - ConsentLifetime - TimeSpan.FromHours(1);
+    private static DateTime Lapsed() => DateTime.UtcNow.AddHours(-1);
 
     private async Task<BankConnection> LoadConnectionAsync(string connectionName)
     {

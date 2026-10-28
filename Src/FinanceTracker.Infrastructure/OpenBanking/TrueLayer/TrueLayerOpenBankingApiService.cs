@@ -87,6 +87,30 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
                ?? throw new InvalidOperationException("The provider returned no tokens for the access code.");
     }
 
+    public async Task<string> GetReauthenticationUrlAsync(string refreshToken, CancellationToken cancellationToken)
+    {
+        using HttpClient httpClient = await BuildHttpClient(_trueLayerOpenBankingConfiguration.BaseAuthUrl);
+
+        var request = new ExternalOpenBankingReauthenticationRequest
+        {
+            RefreshToken = refreshToken,
+            RedirectUri = _trueLayerOpenBankingConfiguration.AuthRedirectUrl.ToString()
+        };
+
+        HttpResponseMessage response = await httpClient.PostAsJsonAsync("v1/reauthuri", request, cancellationToken);
+        EnsureSuccess(response, "reauthentication link");
+
+        ExternalOpenBankingReauthenticationResponse? responseBody =
+            await response.Content.ReadFromJsonAsync<ExternalOpenBankingReauthenticationResponse>(cancellationToken);
+
+        if (responseBody is null || !responseBody.Success || string.IsNullOrWhiteSpace(responseBody.Result))
+        {
+            throw new HttpRequestException("TrueLayer didn't return a reauthentication link.");
+        }
+
+        return responseBody.Result;
+    }
+
     public async Task<ExternalOpenBankingListAllAccountsResponse> GetAllAccountsAsync(string authToken,
         CancellationToken cancellationToken)
     {

@@ -25,7 +25,15 @@
         <MudNavLink Href="Reports" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Insights">Reports</MudNavLink>
 
         <div class="ft-nav__heading">Settings</div>
-        <MudNavLink Href="ProviderSetup" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.AccountTree">Bank connections</MudNavLink>
+        <MudNavLink Href="ProviderSetup" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.AccountTree">
+            <span class="ft-nav__label">
+                Bank connections
+                @if (ConnectionsToRenew > 0)
+                {
+                    <span class="ft-nav__count" aria-label="@($"{ConnectionsToRenew} to renew")">@ConnectionsToRenew</span>
+                }
+            </span>
+        </MudNavLink>
         <MudNavLink Href="HouseholdMembers" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.People">Household</MudNavLink>
         <MudNavLink Href="Classifications" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Sell">Tags</MudNavLink>
         <AuthorizeView Roles="@FinTrackRoles.Admin">
@@ -40,6 +48,12 @@
     /// Shown beside the review link when there are any, see <see cref="ApplicationState.TransfersToReview"/>.
     /// </summary>
     [Parameter] public int TransfersToReview { get; set; }
+
+    /// <summary>
+    /// Shown beside the bank connections link when there are any, see
+    /// <see cref="ApplicationState.ConnectionsToRenew"/>.
+    /// </summary>
+    [Parameter] public int ConnectionsToRenew { get; set; }
 
     protected override async Task OnInitializedAsync()
     {

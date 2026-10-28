@@ -165,7 +165,7 @@ public class BackgroundSyncTests : IntegrationTestBase
         await Scenario.Do(s => s.UserScenario.WithUser(username))
             .Do(s => s.BankConnectionScenario.WithConnection("bank", username))
             .Do(s => s.BankConnectionScenario.WithAccessToken("bank"))
-            .Do(s => s.BankConnectionScenario.WithConsentGrantedAt("bank", DateTime.UtcNow.AddDays(-91)));
+            .Do(s => s.BankConnectionScenario.WithConsentExpiresAt("bank", DateTime.UtcNow.AddDays(-1)));
 
         // Act
         await RunJobAsync(MonitorFunction);

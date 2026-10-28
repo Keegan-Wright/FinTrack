@@ -906,7 +906,7 @@ public class OpenBankingServiceTests : InfrastructureTestBase
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
             .Do(s => s.BankConnectionScenario.WithConnection("bank", Username, userId =>
-                new BankConnection(userId, "ob-existing", "Bank", "old-code", ["accounts"], [1], DateTime.UtcNow)))
+                new BankConnection(userId, "ob-existing", "Bank", "old-code", ["accounts"], [1], DateTime.UtcNow, DateTime.UtcNow.AddDays(90))))
             .Do(s => s.BankConnectionScenario.WithAccessToken("bank", token: "old-token"));
 
         _api.ExchangeCodeForAccessTokenAsync("new-code", CancellationToken).Returns(
@@ -936,6 +936,123 @@ public class OpenBankingServiceTests : InfrastructureTestBase
             await _syncScheduler.Received(1)
                 .ScheduleUserSyncAsync(Scenario.UserMappings[Username], CancellationToken);
         }
+    }
+
+    [Test]
+    public async Task AddVendorViaAccessCodeAsync_StoresTheProvidersConsentExpiry()
+    {
+        // Arrange
+        DateTime expiresAt = new(2099, 1, 31, 12, 0, 0, DateTimeKind.Utc);
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("bank", Username, userId =>
+                new BankConnection(userId, "ob-existing", "Bank", "old-code", ["accounts"], [1], DateTime.UtcNow,
+                    DateTime.UtcNow.AddDays(3))));
+
+        ExternalOpenBankingAccountConnection external =
+            new ExternalOpenBankingAccountConnectionFaker("ob-existing").Generate();
+        external.ConsentExpiresAt = expiresAt;
+        GivenCodeExchangeFor(external);
+
+        OpenBankingService subject = BuildSubject();
+
+        // Act
+        await subject.AddVendorViaAccessCodeAsync(new AddVendor { AccessCode = "new-code" }, CancellationToken);
+
+        // Assert
+        await Assert.That((await LoadConnectionAsync("bank")).ConsentExpiresAt).IsEqualTo(expiresAt);
+    }
+
+    [Test]
+    public async Task AddVendorViaAccessCodeAsync_ProviderGivesNoExpiry_Assumes90Days()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("bank", Username, userId =>
+                new BankConnection(userId, "ob-existing", "Bank", "old-code", ["accounts"], [1], DateTime.UtcNow,
+                    DateTime.UtcNow.AddDays(3))));
+
+        ExternalOpenBankingAccountConnection external =
+            new ExternalOpenBankingAccountConnectionFaker("ob-existing").Generate();
+        external.ConsentExpiresAt = default;
+        GivenCodeExchangeFor(external);
+
+        OpenBankingService subject = BuildSubject();
+        DateTime before = DateTime.UtcNow;
+
+        // Act
+        await subject.AddVendorViaAccessCodeAsync(new AddVendor { AccessCode = "new-code" }, CancellationToken);
+
+        // Assert
+        await Assert.That((await LoadConnectionAsync("bank")).ConsentExpiresAt)
+            .IsBetween(before.AddDays(90), DateTime.UtcNow.AddDays(90));
+    }
+
+    [Test]
+    public async Task GetConnectionsAsync_ReportsEachConnectionsConsentState()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.UserScenario.WithUser(OtherUsername))
+            .Do(s => s.BankConnectionScenario.WithConnection("active", Username, Named("Active Bank")))
+            .Do(s => s.BankConnectionScenario.WithConsentExpiresAt("active", DateTime.UtcNow.AddDays(60)))
+            .Do(s => s.BankConnectionScenario.WithConnection("soon", Username, Named("Soon Bank")))
+            .Do(s => s.BankConnectionScenario.WithConsentExpiresAt("soon", DateTime.UtcNow.AddDays(5)))
+            .Do(s => s.BankConnectionScenario.WithConnection("lapsed", Username, Named("Lapsed Bank")))
+            .Do(s => s.BankConnectionScenario.WithConsentExpiresAt("lapsed", DateTime.UtcNow.AddDays(-1)))
+            .Do(s => s.BankConnectionScenario.WithConnection("theirs", OtherUsername, Named("Their Bank")));
+
+        OpenBankingService subject = BuildSubject();
+
+        // Act
+        List<BankConnectionSummary> connections = await subject.GetConnectionsAsync(CancellationToken)
+            .ToListAsync(CancellationToken);
+
+        // Assert
+        await Assert.That(connections.Select(x => (x.Name, x.ConsentState))).IsEquivalentTo([
+            ("Active Bank", ConsentState.Active),
+            ("Lapsed Bank", ConsentState.Lapsed),
+            ("Soon Bank", ConsentState.RenewSoon)
+        ]);
+    }
+
+    [Test]
+    public async Task GetRenewalUrlAsync_UsesTheLatestRefreshTokenEvenOnceRevoked()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("bank", Username))
+            .Do(s => s.BankConnectionScenario.WithAccessToken("bank", DateTime.UtcNow.AddDays(-2),
+                refreshToken: "older-refresh"))
+            .Do(s => s.BankConnectionScenario.WithAccessToken("bank", DateTime.UtcNow.AddDays(-1),
+                refreshToken: "latest-refresh"))
+            .Do(s => s.BankConnectionScenario.WithRevokedToken("bank", DateTime.UtcNow));
+
+        _api.GetReauthenticationUrlAsync("latest-refresh", CancellationToken).Returns("https://bank.example.test/reauth");
+
+        OpenBankingService subject = BuildSubject();
+
+        // Act
+        string url = await subject.GetRenewalUrlAsync(Scenario.ConnectionMappings["bank"], CancellationToken);
+
+        // Assert
+        await Assert.That(url).IsEqualTo("https://bank.example.test/reauth");
+    }
+
+    [Test]
+    public async Task GetRenewalUrlAsync_AnotherUsersConnection_Throws()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.UserScenario.WithUser(OtherUsername))
+            .Do(s => s.BankConnectionScenario.WithConnection("theirs", OtherUsername))
+            .Do(s => s.BankConnectionScenario.WithAccessToken("theirs"));
+
+        OpenBankingService subject = BuildSubject();
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            subject.GetRenewalUrlAsync(Scenario.ConnectionMappings["theirs"], CancellationToken));
+        await _api.DidNotReceive().GetReauthenticationUrlAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -1042,7 +1159,7 @@ public class OpenBankingServiceTests : InfrastructureTestBase
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
             .Do(s => s.BankConnectionScenario.WithConnection("bank", Username, userId =>
-                new BankConnection(userId, "ob-existing", "Bank", "old-code", ["accounts"], [1], DateTime.UtcNow)));
+                new BankConnection(userId, "ob-existing", "Bank", "old-code", ["accounts"], [1], DateTime.UtcNow, DateTime.UtcNow.AddDays(90))));
 
         _api.ExchangeCodeForAccessTokenAsync("new-code", CancellationToken).Returns(
             new ExternalOpenBankingAccessResponse { AccessToken = Token, RefreshToken = "refresh", ExpiresIn = 3600 });
@@ -1097,7 +1214,7 @@ public class OpenBankingServiceTests : InfrastructureTestBase
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
             .Do(s => s.BankConnectionScenario.WithConnection("bank", Username, userId =>
-                new BankConnection(userId, "ob-existing", "Bank", "old-code", ["accounts"], [1], DateTime.UtcNow)));
+                new BankConnection(userId, "ob-existing", "Bank", "old-code", ["accounts"], [1], DateTime.UtcNow, DateTime.UtcNow.AddDays(90))));
 
         _api.ExchangeCodeForAccessTokenAsync("new-code", CancellationToken).Returns(
             new ExternalOpenBankingAccessResponse { AccessToken = Token, RefreshToken = "refresh", ExpiresIn = 3600 });
@@ -1425,6 +1542,20 @@ public class OpenBankingServiceTests : InfrastructureTestBase
         Guid id = Scenario.ConnectionMappings[connectionName];
         return await context.BankConnections.Include(x => x.AccessTokens).SingleAsync(x => x.Id == id, CancellationToken);
     }
+
+    private void GivenCodeExchangeFor(ExternalOpenBankingAccountConnection external)
+    {
+        _api.ExchangeCodeForAccessTokenAsync("new-code", CancellationToken).Returns(
+            new ExternalOpenBankingAccessResponse { AccessToken = Token, RefreshToken = "refresh", ExpiresIn = 3600 });
+        _api.GetProviderInformation(Token, CancellationToken).Returns(new ExternalOpenBankingAccountConnectionResponse
+        {
+            Results = new[] { external }.ToAsyncEnumerable()
+        });
+    }
+
+    private static Func<Guid, BankConnection> Named(string name) => userId =>
+        new BankConnection(userId, $"ob-{Guid.NewGuid():N}", name, "code", ["accounts"], [1], DateTime.UtcNow,
+            DateTime.UtcNow.AddDays(90));
 
     private OpenBankingService BuildSubject() =>
         new(CurrentUserFor(Username), DbContextFactory, _api, NullLogger<OpenBankingService>.Instance,

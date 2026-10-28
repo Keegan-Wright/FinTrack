@@ -1,6 +1,7 @@
 using Bunit;
 using FinanceTracker.Client;
 using FinanceTracker.Client.Layout;
+using FinanceTracker.Contracts.OpenBanking;
 using FinanceTracker.Contracts.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,6 +17,7 @@ public class MainLayoutTests : ComponentTestBase
     private readonly IAutomationService _automationService = Substitute.For<IAutomationService>();
     private readonly ISyncNotifications _syncNotifications = Substitute.For<ISyncNotifications>();
     private readonly ITransfersService _transfersService = Substitute.For<ITransfersService>();
+    private readonly IOpenBankingService _openBankingService = Substitute.For<IOpenBankingService>();
     private readonly IBrowserViewportService _viewport = Substitute.For<IBrowserViewportService>();
     private readonly ApplicationState _applicationState = new();
 
@@ -28,6 +30,7 @@ public class MainLayoutTests : ComponentTestBase
         Services.AddSingleton(_automationService);
         Services.AddSingleton(_syncNotifications);
         Services.AddSingleton(_transfersService);
+        Services.AddSingleton(_openBankingService);
         Services.AddSingleton(_viewport);
 
         // Interactive in the browser, as the layout only subscribes once interactive. Builds the services, so last
@@ -35,6 +38,7 @@ public class MainLayoutTests : ComponentTestBase
 
         _syncNotifications.SubscribeAsync(Arg.Do<Func<Task>>(x => _onSyncComplete = x), Arg.Any<CancellationToken>())
             .Returns(Substitute.For<IDisposable>());
+        GivenConnections();
     }
 
     [Test]
@@ -164,6 +168,42 @@ public class MainLayoutTests : ComponentTestBase
     }
 
     [Test]
+    public async Task Render_ConnectionsToRenew_ShowsTheBannerAndTheCountOnTheConnectionsLink()
+    {
+        // Arrange
+        GivenConnections(ConsentState.Active, ConsentState.RenewSoon, ConsentState.Lapsed);
+
+        // Act
+        IRenderedComponent<MainLayout> cut = RenderLayout();
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(cut.Find(".ft-renew-banner").TextContent)
+                .Contains("2 bank connections need renewing to keep syncing.");
+            await Assert.That(cut.Find(".ft-renew-banner a").GetAttribute("href")).IsEqualTo("ProviderSetup");
+            await Assert.That(cut.Find("a[href='ProviderSetup'] .ft-nav__count").TextContent.Trim()).IsEqualTo("2");
+        }
+    }
+
+    [Test]
+    public async Task Render_AllConnectionsActive_ShowsNoBannerOrCount()
+    {
+        // Arrange
+        GivenConnections(ConsentState.Active);
+
+        // Act
+        IRenderedComponent<MainLayout> cut = RenderLayout();
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(cut.FindAll(".ft-renew-banner")).IsEmpty();
+            await Assert.That(cut.FindAll("a[href='ProviderSetup'] .ft-nav__count")).IsEmpty();
+        }
+    }
+
+    [Test]
     [Arguments(true)]
     [Arguments(false)]
     public async Task Render_OpensTheDrawerOnlyAtDesktopWidth(bool desktop)
@@ -195,6 +235,18 @@ public class MainLayoutTests : ComponentTestBase
         // Assert
         await Assert.That(cut.Find(".mud-drawer").ClassList.Contains("mud-drawer--open")).IsTrue();
     }
+
+    private void GivenConnections(params ConsentState[] states) =>
+        _openBankingService.GetConnectionsAsync(Arg.Any<CancellationToken>()).Returns(_ => states
+            .Select(static (state, index) => new BankConnectionSummary
+            {
+                ConnectionId = Guid.NewGuid(),
+                Name = $"Bank {index}",
+                Logo = [],
+                ConsentExpiresAt = DateTime.UtcNow.AddDays(30),
+                ConsentState = state
+            })
+            .ToAsyncEnumerable());
 
     private IRenderedComponent<MainLayout> RenderLayout() =>
         Render<MainLayout>(p => p.AddCascadingValue(_applicationState));

@@ -35,13 +35,13 @@ public sealed class BankConnectionScenario : ScenarioBuilder
         });
 
     /// <summary>
-    /// Backdates when consent was granted, it is otherwise stamped on construction.
+    /// Sets when consent ends, e.g. in the past for a lapsed connection. It is otherwise set on construction.
     /// </summary>
-    public Task<TestingScenario> WithConsentGrantedAt(string connectionName, DateTime consentGrantedAt) =>
+    public Task<TestingScenario> WithConsentExpiresAt(string connectionName, DateTime consentExpiresAt) =>
         PersistAsync(async context =>
         {
             BankConnection connection = await LoadAsync(context, connectionName);
-            context.Entry(connection).Property(x => x.ConsentGrantedAt).CurrentValue = consentGrantedAt;
+            context.Entry(connection).Property(x => x.ConsentExpiresAt).CurrentValue = consentExpiresAt;
         });
 
     /// <summary>
