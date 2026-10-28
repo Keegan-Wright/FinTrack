@@ -5,6 +5,7 @@ using FinanceTracker.Domain.Identity;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Domain.OpenBanking.Transactions;
+using FinanceTracker.Domain.OpenBanking.Transfers;
 using FinanceTracker.Infrastructure.Encryption;
 using FinanceTracker.Infrastructure.Persistence;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
@@ -62,6 +63,7 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
     public DbSet<BudgetCategory> BudgetCategories { get; private set; }
     public DbSet<Debt> Debts { get; private set; }
     public DbSet<HouseholdMember> HouseholdMembers { get; private set; }
+    public DbSet<TransferMatchCheckpoint> TransferMatchCheckpoints { get; private set; }
     #endregion
 
     /// <summary>

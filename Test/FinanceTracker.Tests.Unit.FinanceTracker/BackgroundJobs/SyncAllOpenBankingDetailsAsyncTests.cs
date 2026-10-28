@@ -123,7 +123,7 @@ public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
             .Do(s => s.BankConnectionScenario.WithConnection("mine", Username))
             .Do(s => s.BankConnectionScenario.WithConnection("theirs", OtherUsername));
 
-        TransferMatchingService.MatchAsync(CancellationToken).ThrowsAsync(new InvalidOperationException("boom"));
+        TransferMatchingService.MatchChangesAsync(CancellationToken).ThrowsAsync(new InvalidOperationException("boom"));
 
         SyncAllOpenBankingDetailsAsync subject = BuildSubject();
 
@@ -133,7 +133,7 @@ public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
         // Assert
         using (Assert.Multiple())
         {
-            await TransferMatchingService.Received(2).MatchAsync(CancellationToken);
+            await TransferMatchingService.Received(2).MatchChangesAsync(CancellationToken);
             await SyncNotifier.Received(1).NotifyAsync(Scenario.UserMappings[Username]);
             await SyncNotifier.Received(1).NotifyAsync(Scenario.UserMappings[OtherUsername]);
         }

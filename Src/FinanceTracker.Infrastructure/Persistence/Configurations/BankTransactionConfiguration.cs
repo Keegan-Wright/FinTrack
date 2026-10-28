@@ -52,6 +52,10 @@ internal sealed class BankTransactionConfiguration : AggregateRootConfiguration<
         string externalIdBlindIndex = builder.HasBlindIndex(x => x.ExternalId);
         builder.HasIndex(nameof(BankTransaction.AccountId), externalIdBlindIndex).IsUnique();
 
+        // Date ranges are looked up by day, OccurredAt itself is encrypted
+        string occurredDayBlindIndex = builder.HasDayBlindIndex(x => x.OccurredAt);
+        builder.HasIndex(nameof(BankTransaction.UserId), occurredDayBlindIndex);
+
         builder.PrimitiveCollection(x => x.ProviderClassifications).HasField("_providerClassifications");
         builder.PrimitiveCollection(x => x.CustomClassificationIds).HasField("_customClassificationIds");
     }

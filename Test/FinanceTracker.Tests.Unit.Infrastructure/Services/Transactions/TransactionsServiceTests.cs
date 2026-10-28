@@ -98,6 +98,48 @@ public class TransactionsServiceTests : InfrastructureTestBase
     }
 
     [Test]
+    public async Task GetAllTransactionsAsync_OnlyAFromDate_ReturnsEverythingSinceIncludingToday()
+    {
+        // Arrange
+        DateTime now = DateTime.UtcNow;
+        await SeedAccountAsync()
+            .Do(s => s.TransactionScenario.WithTransaction("long-ago", "main", Details("Long ago", now.AddDays(-400))))
+            .Do(s => s.TransactionScenario.WithTransaction("before", "main", Details("Before", now.AddDays(-11))))
+            .Do(s => s.TransactionScenario.WithTransaction("after", "main", Details("After", now.AddDays(-9))))
+            .Do(s => s.TransactionScenario.WithTransaction("today", "main", Details("Today", now)));
+
+        TransactionsService subject = BuildSubject();
+
+        // Act
+        List<Transaction> transactions =
+            await GetAllAsync(subject, new FilterTransactions { FromDate = now.AddDays(-10) });
+
+        // Assert
+        await Assert.That(transactions.Select(static x => x.Description)).IsEquivalentTo(["After", "Today"]);
+    }
+
+    [Test]
+    public async Task GetAllTransactionsAsync_OnlyAToDate_ReturnsEverythingBeforeIt()
+    {
+        // Arrange
+        DateTime now = DateTime.UtcNow;
+        await SeedAccountAsync()
+            .Do(s => s.TransactionScenario.WithTransaction("long-ago", "main", Details("Long ago", now.AddDays(-2000))))
+            .Do(s => s.TransactionScenario.WithTransaction("before", "main", Details("Before", now.AddDays(-11))))
+            .Do(s => s.TransactionScenario.WithTransaction("after", "main", Details("After", now.AddDays(-9))))
+            .Do(s => s.TransactionScenario.WithTransaction("today", "main", Details("Today", now)));
+
+        TransactionsService subject = BuildSubject();
+
+        // Act
+        List<Transaction> transactions =
+            await GetAllAsync(subject, new FilterTransactions { ToDate = now.AddDays(-10) });
+
+        // Assert
+        await Assert.That(transactions.Select(static x => x.Description)).IsEquivalentTo(["Long ago", "Before"]);
+    }
+
+    [Test]
     public async Task GetAllTransactionsAsync_SearchTerm_MatchesDescriptionIgnoringCase()
     {
         // Arrange

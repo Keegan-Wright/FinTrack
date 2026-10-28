@@ -62,7 +62,7 @@ public abstract class OpenBankingSyncJobTestBase : InfrastructureTestBase
             .BuildServiceProvider();
 
         TransferMatchingService
-            .When(x => x.MatchAsync(Arg.Any<CancellationToken>()))
+            .When(x => x.MatchChangesAsync(Arg.Any<CancellationToken>()))
             .Do(_ =>
             {
                 if (_matchingFor is not null)

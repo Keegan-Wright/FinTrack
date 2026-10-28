@@ -93,7 +93,7 @@ public abstract class OpenBankingSyncJob
             ITransferMatchingService transferMatchingService =
                 scope.ServiceProvider.GetRequiredService<ITransferMatchingService>();
 
-            await transferMatchingService.MatchAsync(cancellationToken);
+            await transferMatchingService.MatchChangesAsync(cancellationToken);
 
             activity?.AddEvent(new ActivityEvent($"Matched transfers for User {userId}"));
         }

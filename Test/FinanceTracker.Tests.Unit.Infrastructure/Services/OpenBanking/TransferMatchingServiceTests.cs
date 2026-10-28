@@ -139,6 +139,145 @@ public class TransferMatchingServiceTests : InfrastructureTestBase
         }
     }
 
+    [Test]
+    public async Task MatchChangesAsync_FirstRun_MatchesEverything()
+    {
+        // Arrange
+        await SeedAccountsAsync(Username, "mine")
+            .Do(s => s.TransactionScenario.WithTransaction("out", "mine-current",
+                Details(-50m, labelled: true, occurredAt: DaysAgo(200))))
+            .Do(s => s.TransactionScenario.WithTransaction("in", "mine-savings",
+                Details(50m, occurredAt: DaysAgo(200))));
+
+        TransferMatchingService subject = BuildSubject(Username);
+
+        // Act
+        TransferMatchSummary? summary = await subject.MatchChangesAsync(CancellationToken);
+
+        // Assert
+        await Assert.That(summary).IsEqualTo(new TransferMatchSummary(2, 0, 0));
+    }
+
+    [Test]
+    public async Task MatchChangesAsync_NothingChangedSinceTheLastRun_SkipsIt()
+    {
+        // Arrange
+        await SeedAccountsAsync(Username, "mine")
+            .Do(s => s.TransactionScenario.WithTransaction("shopping", "mine-current",
+                Details(-20m, occurredAt: DaysAgo(1))));
+
+        TransferMatchingService subject = BuildSubject(Username);
+        await subject.MatchChangesAsync(CancellationToken);
+
+        // Act
+        TransferMatchSummary? summary = await subject.MatchChangesAsync(CancellationToken);
+
+        // Assert
+        await Assert.That(summary).IsNull();
+    }
+
+    [Test]
+    public async Task MatchChangesAsync_AfterARunThatDecidedSomething_SkipsAsItsDecisionsAreNotChanges()
+    {
+        // Arrange
+        await SeedAccountsAsync(Username, "mine")
+            .Do(s => s.TransactionScenario.WithTransaction("out", "mine-current",
+                Details(-50m, labelled: true, occurredAt: DaysAgo(1))))
+            .Do(s => s.TransactionScenario.WithTransaction("in", "mine-savings",
+                Details(50m, occurredAt: DaysAgo(1))));
+
+        TransferMatchingService subject = BuildSubject(Username);
+        await subject.MatchChangesAsync(CancellationToken);
+
+        // Act
+        TransferMatchSummary? second = await subject.MatchChangesAsync(CancellationToken);
+
+        // Assert
+        await Assert.That(second).IsNull();
+    }
+
+    [Test]
+    public async Task MatchChangesAsync_NewTransaction_PairsWithItsMirror()
+    {
+        // Arrange
+        await SeedAccountsAsync(Username, "mine")
+            .Do(s => s.TransactionScenario.WithTransaction("out", "mine-current",
+                Details(-50m, labelled: true, occurredAt: DaysAgo(2))));
+
+        TransferMatchingService subject = BuildSubject(Username);
+        await subject.MatchChangesAsync(CancellationToken);
+        await Scenario.Do(s => s.TransactionScenario.WithTransaction("in", "mine-savings",
+            Details(50m, occurredAt: DaysAgo(1))));
+
+        // Act
+        await subject.MatchChangesAsync(CancellationToken);
+
+        // Assert
+        Dictionary<Guid, BankTransaction> stored = (await LoadTransactionsAsync()).ToDictionary(x => x.Id);
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(stored[Scenario.TransactionMappings["out"]].Transfer!.PartnerTransactionId)
+                .IsEqualTo(Scenario.TransactionMappings["in"]);
+            await Assert.That(stored[Scenario.TransactionMappings["in"]].Transfer!.Decision)
+                .IsEqualTo(TransferDecision.Transfer);
+        }
+    }
+
+    [Test]
+    public async Task MatchChangesAsync_LeavesUnchangedTransactionsOutsideTheWindowAlone()
+    {
+        // Arrange
+        await SeedAccountsAsync(Username, "mine")
+            .Do(s => s.TransactionScenario.WithTransaction("old", "mine-current",
+                Details(-30m, labelled: true, occurredAt: DaysAgo(100))));
+
+        TransferMatchingService subject = BuildSubject(Username);
+        await subject.MatchChangesAsync(CancellationToken);
+
+        // Cleared behind the matcher's back, without touching Updated, so a run that looked at it would decide again
+        await ClearTransfersWithoutUpdatingAsync();
+        await Scenario.Do(s => s.TransactionScenario.WithTransaction("new", "mine-current",
+            Details(-10m, labelled: true, occurredAt: DaysAgo(1))));
+
+        // Act
+        await subject.MatchChangesAsync(CancellationToken);
+
+        // Assert
+        Dictionary<Guid, BankTransaction> stored = (await LoadTransactionsAsync()).ToDictionary(x => x.Id);
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(stored[Scenario.TransactionMappings["old"]].Transfer).IsNull();
+            await Assert.That(stored[Scenario.TransactionMappings["new"]].Transfer!.Decision)
+                .IsEqualTo(TransferDecision.NeedsReview);
+        }
+    }
+
+    [Test]
+    public async Task MatchChangesAsync_KeepsAPairWhoseOtherHalfIsOutsideTheWindow()
+    {
+        // Arrange, a pair confirmed by the user across more days than the matcher would pair
+        await SeedAccountsAsync(Username, "mine")
+            .Do(s => s.TransactionScenario.WithTransaction("old", "mine-savings",
+                Details(50m, occurredAt: DaysAgo(100))))
+            .Do(s => s.TransactionScenario.WithTransaction("recent", "mine-current",
+                Details(-50m, occurredAt: DaysAgo(1))));
+        await ConfirmPairAsync("old", "recent");
+
+        TransferMatchingService subject = BuildSubject(Username);
+        await subject.MatchChangesAsync(CancellationToken);
+        await Scenario.Do(s => s.TransactionScenario.WithTransaction("new", "mine-current",
+            Details(-10m, occurredAt: DaysAgo(1))));
+
+        // Act
+        await subject.MatchChangesAsync(CancellationToken);
+
+        // Assert
+        BankTransaction recent = (await LoadTransactionsAsync()).Single(x => x.Id == Scenario.TransactionMappings["recent"]);
+        await Assert.That(recent.Transfer!.PartnerTransactionId).IsEqualTo(Scenario.TransactionMappings["old"]);
+    }
+
     /// <summary>
     /// A current account and a savings account named <c>{prefix}-current</c> and <c>{prefix}-savings</c>, the
     /// savings one with sort code 222222 and number 22222222.
@@ -155,7 +294,7 @@ public class TransferMatchingServiceTests : InfrastructureTestBase
             }));
 
     private static TransactionDetails Details(decimal amount, bool labelled = false, string? reference = null,
-        string description = "Description") =>
+        string description = "Description", DateTime? occurredAt = null) =>
         new TransactionDetailsFaker().Generate() with
         {
             Description = description,
@@ -164,10 +303,40 @@ public class TransferMatchingServiceTests : InfrastructureTestBase
             Category = "PURCHASE",
             LabelledAsTransfer = labelled,
             Currency = "GBP",
-            OccurredAt = Monday,
+            OccurredAt = occurredAt ?? Monday,
             IsPending = false,
             Metadata = new TransactionMetadata(reference, null, null, null, null)
         };
+
+    private static DateTime DaysAgo(int days) => DateTime.UtcNow.AddDays(-days);
+
+    /// <summary>
+    /// The matcher paired <paramref name="userConfirmed"/> with <paramref name="partner"/> and the user confirmed it,
+    /// so <paramref name="partner"/> keeps the matcher's decision but is locked to it.
+    /// </summary>
+    private async Task ConfirmPairAsync(string userConfirmed, string partner)
+    {
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        Dictionary<Guid, BankTransaction> transactions =
+            await context.BankTransactions.ToDictionaryAsync(x => x.Id, CancellationToken);
+        BankTransaction confirmed = transactions[Scenario.TransactionMappings[userConfirmed]];
+        BankTransaction other = transactions[Scenario.TransactionMappings[partner]];
+
+        confirmed.DecideTransfer(TransferInfo.Matched(TransferReason.MirrorPair, other.Id, other.AccountId, Monday));
+        confirmed.MarkAsTransfer(Monday);
+        other.DecideTransfer(TransferInfo.Matched(TransferReason.MirrorPair, confirmed.Id, confirmed.AccountId, Monday));
+        await context.SaveChangesAsync(CancellationToken);
+    }
+
+    private async Task ClearTransfersWithoutUpdatingAsync()
+    {
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        await context.Database.ExecuteSqlRawAsync(
+            "UPDATE \"BankTransactions\" SET \"Transfer_Decision\" = NULL, \"Transfer_Source\" = NULL, " +
+            "\"Transfer_Reason\" = NULL, \"Transfer_PartnerTransactionId\" = NULL, " +
+            "\"Transfer_PartnerAccountId\" = NULL, \"Transfer_PartnerHouseholdMemberId\" = NULL, " +
+            "\"Transfer_DecidedAt\" = NULL", CancellationToken);
+    }
 
     private async Task MarkNotATransferAsync(Guid transactionId)
     {

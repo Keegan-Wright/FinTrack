@@ -7,6 +7,7 @@ namespace FinanceTracker.Infrastructure.Persistence;
 
 /// <summary>
 /// Fills blind index columns from their encrypted properties on save, see <see cref="EntityTypeBuilderExtensions"/>.
+/// Key rotation marks every encrypted property changed, so they're recomputed under the new key too.
 /// </summary>
 internal sealed class BlindIndexInterceptor : SaveChangesInterceptor
 {
@@ -41,15 +42,32 @@ internal sealed class BlindIndexInterceptor : SaveChangesInterceptor
 
             foreach (IProperty blindIndex in entry.Metadata.GetProperties())
             {
-                if (blindIndex.FindAnnotation(Annotations.BlindIndexSourceAnnotation)?.Value is not string source)
+                if (ValueToHash(entry, blindIndex) is { } value)
                 {
-                    continue;
+                    entry.Property(blindIndex).CurrentValue =
+                        financeTrackerContext.EncryptionService.ComputeBlindIndex(value);
                 }
-
-                string value = entry.Property(source).CurrentValue as string ?? string.Empty;
-                entry.Property(blindIndex).CurrentValue =
-                    financeTrackerContext.EncryptionService.ComputeBlindIndex(value);
             }
         }
+    }
+
+    /// <summary>
+    /// What <paramref name="property"/> hashes when it's a blind index, null for any other property.
+    /// </summary>
+    private static string? ValueToHash(EntityEntry entry, IProperty property)
+    {
+        // The encrypted value itself
+        if (property.FindAnnotation(Annotations.BlindIndexSourceAnnotation)?.Value is string source)
+        {
+            return entry.Property(source).CurrentValue as string ?? string.Empty;
+        }
+
+        // The UTC day of an encrypted date
+        if (property.FindAnnotation(Annotations.DayBlindIndexSourceAnnotation)?.Value is string daySource)
+        {
+            return DayBlindIndex.Value((DateTime)entry.Property(daySource).CurrentValue!);
+        }
+
+        return null;
     }
 }

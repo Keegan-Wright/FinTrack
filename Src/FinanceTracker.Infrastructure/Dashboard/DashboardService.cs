@@ -5,6 +5,7 @@ using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.OpenBanking.Transfers;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
+using FinanceTracker.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -45,6 +46,7 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
         DateTime toUtc = toDate.ToUniversalTime();
 
         List<TransactionLite> items = await context.BankTransactions.OwnedBy(UserId)
+            .WhereEncryptedDayBetween(x => x.OccurredAt, fromUtc, toUtc, context)
             .Select(x => new TransactionLite
             {
                 Amount = x.Amount,
