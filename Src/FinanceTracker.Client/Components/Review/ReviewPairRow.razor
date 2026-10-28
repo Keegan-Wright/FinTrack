@@ -1,0 +1,56 @@
+@* A transaction waiting for review beside its suggested other half, why it was suggested, and the user's choice. *@
+@using System.Globalization
+@using FinanceTracker.Client.Components.Transactions
+@using FinanceTracker.Contracts.Transactions
+
+<div class="ft-review">
+    <div class="ft-review__halves">
+        @Half(Pair.First)
+        <MudIcon Icon="@Icons.Material.Outlined.SwapHoriz" Class="ft-review__arrow mud-text-secondary"/>
+        @if (Pair.Second is { } second)
+        {
+            @Half(second)
+        }
+        else
+        {
+            <div class="ft-review__half ft-review__half--missing">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                    @TransferText.MissingHalf(Pair.First.Transfer!)
+                </MudText>
+            </div>
+        }
+    </div>
+    <MudText Typo="Typo.caption" Class="mud-text-secondary">@TransferText.Reason(Pair.First.Transfer!)</MudText>
+    <div class="ft-review__actions">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                   OnClick="@(() => OnDecide.InvokeAsync(TransferAction.MarkAsTransfer))">It's a transfer</MudButton>
+        <MudButton Variant="Variant.Text" Size="Size.Small"
+                   OnClick="@(() => OnDecide.InvokeAsync(TransferAction.NotATransfer))">Not a transfer</MudButton>
+    </div>
+</div>
+
+@code {
+
+    [Parameter] [EditorRequired] public required ReviewPair Pair { get; set; }
+
+    /// <summary>
+    /// The user chose, for the whole pair.
+    /// </summary>
+    [Parameter] public EventCallback<TransferAction> OnDecide { get; set; }
+
+    /// <summary>
+    /// <c>Current · 4 Oct 2026</c>.
+    /// </summary>
+    internal static string AccountAndDate(Transaction transaction) =>
+        $"{transaction.AccountName} · {transaction.TransactionTime.ToLocalTime().ToString("d MMM yyyy", CultureInfo.CurrentCulture)}";
+
+    private static RenderFragment Half(Transaction transaction) =>
+        @<div class="ft-review__half">
+            <div class="ft-review__text">
+                <MudText Typo="Typo.body2" Class="text-truncate">@transaction.Description</MudText>
+                <MudText Typo="Typo.caption" Class="mud-text-secondary text-truncate">@AccountAndDate(transaction)</MudText>
+            </div>
+            <MoneyText Value="@transaction.Amount" Signed="true"/>
+        </div>;
+
+}

@@ -68,6 +68,25 @@ public sealed class ApplicationState : INotifyPropertyChanged
     }
 
     /// <summary>
+    /// How many transactions might be transfers and are waiting for the user, shown in the navigation. Refreshed after
+    /// each sync and each decision.
+    /// </summary>
+    public int TransfersToReview
+    {
+        get;
+        set
+        {
+            if (value == field)
+            {
+                return;
+            }
+
+            field = value;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>
     /// Raised when a property actually changes.
     /// </summary>
     public event PropertyChangedEventHandler? PropertyChanged;

@@ -1,0 +1,12 @@
+/* The amount over how it counts, both kept to the right */
+.ft-transaction__end {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.ft-transaction-list__more {
+    display: flex;
+    justify-content: center;
+    padding-top: 8px;
+}

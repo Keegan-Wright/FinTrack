@@ -1,0 +1,51 @@
+.ft-details {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.ft-details__amount {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Label over value, which reads better than two columns at phone width */
+.ft-details__fields {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0;
+}
+
+.ft-details__fields dt {
+    margin-top: 8px;
+    color: var(--mud-palette-text-secondary);
+    font-size: .75rem;
+}
+
+.ft-details__fields dd {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+}
+
+.ft-details__actions {
+    display: flex;
+    flex-direction: column;
+    padding-top: 8px;
+    border-top: 1px solid var(--mud-palette-lines-default);
+}
+
+.ft-details__heading {
+    padding-bottom: 4px;
+    color: var(--mud-palette-text-secondary);
+    font-size: .75rem;
+}
+
+/* Rows of a list, read from the left like the fields above */
+.ft-details__actions ::deep .ft-details__action {
+    justify-content: flex-start;
+    padding-left: 4px;
+    text-transform: none;
+}

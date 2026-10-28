@@ -8,10 +8,12 @@
     white-space: normal;
 }
 
-/* A long account name shortens rather than widening the description column on a phone */
+/* A long account name shortens rather than widening the grid. A cell grows to fit its content, so 100% of it
+   doesn't bound anything, the width is capped against the screen instead. On a phone the grid stacks each row's
+   cells with their values pushed right  */
 .ft-transfer-anchor {
     display: inline-flex;
-    max-width: 100%;
+    max-width: min(240px, 50vw);
     vertical-align: middle;
 }
 

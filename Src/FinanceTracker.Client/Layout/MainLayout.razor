@@ -7,6 +7,7 @@
 @using System.Globalization
 @inject IAutomationService AutomationService
 @inject ISyncNotifications SyncNotifications
+@inject ITransfersService TransfersService
 @inject ISnackbar Snackbar
 
 <MudThemeProvider @ref="@_mudThemeProvider" Theme="_theme" @bind-IsDarkMode="_isDarkMode" DefaultScrollbar="true"/>
@@ -16,8 +17,8 @@
 
 <MudLayout>
     <MudAppBar Elevation="@(_isDarkMode ? 0 : 1)">
-        <MudStaticNavDrawerToggle DrawerId="nav-drawer" Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit"
-                                  Edge="Edge.Start"/>
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start"
+                       OnClick="@ToggleDrawer" aria-label="Toggle navigation"/>
         <span class="ft-brand">FinTrack</span>
         <MudSpacer/>
         <MudTooltip Text="@(_isDarkMode ? "Switch to light mode" : "Switch to dark mode")">
@@ -39,8 +40,12 @@
             </MudMenuItem>
         </MudMenu>
     </MudAppBar>
-    <MudDrawer id="nav-drawer" @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="0">
-        <NavMenu/>
+    @* Docked from desktop width, below it the drawer opens over the page. The static input package's script remembers
+       a drawer's state across visits, which would keep it closed on desktop after closing it once, so it's told this
+       drawer is already handled *@
+    <MudDrawer id="nav-drawer" @bind-Open="_drawerOpen" Breakpoint="@LayoutBase.DrawerBreakpoint"
+               ClipMode="DrawerClipMode.Always" Elevation="0" data-mud-static-monitored="true">
+        <NavMenu TransfersToReview="@ApplicationState.TransfersToReview"/>
         <MudSpacer/>
         @if (BackgroundSyncTime != null || ApplicationState.Syncing)
         {
@@ -106,22 +111,41 @@
         {
             // Only once interactive, a prerender has no circuit to push the update to
             _syncSubscription = await SyncNotifications.SubscribeAsync(() => InvokeAsync(OnSyncCompletedAsync), _cts.Token);
-
-            await GetLatestSyncTimeAsync();
+            await RefreshSyncDetailsAsync();
         }
     }
 
     private async Task OnSyncCompletedAsync()
     {
         ApplicationState.Syncing = false;
-        await GetLatestSyncTimeAsync();
+
+        // Matching runs with the sync, so there may be new ones to review too
+        await RefreshSyncDetailsAsync();
         Snackbar.Add("Your accounts have been synced", Severity.Success);
     }
+
+    /// <summary>
+    /// When the accounts last synced and how many transfers wait for review, fetched together as neither needs the
+    /// other.
+    /// </summary>
+    private Task RefreshSyncDetailsAsync() => Task.WhenAll(GetLatestSyncTimeAsync(), GetTransfersToReviewAsync());
 
     private async Task GetLatestSyncTimeAsync()
     {
         BackgroundSyncTime = await AutomationService.GetLastSyncTimeAsync(_cts.Token);
         await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task GetTransfersToReviewAsync()
+    {
+        try
+        {
+            ApplicationState.TransfersToReview = await TransfersService.GetReviewCountAsync(_cts.Token);
+        }
+        catch (HttpRequestException)
+        {
+            // Only the navigation's count, the page itself still works
+        }
     }
 
     public async Task RequestResync()

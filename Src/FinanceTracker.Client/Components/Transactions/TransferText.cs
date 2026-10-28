@@ -1,5 +1,6 @@
 using System.Globalization;
 using FinanceTracker.Contracts.Transactions;
+using MudBlazor;
 
 namespace FinanceTracker.Client.Components.Transactions;
 
@@ -30,6 +31,25 @@ public static class TransferText
     };
 
     /// <summary>
+    /// How a transaction counts in a word, for sorting and where there's no chip <c>Transfer</c>, <c>Review</c>,
+    /// <c>Income</c> or <c>Spending</c>.
+    /// </summary>
+    public static string CountsAs(Transaction transaction)
+    {
+        if (transaction.Transfer?.State == TransferState.Transfer)
+        {
+            return "Transfer";
+        }
+
+        if (transaction.Transfer?.State == TransferState.NeedsReview)
+        {
+            return "Review";
+        }
+
+        return transaction.Amount >= 0 ? "Income" : "Spending";
+    }
+
+    /// <summary>
     /// Who or where the money moved to or from, e.g. <c>Rainy Day, 4 Oct</c> or <c>Jane Smith</c>. Null when
     /// nothing is known.
     /// </summary>
@@ -48,6 +68,21 @@ public static class TransferText
         return withDate && transfer.PartnerTime is { } time
             ? $"{account}, {time.ToLocalTime().ToString("d MMM", CultureInfo.CurrentCulture)}"
             : account;
+    }
+
+    /// <summary>
+    /// What stands in for the other half on the review page when it isn't waiting for review too.
+    /// </summary>
+    public static string MissingHalf(TransactionTransfer transfer)
+    {
+        if (OtherHalf(transfer) is { } otherHalf)
+        {
+            return $"Paired with {otherHalf}";
+        }
+
+        return transfer.Reason == TransferMatchReason.AmbiguousMirrorPair
+            ? "Several transactions could be the other half"
+            : "The other half isn't on any of your accounts";
     }
 
     /// <summary>
@@ -107,5 +142,15 @@ public static class TransferText
         TransferAction.MarkAsTransfer => "It's a transfer",
         TransferAction.NotATransfer => "Not a transfer",
         _ => "Let FinTrack decide"
+    };
+
+    /// <summary>
+    /// The action's icon.
+    /// </summary>
+    public static string ActionIcon(TransferAction action) => action switch
+    {
+        TransferAction.MarkAsTransfer => Icons.Material.Outlined.SwapHoriz,
+        TransferAction.NotATransfer => Icons.Material.Outlined.ShoppingBag,
+        _ => Icons.Material.Outlined.AutoMode
     };
 }

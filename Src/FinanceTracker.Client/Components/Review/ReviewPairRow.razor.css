@@ -1,0 +1,49 @@
+.ft-review {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+}
+
+/* Halves side by side, one under the other on a phone */
+.ft-review__halves {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+}
+
+.ft-review__half {
+    display: flex;
+    flex: 1 1 min(260px, 100%);
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-width: 0;
+    padding: 8px 12px;
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--mud-default-borderradius);
+}
+
+.ft-review__half--missing {
+    border-style: dashed;
+}
+
+.ft-review__text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+@media (max-width: 599.98px) {
+    .ft-review__halves ::deep .ft-review__arrow {
+        display: none;
+    }
+}
+
+.ft-review__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}

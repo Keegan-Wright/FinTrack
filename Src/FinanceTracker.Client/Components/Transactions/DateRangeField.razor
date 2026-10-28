@@ -18,11 +18,10 @@
                     <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="@(() => Choose(range))">@label</MudButton>
                 }
             </div>
-            <MudDateRangePicker DateRange="@_draft" DateRangeChanged="@(r => _draft = r)"
+            <MudDateRangePicker DateRange="@_draft" DateRangeChanged="@OnDraftChangedAsync"
                                 PickerVariant="PickerVariant.Static" ShowToolbar="false" Elevation="0"/>
             <div class="ft-date-range__actions">
                 <MudButton Variant="Variant.Text" OnClick="@(() => Choose(null))">Any time</MudButton>
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Choose(_draft))">Done</MudButton>
             </div>
         </div>
     </MudPopover>
@@ -71,6 +70,18 @@
     {
         _open = false;
         await ValueChanged.InvokeAsync(range);
+    }
+
+    /// <summary>
+    /// A range picked on the calendar applies once its end is chosen, there's no button to confirm it.
+    /// </summary>
+    private async Task OnDraftChangedAsync(DateRange? range)
+    {
+        _draft = range;
+        if (range is { Start: not null, End: not null })
+        {
+            await Choose(range);
+        }
     }
 
 }

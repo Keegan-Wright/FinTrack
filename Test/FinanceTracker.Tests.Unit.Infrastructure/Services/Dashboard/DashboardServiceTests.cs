@@ -59,6 +59,8 @@ public class DashboardServiceTests : InfrastructureTestBase
         {
             await Assert.That(result.TotalIn).IsEqualTo(100m);
             await Assert.That(result.TotalOut).IsEqualTo(-20m);
+            await Assert.That(result.TransferredIn).IsEqualTo(0m);
+            await Assert.That(result.TransferredOut).IsEqualTo(-500m);
         }
     }
 

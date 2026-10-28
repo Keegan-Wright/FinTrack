@@ -56,14 +56,19 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
             })
             .ToListAsync(cancellationToken);
 
-        IEnumerable<decimal> amountsInRange = items
-            .Where(x => !x.IsTransfer && x.TransactionTime >= fromUtc && x.TransactionTime < toUtc)
-            .Select(x => x.Amount);
+        List<TransactionLite> inRange = items
+            .Where(x => x.TransactionTime >= fromUtc && x.TransactionTime < toUtc)
+            .ToList();
+
+        List<decimal> counted = inRange.Where(static x => !x.IsTransfer).Select(static x => x.Amount).ToList();
+        List<decimal> transferred = inRange.Where(static x => x.IsTransfer).Select(static x => x.Amount).ToList();
 
         return new SpentInTimePeriod
         {
-            TotalIn = amountsInRange.Where(x => !decimal.IsNegative(x)).Sum(),
-            TotalOut = amountsInRange.Where(decimal.IsNegative).Sum()
+            TotalIn = counted.Where(static x => !decimal.IsNegative(x)).Sum(),
+            TotalOut = counted.Where(decimal.IsNegative).Sum(),
+            TransferredIn = transferred.Where(static x => !decimal.IsNegative(x)).Sum(),
+            TransferredOut = transferred.Where(decimal.IsNegative).Sum()
         };
     }
 

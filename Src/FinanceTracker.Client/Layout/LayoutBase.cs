@@ -12,7 +12,15 @@ public class LayoutBase : LayoutComponentBase
 {
     internal readonly MudTheme _theme = AppTheme.Theme;
 
-    internal bool _drawerOpen = true;
+    /// <summary>
+    /// The width the navigation drawer is docked open from, desktops. Tablets and phones start with it closed.
+    /// </summary>
+    internal const Breakpoint DrawerBreakpoint = Breakpoint.Lg;
+
+    /// <summary>
+    /// Closed until the first render knows the screen width.
+    /// </summary>
+    internal bool _drawerOpen;
     internal bool _isDarkMode = true;
     internal MudThemeProvider _mudThemeProvider = null!;
 
@@ -21,6 +29,9 @@ public class LayoutBase : LayoutComponentBase
     /// </summary>
     [CascadingParameter]
     internal ApplicationState ApplicationState { get; set; } = null!;
+
+    [Inject]
+    private IBrowserViewportService BrowserViewportService { get; set; } = null!;
 
     protected override void OnInitialized()
     {
@@ -32,11 +43,14 @@ public class LayoutBase : LayoutComponentBase
     {
         if (firstRender)
         {
+            _drawerOpen = await BrowserViewportService.IsBreakpointWithinWindowSizeAsync(Breakpoint.LgAndUp);
             _isDarkMode = await _mudThemeProvider.GetSystemDarkModeAsync();
             await _mudThemeProvider.WatchSystemDarkModeAsync(OnSystemPreferenceChanged);
             StateHasChanged();
         }
     }
+
+    internal void ToggleDrawer() => _drawerOpen = !_drawerOpen;
 
     private Task OnSystemPreferenceChanged(bool newValue)
     {

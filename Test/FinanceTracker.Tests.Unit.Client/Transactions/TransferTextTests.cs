@@ -105,6 +105,44 @@ public class TransferTextTests
         await Assert.That(reasons).DoesNotContain("Decided by a rule.");
     }
 
+    [Test]
+    public async Task MissingHalf_SaysWhyThereIsNoOtherHalf()
+    {
+        // Act
+        string paired = TransferText.MissingHalf(Transfer(TransferState.NeedsReview, description: "To savings"));
+        string ambiguous = TransferText.MissingHalf(Transfer(TransferState.NeedsReview,
+            reason: TransferMatchReason.AmbiguousMirrorPair));
+        string missing = TransferText.MissingHalf(Transfer(TransferState.NeedsReview,
+            reason: TransferMatchReason.BankTransferLabel));
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(paired).IsEqualTo("Paired with To savings");
+            await Assert.That(ambiguous).IsEqualTo("Several transactions could be the other half");
+            await Assert.That(missing).IsEqualTo("The other half isn't on any of your accounts");
+        }
+    }
+
+    [Test]
+    [Arguments(null, -5, "Spending")]
+    [Arguments(null, 5, "Income")]
+    [Arguments(TransferState.NotATransfer, 5, "Income")]
+    [Arguments(TransferState.Transfer, -5, "Transfer")]
+    [Arguments(TransferState.NeedsReview, -5, "Review")]
+    public async Task CountsAs_SaysHowItCounts(TransferState? state, int amount, string expected)
+    {
+        // Arrange
+        Transaction transaction = TransactionListTests.Transaction("Description", amount,
+            transfer: state is { } known ? Transfer(known) : null);
+
+        // Act
+        string countsAs = TransferText.CountsAs(transaction);
+
+        // Assert
+        await Assert.That(countsAs).IsEqualTo(expected);
+    }
+
     private static TransactionTransfer Transfer(TransferState state,
         TransferDecidedBy decidedBy = TransferDecidedBy.FinTrack,
         TransferMatchReason reason = TransferMatchReason.MirrorPair, string? account = null, string? member = null,
