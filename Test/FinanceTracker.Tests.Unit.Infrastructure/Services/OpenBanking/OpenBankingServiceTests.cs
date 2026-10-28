@@ -7,6 +7,7 @@ using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.OpenBanking;
 using FinanceTracker.Infrastructure.OpenBanking.TrueLayer.Contracts;
 using FinanceTracker.Tests.Unit.Shared;
+using FinanceTracker.Tests.Unit.Shared.Fakers;
 using FinanceTracker.Tests.Unit.Shared.Fakers.TrueLayer;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.EntityFrameworkCore;
@@ -734,6 +735,37 @@ public class OpenBankingServiceTests : InfrastructureTestBase
 
         // Assert
         await Assert.That((await LoadTransactionsAsync()).Select(x => x.ExternalId)).Contains("pending-id");
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_StandingOrdersAndDirectDebitsFetchFails_KeepsTheStoredOnes()
+    {
+        // Arrange
+        ExternalOpenBankingAccount externalAccount = new ExternalOpenBankingAccountFaker().Generate();
+
+        await SeedAccountAsync(externalAccount)
+            .Do(s => s.BankAccountScenario.WithStandingOrders("main", new StandingOrderDetailsFaker().Generate()))
+            .Do(s => s.BankAccountScenario.WithDirectDebits("main", new DirectDebitDetailsFaker().Generate()));
+
+        GivenProviderReturns(accounts: [externalAccount]);
+        _api.GetAccountStandingOrdersAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new HttpRequestException("refused"));
+        _api.GetAccountDirectDebitsAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new HttpRequestException("refused"));
+
+        OpenBankingService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        BankAccount account = (await LoadAccountsAsync()).Single();
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(account.StandingOrders).Count().IsEqualTo(1);
+            await Assert.That(account.DirectDebits).Count().IsEqualTo(1);
+        }
     }
 
     [Test]

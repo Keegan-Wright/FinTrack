@@ -424,18 +424,18 @@ public class TrueLayerOpenBankingApiServiceTests : UnitTestBase
     }
 
     [Test]
-    public async Task GetAccountStandingOrdersAsync_RefusedRequest_LogsItWithTheTraceId()
+    public async Task GetAllAccountsAsync_RefusedRequest_LogsItWithTheTraceId()
     {
         var logger = new CapturingLogger<TrueLayerOpenBankingApiService>();
         TrueLayerOpenBankingApiService subject = BuildSubject(_ => Task.FromResult(TooManyRequests()), logger);
 
-        await subject.GetAccountStandingOrdersAsync("acc-1", "token", CancellationToken);
+        await subject.GetAllAccountsAsync("token", CancellationToken);
 
         (LogLevel Level, string Message, Exception? Exception) entry = logger.Entries.Single();
         using (Assert.Multiple())
         {
             await Assert.That(entry.Level).IsEqualTo(LogLevel.Warning);
-            await Assert.That(entry.Message).Contains("standing orders").And.Contains("429")
+            await Assert.That(entry.Message).Contains("accounts").And.Contains("429")
                 .And.Contains("tl-trace-id trace-123");
         }
     }
@@ -465,14 +465,13 @@ public class TrueLayerOpenBankingApiServiceTests : UnitTestBase
     }
 
     [Test]
-    public async Task GetAccountTransactionsAsync_FailedRequest_ReturnsEmptyResponse()
+    public async Task GetAccountTransactionsAsync_FailedRequest_Throws()
     {
-        TrueLayerOpenBankingApiService subject = BuildSubject(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError)));
+        // An empty response would be recorded as a sync, moving where the next one fetches from
+        TrueLayerOpenBankingApiService subject = BuildSubject(_ => Task.FromResult(TooManyRequests()));
 
-        ExternalOpenBankingAccountTransactionsResponse result =
-            await subject.GetAccountTransactionsAsync("acc-1", "token", null, CancellationToken);
-
-        await Assert.That((object?)result.Results).IsNull();
+        await Assert.ThrowsAsync<HttpRequestException>(() =>
+            subject.GetAccountTransactionsAsync("acc-1", "token", null, CancellationToken));
     }
 
     [Test]
@@ -486,25 +485,23 @@ public class TrueLayerOpenBankingApiServiceTests : UnitTestBase
     }
 
     [Test]
-    public async Task GetAccountStandingOrdersAsync_FailedRequest_ReturnsEmptyResponse()
+    public async Task GetAccountStandingOrdersAsync_FailedRequest_Throws()
     {
-        TrueLayerOpenBankingApiService subject = BuildSubject(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotImplemented)));
+        // An empty response would remove every stored standing order, so a failure must not look like one
+        TrueLayerOpenBankingApiService subject = BuildSubject(_ => Task.FromResult(TooManyRequests()));
 
-        ExternalOpenBankingAccountStandingOrdersResponse result =
-            await subject.GetAccountStandingOrdersAsync("acc-1", "token", CancellationToken);
-
-        await Assert.That((object?)result.Results).IsNull();
+        await Assert.ThrowsAsync<HttpRequestException>(() =>
+            subject.GetAccountStandingOrdersAsync("acc-1", "token", CancellationToken));
     }
 
     [Test]
-    public async Task GetAccountDirectDebitsAsync_FailedRequest_ReturnsEmptyResponse()
+    public async Task GetAccountDirectDebitsAsync_FailedRequest_Throws()
     {
-        TrueLayerOpenBankingApiService subject = BuildSubject(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotImplemented)));
+        // An empty response would remove every stored direct debit, so a failure must not look like one
+        TrueLayerOpenBankingApiService subject = BuildSubject(_ => Task.FromResult(TooManyRequests()));
 
-        ExternalOpenBankingAccountDirectDebitsResponse result =
-            await subject.GetAccountDirectDebitsAsync("acc-1", "token", CancellationToken);
-
-        await Assert.That((object?)result.Results).IsNull();
+        await Assert.ThrowsAsync<HttpRequestException>(() =>
+            subject.GetAccountDirectDebitsAsync("acc-1", "token", CancellationToken));
     }
 
     [Test]

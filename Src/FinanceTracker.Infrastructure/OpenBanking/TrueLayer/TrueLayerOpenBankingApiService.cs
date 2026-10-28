@@ -133,11 +133,9 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
             urlBuilder.Append(CultureInfo.CurrentCulture, $"?from={transactionsStartingDate:yyyy-MM-dd}&to={_timeProvider.GetLocalNow():yyyy-MM-dd}");
         }
 
+        // Throws rather than returning empty, so a refused request isn't recorded as a transaction sync
         HttpResponseMessage response = await httpClient.GetAsync(urlBuilder.ToString(), cancellationToken);
-        if (!Succeeded(response, "transactions"))
-        {
-            return new ExternalOpenBankingAccountTransactionsResponse();
-        }
+        EnsureSuccess(response, "transactions");
 
         ExternalOpenBankingAccountTransactionsResponse? responseBody =
             await response.Content.ReadFromJsonAsync<ExternalOpenBankingAccountTransactionsResponse>(cancellationToken);
@@ -176,10 +174,9 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
 
         HttpResponseMessage response =
             await httpClient.GetAsync($"v1/accounts/{accountId}/standing_orders", cancellationToken);
-        if (!Succeeded(response, "standing orders"))
-        {
-            return new ExternalOpenBankingAccountStandingOrdersResponse();
-        }
+
+        // Throws rather than returning empty, an empty list removes every stored standing order
+        EnsureSuccess(response, "standing orders");
 
         ExternalOpenBankingAccountStandingOrdersResponse? responseBody =
             await response.Content.ReadFromJsonAsync<ExternalOpenBankingAccountStandingOrdersResponse>(cancellationToken);
@@ -194,10 +191,9 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
 
         HttpResponseMessage response =
             await httpClient.GetAsync($"v1/accounts/{accountId}/direct_debits", cancellationToken);
-        if (!Succeeded(response, "direct debits"))
-        {
-            return new ExternalOpenBankingAccountDirectDebitsResponse();
-        }
+
+        // Throws rather than returning empty, an empty list removes every stored direct debit
+        EnsureSuccess(response, "direct debits");
 
         ExternalOpenBankingAccountDirectDebitsResponse? responseBody =
             await response.Content.ReadFromJsonAsync<ExternalOpenBankingAccountDirectDebitsResponse>(cancellationToken);
