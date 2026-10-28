@@ -5,6 +5,11 @@ on:
     tags:
       - 'v*'
 
+# The GITHUB_TOKEN only needs to check out the code. Artifact uploads and the Docker build cache use the runner's own
+# token
+permissions:
+  contents: read
+
 jobs:
   tests:
     name: Tests
@@ -47,12 +52,10 @@ jobs:
           name: TestReport
           path: '**/*-report.html'
 
+  # Pushes to Docker Hub with its own credentials, so the workflow's read only token is enough
   build-and-push-image:
     needs: tests
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
 
     steps:
       - name: Checkout repository

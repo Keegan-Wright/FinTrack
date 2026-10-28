@@ -24,4 +24,14 @@ public class HouseholdMember
     /// The member's monthly income.
     /// </summary>
     public decimal? Income { get; init; }
+
+    /// <summary>
+    /// How the member appears in transaction descriptions.
+    /// </summary>
+    public IReadOnlyList<string> PayeeNames { get; init; } = [];
+
+    /// <summary>
+    /// The member's own accounts, which aren't connected to the app.
+    /// </summary>
+    public IReadOnlyList<LinkedAccount> LinkedAccounts { get; init; } = [];
 }

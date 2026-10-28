@@ -1,3 +1,4 @@
+using FinanceTracker.Contracts.Services;
 using Microsoft.AspNetCore.Components;
 
 namespace FinanceTracker.Client.Pages;
@@ -53,6 +54,17 @@ public class PageComponent : ComponentBase, IDisposable
             SetLoadingState(false);
         }
     }
+
+    /// <summary>
+    /// Shows the user's accounts as syncing in the layout, after queuing a sync. Cleared when the sync finishes.
+    /// </summary>
+    internal void ShowSyncing() => ApplicationState.Syncing = true;
+
+    /// <summary>
+    /// Updates the navigation's count of transfers to review, after the user decides about one.
+    /// </summary>
+    internal async Task RefreshTransfersToReviewAsync(ITransfersService transfersService) =>
+        ApplicationState.TransfersToReview = await transfersService.GetReviewCountAsync(_cts.Token);
 
     /// <summary>
     /// Shows or hides the loading overlay, with <paramref name="message"/> under the spinner.

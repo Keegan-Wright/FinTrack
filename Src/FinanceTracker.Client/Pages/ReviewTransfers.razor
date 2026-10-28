@@ -1,0 +1,121 @@
+@page "/Review"
+@* Transactions that might be transfers, each suggested pair side by side, for the user to decide (ITransfersService).
+   They count as income or spending until decided. *@
+@using FinanceTracker.Client.Components.Review
+@using FinanceTracker.Client.Components.Transactions
+@using FinanceTracker.Contracts.Transactions
+@using Microsoft.AspNetCore.Authorization
+@inherits PageComponent
+
+@attribute [Authorize]
+@inject ITransfersService TransfersService
+@inject ISnackbar Snackbar
+
+<PageTitle>FinTrack - Review transfers</PageTitle>
+<PageHeader Title="Review transfers" Subtitle="@Subtitle"/>
+
+<LoadingFrame Loading="@_loading" Message="Gathering what needs a look…" MinHeight="320" Cover="false">
+    @if (!_loading)
+    {
+        <Section Title="Might be transfers" Caption="Each still counts as income or spending until you decide">
+            @if (_pairs.Count == 0)
+            {
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                    All caught up. FinTrack asks here when it isn't sure whether money moved between your accounts.
+                </MudText>
+            }
+            else
+            {
+                <div class="ft-list">
+                    @foreach (var pair in _pairs)
+                    {
+                        <div class="ft-list__row">
+                            <ReviewPairRow Pair="@pair" OnDecide="@(action => DecideAsync(pair, action))"/>
+                        </div>
+                    }
+                </div>
+            }
+        </Section>
+    }
+</LoadingFrame>
+
+@code {
+
+    private List<Transaction> _toReview = [];
+    private List<ReviewPair> _pairs = [];
+    private bool _loading = true;
+    private bool _loaded;
+
+    private string Subtitle => _loading || _pairs.Count == 0
+        ? "Money FinTrack isn't sure moved between your accounts"
+        : $"{_pairs.Count} to review";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // The prerender shows the spinner, the browser loads the list once it's interactive
+        if (RendererInfo.IsInteractive && !_loaded)
+        {
+            _loaded = true;
+            _toReview = await TransfersService.GetTransfersToReviewAsync(_cts.Token).ToListAsync(_cts.Token);
+            _pairs = ReviewPairs.Group(_toReview);
+            _loading = false;
+        }
+    }
+
+    private async Task DecideAsync(ReviewPair pair, TransferAction action)
+    {
+        try
+        {
+            SetLoadingState(true, "Updating transfers");
+            List<Transaction> changed = [];
+            if (action == TransferAction.MarkAsTransfer)
+            {
+                // Confirms the other half with it
+                changed.AddRange(await TransfersService.MarkAsTransferAsync(pair.First.TransactionId, _cts.Token));
+            }
+            else
+            {
+                // If the pair isn't a transfer neither half is, otherwise the other half would come back on its own
+                foreach (var transaction in pair.Transactions)
+                {
+                    changed.AddRange(
+                        await TransfersService.MarkNotATransferAsync(transaction.TransactionId, _cts.Token));
+                }
+            }
+
+            Apply(changed);
+            await RefreshTransfersToReviewAsync(TransfersService);
+            Snackbar.Add(action == TransferAction.MarkAsTransfer
+                ? "Marked as a transfer, it no longer counts as income or spending"
+                : "It counts as income or spending now", Severity.Success);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't update that, try again", Severity.Error);
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
+    /// <summary>
+    /// Swaps in what the decision changed. Anything no longer waiting leaves the list, and a decision can put
+    /// another transaction up for review.
+    /// </summary>
+    private void Apply(IEnumerable<Transaction> changed)
+    {
+        foreach (var transaction in changed)
+        {
+            _toReview.RemoveAll(x => x.TransactionId == transaction.TransactionId);
+            if (transaction.Transfer?.State == TransferState.NeedsReview)
+            {
+                _toReview.Add(transaction);
+            }
+        }
+
+        _toReview = _toReview.OrderByDescending(static x => x.TransactionTime).ToList();
+        _pairs = ReviewPairs.Group(_toReview);
+    }
+
+}

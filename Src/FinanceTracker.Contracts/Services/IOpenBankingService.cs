@@ -25,10 +25,11 @@ public interface IOpenBankingService
 
     /// <summary>
     /// Exchanges the access code from the provider's consent page for tokens, connects (or reconnects) each bank it
-    /// covers, then syncs them.
+    /// covers, then queues a sync of the user's connections, which runs in the background.
     /// </summary>
     /// <returns>
-    /// <see langword="true"/> once the banks are connected and synced. Never <see langword="false"/>, failures throw.
+    /// <see langword="true"/> once the banks are connected and the sync queued. Never <see langword="false"/>, failures
+    /// throw.
     /// </returns>
     /// <exception cref="HttpRequestException">The provider rejected the access code, or couldn't be reached.</exception>
     Task<bool> AddVendorViaAccessCodeAsync(AddVendor addVendor, CancellationToken cancellationToken);

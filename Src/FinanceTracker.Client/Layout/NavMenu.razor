@@ -11,6 +11,15 @@
         <MudNavLink Href="Accounts" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.AccountBalance">Accounts</MudNavLink>
         <MudNavLink Href="Transactions" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.ReceiptLong">Transactions</MudNavLink>
         <MudNavLink Href="Calendar" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.CalendarMonth">Calendar</MudNavLink>
+        <MudNavLink Href="Review" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.FactCheck">
+            <span class="ft-nav__label">
+                Review transfers
+                @if (TransfersToReview > 0)
+                {
+                    <span class="ft-nav__count" aria-label="@($"{TransfersToReview} to review")">@TransfersToReview</span>
+                }
+            </span>
+        </MudNavLink>
 
         <div class="ft-nav__heading">Insights</div>
         <MudNavLink Href="Reports" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Insights">Reports</MudNavLink>
@@ -26,6 +35,11 @@
 </div>
 
 @code {
+
+    /// <summary>
+    /// Shown beside the review link when there are any, see <see cref="ApplicationState.TransfersToReview"/>.
+    /// </summary>
+    [Parameter] public int TransfersToReview { get; set; }
 
     protected override async Task OnInitializedAsync()
     {

@@ -65,4 +65,66 @@ public class HouseholdMemberApiTests : IntegrationTestBase
         // Assert
         await Assert.That(exception!.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
     }
+
+    [Test]
+    public async Task UpdateRecognition_IsSavedAndListed()
+    {
+        // Arrange
+        SignedInUser user = await RegisterUserAsync();
+        IHouseholdMemberService service = ApiFor(user).Get<IHouseholdMemberService>();
+        HouseholdMember added = await service.AddHouseholdMemberAsync(
+            new AddHouseholdMember { FirstName = "Jane", LastName = "Doe", Income = 1m }, CancellationToken);
+
+        // Act
+        HouseholdMemberRecognitionSaved saved = await service.UpdateRecognitionAsync(added.Id,
+            new UpdateHouseholdMemberRecognition
+            {
+                PayeeNames = ["J Doe"],
+                LinkedAccounts = [new LinkedAccount { SortCode = "11-22-33", Number = "12345678" }]
+            }, CancellationToken);
+        HouseholdMember listed = await service.GetHouseholdMembersAsync(CancellationToken).SingleAsync(CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(saved.RecognisedTransactions).IsEqualTo(0);
+            await Assert.That(listed.PayeeNames).IsEquivalentTo(["J Doe"]);
+            await Assert.That(listed.LinkedAccounts.Select(x => $"{x.SortCode} {x.Number}"))
+                .IsEquivalentTo(["112233 12345678"]);
+        }
+    }
+
+    [Test]
+    public async Task UpdateRecognition_OfAnotherUsersMember_IsNotFound()
+    {
+        // Arrange
+        SignedInUser owner = await RegisterUserAsync();
+        SignedInUser other = await RegisterUserAsync();
+        HouseholdMember theirs = await ApiFor(owner).Get<IHouseholdMemberService>().AddHouseholdMemberAsync(
+            new AddHouseholdMember { FirstName = "Jane", LastName = "Doe", Income = 1m }, CancellationToken);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(() => ApiFor(other).Get<IHouseholdMemberService>()
+            .UpdateRecognitionAsync(theirs.Id, new UpdateHouseholdMemberRecognition(), CancellationToken));
+    }
+
+    [Test]
+    public async Task UpdateRecognition_WithAnInvalidAccount_IsRejected()
+    {
+        // Arrange
+        SignedInUser user = await RegisterUserAsync();
+        IHouseholdMemberService service = ApiFor(user).Get<IHouseholdMemberService>();
+        HouseholdMember added = await service.AddHouseholdMemberAsync(
+            new AddHouseholdMember { FirstName = "Jane", LastName = "Doe", Income = 1m }, CancellationToken);
+
+        // Act
+        HttpRequestException? exception = await Assert.ThrowsAsync<HttpRequestException>(() =>
+            service.UpdateRecognitionAsync(added.Id, new UpdateHouseholdMemberRecognition
+            {
+                LinkedAccounts = [new LinkedAccount { SortCode = "1122", Number = "12345678" }]
+            }, CancellationToken));
+
+        // Assert
+        await Assert.That(exception!.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+    }
 }

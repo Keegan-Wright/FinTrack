@@ -26,7 +26,29 @@ public static class EntityTypeBuilderExtensions
 
             return blindIndex;
         }
+
+        /// <summary>
+        /// Adds a blind index on the UTC day of an encrypted date, see <see cref="DayBlindIndex"/>, so date ranges can
+        /// be looked up without decrypting every row.
+        /// </summary>
+        /// <returns>The blind index property's name, for use in indexes.</returns>
+        public string HasDayBlindIndex(Expression<Func<TEntity, DateTime>> encryptedProperty)
+        {
+            ArgumentNullException.ThrowIfNull(builder);
+            ArgumentNullException.ThrowIfNull(encryptedProperty);
+
+            string source = ((MemberExpression)encryptedProperty.Body).Member.Name;
+            string blindIndex = DayBlindIndexPropertyName(source);
+
+            builder.Property<string>(blindIndex)
+                .IsRequired()
+                .HasAnnotation(Annotations.DayBlindIndexSourceAnnotation, source);
+
+            return blindIndex;
+        }
     }
 
     public static string BlindIndexPropertyName(string encryptedProperty) => $"{encryptedProperty}BlindIndex";
+
+    public static string DayBlindIndexPropertyName(string encryptedProperty) => $"{encryptedProperty}DayBlindIndex";
 }

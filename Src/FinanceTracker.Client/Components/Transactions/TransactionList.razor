@@ -1,0 +1,77 @@
+@* Transactions as a compact list for phones, where a grid stacks every column into a tall card, what it was, where and
+   when, how it counts and the amount. Tapping one opens the rest. Shows a page at a time. *@
+@using System.Globalization
+@using FinanceTracker.Contracts.Transactions
+
+@if (Transactions.Count == 0)
+{
+    <MudText Typo="Typo.body2" Class="mud-text-secondary">No transactions match these filters.</MudText>
+}
+else
+{
+    <div class="ft-list">
+        @foreach (var transaction in Transactions.Take(_shown))
+        {
+            <div class="ft-list__row ft-list__row--link ft-transaction" role="button" tabindex="0"
+                 aria-label="@($"{transaction.Description}, show details")"
+                 @onclick="@(() => OnSelect.InvokeAsync(transaction))"
+                 @onkeyup="@(e => OnKeyUpAsync(e, transaction))">
+                <div class="ft-list__main">
+                    <MudText Typo="Typo.body2" Class="text-truncate">@transaction.Description</MudText>
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary text-truncate">@Where(transaction)</MudText>
+                </div>
+                <div class="ft-list__end ft-transaction__end">
+                    <MoneyText Value="@transaction.Amount" Signed="true"/>
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary">@TransferText.CountsAs(transaction)</MudText>
+                </div>
+            </div>
+        }
+    </div>
+
+    @if (_shown < Transactions.Count)
+    {
+        <div class="ft-transaction-list__more">
+            <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="@ShowMore">
+                Show @Math.Min(PageSize, Transactions.Count - _shown) more
+            </MudButton>
+        </div>
+    }
+}
+
+@code {
+
+    internal const int PageSize = 50;
+
+    private int _shown = PageSize;
+
+    /// <summary>
+    /// Newest first, as the transactions page lists them.
+    /// </summary>
+    [Parameter] [EditorRequired] public required IReadOnlyList<Transaction> Transactions { get; set; }
+
+    /// <summary>
+    /// The user tapped a transaction.
+    /// </summary>
+    [Parameter] public EventCallback<Transaction> OnSelect { get; set; }
+
+    /// <summary>
+    /// <c>Current · 4 Oct 2026</c>, with <c>Pending</c> while the bank hasn't settled it.
+    /// </summary>
+    internal static string Where(Transaction transaction)
+    {
+        string where = $"{transaction.AccountName} · " +
+                       transaction.TransactionTime.ToLocalTime().ToString("d MMM yyyy", CultureInfo.CurrentCulture);
+        return transaction.Pending ? $"{where} · Pending" : where;
+    }
+
+    private void ShowMore() => _shown += PageSize;
+
+    private async Task OnKeyUpAsync(KeyboardEventArgs args, Transaction transaction)
+    {
+        if (args.Key is "Enter" or " ")
+        {
+            await OnSelect.InvokeAsync(transaction);
+        }
+    }
+
+}

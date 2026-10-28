@@ -2,8 +2,10 @@ using System.Runtime.CompilerServices;
 using FinanceTracker.Contracts.Dashboard;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Domain.OpenBanking.Transactions;
+using FinanceTracker.Domain.OpenBanking.Transfers;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
+using FinanceTracker.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -17,6 +19,7 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
     {
         public decimal Amount { get; init; }
         public DateTime TransactionTime { get; init; }
+        public bool IsTransfer { get; init; }
     }
 
     private sealed class DirectDebitLite
@@ -43,21 +46,29 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
         DateTime toUtc = toDate.ToUniversalTime();
 
         List<TransactionLite> items = await context.BankTransactions.OwnedBy(UserId)
+            .WhereEncryptedDayBetween(x => x.OccurredAt, fromUtc, toUtc, context)
             .Select(x => new TransactionLite
             {
                 Amount = x.Amount,
-                TransactionTime = x.OccurredAt
+                TransactionTime = x.OccurredAt,
+                // BankTransaction.CountsAsIncomeOrSpending, in a form the database can read
+                IsTransfer = x.Transfer != null && x.Transfer.Decision == TransferDecision.Transfer
             })
             .ToListAsync(cancellationToken);
 
-        IEnumerable<decimal> amountsInRange = items
+        List<TransactionLite> inRange = items
             .Where(x => x.TransactionTime >= fromUtc && x.TransactionTime < toUtc)
-            .Select(x => x.Amount);
+            .ToList();
+
+        List<decimal> counted = inRange.Where(static x => !x.IsTransfer).Select(static x => x.Amount).ToList();
+        List<decimal> transferred = inRange.Where(static x => x.IsTransfer).Select(static x => x.Amount).ToList();
 
         return new SpentInTimePeriod
         {
-            TotalIn = amountsInRange.Where(x => !decimal.IsNegative(x)).Sum(),
-            TotalOut = amountsInRange.Where(decimal.IsNegative).Sum()
+            TotalIn = counted.Where(static x => !decimal.IsNegative(x)).Sum(),
+            TotalOut = counted.Where(decimal.IsNegative).Sum(),
+            TransferredIn = transferred.Where(static x => !decimal.IsNegative(x)).Sum(),
+            TransferredOut = transferred.Where(decimal.IsNegative).Sum()
         };
     }
 

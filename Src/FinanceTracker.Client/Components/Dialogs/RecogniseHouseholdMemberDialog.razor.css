@@ -1,0 +1,32 @@
+.ft-recognise {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.ft-recognise__group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.ft-recognise__chips {
+    padding-top: 4px;
+}
+
+/* Fields share a line and wrap under each other on a phone, the button stays beside the last one */
+.ft-recognise__add {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    column-gap: 12px;
+}
+
+.ft-recognise__add ::deep .ft-recognise__field {
+    flex: 1 1 min(220px, 100%);
+    min-width: 0;
+}
+
+.ft-recognise__add ::deep .ft-recognise__field--short {
+    flex-basis: min(120px, 100%);
+}

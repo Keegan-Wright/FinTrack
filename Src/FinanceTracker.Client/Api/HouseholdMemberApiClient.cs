@@ -1,3 +1,4 @@
+using System.Net.Http.Json;
 using FinanceTracker.Contracts.Api;
 using FinanceTracker.Contracts.HouseholdMember;
 using FinanceTracker.Contracts.Services;
@@ -26,6 +27,15 @@ public sealed class HouseholdMemberApiClient : IHouseholdMemberService
         CancellationToken cancellationToken) =>
         _http.PostReadAsync<AddHouseholdMember, HouseholdMember>(ApiRoutes.HouseholdMembers, categoryToAdd,
             cancellationToken);
+
+    public async Task<HouseholdMemberRecognitionSaved> UpdateRecognitionAsync(Guid id,
+        UpdateHouseholdMemberRecognition request, CancellationToken cancellationToken)
+    {
+        using HttpResponseMessage response = await _http.PutAsJsonAsync(
+            $"{ApiRoutes.HouseholdMembers}/{id}/recognition", request, cancellationToken);
+        response.EnsureFound();
+        return await response.ReadRequiredJsonAsync<HouseholdMemberRecognitionSaved>(cancellationToken);
+    }
 
     public Task<bool> DeleteHouseholdMemberAsync(Guid id, CancellationToken cancellationToken) =>
         _http.DeleteIfFoundAsync($"{ApiRoutes.HouseholdMembers}/{id}", cancellationToken);

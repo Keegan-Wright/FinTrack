@@ -1,0 +1,102 @@
+@* Everything about one transaction, how it counts and why, and what can be done with it. Used on phones, where the
+   transactions list only shows a summary. *@
+@using System.Globalization
+@using FinanceTracker.Client.Components.Transactions
+@using FinanceTracker.Contracts.Transactions
+
+<MudDialog>
+    <TitleContent>@Transaction.Description</TitleContent>
+    <DialogContent>
+        <div class="ft-details">
+            <div class="ft-details__amount">
+                <MoneyText Value="@Transaction.Amount" Signed="true" Typo="Typo.h5"/>
+                @if (Transaction.Pending)
+                {
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Warning">Pending</MudChip>
+                }
+            </div>
+
+            <dl class="ft-details__fields">
+                <dt>Date</dt>
+                <dd>@Transaction.TransactionTime.ToLocalTime().ToString("d MMM yyyy, HH:mm", CultureInfo.CurrentCulture)</dd>
+                <dt>Account</dt>
+                <dd>@Transaction.AccountName</dd>
+                <dt>Category</dt>
+                <dd>@DisplayText.ToTitle(Transaction.TransactionCategory)</dd>
+                @if (Transaction.Tags.Any())
+                {
+                    <dt>Tags</dt>
+                    <dd>
+                        <div class="ft-chips">
+                            @foreach (var tag in Transaction.Tags)
+                            {
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@tag</MudChip>
+                            }
+                        </div>
+                    </dd>
+                }
+                <dt>Counts as</dt>
+                <dd>
+                    @if (Transaction.Transfer is { } transfer)
+                    {
+                        <span>@TransferText.Label(transfer)</span>
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary">@TransferText.Reason(transfer)</MudText>
+                        @if (TransferText.OtherHalf(transfer) is { } otherHalf)
+                        {
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary">Other half: @otherHalf</MudText>
+                        }
+                    }
+                    else
+                    {
+                        <span>@TransferText.CountsAs(Transaction)</span>
+                    }
+                </dd>
+            </dl>
+
+            @* A list rather than footer buttons, so actions rules add later are just more rows *@
+            <div class="ft-details__actions">
+                <div class="ft-details__heading">Actions</div>
+                <MudButton Variant="Variant.Text" FullWidth="true" StartIcon="@Icons.Material.Outlined.Sell"
+                           Class="ft-details__action" OnClick="@AddTagsAsync">Add tags</MudButton>
+                @foreach (var action in TransferText.Actions(Transaction.Transfer))
+                {
+                    <MudButton Variant="Variant.Text" FullWidth="true" StartIcon="@TransferText.ActionIcon(action)"
+                               Class="ft-details__action" OnClick="@(() => DecideAsync(action))">
+                        @TransferText.ActionLabel(action)
+                    </MudButton>
+                }
+            </div>
+        </div>
+    </DialogContent>
+</MudDialog>
+
+@code {
+
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] [EditorRequired] public required Transaction Transaction { get; set; }
+
+    /// <summary>
+    /// The user chose to tag it, raised once the dialog has closed.
+    /// </summary>
+    [Parameter] public EventCallback OnAddTags { get; set; }
+
+    /// <summary>
+    /// The user decided about the transfer, raised once the dialog has closed.
+    /// </summary>
+    [Parameter] public EventCallback<TransferAction> OnTransferAction { get; set; }
+
+    // Closed first, the tags dialog and the loading overlay open over the page rather than over this
+    private async Task AddTagsAsync()
+    {
+        MudDialog.Close();
+        await OnAddTags.InvokeAsync();
+    }
+
+    private async Task DecideAsync(TransferAction action)
+    {
+        MudDialog.Close();
+        await OnTransferAction.InvokeAsync(action);
+    }
+
+}

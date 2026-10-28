@@ -15,7 +15,7 @@
 @inject ITransactionsService TransactionsService
 @inject NavigationManager NavigationManager
 
-<PageTitle>Reports</PageTitle>
+<PageTitle>FinTrack - Reports</PageTitle>
 <PageHeader Title="Reports" Subtitle="Where your money came from and where it went">
     <Actions>
         <MudToggleGroup T="ReportBreakdown" Value="@_breakdown" ValueChanged="@OnBreakdownChanged"
@@ -80,8 +80,10 @@
                                         </MudText>
                                     </div>
                                     <div class="ft-list__end">
-                                        <MoneyText Value="@Math.Abs(subject.TotalOut)"/>
-                                        <MudText Typo="Typo.caption" Class="mud-text-secondary">out</MudText>
+                                        <MoneyText Value="@subject.Net" Signed="true" Typo="Typo.body1"/>
+                                        <MudText Typo="Typo.caption" Class="mud-text-secondary ft-money">
+                                            @CurrencyFormatter.Format(subject.TotalIn) in · @CurrencyFormatter.Format(Math.Abs(subject.TotalOut)) out
+                                        </MudText>
                                     </div>
                                 </div>
                             }

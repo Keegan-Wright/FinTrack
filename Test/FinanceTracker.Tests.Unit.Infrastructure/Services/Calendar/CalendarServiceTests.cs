@@ -6,6 +6,7 @@ using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Fakers;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.Extensions.Logging.Abstractions;
+using FinanceTracker.Domain.OpenBanking.Transfers;
 
 namespace FinanceTracker.Tests.Unit.Infrastructure.Services.Calendar;
 
@@ -68,6 +69,32 @@ public class CalendarServiceTests : InfrastructureTestBase
             await Assert.That(transaction.TransactionType).IsEqualTo("Debit");
             await Assert.That(transaction.TransactionTime).IsEqualTo(occurredAt);
         }
+    }
+
+    [Test]
+    public async Task GetMonthItemsAsync_LeavesOutTransfersButKeepsThoseUpForReview()
+    {
+        // Arrange
+        DateTime occurredAt = new(2026, 5, 15, 12, 30, 0, DateTimeKind.Utc);
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("bank", Username))
+            .Do(s => s.BankAccountScenario.WithAccount("main", "bank"))
+            .Do(s => s.TransactionScenario.WithTransaction("to-savings", "main",
+                new TransactionDetailsFaker().Generate() with { Description = "To savings", OccurredAt = occurredAt }))
+            .Do(s => s.TransactionScenario.WithTransfer("to-savings"))
+            .Do(s => s.TransactionScenario.WithTransaction("to-friend", "main",
+                new TransactionDetailsFaker().Generate() with { Description = "To friend", OccurredAt = occurredAt }))
+            .Do(s => s.TransactionScenario.WithTransfer("to-friend", TransferDecision.NeedsReview));
+
+        CalendarService subject = BuildSubject();
+
+        // Act
+        List<CalendarItems> days = await subject.GetMonthItemsAsync(5, 2026, CancellationToken)
+            .ToListAsync(CancellationToken);
+
+        // Assert
+        await Assert.That(days.SelectMany(static x => x.Transactions).Select(static x => x.Description))
+            .IsEquivalentTo(["To friend"]);
     }
 
     [Test]

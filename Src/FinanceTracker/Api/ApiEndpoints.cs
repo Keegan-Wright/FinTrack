@@ -27,7 +27,8 @@ public static class ApiEndpoints
                 .MapHouseholdMemberEndpoints()
                 .MapOpenBankingEndpoints()
                 .MapReportEndpoints()
-                .MapTransactionEndpoints();
+                .MapTransactionEndpoints()
+                .MapTransferEndpoints();
 
             endpoints.MapHub<SyncHub>(SyncHubContract.Path);
 

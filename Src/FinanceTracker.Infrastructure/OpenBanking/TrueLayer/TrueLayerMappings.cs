@@ -10,6 +10,9 @@ namespace FinanceTracker.Infrastructure.OpenBanking.TrueLayer;
 /// </summary>
 internal static class TrueLayerMappings
 {
+    // TrueLayer's own category for transfers, whichever bank the transaction came from
+    private const string TransferCategory = "TRANSFER";
+
     extension(ExternalOpenBankingAccountStandingOrder standingOrder)
     {
         public StandingOrderDetails ToDetails() => new(
@@ -56,9 +59,19 @@ internal static class TrueLayerMappings
                 transaction.Currency,
                 transaction.Timestamp.ToUtc(),
                 isPending,
-                classifications);
+                classifications,
+                new TransactionMetadata(
+                    NullIfBlank(transaction.Meta?.ProviderReference),
+                    NullIfBlank(transaction.Meta?.ProviderCategory),
+                    NullIfBlank(transaction.MerchantName),
+                    NullIfBlank(transaction.Meta?.CounterPartyPreferredName),
+                    NullIfBlank(transaction.Meta?.DebtorAccountName)),
+                string.Equals(transaction.TransactionCategory, TransferCategory, StringComparison.OrdinalIgnoreCase));
         }
     }
+
+    // Banks leave out the fields they don't fill, which deserialise as empty
+    private static string? NullIfBlank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value;
 
     extension(ExternalOpenBankingProvider provider)
     {

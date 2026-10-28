@@ -13,6 +13,7 @@ using FinanceTracker.Tests.Unit.Shared.Fakers;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using FinanceTracker.Domain.OpenBanking.Transfers;
 
 namespace FinanceTracker.Tests.Unit.Infrastructure.Services.Reports;
 
@@ -45,6 +46,80 @@ public class ReportServiceTests : InfrastructureTestBase
         {
             await Assert.That(report.TotalIn).IsEqualTo(200m);
             await Assert.That(report.TotalOut).IsEqualTo(-50m);
+            await Assert.That(report.TotalTransactions).IsEqualTo(2);
+        }
+    }
+
+    [Test]
+    public async Task GetSpentInTimePeriodReportAsync_LeavesOutTransfers()
+    {
+        // Arrange
+        await SeedAccountAsync()
+            .Do(s => s.TransactionScenario.WithTransaction("income", "main", Transaction(200m, January15)))
+            .Do(s => s.TransactionScenario.WithTransaction("to-savings", "main", Transaction(-1000m, January15)))
+            .Do(s => s.TransactionScenario.WithTransfer("to-savings"));
+
+        ReportService subject = BuildSubject();
+
+        // Act
+        SpentInTimePeriodReport report = (await subject.GetSpentInTimePeriodReportAsync(Request(), CancellationToken)
+            .ToListAsync(CancellationToken)).Single();
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(report.TotalIn).IsEqualTo(200m);
+            await Assert.That(report.TotalOut).IsEqualTo(0m);
+            await Assert.That(report.TotalTransactions).IsEqualTo(1);
+        }
+    }
+
+    [Test]
+    public async Task GetCategoryBreakdownReportAsync_LeavesOutTransfers()
+    {
+        // Arrange
+        await SeedAccountAsync()
+            .Do(s => s.TransactionScenario.WithTransaction("shopping", "main",
+                Transaction(-30m, January15, classifications: ["Savings"])))
+            .Do(s => s.TransactionScenario.WithTransaction("to-savings", "main",
+                Transaction(-1000m, January15, classifications: ["Savings"])))
+            .Do(s => s.TransactionScenario.WithTransfer("to-savings"));
+
+        ReportService subject = BuildSubject();
+
+        // Act
+        SpentInCategoryReport report = (await subject.GetCategoryBreakdownReportAsync(Request(), CancellationToken)
+            .ToListAsync(CancellationToken)).Single();
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(report.Category).IsEqualTo("Savings");
+            await Assert.That(report.TotalOut).IsEqualTo(-30m);
+            await Assert.That(report.TotalTransactions).IsEqualTo(1);
+        }
+    }
+
+    [Test]
+    public async Task GetAccountBreakdownReportAsync_KeepsTransfers()
+    {
+        // Arrange
+        await SeedAccountAsync()
+            .Do(s => s.TransactionScenario.WithTransaction("shopping", "main", Transaction(-30m, January15)))
+            .Do(s => s.TransactionScenario.WithTransaction("from-current", "main", Transaction(250m, January20)))
+            .Do(s => s.TransactionScenario.WithTransfer("from-current"));
+
+        ReportService subject = BuildSubject();
+
+        // Act
+        SpentInAccountReport report = (await subject.GetAccountBreakdownReportAsync(Request(), CancellationToken)
+            .ToListAsync(CancellationToken)).Single();
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(report.TotalIn).IsEqualTo(250m);
+            await Assert.That(report.TotalOut).IsEqualTo(-30m);
             await Assert.That(report.TotalTransactions).IsEqualTo(2);
         }
     }

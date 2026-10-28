@@ -91,6 +91,55 @@ public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
     }
 
     [Test]
+    public async Task ExecuteAsync_AfterSyncing_MatchesEachOwnersTransfersOnceAsThem()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.UserScenario.WithUser(OtherUsername))
+            .Do(s => s.UserScenario.WithUser("unconnected"))
+            .Do(s => s.BankConnectionScenario.WithConnection("first", Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("second", Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("theirs", OtherUsername));
+
+        SyncAllOpenBankingDetailsAsync subject = BuildSubject();
+
+        // Act
+        await subject.ExecuteAsync(TickerFunctionContextFactory.Create(), CancellationToken);
+
+        // Assert
+        // Every connection has synced first, so transfers between a user's banks can pair
+        await Assert.That(Matched).IsEquivalentTo([
+            (Scenario.UserMappings[Username], 3),
+            (Scenario.UserMappings[OtherUsername], 3)
+        ]);
+    }
+
+    [Test]
+    public async Task ExecuteAsync_WhenMatchingFails_ContinuesWithTheRestAndNotifies()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.UserScenario.WithUser(OtherUsername))
+            .Do(s => s.BankConnectionScenario.WithConnection("mine", Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("theirs", OtherUsername));
+
+        TransferMatchingService.MatchChangesAsync(CancellationToken).ThrowsAsync(new InvalidOperationException("boom"));
+
+        SyncAllOpenBankingDetailsAsync subject = BuildSubject();
+
+        // Act
+        await subject.ExecuteAsync(TickerFunctionContextFactory.Create(), CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await TransferMatchingService.Received(2).MatchChangesAsync(CancellationToken);
+            await SyncNotifier.Received(1).NotifyAsync(Scenario.UserMappings[Username]);
+            await SyncNotifier.Received(1).NotifyAsync(Scenario.UserMappings[OtherUsername]);
+        }
+    }
+
+    [Test]
     public async Task ExecuteAsync_WhenUsersHaveNoConnections_DoesNotSyncOrNotify()
     {
         // Arrange

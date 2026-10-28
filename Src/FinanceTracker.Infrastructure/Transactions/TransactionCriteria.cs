@@ -1,5 +1,6 @@
 using FinanceTracker.Contracts.Transactions;
 using FinanceTracker.Domain.OpenBanking.Transactions;
+using FinanceTracker.Infrastructure.Persistence;
 
 namespace FinanceTracker.Infrastructure.Transactions;
 
@@ -33,7 +34,8 @@ internal sealed record TransactionCriteria(
                 context.BankAccounts.Any(a => a.Id == x.AccountId && ProviderIds.Contains(a.ConnectionId)));
         }
 
-        return query;
+        // exact range is filtered once decrypted
+        return query.WhereEncryptedDayWithin(x => x.OccurredAt, FromDate, ToDate, context);
     }
 
     /// <summary>

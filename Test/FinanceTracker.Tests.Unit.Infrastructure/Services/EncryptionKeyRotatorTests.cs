@@ -58,6 +58,7 @@ public class EncryptionKeyRotatorTests : InfrastructureTestBase
             await Assert.That(await ReadRawAsync("BankAccounts", "Balance_Current")).StartsWith("2:");
             await Assert.That(await ReadRawAsync("StandingOrders", "Payee")).StartsWith("2:");
             await Assert.That(await ReadRawAsync("AccessTokens", "Token")).StartsWith("2:");
+            await Assert.That(await ReadRawAsync("HouseholdMemberLinkedAccounts", "Number")).StartsWith("2:");
         }
     }
 
@@ -67,9 +68,12 @@ public class EncryptionKeyRotatorTests : InfrastructureTestBase
         // Arrange
         await SeedAsync();
         string externalId;
+        DateTime occurredAt;
         await using (FinanceTrackerContext before = await DbContextFactory.CreateDbContextAsync(CancellationToken))
         {
-            externalId = (await before.BankTransactions.SingleAsync(CancellationToken)).ExternalId;
+            BankTransaction transaction = await before.BankTransactions.SingleAsync(CancellationToken);
+            externalId = transaction.ExternalId;
+            occurredAt = transaction.OccurredAt;
         }
 
         IDbContextFactory<FinanceTrackerContext> rotatedFactory = CreateDbContextFactory(_rotated);
@@ -85,10 +89,15 @@ public class EncryptionKeyRotatorTests : InfrastructureTestBase
             .Select(static x => EF.Property<string>(x, EntityTypeBuilderExtensions.BlindIndexPropertyName(nameof(BankTransaction.ExternalId))))
             .SingleAsync(CancellationToken);
 
+        string dayBlindIndex = await context.BankTransactions
+            .Select(static x => EF.Property<string>(x, EntityTypeBuilderExtensions.DayBlindIndexPropertyName(nameof(BankTransaction.OccurredAt))))
+            .SingleAsync(CancellationToken);
+
         using (Assert.Multiple())
         {
             await Assert.That(category.Name).IsEqualTo("Holidays");
             await Assert.That(blindIndex).IsEqualTo(_rotated.ComputeBlindIndex(externalId));
+            await Assert.That(dayBlindIndex).IsEqualTo(_rotated.ComputeBlindIndex(DayBlindIndex.Value(occurredAt)));
         }
     }
 
@@ -183,6 +192,8 @@ public class EncryptionKeyRotatorTests : InfrastructureTestBase
             .Do(s => s.BankAccountScenario.WithBalance("main"))
             .Do(s => s.BankAccountScenario.WithStandingOrders("main", new StandingOrderDetailsFaker().Generate()))
             .Do(s => s.TransactionScenario.WithTransactions("main", 1))
+            .Do(s => s.HouseholdMemberScenario.WithHouseholdMember("partner", Username))
+            .Do(s => s.HouseholdMemberScenario.WithLinkedAccount("partner", "112233", "12345678"))
             .Do(s => s.BudgetCategoryScenario.WithBudgetCategory("budget", Username, userId =>
                 new BudgetCategory(userId, "Holidays", 1, 1, 1, null)));
 

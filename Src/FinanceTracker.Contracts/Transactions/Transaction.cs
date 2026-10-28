@@ -60,4 +60,29 @@ public class Transaction
     /// </summary>
     [Description("List of tags associated with the transaction")]
     public required IEnumerable<string> Tags { get; set; }
+
+    /// <summary>
+    /// Whether it counts as income or spending, false for money moved between the user's own accounts or within
+    /// their household. Totals of income and spending leave the others out.
+    /// </summary>
+    [Description("Whether the transaction counts as income or spending rather than a transfer")]
+    public bool CountsAsIncomeOrSpending { get; init; } = true;
+
+    /// <summary>
+    /// The account it's on.
+    /// </summary>
+    [Description("The account the transaction is on")]
+    public Guid AccountId { get; init; }
+
+    /// <summary>
+    /// That account's name.
+    /// </summary>
+    [Description("Name of the account the transaction is on")]
+    public string AccountName { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Whether it's a transfer and why, null when nothing suggests it is one.
+    /// </summary>
+    [Description("Whether the transaction is a transfer and why")]
+    public TransactionTransfer? Transfer { get; init; }
 }

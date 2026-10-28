@@ -10,6 +10,9 @@ using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Transaction = FinanceTracker.Contracts.Transactions.Transaction;
+using FinanceTracker.Domain.OpenBanking.Transfers;
+using FinanceTracker.Domain.Household;
+using FinanceTracker.Infrastructure.OpenBanking.Transfers;
 
 namespace FinanceTracker.Tests.Unit.Infrastructure.Services.Transactions;
 
@@ -43,7 +46,7 @@ public class TransactionsServiceTests : InfrastructureTestBase
         // Arrange
         DateTime occurredAt = new(2026, 4, 1, 9, 30, 0, DateTimeKind.Utc);
         TransactionDetails details = new("ext-1", "Coffee Shop", TransactionType.Debit, "PURCHASE", -4.20m, "GBP",
-            occurredAt, true, ["Food"]);
+            occurredAt, true, ["Food"], TransactionMetadata.None, false);
 
         await SeedAccountAsync()
             .Do(s => s.ClassificationScenario.WithClassification("treat", Username, "Treat"))
@@ -68,6 +71,119 @@ public class TransactionsServiceTests : InfrastructureTestBase
             await Assert.That(transaction.TransactionTime).IsEqualTo(occurredAt);
             await Assert.That(transaction.Tags).IsEquivalentTo(["Food", "Treat"]);
         }
+    }
+
+    [Test]
+    public async Task GetAllTransactionsAsync_IncludesTransfersAndSaysWhetherEachCounts()
+    {
+        // Arrange
+        await SeedAccountAsync()
+            .Do(s => s.TransactionScenario.WithTransaction("shopping", "main"))
+            .Do(s => s.TransactionScenario.WithTransaction("to-savings", "main"))
+            .Do(s => s.TransactionScenario.WithTransfer("to-savings"))
+            .Do(s => s.TransactionScenario.WithTransaction("to-friend", "main"))
+            .Do(s => s.TransactionScenario.WithTransfer("to-friend", TransferDecision.NeedsReview));
+
+        TransactionsService subject = BuildSubject();
+
+        // Act
+        Dictionary<Guid, bool> counts = (await GetAllAsync(subject, new FilterTransactions()))
+            .ToDictionary(static x => x.TransactionId, static x => x.CountsAsIncomeOrSpending);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(counts[Scenario.TransactionMappings["shopping"]]).IsTrue();
+            await Assert.That(counts[Scenario.TransactionMappings["to-savings"]]).IsFalse();
+            await Assert.That(counts[Scenario.TransactionMappings["to-friend"]]).IsTrue();
+        }
+    }
+
+    [Test]
+    public async Task GetAllTransactionsAsync_OnlyAFromDate_ReturnsEverythingSinceIncludingToday()
+    {
+        // Arrange
+        DateTime now = DateTime.UtcNow;
+        await SeedAccountAsync()
+            .Do(s => s.TransactionScenario.WithTransaction("long-ago", "main", Details("Long ago", now.AddDays(-400))))
+            .Do(s => s.TransactionScenario.WithTransaction("before", "main", Details("Before", now.AddDays(-11))))
+            .Do(s => s.TransactionScenario.WithTransaction("after", "main", Details("After", now.AddDays(-9))))
+            .Do(s => s.TransactionScenario.WithTransaction("today", "main", Details("Today", now)));
+
+        TransactionsService subject = BuildSubject();
+
+        // Act
+        List<Transaction> transactions =
+            await GetAllAsync(subject, new FilterTransactions { FromDate = now.AddDays(-10) });
+
+        // Assert
+        await Assert.That(transactions.Select(static x => x.Description)).IsEquivalentTo(["After", "Today"]);
+    }
+
+    [Test]
+    public async Task GetAllTransactionsAsync_OnlyAToDate_ReturnsEverythingBeforeIt()
+    {
+        // Arrange
+        DateTime now = DateTime.UtcNow;
+        await SeedAccountAsync()
+            .Do(s => s.TransactionScenario.WithTransaction("long-ago", "main", Details("Long ago", now.AddDays(-2000))))
+            .Do(s => s.TransactionScenario.WithTransaction("before", "main", Details("Before", now.AddDays(-11))))
+            .Do(s => s.TransactionScenario.WithTransaction("after", "main", Details("After", now.AddDays(-9))))
+            .Do(s => s.TransactionScenario.WithTransaction("today", "main", Details("Today", now)));
+
+        TransactionsService subject = BuildSubject();
+
+        // Act
+        List<Transaction> transactions =
+            await GetAllAsync(subject, new FilterTransactions { ToDate = now.AddDays(-10) });
+
+        // Assert
+        await Assert.That(transactions.Select(static x => x.Description)).IsEquivalentTo(["Long ago", "Before"]);
+    }
+
+    [Test]
+    public async Task GetAllTransactionsAsync_NamesTheAccountAndWhoATransferWasWith()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("bank", Username))
+            .Do(s => s.BankAccountScenario.WithAccount("main", "bank", static (userId, connectionId) =>
+                new BankAccount(userId, connectionId, "acc-main", "TRANSACTION", "Joint", "GBP")))
+            .Do(s => s.HouseholdMemberScenario.WithHouseholdMember("partner", Username, static userId =>
+                new HouseholdMember(userId, "Jane", "Smith", null)))
+            .Do(s => s.HouseholdMemberScenario.WithPayeeName("partner", "J Smith"))
+            .Do(s => s.TransactionScenario.WithTransaction("rent", "main", Details("J SMITH 01JAN26")));
+
+        await new TransferMatchingService(CurrentUserFor(Username), DbContextFactory,
+            NullLogger<TransferMatchingService>.Instance, TimeProvider.System).MatchAsync(CancellationToken);
+
+        TransactionsService subject = BuildSubject();
+
+        // Act
+        Transaction transaction = (await GetAllAsync(subject, new FilterTransactions())).Single();
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(transaction.AccountId).IsEqualTo(Scenario.AccountMappings["main"]);
+            await Assert.That(transaction.AccountName).IsEqualTo("Joint");
+            await Assert.That(transaction.Transfer!.State).IsEqualTo(TransferState.Transfer);
+            await Assert.That(transaction.Transfer.Reason).IsEqualTo(TransferMatchReason.HouseholdMember);
+            await Assert.That(transaction.Transfer.PartnerHouseholdMemberName).IsEqualTo("Jane Smith");
+        }
+    }
+
+    [Test]
+    public async Task TransferMatchReason_HasTheSameNamesAndValuesAsTheDomains()
+    {
+        // Act
+        List<string> mapped = Enum.GetValues<Domain.OpenBanking.Transfers.TransferReason>()
+            .Select(static x => ((TransferMatchReason)(int)x).ToString())
+            .ToList();
+
+        // Assert
+        await Assert.That(mapped)
+            .IsEquivalentTo(Enum.GetNames<Domain.OpenBanking.Transfers.TransferReason>());
     }
 
     [Test]

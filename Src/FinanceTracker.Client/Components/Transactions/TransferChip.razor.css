@@ -1,0 +1,28 @@
+/* The menu's explanation wraps rather than stretching the menu across the screen */
+.ft-transfer {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-width: min(320px, 85vw);
+    padding: 8px 16px;
+    white-space: normal;
+}
+
+/* A long account name shortens rather than widening the grid. A cell grows to fit its content, so 100% of it
+   doesn't bound anything, the width is capped against the screen instead. On a phone the grid stacks each row's
+   cells with their values pushed right  */
+.ft-transfer-anchor {
+    display: inline-flex;
+    max-width: min(240px, 50vw);
+    vertical-align: middle;
+}
+
+.ft-transfer-anchor ::deep .mud-chip {
+    max-width: 100%;
+}
+
+.ft-transfer-anchor ::deep .mud-chip-content {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}

@@ -1,8 +1,10 @@
 using System.Runtime.CompilerServices;
 using FinanceTracker.Contracts.Calendar;
 using FinanceTracker.Contracts.Services;
+using FinanceTracker.Domain.OpenBanking.Transfers;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
+using FinanceTracker.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -26,10 +28,12 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        // IMPORTANT:
-        // Transaction timestamps / goal dates are encrypted at rest, so we cannot filter by date in SQL.
-        // Materialize first, then filter in-memory on decrypted values.
+        // Transaction timestamps / goal dates are encrypted at rest, so the month's transactions are found by their day
+        // blind index, then filtered exactly once decrypted.
+        // The calendar is income and spending, so transfers are left out like the dashboard's totals
         List<CalendarTransactionItem> transactionItems = (await context.BankTransactions.OwnedBy(UserId)
+                .WhereEncryptedDayBetween(x => x.OccurredAt, startDate, endDate, context)
+                .Where(static x => x.Transfer == null || x.Transfer.Decision != TransferDecision.Transfer)
                 .Select(static x => new { x.Description, x.Amount, x.Type, x.OccurredAt })
                 .ToListAsync(cancellationToken))
             .Select(static x => new CalendarTransactionItem

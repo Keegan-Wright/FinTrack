@@ -50,6 +50,7 @@ public class TrueLayerContractTests : UnitTestBase
               "provider_transaction_id": "ptx-1",
               "normalised_provider_transaction_id": "ntx-1",
               "meta": {
+                "provider_reference": "123456 12345678",
                 "provider_category": "PURCHASE",
                 "transaction_type": "DEBIT",
                 "provider_id": "ob-test",
@@ -69,7 +70,8 @@ public class TrueLayerContractTests : UnitTestBase
             await Assert.That(transaction.MerchantName).IsEqualTo("Coffee Co");
             await Assert.That(transaction.ProviderTransactionId).IsEqualTo("ptx-1");
             await Assert.That(transaction.NormalisedProviderTransactionId).IsEqualTo("ntx-1");
-            await Assert.That(transaction.Meta!.ProviderCategory).IsEqualTo("PURCHASE");
+            await Assert.That(transaction.Meta!.ProviderReference).IsEqualTo("123456 12345678");
+            await Assert.That(transaction.Meta.ProviderCategory).IsEqualTo("PURCHASE");
             await Assert.That(transaction.Meta.TransactionType).IsEqualTo("DEBIT");
             await Assert.That(transaction.Meta.ProviderId).IsEqualTo("ob-test");
             await Assert.That(transaction.Meta.CounterPartyPreferredName).IsEqualTo("Coffee Co Ltd");

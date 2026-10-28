@@ -70,6 +70,26 @@ public class ColumnEncryptionServiceTests : UnitTestBase
     }
 
     [Test]
+    public async Task Decrypt_EmptyCollection_ReturnsAnEmptyOne()
+    {
+        // Act
+        IReadOnlyList<string>? decrypted = _subject.Decrypt<IReadOnlyList<string>>(string.Empty);
+
+        // Assert
+        await Assert.That(decrypted).IsNotNull().And.IsEmpty();
+    }
+
+    [Test]
+    public async Task Decrypt_EmptyBytes_ReturnsDefault()
+    {
+        // Act
+        byte[]? decrypted = _subject.Decrypt<byte[]>(string.Empty);
+
+        // Assert
+        await Assert.That(decrypted).IsNull();
+    }
+
+    [Test]
     [Arguments("NotEncrypted")]
     [Arguments("1:not-base64!")]
     [Arguments("x:AAAA")]

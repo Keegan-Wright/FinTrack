@@ -1,4 +1,5 @@
 using FinanceTracker.Domain.Budgeting;
+using FinanceTracker.Domain.Household;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Domain.OpenBanking.Transactions;
@@ -72,7 +73,8 @@ public class FinanceTrackerContextTests : InfrastructureTestBase
                 new BankConnection(userId, "ob-bank", "Bank", "code", ["accounts", "balance"], logo, DateTime.UtcNow)))
             .Do(s => s.BankAccountScenario.WithAccount("main", "bank"))
             .Do(s => s.TransactionScenario.WithTransaction("payment", "main", new TransactionDetails("ext-1", "Payment",
-                TransactionType.Credit, "CREDIT", 12.34m, "GBP", occurredAt, true, ["Food", "Bills"])));
+                TransactionType.Credit, "CREDIT", 12.34m, "GBP", occurredAt, true, ["Food", "Bills"],
+                TransactionMetadata.None, false)));
 
         // Act
         await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
@@ -88,6 +90,64 @@ public class FinanceTrackerContextTests : InfrastructureTestBase
             await Assert.That(transaction.Amount).IsEqualTo(12.34m);
             await Assert.That(transaction.OccurredAt).IsEqualTo(occurredAt);
             await Assert.That(transaction.ProviderClassifications).IsEquivalentTo(["Food", "Bills"]);
+        }
+    }
+
+    [Test]
+    public async Task HouseholdMemberPayeeNamesAndLinkedAccounts_AreEncryptedAndRoundTrip()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.HouseholdMemberScenario.WithHouseholdMember("partner", Username))
+            .Do(s => s.HouseholdMemberScenario.WithPayeeName("partner", "J Smith"))
+            .Do(s => s.HouseholdMemberScenario.WithLinkedAccount("partner", "112233", "12345678"))
+            .Do(s => s.HouseholdMemberScenario.WithLinkedAccount("partner", "220040", "20589674"));
+
+        // Act
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        HouseholdMember member = await context.HouseholdMembers.SingleAsync(CancellationToken);
+        List<string> storedNumbers = await context.Database
+            .SqlQueryRaw<string>("SELECT \"Number\" AS \"Value\" FROM \"HouseholdMemberLinkedAccounts\"")
+            .ToListAsync(CancellationToken);
+        string storedPayeeNames = await context.Database
+            .SqlQueryRaw<string>("SELECT \"PayeeNames\" AS \"Value\" FROM \"HouseholdMembers\"")
+            .SingleAsync(CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(member.PayeeNames).IsEquivalentTo(["J Smith"]);
+            await Assert.That(member.LinkedAccounts).IsEquivalentTo([
+                AccountIdentifier.Create("112233", "12345678", null)!,
+                AccountIdentifier.Create("220040", "20589674", null)!
+            ]);
+            await Assert.That(storedNumbers).All().Satisfy(x => x.StartsWith("1:"));
+            await Assert.That(storedPayeeNames).DoesNotContain("Smith");
+        }
+    }
+
+    [Test]
+    public async Task HouseholdMember_SavedBeforePayeeNamesExisted_LoadsWithNone()
+    {
+        // Arrange, the migration gives members already saved an empty column
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.HouseholdMemberScenario.WithHouseholdMember("partner", Username));
+
+        await using (FinanceTrackerContext writer = await DbContextFactory.CreateDbContextAsync(CancellationToken))
+        {
+            await writer.Database.ExecuteSqlRawAsync("UPDATE \"HouseholdMembers\" SET \"PayeeNames\" = ''",
+                CancellationToken);
+        }
+
+        // Act
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        HouseholdMember member = await context.HouseholdMembers.SingleAsync(CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(member.PayeeNames).IsEmpty();
+            await Assert.That(member.Recognises("J Smith", null)).IsFalse();
         }
     }
 

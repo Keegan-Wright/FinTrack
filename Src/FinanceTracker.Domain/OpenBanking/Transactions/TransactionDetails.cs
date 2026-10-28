@@ -12,4 +12,6 @@ public sealed record TransactionDetails(
     string Currency,
     DateTime OccurredAt,
     bool IsPending,
-    IReadOnlyCollection<string> ProviderClassifications);
+    IReadOnlyCollection<string> ProviderClassifications,
+    TransactionMetadata Metadata,
+    bool LabelledAsTransfer);

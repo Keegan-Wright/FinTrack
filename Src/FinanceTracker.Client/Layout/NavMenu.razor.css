@@ -14,3 +14,25 @@
     background-color: rgba(var(--mud-palette-primary-rgb), .12);
     font-weight: 600;
 }
+
+/* The review link's count sits at the end of the row */
+.ft-nav__label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+}
+
+.ft-nav__count {
+    min-width: 20px;
+    padding: 0 6px;
+    border-radius: 10px;
+    /* Normal text on a soft tint. */
+    background-color: rgba(var(--mud-palette-warning-rgb), .24);
+    color: var(--mud-palette-text-primary);
+    font-size: .75rem;
+    font-weight: 600;
+    line-height: 20px;
+    text-align: center;
+}

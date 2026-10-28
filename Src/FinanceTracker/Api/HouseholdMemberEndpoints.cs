@@ -25,6 +25,13 @@ public static class HouseholdMemberEndpoints
                     TypedResults.Ok(await service.AddHouseholdMemberAsync(request, cancellationToken)))
                 .Validated<AddHouseholdMember>();
 
+            members.MapPut("{id:guid}/recognition", async Task<Ok<HouseholdMemberRecognitionSaved>> (Guid id,
+                        UpdateHouseholdMemberRecognition request, IHouseholdMemberService service,
+                        CancellationToken cancellationToken) =>
+                    TypedResults.Ok(await service.UpdateRecognitionAsync(id, request, cancellationToken)))
+                .Validated<UpdateHouseholdMemberRecognition>()
+                .NotFoundWhenMissing();
+
             members.MapDelete("{id:guid}", async Task<Results<NoContent, NotFound>> (Guid id,
                     IHouseholdMemberService service, CancellationToken cancellationToken) =>
                 await service.DeleteHouseholdMemberAsync(id, cancellationToken)

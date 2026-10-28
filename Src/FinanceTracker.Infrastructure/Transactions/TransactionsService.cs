@@ -36,22 +36,17 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
             .ToListAsync(cancellationToken);
 
         // Encrypted timestamps sort by ciphertext in SQL, order after decryption
-        foreach (BankTransaction transaction in transactions
-                     .Where(x => criteria.MatchesClientFilters(x, customTags))
-                     .OrderByDescending(static x => x.OccurredAt))
+        List<BankTransaction> matching = transactions
+            .Where(x => criteria.MatchesClientFilters(x, customTags))
+            .OrderByDescending(static x => x.OccurredAt)
+            .ToList();
+
+        TransactionMapper mapper =
+            await TransactionMapper.LoadAsync(context, UserId, customTags, matching, cancellationToken);
+
+        foreach (BankTransaction transaction in matching)
         {
-            yield return new Transaction
-            {
-                Amount = transaction.Amount,
-                Currency = transaction.Currency,
-                Description = transaction.Description,
-                Pending = transaction.IsPending,
-                TransactionCategory = transaction.Category,
-                TransactionId = transaction.Id,
-                TransactionTime = transaction.OccurredAt,
-                TransactionType = transaction.Type.ToString(),
-                Tags = TransactionCriteria.GetTags(transaction, customTags).ToList()
-            };
+            yield return mapper.ToContract(transaction);
         }
     }
 

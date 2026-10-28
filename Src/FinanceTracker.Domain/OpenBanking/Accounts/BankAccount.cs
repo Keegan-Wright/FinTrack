@@ -42,6 +42,11 @@ public sealed class BankAccount : AggregateRoot
 
     public AccountBalance? Balance { get; private set; }
 
+    /// <summary>
+    /// The account's sort code and number or IBAN, null when the provider gives neither.
+    /// </summary>
+    public AccountIdentifier? Identifier { get; private set; }
+
     public IReadOnlyCollection<StandingOrder> StandingOrders => _standingOrders.AsReadOnly();
 
     public IReadOnlyCollection<DirectDebit> DirectDebits => _directDebits.AsReadOnly();
@@ -57,6 +62,8 @@ public sealed class BankAccount : AggregateRoot
         DisplayName = displayName;
         Currency = currency;
     }
+
+    public void UpdateIdentifier(AccountIdentifier? identifier) => Identifier = identifier;
 
     public void UpdateBalance(decimal available, decimal current, DateTime asOf) =>
         Balance = new AccountBalance(available, current, asOf);

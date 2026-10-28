@@ -20,6 +20,15 @@ public interface IHouseholdMemberService
         CancellationToken cancellationToken);
 
     /// <summary>
+    /// Replaces how to recognise money to or from one of the user's household members, then re-matches the user's
+    /// transfers so it applies straight away. Validate the request with
+    /// <see cref="Validation.UpdateHouseholdMemberRecognitionValidator"/> first.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">The user has no member with <paramref name="id"/>.</exception>
+    Task<HouseholdMember.HouseholdMemberRecognitionSaved> UpdateRecognitionAsync(Guid id,
+        HouseholdMember.UpdateHouseholdMemberRecognition request, CancellationToken cancellationToken);
+
+    /// <summary>
     /// Deletes one of the user's household members.
     /// </summary>
     /// <returns><see langword="false"/> if the user has no member with <paramref name="id"/>.</returns>

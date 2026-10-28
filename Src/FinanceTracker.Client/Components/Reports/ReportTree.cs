@@ -31,7 +31,8 @@ public static class ReportTree
         Label = name,
         Title = name,
         ChildPeriod = "year",
-        AccountId = accountId
+        AccountId = accountId,
+        IncludesTransfers = true
     };
 
     public static ReportNode From(SpentInCategoryReport report, FilterTransactions request) =>
@@ -80,6 +81,7 @@ public static class ReportTree
         Tags = tags ?? request.Tags
     };
 
+    // An account report counts transfers, see ReportNode.IncludesTransfers
     private static ReportNode Root(string name, IReport totals, FilterTransactions scope,
         IEnumerable<(int Year, ReportNode Node)> years, Guid? accountId = null)
     {
@@ -95,7 +97,8 @@ public static class ReportTree
             Children = children,
             ChildPeriod = "year",
             Scope = scope,
-            AccountId = accountId
+            AccountId = accountId,
+            IncludesTransfers = accountId is not null
         };
     }
 

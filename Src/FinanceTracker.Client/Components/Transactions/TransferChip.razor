@@ -1,0 +1,58 @@
+@* A transaction's transfer as a chip, opening to why it was decided, who the money moved with, and what the user can
+   change. Nothing when there's no transfer. *@
+@using FinanceTracker.Contracts.Transactions
+
+@if (Transfer is not null)
+{
+    @* An element of this component's own, so its styles reach the chip MudBlazor renders inside *@
+    <span class="ft-transfer-anchor">
+        <MudMenu Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft"
+                 aria-label="@($"{TransferText.Label(Transfer)}, show why")">
+
+            @* Activator opens the menu when clicked *@
+            <ActivatorContent Context="menu">
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@ChipColor"
+                         Icon="@Icons.Material.Outlined.SwapHoriz" Class="ft-transfer-chip"
+                         OnClick="@(args => menu.ToggleAsync(args))">
+                    @TransferText.Label(Transfer)
+                </MudChip>
+            </ActivatorContent>
+            <ChildContent>
+                <div class="ft-transfer">
+                    <MudText Typo="Typo.body2">@TransferText.Reason(Transfer)</MudText>
+                    @if (TransferText.OtherHalf(Transfer) is { } otherHalf)
+                    {
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary">Other half: @otherHalf</MudText>
+                    }
+                    @if (TransferText.Partner(Transfer) is { } partner)
+                    {
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary">With @partner</MudText>
+                    }
+                </div>
+                <MudDivider/>
+                @foreach (var action in TransferText.Actions(Transfer))
+                {
+                    <MudMenuItem OnClick="@(() => OnAction.InvokeAsync(action))">@TransferText.ActionLabel(action)</MudMenuItem>
+                }
+            </ChildContent>
+        </MudMenu>
+    </span>
+}
+
+@code {
+
+    [Parameter] public TransactionTransfer? Transfer { get; set; }
+
+    /// <summary>
+    /// The user chose a decision from the menu.
+    /// </summary>
+    [Parameter] public EventCallback<TransferAction> OnAction { get; set; }
+
+    private Color ChipColor => Transfer?.State switch
+    {
+        TransferState.Transfer => Color.Info,
+        TransferState.NeedsReview => Color.Warning,
+        _ => Color.Default
+    };
+
+}

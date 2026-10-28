@@ -10,7 +10,7 @@
 @inject ISnackbar Snackbar
 @inject IOpenBankingService OpenBankingService
 
-<PageTitle>Bank connections</PageTitle>
+<PageTitle>FinTrack - Bank connections</PageTitle>
 <PageHeader Title="Connect a bank" Subtitle="Three steps, and your accounts appear after the next sync"/>
 
 <MudGrid Spacing="4">
@@ -142,6 +142,7 @@
         if (response)
         {
             _vendorAccessToken = string.Empty;
+            ShowSyncing();
             Snackbar.Add("Bank connected, your accounts will appear after the next sync", Severity.Success);
         }
         else

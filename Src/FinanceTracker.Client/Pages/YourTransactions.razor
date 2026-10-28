@@ -1,6 +1,6 @@
 @page "/Transactions"
-@* Every transaction, filterable, with custom classifications applied from here
-   (ITransactionsService, IClassificationService). Loads in the browser only, the list is too big to send twice. *@
+@* Every transaction, filterable, with custom classifications applied from here and whether each is a transfer decided. A grid on larger screens, a compact list with a details dialog on phones. Loads in the browser only, the list is too big to
+   send twice. *@
 @using System.Globalization
 @using FinanceTracker.Client.Components.Dialogs
 @using FinanceTracker.Client.Components.Transactions
@@ -13,10 +13,11 @@
 @attribute [Authorize]
 @inject ITransactionsService TransactionsService
 @inject IClassificationService ClassificationsService
+@inject ITransfersService TransfersService
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 
-<PageTitle>Transactions</PageTitle>
+<PageTitle>FinTrack - Transactions</PageTitle>
 <PageHeader Title="Transactions" Subtitle="@Subtitle">
     <TransactionFilters TransactionTagFilterItems="@Filters.Tags"
                         AccountFilterItems="@Filters.Accounts"
@@ -29,73 +30,109 @@
 <LoadingFrame Loading="@_loading" Message="Fetching every last penny…" MinHeight="320" Cover="false">
     @if (!_loading)
     {
-        <MudDataGrid T="Transaction" Items="_transactions"
-                     SortMode="SortMode.Multiple"
-                     Filterable="false"
-                     Hideable="true"
-                     Hover="true"
-                     Dense="true"
-                     Elevation="0"
-                     Outlined="true"
-                     RowsPerPage="50"
-                     FixedHeader="true"
-                     Class="ft-grid">
-            <NoRecordsContent>
-                <MudText Typo="Typo.body2" Class="mud-text-secondary">No transactions match these filters.</MudText>
-            </NoRecordsContent>
-            <Columns>
-                <PropertyColumn Property="x => x.TransactionTime" Title="Date" Sortable="true">
-                    <CellTemplate>
-                        <span class="ft-money">
-                            @context.Item.TransactionTime.ToLocalTime().ToString("d MMM yyyy", CultureInfo.CurrentCulture)
-                        </span>
-                    </CellTemplate>
-                </PropertyColumn>
-                <PropertyColumn Property="x => x.Description" Title="Description" Sortable="true">
-                    <CellTemplate>
-                        <span>@context.Item.Description</span>
-                        @if (context.Item.Pending)
-                        {
-                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Warning"
-                                     Class="ml-2">Pending</MudChip>
-                        }
-                    </CellTemplate>
-                </PropertyColumn>
-                <PropertyColumn Property="x => x.TransactionCategory" Title="Category" Sortable="true">
-                    <CellTemplate>
-                        <span class="mud-text-secondary">@DisplayText.ToTitle(context.Item.TransactionCategory)</span>
-                    </CellTemplate>
-                </PropertyColumn>
-                <TemplateColumn Title="Tags" Sortable="false">
-                    <CellTemplate>
-                        <div class="ft-chips">
-                            @foreach (var tag in context.Item.Tags)
+        @* A grid stacks every column into a tall card on a phone, so phones get a compact list instead *@
+        <MudHidden Breakpoint="Breakpoint.Xs" Invert="true">
+            <Section>
+                <TransactionList Transactions="@_transactions" OnSelect="@ShowDetailsAsync"/>
+            </Section>
+        </MudHidden>
+
+        <MudHidden Breakpoint="Breakpoint.Xs">
+            <MudDataGrid T="Transaction" Items="_transactions"
+                         SortMode="SortMode.Multiple"
+                         Filterable="false"
+                         Hideable="true"
+                         Hover="true"
+                         Dense="true"
+                         Elevation="0"
+                         Outlined="true"
+                         RowsPerPage="50"
+                         FixedHeader="true"
+                         Class="ft-grid">
+                <NoRecordsContent>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">No transactions match these filters.</MudText>
+                </NoRecordsContent>
+                <Columns>
+                    <PropertyColumn Property="x => x.TransactionTime" Title="Date" Sortable="true">
+                        <CellTemplate>
+                            <span class="ft-money">
+                                @context.Item.TransactionTime.ToLocalTime().ToString("d MMM yyyy", CultureInfo.CurrentCulture)
+                            </span>
+                        </CellTemplate>
+                    </PropertyColumn>
+                    <PropertyColumn Property="x => x.Description" Title="Description" Sortable="true">
+                        <CellTemplate>
+                            <span>@context.Item.Description</span>
+                            @if (context.Item.Pending)
                             {
-                                <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@tag</MudChip>
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Warning"
+                                         Class="ml-2">Pending</MudChip>
                             }
-                        </div>
-                    </CellTemplate>
-                </TemplateColumn>
-                <PropertyColumn Property="x => x.Amount" Title="Amount" Sortable="true"
-                                HeaderClass="ft-grid__amount" CellClass="ft-grid__amount">
-                    <CellTemplate>
-                        <MoneyText Value="@context.Item.Amount" Signed="true"/>
-                    </CellTemplate>
-                </PropertyColumn>
-                <TemplateColumn Title="" Sortable="false" Hideable="false" CellClass="ft-grid__actions">
-                    <CellTemplate>
-                        <MudTooltip Text="Add tags">
-                            <MudIconButton Icon="@Icons.Material.Outlined.Sell" Size="Size.Small"
-                                           aria-label="Add tags"
-                                           OnClick="@(() => AddClassificationsAsync(context.Item))"/>
-                        </MudTooltip>
-                    </CellTemplate>
-                </TemplateColumn>
-            </Columns>
-            <PagerContent>
-                <MudDataGridPager T="Transaction"/>
-            </PagerContent>
-        </MudDataGrid>
+                        </CellTemplate>
+                    </PropertyColumn>
+                    <TemplateColumn T="Transaction" Title="Counts as" Sortable="true" SortBy="@CountsAs">
+                        <CellTemplate>
+                            @if (context.Item.Transfer is { } transfer)
+                            {
+                                <TransferChip Transfer="@transfer"
+                                              OnAction="@(action => DecideTransferAsync(context.Item, action))"/>
+                            }
+                            else
+                            {
+                                <span class="mud-text-secondary">@TransferText.CountsAs(context.Item)</span>
+                            }
+                        </CellTemplate>
+                    </TemplateColumn>
+                    <PropertyColumn Property="x => x.AccountName" Title="Account" Sortable="true">
+                        <CellTemplate>
+                            <span class="mud-text-secondary">@context.Item.AccountName</span>
+                        </CellTemplate>
+                    </PropertyColumn>
+                    <PropertyColumn Property="x => x.TransactionCategory" Title="Category" Sortable="true">
+                        <CellTemplate>
+                            <span class="mud-text-secondary">@DisplayText.ToTitle(context.Item.TransactionCategory)</span>
+                        </CellTemplate>
+                    </PropertyColumn>
+                    <TemplateColumn Title="Tags" Sortable="false">
+                        <CellTemplate>
+                            <div class="ft-chips">
+                                @foreach (var tag in context.Item.Tags)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@tag</MudChip>
+                                }
+                            </div>
+                        </CellTemplate>
+                    </TemplateColumn>
+                    <PropertyColumn Property="x => x.Amount" Title="Amount" Sortable="true"
+                                    HeaderClass="ft-grid__amount" CellClass="ft-grid__amount">
+                        <CellTemplate>
+                            <MoneyText Value="@context.Item.Amount" Signed="true"/>
+                        </CellTemplate>
+                    </PropertyColumn>
+                    <TemplateColumn Title="" Sortable="false" Hideable="false" CellClass="ft-grid__actions">
+                        <CellTemplate>
+                            @* One menu, so what rules add later joins it rather than another button per row *@
+                            <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true"
+                                     AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
+                                     aria-label="@($"Actions for {context.Item.Description}")">
+                                <MudMenuItem Icon="@Icons.Material.Outlined.Sell"
+                                             OnClick="@(() => AddClassificationsAsync(context.Item))">Add tags</MudMenuItem>
+                                @foreach (var action in TransferText.Actions(context.Item.Transfer))
+                                {
+                                    <MudMenuItem Icon="@TransferText.ActionIcon(action)"
+                                                 OnClick="@(() => DecideTransferAsync(context.Item, action))">
+                                        @TransferText.ActionLabel(action)
+                                    </MudMenuItem>
+                                }
+                            </MudMenu>
+                        </CellTemplate>
+                    </TemplateColumn>
+                </Columns>
+                <PagerContent>
+                    <MudDataGridPager T="Transaction"/>
+                </PagerContent>
+            </MudDataGrid>
+        </MudHidden>
     }
 </LoadingFrame>
 
@@ -146,6 +183,66 @@
         }
 
         _loading = false;
+    }
+
+    private static object CountsAs(Transaction transaction) => TransferText.CountsAs(transaction);
+
+    private async Task ShowDetailsAsync(Transaction transaction)
+    {
+        var dialogParameters = new DialogParameters<TransactionDetailsDialog>
+        {
+            { x => x.Transaction, transaction },
+            { x => x.OnAddTags, EventCallback.Factory.Create(this, () => AddClassificationsAsync(transaction)) },
+            {
+                x => x.OnTransferAction,
+                EventCallback.Factory.Create<TransferAction>(this, action => DecideTransferAsync(transaction, action))
+            }
+        };
+
+        // The provider's defaults give it the close button
+        await DialogService.ShowAsync<TransactionDetailsDialog>(null, dialogParameters);
+    }
+
+    private async Task DecideTransferAsync(Transaction transaction, TransferAction action)
+    {
+        try
+        {
+            SetLoadingState(true, "Updating transfers");
+            var id = transaction.TransactionId;
+            IReadOnlyList<Transaction> changed = action switch
+            {
+                TransferAction.MarkAsTransfer => await TransfersService.MarkAsTransferAsync(id, _cts.Token),
+                TransferAction.NotATransfer => await TransfersService.MarkNotATransferAsync(id, _cts.Token),
+                _ => await TransfersService.ResetTransferAsync(id, _cts.Token)
+            };
+
+            // The decision can change the other half too, swap in each that's listed
+            foreach (var updated in changed)
+            {
+                var index = _transactions.FindIndex(x => x.TransactionId == updated.TransactionId);
+                if (index >= 0)
+                {
+                    _transactions[index] = updated;
+                }
+            }
+
+            await RefreshTransfersToReviewAsync(TransfersService);
+
+            Snackbar.Add(action switch
+            {
+                TransferAction.MarkAsTransfer => "Marked as a transfer, it no longer counts as income or spending",
+                TransferAction.NotATransfer => "It counts as income or spending now",
+                _ => "FinTrack will decide this one"
+            }, Severity.Success);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't update that, try again", Severity.Error);
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
     }
 
     private async Task AddClassificationsAsync(Transaction transaction)

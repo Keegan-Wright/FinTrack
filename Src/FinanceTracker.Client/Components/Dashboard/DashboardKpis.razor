@@ -15,6 +15,12 @@
         @GetBalanceMeta()
     </Stat>
 </StatStrip>
+@if (TransfersLeftOut() is { } leftOut)
+{
+    <div class="ft-kpis__transfers">
+        <MudText Typo="Typo.caption" Class="mud-text-secondary">@leftOut</MudText>
+    </div>
+}
 
 @code {
 
@@ -40,6 +46,22 @@
     [Parameter] public decimal TotalBalance { get; set; }
 
     [Parameter] public decimal? HouseholdIncome { get; set; }
+
+    /// <summary>
+    /// What money in and out leave out as transfers, null when nothing was.
+    /// </summary>
+    internal string? TransfersLeftOut()
+    {
+        decimal movedIn = Spent?.TransferredIn ?? 0;
+        decimal movedOut = Math.Abs(Spent?.TransferredOut ?? 0);
+        if (movedIn == 0 && movedOut == 0)
+        {
+            return null;
+        }
+
+        return $"Leaves out {CurrencyFormatter.Format(movedIn)} in and {CurrencyFormatter.Format(movedOut)} out " +
+               "moved between your accounts or household";
+    }
 
     private string GetBalanceMeta()
     {
