@@ -140,6 +140,56 @@ public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
     }
 
     [Test]
+    public async Task ExecuteAsync_AfterSyncing_SnapshotsEachOwnersBalancesForTodayBeforeMatching()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.UserScenario.WithUser(OtherUsername))
+            .Do(s => s.BankConnectionScenario.WithConnection("first", Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("second", Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("theirs", OtherUsername));
+
+        SyncAllOpenBankingDetailsAsync subject = BuildSubject();
+
+        // Act
+        await subject.ExecuteAsync(TickerFunctionContextFactory.Create(), CancellationToken);
+
+        // Assert
+        // Every connection has synced first, so net worth covers all of a user's banks
+        await Assert.That(Snapshots).IsEquivalentTo([
+            (Scenario.UserMappings[Username], Today, Now, 3, false),
+            (Scenario.UserMappings[OtherUsername], Today, Now, 3, false)
+        ]);
+    }
+
+    [Test]
+    public async Task ExecuteAsync_WhenSnapshotFails_StillMatchesAndNotifies()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.UserScenario.WithUser(OtherUsername))
+            .Do(s => s.BankConnectionScenario.WithConnection("mine", Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("theirs", OtherUsername));
+
+        BalanceSnapshotService.SnapshotAsync(Arg.Any<DateOnly>(), Arg.Any<DateTime>(), CancellationToken)
+            .ThrowsAsync(new InvalidOperationException("boom"));
+
+        SyncAllOpenBankingDetailsAsync subject = BuildSubject();
+
+        // Act
+        await subject.ExecuteAsync(TickerFunctionContextFactory.Create(), CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(Snapshots).Count().IsEqualTo(2);
+            await TransferMatchingService.Received(2).MatchChangesAsync(CancellationToken);
+            await SyncNotifier.Received(1).NotifyAsync(Scenario.UserMappings[Username]);
+            await SyncNotifier.Received(1).NotifyAsync(Scenario.UserMappings[OtherUsername]);
+        }
+    }
+
+    [Test]
     public async Task ExecuteAsync_WhenUsersHaveNoConnections_DoesNotSyncOrNotify()
     {
         // Arrange
@@ -159,5 +209,5 @@ public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
         }
     }
 
-    private SyncAllOpenBankingDetailsAsync BuildSubject() => new(ScopeFactory, DbContextFactory, SyncNotifier);
+    private SyncAllOpenBankingDetailsAsync BuildSubject() => new(ScopeFactory, DbContextFactory, SyncNotifier, Clock);
 }

@@ -4,39 +4,46 @@ using FinanceTracker.Contracts;
 using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.OpenBanking;
+using FinanceTracker.Infrastructure.OpenBanking.Balances;
 using FinanceTracker.Infrastructure.OpenBanking.Transfers;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.BackgroundJobs;
 
 /// <summary>
-/// Syncs a set of connections, each as its owner, matches each owner's transfers, then tells those owners the sync has
-/// finished.
+/// Syncs a set of connections, each as its owner, updates each owner's balance snapshots for the day and matches their
+/// transfers, then tells those owners the sync has finished.
 /// </summary>
 public abstract class OpenBankingSyncJob
 {
     private readonly IDbContextFactory<FinanceTrackerContext> _dbContextFactory;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ISyncNotifier _syncNotifier;
+    private readonly TimeProvider _timeProvider;
 
     protected OpenBankingSyncJob(IServiceScopeFactory scopeFactory,
-        IDbContextFactory<FinanceTrackerContext> dbContextFactory, ISyncNotifier syncNotifier)
+        IDbContextFactory<FinanceTrackerContext> dbContextFactory, ISyncNotifier syncNotifier,
+        TimeProvider timeProvider)
     {
         _scopeFactory = scopeFactory;
         _dbContextFactory = dbContextFactory;
         _syncNotifier = syncNotifier;
+        _timeProvider = timeProvider;
     }
 
     /// <summary>
-    /// Syncs every connection matching <paramref name="connections"/>, then matches transfers once for each owner so
-    /// pairs across their banks are found. A connection that fails to sync, or an owner whose matching fails, doesn't
-    /// stop the rest.
+    /// Syncs every connection matching <paramref name="connections"/>, then for each owner updates today's balance
+    /// snapshots and matches transfers once, so net worth and pairs cover all their banks. A connection that fails to
+    /// sync, or an owner whose snapshot or matching fails, doesn't stop the rest.
     /// </summary>
     /// <returns>The owners of the synced connections.</returns>
     protected async Task<IReadOnlySet<Guid>> SyncConnectionsAsync(Expression<Func<BankConnection, bool>> connections,
         CancellationToken cancellationToken)
     {
         using Activity? performingBackgroundSyncActivity = Telemetry.ActivitySource.StartActivity(GetType().Name);
+
+        DateTime startedAt = _timeProvider.GetUtcNow().UtcDateTime;
+        DateOnly today = DateOnly.FromDateTime(_timeProvider.GetLocalNow().DateTime);
 
         var toSync = new List<(Guid Id, Guid UserId)>();
         await using (FinanceTrackerContext dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken))
@@ -77,12 +84,36 @@ public abstract class OpenBankingSyncJob
         HashSet<Guid> owners = toSync.Select(static x => x.UserId).ToHashSet();
         foreach (Guid userId in owners)
         {
+            await SnapshotBalancesAsync(userId, today, startedAt, performingBackgroundSyncActivity, cancellationToken);
             await MatchTransfersAsync(userId, performingBackgroundSyncActivity, cancellationToken);
         }
 
         performingBackgroundSyncActivity?.AddEvent(new ActivityEvent("Background sync completed"));
 
         return owners;
+    }
+
+    /// <summary>
+    /// Updates the owner's snapshots for <paramref name="today"/>, in the server's time zone, from the balances the
+    /// sync stored.
+    /// </summary>
+    private async Task SnapshotBalancesAsync(Guid userId, DateOnly today, DateTime syncStartedAt, Activity? activity,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using AsyncServiceScope scope = _scopeFactory.CreateUserScope(userId);
+            IBalanceSnapshotService balanceSnapshotService =
+                scope.ServiceProvider.GetRequiredService<IBalanceSnapshotService>();
+
+            await balanceSnapshotService.SnapshotAsync(today, syncStartedAt, cancellationToken);
+
+            activity?.AddEvent(new ActivityEvent($"Snapshot balances for User {userId}"));
+        }
+        catch (Exception ex)
+        {
+            activity?.AddException(ex);
+        }
     }
 
     private async Task MatchTransfersAsync(Guid userId, Activity? activity, CancellationToken cancellationToken)

@@ -113,5 +113,5 @@ public class SyncUserOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
     private static TickerFunctionContext<SyncUserOpenBankingDetailsRequest> ContextFor(Guid userId) =>
         new(TickerFunctionContextFactory.Create(), new SyncUserOpenBankingDetailsRequest(userId));
 
-    private SyncUserOpenBankingDetailsAsync BuildSubject() => new(ScopeFactory, DbContextFactory, SyncNotifier);
+    private SyncUserOpenBankingDetailsAsync BuildSubject() => new(ScopeFactory, DbContextFactory, SyncNotifier, Clock);
 }

@@ -13,8 +13,9 @@ namespace FinanceTracker.BackgroundJobs;
 public class SyncUserOpenBankingDetailsAsync : OpenBankingSyncJob, ITickerFunction<SyncUserOpenBankingDetailsRequest>
 {
     public SyncUserOpenBankingDetailsAsync(IServiceScopeFactory scopeFactory,
-        IDbContextFactory<FinanceTrackerContext> dbContextFactory, ISyncNotifier syncNotifier)
-        : base(scopeFactory, dbContextFactory, syncNotifier)
+        IDbContextFactory<FinanceTrackerContext> dbContextFactory, ISyncNotifier syncNotifier,
+        TimeProvider timeProvider)
+        : base(scopeFactory, dbContextFactory, syncNotifier, timeProvider)
     {
     }
 

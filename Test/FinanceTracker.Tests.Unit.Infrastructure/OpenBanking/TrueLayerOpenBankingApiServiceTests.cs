@@ -402,14 +402,23 @@ public class TrueLayerOpenBankingApiServiceTests : UnitTestBase
     }
 
     [Test]
-    public async Task GetAccountBalanceAsync_FailedRequest_ReturnsEmptyResponse()
+    public async Task GetAccountBalanceAsync_FailedRequest_ThrowsWithTheTraceId()
     {
-        TrueLayerOpenBankingApiService subject = BuildSubject(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotImplemented)));
+        TrueLayerOpenBankingApiService subject = BuildSubject(_ =>
+        {
+            var response = new HttpResponseMessage(HttpStatusCode.TooManyRequests);
+            response.Headers.Add("tl-trace-id", "trace-123");
+            return Task.FromResult(response);
+        });
 
-        ExternalOpenBankingGetAccountBalanceResponse result =
-            await subject.GetAccountBalanceAsync("acc-1", "token", CancellationToken);
+        HttpRequestException? thrown = await Assert.ThrowsAsync<HttpRequestException>(() =>
+            subject.GetAccountBalanceAsync("acc-1", "token", CancellationToken));
 
-        await Assert.That((object?)result.Results).IsNull();
+        using (Assert.Multiple())
+        {
+            await Assert.That(thrown!.StatusCode).IsEqualTo(HttpStatusCode.TooManyRequests);
+            await Assert.That(thrown.Message).Contains("429").And.Contains("tl-trace-id trace-123");
+        }
     }
 
     [Test]

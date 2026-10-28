@@ -106,15 +106,12 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
     {
         using HttpClient httpClient = await BuildHttpClient(_trueLayerOpenBankingConfiguration.BaseDataUrl, authToken);
         HttpResponseMessage response = await httpClient.GetAsync($"v1/accounts/{accountId}/balance", cancellationToken);
-        if (!response.IsSuccessStatusCode)
-        {
-            return new ExternalOpenBankingGetAccountBalanceResponse();
-        }
+
+        // Throws rather than returning empty, so a refused request isn't recorded as a balance sync
+        EnsureSuccess(response, "account balance");
 
         ExternalOpenBankingGetAccountBalanceResponse? responseBody =
             await response.Content.ReadFromJsonAsync<ExternalOpenBankingGetAccountBalanceResponse>(cancellationToken);
-
-
 
         return responseBody!;
     }
@@ -297,5 +294,26 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         httpClient.Timeout = TimeSpan.FromMinutes(5);
 
         return httpClient;
+    }
+
+    /// <summary>
+    /// Throws when TrueLayer refused the request. The message carries the status and TrueLayer's trace id.
+    /// </summary>
+    private static void EnsureSuccess(HttpResponseMessage response, string requested)
+    {
+        if (response.IsSuccessStatusCode)
+        {
+            return;
+        }
+
+        string traceId = "none";
+        if (response.Headers.TryGetValues("tl-trace-id", out IEnumerable<string>? traceIds))
+        {
+            traceId = string.Join(",", traceIds);
+        }
+
+        throw new HttpRequestException(
+            $"TrueLayer refused the {requested} request with {(int)response.StatusCode} {response.ReasonPhrase}, tl-trace-id {traceId}",
+            null, response.StatusCode);
     }
 }
