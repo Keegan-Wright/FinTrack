@@ -28,6 +28,9 @@ public static partial class LoggerMessages
     [LoggerMessage(LogLevel.Debug, "No transactions changed for user {userId} since transfers were last matched")]
     public static partial void LogNoTransferChanges(this ILogger logger, Guid userId);
 
+    [LoggerMessage(LogLevel.Warning, "TrueLayer refused the {requested} request with {statusCode} {reasonPhrase}, tl-trace-id {traceId}")]
+    public static partial void LogTrueLayerRequestRefused(this ILogger logger, string requested, int statusCode, string? reasonPhrase, string traceId);
+
     [LoggerMessage(LogLevel.Warning, "Connection {connectionId} for user {userId} has no active consent, re-authentication is required before it can sync")]
     public static partial void LogConnectionNotAuthenticated(this ILogger logger, Guid connectionId, Guid userId);
 

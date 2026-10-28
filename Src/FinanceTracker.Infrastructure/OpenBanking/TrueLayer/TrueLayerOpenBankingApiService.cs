@@ -6,6 +6,7 @@ using System.Text;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using FinanceTracker.Infrastructure.OpenBanking.TrueLayer.Contracts;
+using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Infrastructure.OpenBanking.TrueLayer;
 
@@ -21,13 +22,15 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
     private readonly TrueLayerOpenBankingConfiguration _trueLayerOpenBankingConfiguration;
     private readonly IHttpClientFactory _clientFactory;
     private readonly TimeProvider _timeProvider;
+    private readonly ILogger<TrueLayerOpenBankingApiService> _logger;
 
     public TrueLayerOpenBankingApiService(TrueLayerOpenBankingConfiguration trueLayerOpenBankingConfiguration,
-        IHttpClientFactory clientFactory, TimeProvider timeProvider)
+        IHttpClientFactory clientFactory, TimeProvider timeProvider, ILogger<TrueLayerOpenBankingApiService> logger)
     {
         _trueLayerOpenBankingConfiguration = trueLayerOpenBankingConfiguration;
         _clientFactory = clientFactory;
         _timeProvider = timeProvider;
+        _logger = logger;
     }
 
 
@@ -53,7 +56,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         HttpResponseMessage response = await httpClient.PostAsync("connect/token", content, cancellationToken);
 
         // A rejected or expired code comes back as an error body, fail here rather than on its missing tokens later
-        response.EnsureSuccessStatusCode();
+        EnsureSuccess(response, "access code exchange");
 
         return await response.Content.ReadFromJsonAsync<ExternalOpenBankingAccessResponse>(cancellationToken)
                ?? throw new InvalidOperationException("The provider returned no tokens for the access code.");
@@ -78,7 +81,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         HttpResponseMessage response = await httpClient.PostAsync("connect/token", content, cancellationToken);
 
         // A rejected or expired code comes back as an error body, fail here rather than on its missing tokens later
-        response.EnsureSuccessStatusCode();
+        EnsureSuccess(response, "token refresh");
 
         return await response.Content.ReadFromJsonAsync<ExternalOpenBankingAccessResponse>(cancellationToken)
                ?? throw new InvalidOperationException("The provider returned no tokens for the access code.");
@@ -90,7 +93,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         using HttpClient httpClient = await BuildHttpClient(_trueLayerOpenBankingConfiguration.BaseDataUrl, authToken);
 
         HttpResponseMessage response = await httpClient.GetAsync("v1/accounts", cancellationToken);
-        if (!response.IsSuccessStatusCode)
+        if (!Succeeded(response, "accounts"))
         {
             return new ExternalOpenBankingListAllAccountsResponse();
         }
@@ -131,7 +134,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         }
 
         HttpResponseMessage response = await httpClient.GetAsync(urlBuilder.ToString(), cancellationToken);
-        if (!response.IsSuccessStatusCode)
+        if (!Succeeded(response, "transactions"))
         {
             return new ExternalOpenBankingAccountTransactionsResponse();
         }
@@ -158,7 +161,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
 
         // Throws rather than returning empty, an empty pending list removes every stored pending transaction
         HttpResponseMessage response = await httpClient.GetAsync(urlBuilder.ToString(), cancellationToken);
-        response.EnsureSuccessStatusCode();
+        EnsureSuccess(response, "pending transactions");
 
         ExternalOpenBankingAccountTransactionsResponse? responseBody =
             await response.Content.ReadFromJsonAsync<ExternalOpenBankingAccountTransactionsResponse>(cancellationToken);
@@ -173,19 +176,15 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
 
         HttpResponseMessage response =
             await httpClient.GetAsync($"v1/accounts/{accountId}/standing_orders", cancellationToken);
-        switch (response.IsSuccessStatusCode)
+        if (!Succeeded(response, "standing orders"))
         {
-            case false:
-                return new ExternalOpenBankingAccountStandingOrdersResponse();
-            case true:
-            {
-                ExternalOpenBankingAccountStandingOrdersResponse? responseBody =
-                    await response.Content.ReadFromJsonAsync<ExternalOpenBankingAccountStandingOrdersResponse>(
-                        cancellationToken);
-
-                return responseBody!;
-            }
+            return new ExternalOpenBankingAccountStandingOrdersResponse();
         }
+
+        ExternalOpenBankingAccountStandingOrdersResponse? responseBody =
+            await response.Content.ReadFromJsonAsync<ExternalOpenBankingAccountStandingOrdersResponse>(cancellationToken);
+
+        return responseBody!;
     }
 
     public async Task<ExternalOpenBankingAccountDirectDebitsResponse> GetAccountDirectDebitsAsync(string accountId,
@@ -195,19 +194,15 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
 
         HttpResponseMessage response =
             await httpClient.GetAsync($"v1/accounts/{accountId}/direct_debits", cancellationToken);
-        switch (response.IsSuccessStatusCode)
+        if (!Succeeded(response, "direct debits"))
         {
-            case false:
-                return new ExternalOpenBankingAccountDirectDebitsResponse();
-            case true:
-            {
-                ExternalOpenBankingAccountDirectDebitsResponse? responseBody =
-                    await response.Content.ReadFromJsonAsync<ExternalOpenBankingAccountDirectDebitsResponse>(
-                        cancellationToken);
-
-                return responseBody!;
-            }
+            return new ExternalOpenBankingAccountDirectDebitsResponse();
         }
+
+        ExternalOpenBankingAccountDirectDebitsResponse? responseBody =
+            await response.Content.ReadFromJsonAsync<ExternalOpenBankingAccountDirectDebitsResponse>(cancellationToken);
+
+        return responseBody!;
     }
 
     public async IAsyncEnumerable<ExternalOpenBankingProvider> GetAvailableProvidersAsync(
@@ -220,7 +215,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
                 cancellationToken);
 
         // The list is cached, a failure has to throw rather than read as no providers
-        response.EnsureSuccessStatusCode();
+        EnsureSuccess(response, "providers");
 
         await foreach (ExternalOpenBankingProvider? provider in response.Content
                            .ReadFromJsonAsAsyncEnumerable<ExternalOpenBankingProvider>(cancellationToken))
@@ -260,7 +255,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
             await BuildHttpClient(_trueLayerOpenBankingConfiguration.BaseDataUrl, accessToken);
 
         HttpResponseMessage response = await httpClient.GetAsync("v1/me", cancellationToken);
-        if (!response.IsSuccessStatusCode)
+        if (!Succeeded(response, "connection information"))
         {
             return new ExternalOpenBankingAccountConnectionResponse();
         }
@@ -297,23 +292,43 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
     }
 
     /// <summary>
-    /// Throws when TrueLayer refused the request. The message carries the status and TrueLayer's trace id.
+    /// Whether TrueLayer accepted the request. A refusal is logged with TrueLayer's trace id.
     /// </summary>
-    private static void EnsureSuccess(HttpResponseMessage response, string requested)
+    private bool Succeeded(HttpResponseMessage response, string requested)
     {
         if (response.IsSuccessStatusCode)
+        {
+            return true;
+        }
+
+        _logger.LogTrueLayerRequestRefused(requested, (int)response.StatusCode, response.ReasonPhrase,
+            TraceId(response));
+        return false;
+    }
+
+    /// <summary>
+    /// Throws when TrueLayer refused the request, after logging it. The message carries the status and TrueLayer's
+    /// trace id.
+    /// </summary>
+    private void EnsureSuccess(HttpResponseMessage response, string requested)
+    {
+        if (Succeeded(response, requested))
         {
             return;
         }
 
-        string traceId = "none";
+        throw new HttpRequestException(
+            $"TrueLayer refused the {requested} request with {(int)response.StatusCode} {response.ReasonPhrase}, tl-trace-id {TraceId(response)}",
+            null, response.StatusCode);
+    }
+
+    private static string TraceId(HttpResponseMessage response)
+    {
         if (response.Headers.TryGetValues("tl-trace-id", out IEnumerable<string>? traceIds))
         {
-            traceId = string.Join(",", traceIds);
+            return string.Join(",", traceIds);
         }
 
-        throw new HttpRequestException(
-            $"TrueLayer refused the {requested} request with {(int)response.StatusCode} {response.ReasonPhrase}, tl-trace-id {traceId}",
-            null, response.StatusCode);
+        return "none";
     }
 }

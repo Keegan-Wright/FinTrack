@@ -4,6 +4,8 @@ using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.OpenBanking.TrueLayer;
 using FinanceTracker.Infrastructure.OpenBanking.TrueLayer.Contracts;
 using FinanceTracker.Tests.Unit.Shared;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using TUnit.Assertions;
 using TUnit.Assertions.Extensions;
 using TUnit.Core;
@@ -422,6 +424,47 @@ public class TrueLayerOpenBankingApiServiceTests : UnitTestBase
     }
 
     [Test]
+    public async Task GetAccountStandingOrdersAsync_RefusedRequest_LogsItWithTheTraceId()
+    {
+        var logger = new CapturingLogger<TrueLayerOpenBankingApiService>();
+        TrueLayerOpenBankingApiService subject = BuildSubject(_ => Task.FromResult(TooManyRequests()), logger);
+
+        await subject.GetAccountStandingOrdersAsync("acc-1", "token", CancellationToken);
+
+        (LogLevel Level, string Message, Exception? Exception) entry = logger.Entries.Single();
+        using (Assert.Multiple())
+        {
+            await Assert.That(entry.Level).IsEqualTo(LogLevel.Warning);
+            await Assert.That(entry.Message).Contains("standing orders").And.Contains("429")
+                .And.Contains("tl-trace-id trace-123");
+        }
+    }
+
+    [Test]
+    public async Task GetAccountBalanceAsync_RefusedRequest_LogsItBeforeThrowing()
+    {
+        var logger = new CapturingLogger<TrueLayerOpenBankingApiService>();
+        TrueLayerOpenBankingApiService subject = BuildSubject(_ => Task.FromResult(TooManyRequests()), logger);
+
+        await Assert.ThrowsAsync<HttpRequestException>(() =>
+            subject.GetAccountBalanceAsync("acc-1", "token", CancellationToken));
+
+        await Assert.That(logger.Entries.Single().Message).Contains("account balance").And.Contains("trace-123");
+    }
+
+    [Test]
+    public async Task GetAccountDirectDebitsAsync_AcceptedRequest_LogsNothing()
+    {
+        var logger = new CapturingLogger<TrueLayerOpenBankingApiService>();
+        TrueLayerOpenBankingApiService subject =
+            BuildSubject(_ => Task.FromResult(Json(new { results = Array.Empty<object>() })), logger);
+
+        await subject.GetAccountDirectDebitsAsync("acc-1", "token", CancellationToken);
+
+        await Assert.That(logger.Entries).IsEmpty();
+    }
+
+    [Test]
     public async Task GetAccountTransactionsAsync_FailedRequest_ReturnsEmptyResponse()
     {
         TrueLayerOpenBankingApiService subject = BuildSubject(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError)));
@@ -524,10 +567,18 @@ public class TrueLayerOpenBankingApiServiceTests : UnitTestBase
         }
     }
 
+    private static HttpResponseMessage TooManyRequests()
+    {
+        var response = new HttpResponseMessage(HttpStatusCode.TooManyRequests);
+        response.Headers.Add("tl-trace-id", "trace-123");
+        return response;
+    }
+
     private static HttpResponseMessage Json<T>(T body) => new(HttpStatusCode.OK) { Content = JsonContent.Create(body) };
 
     private static TrueLayerOpenBankingApiService BuildSubject(
-        Func<HttpRequestMessage, Task<HttpResponseMessage>> responseFactory)
+        Func<HttpRequestMessage, Task<HttpResponseMessage>> responseFactory,
+        ILogger<TrueLayerOpenBankingApiService>? logger = null)
     {
         var configuration = new TrueLayerOpenBankingConfiguration
         {
@@ -542,7 +593,8 @@ public class TrueLayerOpenBankingApiServiceTests : UnitTestBase
         HttpClient client = new(new FakeHttpMessageHandler(responseFactory));
         var clientFactory = new FakeHttpClientFactory(client);
 
-        return new TrueLayerOpenBankingApiService(configuration, clientFactory, TimeProvider.System);
+        return new TrueLayerOpenBankingApiService(configuration, clientFactory, TimeProvider.System,
+            logger ?? NullLogger<TrueLayerOpenBankingApiService>.Instance);
     }
 
     private sealed class FakeHttpClientFactory(HttpClient httpClient) : IHttpClientFactory
