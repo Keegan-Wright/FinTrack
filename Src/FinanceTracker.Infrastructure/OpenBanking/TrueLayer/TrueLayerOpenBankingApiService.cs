@@ -15,9 +15,15 @@ namespace FinanceTracker.Infrastructure.OpenBanking.TrueLayer;
 public class TrueLayerOpenBankingApiService : IOpenBankingApiService
 {
     /// <summary>
-    /// Named <see cref="HttpClient"/> registered for TrueLayer and provider logo requests.
+    /// Named <see cref="HttpClient"/> registered for TrueLayer's auth requests and provider logos.
     /// </summary>
-    public const string HttpClientName = "OpenBankingClient";
+    public const string StandardHttpClientName = "OpenBankingClient";
+
+    /// <summary>
+    /// Named <see cref="HttpClient"/> registered for TrueLayer's data API. Throttled, so a
+    /// running sync doesn't hold up sign-ins or logos on <see cref="StandardHttpClientName"/>.
+    /// </summary>
+    public const string DataHttpClientName = "OpenBankingDataClient";
 
     private readonly TrueLayerOpenBankingConfiguration _trueLayerOpenBankingConfiguration;
     private readonly IHttpClientFactory _clientFactory;
@@ -37,7 +43,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
     public async Task<ExternalOpenBankingAccessResponse> ExchangeCodeForAccessTokenAsync(string vendorAccessCode,
         CancellationToken cancellationToken)
     {
-        using HttpClient httpClient = await BuildHttpClient(_trueLayerOpenBankingConfiguration.BaseAuthUrl);
+        using HttpClient httpClient = await BuildStandardHttpClient();
 
         List<KeyValuePair<string, string>> formData =
         [
@@ -65,7 +71,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
     public async Task<ExternalOpenBankingAccessResponse> GetAccessTokenByRefreshTokenAsync(string refreshToken,
         CancellationToken cancellationToken)
     {
-        using HttpClient httpClient = await BuildHttpClient(_trueLayerOpenBankingConfiguration.BaseAuthUrl);
+        using HttpClient httpClient = await BuildStandardHttpClient();
 
         List<KeyValuePair<string, string>> formData =
         [
@@ -89,7 +95,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
 
     public async Task<string> GetReauthenticationUrlAsync(string refreshToken, CancellationToken cancellationToken)
     {
-        using HttpClient httpClient = await BuildHttpClient(_trueLayerOpenBankingConfiguration.BaseAuthUrl);
+        using HttpClient httpClient = await BuildStandardHttpClient();
 
         var request = new ExternalOpenBankingReauthenticationRequest
         {
@@ -114,7 +120,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
     public async Task<ExternalOpenBankingListAllAccountsResponse> GetAllAccountsAsync(string authToken,
         CancellationToken cancellationToken)
     {
-        using HttpClient httpClient = await BuildHttpClient(_trueLayerOpenBankingConfiguration.BaseDataUrl, authToken);
+        using HttpClient httpClient = await BuildDataHttpClient(authToken);
 
         HttpResponseMessage response = await httpClient.GetAsync("v1/accounts", cancellationToken);
         if (!Succeeded(response, "accounts"))
@@ -146,7 +152,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
     public async Task<ExternalOpenBankingListAllCardsResponse> GetAllCardsAsync(string authToken,
         CancellationToken cancellationToken)
     {
-        using HttpClient httpClient = await BuildHttpClient(_trueLayerOpenBankingConfiguration.BaseDataUrl, authToken);
+        using HttpClient httpClient = await BuildDataHttpClient(authToken);
 
         HttpResponseMessage response = await httpClient.GetAsync("v1/cards", cancellationToken);
         if (!Succeeded(response, "cards"))
@@ -180,7 +186,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
     private async Task<ExternalOpenBankingGetAccountBalanceResponse> GetBalanceAsync(string resource,
         string requested, string authToken, CancellationToken cancellationToken)
     {
-        using HttpClient httpClient = await BuildHttpClient(_trueLayerOpenBankingConfiguration.BaseDataUrl, authToken);
+        using HttpClient httpClient = await BuildDataHttpClient(authToken);
         HttpResponseMessage response = await httpClient.GetAsync($"{resource}/balance", cancellationToken);
 
         // Throws rather than returning empty, so a refused request isn't recorded as a balance sync
@@ -199,7 +205,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
     private async Task<ExternalOpenBankingAccountTransactionsResponse> GetTransactionsAsync(string path,
         string requested, string authToken, DateTime? transactionsStartingDate, CancellationToken cancellationToken)
     {
-        using HttpClient httpClient = await BuildHttpClient(_trueLayerOpenBankingConfiguration.BaseDataUrl, authToken);
+        using HttpClient httpClient = await BuildDataHttpClient(authToken);
 
         StringBuilder urlBuilder = new();
         urlBuilder.Append(path);
@@ -223,7 +229,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
     public async Task<ExternalOpenBankingAccountStandingOrdersResponse> GetAccountStandingOrdersAsync(string accountId,
         string authToken, CancellationToken cancellationToken)
     {
-        using HttpClient httpClient = await BuildHttpClient(_trueLayerOpenBankingConfiguration.BaseDataUrl, authToken);
+        using HttpClient httpClient = await BuildDataHttpClient(authToken);
 
         HttpResponseMessage response =
             await httpClient.GetAsync($"v1/accounts/{accountId}/standing_orders", cancellationToken);
@@ -240,7 +246,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
     public async Task<ExternalOpenBankingAccountDirectDebitsResponse> GetAccountDirectDebitsAsync(string accountId,
         string authToken, CancellationToken cancellationToken)
     {
-        using HttpClient httpClient = await BuildHttpClient(_trueLayerOpenBankingConfiguration.BaseDataUrl, authToken);
+        using HttpClient httpClient = await BuildDataHttpClient(authToken);
 
         HttpResponseMessage response =
             await httpClient.GetAsync($"v1/accounts/{accountId}/direct_debits", cancellationToken);
@@ -257,7 +263,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
     public async IAsyncEnumerable<ExternalOpenBankingProvider> GetAvailableProvidersAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        using HttpClient httpClient = await BuildHttpClient(_trueLayerOpenBankingConfiguration.BaseAuthUrl);
+        using HttpClient httpClient = await BuildStandardHttpClient();
 
         HttpResponseMessage response =
             await httpClient.GetAsync($"api/providers?client_id={_trueLayerOpenBankingConfiguration.ClientId}",
@@ -300,8 +306,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
     public async Task<ExternalOpenBankingAccountConnectionResponse> GetProviderInformation(string accessToken,
         CancellationToken cancellationToken)
     {
-        using HttpClient httpClient =
-            await BuildHttpClient(_trueLayerOpenBankingConfiguration.BaseDataUrl, accessToken);
+        using HttpClient httpClient = await BuildDataHttpClient(accessToken);
 
         HttpResponseMessage response = await httpClient.GetAsync("v1/me", cancellationToken);
         if (!Succeeded(response, "connection information"))
@@ -318,14 +323,20 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
     public async Task<byte[]> GetProviderLogoAsync(string logoUri, CancellationToken cancellationToken)
     {
         // Logos are public assets on their own host, no base address or auth headers
-        using HttpClient httpClient = _clientFactory.CreateClient(HttpClientName);
+        using HttpClient httpClient = _clientFactory.CreateClient(StandardHttpClientName);
 
         return await httpClient.GetByteArrayAsync(logoUri, cancellationToken);
     }
 
-    private async Task<HttpClient> BuildHttpClient(Uri baseUrl, string? authHeader = null)
+    private Task<HttpClient> BuildStandardHttpClient() =>
+        BuildHttpClient(StandardHttpClientName, _trueLayerOpenBankingConfiguration.BaseAuthUrl, null);
+
+    private Task<HttpClient> BuildDataHttpClient(string authToken) =>
+        BuildHttpClient(DataHttpClientName, _trueLayerOpenBankingConfiguration.BaseDataUrl, authToken);
+
+    private async Task<HttpClient> BuildHttpClient(string clientName, Uri baseUrl, string? authHeader)
     {
-        HttpClient httpClient = _clientFactory.CreateClient(HttpClientName);
+        HttpClient httpClient = _clientFactory.CreateClient(clientName);
         httpClient.BaseAddress = baseUrl;
 
         if (!string.IsNullOrEmpty(authHeader))
