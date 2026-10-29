@@ -97,7 +97,7 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
 
         foreach (BankTransaction transaction in classifiedTransactions)
         {
-            transaction.Unclassify(id);
+            transaction.RemoveDeletedClassification(id);
         }
 
         context.CustomClassifications.Remove(classificationToRemove);

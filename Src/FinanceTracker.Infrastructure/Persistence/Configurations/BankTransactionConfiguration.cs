@@ -47,6 +47,7 @@ internal sealed class BankTransactionConfiguration : AggregateRootConfiguration<
             transfer.Property(x => x.PartnerAccountId).HasColumnName("Transfer_PartnerAccountId");
             transfer.Property(x => x.PartnerHouseholdMemberId).HasColumnName("Transfer_PartnerHouseholdMemberId");
             transfer.Property(x => x.DecidedAt).HasColumnName("Transfer_DecidedAt");
+            transfer.Property(x => x.RuleId).HasColumnName("Transfer_RuleId");
         });
 
         string externalIdBlindIndex = builder.HasBlindIndex(x => x.ExternalId);
@@ -58,5 +59,9 @@ internal sealed class BankTransactionConfiguration : AggregateRootConfiguration<
 
         builder.PrimitiveCollection(x => x.ProviderClassifications).HasField("_providerClassifications");
         builder.PrimitiveCollection(x => x.CustomClassificationIds).HasField("_customClassificationIds");
+
+        // Only ids, which rule added which tag, read with the transaction and never queried on their own
+        builder.OwnsMany(x => x.RuleTags, ruleTags => ruleTags.ToJson("RuleTags"));
+        builder.Navigation(x => x.RuleTags).HasField("_ruleTags");
     }
 }

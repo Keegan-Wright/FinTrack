@@ -3,6 +3,7 @@ using FinanceTracker.Domain.Classifications;
 using FinanceTracker.Domain.Common;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Transfers;
+using FinanceTracker.Domain.Rules;
 
 namespace FinanceTracker.Domain.OpenBanking.Transactions;
 
@@ -13,6 +14,7 @@ public sealed class BankTransaction : AggregateRoot
 {
     private readonly List<string> _providerClassifications = [];
     private readonly List<Guid> _customClassificationIds = [];
+    private readonly List<RuleTag> _ruleTags = [];
 
     [Obsolete("EF Use Only")]
 #pragma warning disable CS8618 // EF Core sets the properties when it materialises the entity
@@ -75,9 +77,20 @@ public sealed class BankTransaction : AggregateRoot
     public IReadOnlyCollection<string> ProviderClassifications => _providerClassifications.AsReadOnly();
 
     /// <summary>
-    /// User applied <see cref="CustomClassification"/>s.
+    /// <see cref="CustomClassification"/>s applied by the user or by rules, see <see cref="RuleTags"/> for which.
     /// </summary>
     public IReadOnlyCollection<Guid> CustomClassificationIds => _customClassificationIds.AsReadOnly();
+
+    /// <summary>
+    /// The <see cref="CustomClassificationIds"/> rules added, with the rule that added each. The rest the user added.
+    /// </summary>
+    public IReadOnlyCollection<RuleTag> RuleTags => _ruleTags.AsReadOnly();
+
+    /// <summary>
+    /// Whether the user has added or removed a tag by hand, after which rules leave its tags alone so a tag the user
+    /// removed is never added back.
+    /// </summary>
+    public bool TagsSetByUser { get; private set; }
 
     public static BankTransaction Import(BankAccount account, TransactionDetails details)
     {
@@ -161,6 +174,9 @@ public sealed class BankTransaction : AggregateRoot
         Transfer = new TransferInfo(TransferDecision.NotATransfer, DecisionSource.User, null, null, null, null,
             decidedAt);
 
+    /// <summary>
+    /// The user tags the transaction, which from now on rules leave its tags alone, see <see cref="TagsSetByUser"/>.
+    /// </summary>
     public void Classify(CustomClassification classification)
     {
         ArgumentNullException.ThrowIfNull(classification);
@@ -173,7 +189,95 @@ public sealed class BankTransaction : AggregateRoot
         {
             _customClassificationIds.Add(classification.Id);
         }
+
+        _ruleTags.RemoveAll(x => x.ClassificationId == classification.Id);
+        TagsSetByUser = true;
     }
 
-    public void Unclassify(Guid customClassificationId) => _customClassificationIds.Remove(customClassificationId);
+    /// <summary>
+    /// The user removes a tag, which from now on rules leave its tags alone, see <see cref="TagsSetByUser"/>.
+    /// </summary>
+    public void Unclassify(Guid customClassificationId)
+    {
+        RemoveClassification(customClassificationId);
+        TagsSetByUser = true;
+    }
+
+    /// <summary>
+    /// Removes a tag that's been deleted. Not the user editing this transaction, so rules still apply to it.
+    /// </summary>
+    public void RemoveDeletedClassification(Guid customClassificationId) =>
+        RemoveClassification(customClassificationId);
+
+    /// <summary>
+    /// Records what the user's rules decided, from <see cref="RuleEvaluator.Evaluate"/>. Tags and a transfer answer a
+    /// rule gave before but no longer does are removed, so editing or disabling a rule undoes what it did. Tags are
+    /// left alone once <see cref="TagsSetByUser"/>, and the user's transfer decision is never replaced.
+    /// </summary>
+    /// <returns>Whether anything changed.</returns>
+    public bool ApplyRules(RuleOutcome outcome, DateTime decidedAt)
+    {
+        ArgumentNullException.ThrowIfNull(outcome);
+
+        bool tagsChanged = ApplyRuleTags(outcome.Tags);
+        bool transferChanged = ApplyRuleTransfer(outcome.Transfer, decidedAt);
+
+        return tagsChanged || transferChanged;
+    }
+
+    private bool ApplyRuleTags(IReadOnlyList<RuleTag> tags)
+    {
+        if (TagsSetByUser || _ruleTags.ToHashSet().SetEquals(tags))
+        {
+            return false;
+        }
+
+        foreach (RuleTag previous in _ruleTags)
+        {
+            _customClassificationIds.Remove(previous.ClassificationId);
+        }
+
+        _ruleTags.Clear();
+
+        foreach (RuleTag tag in tags)
+        {
+            if (!_customClassificationIds.Contains(tag.ClassificationId))
+            {
+                _customClassificationIds.Add(tag.ClassificationId);
+            }
+
+            _ruleTags.Add(tag);
+        }
+
+        return true;
+    }
+
+    private bool ApplyRuleTransfer(RuleTransfer? transfer, DateTime decidedAt)
+    {
+        if (transfer is null)
+        {
+            // Only a rule's own answer is taken back, the matcher's and the user's stay
+            if (Transfer?.Source != DecisionSource.Rule)
+            {
+                return false;
+            }
+
+            Transfer = null;
+            return true;
+        }
+
+        TransferInfo decision = TransferInfo.FromRule(transfer.Decision, transfer.RuleId, decidedAt);
+        if (decision.IsSameAs(Transfer))
+        {
+            return false;
+        }
+
+        return DecideTransfer(decision);
+    }
+
+    private void RemoveClassification(Guid customClassificationId)
+    {
+        _customClassificationIds.Remove(customClassificationId);
+        _ruleTags.RemoveAll(x => x.ClassificationId == customClassificationId);
+    }
 }
