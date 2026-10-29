@@ -1,0 +1,30 @@
+/* The inputs share a line on a wide screen and stack on a phone, the remove button stays at the end */
+.ft-condition {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 8px 12px;
+    min-width: 0;
+}
+
+.ft-condition ::deep .ft-condition__field {
+    flex: 1 1 min(200px, 100%);
+    min-width: 0;
+}
+
+.ft-condition ::deep .ft-condition__operator {
+    flex: 1 1 min(150px, 100%);
+    min-width: 0;
+}
+
+.ft-condition ::deep .ft-condition__value {
+    flex: 2 1 min(200px, 100%);
+    min-width: 0;
+}
+
+.ft-condition__end {
+    display: inline-flex;
+    align-items: center;
+    margin-left: auto;
+    padding-top: 4px;
+}

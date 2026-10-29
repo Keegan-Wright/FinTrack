@@ -1,0 +1,208 @@
+@page "/Rules/new"
+@page "/Rules/{Id:guid}"
+@* Makes a rule or edits one (IRulesService). A new or edited rule reaches the transactions that arrive from the next
+   sync, the user's history is left as it is. *@
+@using FinanceTracker.Client.Components.Rules
+@using FinanceTracker.Contracts.Classifications
+@using FinanceTracker.Contracts.Rules
+@using FinanceTracker.Contracts.Transactions
+@using Microsoft.AspNetCore.Authorization
+@inherits PageComponent
+
+@attribute [Authorize]
+@inject IRulesService RulesService
+@inject ITransactionsService TransactionsService
+@inject IClassificationService ClassificationService
+@inject IDialogService DialogService
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+<PageTitle>FinTrack - @Title</PageTitle>
+<PageHeader Title="@Title" Subtitle="@Subtitle">
+    <Actions>
+        <MudButton Href="Rules" Variant="Variant.Text" StartIcon="@Icons.Material.Outlined.ArrowBack">
+            All rules
+        </MudButton>
+    </Actions>
+</PageHeader>
+
+@if (Draft is null)
+{
+    <Section>
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+            That rule doesn't exist any more. <MudLink Href="Rules" Typo="Typo.body2">Back to your rules</MudLink>
+        </MudText>
+    </Section>
+}
+else
+{
+    <div class="ft-stack">
+        <RuleForm @ref="_form" Model="@Draft" AccountNames="@AccountNames" TagNames="@TagNames"/>
+
+        <div class="ft-rule-editor__actions">
+            @if (Id is not null)
+            {
+                <MudButton Variant="Variant.Text" Color="Color.Error" StartIcon="@Icons.Material.Outlined.Delete"
+                           OnClick="@DeleteAsync">Delete</MudButton>
+            }
+            <span class="ft-rule-editor__spacer"></span>
+            <MudButton Href="Rules" Variant="Variant.Text">Cancel</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@SaveAsync">Save</MudButton>
+        </div>
+    </div>
+}
+
+@code {
+
+    /// <summary>
+    /// The rule to edit, null for a new one.
+    /// </summary>
+    [Parameter] public Guid? Id { get; set; }
+
+    /// <summary>
+    /// What's being edited, null when the rule asked for doesn't exist.
+    /// </summary>
+    [PersistentState]
+    public SaveRule? Draft { get; set; }
+
+    /// <summary>
+    /// The user's accounts.
+    /// </summary>
+    [PersistentState]
+    public List<TransactionAccountFilter>? Accounts { get; set; }
+
+    /// <summary>
+    /// The user's tags.
+    /// </summary>
+    [PersistentState]
+    public List<Classification>? Tags { get; set; }
+
+    private RuleForm? _form;
+
+    private string Title => Id is null ? "New rule" : "Edit rule";
+
+    private string Subtitle => Id is null
+        ? "Applies to transactions from the next sync, the ones you have already are left as they are"
+        : "Saving checks again the transactions this rule already reached, taking back what it no longer gives";
+
+    private IReadOnlyDictionary<Guid, string> AccountNames =>
+        (Accounts ?? []).ToDictionary(static x => x.AccountId, static x => x.AccountName);
+
+    private IReadOnlyDictionary<Guid, string> TagNames =>
+        (Tags ?? []).ToDictionary(static x => x.ClassificationId, static x => x.Tag ?? string.Empty);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        Accounts = await LoadOnceAsync(Accounts, "Loading the rule", cancellationToken =>
+            TransactionsService.GetAccountsForTransactionFiltersAsync(cancellationToken)
+                .ToListAsync(cancellationToken).AsTask());
+        Tags = await LoadOnceAsync(Tags, "Loading the rule", cancellationToken =>
+            ClassificationService.GetAllCustomClassificationsAsync(cancellationToken)
+                .ToListAsync(cancellationToken).AsTask());
+
+        if (Draft is null)
+        {
+            Draft = await LoadDraftAsync();
+        }
+    }
+
+    /// <summary>
+    /// A blank rule, or the one asked for as it's saved. Null when it doesn't exist or isn't the user's.
+    /// </summary>
+    private async Task<SaveRule?> LoadDraftAsync()
+    {
+        if (Id is not { } id)
+        {
+            return RuleDrafts.New();
+        }
+
+        try
+        {
+            SetLoadingState(true, "Loading the rule");
+            return RuleDrafts.From(await RulesService.GetRuleAsync(id, _cts.Token));
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
+    internal async Task SaveAsync()
+    {
+        if (Draft is null || _form is null)
+        {
+            return;
+        }
+
+        bool valid = await _form.ValidateAsync();
+        if (!valid)
+        {
+            return;
+        }
+
+        try
+        {
+            SetLoadingState(true, "Saving the rule…");
+            if (Id is { } id)
+            {
+                await RulesService.UpdateRuleAsync(id, Draft, _cts.Token);
+            }
+            else
+            {
+                await RulesService.AddRuleAsync(Draft, _cts.Token);
+            }
+
+            Snackbar.Add($"{Draft.Name} saved", Severity.Success);
+            NavigationManager.NavigateTo("Rules");
+        }
+        catch (InvalidOperationException)
+        {
+            Snackbar.Add("A tag or account in this rule isn't yours any more, choose another", Severity.Error);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't save the rule, try again", Severity.Error);
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
+    internal async Task DeleteAsync()
+    {
+        if (Id is not { } id || Draft is null)
+        {
+            return;
+        }
+
+        bool? confirmed = await DialogService.ShowMessageBoxAsync($"Delete {Draft.Name}?",
+            "The tags and transfer answers it gave are taken back.", yesText: "Delete", cancelText: "Cancel");
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        try
+        {
+            SetLoadingState(true, "Deleting the rule…");
+            await RulesService.DeleteRuleAsync(id, _cts.Token);
+            Snackbar.Add($"{Draft.Name} deleted", Severity.Success);
+            NavigationManager.NavigateTo("Rules");
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't delete the rule, try again", Severity.Error);
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
+}

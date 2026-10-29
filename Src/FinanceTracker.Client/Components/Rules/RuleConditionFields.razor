@@ -1,0 +1,124 @@
+@* One condition of a rule what to look at, how to compare it and what with. The value input suits the field, a list
+   for an account or money in or out and a number for an amount. *@
+@using FinanceTracker.Client.Extensions
+@using FinanceTracker.Contracts.Rules
+@using FluentValidation
+@inject IValidator<RuleCondition> ConditionValidator
+
+<div class="ft-condition">
+    <MudSelect T="RuleField" Label="Look at" Value="@Condition.Field" ValueChanged="@OnFieldChanged"
+               For="@(() => Condition.Field)" Variant="Variant.Outlined" Margin="Margin.Dense"
+               Class="ft-condition__field">
+        @foreach (RuleField field in RuleText.Fields)
+        {
+            <MudSelectItem T="RuleField" Value="@field">@RuleText.FieldName(field)</MudSelectItem>
+        }
+    </MudSelect>
+
+    <MudSelect T="RuleOperator" Label="Compare" Value="@Condition.Operator" ValueChanged="@OnOperatorChanged"
+               For="@(() => Condition.Operator)" Variant="Variant.Outlined" Margin="Margin.Dense"
+               Disabled="@(RuleText.OperatorsFor(Condition.Field).Count == 1)"
+               Validation="@(ConditionValidator.ValidateValue(Condition, nameof(RuleCondition.Operator)))"
+               Class="ft-condition__operator">
+        @foreach (RuleOperator @operator in RuleText.OperatorsFor(Condition.Field))
+        {
+            <MudSelectItem T="RuleOperator" Value="@(@operator)">@RuleText.OperatorName(@operator)</MudSelectItem>
+        }
+    </MudSelect>
+
+    @switch (Condition.Field)
+    {
+        case RuleField.Type:
+            <MudSelect T="string" Label="Which" @bind-Value="Condition.Value" For="@(() => Condition.Value)"
+                       Variant="Variant.Outlined" Margin="Margin.Dense" Class="ft-condition__value">
+                <MudSelectItem T="string" Value="@("Debit")">@RuleText.TypeName("Debit")</MudSelectItem>
+                <MudSelectItem T="string" Value="@("Credit")">@RuleText.TypeName("Credit")</MudSelectItem>
+            </MudSelect>
+            break;
+        case RuleField.Account:
+            <MudSelect T="string" Label="Account" @bind-Value="Condition.Value" For="@(() => Condition.Value)"
+                       Variant="Variant.Outlined" Margin="Margin.Dense" Class="ft-condition__value"
+                       Validation="@(ConditionValidator.ValidateValue(Condition, nameof(RuleCondition.Value)))">
+                @foreach ((Guid accountId, string accountName) in AccountNames.OrderBy(static x => x.Value))
+                {
+                    <MudSelectItem T="string" Value="@accountId.ToString()">@accountName</MudSelectItem>
+                }
+            </MudSelect>
+            break;
+        case RuleField.Amount:
+            <MudTextField T="string" Label="@(IsRange ? "From" : "Amount")" @bind-Value="Condition.Value"
+                          For="@(() => Condition.Value)" Variant="Variant.Outlined" Margin="Margin.Dense"
+                          InputMode="@(InputMode.@decimal)" Immediate="true" HelperText="e.g. 12.50, in or out"
+                          Validation="@(ConditionValidator.ValidateValue(Condition, nameof(RuleCondition.Value)))"
+                          Class="ft-condition__value"/>
+            @if (IsRange)
+            {
+                <MudTextField T="string" Label="To" @bind-Value="Condition.SecondValue"
+                              For="@(() => Condition.SecondValue)" Variant="Variant.Outlined" Margin="Margin.Dense"
+                              InputMode="@(InputMode.@decimal)" Immediate="true"
+                              Validation="@SecondValueValidation"
+                              Class="ft-condition__value"/>
+            }
+            break;
+        default:
+            <MudTextField T="string" Label="Text" @bind-Value="Condition.Value" For="@(() => Condition.Value)"
+                          Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true"
+                          Validation="@(ConditionValidator.ValidateValue(Condition, nameof(RuleCondition.Value)))"
+                          Class="ft-condition__value"/>
+            break;
+    }
+
+    <span class="ft-condition__end">
+        @if (RuleText.IsText(Condition.Field))
+        {
+            <MudCheckBox T="bool" @bind-Value="Condition.IgnoreCase" Dense="true" Size="Size.Small"
+                         Label="Any case"/>
+        }
+        <MudIconButton Icon="@Icons.Material.Outlined.Close" Size="Size.Small" Disabled="@(!CanRemove)"
+                       aria-label="Remove condition" OnClick="@OnRemove"/>
+    </span>
+</div>
+
+@code {
+
+    [Parameter] [EditorRequired] public required RuleCondition Condition { get; set; }
+
+    /// <summary>
+    /// The user's accounts by id.
+    /// </summary>
+    [Parameter] [EditorRequired] public required IReadOnlyDictionary<Guid, string> AccountNames { get; set; }
+
+    /// <summary>
+    /// Whether this condition can be removed, a rule keeps at least one.
+    /// </summary>
+    [Parameter] public bool CanRemove { get; set; } = true;
+
+    [Parameter] public EventCallback OnRemove { get; set; }
+
+    private bool IsRange => Condition.Operator == RuleOperator.Between;
+
+    private Func<object, string, Task<IEnumerable<string>>> SecondValueValidation =>
+        ConditionValidator.ValidateValue(Condition, nameof(RuleCondition.SecondValue));
+
+    /// <summary>
+    /// A different field starts again from its usual operator, the old value rarely suits it.
+    /// </summary>
+    private void OnFieldChanged(RuleField field)
+    {
+        RuleCondition fresh = RuleDrafts.NewCondition(field);
+        Condition.Field = fresh.Field;
+        Condition.Operator = fresh.Operator;
+        Condition.Value = fresh.Value;
+        Condition.SecondValue = null;
+    }
+
+    private void OnOperatorChanged(RuleOperator @operator)
+    {
+        Condition.Operator = @operator;
+        if (@operator != RuleOperator.Between)
+        {
+            Condition.SecondValue = null;
+        }
+    }
+
+}

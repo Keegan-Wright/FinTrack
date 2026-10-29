@@ -1,0 +1,120 @@
+@* The user's rules in the order they run. Each can be dragged by its handle or moved a place with the arrows, switched
+   on or off, and opened to edit. *@
+@using FinanceTracker.Contracts.Rules
+
+<div class="ft-rules">
+    @* Keyed on the order so a move from either the arrows or a drop rebuilds the zone in the new order *@
+    <MudDropContainer T="Rule" @key="@OrderKey" Items="@Rules" ItemsSelector="@((_, _) => true)"
+                      ItemDropped="@OnDroppedAsync" ItemDraggingClass="ft-rule--dragging">
+        <ChildContent>
+            <MudDropZone T="Rule" Identifier="@ZoneIdentifier" AllowReorder="true"/>
+        </ChildContent>
+        <ItemRenderer>
+            @{
+                int index = IndexOf(context);
+                string? problem = RuleText.Problem(context, AccountNames);
+            }
+            <div class="ft-rule">
+                <MudDragHandle T="Rule">
+                    <span class="ft-rule__handle" title="Drag to reorder">
+                        <MudIcon Icon="@Icons.Material.Outlined.DragIndicator" Size="Size.Small"/>
+                    </span>
+                </MudDragHandle>
+                <span class="ft-rule__position">@(index + 1)</span>
+                <div class="ft-rule__main">
+
+                    <MudLink Href="@($"Rules/{context.Id}")" Typo="Typo.body2">
+                        <span class="ft-rule__name">@context.Name</span>
+                    </MudLink>
+
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary ft-rule__summary">
+                        @RuleText.Summary(context, AccountNames, TagNames)
+                    </MudText>
+                    @if (problem is not null)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Warning">@problem</MudText>
+                    }
+                </div>
+                <MudSwitch T="bool" Value="@context.IsEnabled" Color="Color.Primary"
+                           Disabled="@(context.Actions.Count == 0)"
+                           ValueChanged="@(_ => OnToggle.InvokeAsync(context))"
+                           aria-label="@($"Run {context.Name}")"/>
+
+                <span class="ft-rule__move">
+
+                    <MudIconButton Icon="@Icons.Material.Outlined.ArrowUpward" Size="Size.Small"
+                                   Disabled="@(index == 0)" aria-label="@($"Move {context.Name} up")"
+                                   OnClick="@(() => MoveAsync(context, index - 1))"/>
+                    <MudIconButton Icon="@Icons.Material.Outlined.ArrowDownward" Size="Size.Small"
+                                   Disabled="@(index == Rules.Count - 1)" aria-label="@($"Move {context.Name} down")"
+                                   OnClick="@(() => MoveAsync(context, index + 1))"/>
+                </span>
+            </div>
+        </ItemRenderer>
+    </MudDropContainer>
+</div>
+
+@code {
+
+    private const string ZoneIdentifier = "rules";
+
+    /// <summary>
+    /// In the order they run.
+    /// </summary>
+    [Parameter] [EditorRequired] public required IReadOnlyList<Rule> Rules { get; set; }
+
+    /// <summary>
+    /// The user's accounts by id, for conditions on an account and spotting ones since removed.
+    /// </summary>
+    [Parameter] [EditorRequired] public required IReadOnlyDictionary<Guid, string> AccountNames { get; set; }
+
+    /// <summary>
+    /// The user's tags by id, for the actions that add them.
+    /// </summary>
+    [Parameter] [EditorRequired] public required IReadOnlyDictionary<Guid, string> TagNames { get; set; }
+
+    /// <summary>
+    /// The rules in their new order, after one is dragged or moved with the arrows.
+    /// </summary>
+    [Parameter] public EventCallback<IReadOnlyList<Rule>> OnReorder { get; set; }
+
+    /// <summary>
+    /// A rule to switch on if it's off, or off if it's on.
+    /// </summary>
+    [Parameter] public EventCallback<Rule> OnToggle { get; set; }
+
+    private string OrderKey => string.Join(',', Rules.Select(static x => x.Id));
+
+    private int IndexOf(Rule rule)
+    {
+        for (int index = 0; index < Rules.Count; index++)
+        {
+            if (Rules[index].Id == rule.Id)
+            {
+                return index;
+            }
+        }
+
+        return -1;
+    }
+
+    internal Task OnDroppedAsync(MudItemDropInfo<Rule> drop) =>
+        drop.Item is null ? Task.CompletedTask : MoveAsync(drop.Item, drop.IndexInZone);
+
+    private async Task MoveAsync(Rule rule, int toIndex)
+    {
+        int fromIndex = IndexOf(rule);
+        int clamped = Math.Clamp(toIndex, 0, Rules.Count - 1);
+        if (fromIndex < 0 || fromIndex == clamped)
+        {
+            return;
+        }
+
+        List<Rule> reordered = Rules.ToList();
+        reordered.RemoveAt(fromIndex);
+        reordered.Insert(clamped, rule);
+
+        await OnReorder.InvokeAsync(reordered);
+    }
+
+}

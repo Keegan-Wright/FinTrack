@@ -1,0 +1,124 @@
+@page "/Rules"
+@* The user's rules in the order they run, to reorder, switch on and off. *@
+@using FinanceTracker.Client.Components.Rules
+@using FinanceTracker.Contracts.Classifications
+@using FinanceTracker.Contracts.Rules
+@using FinanceTracker.Contracts.Transactions
+@using Microsoft.AspNetCore.Authorization
+@inherits PageComponent
+
+@attribute [Authorize]
+@inject IRulesService RulesService
+@inject ITransactionsService TransactionsService
+@inject IClassificationService ClassificationService
+@inject ISnackbar Snackbar
+
+<PageTitle>FinTrack - Rules</PageTitle>
+<PageHeader Title="Rules" Subtitle="Tag transactions and decide transfers as they arrive">
+    <Actions>
+        <MudButton Href="Rules/new" Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Outlined.Add">New rule</MudButton>
+    </Actions>
+</PageHeader>
+
+<Section Title="@SectionTitle" Caption="Run top to bottom on new transactions, drag or use the arrows to reorder">
+    @if (RuleList is null or { Count: 0 })
+    {
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+            No rules yet. Make one to tag what you buy as it syncs, like Shopping for anything from your supermarket.
+        </MudText>
+    }
+    else
+    {
+        <RuleList Rules="@RuleList" AccountNames="@AccountNames" TagNames="@TagNames"
+                  OnReorder="@ReorderAsync" OnToggle="@ToggleAsync"/>
+    }
+</Section>
+
+@code {
+
+    /// <summary>
+    /// The user's rules in the order they run, loaded once, see <see cref="PageComponent.LoadOnceAsync{T}"/>.
+    /// </summary>
+    [PersistentState]
+    public List<Rule>? RuleList { get; set; }
+
+    /// <summary>
+    /// The user's accounts.
+    /// </summary>
+    [PersistentState]
+    public List<TransactionAccountFilter>? Accounts { get; set; }
+
+    /// <summary>
+    /// The user's tags.
+    /// </summary>
+    [PersistentState]
+    public List<Classification>? Tags { get; set; }
+
+    private IReadOnlyDictionary<Guid, string> AccountNames =>
+        (Accounts ?? []).ToDictionary(static x => x.AccountId, static x => x.AccountName);
+
+    private IReadOnlyDictionary<Guid, string> TagNames =>
+        (Tags ?? []).ToDictionary(static x => x.ClassificationId, static x => x.Tag ?? string.Empty);
+
+    private string SectionTitle => RuleList?.Count == 1 ? "1 rule" : $"{RuleList?.Count ?? 0} rules";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        RuleList = await LoadOnceAsync(RuleList, "Loading your rules", cancellationToken =>
+            RulesService.GetRulesAsync(cancellationToken).ToListAsync(cancellationToken).AsTask());
+        Accounts = await LoadOnceAsync(Accounts, "Loading your rules", cancellationToken =>
+            TransactionsService.GetAccountsForTransactionFiltersAsync(cancellationToken)
+                .ToListAsync(cancellationToken).AsTask());
+        Tags = await LoadOnceAsync(Tags, "Loading your rules", cancellationToken =>
+            ClassificationService.GetAllCustomClassificationsAsync(cancellationToken)
+                .ToListAsync(cancellationToken).AsTask());
+    }
+
+    /// <summary>
+    /// Shown in the new order straight away, and put back if it can't be saved.
+    /// </summary>
+    internal async Task ReorderAsync(IReadOnlyList<Rule> reordered)
+    {
+        List<Rule>? previous = RuleList;
+        RuleList = reordered.ToList();
+
+        try
+        {
+            ReorderRules order = new() { RuleIds = RuleList.Select(static x => x.Id).ToList() };
+            await RulesService.ReorderRulesAsync(order, _cts.Token);
+        }
+        catch (Exception)
+        {
+            RuleList = previous;
+            Snackbar.Add("Couldn't save the new order, try again", Severity.Error);
+        }
+    }
+
+    internal async Task ToggleAsync(Rule rule)
+    {
+        bool turningOn = !rule.IsEnabled;
+
+        try
+        {
+            SetLoadingState(true, turningOn ? $"Turning {rule.Name} on…" : $"Turning {rule.Name} off…");
+            Rule saved = await RulesService.UpdateRuleAsync(rule.Id, RuleDrafts.WithEnabled(rule, turningOn),
+                _cts.Token);
+            RuleList![RuleList.FindIndex(x => x.Id == rule.Id)] = saved;
+            Snackbar.Add(turningOn
+                ? $"{rule.Name} is on for transactions from the next sync"
+                : $"{rule.Name} is off, the tags and transfer answers it gave have been taken back",
+                Severity.Success);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add($"Couldn't turn {rule.Name} {(turningOn ? "on" : "off")}, try again", Severity.Error);
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
+}
