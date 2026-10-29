@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Threading.RateLimiting;
 using FinanceTracker.AppHost.ServiceDefaults;
@@ -159,10 +160,11 @@ public class OpenBankingExtensionsTests
     [Test]
     public async Task AddOpenBanking_DataClient_KeepsToTheConcurrentCallLimit()
     {
-        // Arrange, the default limit is 2 calls at once
+        // Arrange
         TaskCompletionSource<HttpResponseMessage> trueLayerAnswers = new();
         StubTrueLayerHandler trueLayer = new(_ => trueLayerAnswers.Task);
-        await using ServiceProvider services = BuildServices(TrueLayerOpenBankingApiService.DataHttpClientName, trueLayer);
+        await using ServiceProvider services =
+            BuildServices(TrueLayerOpenBankingApiService.DataHttpClientName, trueLayer, maxConcurrentCalls: 2);
         using HttpClient client = services.GetRequiredService<IHttpClientFactory>()
             .CreateClient(TrueLayerOpenBankingApiService.DataHttpClientName);
 
@@ -185,11 +187,11 @@ public class OpenBankingExtensionsTests
     [Test]
     public async Task AddOpenBanking_StandardClient_IsntThrottled()
     {
-        // Arrange
+        // Arrange, a limit is set so it would hold the third call up if it applied
         TaskCompletionSource<HttpResponseMessage> trueLayerAnswers = new();
         StubTrueLayerHandler trueLayer = new(_ => trueLayerAnswers.Task);
         await using ServiceProvider services =
-            BuildServices(TrueLayerOpenBankingApiService.StandardHttpClientName, trueLayer);
+            BuildServices(TrueLayerOpenBankingApiService.StandardHttpClientName, trueLayer, maxConcurrentCalls: 2);
         using HttpClient client = services.GetRequiredService<IHttpClientFactory>()
             .CreateClient(TrueLayerOpenBankingApiService.StandardHttpClientName);
 
@@ -209,9 +211,18 @@ public class OpenBankingExtensionsTests
     /// The app's HTTP clients as it registers them, the service defaults then open banking, with
     /// <paramref name="trueLayer"/> answering <paramref name="clientName"/>'s requests.
     /// </summary>
-    private static ServiceProvider BuildServices(string clientName, StubTrueLayerHandler trueLayer)
+    /// <param name="maxConcurrentCalls">Configured rather than left to the default, which is no limit.</param>
+    private static ServiceProvider BuildServices(string clientName, StubTrueLayerHandler trueLayer,
+        int? maxConcurrentCalls = null)
     {
         WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        if (maxConcurrentCalls is not null)
+        {
+            builder.Configuration[$"{TrueLayerThrottlingOptions.SectionName}:" +
+                                  $"{nameof(TrueLayerThrottlingOptions.MaxConcurrentCalls)}"] =
+                maxConcurrentCalls.Value.ToString(CultureInfo.InvariantCulture);
+        }
+
         builder.AddServiceDefaults();
         builder.AddOpenBanking();
         builder.Services.AddHttpClient(clientName).ConfigurePrimaryHttpMessageHandler(() => trueLayer);
