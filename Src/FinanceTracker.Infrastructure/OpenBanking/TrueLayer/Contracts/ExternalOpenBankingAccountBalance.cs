@@ -8,6 +8,12 @@ public class ExternalOpenBankingAccountBalance
     public decimal Available { get; set; }
     public decimal Current { get; set; }
 
-    [JsonPropertyName("update_timestamp ")]
+    [JsonPropertyName("update_timestamp")]
     public DateTime UpdateTimestamp { get; set; }
+
+    /// <summary>
+    /// A card's credit limit, cards only.
+    /// </summary>
+    [JsonPropertyName("credit_limit")]
+    public decimal? CreditLimit { get; set; }
 }

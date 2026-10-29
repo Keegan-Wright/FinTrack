@@ -20,13 +20,14 @@ public class AccountAndTransactions
     public required byte[] Logo { get; init; }
 
     /// <summary>
-    /// The bank's account type, e.g. <c>TRANSACTION</c> or <c>SAVINGS</c>.
+    /// The bank's account type, e.g. <c>TRANSACTION</c> or <c>SAVINGS</c>, or <c>CREDIT_CARD</c> for a card.
     /// </summary>
     [Description("Type of the account")]
     public required string AccountType { get; init; }
 
     /// <summary>
-    /// The balance at the last sync, in the account's currency. 0 if the balance hasn't synced.
+    /// The balance at the last sync, in the account's currency. 0 if the balance hasn't synced. For a card, what's
+    /// owed as a negative amount.
     /// </summary>
     [Description("Current balance of the account")]
     public required decimal AccountBalance { get; init; }
@@ -37,6 +38,18 @@ public class AccountAndTransactions
     /// </summary>
     [Description("Available balance in the account")]
     public required decimal AvailableBalance { get; init; }
+
+    /// <summary>
+    /// A card's last digits, null for an account or when the bank doesn't say.
+    /// </summary>
+    [Description("Last digits of the card number, for cards")]
+    public string? CardEnding { get; init; }
+
+    /// <summary>
+    /// A card's credit limit at the last sync, null for an account or when the bank doesn't say.
+    /// </summary>
+    [Description("Credit limit, for cards")]
+    public decimal? CreditLimit { get; init; }
 
     /// <summary>
     /// The account's transactions.

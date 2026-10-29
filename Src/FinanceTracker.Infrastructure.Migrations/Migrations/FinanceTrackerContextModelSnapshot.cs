@@ -379,6 +379,10 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
@@ -1264,6 +1268,11 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                                 .HasColumnName("Balance_Available")
                                 .HasAnnotation("FinanceTracker.EncrptedColumn", true);
 
+                            b1.Property<string>("CreditLimit")
+                                .HasColumnType("text")
+                                .HasColumnName("Balance_CreditLimit")
+                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
                             b1.Property<string>("Current")
                                 .IsRequired()
                                 .HasColumnType("text")
@@ -1306,7 +1315,47 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                                 .HasForeignKey("BankAccountId");
                         });
 
+                    b.OwnsOne("FinanceTracker.Domain.OpenBanking.Accounts.CardDetails", "Card", b1 =>
+                        {
+                            b1.Property<Guid>("BankAccountId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("CardType")
+                                .HasColumnType("text")
+                                .HasColumnName("Card_CardType")
+                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                            b1.Property<string>("NameOnCard")
+                                .HasColumnType("text")
+                                .HasColumnName("Card_NameOnCard")
+                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                            b1.Property<string>("Network")
+                                .HasColumnType("text")
+                                .HasColumnName("Card_Network")
+                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                            b1.Property<string>("PartialNumber")
+                                .HasColumnType("text")
+                                .HasColumnName("Card_PartialNumber")
+                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                            b1.Property<string>("ValidTo")
+                                .HasColumnType("text")
+                                .HasColumnName("Card_ValidTo")
+                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                            b1.HasKey("BankAccountId");
+
+                            b1.ToTable("BankAccounts");
+
+                            b1.WithOwner()
+                                .HasForeignKey("BankAccountId");
+                        });
+
                     b.Navigation("Balance");
+
+                    b.Navigation("Card");
 
                     b.Navigation("Identifier");
                 });
@@ -1367,6 +1416,11 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                                 .IsRequired()
                                 .HasColumnType("text")
                                 .HasColumnName("Balance_Available")
+                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                            b1.Property<string>("CreditLimit")
+                                .HasColumnType("text")
+                                .HasColumnName("Balance_CreditLimit")
                                 .HasAnnotation("FinanceTracker.EncrptedColumn", true);
 
                             b1.Property<string>("Current")

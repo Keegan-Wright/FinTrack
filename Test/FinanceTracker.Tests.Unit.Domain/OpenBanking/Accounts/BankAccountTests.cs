@@ -87,6 +87,42 @@ public class BankAccountTests
     }
 
     [Test]
+    public async Task BankAccount_UpdateBalance_KeepsACardsCreditLimit()
+    {
+        var card = new BankAccount(Guid.NewGuid(), Guid.NewGuid(), "card-1", "CREDIT_CARD", "Card", "GBP",
+            BankAccountKind.Card);
+
+        card.UpdateBalance(2700m, -300m, Now, 3000m);
+
+        await Assert.That(card.Balance).IsEqualTo(new AccountBalance(2700m, -300m, Now, 3000m));
+    }
+
+    [Test]
+    public async Task BankAccount_UpdateCard_SetsACardsDetails()
+    {
+        var card = new BankAccount(Guid.NewGuid(), Guid.NewGuid(), "card-1", "CREDIT_CARD", "Card", "GBP",
+            BankAccountKind.Card);
+        var details = new CardDetails("VISA", "CREDIT", "1234", "A N Other", Now.AddYears(3));
+
+        card.UpdateCard(details);
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(card.Kind).IsEqualTo(BankAccountKind.Card);
+            await Assert.That(card.Card).IsEqualTo(details);
+        }
+    }
+
+    [Test]
+    public void BankAccount_UpdateCard_OnAnAccount_Throws_InvalidOperationException()
+    {
+        var account = new BankAccount(Guid.NewGuid(), Guid.NewGuid(), "acc-1", "TRANSACTION", "Main", "GBP");
+
+        Assert.Throws<InvalidOperationException>(() =>
+            account.UpdateCard(new CardDetails("VISA", "CREDIT", "1234", null, null)));
+    }
+
+    [Test]
     public async Task BankAccount_SyncStandingOrders_AddsNewOrders()
     {
         BankAccount account = BuildAccount();

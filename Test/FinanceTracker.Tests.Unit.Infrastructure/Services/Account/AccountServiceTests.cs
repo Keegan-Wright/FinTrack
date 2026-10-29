@@ -75,6 +75,37 @@ public class AccountServiceTests : InfrastructureTestBase
     }
 
     [Test]
+    public async Task GetAccountsAndMostRecentTransactionsAsync_Card_MapsItsEndingAndCreditLimit()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("bank", Username))
+            .Do(s => s.BankAccountScenario.WithAccount("card", "bank", (userId, connectionId) =>
+            {
+                BankAccount card = new(userId, connectionId, "card-1", "CREDIT_CARD", "Credit Card", "GBP",
+                    BankAccountKind.Card);
+                card.UpdateCard(new CardDetails("MASTERCARD", "CREDIT", "1000", null, null));
+                return card;
+            }))
+            .Do(s => s.BankAccountScenario.WithBalance("card", new AccountBalance(81m, -39m, DateTime.UtcNow, 120m)));
+
+        AccountService subject = BuildSubject(Username);
+
+        // Act
+        AccountAndTransactions card = (await subject
+            .GetAccountsAndMostRecentTransactionsAsync(5, CancellationToken)
+            .ToListAsync(CancellationToken)).Single();
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(card.CardEnding).IsEqualTo("1000");
+            await Assert.That(card.CreditLimit).IsEqualTo(120m);
+            await Assert.That(card.AccountBalance).IsEqualTo(-39m);
+        }
+    }
+
+    [Test]
     public async Task GetAccountsAndMostRecentTransactionsAsync_WhenAccountHasNoBalance_ReturnsZeroBalances()
     {
         // Arrange

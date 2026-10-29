@@ -769,6 +769,76 @@ public class OpenBankingServiceTests : InfrastructureTestBase
     }
 
     [Test]
+    public async Task SyncConnectionAsync_ConnectionWithCardsScope_StoresEachCardAsACard()
+    {
+        // Arrange
+        await SeedConnectionAsync(withCards: true);
+        ExternalOpenBankingCard externalCard = new ExternalOpenBankingCardFaker().Generate();
+        DateTime balanceAt = new(2026, 10, 27, 18, 0, 0, DateTimeKind.Utc);
+
+        GivenProviderReturns();
+        GivenCardsReturn([externalCard],
+            balances:
+            [
+                new ExternalOpenBankingAccountBalance
+                {
+                    Available = 2700m, Current = 300m, CreditLimit = 3000m, Currency = "GBP",
+                    UpdateTimestamp = balanceAt
+                }
+            ],
+            transactions:
+            [
+                CardTransaction("purchase", "DEBIT", 24.25m),
+                CardTransaction("repayment", "CREDIT", 100m)
+            ]);
+
+        OpenBankingService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        BankAccount card = (await LoadAccountsAsync()).Single();
+        Dictionary<string, decimal> amounts = (await LoadTransactionsAsync()).ToDictionary(x => x.ExternalId, x => x.Amount);
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(card.Kind).IsEqualTo(BankAccountKind.Card);
+            await Assert.That(card.ExternalId).IsEqualTo(externalCard.AccountId);
+            await Assert.That(card.AccountType).IsEqualTo("CREDIT_CARD");
+            await Assert.That(card.Card!.PartialNumber).IsEqualTo(externalCard.PartialCardNumber);
+            await Assert.That(card.Card.Network).IsEqualTo(externalCard.CardNetwork);
+            await Assert.That(card.Balance).IsEqualTo(new AccountBalance(2700m, -300m, balanceAt, 3000m));
+            await Assert.That(amounts["purchase"]).IsEqualTo(-24.25m);
+            await Assert.That(amounts["repayment"]).IsEqualTo(100m);
+            await _api.DidNotReceive().GetAccountStandingOrdersAsync(externalCard.AccountId, Arg.Any<string>(),
+                Arg.Any<CancellationToken>());
+            await _api.DidNotReceive().GetAccountDirectDebitsAsync(externalCard.AccountId, Arg.Any<string>(),
+                Arg.Any<CancellationToken>());
+        }
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_ConnectionWithoutCardsScope_DoesNotAskForCards()
+    {
+        // Arrange
+        await SeedConnectionAsync();
+        GivenProviderReturns(accounts: [new ExternalOpenBankingAccountFaker().Generate()]);
+
+        OpenBankingService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await _api.DidNotReceive().GetAllCardsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+            await Assert.That((await LoadAccountsAsync()).Single().Kind).IsEqualTo(BankAccountKind.Account);
+        }
+    }
+
+    [Test]
     public async Task SyncConnectionAsync_BookedTransactionNoLongerReported_IsKept()
     {
         // Arrange
@@ -1483,10 +1553,52 @@ public class OpenBankingServiceTests : InfrastructureTestBase
         new(externalId, "Card purchase", TransactionType.Debit, "PURCHASE", -1m, "GBP", DateTime.UtcNow, true, [],
             TransactionMetadata.None, false);
 
-    private Task<TestingScenario> SeedConnectionAsync() =>
+    /// <param name="withCards">Whether the connection's consent covers cards.</param>
+    private Task<TestingScenario> SeedConnectionAsync(bool withCards = false) =>
         Scenario.Do(s => s.UserScenario.WithUser(Username))
-            .Do(s => s.BankConnectionScenario.WithConnection("bank", Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("bank", Username, userId =>
+            {
+                List<string> scopes = [..BankConnectionFaker.Scopes];
+                if (withCards)
+                {
+                    scopes.Add("cards");
+                }
+
+                return new BankConnection(userId, "ob-bank", "Bank", "code", scopes, [1], DateTime.UtcNow,
+                    DateTime.UtcNow.AddDays(90));
+            }))
             .Do(s => s.BankConnectionScenario.WithAccessToken("bank", token: Token));
+
+    /// <summary>
+    /// Sets the connection's cards and what the provider returns for each one, nothing when omitted.
+    /// </summary>
+    private void GivenCardsReturn(ExternalOpenBankingCard[] cards,
+        ExternalOpenBankingAccountBalance[]? balances = null,
+        ExternalOpenBankingAccountTransaction[]? transactions = null)
+    {
+        _api.GetAllCardsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(_ =>
+            new ExternalOpenBankingListAllCardsResponse { Results = cards.ToAsyncEnumerable() });
+        _api.GetCardBalanceAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(_ =>
+            new ExternalOpenBankingGetAccountBalanceResponse { Results = (balances ?? []).ToAsyncEnumerable() });
+        _api.GetCardTransactionsAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<DateTime?>(),
+            Arg.Any<CancellationToken>()).Returns(_ =>
+            new ExternalOpenBankingAccountTransactionsResponse { Results = (transactions ?? []).ToAsyncEnumerable() });
+        _api.GetCardPendingTransactionsAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<DateTime?>(),
+            Arg.Any<CancellationToken>()).Returns(_ =>
+            new ExternalOpenBankingAccountTransactionsResponse { Results = AsyncEnumerable.Empty<ExternalOpenBankingAccountTransaction>() });
+    }
+
+    /// <summary>
+    /// A card transaction as TrueLayer is assumed to send it: a positive amount, its direction in the type.
+    /// </summary>
+    private static ExternalOpenBankingAccountTransaction CardTransaction(string id, string type, decimal amount)
+    {
+        ExternalOpenBankingAccountTransaction transaction = new ExternalOpenBankingAccountTransactionFaker().Generate();
+        transaction.TransactionId = id;
+        transaction.TransactionType = type;
+        transaction.Amount = amount;
+        return transaction;
+    }
 
     /// <summary>
     /// Sets what the provider returns for every account, nothing when omitted.

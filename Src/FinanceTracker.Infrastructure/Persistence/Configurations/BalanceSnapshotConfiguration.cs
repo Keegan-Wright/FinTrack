@@ -25,6 +25,7 @@ internal sealed class BalanceSnapshotConfiguration : AggregateRootConfiguration<
             balance.Property(x => x.Available).HasColumnName("Balance_Available").Encrypted();
             balance.Property(x => x.Current).HasColumnName("Balance_Current").Encrypted();
             balance.Property(x => x.AsOf).HasColumnName("Balance_AsOf").Encrypted();
+            balance.Property(x => x.CreditLimit).HasColumnName("Balance_CreditLimit").Encrypted();
         });
         builder.Navigation(x => x.Balance).IsRequired();
 

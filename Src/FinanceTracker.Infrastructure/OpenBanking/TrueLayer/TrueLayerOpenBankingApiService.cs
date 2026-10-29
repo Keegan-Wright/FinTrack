@@ -128,14 +128,63 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         return responseBody!;
     }
 
-    public async Task<ExternalOpenBankingGetAccountBalanceResponse> GetAccountBalanceAsync(string accountId,
-        string authToken, CancellationToken cancellationToken)
+    public Task<ExternalOpenBankingGetAccountBalanceResponse> GetAccountBalanceAsync(string accountId,
+        string authToken, CancellationToken cancellationToken) =>
+        GetBalanceAsync($"v1/accounts/{accountId}", "account balance", authToken, cancellationToken);
+
+    public Task<ExternalOpenBankingAccountTransactionsResponse> GetAccountTransactionsAsync(string accountId,
+        string authToken, DateTime? transactionsStartingDate, CancellationToken cancellationToken) =>
+        GetTransactionsAsync($"v1/accounts/{accountId}/transactions", "transactions", authToken,
+            transactionsStartingDate, cancellationToken);
+
+    public Task<ExternalOpenBankingAccountTransactionsResponse> GetAccountPendingTransactionsAsync(
+        string accountId, string authToken, DateTime? transactionsStartingDate,
+        CancellationToken cancellationToken) =>
+        GetTransactionsAsync($"v1/accounts/{accountId}/transactions/pending", "pending transactions", authToken,
+            transactionsStartingDate, cancellationToken);
+
+    public async Task<ExternalOpenBankingListAllCardsResponse> GetAllCardsAsync(string authToken,
+        CancellationToken cancellationToken)
     {
         using HttpClient httpClient = await BuildHttpClient(_trueLayerOpenBankingConfiguration.BaseDataUrl, authToken);
-        HttpResponseMessage response = await httpClient.GetAsync($"v1/accounts/{accountId}/balance", cancellationToken);
+
+        HttpResponseMessage response = await httpClient.GetAsync("v1/cards", cancellationToken);
+        if (!Succeeded(response, "cards"))
+        {
+            return new ExternalOpenBankingListAllCardsResponse();
+        }
+
+        ExternalOpenBankingListAllCardsResponse? responseBody =
+            await response.Content.ReadFromJsonAsync<ExternalOpenBankingListAllCardsResponse>(cancellationToken);
+
+        return responseBody!;
+    }
+
+    public Task<ExternalOpenBankingGetAccountBalanceResponse> GetCardBalanceAsync(string cardId, string authToken,
+        CancellationToken cancellationToken) =>
+        GetBalanceAsync($"v1/cards/{cardId}", "card balance", authToken, cancellationToken);
+
+    public Task<ExternalOpenBankingAccountTransactionsResponse> GetCardTransactionsAsync(string cardId,
+        string authToken, DateTime? transactionsStartingDate, CancellationToken cancellationToken) =>
+        GetTransactionsAsync($"v1/cards/{cardId}/transactions", "card transactions", authToken,
+            transactionsStartingDate, cancellationToken);
+
+    public Task<ExternalOpenBankingAccountTransactionsResponse> GetCardPendingTransactionsAsync(string cardId,
+        string authToken, DateTime? transactionsStartingDate, CancellationToken cancellationToken) =>
+        GetTransactionsAsync($"v1/cards/{cardId}/transactions/pending", "card pending transactions", authToken,
+            transactionsStartingDate, cancellationToken);
+
+    /// <summary>
+    /// An account's or card's balance, from <paramref name="resource"/>, e.g. <c>v1/cards/{id}</c>.
+    /// </summary>
+    private async Task<ExternalOpenBankingGetAccountBalanceResponse> GetBalanceAsync(string resource,
+        string requested, string authToken, CancellationToken cancellationToken)
+    {
+        using HttpClient httpClient = await BuildHttpClient(_trueLayerOpenBankingConfiguration.BaseDataUrl, authToken);
+        HttpResponseMessage response = await httpClient.GetAsync($"{resource}/balance", cancellationToken);
 
         // Throws rather than returning empty, so a refused request isn't recorded as a balance sync
-        EnsureSuccess(response, "account balance");
+        EnsureSuccess(response, requested);
 
         ExternalOpenBankingGetAccountBalanceResponse? responseBody =
             await response.Content.ReadFromJsonAsync<ExternalOpenBankingGetAccountBalanceResponse>(cancellationToken);
@@ -143,47 +192,27 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         return responseBody!;
     }
 
-    public async Task<ExternalOpenBankingAccountTransactionsResponse> GetAccountTransactionsAsync(string accountId,
-        string authToken, DateTime? transactionsStartingDate,
-        CancellationToken cancellationToken)
+    /// <summary>
+    /// Booked or pending transactions at <paramref name="path"/>, from <paramref name="transactionsStartingDate"/> to
+    /// today when given, otherwise everything the provider has.
+    /// </summary>
+    private async Task<ExternalOpenBankingAccountTransactionsResponse> GetTransactionsAsync(string path,
+        string requested, string authToken, DateTime? transactionsStartingDate, CancellationToken cancellationToken)
     {
         using HttpClient httpClient = await BuildHttpClient(_trueLayerOpenBankingConfiguration.BaseDataUrl, authToken);
 
         StringBuilder urlBuilder = new();
-        urlBuilder.Append(CultureInfo.CurrentCulture, $"v1/accounts/{accountId}/transactions");
+        urlBuilder.Append(path);
 
         if (transactionsStartingDate.HasValue)
         {
             urlBuilder.Append(CultureInfo.CurrentCulture, $"?from={transactionsStartingDate:yyyy-MM-dd}&to={_timeProvider.GetLocalNow():yyyy-MM-dd}");
         }
 
-        // Throws rather than returning empty, so a refused request isn't recorded as a transaction sync
+        // Throws rather than returning empty, so a refused request isn't recorded as a transaction sync, and an empty
+        // pending list doesn't remove every stored pending transaction
         HttpResponseMessage response = await httpClient.GetAsync(urlBuilder.ToString(), cancellationToken);
-        EnsureSuccess(response, "transactions");
-
-        ExternalOpenBankingAccountTransactionsResponse? responseBody =
-            await response.Content.ReadFromJsonAsync<ExternalOpenBankingAccountTransactionsResponse>(cancellationToken);
-
-        return responseBody!;
-    }
-
-    public async Task<ExternalOpenBankingAccountTransactionsResponse> GetAccountPendingTransactionsAsync(
-        string accountId, string authToken, DateTime? transactionsStartingDate,
-        CancellationToken cancellationToken)
-    {
-        using HttpClient httpClient = await BuildHttpClient(_trueLayerOpenBankingConfiguration.BaseDataUrl, authToken);
-
-        StringBuilder urlBuilder = new();
-        urlBuilder.Append(CultureInfo.CurrentCulture, $"v1/accounts/{accountId}/transactions/pending");
-
-        if (transactionsStartingDate.HasValue)
-        {
-            urlBuilder.Append(CultureInfo.CurrentCulture, $"?from={transactionsStartingDate:yyyy-MM-dd}&to={_timeProvider.GetLocalNow():yyyy-MM-dd}");
-        }
-
-        // Throws rather than returning empty, an empty pending list removes every stored pending transaction
-        HttpResponseMessage response = await httpClient.GetAsync(urlBuilder.ToString(), cancellationToken);
-        EnsureSuccess(response, "pending transactions");
+        EnsureSuccess(response, requested);
 
         ExternalOpenBankingAccountTransactionsResponse? responseBody =
             await response.Content.ReadFromJsonAsync<ExternalOpenBankingAccountTransactionsResponse>(cancellationToken);

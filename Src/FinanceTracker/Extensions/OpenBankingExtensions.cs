@@ -19,7 +19,7 @@ public static class OpenBankingExtensions
                 BaseDataUrl = builder.Configuration.GetValue<Uri>(FinTrackEnvironment.TrueLayerBaseDataUrl)!,
                 AuthRedirectUrl = builder.Configuration.GetValue<Uri>(FinTrackEnvironment.TrueLayerAuthRedirectUrl)!,
                 ClientId = builder.Configuration.GetValue<string>(FinTrackEnvironment.TrueLayerClientId)!,
-                ClientSecret = builder.Configuration.GetValue<Guid>(FinTrackEnvironment.TrueLayerClientSecret),
+                ClientSecret = builder.Configuration.GetValue<string>(FinTrackEnvironment.TrueLayerClientSecret)!,
                 PublicIpAddress = builder.Configuration.GetValue<string>(FinTrackEnvironment.PublicIpAddress) ?? string.Empty
             };
 

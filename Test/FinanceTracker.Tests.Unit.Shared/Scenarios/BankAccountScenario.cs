@@ -38,7 +38,7 @@ public sealed class BankAccountScenario : ScenarioBuilder
         {
             BankAccount account = await LoadAsync(context, accountName);
             balance ??= new AccountBalanceFaker().Generate();
-            account.UpdateBalance(balance.Available, balance.Current, balance.AsOf);
+            account.UpdateBalance(balance.Available, balance.Current, balance.AsOf, balance.CreditLimit);
         });
 
     /// <summary>

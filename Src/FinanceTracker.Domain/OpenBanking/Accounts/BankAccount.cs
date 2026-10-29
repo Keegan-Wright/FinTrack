@@ -21,19 +21,22 @@ public sealed class BankAccount : AggregateRoot
 #pragma warning restore CS8618
 
     public BankAccount(Guid userId, Guid connectionId, string externalId, string accountType, string displayName,
-        string currency) : base(userId)
+        string currency, BankAccountKind kind = BankAccountKind.Account) : base(userId)
     {
         ArgumentOutOfRangeException.ThrowIfEqual(connectionId, Guid.Empty);
         ArgumentException.ThrowIfNullOrWhiteSpace(externalId);
 
         ConnectionId = connectionId;
         ExternalId = externalId;
+        Kind = kind;
         UpdateDetails(accountType, displayName, currency);
     }
 
     public Guid ConnectionId { get; private set; }
 
     public string ExternalId { get; private set; }
+
+    public BankAccountKind Kind { get; private set; }
 
     public string AccountType { get; private set; }
 
@@ -47,6 +50,11 @@ public sealed class BankAccount : AggregateRoot
     /// The account's sort code and number or IBAN, null when the provider gives neither.
     /// </summary>
     public AccountIdentifier? Identifier { get; private set; }
+
+    /// <summary>
+    /// The card's network, number ending and so on, null for an account.
+    /// </summary>
+    public CardDetails? Card { get; private set; }
 
     public IReadOnlyCollection<StandingOrder> StandingOrders => _standingOrders.AsReadOnly();
 
@@ -66,8 +74,22 @@ public sealed class BankAccount : AggregateRoot
 
     public void UpdateIdentifier(AccountIdentifier? identifier) => Identifier = identifier;
 
-    public void UpdateBalance(decimal available, decimal current, DateTime asOf) =>
-        Balance = new AccountBalance(available, current, asOf);
+    /// <exception cref="InvalidOperationException">The account isn't a card.</exception>
+    public void UpdateCard(CardDetails card)
+    {
+        ArgumentNullException.ThrowIfNull(card);
+        if (Kind != BankAccountKind.Card)
+        {
+            throw new InvalidOperationException($"Account {Id} isn't a card.");
+        }
+
+        Card = card;
+    }
+
+    /// <param name="current">For a card, what's owed as a negative amount.</param>
+    /// <param name="creditLimit">A card's credit limit, null for an account.</param>
+    public void UpdateBalance(decimal available, decimal current, DateTime asOf, decimal? creditLimit = null) =>
+        Balance = new AccountBalance(available, current, asOf, creditLimit);
 
     /// <summary>
     /// Replaces the standing orders with the provider's current view.

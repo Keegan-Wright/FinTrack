@@ -30,6 +30,24 @@ public interface IOpenBankingApiService
     Task<ExternalOpenBankingAccountTransactionsResponse> GetAccountPendingTransactionsAsync(string accountId,
         string authToken, DateTime? transactionsStartingDate, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// The connection's credit and charge cards. Needs the <c>cards</c> scope.
+    /// </summary>
+    Task<ExternalOpenBankingListAllCardsResponse> GetAllCardsAsync(string authToken,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// A card's balance as the provider reports it, including its credit limit.
+    /// </summary>
+    Task<ExternalOpenBankingGetAccountBalanceResponse> GetCardBalanceAsync(string cardId, string authToken,
+        CancellationToken cancellationToken);
+
+    Task<ExternalOpenBankingAccountTransactionsResponse> GetCardTransactionsAsync(string cardId, string authToken,
+        DateTime? transactionsStartingDate, CancellationToken cancellationToken);
+
+    Task<ExternalOpenBankingAccountTransactionsResponse> GetCardPendingTransactionsAsync(string cardId,
+        string authToken, DateTime? transactionsStartingDate, CancellationToken cancellationToken);
+
     Task<ExternalOpenBankingAccountStandingOrdersResponse> GetAccountStandingOrdersAsync(string accountId,
         string authToken, CancellationToken cancellationToken);
 

@@ -12,8 +12,9 @@ namespace FinanceTracker.Domain.OpenBanking.Transfers;
 /// <item>The bank's reference names another of the user's accounts, a transfer, paired with its mirror in that
 /// account when there's exactly one.</item>
 /// <item>An equal and opposite amount on another account within <see cref="MaxDaysApart"/> days a transfer when the
-/// provider labels either half one (<see cref="BankTransaction.LabelledAsTransfer"/>), otherwise up for review.
-/// Equally good candidates are all put up for review rather than guessed.</item>
+/// provider labels either half one (<see cref="BankTransaction.LabelledAsTransfer"/>) or the money comes in on a card
+/// (a repayment), otherwise up for review. Equally good candidates are all put up for review rather than guessed.
+/// </item>
 /// <item>A household member is recognised (<see cref="HouseholdMember.Recognises"/>), a transfer to or from them.
 /// </item>
 /// <item>Anything else the provider labels a transfer is put up for review.</item>
@@ -78,7 +79,7 @@ public static class TransferMatcher
         MatchOwnAccountReferences(accounts, open, decisions, decidedAt);
 
         // Step 2
-        MatchMirrorPairs(open, decisions, decidedAt);
+        MatchMirrorPairs(accounts, open, decisions, decidedAt);
 
         // Step 3
         MatchHouseholdMembers(householdMembers, open, decisions, decidedAt);
@@ -137,9 +138,14 @@ public static class TransferMatcher
     /// skipped and joint pairs with savings in its turn. Monday's is left unpaired rather than taking a partner that
     /// fits another better.
     /// </example>
-    private static void MatchMirrorPairs(List<BankTransaction> open, Dictionary<Guid, TransferInfo> decisions,
-        DateTime decidedAt)
+    private static void MatchMirrorPairs(IReadOnlyCollection<BankAccount> accounts, List<BankTransaction> open,
+        Dictionary<Guid, TransferInfo> decisions, DateTime decidedAt)
     {
+        HashSet<Guid> cards = accounts
+            .Where(static x => x.Kind == BankAccountKind.Card)
+            .Select(static x => x.Id)
+            .ToHashSet();
+
         foreach (BankTransaction outgoing in open.Where(static x => x.Amount < 0))
         {
             // Taken by step 1, or put up for review as part of an earlier tie
@@ -183,10 +189,12 @@ public static class TransferMatcher
             }
 
             // Mutually closest. Equal amounts on the same day happen by chance, paying a friend £20 while someone pays
-            // you £20, so the provider has to call at least one half a transfer before it leaves the totals. Otherwise
-            // the pair is suggested for review
+            // you £20, so the provider has to call at least one half a transfer before it leaves the totals. Money
+            // coming in on one of the user's cards from their own account is a repayment
+            // so that's enough too. Otherwise the pair is suggested for review
             BankTransaction partner = incoming[0];
-            bool confident = outgoing.LabelledAsTransfer || partner.LabelledAsTransfer;
+            bool repayment = cards.Contains(partner.AccountId);
+            bool confident = outgoing.LabelledAsTransfer || partner.LabelledAsTransfer || repayment;
 
             decisions[outgoing.Id] = Decide(confident, partner, decidedAt);
             decisions[partner.Id] = Decide(confident, outgoing, decidedAt);

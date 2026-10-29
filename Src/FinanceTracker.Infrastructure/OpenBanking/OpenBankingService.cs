@@ -29,6 +29,11 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
     /// </summary>
     private static readonly TimeSpan DefaultConsentLifetime = TimeSpan.FromDays(90);
 
+    /// <summary>
+    /// The consent scope that lets a connection read its cards. Connections without it aren't asked for cards.
+    /// </summary>
+    private const string CardsScope = "cards";
+
     private const string ProvidersCacheKey = "open-banking:providers";
 
     // The same for every user and rarely changes, so the provider is asked at most every few hours
@@ -292,7 +297,57 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
             await ApplySnapshotAsync(context, account, snapshot, now, cancellationToken);
         }
 
+        if (connection.Scopes.Contains(CardsScope))
+        {
+            await SyncCardsAsync(context, connection, accounts, lastTransactionSync, authToken, syncFlags, now,
+                cancellationToken);
+        }
+
         await context.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Syncs the connection's credit and charge cards like its accounts, each stored as a card
+    /// <see cref="BankAccount"/>. Cards have no standing orders or direct debits.
+    /// </summary>
+    private async Task SyncCardsAsync(FinanceTrackerContext context, BankConnection connection,
+        Dictionary<string, BankAccount> accounts, Dictionary<Guid, DateTime> lastTransactionSync, string authToken,
+        SyncTypes syncFlags, DateTime now, CancellationToken cancellationToken)
+    {
+        ExternalOpenBankingListAllCardsResponse cardsResponse =
+            await _openBankingApiService.GetAllCardsAsync(authToken, cancellationToken);
+
+        List<ExternalOpenBankingCard> externalCards = cardsResponse.Results is null
+            ? []
+            : await cardsResponse.Results.ToListAsync(cancellationToken);
+
+        foreach (ExternalOpenBankingCard externalCard in externalCards)
+        {
+            if (accounts.TryGetValue(externalCard.AccountId, out BankAccount? card))
+            {
+                card.UpdateDetails(externalCard.AccountType(), externalCard.DisplayName, externalCard.Currency);
+            }
+            else
+            {
+                card = new BankAccount(connection.UserId, connection.Id, externalCard.AccountId,
+                    externalCard.AccountType(), externalCard.DisplayName, externalCard.Currency,
+                    BankAccountKind.Card);
+                context.BankAccounts.Add(card);
+                accounts.Add(externalCard.AccountId, card);
+            }
+
+            card.UpdateCard(externalCard.ToDetails());
+            context.SyncLog.Add(card.RecordSync(SyncType.Account, now));
+
+            DateTime? transactionsFrom = lastTransactionSync.TryGetValue(card.Id, out DateTime lastSync)
+                ? lastSync - TransactionSyncOverlap
+                : null;
+
+            AccountSnapshot snapshot = await FetchCardSnapshotAsync(connection, card, authToken, syncFlags,
+                transactionsFrom, cancellationToken);
+
+            await ApplySnapshotAsync(context, card, snapshot, now, cancellationToken);
+        }
     }
 
     /// <summary>
@@ -369,6 +424,37 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
             await pendingTransactions);
     }
 
+    private async Task<AccountSnapshot> FetchCardSnapshotAsync(BankConnection connection, BankAccount card,
+        string authToken, SyncTypes syncFlags, DateTime? transactionsFrom, CancellationToken cancellationToken)
+    {
+        string externalId = card.ExternalId;
+        string cardId = card.Id.ToString();
+
+        Task<List<ExternalOpenBankingAccountBalance>?> balances = FetchAsync(syncFlags, SyncTypes.Balance,
+            () => _openBankingApiService.GetCardBalanceAsync(externalId, authToken, cancellationToken),
+            static x => x.Results,
+            ex => Logger.LogErrorSyncingAccountBalance(ex, connection.Id, cardId, UserId), cancellationToken);
+
+        Task<List<ExternalOpenBankingAccountTransaction>?> transactions = FetchAsync(syncFlags,
+            SyncTypes.Transactions,
+            () => _openBankingApiService.GetCardTransactionsAsync(externalId, authToken, transactionsFrom,
+                cancellationToken),
+            static x => x.Results,
+            ex => Logger.LogErrorSyncingTransactions(ex, connection.Id, cardId, UserId), cancellationToken);
+
+        // Always the full pending list, stored pending rows missing from it are removed as stale
+        Task<List<ExternalOpenBankingAccountTransaction>?> pendingTransactions = FetchAsync(syncFlags,
+            SyncTypes.Transactions,
+            () => _openBankingApiService.GetCardPendingTransactionsAsync(externalId, authToken, null,
+                cancellationToken),
+            static x => x.Results,
+            ex => Logger.LogErrorSyncingPendingTransactions(ex, connection.Id, cardId, UserId), cancellationToken);
+
+        await Task.WhenAll(balances, transactions, pendingTransactions);
+
+        return new AccountSnapshot(await balances, null, null, await transactions, await pendingTransactions);
+    }
+
     /// <summary>
     /// Fetches one kind of account data. Returns null when it was not requested or the provider call failed.
     /// </summary>
@@ -400,7 +486,8 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
         {
             if (snapshot.Balances.FirstOrDefault() is { } balance)
             {
-                account.UpdateBalance(balance.Available, balance.Current, balance.UpdateTimestamp.ToUtc());
+                AccountBalance mapped = ToBalance(account, balance);
+                account.UpdateBalance(mapped.Available, mapped.Current, mapped.AsOf, mapped.CreditLimit);
             }
 
             context.SyncLog.Add(account.RecordSync(SyncType.Balance, syncedAt));
@@ -427,12 +514,12 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
         Dictionary<string, TransactionDetails> incoming = [];
         foreach (ExternalOpenBankingAccountTransaction pending in snapshot.PendingTransactions ?? [])
         {
-            incoming[pending.TransactionId] = await pending.ToDetailsAsync(true, cancellationToken);
+            incoming[pending.TransactionId] = await ToDetailsAsync(account, pending, true, cancellationToken);
         }
 
         foreach (ExternalOpenBankingAccountTransaction booked in snapshot.Transactions ?? [])
         {
-            incoming[booked.TransactionId] = await booked.ToDetailsAsync(false, cancellationToken);
+            incoming[booked.TransactionId] = await ToDetailsAsync(account, booked, false, cancellationToken);
         }
 
         List<string> externalIds = incoming.Keys.ToList();
@@ -464,6 +551,33 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
         {
             context.SyncLog.Add(account.RecordSync(SyncType.Transactions, syncedAt));
         }
+    }
+
+    /// <summary>
+    /// The balance in our terms, a card's being what's owed as a negative amount.
+    /// </summary>
+    private static AccountBalance ToBalance(BankAccount account, ExternalOpenBankingAccountBalance balance)
+    {
+        if (account.Kind == BankAccountKind.Card)
+        {
+            return balance.ToCardBalance();
+        }
+
+        return balance.ToAccountBalance();
+    }
+
+    /// <summary>
+    /// The transaction in our terms, a card's signed by its type.
+    /// </summary>
+    private static Task<TransactionDetails> ToDetailsAsync(BankAccount account,
+        ExternalOpenBankingAccountTransaction transaction, bool isPending, CancellationToken cancellationToken)
+    {
+        if (account.Kind == BankAccountKind.Card)
+        {
+            return transaction.ToCardDetailsAsync(isPending, cancellationToken);
+        }
+
+        return transaction.ToDetailsAsync(isPending, cancellationToken);
     }
 
     /// <summary>
