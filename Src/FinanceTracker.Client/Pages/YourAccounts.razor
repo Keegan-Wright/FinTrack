@@ -37,7 +37,7 @@ else
                             <div class="ft-list__main">
                                 <MudText Typo="Typo.subtitle1" Class="text-truncate">@account.AccountName</MudText>
                                 <MudText Typo="Typo.caption" Class="mud-text-secondary">
-                                    @DisplayText.ToTitle(account.AccountType)
+                                    @TypeCaption(account)
                                 </MudText>
                             </div>
                         </div>
@@ -54,6 +54,13 @@ else
                                     <div class="ft-label">Available</div>
                                     <MoneyText Value="@account.AvailableBalance" Typo="Typo.h6"
                                                Class="mud-text-secondary"/>
+                                </div>
+                            }
+                            @if (account.CreditLimit is { } creditLimit)
+                            {
+                                <div>
+                                    <div class="ft-label">Credit limit</div>
+                                    <MoneyText Value="@creditLimit" Typo="Typo.h6" Class="mud-text-secondary"/>
                                 </div>
                             }
                         </div>
@@ -91,6 +98,20 @@ else
 }
 
 @code {
+
+    /// <summary>
+    /// The account's type, and a card's last digits when the bank gives them, e.g. "Credit Card · ending 1000".
+    /// </summary>
+    internal static string TypeCaption(AccountAndTransactions account)
+    {
+        string type = DisplayText.ToTitle(account.AccountType);
+        if (string.IsNullOrWhiteSpace(account.CardEnding))
+        {
+            return type;
+        }
+
+        return $"{type} · ending {account.CardEnding}";
+    }
 
     /// <summary>
     /// The user's accounts, loaded once, see <see cref="PageComponent.LoadOnceAsync{T}"/>.

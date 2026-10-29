@@ -284,6 +284,111 @@ public class TrueLayerOpenBankingApiServiceTests : UnitTestBase
     }
 
     [Test]
+    public async Task GetAllCardsAsync_ValidRequest_RequestsCards()
+    {
+        // Arrange
+        HttpRequestMessage? capturedRequest = null;
+        TrueLayerOpenBankingApiService subject = BuildSubject(request =>
+        {
+            capturedRequest = request;
+            return Task.FromResult(Json(new
+            {
+                results = new[]
+                {
+                    new
+                    {
+                        account_id = "card-1", card_network = "VISA", card_type = "CREDIT", currency = "GBP",
+                        display_name = "Credit Card", partial_card_number = "1234", name_on_card = "A N Other"
+                    }
+                },
+                status = "Succeeded"
+            }));
+        });
+
+        // Act
+        ExternalOpenBankingListAllCardsResponse result = await subject.GetAllCardsAsync("auth-token", CancellationToken);
+
+        // Assert
+        ExternalOpenBankingCard card = (await result.Results!.ToListAsync(CancellationToken)).Single();
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(capturedRequest!.RequestUri!.ToString()).IsEqualTo("https://data.example.com/v1/cards");
+            await Assert.That(card.AccountId).IsEqualTo("card-1");
+            await Assert.That(card.CardNetwork).IsEqualTo("VISA");
+            await Assert.That(card.CardType).IsEqualTo("CREDIT");
+            await Assert.That(card.PartialCardNumber).IsEqualTo("1234");
+            await Assert.That(card.NameOnCard).IsEqualTo("A N Other");
+        }
+    }
+
+    [Test]
+    public async Task GetCardBalanceAsync_ValidRequest_ReadsTheCreditLimitAndUpdateTime()
+    {
+        // Arrange
+        HttpRequestMessage? capturedRequest = null;
+        TrueLayerOpenBankingApiService subject = BuildSubject(request =>
+        {
+            capturedRequest = request;
+            return Task.FromResult(Json(new
+            {
+                results = new[]
+                {
+                    new
+                    {
+                        available = 2700m, current = 300m, credit_limit = 3000m, currency = "GBP",
+                        update_timestamp = "2026-10-27T18:00:00Z"
+                    }
+                }
+            }));
+        });
+
+        // Act
+        ExternalOpenBankingGetAccountBalanceResponse result =
+            await subject.GetCardBalanceAsync("card-1", "auth-token", CancellationToken);
+
+        // Assert
+        ExternalOpenBankingAccountBalance balance = (await result.Results!.ToListAsync(CancellationToken)).Single();
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(capturedRequest!.RequestUri!.ToString())
+                .IsEqualTo("https://data.example.com/v1/cards/card-1/balance");
+            await Assert.That(balance.Current).IsEqualTo(300m);
+            await Assert.That(balance.CreditLimit).IsEqualTo(3000m);
+            await Assert.That(balance.UpdateTimestamp.ToUniversalTime())
+                .IsEqualTo(new DateTime(2026, 10, 27, 18, 0, 0, DateTimeKind.Utc));
+        }
+    }
+
+    [Test]
+    [Arguments(false, "https://data.example.com/v1/cards/card-1/transactions")]
+    [Arguments(true, "https://data.example.com/v1/cards/card-1/transactions/pending")]
+    public async Task GetCardTransactionsAsync_RequestsTheCardsTransactions(bool pending, string expectedUrl)
+    {
+        // Arrange
+        HttpRequestMessage? capturedRequest = null;
+        TrueLayerOpenBankingApiService subject = BuildSubject(request =>
+        {
+            capturedRequest = request;
+            return Task.FromResult(Json(new { results = Array.Empty<object>() }));
+        });
+
+        // Act
+        if (pending)
+        {
+            await subject.GetCardPendingTransactionsAsync("card-1", "auth-token", null, CancellationToken);
+        }
+        else
+        {
+            await subject.GetCardTransactionsAsync("card-1", "auth-token", null, CancellationToken);
+        }
+
+        // Assert
+        await Assert.That(capturedRequest!.RequestUri!.ToString()).IsEqualTo(expectedUrl);
+    }
+
+    [Test]
     public async Task GetAccountBalanceAsync_ValidRequest_RequestsAccountBalance()
     {
         // Arrange
@@ -635,7 +740,7 @@ public class TrueLayerOpenBankingApiServiceTests : UnitTestBase
             BaseDataUrl = new Uri("https://data.example.com/"),
             AuthRedirectUrl = new Uri("https://localhost/callback"),
             ClientId = "client-id",
-            ClientSecret = Guid.Parse("11111111-1111-1111-1111-111111111111"),
+            ClientSecret = "client-secret",
             PublicIpAddress = "127.0.0.1"
         };
 

@@ -16,6 +16,8 @@ public class TransferMatcherTests
     private readonly BankAccount _current = Account("Current", "111111", "11111111");
     private readonly BankAccount _savings = Account("Savings", "222222", "22222222");
     private readonly BankAccount _joint = Account("Joint", "333333", "33333333");
+    private readonly BankAccount _card = new(UserId, Guid.NewGuid(), "ext-card", "CREDIT_CARD", "Credit Card", "GBP",
+        BankAccountKind.Card);
     private readonly HouseholdMember _partner = Member("444444", "44444444", "Jane Smith", "J Smith");
 
     [Test]
@@ -417,8 +419,38 @@ public class TransferMatcherTests
         }
     }
 
+    [Test]
+    public async Task Match_RepaymentOntoACard_IsATransferWithoutALabel()
+    {
+        BankTransaction payment = Transaction(_current, -150m, Monday);
+        BankTransaction repayment = Transaction(_card, 150m, Monday.AddDays(1));
+
+        Match(payment, repayment);
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(payment.Transfer).IsEqualTo(
+                TransferInfo.Matched(TransferReason.MirrorPair, repayment.Id, _card.Id, DecidedAt));
+            await Assert.That(repayment.Transfer).IsEqualTo(
+                TransferInfo.Matched(TransferReason.MirrorPair, payment.Id, _current.Id, DecidedAt));
+        }
+    }
+
+    [Test]
+    public async Task Match_SpendingOnACardMirroringMoneyIn_IsOnlySuggested()
+    {
+        // Paying for something on the card while someone pays you the same amount, so not certain
+        BankTransaction purchase = Transaction(_card, -20m, Monday);
+        BankTransaction moneyIn = Transaction(_current, 20m, Monday);
+
+        Match(purchase, moneyIn);
+
+        await Assert.That(purchase.Transfer).IsEqualTo(
+            TransferInfo.ToReview(TransferReason.MirrorPair, moneyIn.Id, _current.Id, DecidedAt));
+    }
+
     private TransferMatchSummary Match(params BankTransaction[] transactions) =>
-        TransferMatcher.Match([_current, _savings, _joint], [_partner], transactions, DecidedAt);
+        TransferMatcher.Match([_current, _savings, _joint, _card], [_partner], transactions, DecidedAt);
 
     private static BankAccount Account(string name, string sortCode, string number)
     {

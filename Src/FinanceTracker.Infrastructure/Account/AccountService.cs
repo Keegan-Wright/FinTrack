@@ -48,6 +48,8 @@ public class AccountService : ServiceBase<AccountService>, IAccountService
                 AccountName = account.DisplayName,
                 AccountType = account.AccountType,
                 AvailableBalance = account.Balance?.Available ?? 0,
+                CardEnding = account.Card?.PartialNumber,
+                CreditLimit = account.Balance?.CreditLimit,
                 Logo = logos[account.ConnectionId],
                 Transactions = transactions[account.Id]
                     .OrderByDescending(static x => x.OccurredAt)

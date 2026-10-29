@@ -15,6 +15,9 @@ internal sealed class BankAccountConfiguration : AggregateRootConfiguration<Bank
         builder.Property(x => x.DisplayName).Encrypted();
         builder.Property(x => x.Currency).Encrypted();
 
+        // Whether it's an account or a card, which says no more than the account type next to it
+        builder.Property(x => x.Kind).HasConversion<string>();
+
         builder.HasOne<BankConnection>()
             .WithMany()
             .HasForeignKey(x => x.ConnectionId)
@@ -27,6 +30,16 @@ internal sealed class BankAccountConfiguration : AggregateRootConfiguration<Bank
             balance.Property(x => x.Available).HasColumnName("Balance_Available").Encrypted();
             balance.Property(x => x.Current).HasColumnName("Balance_Current").Encrypted();
             balance.Property(x => x.AsOf).HasColumnName("Balance_AsOf").Encrypted();
+            balance.Property(x => x.CreditLimit).HasColumnName("Balance_CreditLimit").Encrypted();
+        });
+
+        builder.OwnsOne(x => x.Card, card =>
+        {
+            card.Property(x => x.Network).HasColumnName("Card_Network").Encrypted();
+            card.Property(x => x.CardType).HasColumnName("Card_CardType").Encrypted();
+            card.Property(x => x.PartialNumber).HasColumnName("Card_PartialNumber").Encrypted();
+            card.Property(x => x.NameOnCard).HasColumnName("Card_NameOnCard").Encrypted();
+            card.Property(x => x.ValidTo).HasColumnName("Card_ValidTo").Encrypted();
         });
 
         builder.OwnsOne(x => x.Identifier, identifier =>

@@ -307,6 +307,38 @@ public class TransferMatchingServiceTests : InfrastructureTestBase
     /// A current account and a savings account named <c>{prefix}-current</c> and <c>{prefix}-savings</c>, the
     /// savings one with sort code 222222 and number 22222222.
     /// </summary>
+    [Test]
+    public async Task MatchAsync_CardRepaymentFromACurrentAccount_IsATransfer()
+    {
+        // Arrange, a direct debit from the current account paying off the card, which card transactions report as
+        // a credit
+        await SeedAccountsAsync(Username, "mine")
+            .Do(s => s.BankAccountScenario.WithAccount("mine-card", "mine", (userId, connectionId) =>
+                new BankAccount(userId, connectionId, "card-1", "CREDIT_CARD", "Credit Card", "GBP",
+                    BankAccountKind.Card)))
+            .Do(s => s.TransactionScenario.WithTransaction("payment", "mine-current",
+                Details(-150m, description: "CARD SERVICES")))
+            .Do(s => s.TransactionScenario.WithTransaction("repayment", "mine-card",
+                Details(150m, description: "PAYMENT RECEIVED - THANK YOU", occurredAt: Monday.AddDays(1))));
+
+        TransferMatchingService subject = BuildSubject(Username);
+
+        // Act
+        await subject.MatchAsync(CancellationToken);
+
+        // Assert
+        Dictionary<Guid, BankTransaction> stored = (await LoadTransactionsAsync()).ToDictionary(x => x.Id);
+        BankTransaction payment = stored[Scenario.TransactionMappings["payment"]];
+        BankTransaction repayment = stored[Scenario.TransactionMappings["repayment"]];
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(payment.Transfer!.Decision).IsEqualTo(TransferDecision.Transfer);
+            await Assert.That(payment.Transfer.PartnerTransactionId).IsEqualTo(repayment.Id);
+            await Assert.That(repayment.Transfer!.Decision).IsEqualTo(TransferDecision.Transfer);
+        }
+    }
+
     private Task<TestingScenario> SeedAccountsAsync(string username, string prefix) =>
         Scenario.Do(s => s.UserScenario.WithUser(username))
             .Do(s => s.BankConnectionScenario.WithConnection(prefix, username))
