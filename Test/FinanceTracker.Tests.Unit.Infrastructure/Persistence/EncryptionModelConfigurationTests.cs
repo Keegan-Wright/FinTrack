@@ -95,6 +95,33 @@ public class EncryptionModelConfigurationTests : InfrastructureTestBase
         }
     }
 
+
+    [Test]
+    public async Task Model_EncryptedArrays_CompareByElements()
+    {
+        // Arrange
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        ValueComparer comparer = context.Model.FindEntityType(typeof(BankConnection))!
+            .FindProperty(nameof(BankConnection.Logo))!.GetValueComparer();
+        byte[] original = [1, 2];
+
+        // Act
+        object? snapshot = comparer.Snapshot(original);
+        original[0] = 9;
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(snapshot).IsNotSameReferenceAs(original);
+            await Assert.That(comparer.Equals(snapshot, original)).IsFalse();
+            await Assert.That(comparer.Equals(new byte[] { 1, 2 }, new byte[] { 1, 2 })).IsTrue();
+            await Assert.That(comparer.Equals(null, null)).IsTrue();
+            await Assert.That(comparer.Equals(original, null)).IsFalse();
+            await Assert.That(comparer.GetHashCode(new byte[] { 1, 2 }))
+                .IsEqualTo(comparer.GetHashCode(new byte[] { 1, 2 }));
+        }
+    }
+
     [Test]
     public async Task Model_EncryptedNonCollections_KeepDefaultComparer()
     {
