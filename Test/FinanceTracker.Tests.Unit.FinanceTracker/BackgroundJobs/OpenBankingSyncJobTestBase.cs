@@ -3,6 +3,7 @@ using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.OpenBanking;
 using FinanceTracker.Infrastructure.OpenBanking.Balances;
 using FinanceTracker.Infrastructure.OpenBanking.Transfers;
+using FinanceTracker.Infrastructure.Rules;
 using FinanceTracker.Tests.Unit.Shared;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
@@ -38,10 +39,16 @@ public abstract class OpenBankingSyncJobTestBase : InfrastructureTestBase
     /// </summary>
     private ICurrentUser? _snapshotFor;
 
+    /// <summary>
+    /// The user of the scope <see cref="RuleApplicationService"/> was last resolved from.
+    /// </summary>
+    private ICurrentUser? _rulesFor;
+
     protected IOpenBankingSyncService OpenBankingService { get; } = Substitute.For<IOpenBankingSyncService>();
     protected ISyncNotifier SyncNotifier { get; } = Substitute.For<ISyncNotifier>();
     protected ITransferMatchingService TransferMatchingService { get; } = Substitute.For<ITransferMatchingService>();
     protected IBalanceSnapshotService BalanceSnapshotService { get; } = Substitute.For<IBalanceSnapshotService>();
+    protected IRuleApplicationService RuleApplicationService { get; } = Substitute.For<IRuleApplicationService>();
     protected TimeProvider Clock { get; } = new FixedTimeProvider(Now);
 
     /// <summary>
@@ -68,6 +75,12 @@ public abstract class OpenBankingSyncJobTestBase : InfrastructureTestBase
         get;
     } = [];
 
+    /// <summary>
+    /// Each user whose rules were applied, with when the sync started and whether the user's transfers had already
+    /// been matched.
+    /// </summary>
+    protected List<(Guid UserId, DateTime SyncedFrom, bool AlreadyMatched)> RulesApplied { get; } = [];
+
     [Before(Test)]
     public void SetupOpenBankingService()
     {
@@ -88,6 +101,11 @@ public abstract class OpenBankingSyncJobTestBase : InfrastructureTestBase
                 _snapshotFor = sp.GetRequiredService<ICurrentUser>();
                 return BalanceSnapshotService;
             })
+            .AddScoped(sp =>
+            {
+                _rulesFor = sp.GetRequiredService<ICurrentUser>();
+                return RuleApplicationService;
+            })
             .BuildServiceProvider();
 
         BalanceSnapshotService
@@ -100,6 +118,17 @@ public abstract class OpenBankingSyncJobTestBase : InfrastructureTestBase
                     bool alreadyMatched = Matched.Any(x => x.UserId == userId);
                     Snapshots.Add((userId, callInfo.ArgAt<DateOnly>(0), callInfo.ArgAt<DateTime>(1), Synced.Count,
                         alreadyMatched));
+                }
+            });
+
+        RuleApplicationService
+            .When(x => x.ApplyChangesAsync(Arg.Any<DateTime>(), Arg.Any<CancellationToken>()))
+            .Do(callInfo =>
+            {
+                if (_rulesFor is not null)
+                {
+                    Guid userId = _rulesFor.UserId;
+                    RulesApplied.Add((userId, callInfo.ArgAt<DateTime>(0), Matched.Any(x => x.UserId == userId)));
                 }
             });
 

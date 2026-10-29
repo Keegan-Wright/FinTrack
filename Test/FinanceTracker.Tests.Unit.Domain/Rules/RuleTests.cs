@@ -111,6 +111,72 @@ public class RuleTests
         await Assert.That(rule.Matches(Transaction("GROCER STORE 123"))).IsTrue();
     }
 
+    [Test]
+    public async Task RemoveTag_DropsOnlyThatTagsAction()
+    {
+        // Arrange
+        CustomClassification shopping = Tag("Shopping");
+        CustomClassification food = Tag("Food");
+        Rule rule = Rule("Groceries", 0, DescriptionContains("GROCER"), RuleAction.AddTag(shopping),
+            RuleAction.AddTag(food));
+
+        // Act
+        bool removed = rule.RemoveTag(shopping.Id);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(removed).IsTrue();
+            await Assert.That(rule.Actions).IsEquivalentTo([RuleAction.AddTag(food)]);
+            await Assert.That(rule.IsEnabled).IsTrue();
+        }
+    }
+
+    [Test]
+    public async Task RemoveTag_LastAction_DisablesTheRule()
+    {
+        // Arrange
+        CustomClassification shopping = Tag("Shopping");
+        Rule rule = Rule("Groceries", 0, DescriptionContains("GROCER"), RuleAction.AddTag(shopping));
+
+        // Act
+        rule.RemoveTag(shopping.Id);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(rule.Actions).IsEmpty();
+            await Assert.That(rule.IsEnabled).IsFalse();
+        }
+    }
+
+    [Test]
+    public async Task RemoveTag_TagTheRuleDoesntAdd_ChangesNothing()
+    {
+        // Arrange
+        Rule rule = Rule("Groceries", 0, DescriptionContains("GROCER"), RuleAction.MarkAsTransfer());
+
+        // Act
+        bool removed = rule.RemoveTag(Guid.NewGuid());
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(removed).IsFalse();
+            await Assert.That(rule.Actions).IsEquivalentTo([RuleAction.MarkAsTransfer()]);
+        }
+    }
+
+    [Test]
+    public void Enable_NoActionsLeft_Throws()
+    {
+        CustomClassification shopping = Tag("Shopping");
+        Rule rule = Rule("Groceries", 0, DescriptionContains("GROCER"), RuleAction.AddTag(shopping));
+        rule.RemoveTag(shopping.Id);
+
+        Assert.Throws<InvalidOperationException>(rule.Enable);
+    }
+
     private static BankTransaction Transaction(string description = "GROCER STORE 123", decimal amount = -12.5m,
         TransactionMetadata? metadata = null, IReadOnlyCollection<string>? providerClassifications = null) =>
         BankTransaction.Import(Account, new TransactionDetails(Guid.NewGuid().ToString(), description,

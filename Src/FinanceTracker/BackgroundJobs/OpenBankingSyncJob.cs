@@ -6,13 +6,14 @@ using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.OpenBanking;
 using FinanceTracker.Infrastructure.OpenBanking.Balances;
 using FinanceTracker.Infrastructure.OpenBanking.Transfers;
+using FinanceTracker.Infrastructure.Rules;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.BackgroundJobs;
 
 /// <summary>
-/// Syncs a set of connections, each as its owner, updates each owner's balance snapshots for the day and matches their
-/// transfers, then tells those owners the sync has finished.
+/// Syncs a set of connections, each as its owner, updates each owner's balance snapshots for the day, applies their
+/// rules and matches their transfers, then tells those owners the sync has finished.
 /// </summary>
 public abstract class OpenBankingSyncJob
 {
@@ -33,8 +34,8 @@ public abstract class OpenBankingSyncJob
 
     /// <summary>
     /// Syncs every connection matching <paramref name="connections"/>, then for each owner updates today's balance
-    /// snapshots and matches transfers once, so net worth and pairs cover all their banks. A connection that fails to
-    /// sync, or an owner whose snapshot or matching fails, doesn't stop the rest.
+    /// snapshots, applies their rules and matches transfers once, so net worth, rules and pairs cover all their banks.
+    /// A connection that fails to sync, or an owner whose snapshot, rules or matching fail, doesn't stop the rest.
     /// </summary>
     /// <returns>The owners of the synced connections.</returns>
     protected async Task<IReadOnlySet<Guid>> SyncConnectionsAsync(Expression<Func<BankConnection, bool>> connections,
@@ -85,6 +86,7 @@ public abstract class OpenBankingSyncJob
         foreach (Guid userId in owners)
         {
             await SnapshotBalancesAsync(userId, today, startedAt, performingBackgroundSyncActivity, cancellationToken);
+            await ApplyRulesAsync(userId, startedAt, performingBackgroundSyncActivity, cancellationToken);
             await MatchTransfersAsync(userId, performingBackgroundSyncActivity, cancellationToken);
         }
 
@@ -109,6 +111,28 @@ public abstract class OpenBankingSyncJob
             await balanceSnapshotService.SnapshotAsync(today, syncStartedAt, cancellationToken);
 
             activity?.AddEvent(new ActivityEvent($"Snapshot balances for User {userId}"));
+        }
+        catch (Exception ex)
+        {
+            activity?.AddException(ex);
+        }
+    }
+
+    /// <summary>
+    /// Applies the owner's rules to what the sync brought in or changed.
+    /// </summary>
+    private async Task ApplyRulesAsync(Guid userId, DateTime syncStartedAt, Activity? activity,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using AsyncServiceScope scope = _scopeFactory.CreateUserScope(userId);
+            IRuleApplicationService ruleApplicationService =
+                scope.ServiceProvider.GetRequiredService<IRuleApplicationService>();
+
+            await ruleApplicationService.ApplyChangesAsync(syncStartedAt, cancellationToken);
+
+            activity?.AddEvent(new ActivityEvent($"Applied rules for User {userId}"));
         }
         catch (Exception ex)
         {

@@ -3,6 +3,7 @@ using FinanceTracker.Contracts.Classifications;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Domain.Classifications;
 using FinanceTracker.Domain.OpenBanking.Transactions;
+using FinanceTracker.Domain.Rules;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -98,6 +99,12 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
         foreach (BankTransaction transaction in classifiedTransactions)
         {
             transaction.RemoveDeletedClassification(id);
+        }
+
+        List<Rule> rules = await context.Rules.OwnedBy(UserId).ToListAsync(cancellationToken);
+        foreach (Rule rule in rules)
+        {
+            rule.RemoveTag(id);
         }
 
         context.CustomClassifications.Remove(classificationToRemove);

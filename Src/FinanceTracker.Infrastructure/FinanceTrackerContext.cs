@@ -70,6 +70,7 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
     public DbSet<BalanceSnapshot> BalanceSnapshots { get; private set; }
     public DbSet<NetWorthSnapshot> NetWorthSnapshots { get; private set; }
     public DbSet<Rule> Rules { get; private set; }
+    public DbSet<RuleCheckpoint> RuleCheckpoints { get; private set; }
     #endregion
 
     /// <summary>

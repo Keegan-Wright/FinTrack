@@ -27,6 +27,7 @@ public static class ApiEndpoints
                 .MapHouseholdMemberEndpoints()
                 .MapOpenBankingEndpoints()
                 .MapReportEndpoints()
+                .MapRuleEndpoints()
                 .MapTransactionEndpoints()
                 .MapTransferEndpoints();
 

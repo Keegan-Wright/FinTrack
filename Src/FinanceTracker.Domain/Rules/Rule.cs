@@ -66,7 +66,17 @@ public sealed class Rule : AggregateRoot
         Order = order;
     }
 
-    public void Enable() => IsEnabled = true;
+    /// <exception cref="InvalidOperationException">The rule has no actions left, see <see cref="RemoveTag"/>.
+    /// </exception>
+    public void Enable()
+    {
+        if (_actions.Count == 0)
+        {
+            throw new InvalidOperationException("A rule needs an action before it can be enabled.");
+        }
+
+        IsEnabled = true;
+    }
 
     public void Disable() => IsEnabled = false;
 
@@ -119,6 +129,29 @@ public sealed class Rule : AggregateRoot
 
         _actions.Clear();
         _actions.AddRange(replacements);
+    }
+
+    /// <summary>
+    /// Drops the actions that add a tag being deleted. A rule left with nothing to do is disabled rather than deleted,
+    /// so the user can see it and give it a new action.
+    /// </summary>
+    /// <returns>Whether the rule added the tag.</returns>
+    public bool RemoveTag(Guid classificationId)
+    {
+        int removed = _actions.RemoveAll(x =>
+            x.Type == RuleActionType.AddTag && x.ClassificationId == classificationId);
+
+        if (removed == 0)
+        {
+            return false;
+        }
+
+        if (_actions.Count == 0)
+        {
+            Disable();
+        }
+
+        return true;
     }
 
     /// <summary>

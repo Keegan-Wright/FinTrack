@@ -15,6 +15,11 @@ public sealed record RuleCondition
     /// </summary>
     public static readonly TimeSpan RegexTimeout = TimeSpan.FromMilliseconds(100);
 
+    /// <summary>
+    /// Digits and a <c>.</c> only, so <c>12,50</c> is refused rather than read as 1250. Amounts ignore their sign.
+    /// </summary>
+    private const NumberStyles AmountStyle = NumberStyles.AllowDecimalPoint;
+
     [Obsolete("EF Use Only")]
 #pragma warning disable CS8618 // EF Core sets the properties when it materialises the entity
     private RuleCondition()
@@ -250,9 +255,9 @@ public sealed record RuleCondition
     }
 
     private static bool TryParseAmount(string? value, out decimal amount) =>
-        decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out amount);
+        decimal.TryParse(value, AmountStyle, CultureInfo.InvariantCulture, out amount);
 
-    private static decimal ParseAmount(string value) => decimal.Parse(value, NumberStyles.Number,
+    private static decimal ParseAmount(string value) => decimal.Parse(value, AmountStyle,
         CultureInfo.InvariantCulture);
 
     private static bool TryParseType(string value, out TransactionType type) =>
