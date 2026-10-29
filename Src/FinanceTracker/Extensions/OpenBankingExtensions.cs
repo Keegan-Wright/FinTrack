@@ -8,12 +8,13 @@ using Microsoft.Extensions.Http.Resilience;
 namespace FinanceTracker.Extensions;
 
 /// <summary>
-/// Registers the TrueLayer intergration its settings and the two HTTP clients <see cref="TrueLayerOpenBankingApiService"/> calls it
-/// through.
+/// Registers the TrueLayer integration: its settings and the two HTTP clients
+/// <see cref="TrueLayerOpenBankingApiService"/> calls it through.
 /// </summary>
 /// <remarks>
-/// Every HTTP client already gets the standard resilience handler from the service defaults. These clients tune it for
-/// TrueLayer, whose rate limiter refuses bursts with a 429 and no <c>Retry-After</c>:
+/// Every HTTP client gets the standard resilience handler from the service defaults. Its options and pipeline go by
+/// one name shared across every client, so these clients swap it for their own, tuned for TrueLayer, whose rate limiter
+/// refuses bursts with a 429 and no <c>Retry-After</c>:
 /// <list type="bullet">
 /// <item>Both wait longer before retrying a 429, see <see cref="TooManyRequestsDelay"/>.</item>
 /// <item>The data client, which a sync calls, is throttled by <see cref="CreateDataRateLimiter"/>. The standard client,
@@ -50,11 +51,16 @@ public static class OpenBankingExtensions
 
             // One limiter for the whole integration, every user's connections share TrueLayer's limit on the client id.
             // Built at startup for up front errors.
-            RateLimiter dataRateLimiter = CreateDataRateLimiter(throttling);
+            RateLimiter? dataRateLimiter = CreateDataRateLimiter(throttling);
 
             AddTrueLayerClient(builder.Services, TrueLayerOpenBankingApiService.StandardHttpClientName);
-            AddTrueLayerClient(builder.Services, TrueLayerOpenBankingApiService.DataHttpClientName);
-            ThrottleClient(builder.Services, TrueLayerOpenBankingApiService.DataHttpClientName, dataRateLimiter);
+            IHttpStandardResiliencePipelineBuilder dataClient =
+                AddTrueLayerClient(builder.Services, TrueLayerOpenBankingApiService.DataHttpClientName);
+
+            if (dataRateLimiter is not null)
+            {
+                ThrottleClient(dataClient, dataRateLimiter);
+            }
 
             return builder;
         }
@@ -63,33 +69,52 @@ public static class OpenBankingExtensions
     /// <summary>
     /// Lets <see cref="TrueLayerThrottlingOptions.MaxConcurrentCalls"/> calls be in flight and
     /// <see cref="TrueLayerThrottlingOptions.MaxCallsPerSecond"/> start each second. Calls over either limit queue in
-    /// order rather than being refused.
+    /// order rather than being refused. A limit of 0 is no limit.
     /// </summary>
-    /// <exception cref="ArgumentOutOfRangeException">Either limit isn't above zero.</exception>
-    public static RateLimiter CreateDataRateLimiter(TrueLayerThrottlingOptions options)
+    /// <returns>Null when neither limit is set, the calls aren't throttled.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Either limit is negative.</exception>
+    public static RateLimiter? CreateDataRateLimiter(TrueLayerThrottlingOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(options.MaxConcurrentCalls);
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(options.MaxCallsPerSecond);
+        ArgumentOutOfRangeException.ThrowIfNegative(options.MaxConcurrentCalls);
+        ArgumentOutOfRangeException.ThrowIfNegative(options.MaxCallsPerSecond);
 
-        ConcurrencyLimiter concurrency = new(new ConcurrencyLimiterOptions
+        List<RateLimiter> limiters = [];
+
+        if (options.MaxConcurrentCalls > 0)
         {
-            PermitLimit = options.MaxConcurrentCalls,
-            QueueLimit = int.MaxValue,
-            QueueProcessingOrder = QueueProcessingOrder.OldestFirst
-        });
+            limiters.Add(new ConcurrencyLimiter(new ConcurrencyLimiterOptions
+            {
+                PermitLimit = options.MaxConcurrentCalls,
+                QueueLimit = int.MaxValue,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+            }));
+        }
 
-        TokenBucketRateLimiter perSecond = new(new TokenBucketRateLimiterOptions
+        if (options.MaxCallsPerSecond > 0)
         {
-            TokenLimit = options.MaxCallsPerSecond,
-            TokensPerPeriod = options.MaxCallsPerSecond,
-            ReplenishmentPeriod = TimeSpan.FromSeconds(1),
-            AutoReplenishment = true,
-            QueueLimit = int.MaxValue,
-            QueueProcessingOrder = QueueProcessingOrder.OldestFirst
-        });
+            limiters.Add(new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
+            {
+                TokenLimit = options.MaxCallsPerSecond,
+                TokensPerPeriod = options.MaxCallsPerSecond,
+                ReplenishmentPeriod = TimeSpan.FromSeconds(1),
+                AutoReplenishment = true,
+                QueueLimit = int.MaxValue,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+            }));
+        }
 
-        return RateLimiter.CreateChained(concurrency, perSecond);
+        if (limiters.Count == 0)
+        {
+            return null;
+        }
+
+        if (limiters.Count == 1)
+        {
+            return limiters[0];
+        }
+
+        return RateLimiter.CreateChained([.. limiters]);
     }
 
     /// <summary>
@@ -118,14 +143,26 @@ public static class OpenBankingExtensions
     };
 
     /// <summary>
-    /// Registers a TrueLayer client whose standard resilience handler waits <see cref="TooManyRequestsDelay"/> before
-    /// retrying a 429, rather than the few seconds it waits by default.
+    /// Registers a TrueLayer client with its own standard resilience handler in place of the service defaults' one. It
+    /// waits <see cref="TooManyRequestsDelay"/> before retrying a 429, rather than the few seconds it waits by default.
     /// </summary>
-    private static void AddTrueLayerClient(IServiceCollection services, string clientName)
+    /// <remarks>
+    /// The defaults' handler can't be tuned per client it's registered for every client at once, so its options and
+    /// pipeline are named <c>-standard</c> whichever client uses it. A handler added on the named client goes by
+    /// <c>{clientName}-standard</c> and keeps its own retry and circuit breaker state.
+    /// </remarks>
+    private static IHttpStandardResiliencePipelineBuilder AddTrueLayerClient(
+        IServiceCollection services, string clientName)
     {
-        services.AddHttpClient(clientName);
-        services.Configure<HttpStandardResilienceOptions>(StandardResilienceOptionsName(clientName), options =>
+        IHttpClientBuilder client = services.AddHttpClient(clientName);
+
+#pragma warning disable EXTEXP0001 // Experimental, but the supported way to replace the defaults' handler on one client
+        client.RemoveAllResilienceHandlers();
+#pragma warning restore EXTEXP0001
+
+        return client.AddStandardResilienceHandler(options =>
         {
+            options.Retry.UseJitter = true;
             options.Retry.DelayGenerator = static arguments => ValueTask.FromResult(
                 TooManyRequestsDelay(arguments.Outcome.Result?.StatusCode, arguments.AttemptNumber));
             options.TotalRequestTimeout.Timeout = TotalRequestTimeout;
@@ -136,13 +173,7 @@ public static class OpenBankingExtensions
     /// Makes every request on the client wait for <paramref name="rateLimiter"/>. The standard handler limits before it
     /// starts the total request timeout, so time spent queuing doesn't count against it.
     /// </summary>
-    private static void ThrottleClient(IServiceCollection services, string clientName, RateLimiter rateLimiter) =>
-        services.Configure<HttpStandardResilienceOptions>(StandardResilienceOptionsName(clientName),
-            options => options.RateLimiter.RateLimiter = arguments =>
-                rateLimiter.AcquireAsync(1, arguments.Context.CancellationToken));
-
-    /// <summary>
-    /// The name the standard resilience handler's options go by for <paramref name="clientName"/>.
-    /// </summary>
-    private static string StandardResilienceOptionsName(string clientName) => $"{clientName}-standard";
+    private static void ThrottleClient(IHttpStandardResiliencePipelineBuilder client, RateLimiter rateLimiter) =>
+        client.Configure(options => options.RateLimiter.RateLimiter = arguments =>
+            rateLimiter.AcquireAsync(1, arguments.Context.CancellationToken));
 }

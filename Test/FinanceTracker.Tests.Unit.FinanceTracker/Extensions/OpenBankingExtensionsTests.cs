@@ -1,11 +1,10 @@
 using System.Net;
 using System.Threading.RateLimiting;
+using FinanceTracker.AppHost.ServiceDefaults;
 using FinanceTracker.Extensions;
 using FinanceTracker.Infrastructure.OpenBanking.TrueLayer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Http.Resilience;
-using Microsoft.Extensions.Options;
 
 namespace FinanceTracker.Tests.Unit.FinanceTracker.Extensions;
 
@@ -137,49 +136,96 @@ public class OpenBankingExtensionsTests
     [Test]
     [Arguments(TrueLayerOpenBankingApiService.StandardHttpClientName)]
     [Arguments(TrueLayerOpenBankingApiService.DataHttpClientName)]
-    public async Task AddOpenBanking_BothClientsWaitLongerOnTooManyRequests(string clientName)
+    public async Task AddOpenBanking_BothClientsWaitLongerBeforeRetryingTooManyRequests(string clientName)
     {
         // Arrange
-        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        StubTrueLayerHandler trueLayer = new(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.TooManyRequests)));
+        await using ServiceProvider services = BuildServices(clientName, trueLayer);
+        using HttpClient client = services.GetRequiredService<IHttpClientFactory>().CreateClient(clientName);
+        using CancellationTokenSource cancellation = new();
 
-        // Act
-        builder.AddOpenBanking();
+        // Act, the standard handler's own retry would come round within a few seconds
+        Task<HttpResponseMessage> request = client.GetAsync(TrueLayerUrl, cancellation.Token);
+        await WaitForCallsAsync(trueLayer, 1);
+        await Task.Delay(TimeSpan.FromSeconds(3));
+        int callsBeforeTheWaitEnds = trueLayer.Calls;
+        await cancellation.CancelAsync();
 
         // Assert
-        await using ServiceProvider services = builder.Services.BuildServiceProvider();
-        HttpStandardResilienceOptions options = services
-            .GetRequiredService<IOptionsMonitor<HttpStandardResilienceOptions>>().Get($"{clientName}-standard");
-        bool waitsLonger = options.Retry.DelayGenerator is not null;
+        await Assert.That(callsBeforeTheWaitEnds).IsEqualTo(1);
+        await Assert.That(async () => await request).Throws<OperationCanceledException>();
+    }
+
+    [Test]
+    public async Task AddOpenBanking_DataClient_KeepsToTheConcurrentCallLimit()
+    {
+        // Arrange, the default limit is 2 calls at once
+        TaskCompletionSource<HttpResponseMessage> trueLayerAnswers = new();
+        StubTrueLayerHandler trueLayer = new(_ => trueLayerAnswers.Task);
+        await using ServiceProvider services = BuildServices(TrueLayerOpenBankingApiService.DataHttpClientName, trueLayer);
+        using HttpClient client = services.GetRequiredService<IHttpClientFactory>()
+            .CreateClient(TrueLayerOpenBankingApiService.DataHttpClientName);
+
+        // Act
+        Task<HttpResponseMessage>[] requests = [.. Enumerable.Range(0, 3).Select(_ => client.GetAsync(TrueLayerUrl))];
+        await WaitForCallsAsync(trueLayer, 2);
+        await Task.Delay(TimeSpan.FromMilliseconds(500));
+        int callsInFlight = trueLayer.Calls;
+        trueLayerAnswers.SetResult(new HttpResponseMessage(HttpStatusCode.OK));
+        await Task.WhenAll(requests);
+
+        // Assert
         using (Assert.Multiple())
         {
-            await Assert.That(waitsLonger).IsTrue();
-            await Assert.That(options.TotalRequestTimeout.Timeout).IsEqualTo(TimeSpan.FromMinutes(2));
+            await Assert.That(callsInFlight).IsEqualTo(2);
+            await Assert.That(trueLayer.Calls).IsEqualTo(3);
         }
     }
 
     [Test]
-    public async Task AddOpenBanking_ThrottlesOnlyTheDataClient()
+    public async Task AddOpenBanking_StandardClient_IsntThrottled()
     {
         // Arrange
-        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        TaskCompletionSource<HttpResponseMessage> trueLayerAnswers = new();
+        StubTrueLayerHandler trueLayer = new(_ => trueLayerAnswers.Task);
+        await using ServiceProvider services =
+            BuildServices(TrueLayerOpenBankingApiService.StandardHttpClientName, trueLayer);
+        using HttpClient client = services.GetRequiredService<IHttpClientFactory>()
+            .CreateClient(TrueLayerOpenBankingApiService.StandardHttpClientName);
 
         // Act
-        builder.AddOpenBanking();
+        Task<HttpResponseMessage>[] requests = [.. Enumerable.Range(0, 3).Select(_ => client.GetAsync(TrueLayerUrl))];
+        await WaitForCallsAsync(trueLayer, 3);
+        trueLayerAnswers.SetResult(new HttpResponseMessage(HttpStatusCode.OK));
+        await Task.WhenAll(requests);
 
         // Assert
-        await using ServiceProvider services = builder.Services.BuildServiceProvider();
-        IOptionsMonitor<HttpStandardResilienceOptions> options =
-            services.GetRequiredService<IOptionsMonitor<HttpStandardResilienceOptions>>();
-        bool dataClientThrottled =
-            options.Get($"{TrueLayerOpenBankingApiService.DataHttpClientName}-standard").RateLimiter.RateLimiter
-                is not null;
-        bool standardClientThrottled =
-            options.Get($"{TrueLayerOpenBankingApiService.StandardHttpClientName}-standard").RateLimiter.RateLimiter
-                is not null;
-        using (Assert.Multiple())
+        await Assert.That(trueLayer.Calls).IsEqualTo(3);
+    }
+
+    private static readonly Uri TrueLayerUrl = new("https://truelayer.test/data/v1/me");
+
+    /// <summary>
+    /// The app's HTTP clients as it registers them, the service defaults then open banking, with
+    /// <paramref name="trueLayer"/> answering <paramref name="clientName"/>'s requests.
+    /// </summary>
+    private static ServiceProvider BuildServices(string clientName, StubTrueLayerHandler trueLayer)
+    {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        builder.AddServiceDefaults();
+        builder.AddOpenBanking();
+        builder.Services.AddHttpClient(clientName).ConfigurePrimaryHttpMessageHandler(() => trueLayer);
+
+        return builder.Services.BuildServiceProvider();
+    }
+
+    private static async Task WaitForCallsAsync(StubTrueLayerHandler trueLayer, int calls)
+    {
+        using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(5));
+
+        while (trueLayer.Calls < calls)
         {
-            await Assert.That(dataClientThrottled).IsTrue();
-            await Assert.That(standardClientThrottled).IsFalse();
+            await Task.Delay(TimeSpan.FromMilliseconds(20), timeout.Token);
         }
     }
 }
