@@ -43,11 +43,19 @@ public static class ModelBuilderExtensions
             typeof(EncryptionConverter<>).MakeGenericType(modelType), encryptionService)!;
 
     /// <summary>
-    /// Element by element comparer for collection properties a <see cref="List{T}"/> can stand in for,
-    /// null for anything else.
+    /// Element by element comparer for array properties and collection properties a <see cref="List{T}"/> can stand
+    /// in for, null for anything else.
     /// </summary>
     private static ValueComparer? CreateCollectionComparer(Type modelType)
     {
+        if (modelType.IsArray)
+        {
+            return (ValueComparer)typeof(ModelBuilderExtensions)
+                .GetMethod(nameof(CreateArrayComparer), BindingFlags.NonPublic | BindingFlags.Static)!
+                .MakeGenericMethod(modelType.GetElementType()!)
+                .Invoke(null, null)!;
+        }
+
         Type? elementType = modelType.GetInterfaces().Append(modelType)
             .Where(static x => x.IsGenericType && x.GetGenericTypeDefinition() == typeof(IEnumerable<>))
             .Select(static x => x.GetGenericArguments()[0])
@@ -73,4 +81,12 @@ public static class ModelBuilderExtensions
                 ? 0
                 : collection.Aggregate(0, static (hash, element) => HashCode.Combine(hash, element)),
             static collection => collection == null ? null! : (TCollection)(object)collection.ToList());
+
+    private static ValueComparer<TElement[]> CreateArrayComparer<TElement>() =>
+        new(
+            static (left, right) => left == null ? right == null : right != null && left.SequenceEqual(right),
+            static array => array == null
+                ? 0
+                : array.Aggregate(0, static (hash, element) => HashCode.Combine(hash, element)),
+            static array => array == null ? null! : array.ToArray());
 }

@@ -1,0 +1,352 @@
+@page "/Rules/new"
+@page "/Rules/{Id:guid}"
+@* Makes a rule or edits one (IRulesService), optionally starting from a transaction (?from={transactionId}). A new
+   or edited rule reaches the transactions that arrive from the next sync, unless the user previews it and applies it
+   to the ones they have. *@
+@using FinanceTracker.Client.Components.Rules
+@using FinanceTracker.Contracts.Classifications
+@using FinanceTracker.Contracts.Rules
+@using FinanceTracker.Contracts.Transactions
+@using Microsoft.AspNetCore.Authorization
+@inherits PageComponent
+
+@attribute [Authorize]
+@inject IRulesService RulesService
+@inject ITransactionsService TransactionsService
+@inject IClassificationService ClassificationService
+@inject IDialogService DialogService
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+<PageTitle>FinTrack - @Title</PageTitle>
+<PageHeader Title="@Title" Subtitle="@Subtitle">
+    <Actions>
+        <MudButton Href="Rules" Variant="Variant.Text" StartIcon="@Icons.Material.Outlined.ArrowBack">
+            All rules
+        </MudButton>
+    </Actions>
+</PageHeader>
+
+@if (Draft is null)
+{
+    <Section>
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+            That rule doesn't exist any more. <MudLink Href="Rules" Typo="Typo.body2">Back to your rules</MudLink>
+        </MudText>
+    </Section>
+}
+else
+{
+    <div class="ft-stack">
+        <RuleForm @ref="_form" Model="@Draft" AccountNames="@AccountNames" TagNames="@TagNames"/>
+
+        <RulePreviewPanel Preview="@_preview" Busy="@_previewing" CanApply="@Draft.IsEnabled"
+                          OnPreview="@PreviewAsync" OnApply="@SaveAndApplyAsync"/>
+
+        <div class="ft-rule-editor__actions">
+            @if (Id is not null)
+            {
+                <MudButton Variant="Variant.Text" Color="Color.Error" StartIcon="@Icons.Material.Outlined.Delete"
+                           OnClick="@DeleteAsync">Delete</MudButton>
+            }
+            <span class="ft-rule-editor__spacer"></span>
+            <MudButton Href="Rules" Variant="Variant.Text">Cancel</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@SaveAsync">Save</MudButton>
+        </div>
+    </div>
+}
+
+@code {
+
+    /// <summary>
+    /// The rule to edit, null for a new one.
+    /// </summary>
+    [Parameter] public Guid? Id { get; set; }
+
+    /// <summary>
+    /// A transaction to start a new rule from, see <see cref="IRulesService.GetDraftFromTransactionAsync"/>.
+    /// </summary>
+    [SupplyParameterFromQuery(Name = "from")]
+    public Guid? From { get; set; }
+
+    /// <summary>
+    /// What's being edited, null when the rule asked for doesn't exist.
+    /// </summary>
+    [PersistentState]
+    public SaveRule? Draft { get; set; }
+
+    /// <summary>
+    /// The user's accounts.
+    /// </summary>
+    [PersistentState]
+    public List<TransactionAccountFilter>? Accounts { get; set; }
+
+    /// <summary>
+    /// The user's tags.
+    /// </summary>
+    [PersistentState]
+    public List<Classification>? Tags { get; set; }
+
+    private RuleForm? _form;
+    private RulePreview? _preview;
+    private bool _previewing;
+
+    private string Title => Id is null ? "New rule" : "Edit rule";
+
+    private string Subtitle => Id is null
+        ? "Applies to transactions from the next sync, the ones you have already are left as they are"
+        : "Saving checks again the transactions this rule already reached, taking back what it no longer gives";
+
+    private IReadOnlyDictionary<Guid, string> AccountNames =>
+        (Accounts ?? []).ToDictionary(static x => x.AccountId, static x => x.AccountName);
+
+    private IReadOnlyDictionary<Guid, string> TagNames =>
+        (Tags ?? []).ToDictionary(static x => x.ClassificationId, static x => x.Tag ?? string.Empty);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        Accounts = await LoadOnceAsync(Accounts, "Loading the rule", cancellationToken =>
+            TransactionsService.GetAccountsForTransactionFiltersAsync(cancellationToken)
+                .ToListAsync(cancellationToken).AsTask());
+        Tags = await LoadOnceAsync(Tags, "Loading the rule", cancellationToken =>
+            ClassificationService.GetAllCustomClassificationsAsync(cancellationToken)
+                .ToListAsync(cancellationToken).AsTask());
+
+        if (Draft is null)
+        {
+            Draft = await LoadDraftAsync();
+        }
+    }
+
+    /// <summary>
+    /// A blank rule, or the one asked for as it's saved. Null when it doesn't exist or isn't the user's.
+    /// </summary>
+    private async Task<SaveRule?> LoadDraftAsync()
+    {
+        if (Id is not { } id)
+        {
+            return await NewDraftAsync();
+        }
+
+        try
+        {
+            SetLoadingState(true, "Loading the rule");
+            return RuleDrafts.From(await RulesService.GetRuleAsync(id, _cts.Token));
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
+    /// <summary>
+    /// A blank rule, or one matching the transaction it was started from. Blank when that transaction has gone.
+    /// </summary>
+    private async Task<SaveRule> NewDraftAsync()
+    {
+        if (From is not { } transactionId)
+        {
+            return RuleDrafts.New();
+        }
+
+        try
+        {
+            SetLoadingState(true, "Loading the transaction");
+            return await RulesService.GetDraftFromTransactionAsync(transactionId, _cts.Token);
+        }
+        catch (InvalidOperationException)
+        {
+            return RuleDrafts.New();
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
+    internal async Task SaveAsync()
+    {
+        bool valid = await ValidateAsync();
+        if (!valid)
+        {
+            return;
+        }
+
+        Rule? saved = await SaveDraftAsync();
+        if (saved is null)
+        {
+            return;
+        }
+
+        Snackbar.Add($"{saved.Name} saved", Severity.Success);
+        NavigationManager.NavigateTo("Rules");
+    }
+
+    internal async Task PreviewAsync()
+    {
+        bool valid = await ValidateAsync();
+        if (!valid)
+        {
+            return;
+        }
+
+        try
+        {
+            _previewing = true;
+            _preview = await RulesService.PreviewRuleAsync(Id, Draft!, _cts.Token);
+        }
+        catch (InvalidOperationException)
+        {
+            Snackbar.Add("A tag or account in this rule isn't yours any more, choose another", Severity.Error);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't preview the rule, try again", Severity.Error);
+        }
+        finally
+        {
+            _previewing = false;
+        }
+    }
+
+    /// <summary>
+    /// Saves the rule, then applies it to the user's existing transactions once they've agreed.
+    /// </summary>
+    internal async Task SaveAndApplyAsync()
+    {
+        bool valid = await ValidateAsync();
+        if (!valid)
+        {
+            return;
+        }
+
+        bool? confirmed = await DialogService.ShowMessageBoxAsync($"Save and apply {Draft!.Name}?", ApplyWarning(),
+            yesText: "Save and apply", cancelText: "Cancel");
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        Rule? saved = await SaveDraftAsync();
+        if (saved is null)
+        {
+            return;
+        }
+
+        try
+        {
+            SetLoadingState(true, "Applying it to your transactions…");
+            int changed = await RulesService.ApplyRuleToExistingAsync(saved.Id, _cts.Token);
+            Snackbar.Add(AppliedText(saved.Name, changed), Severity.Success);
+            NavigationManager.NavigateTo("Rules");
+        }
+        catch (Exception)
+        {
+            // Saved by now, so trying again happens from the rule itself
+            Snackbar.Add($"{saved.Name} is saved but couldn't be applied, try again", Severity.Error);
+            NavigationManager.NavigateTo($"Rules/{saved.Id}");
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
+    private async Task<bool> ValidateAsync()
+    {
+        if (Draft is null || _form is null)
+        {
+            return false;
+        }
+
+        return await _form.ValidateAsync();
+    }
+
+    /// <summary>
+    /// Adds or updates the rule.
+    /// </summary>
+    /// <returns>The rule as saved, null when it couldn't be, the user has been told why.</returns>
+    private async Task<Rule?> SaveDraftAsync()
+    {
+        try
+        {
+            SetLoadingState(true, "Saving the rule…");
+            if (Id is { } id)
+            {
+                return await RulesService.UpdateRuleAsync(id, Draft!, _cts.Token);
+            }
+
+            return await RulesService.AddRuleAsync(Draft!, _cts.Token);
+        }
+        catch (InvalidOperationException)
+        {
+            Snackbar.Add("A tag or account in this rule isn't yours any more, choose another", Severity.Error);
+            return null;
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't save the rule, try again", Severity.Error);
+            return null;
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
+    private string ApplyWarning()
+    {
+        if (_preview is null)
+        {
+            return "Every transaction it matches changes, however old. Preview it first to see which.";
+        }
+
+        return _preview.Changed == 1
+            ? "When you last previewed it, 1 transaction would change."
+            : $"When you last previewed it, {_preview.Changed:n0} transactions would change.";
+    }
+
+    internal static string AppliedText(string name, int changed) => changed switch
+    {
+        0 => $"{name} saved, none of your transactions needed changing",
+        1 => $"{name} saved and applied, 1 transaction changed",
+        _ => $"{name} saved and applied, {changed:n0} transactions changed"
+    };
+
+    internal async Task DeleteAsync()
+    {
+        if (Id is not { } id || Draft is null)
+        {
+            return;
+        }
+
+        bool? confirmed = await DialogService.ShowMessageBoxAsync($"Delete {Draft.Name}?",
+            "The tags and transfer answers it gave are taken back.", yesText: "Delete", cancelText: "Cancel");
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        try
+        {
+            SetLoadingState(true, "Deleting the rule…");
+            await RulesService.DeleteRuleAsync(id, _cts.Token);
+            Snackbar.Add($"{Draft.Name} deleted", Severity.Success);
+            NavigationManager.NavigateTo("Rules");
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't delete the rule, try again", Severity.Error);
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
+}

@@ -3,6 +3,7 @@
    send twice. *@
 @using System.Globalization
 @using FinanceTracker.Client.Components.Dialogs
+@using FinanceTracker.Client.Components.Rules
 @using FinanceTracker.Client.Components.Transactions
 @using FinanceTracker.Contracts.Classifications
 @using FinanceTracker.Contracts.Transactions
@@ -16,6 +17,7 @@
 @inject ITransfersService TransfersService
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
+@inject NavigationManager NavigationManager
 
 <PageTitle>FinTrack - Transactions</PageTitle>
 <PageHeader Title="Transactions" Subtitle="@Subtitle">
@@ -98,7 +100,16 @@
                             <div class="ft-chips">
                                 @foreach (var tag in context.Item.Tags)
                                 {
-                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@tag</MudChip>
+                                    @if (RuleText.TaggedBy(context.Item, tag) is { } ruleName)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text"
+                                                 Icon="@Icons.Material.Outlined.Rule"
+                                                 title="@($"From your rule {ruleName}")">@tag</MudChip>
+                                    }
+                                    else
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@tag</MudChip>
+                                    }
                                 }
                             </div>
                         </CellTemplate>
@@ -124,6 +135,14 @@
                                         @TransferText.ActionLabel(action)
                                     </MudMenuItem>
                                 }
+                                <MudMenuItem Icon="@Icons.Material.Outlined.Rule"
+                                             OnClick="@(() => CreateRuleFrom(context.Item))">
+                                    Create rule from this
+                                </MudMenuItem>
+                                <MudMenuItem Icon="@Icons.Material.Outlined.Info"
+                                             OnClick="@(() => ShowDetailsAsync(context.Item))">
+                                    Details and bank classifications
+                                </MudMenuItem>
                             </MudMenu>
                         </CellTemplate>
                     </TemplateColumn>
@@ -193,6 +212,15 @@
         {
             { x => x.Transaction, transaction },
             { x => x.OnAddTags, EventCallback.Factory.Create(this, () => AddClassificationsAsync(transaction)) },
+            { x => x.OnCreateRule, EventCallback.Factory.Create(this, () => CreateRuleFrom(transaction)) },
+            {
+                x => x.OnHideClassification,
+                classification => ChangeBankClassificationAsync(transaction, classification, hide: true)
+            },
+            {
+                x => x.OnShowClassification,
+                classification => ChangeBankClassificationAsync(transaction, classification, hide: false)
+            },
             {
                 x => x.OnTransferAction,
                 EventCallback.Factory.Create<TransferAction>(this, action => DecideTransferAsync(transaction, action))
@@ -244,6 +272,47 @@
             SetLoadingState(false);
         }
     }
+
+    /// <summary>
+    /// Hides or shows one of the bank's classifications on <paramref name="transaction"/>, swapping in how it is now.
+    /// </summary>
+    /// <returns>The transaction as it is now, null when it couldn't be changed.</returns>
+    private async Task<Transaction?> ChangeBankClassificationAsync(Transaction transaction, string classification,
+        bool hide)
+    {
+        ChangeBankClassification request = new() { Classification = classification };
+        try
+        {
+            Transaction updated;
+            if (hide)
+            {
+                updated = await TransactionsService.HideBankClassificationAsync(transaction.TransactionId, request,
+                    _cts.Token);
+            }
+            else
+            {
+                updated = await TransactionsService.ShowBankClassificationAsync(transaction.TransactionId, request,
+                    _cts.Token);
+            }
+
+            int index = _transactions.FindIndex(x => x.TransactionId == updated.TransactionId);
+            if (index >= 0)
+            {
+                _transactions[index] = updated;
+            }
+
+            StateHasChanged();
+            return updated;
+        }
+        catch (Exception)
+        {
+            Snackbar.Add($"Couldn't {(hide ? "hide" : "show")} {classification}, try again", Severity.Error);
+            return null;
+        }
+    }
+
+    private void CreateRuleFrom(Transaction transaction) =>
+        NavigationManager.NavigateTo($"Rules/new?from={transaction.TransactionId}");
 
     private async Task AddClassificationsAsync(Transaction transaction)
     {

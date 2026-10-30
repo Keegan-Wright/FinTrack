@@ -1,0 +1,192 @@
+@* Everything about a rule its name, when it matches and what it does. Validates as the user types, and on
+   ValidateAsync for what only shows across the whole rule, like a second transfer answer. *@
+@using FinanceTracker.Client.Extensions
+@using FinanceTracker.Contracts.Rules
+@using FluentValidation
+@using FluentValidation.Results
+@inject IValidator<SaveRule> RuleValidator
+
+<MudForm @ref="_form" Model="@Model" class="ft-stack">
+    <Section Title="Rule">
+        <div class="ft-rule-form__group">
+
+            <MudTextField T="string" Label="Name" @bind-Value="Model.Name" For="@(() => Model.Name)"
+                          Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true"
+                          Validation="@(RuleValidator.ValidateValue(Model, nameof(SaveRule.Name)))"
+                          HelperText="e.g. Groceries"/>
+
+            <MudSwitch T="bool" @bind-Value="Model.IsEnabled" Color="Color.Primary" Label="On"
+                       Disabled="@(Model.Actions.Count == 0)"/>
+
+            <MudSwitch T="bool" @bind-Value="Model.StopProcessing" Color="Color.Primary"
+                       Label="Stop here, later rules skip what this one matches"/>
+        </div>
+    </Section>
+
+    <Section Title="When" Caption="Checked against each transaction as it arrives, pending ones too">
+        <div class="ft-rule-form__group">
+            <div class="ft-rule-form__match">
+                <MudText Typo="Typo.body2">Match</MudText>
+
+                <MudSelect T="RuleMatchMode" @bind-Value="Model.MatchMode" For="@(() => Model.MatchMode)"
+                           Variant="Variant.Outlined" Margin="Margin.Dense" Class="ft-rule-form__mode"
+                           aria-label="How many conditions to match">
+
+                    <MudSelectItem T="RuleMatchMode" Value="RuleMatchMode.All">all</MudSelectItem>
+                    <MudSelectItem T="RuleMatchMode" Value="RuleMatchMode.Any">any</MudSelectItem>
+                </MudSelect>
+                <MudText Typo="Typo.body2">of these</MudText>
+            </div>
+
+            <div class="ft-rule-form__rows">
+                @foreach (RuleCondition condition in Model.Conditions)
+                {
+                    <div @key="condition" class="ft-rule-form__row">
+                        <RuleConditionFields Condition="@condition" AccountNames="@AccountNames"
+                                             CanRemove="@(Model.Conditions.Count > 1)"
+                                             OnRemove="@(() => Model.Conditions.Remove(condition))"/>
+                    </div>
+                }
+            </div>
+            @foreach (string error in ErrorsFor(nameof(SaveRule.Conditions)))
+            {
+                <MudText Typo="Typo.caption" Color="Color.Error">@error</MudText>
+            }
+            <div>
+                <MudButton Variant="Variant.Text" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Add"
+                           OnClick="@AddCondition">Add condition</MudButton>
+            </div>
+        </div>
+    </Section>
+
+    <Section Title="Then" Caption="Every matching rule adds its tags, the first to decide a transfer wins">
+        <div class="ft-rule-form__group">
+            <div class="ft-rule-form__rows">
+                @foreach (RuleAction action in Model.Actions)
+                {
+                    <div @key="action" class="ft-rule-form__row ft-rule-form__action">
+                        <MudSelect T="RuleActionType" Label="Do" Value="@action.Type"
+                                   ValueChanged="@(type => OnActionTypeChanged(action, type))"
+                                   For="@(() => action.Type)" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                   Class="ft-rule-form__action-type">
+
+                            @foreach (RuleActionType type in Enum.GetValues<RuleActionType>())
+                            {
+                                <MudSelectItem T="RuleActionType" Value="@type">
+                                    @RuleText.ActionName(type)
+                                </MudSelectItem>
+                            }
+
+                        </MudSelect>
+                        @if (action.Type == RuleActionType.HideClassification)
+                        {
+                            <MudTextField T="string" Label="Bank classification" @bind-Value="action.BankClassification"
+                                          For="@(() => action.BankClassification)" Variant="Variant.Outlined"
+                                          Margin="Margin.Dense" Immediate="true" Class="ft-rule-form__tag"
+                                          HelperText="As your bank shows it, e.g. TV"
+                                          Validation="@(new Func<string?, string?>(BankClassificationError))"/>
+                        }
+                        @if (action.Type == RuleActionType.AddTag)
+                        {
+                            <MudSelect T="Guid?" Label="Tag" @bind-Value="action.ClassificationId"
+                                       For="@(() => action.ClassificationId)" Variant="Variant.Outlined"
+                                       Margin="Margin.Dense" Class="ft-rule-form__tag"
+                                       Validation="@(new Func<Guid?, string?>(TagError))">
+                                @foreach ((Guid tagId, string tagName) in TagNames.OrderBy(static x => x.Value))
+                                {
+                                    <MudSelectItem T="Guid?" Value="@tagId">@tagName</MudSelectItem>
+                                }
+                            </MudSelect>
+                        }
+                        <span class="ft-rule-form__end">
+                            <MudIconButton Icon="@Icons.Material.Outlined.Close" Size="Size.Small"
+                                           Disabled="@(Model.Actions.Count == 1)" aria-label="Remove action"
+                                           OnClick="@(() => Model.Actions.Remove(action))"/>
+                        </span>
+                    </div>
+                }
+            </div>
+            @if (TagNames.Count == 0)
+            {
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                    You have no tags yet, <MudLink Href="Classifications" Typo="Typo.caption">make one</MudLink> to
+                    add it with a rule.
+                </MudText>
+            }
+            @foreach (string error in ErrorsFor(nameof(SaveRule.Actions)))
+            {
+                <MudText Typo="Typo.caption" Color="Color.Error">@error</MudText>
+            }
+            <div>
+                <MudButton Variant="Variant.Text" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Add"
+                           OnClick="@AddAction">Add action</MudButton>
+            </div>
+        </div>
+    </Section>
+</MudForm>
+
+@code {
+
+    [Parameter] [EditorRequired] public required SaveRule Model { get; set; }
+
+    /// <summary>
+    /// The user's accounts by id, offered for a condition on the account.
+    /// </summary>
+    [Parameter] [EditorRequired] public required IReadOnlyDictionary<Guid, string> AccountNames { get; set; }
+
+    /// <summary>
+    /// The user's tags by id, offered for an action that adds one.
+    /// </summary>
+    [Parameter] [EditorRequired] public required IReadOnlyDictionary<Guid, string> TagNames { get; set; }
+
+    private MudForm _form = null!;
+
+    /// <summary>
+    /// Errors about the conditions or actions as a whole, which no single field shows.
+    /// </summary>
+    private List<ValidationFailure> _ruleErrors = [];
+
+    /// <summary>
+    /// Checks every field and the rule as a whole, showing what's wrong.
+    /// </summary>
+    /// <returns>Whether the rule can be saved.</returns>
+    public async Task<bool> ValidateAsync()
+    {
+        await _form.ValidateAsync();
+        ValidationResult result = await RuleValidator.ValidateAsync(Model);
+        _ruleErrors = result.Errors
+            .Where(static x => x.PropertyName is nameof(SaveRule.Conditions) or nameof(SaveRule.Actions))
+            .ToList();
+
+        StateHasChanged();
+        return _form.IsValid && result.IsValid;
+    }
+
+    private IEnumerable<string> ErrorsFor(string propertyName) => _ruleErrors
+        .Where(x => x.PropertyName == propertyName)
+        .Select(static x => x.ErrorMessage);
+
+    private static string? TagError(Guid? tagId) => tagId is null ? "Choose a tag" : null;
+
+    private static string? BankClassificationError(string? classification) =>
+        string.IsNullOrWhiteSpace(classification) ? "Enter the bank classification to hide" : null;
+
+    private void AddCondition() => Model.Conditions.Add(RuleDrafts.NewCondition(RuleField.Description));
+
+    private void AddAction() => Model.Actions.Add(new RuleAction { Type = RuleActionType.AddTag });
+
+    private static void OnActionTypeChanged(RuleAction action, RuleActionType type)
+    {
+        action.Type = type;
+        if (type != RuleActionType.AddTag)
+        {
+            action.ClassificationId = null;
+        }
+
+        if (type != RuleActionType.HideClassification)
+        {
+            action.BankClassification = null;
+        }
+    }
+
+}

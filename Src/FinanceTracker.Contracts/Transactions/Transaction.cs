@@ -85,4 +85,22 @@ public class Transaction
     /// </summary>
     [Description("Whether the transaction is a transfer and why")]
     public TransactionTransfer? Transfer { get; init; }
+
+    /// <summary>
+    /// Which of <see cref="Tags"/> the user's rules added, and which rule added each.
+    /// </summary>
+    [Description("The tags the user's rules added, and which rule added each")]
+    public List<TransactionRuleTag> TagsFromRules { get; init; } = [];
+
+    /// <summary>
+    /// The bank's classifications that aren't hidden, also among <see cref="Tags"/>.
+    /// </summary>
+    [Description("The bank's classifications that aren't hidden")]
+    public List<string> BankClassifications { get; init; } = [];
+
+    /// <summary>
+    /// The bank's classifications hidden by the user or their rules, left out of <see cref="Tags"/>.
+    /// </summary>
+    [Description("The bank's classifications hidden by the user or their rules")]
+    public List<TransactionHiddenClassification> HiddenBankClassifications { get; init; } = [];
 }

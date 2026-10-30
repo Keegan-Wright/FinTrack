@@ -1,0 +1,119 @@
+@* What a rule would change among the user's existing transactions, and the way to apply it to them. Rules otherwise
+   only reach transactions that arrive after they're saved. *@
+@using System.Globalization
+@using FinanceTracker.Contracts.Rules
+
+<Section Title="Existing transactions"
+         Caption="Rules run on new transactions as they sync. Preview what this one would change in your history.">
+    <div class="ft-rule-preview">
+        <div class="ft-rule-preview__buttons">
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Preview"
+                       Disabled="@Busy" OnClick="@OnPreview">Preview</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.DoneAll"
+                       Disabled="@(Busy || !CanApply)" OnClick="@OnApply">Save and apply</MudButton>
+        </div>
+        @if (!CanApply)
+        {
+            <MudText Typo="Typo.caption" Class="mud-text-secondary">Turn the rule on to apply it.</MudText>
+        }
+
+        @if (Preview is not null)
+        {
+            <MudText Typo="Typo.body2">@Headline(Preview)</MudText>
+            @if (Preview.LeftAlone > 0)
+            {
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">@LeftAloneText(Preview.LeftAlone)</MudText>
+            }
+
+            @if (Preview.Changes.Count > 0)
+            {
+                <div class="ft-list">
+                    @foreach (RulePreviewChange change in PageOfChanges)
+                    {
+                        <div class="ft-list__row ft-rule-preview__row">
+                            <div class="ft-list__main">
+                                <MudText Typo="Typo.body2" Class="text-truncate">@change.Description</MudText>
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">@Day(change)</MudText>
+                                <div class="ft-chips ft-rule-preview__changes">
+                                    @foreach (string text in RuleText.Changes(change))
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@text</MudChip>
+                                    }
+                                </div>
+                            </div>
+                            <div class="ft-list__end">
+                                <MoneyText Value="@change.Amount" Signed="true"/>
+                            </div>
+                        </div>
+                    }
+                </div>
+                @if (PageCount > 1)
+                {
+                    <div class="ft-rule-preview__pager">
+                        <MudPagination Count="@PageCount" @bind-Selected="_page" Size="Size.Small"/>
+                    </div>
+                }
+            }
+            <MudText Typo="Typo.caption" Class="mud-text-secondary">Preview again after changing the rule.</MudText>
+        }
+    </div>
+</Section>
+
+@code {
+
+    /// <summary>
+    /// The last preview, null until the user asks for one.
+    /// </summary>
+    [Parameter] public RulePreview? Preview { get; set; }
+
+    /// <summary>
+    /// Whether a preview or save is under way, so the buttons wait for it.
+    /// </summary>
+    [Parameter] public bool Busy { get; set; }
+
+    /// <summary>
+    /// Whether the rule is on, a rule that's off has nothing to apply.
+    /// </summary>
+    [Parameter] public bool CanApply { get; set; } = true;
+
+    [Parameter] public EventCallback OnPreview { get; set; }
+
+    [Parameter] public EventCallback OnApply { get; set; }
+
+    internal const int PageSize = 20;
+
+    private int _page = 1;
+    private RulePreview? _shownPreview;
+
+    private int PageCount => Preview is null ? 0 : (Preview.Changes.Count + PageSize - 1) / PageSize;
+
+    private IEnumerable<RulePreviewChange> PageOfChanges =>
+        (Preview?.Changes ?? []).Skip((_page - 1) * PageSize).Take(PageSize);
+
+    /// <summary>
+    /// A new preview starts again from its first page.
+    /// </summary>
+    protected override void OnParametersSet()
+    {
+        if (!ReferenceEquals(Preview, _shownPreview))
+        {
+            _shownPreview = Preview;
+            _page = 1;
+        }
+    }
+
+    private static string Day(RulePreviewChange change) =>
+        change.TransactionTime.ToLocalTime().ToString("d MMM yyyy", CultureInfo.CurrentCulture);
+
+    internal static string Headline(RulePreview preview) => preview.Changed switch
+    {
+        0 => "Applying it wouldn't change any of your transactions.",
+        1 => "Applying it would change 1 transaction.",
+        var count => $"Applying it would change {count:n0} transactions."
+    };
+
+    internal static string LeftAloneText(int count) => count == 1
+        ? "1 transaction you tagged yourself keeps your tags."
+        : $"{count:n0} transactions you tagged yourself keep your tags.";
+
+}

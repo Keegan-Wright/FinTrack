@@ -190,6 +190,50 @@ public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
     }
 
     [Test]
+    public async Task ExecuteAsync_AfterSyncing_AppliesEachOwnersRulesBeforeMatching()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.UserScenario.WithUser(OtherUsername))
+            .Do(s => s.BankConnectionScenario.WithConnection("mine", Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("theirs", OtherUsername));
+
+        SyncAllOpenBankingDetailsAsync subject = BuildSubject();
+
+        // Act
+        await subject.ExecuteAsync(TickerFunctionContextFactory.Create(), CancellationToken);
+
+        // Assert, from when the sync started so a user's first run covers it
+        await Assert.That(RulesApplied).IsEquivalentTo([
+            (Scenario.UserMappings[Username], Now, false),
+            (Scenario.UserMappings[OtherUsername], Now, false)
+        ]);
+    }
+
+    [Test]
+    public async Task ExecuteAsync_WhenRulesFail_StillMatchesAndNotifies()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("mine", Username));
+
+        RuleApplicationService.ApplyChangesAsync(Arg.Any<DateTime>(), CancellationToken)
+            .ThrowsAsync(new InvalidOperationException("boom"));
+
+        SyncAllOpenBankingDetailsAsync subject = BuildSubject();
+
+        // Act
+        await subject.ExecuteAsync(TickerFunctionContextFactory.Create(), CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await TransferMatchingService.Received(1).MatchChangesAsync(CancellationToken);
+            await SyncNotifier.Received(1).NotifyAsync(Scenario.UserMappings[Username]);
+        }
+    }
+
+    [Test]
     public async Task ExecuteAsync_WhenUsersHaveNoConnections_DoesNotSyncOrNotify()
     {
         // Arrange

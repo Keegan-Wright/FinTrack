@@ -1,6 +1,7 @@
 using FinanceTracker.Contracts.Classifications;
 using FinanceTracker.Domain.Classifications;
 using FinanceTracker.Domain.OpenBanking.Transactions;
+using FinanceTracker.Domain.Rules;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Classification;
 using FinanceTracker.Tests.Unit.Shared;
@@ -263,6 +264,37 @@ public class ClassificationServiceTests : InfrastructureTestBase
     }
 
     [Test]
+    public async Task RemoveCustomClassificationAsync_DropsItFromRules_DisablingAnyLeftWithNothingToDo()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.ClassificationScenario.WithClassification("bills", Username))
+            .Do(s => s.ClassificationScenario.WithClassification("travel", Username))
+            .Do(s => s.RuleScenario.WithRule("billsOnly", Username, userId => TagRule(userId, "bills")))
+            .Do(s => s.RuleScenario.WithRule("both", Username, userId => TagRule(userId, "bills", "travel")));
+
+        ClassificationService subject = BuildSubject();
+
+        // Act
+        await subject.RemoveCustomClassificationAsync(Scenario.ClassificationMappings["bills"], CancellationToken);
+
+        // Assert
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        Dictionary<Guid, Rule> rules = await context.Rules.ToDictionaryAsync(x => x.Id, CancellationToken);
+        Rule billsOnly = rules[Scenario.RuleMappings["billsOnly"]];
+        Rule both = rules[Scenario.RuleMappings["both"]];
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(billsOnly.Actions).IsEmpty();
+            await Assert.That(billsOnly.IsEnabled).IsFalse();
+            await Assert.That(both.Actions)
+                .IsEquivalentTo([new RuleAction(RuleActionType.AddTag, Scenario.ClassificationMappings["travel"])]);
+            await Assert.That(both.IsEnabled).IsTrue();
+        }
+    }
+
+    [Test]
     public async Task RemoveCustomClassificationAsync_OwnedByAnotherUser_Throws()
     {
         // Arrange
@@ -286,4 +318,9 @@ public class ClassificationServiceTests : InfrastructureTestBase
 
     private ClassificationService BuildSubject() =>
         new(CurrentUserFor(Username), DbContextFactory, NullLogger<ClassificationService>.Instance);
+
+    private Rule TagRule(Guid userId, params string[] tagNames) =>
+        new(userId, "Tags", 0, RuleMatchMode.All,
+            [new RuleCondition(RuleField.Description, RuleOperator.Contains, "BILL")],
+            tagNames.Select(x => new RuleAction(RuleActionType.AddTag, Scenario.ClassificationMappings[x])));
 }

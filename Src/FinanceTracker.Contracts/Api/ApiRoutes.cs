@@ -63,6 +63,11 @@ public static class ApiRoutes
     public const string Reports = "api/reports";
 
     /// <summary>
+    /// <see cref="Services.IRulesService"/>.
+    /// </summary>
+    public const string Rules = "api/rules";
+
+    /// <summary>
     /// <see cref="Services.ITransactionsService"/>.
     /// </summary>
     public const string Transactions = "api/transactions";

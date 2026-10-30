@@ -61,4 +61,10 @@ public class TransactionTransfer
     /// </summary>
     [Description("Name of the household member the money moved to or from")]
     public string? PartnerHouseholdMemberName { get; init; }
+
+    /// <summary>
+    /// The rule that decided, when <see cref="DecidedBy"/> is <see cref="TransferDecidedBy.Rule"/>.
+    /// </summary>
+    [Description("The name of the rule that decided, when a rule decided")]
+    public string? RuleName { get; init; }
 }

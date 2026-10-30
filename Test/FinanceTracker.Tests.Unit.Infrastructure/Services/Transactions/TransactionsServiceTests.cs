@@ -13,6 +13,9 @@ using Transaction = FinanceTracker.Contracts.Transactions.Transaction;
 using FinanceTracker.Domain.OpenBanking.Transfers;
 using FinanceTracker.Domain.Household;
 using FinanceTracker.Infrastructure.OpenBanking.Transfers;
+using FinanceTracker.Domain.Rules;
+using FinanceTracker.Infrastructure;
+using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.Tests.Unit.Infrastructure.Services.Transactions;
 
@@ -526,6 +529,167 @@ public class TransactionsServiceTests : InfrastructureTestBase
 
         // Assert
         await Assert.That(transactions.Count).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task GetAllTransactionsAsync_RuleDecisions_NameTheRule()
+    {
+        // Arrange
+        await SeedAccountAsync()
+            .Do(s => s.ClassificationScenario.WithClassification("shopping", Username, "Shopping"))
+            .Do(s => s.RuleScenario.WithRule("groceries", Username, userId => new Rule(userId, "Groceries", 0,
+                RuleMatchMode.All, [new RuleCondition(RuleField.Description, RuleOperator.Contains, "GROCER")],
+                [
+                    new RuleAction(RuleActionType.AddTag, Scenario.ClassificationMappings["shopping"]),
+                    RuleAction.MarkNotATransfer()
+                ])))
+            .Do(s => s.TransactionScenario.WithTransaction("bought", "main", Details("GROCER STORE")));
+        await ApplyRulesAsync();
+
+        TransactionsService subject = BuildSubject();
+
+        // Act
+        Transaction transaction = (await GetAllAsync(subject, new FilterTransactions())).Single();
+
+        // Assert
+        TransactionRuleTag ruleTag = transaction.TagsFromRules.Single();
+        using (Assert.Multiple())
+        {
+            await Assert.That(ruleTag.Tag).IsEqualTo("Shopping");
+            await Assert.That(ruleTag.RuleName).IsEqualTo("Groceries");
+            await Assert.That(transaction.Transfer!.DecidedBy).IsEqualTo(TransferDecidedBy.Rule);
+            await Assert.That(transaction.Transfer.RuleName).IsEqualTo("Groceries");
+        }
+    }
+
+    [Test]
+    public async Task HideBankClassificationAsync_LeavesItOutOfTagsAndFilters()
+    {
+        // Arrange
+        await SeedAccountAsync()
+            .Do(s => s.TransactionScenario.WithTransaction("mortgage", "main", Details("MORTGAGE") with
+            {
+                ProviderClassifications = ["Bills", "TV"]
+            }));
+        TransactionsService subject = BuildSubject();
+
+        // Act
+        Transaction hidden = await subject.HideBankClassificationAsync(Scenario.TransactionMappings["mortgage"],
+            new ChangeBankClassification { Classification = "tv" }, CancellationToken);
+        List<string> filterTags = await subject.GetTagsForTransactionFiltersAsync(CancellationToken)
+            .Select(static x => x.Tag).ToListAsync(CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(hidden.Tags).IsEquivalentTo(["Bills"]);
+            await Assert.That(hidden.BankClassifications).IsEquivalentTo(["Bills"]);
+            await Assert.That(hidden.HiddenBankClassifications.Single().Classification).IsEqualTo("TV");
+            await Assert.That(hidden.HiddenBankClassifications.Single().RuleName).IsNull();
+            await Assert.That(filterTags).DoesNotContain("TV");
+        }
+    }
+
+    [Test]
+    public async Task ShowBankClassificationAsync_HiddenByTheUser_ShowsItAgain()
+    {
+        // Arrange
+        await SeedAccountAsync()
+            .Do(s => s.TransactionScenario.WithTransaction("mortgage", "main", Details("MORTGAGE") with
+            {
+                ProviderClassifications = ["Bills", "TV"]
+            }));
+        TransactionsService subject = BuildSubject();
+        Guid id = Scenario.TransactionMappings["mortgage"];
+        await subject.HideBankClassificationAsync(id, new ChangeBankClassification { Classification = "TV" },
+            CancellationToken);
+
+        // Act
+        Transaction shown = await subject.ShowBankClassificationAsync(id,
+            new ChangeBankClassification { Classification = "TV" }, CancellationToken);
+
+        // Assert
+        await Assert.That(shown.Tags).IsEquivalentTo(["Bills", "TV"]);
+    }
+
+    [Test]
+    public async Task HideBankClassificationAsync_TheBankDidntSendIt_Throws()
+    {
+        // Arrange
+        await SeedAccountAsync()
+            .Do(s => s.TransactionScenario.WithTransaction("mortgage", "main", Details("MORTGAGE") with
+            {
+                ProviderClassifications = ["Bills"]
+            }));
+
+        // Act & Assert
+        await Assert.That(async () => await BuildSubject().HideBankClassificationAsync(
+                Scenario.TransactionMappings["mortgage"], new ChangeBankClassification { Classification = "TV" },
+                CancellationToken))
+            .Throws<InvalidOperationException>();
+    }
+
+    [Test]
+    public async Task HideBankClassificationAsync_AnotherUsersTransaction_Throws()
+    {
+        // Arrange
+        await SeedAccountAsync();
+        await Scenario.Do(s => s.UserScenario.WithUser(OtherUsername))
+            .Do(s => s.BankConnectionScenario.WithConnection("theirs", OtherUsername))
+            .Do(s => s.BankAccountScenario.WithAccount("theirs", "theirs"))
+            .Do(s => s.TransactionScenario.WithTransaction("theirs", "theirs", Details("MORTGAGE") with
+            {
+                ProviderClassifications = ["TV"]
+            }));
+
+        // Act & Assert
+        await Assert.That(async () => await BuildSubject().HideBankClassificationAsync(
+                Scenario.TransactionMappings["theirs"], new ChangeBankClassification { Classification = "TV" },
+                CancellationToken))
+            .Throws<InvalidOperationException>();
+    }
+
+    [Test]
+    public async Task TransactionsFromBeforeHiding_LoadAndFilterAsNothingHidden()
+    {
+        // Arrange, as the migration left existing rows before it filled them in
+        await SeedAccountAsync()
+            .Do(s => s.TransactionScenario.WithTransaction("old", "main", Details("OLD") with
+            {
+                ProviderClassifications = ["Bills"]
+            }));
+        await using (FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken))
+        {
+            await context.Database.ExecuteSqlRawAsync(
+                "UPDATE \"BankTransactions\" SET \"HiddenClassifications\" = NULL", CancellationToken);
+        }
+
+        TransactionsService subject = BuildSubject();
+
+        // Act
+        List<string> filterTags = await subject.GetTagsForTransactionFiltersAsync(CancellationToken)
+            .Select(static x => x.Tag).ToListAsync(CancellationToken);
+        Transaction transaction = (await GetAllAsync(subject, new FilterTransactions())).Single();
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(filterTags).IsEquivalentTo(["Bills"]);
+            await Assert.That(transaction.Tags).IsEquivalentTo(["Bills"]);
+            await Assert.That(transaction.HiddenBankClassifications).IsEmpty();
+        }
+    }
+
+    private async Task ApplyRulesAsync()
+    {
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        List<Rule> rules = await context.Rules.ToListAsync(CancellationToken);
+        foreach (BankTransaction transaction in await context.BankTransactions.ToListAsync(CancellationToken))
+        {
+            RuleEvaluator.Apply(rules, transaction, DateTime.UtcNow);
+        }
+
+        await context.SaveChangesAsync(CancellationToken);
     }
 
     private Task<TestingScenario> SeedAccountAsync() =>

@@ -97,6 +97,13 @@ public static class TransferText
                 : "You marked this as a transfer.";
         }
 
+        if (transfer.DecidedBy == TransferDecidedBy.Rule)
+        {
+            return transfer.RuleName is null
+                ? "Decided by one of your rules."
+                : $"Decided by your rule {transfer.RuleName}.";
+        }
+
         return transfer.Reason switch
         {
             TransferMatchReason.OwnAccountReference => "The bank's reference names another of your accounts.",

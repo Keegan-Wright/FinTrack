@@ -1,0 +1,56 @@
+.ft-rule {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    padding: 10px 0;
+}
+
+.ft-rules ::deep .mud-drop-item + .mud-drop-item .ft-rule {
+    border-top: 1px solid var(--mud-palette-lines-default);
+}
+
+.ft-rules ::deep .ft-rule--dragging {
+    opacity: 0.5;
+}
+
+.ft-rule__handle {
+    display: inline-flex;
+    color: var(--mud-palette-text-secondary);
+    cursor: grab;
+    touch-action: none;
+}
+
+.ft-rule__position {
+    min-width: 1.5em;
+    text-align: right;
+    color: var(--mud-palette-text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+.ft-rule__main {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.ft-rule__name,
+.ft-rule__main ::deep .ft-rule__summary {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ft-rule__move {
+    display: inline-flex;
+    flex: 0 0 auto;
+}
+
+/* A phone keeps the name and controls, the summary wraps rather than vanishing off the edge */
+@media (max-width: 599.98px) {
+    .ft-rule__main ::deep .ft-rule__summary {
+        white-space: normal;
+    }
+}

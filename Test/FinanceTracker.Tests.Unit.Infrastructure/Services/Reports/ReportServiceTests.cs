@@ -7,10 +7,12 @@ using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Transactions;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Transactions;
+using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Reports;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Fakers;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using FinanceTracker.Domain.OpenBanking.Transfers;
@@ -305,6 +307,61 @@ public class ReportServiceTests : InfrastructureTestBase
     }
 
     [Test]
+    public async Task GetCategoryBreakdownReportAsync_HiddenBankClassification_LeftOutOfThatTag()
+    {
+        // Arrange, the bank calls the mortgage TV as well as the licence
+        await SeedAccountAsync()
+            .Do(s => s.TransactionScenario.WithTransaction("mortgage", "main",
+                Transaction(-950m, January15, classifications: ["Bills", "TV"])))
+            .Do(s => s.TransactionScenario.WithTransaction("licence", "main",
+                Transaction(-15m, January20, classifications: ["TV"])));
+        await HideAsync("mortgage", "TV");
+
+        ReportService subject = BuildSubject();
+
+        // Act
+        List<SpentInCategoryReport> reports = await subject.GetCategoryBreakdownReportAsync(Request(), CancellationToken)
+            .ToListAsync(CancellationToken);
+
+        // Assert
+        SpentInCategoryReport tv = reports.Single(x => x.Category == "TV");
+        SpentInCategoryReport bills = reports.Single(x => x.Category == "Bills");
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(tv.TotalTransactions).IsEqualTo(1);
+            await Assert.That(tv.TotalOut).IsEqualTo(-15m);
+            await Assert.That(bills.TotalOut).IsEqualTo(-950m);
+        }
+    }
+
+    [Test]
+    public async Task GetCategoryBreakdownReportAsync_ClassificationHiddenEverywhere_HasNoReport()
+    {
+        // Arrange
+        await SeedAccountAsync()
+            .Do(s => s.TransactionScenario.WithTransaction("mortgage", "main",
+                Transaction(-950m, January15, classifications: ["Bills", "TV"])));
+        await HideAsync("mortgage", "TV");
+
+        ReportService subject = BuildSubject();
+
+        // Act
+        List<SpentInCategoryReport> reports = await subject.GetCategoryBreakdownReportAsync(Request(), CancellationToken)
+            .ToListAsync(CancellationToken);
+        List<SpentInCategoryReport> filteredToTv = await subject
+            .GetCategoryBreakdownReportAsync(new FilterTransactions { Tags = ["TV"] }, CancellationToken)
+            .ToListAsync(CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(reports.Select(x => x.Category)).IsEquivalentTo(["Bills"]);
+            await Assert.That(filteredToTv).IsEmpty();
+        }
+    }
+
+    [Test]
     public async Task GetAccountBreakdownReportAsync_ReturnsOneReportPerAccount()
     {
         // Arrange
@@ -375,6 +432,15 @@ public class ReportServiceTests : InfrastructureTestBase
     private static FilterTransactions Request() => new();
 
     private static string MonthName(int month) => DateTimeFormatInfo.CurrentInfo.GetMonthName(month);
+
+    private async Task HideAsync(string transactionName, string classification)
+    {
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        Guid id = Scenario.TransactionMappings[transactionName];
+        BankTransaction transaction = await context.BankTransactions.SingleAsync(x => x.Id == id, CancellationToken);
+        transaction.HideClassification(classification);
+        await context.SaveChangesAsync(CancellationToken);
+    }
 
     private ReportService BuildSubject() => new(CurrentUserFor(Username), DbContextFactory, NullLogger<ReportService>.Instance);
 }

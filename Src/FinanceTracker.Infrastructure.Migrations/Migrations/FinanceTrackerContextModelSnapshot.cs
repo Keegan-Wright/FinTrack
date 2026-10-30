@@ -798,6 +798,9 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                         .HasColumnType("xid")
                         .HasColumnName("xmin");
 
+                    b.Property<bool>("TagsSetByUser")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Type")
                         .IsRequired()
                         .HasColumnType("text")
@@ -848,6 +851,82 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                         .IsUnique();
 
                     b.ToTable("TransferMatchCheckpoints", (string)null);
+                });
+
+            modelBuilder.Entity("FinanceTracker.Domain.Rules.Rule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("MatchMode")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<bool>("StopProcessing")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("Updated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "Order");
+
+                    b.ToTable("Rules", (string)null);
+                });
+
+            modelBuilder.Entity("FinanceTracker.Domain.Rules.RuleCheckpoint", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("AppliedFrom")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<DateTime?>("Updated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("RuleCheckpoints", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey", b =>
@@ -1473,6 +1552,31 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.OwnsMany("FinanceTracker.Domain.OpenBanking.Transactions.HiddenClassification", "HiddenClassifications", b1 =>
+                        {
+                            b1.Property<Guid>("BankTransactionId");
+
+                            b1.Property<int>("__synthesizedOrdinal")
+                                .ValueGeneratedOnAdd();
+
+                            b1.Property<string>("Classification")
+                                .IsRequired()
+                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                            b1.Property<Guid?>("RuleId");
+
+                            b1.HasKey("BankTransactionId", "__synthesizedOrdinal");
+
+                            b1.ToTable("BankTransactions");
+
+                            b1
+                                .ToJson("HiddenClassifications")
+                                .HasColumnType("jsonb");
+
+                            b1.WithOwner()
+                                .HasForeignKey("BankTransactionId");
+                        });
+
                     b.OwnsOne("FinanceTracker.Domain.OpenBanking.Transactions.TransactionMetadata", "Metadata", b1 =>
                         {
                             b1.Property<Guid>("BankTransactionId")
@@ -1541,6 +1645,10 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                                 .HasColumnType("text")
                                 .HasColumnName("Transfer_Reason");
 
+                            b1.Property<Guid?>("RuleId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("Transfer_RuleId");
+
                             b1.Property<string>("Source")
                                 .IsRequired()
                                 .HasColumnType("text")
@@ -1554,13 +1662,123 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                                 .HasForeignKey("BankTransactionId");
                         });
 
+                    b.OwnsMany("FinanceTracker.Domain.Rules.RuleTag", "RuleTags", b1 =>
+                        {
+                            b1.Property<Guid>("BankTransactionId");
+
+                            b1.Property<int>("__synthesizedOrdinal")
+                                .ValueGeneratedOnAdd();
+
+                            b1.Property<Guid>("ClassificationId");
+
+                            b1.Property<Guid>("RuleId");
+
+                            b1.HasKey("BankTransactionId", "__synthesizedOrdinal");
+
+                            b1.ToTable("BankTransactions");
+
+                            b1
+                                .ToJson("RuleTags")
+                                .HasColumnType("jsonb");
+
+                            b1.WithOwner()
+                                .HasForeignKey("BankTransactionId");
+                        });
+
+                    b.Navigation("HiddenClassifications");
+
                     b.Navigation("Metadata")
                         .IsRequired();
+
+                    b.Navigation("RuleTags");
 
                     b.Navigation("Transfer");
                 });
 
             modelBuilder.Entity("FinanceTracker.Domain.OpenBanking.Transfers.TransferMatchCheckpoint", b =>
+                {
+                    b.HasOne("FinanceTracker.Domain.Identity.FinanceTrackerUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FinanceTracker.Domain.Rules.Rule", b =>
+                {
+                    b.HasOne("FinanceTracker.Domain.Identity.FinanceTrackerUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.OwnsMany("FinanceTracker.Domain.Rules.RuleAction", "Actions", b1 =>
+                        {
+                            b1.Property<Guid>("RuleId");
+
+                            b1.Property<int>("__synthesizedOrdinal")
+                                .ValueGeneratedOnAdd();
+
+                            b1.Property<string>("BankClassification")
+                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                            b1.Property<Guid?>("ClassificationId");
+
+                            b1.Property<string>("Type")
+                                .IsRequired();
+
+                            b1.HasKey("RuleId", "__synthesizedOrdinal");
+
+                            b1.ToTable("Rules");
+
+                            b1
+                                .ToJson("Actions")
+                                .HasColumnType("jsonb");
+
+                            b1.WithOwner()
+                                .HasForeignKey("RuleId");
+                        });
+
+                    b.OwnsMany("FinanceTracker.Domain.Rules.RuleCondition", "Conditions", b1 =>
+                        {
+                            b1.Property<Guid>("RuleId");
+
+                            b1.Property<int>("__synthesizedOrdinal")
+                                .ValueGeneratedOnAdd();
+
+                            b1.Property<string>("Field")
+                                .IsRequired();
+
+                            b1.Property<bool>("IgnoreCase");
+
+                            b1.Property<string>("Operator")
+                                .IsRequired();
+
+                            b1.Property<string>("SecondValue")
+                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                            b1.Property<string>("Value")
+                                .IsRequired()
+                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                            b1.HasKey("RuleId", "__synthesizedOrdinal");
+
+                            b1.ToTable("Rules");
+
+                            b1
+                                .ToJson("Conditions")
+                                .HasColumnType("jsonb");
+
+                            b1.WithOwner()
+                                .HasForeignKey("RuleId");
+                        });
+
+                    b.Navigation("Actions");
+
+                    b.Navigation("Conditions");
+                });
+
+            modelBuilder.Entity("FinanceTracker.Domain.Rules.RuleCheckpoint", b =>
                 {
                     b.HasOne("FinanceTracker.Domain.Identity.FinanceTrackerUser", null)
                         .WithMany()

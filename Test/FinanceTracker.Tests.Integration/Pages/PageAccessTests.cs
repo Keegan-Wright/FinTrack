@@ -16,6 +16,8 @@ public class PageAccessTests : IntegrationTestBase
         "/Reports",
         "/Reports/accounts",
         "/Reports/tags",
+        "/Rules",
+        "/Rules/new",
         "/Transactions"
     ];
 
