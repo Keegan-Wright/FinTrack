@@ -32,7 +32,7 @@ public class MonitorOpenBankingTokenExpirationAsync : ITickerFunction
 
         await using FinanceTrackerContext dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
 
-        DateTime now = _timeProvider.GetUtcNow().UtcDateTime;
+        DateTime now = _timeProvider.UtcNow;
         List<BankConnection> lapsedConnections = await dbContext.BankConnections
             .Where(x => x.ConsentExpiresAt <= now && x.AccessTokens.Any(t => t.RevokedAt == null))
             .Include(x => x.AccessTokens.Where(t => t.RevokedAt == null))

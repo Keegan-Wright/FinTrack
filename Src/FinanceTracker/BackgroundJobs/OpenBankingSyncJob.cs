@@ -44,8 +44,8 @@ public abstract class OpenBankingSyncJob
     {
         using Activity? performingBackgroundSyncActivity = Telemetry.ActivitySource.StartActivity(GetType().Name);
 
-        DateTime startedAt = _timeProvider.GetUtcNow().UtcDateTime;
-        DateOnly today = DateOnly.FromDateTime(_timeProvider.GetLocalNow().DateTime);
+        DateTime startedAt = _timeProvider.UtcNow;
+        DateOnly today = _timeProvider.Today;
 
         var toSync = new List<(Guid Id, Guid UserId)>();
         await using (FinanceTrackerContext dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken))

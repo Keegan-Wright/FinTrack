@@ -80,7 +80,7 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        DateTime nowUtc = _timeProvider.GetUtcNow().UtcDateTime;
+        DateTime nowUtc = _timeProvider.UtcNow;
 
         List<UpcomingPayment> standingOrders = await context.BankAccounts.OwnedBy(UserId)
             .SelectMany(static x => x.StandingOrders)

@@ -35,15 +35,6 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
         _timeProvider = timeProvider;
     }
 
-    private DateTime Now => _timeProvider.GetUtcNow().UtcDateTime;
-
-    /// <summary>
-    /// Today where the server is.
-    /// </summary>
-    private DateOnly Today => DateOnly.FromDateTime(_timeProvider.GetLocalNow().DateTime);
-
-    private TimeZoneInfo TimeZone => _timeProvider.LocalTimeZone;
-
     public async Task<BillMonthOverview> GetMonthAsync(int year, int month, CancellationToken cancellationToken)
     {
         BudgetMonth target = new(year, month);
@@ -61,17 +52,18 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
 
         List<BankTransaction> payments = await LoadPaymentsAsync(context, cancellationToken);
         Dictionary<Guid, string> accountNames = await LoadAccountNamesAsync(context, cancellationToken);
-        DateOnly today = Today;
+        DateOnly today = _timeProvider.Today;
+        TimeZoneInfo timeZone = _timeProvider.LocalTimeZone;
 
         List<BillStatus> statuses = [];
         foreach (DomainBill bill in running)
         {
             IReadOnlyList<DomainBillPeriod> periods =
-                BillCalculator.Periods(bill, payments, first, last, TimeZone, today);
+                BillCalculator.Periods(bill, payments, first, last, timeZone, today);
 
             statuses.Add(new BillStatus
             {
-                Bill = BillMapper.ToContract(bill, AccountName(accountNames, bill.AccountId), payments, TimeZone,
+                Bill = BillMapper.ToContract(bill, AccountName(accountNames, bill.AccountId), payments, timeZone,
                     today),
                 Periods = periods.Select(BillMapper.ToContract).ToList()
             });
@@ -97,11 +89,12 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
         List<DomainBill> bills = await context.Bills.OwnedBy(UserId).AsNoTracking().ToListAsync(cancellationToken);
         List<BankTransaction> payments = await LoadPaymentsAsync(context, cancellationToken);
         Dictionary<Guid, string> accountNames = await LoadAccountNamesAsync(context, cancellationToken);
-        DateOnly today = Today;
+        DateOnly today = _timeProvider.Today;
+        TimeZoneInfo timeZone = _timeProvider.LocalTimeZone;
 
         foreach (DomainBill bill in bills.OrderBy(static x => x.Name, StringComparer.CurrentCultureIgnoreCase))
         {
-            yield return BillMapper.ToContract(bill, AccountName(accountNames, bill.AccountId), payments, TimeZone,
+            yield return BillMapper.ToContract(bill, AccountName(accountNames, bill.AccountId), payments, timeZone,
                 today);
         }
     }
@@ -156,7 +149,7 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
             updated.Rename(bill.Name);
             updated.ChangePayee(bill.Payee);
             updated.Reschedule(BillMapper.ToDomain(bill.Frequency), bill.NextDue);
-            updated.ChangeAmount(bill.ExpectedAmount, Today);
+            updated.ChangeAmount(bill.ExpectedAmount, _timeProvider.Today);
             updated.ChangeTolerance(bill.TolerancePercent);
 
             await context.SaveChangesAsync(cancellationToken);
@@ -169,7 +162,7 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
     }
 
     public Task<Bill> EndBillAsync(Guid id, CancellationToken cancellationToken) =>
-        ChangeBillAsync(id, bill => bill.EndByUser(Today), cancellationToken);
+        ChangeBillAsync(id, bill => bill.EndByUser(_timeProvider.Today), cancellationToken);
 
     public Task<Bill> ReopenBillAsync(Guid id, CancellationToken cancellationToken) =>
         ChangeBillAsync(id, static bill => bill.ReopenByUser(), cancellationToken);
@@ -215,13 +208,13 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
 
         if (payment.BillId is not { } billId)
         {
-            transaction.PayNoBill(Now);
+            transaction.PayNoBill(_timeProvider.UtcNow);
         }
         else
         {
             DomainBill bill = await context.Bills.OwnedBy(UserId).AsNoTracking()
                 .SingleAsync(x => x.Id == billId, cancellationToken);
-            transaction.PayBill(bill, Now);
+            transaction.PayBill(bill, _timeProvider.UtcNow);
         }
 
         await context.SaveChangesAsync(cancellationToken);
@@ -242,7 +235,7 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
             .Where(x => paymentIds.Contains(x.Id))
             .ToDictionaryAsync(static x => x.Id, cancellationToken);
         Dictionary<Guid, string> accountNames = await LoadAccountNamesAsync(context, cancellationToken);
-        DateOnly today = Today;
+        DateOnly today = _timeProvider.Today;
 
         // Dates are encrypted, so they're ordered once decrypted
         foreach (DomainBillSuggestion suggestion in waiting.OrderByDescending(static x => x.LastPaidOn))
@@ -280,7 +273,7 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
                 .ToListAsync(cancellationToken);
             foreach (BankTransaction payment in payments)
             {
-                payment.DecideBillPayment(BillPayment.Matched(bill.Id, Now));
+                payment.DecideBillPayment(BillPayment.Matched(bill.Id, _timeProvider.UtcNow));
             }
 
             context.BillSuggestions.Remove(suggestion);
@@ -334,7 +327,7 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
             .Select(static x => x.DisplayName)
             .SingleOrDefaultAsync(cancellationToken) ?? string.Empty;
 
-        return BillMapper.ToContract(bill, accountName, payments, TimeZone, Today);
+        return BillMapper.ToContract(bill, accountName, payments, _timeProvider.LocalTimeZone, _timeProvider.Today);
     }
 
     /// <summary>

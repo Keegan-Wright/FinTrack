@@ -60,8 +60,6 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
         _syncScheduler = syncScheduler;
     }
 
-    private DateTime UtcNow => _timeProvider.GetUtcNow().UtcDateTime;
-
     public async IAsyncEnumerable<OpenBankingProvider> GetOpenBankingProvidersForClientAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -121,18 +119,18 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
                 {
                     connection = new BankConnection(UserId, provider.ProviderId, provider.DisplayName,
                         addVendor.AccessCode, scopes,
-                        await _openBankingApiService.GetProviderLogoAsync(provider.LogoUri, cancellationToken), UtcNow,
-                        consentExpiresAt);
+                        await _openBankingApiService.GetProviderLogoAsync(provider.LogoUri, cancellationToken),
+                        _timeProvider.UtcNow, consentExpiresAt);
                     context.BankConnections.Add(connection);
                 }
                 else
                 {
                     // Adding a provider that is already connected re-authenticates it, as does renewing it
-                    connection.Reauthenticate(addVendor.AccessCode, scopes, UtcNow, consentExpiresAt);
+                    connection.Reauthenticate(addVendor.AccessCode, scopes, _timeProvider.UtcNow, consentExpiresAt);
                 }
 
                 connection.IssueToken(providerAccessToken.AccessToken, providerAccessToken.RefreshToken,
-                    UtcNow, providerAccessToken.ExpiresIn);
+                    _timeProvider.UtcNow, providerAccessToken.ExpiresIn);
             }
 
             await context.SaveChangesAsync(cancellationToken);
@@ -172,7 +170,7 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
-        DateTime now = UtcNow;
+        DateTime now = _timeProvider.UtcNow;
         foreach (BankConnection connection in connections.OrderBy(static x => x.Name))
         {
             yield return new BankConnectionSummary
@@ -222,12 +220,12 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
     private DateTime ConsentExpiresAt(ExternalOpenBankingAccountConnection externalConnection)
     {
         DateTime reported = externalConnection.ConsentExpiresAt.ToUtc();
-        if (reported > UtcNow)
+        if (reported > _timeProvider.UtcNow)
         {
             return reported;
         }
 
-        return UtcNow + DefaultConsentLifetime;
+        return _timeProvider.UtcNow + DefaultConsentLifetime;
     }
 
     public async Task SyncConnectionAsync(Guid connectionId, SyncTypes syncFlags, CancellationToken cancellationToken)
@@ -267,7 +265,7 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
             .Select(static x => new { AccountId = x.Key, OccurredAt = x.Max(s => s.OccurredAt) })
             .ToDictionaryAsync(static x => x.AccountId, static x => x.OccurredAt, cancellationToken);
 
-        DateTime now = UtcNow;
+        DateTime now = _timeProvider.UtcNow;
         foreach (ExternalOpenBankingAccount externalAccount in externalAccounts)
         {
             if (accounts.TryGetValue(externalAccount.AccountId, out BankAccount? account))
@@ -363,7 +361,7 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
             return null;
         }
 
-        if (!activeToken.IsExpired(UtcNow))
+        if (!activeToken.IsExpired(_timeProvider.UtcNow))
         {
             return activeToken.Token;
         }
@@ -372,7 +370,7 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
             await _openBankingApiService.GetAccessTokenByRefreshTokenAsync(activeToken.RefreshToken,
                 cancellationToken);
 
-        AccessToken issued = connection.IssueToken(refreshed.AccessToken, refreshed.RefreshToken, UtcNow,
+        AccessToken issued = connection.IssueToken(refreshed.AccessToken, refreshed.RefreshToken, _timeProvider.UtcNow,
             refreshed.ExpiresIn);
 
         // Persist straight away, the previous refresh token is no longer valid with the provider
@@ -605,7 +603,6 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
 
     private static bool ShouldSynchronise(SyncTypes syncFlags, SyncTypes typeToCheck) =>
         syncFlags.HasFlag(SyncTypes.All) || syncFlags.HasFlag(typeToCheck);
-
 
     /// <summary>
     /// Everything fetched for one account in a sync. A null list means that data was not synced.

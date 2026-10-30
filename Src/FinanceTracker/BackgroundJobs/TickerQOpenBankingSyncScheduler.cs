@@ -1,3 +1,4 @@
+using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.OpenBanking;
 using TickerQ.Utilities.Entities;
 using TickerQ.Utilities.Interfaces.Managers;
@@ -22,5 +23,5 @@ public sealed class TickerQOpenBankingSyncScheduler : IOpenBankingSyncScheduler
 
     public Task ScheduleUserSyncAsync(Guid userId, CancellationToken cancellationToken) =>
         _timeTickerManager.AddAsync<SyncUserOpenBankingDetailsAsync, SyncUserOpenBankingDetailsRequest>(
-            _timeProvider.GetUtcNow().UtcDateTime, new SyncUserOpenBankingDetailsRequest(userId), cancellationToken);
+            _timeProvider.UtcNow, new SyncUserOpenBankingDetailsRequest(userId), cancellationToken);
 }

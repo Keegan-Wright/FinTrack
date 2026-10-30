@@ -23,8 +23,6 @@ public class BillSyncService : ServiceBase<BillSyncService>, IBillSyncService
     public const int RecentDays = 100;
 
     private readonly TimeProvider _timeProvider;
-    private DateTime Now => _timeProvider.GetUtcNow().UtcDateTime;
-    private DateOnly Today => DateOnly.FromDateTime(_timeProvider.GetLocalNow().DateTime);
 
     public BillSyncService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<BillSyncService> logger,
@@ -38,7 +36,7 @@ public class BillSyncService : ServiceBase<BillSyncService>, IBillSyncService
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        DateOnly today = Today;
+        DateOnly today = _timeProvider.Today;
         TimeZoneInfo timeZone = _timeProvider.LocalTimeZone;
 
         List<BankAccount> accounts = await context.BankAccounts.OwnedBy(UserId)
@@ -56,7 +54,7 @@ public class BillSyncService : ServiceBase<BillSyncService>, IBillSyncService
         DateOnly from = MatchFrom(seeded.Added, today);
         List<BankTransaction> transactions = await LoadTransactionsAsync(context, from, cancellationToken);
 
-        int matched = BillMatcher.Match(bills, transactions, timeZone, Now);
+        int matched = BillMatcher.Match(bills, transactions, timeZone, _timeProvider.UtcNow);
         int pricesChanged = FollowPrices(bills, transactions, from, timeZone, today);
 
         // After matching, so payments that now pay a bill aren't suggested as one
@@ -88,8 +86,8 @@ public class BillSyncService : ServiceBase<BillSyncService>, IBillSyncService
         List<Bill> bills = await context.Bills.OwnedBy(UserId).ToListAsync(cancellationToken);
         List<BankTransaction> transactions = await LoadTransactionsAsync(context, from, cancellationToken);
 
-        int matched = BillMatcher.Match(bills, transactions, _timeProvider.LocalTimeZone, Now);
-        FollowPrices(bills, transactions, from, _timeProvider.LocalTimeZone, Today);
+        int matched = BillMatcher.Match(bills, transactions, _timeProvider.LocalTimeZone, _timeProvider.UtcNow);
+        FollowPrices(bills, transactions, from, _timeProvider.LocalTimeZone, _timeProvider.Today);
 
         await context.SaveChangesAsync(cancellationToken);
         return matched;

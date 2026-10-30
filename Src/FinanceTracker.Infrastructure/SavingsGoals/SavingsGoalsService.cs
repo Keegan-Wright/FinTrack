@@ -159,7 +159,7 @@ public class SavingsGoalsService : ServiceBase<SavingsGoalsService>, ISavingsGoa
         Dictionary<Guid, BankAccount> accounts = await LoadAccountsAsync(context, goals, cancellationToken);
         List<BankTransaction> transactions = await LoadTaggedTransactionsAsync(context, goals, cancellationToken);
         TimeZoneInfo timeZone = _timeProvider.LocalTimeZone;
-        DateOnly today = DateOnly.FromDateTime(_timeProvider.GetLocalNow().DateTime);
+        DateOnly today = _timeProvider.Today;
 
         List<SavingsGoal> mapped = [];
         foreach (DomainSavingsGoal goal in goals)
@@ -210,7 +210,7 @@ public class SavingsGoalsService : ServiceBase<SavingsGoalsService>, ISavingsGoa
         }
 
         DateTime from = starts.Min().ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc).AddDays(-1);
-        DateTime to = _timeProvider.GetUtcNow().UtcDateTime.AddDays(1);
+        DateTime to = _timeProvider.UtcNow.AddDays(1);
 
         return await context.BankTransactions.OwnedBy(UserId)
             .WhereEncryptedDayBetween(x => x.OccurredAt, from, to, context)

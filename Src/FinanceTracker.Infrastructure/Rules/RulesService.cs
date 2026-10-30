@@ -154,7 +154,7 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
         List<BankTransaction> transactions = await context.BankTransactions.OwnedBy(UserId).AsNoTracking()
             .ToListAsync(cancellationToken);
 
-        return RulePreviewer.Preview(running, draft, transactions, tagNames, _timeProvider.GetUtcNow().UtcDateTime);
+        return RulePreviewer.Preview(running, draft, transactions, tagNames, _timeProvider.UtcNow);
     }
 
     public Task<int> ApplyRuleToExistingAsync(Guid id, CancellationToken cancellationToken) =>
