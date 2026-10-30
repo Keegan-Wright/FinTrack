@@ -68,6 +68,7 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
     public DbSet<SavingsGoal> SavingsGoals { get; private set; }
     public DbSet<Budget> Budgets { get; private set; }
     public DbSet<Bill> Bills { get; private set; }
+    public DbSet<BillSuggestion> BillSuggestions { get; private set; }
     public DbSet<Debt> Debts { get; private set; }
     public DbSet<HouseholdMember> HouseholdMembers { get; private set; }
     public DbSet<TransferMatchCheckpoint> TransferMatchCheckpoints { get; private set; }

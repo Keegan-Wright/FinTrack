@@ -96,6 +96,74 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.ToTable("Bills", (string)null);
                 });
 
+            modelBuilder.Entity("FinanceTracker.Domain.Bills.BillSuggestion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Amount")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("FirstPaidOn")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.Property<string>("Frequency")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsDismissed")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.Property<string>("LastPaidOn")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.PrimitiveCollection<Guid[]>("PaymentIds")
+                        .IsRequired()
+                        .HasColumnType("uuid[]");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<DateTime?>("Updated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("BillSuggestions", (string)null);
+                });
+
             modelBuilder.Entity("FinanceTracker.Domain.Budgeting.Budget", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1417,6 +1485,21 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.Navigation("Amounts");
                 });
 
+            modelBuilder.Entity("FinanceTracker.Domain.Bills.BillSuggestion", b =>
+                {
+                    b.HasOne("FinanceTracker.Domain.OpenBanking.Accounts.BankAccount", null)
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("FinanceTracker.Domain.Identity.FinanceTrackerUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("FinanceTracker.Domain.Budgeting.Budget", b =>
                 {
                     b.HasOne("FinanceTracker.Domain.Identity.FinanceTrackerUser", null)
@@ -1963,6 +2046,8 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
                             b1.Property<string>("BankClassification")
                                 .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                            b1.Property<Guid?>("BillId");
 
                             b1.Property<Guid?>("ClassificationId");
 

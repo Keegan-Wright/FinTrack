@@ -7,4 +7,5 @@ namespace FinanceTracker.Infrastructure.Bills;
 /// <param name="Ended">Bills ended because their standing order or direct debit went away or stopped.</param>
 /// <param name="Matched">Transactions whose bill changed.</param>
 /// <param name="PricesChanged">Bills whose expected amount followed a price change.</param>
-public sealed record BillSyncSummary(int Added, int Ended, int Matched, int PricesChanged);
+/// <param name="Suggested">New subscriptions suggested to the user.</param>
+public sealed record BillSyncSummary(int Added, int Ended, int Matched, int PricesChanged, int Suggested);

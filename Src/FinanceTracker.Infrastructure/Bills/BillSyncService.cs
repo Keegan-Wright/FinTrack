@@ -17,7 +17,8 @@ public class BillSyncService : ServiceBase<BillSyncService>, IBillSyncService
     /// How far back each sync matches, over the transactions already stored. Long enough to see a quarterly bill's
     /// last payment, so its price is followed. The longest quarter (92 days), the matching window either side of a
     /// due date, see <see cref="BillMatcher.WindowDays"/>, and a few days for a missed sync. Yearly bills are matched
-    /// over their whole history once, when they're added.
+    /// over their whole history once, when they're added. Also enough for three monthly payments in a row, see
+    /// <see cref="SubscriptionDetector"/>.
     /// </summary>
     public const int RecentDays = 100;
 
@@ -58,10 +59,23 @@ public class BillSyncService : ServiceBase<BillSyncService>, IBillSyncService
         int matched = BillMatcher.Match(bills, transactions, timeZone, Now);
         int pricesChanged = FollowPrices(bills, transactions, from, timeZone, today);
 
+        // After matching, so payments that now pay a bill aren't suggested as one
+        List<BillSuggestion> suggestions = await context.BillSuggestions.OwnedBy(UserId).ToListAsync(cancellationToken);
+
+        IReadOnlyList<DetectedSubscription> detected =
+            SubscriptionDetector.Detect(bills, transactions, timeZone, today);
+
+        SuggestionChanges suggested = SubscriptionDetector.Suggest(UserId, suggestions, detected);
+        context.BillSuggestions.AddRange(suggested.Added);
+        context.BillSuggestions.RemoveRange(suggested.Removed);
+
         await context.SaveChangesAsync(cancellationToken);
 
-        BillSyncSummary summary = new(seeded.Added.Count, seeded.Ended, matched, pricesChanged);
-        Logger.LogSyncedBills(UserId, summary.Added, summary.Ended, summary.Matched, summary.PricesChanged);
+        BillSyncSummary summary = new(seeded.Added.Count, seeded.Ended, matched, pricesChanged,
+            suggested.Added.Count);
+
+        Logger.LogSyncedBills(UserId, summary.Added, summary.Ended, summary.Matched, summary.PricesChanged,
+            summary.Suggested);
 
         return summary;
     }

@@ -65,7 +65,7 @@ public class BillSyncServiceTests : InfrastructureTestBase
         await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
         using (Assert.Multiple())
         {
-            await Assert.That(summary).IsEqualTo(new BillSyncSummary(0, 0, 0, 0));
+            await Assert.That(summary).IsEqualTo(new BillSyncSummary(0, 0, 0, 0, 0));
             await Assert.That(await context.Bills.CountAsync(CancellationToken)).IsEqualTo(1);
         }
     }
@@ -114,6 +114,93 @@ public class BillSyncServiceTests : InfrastructureTestBase
             await Assert.That(summary.PricesChanged).IsEqualTo(1);
             await Assert.That(bill.ExpectedOn(new DateOnly(2026, 10, 3))).IsEqualTo(40m);
             await Assert.That(bill.ExpectedOn(new DateOnly(2026, 11, 3))).IsEqualTo(45m);
+        }
+    }
+
+    [Test]
+    public async Task SyncAsync_RepeatCardPayments_SuggestsASubscription()
+    {
+        // Arrange
+        await SeedAsync()
+            .Do(s => s.TransactionScenario.WithTransaction("august", "main", Paid("STREAMCO 111", -9.99m, 8, 12)))
+            .Do(s => s.TransactionScenario.WithTransaction("september", "main", Paid("STREAMCO 222", -9.99m, 9, 12)))
+            .Do(s => s.TransactionScenario.WithTransaction("october", "main", Paid("STREAMCO 333", -9.99m, 10, 12)));
+
+        // Act
+        BillSyncSummary summary = await BuildSubject().SyncAsync(CancellationToken);
+
+        // Assert
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        BillSuggestion suggestion = await context.BillSuggestions.SingleAsync(CancellationToken);
+        string storedName = await context.Database
+            .SqlQueryRaw<string>("SELECT \"Name\" AS \"Value\" FROM \"BillSuggestions\"")
+            .SingleAsync(CancellationToken);
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(summary.Suggested).IsEqualTo(1);
+            await Assert.That(await context.Bills.AnyAsync(CancellationToken)).IsFalse();
+            await Assert.That(suggestion.Name).IsEqualTo("STREAMCO");
+            await Assert.That(suggestion.Frequency).IsEqualTo(BillFrequency.Monthly);
+            await Assert.That(suggestion.Amount).IsEqualTo(9.99m);
+            await Assert.That(suggestion.LastPaidOn).IsEqualTo(new DateOnly(2026, 10, 12));
+            await Assert.That(suggestion.PaymentIds).Count().IsEqualTo(3);
+            await Assert.That(storedName).DoesNotContain("STREAMCO");
+        }
+    }
+
+    [Test]
+    public async Task SyncAsync_DismissedSuggestion_IsntSuggestedAgain()
+    {
+        // Arrange
+        await SeedAsync()
+            .Do(s => s.TransactionScenario.WithTransaction("august", "main", Paid("STREAMCO", -9.99m, 8, 12)))
+            .Do(s => s.TransactionScenario.WithTransaction("september", "main", Paid("STREAMCO", -9.99m, 9, 12)))
+            .Do(s => s.TransactionScenario.WithTransaction("october", "main", Paid("STREAMCO", -9.99m, 10, 12)));
+        BillSyncService subject = BuildSubject();
+        await subject.SyncAsync(CancellationToken);
+        await using (FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken))
+        {
+            (await context.BillSuggestions.SingleAsync(CancellationToken)).Dismiss();
+            await context.SaveChangesAsync(CancellationToken);
+        }
+
+        // Act
+        BillSyncSummary summary = await subject.SyncAsync(CancellationToken);
+
+        // Assert
+        await using FinanceTrackerContext verification = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        BillSuggestion suggestion = await verification.BillSuggestions.SingleAsync(CancellationToken);
+        using (Assert.Multiple())
+        {
+            await Assert.That(summary.Suggested).IsEqualTo(0);
+            await Assert.That(suggestion.IsDismissed).IsTrue();
+        }
+    }
+
+    [Test]
+    public async Task SyncAsync_SuggestionNowABill_RemovesTheSuggestion()
+    {
+        // Arrange
+        await SeedAsync()
+            .Do(s => s.TransactionScenario.WithTransaction("august", "main", Paid("STREAMCO", -9.99m, 8, 12)))
+            .Do(s => s.TransactionScenario.WithTransaction("september", "main", Paid("STREAMCO", -9.99m, 9, 12)))
+            .Do(s => s.TransactionScenario.WithTransaction("october", "main", Paid("STREAMCO", -9.99m, 10, 12)));
+        BillSyncService subject = BuildSubject();
+        await subject.SyncAsync(CancellationToken);
+        await Scenario.Do(s => s.BillScenario.WithBill("streaming", Username, "main", (userId, accountId) =>
+            new Bill(userId, accountId, "Streaming", "Streamco", BillFrequency.Monthly, 9.99m,
+                new DateOnly(2026, 8, 12), BillSource.Manual)));
+
+        // Act
+        BillSyncSummary summary = await subject.SyncAsync(CancellationToken);
+
+        // Assert
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        using (Assert.Multiple())
+        {
+            await Assert.That(summary.Matched).IsEqualTo(3);
+            await Assert.That(await context.BillSuggestions.AnyAsync(CancellationToken)).IsFalse();
         }
     }
 
