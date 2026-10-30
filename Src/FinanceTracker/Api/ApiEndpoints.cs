@@ -20,6 +20,7 @@ public static class ApiEndpoints
 
             api.MapAccountEndpoints()
                 .MapAutomationEndpoints()
+                .MapBillEndpoints()
                 .MapBudgetEndpoints()
                 .MapCalendarEndpoints()
                 .MapClassificationEndpoints()
