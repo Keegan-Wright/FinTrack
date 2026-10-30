@@ -23,6 +23,7 @@ public sealed class TestingScenario
     public AutomationScenario AutomationScenario { get; init; }
     public DataProtectionScenario DataProtectionScenario { get; init; }
     public RuleScenario RuleScenario { get; init; }
+    public BudgetScenario BudgetScenario { get; init; }
 
     public Dictionary<string, Guid> UserMappings { get; set; } = [];
     public Dictionary<string, Guid> ConnectionMappings { get; set; } = [];
@@ -34,6 +35,7 @@ public sealed class TestingScenario
     public Dictionary<string, Guid> HouseholdMemberMappings { get; set; } = [];
     public Dictionary<string, Guid> CronTickerMappings { get; set; } = [];
     public Dictionary<string, Guid> RuleMappings { get; set; } = [];
+    public Dictionary<string, Guid> BudgetMappings { get; set; } = [];
 
     public TestingScenario(IDbContextFactory<FinanceTrackerContext> dbContextFactory,
         CancellationToken cancellationToken)
@@ -52,6 +54,7 @@ public sealed class TestingScenario
         AutomationScenario = new AutomationScenario(this);
         DataProtectionScenario = new DataProtectionScenario(this);
         RuleScenario = new RuleScenario(this);
+        BudgetScenario = new BudgetScenario(this);
     }
 
 }
