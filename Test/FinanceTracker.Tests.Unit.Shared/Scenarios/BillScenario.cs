@@ -23,4 +23,21 @@ public sealed class BillScenario : ScenarioBuilder
         Scenario.BillMappings.Add(billName, bill.Id);
         return PersistAsync(context => context.Bills.Add(bill));
     }
+
+    /// <summary>
+    /// Adds a subscription suggested from the payments on the account.
+    /// </summary>
+    /// <param name="paymentNames">The transactions behind it, by their scenario names.</param>
+    public Task<TestingScenario> WithSuggestion(string suggestionName, string username, string accountName,
+        string name, decimal amount, DateOnly firstPaidOn, DateOnly lastPaidOn, params string[] paymentNames)
+    {
+        Guid userId = Scenario.UserMappings[username];
+        DetectedSubscription detected = new(Scenario.AccountMappings[accountName],
+            new string(name.Where(char.IsLetter).Select(char.ToUpperInvariant).ToArray()), name, BillFrequency.Monthly,
+            amount, firstPaidOn, lastPaidOn, paymentNames.Select(x => Scenario.TransactionMappings[x]).ToList());
+        BillSuggestion suggestion = new(userId, detected);
+
+        Scenario.BillSuggestionMappings.Add(suggestionName, suggestion.Id);
+        return PersistAsync(context => context.BillSuggestions.Add(suggestion));
+    }
 }

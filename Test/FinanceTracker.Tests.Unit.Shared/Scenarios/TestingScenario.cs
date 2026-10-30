@@ -38,6 +38,7 @@ public sealed class TestingScenario
     public Dictionary<string, Guid> RuleMappings { get; set; } = [];
     public Dictionary<string, Guid> BudgetMappings { get; set; } = [];
     public Dictionary<string, Guid> BillMappings { get; set; } = [];
+    public Dictionary<string, Guid> BillSuggestionMappings { get; set; } = [];
 
     public TestingScenario(IDbContextFactory<FinanceTrackerContext> dbContextFactory,
         CancellationToken cancellationToken)

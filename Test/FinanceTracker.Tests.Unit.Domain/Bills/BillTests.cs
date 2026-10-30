@@ -272,6 +272,63 @@ public class BillTests
     }
 
     [Test]
+    public async Task EndByUser_ReopenFromASyncLeavesItEnded()
+    {
+        // Arrange
+        Bill bill = Build(BillFrequency.Monthly, new DateOnly(2026, 1, 10));
+        bill.EndByUser(new DateOnly(2026, 3, 1));
+
+        // Act
+        bool reopened = bill.Reopen();
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(reopened).IsFalse();
+            await Assert.That(bill.EndedOn).IsEqualTo(new DateOnly(2026, 3, 1));
+            await Assert.That(bill.EndedByUser).IsTrue();
+        }
+    }
+
+    [Test]
+    public async Task EndByUser_AlreadyEndedByTheBank_KeepsTheDayItEnded()
+    {
+        // Arrange
+        Bill bill = Build(BillFrequency.Monthly, new DateOnly(2026, 1, 10));
+        bill.End(new DateOnly(2026, 2, 1));
+
+        // Act
+        bool changed = bill.EndByUser(new DateOnly(2026, 3, 1));
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(changed).IsTrue();
+            await Assert.That(bill.EndedOn).IsEqualTo(new DateOnly(2026, 2, 1));
+            await Assert.That(bill.EndedByUser).IsTrue();
+        }
+    }
+
+    [Test]
+    public async Task ReopenByUser_EndedByTheUser_IsDueAgain()
+    {
+        // Arrange
+        Bill bill = Build(BillFrequency.Monthly, new DateOnly(2026, 1, 10));
+        bill.EndByUser(new DateOnly(2026, 3, 1));
+
+        // Act
+        bool reopened = bill.ReopenByUser();
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(reopened).IsTrue();
+            await Assert.That(bill.HasEnded).IsFalse();
+            await Assert.That(bill.EndedByUser).IsFalse();
+        }
+    }
+
+    [Test]
     public async Task End_AlreadyEnded_KeepsTheFirstDay()
     {
         // Arrange

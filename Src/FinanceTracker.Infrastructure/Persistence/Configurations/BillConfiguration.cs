@@ -14,7 +14,7 @@ internal sealed class BillConfiguration : AggregateRootConfiguration<Bill>
         builder.Property(x => x.Name).Encrypted();
         builder.Property(x => x.Payee).Encrypted();
         builder.Property(x => x.Source).HasConversion<string>();
-        builder.Property(x => x.Frequency).HasConversion<string>();
+        builder.Property(x => x.Frequency).Encrypted();
         builder.Property(x => x.StartsOn).Encrypted();
         builder.Property(x => x.Anchor).Encrypted();
         builder.Property(x => x.EndedOn).Encrypted();

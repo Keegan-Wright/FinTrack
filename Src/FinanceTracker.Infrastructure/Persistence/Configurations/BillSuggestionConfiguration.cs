@@ -15,7 +15,7 @@ internal sealed class BillSuggestionConfiguration : AggregateRootConfiguration<B
         // compared once decrypted
         builder.Property(x => x.Key).Encrypted();
         builder.Property(x => x.Name).Encrypted();
-        builder.Property(x => x.Frequency).HasConversion<string>();
+        builder.Property(x => x.Frequency).Encrypted();
         builder.Property(x => x.Amount).Encrypted();
         builder.Property(x => x.FirstPaidOn).Encrypted();
         builder.Property(x => x.LastPaidOn).Encrypted();

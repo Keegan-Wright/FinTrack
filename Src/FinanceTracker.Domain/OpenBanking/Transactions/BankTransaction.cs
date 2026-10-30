@@ -246,6 +246,22 @@ public sealed class BankTransaction : AggregateRoot
     }
 
     /// <summary>
+    /// Drops the payment of a bill being deleted, whoever decided it, so the transaction pays nothing until matched
+    /// again.
+    /// </summary>
+    /// <returns>Whether it paid the bill.</returns>
+    public bool RemoveDeletedBill(Guid billId)
+    {
+        if (!PaysBill(billId))
+        {
+            return false;
+        }
+
+        BillPayment = null;
+        return true;
+    }
+
+    /// <summary>
     /// The user says this pays no bill, which matching and rules then leave alone.
     /// </summary>
     public void PayNoBill(DateTime decidedAt) => BillPayment = new BillPayment(null, DecisionSource.User, decidedAt);

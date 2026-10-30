@@ -152,6 +152,26 @@ public class BillSeederTests
     }
 
     [Test]
+    public async Task Seed_StandingOrderStillRunningButTheUserEndedTheBill_StaysEnded()
+    {
+        // Arrange
+        BankAccount account = Account();
+        account.SyncStandingOrders([StandingOrder()]);
+        Bill bill = BillSeeder.Seed([account], [], Today).Added.Single();
+        bill.EndByUser(Today);
+
+        // Act
+        BillSeeder.Seed([account], [bill], Today);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(bill.HasEnded).IsTrue();
+            await Assert.That(bill.EndedByUser).IsTrue();
+        }
+    }
+
+    [Test]
     public async Task Seed_NewDirectDebit_AddsAMonthlyBillFromItsPreviousPayment()
     {
         // Arrange

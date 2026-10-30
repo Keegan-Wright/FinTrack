@@ -105,6 +105,44 @@ public class BankTransactionBillPaymentTests
         }
     }
 
+    [Test]
+    public async Task RemoveDeletedBill_EvenTheUsersPayment_IsDropped()
+    {
+        // Arrange
+        BankTransaction transaction = Build();
+        Bill bill = Bill(UserId);
+        transaction.PayBill(bill, At);
+
+        // Act
+        bool removed = transaction.RemoveDeletedBill(bill.Id);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(removed).IsTrue();
+            await Assert.That(transaction.BillPayment).IsNull();
+        }
+    }
+
+    [Test]
+    public async Task RemoveDeletedBill_AnotherBill_LeavesItAlone()
+    {
+        // Arrange
+        BankTransaction transaction = Build();
+        Bill bill = Bill(UserId);
+        transaction.PayBill(bill, At);
+
+        // Act
+        bool removed = transaction.RemoveDeletedBill(Guid.NewGuid());
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(removed).IsFalse();
+            await Assert.That(transaction.PaysBill(bill.Id)).IsTrue();
+        }
+    }
+
     private static Bill Bill(Guid userId) =>
         new(userId, Account.Id, "Streaming", "Streamco", BillFrequency.Monthly, 9.99m, new DateOnly(2026, 1, 1),
             BillSource.Manual);

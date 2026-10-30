@@ -15,4 +15,11 @@ public interface IBillSyncService
     /// them. Run after rules and transfers, so the matcher sees which bills rules said were paid.
     /// </summary>
     Task<BillSyncSummary> SyncAsync(CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Matches the transactions from <paramref name="from"/> on to the user's bills and follows prices, e.g. after a
+    /// bill is added or changed, so its history shows straight away.
+    /// </summary>
+    /// <returns>How many transactions' bill changed.</returns>
+    Task<int> MatchFromAsync(DateOnly from, CancellationToken cancellationToken);
 }

@@ -80,6 +80,21 @@ public class BillSyncService : ServiceBase<BillSyncService>, IBillSyncService
         return summary;
     }
 
+    public async Task<int> MatchFromAsync(DateOnly from, CancellationToken cancellationToken)
+    {
+        await using FinanceTrackerContext context =
+            await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+
+        List<Bill> bills = await context.Bills.OwnedBy(UserId).ToListAsync(cancellationToken);
+        List<BankTransaction> transactions = await LoadTransactionsAsync(context, from, cancellationToken);
+
+        int matched = BillMatcher.Match(bills, transactions, _timeProvider.LocalTimeZone, Now);
+        FollowPrices(bills, transactions, from, _timeProvider.LocalTimeZone, Today);
+
+        await context.SaveChangesAsync(cancellationToken);
+        return matched;
+    }
+
     /// <summary>
     /// The recent days, or back to the start of a bill new this run so its history is matched once.
     /// </summary>
