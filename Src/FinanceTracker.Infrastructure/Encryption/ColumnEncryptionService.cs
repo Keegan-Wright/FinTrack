@@ -164,6 +164,7 @@ public class ColumnEncryptionService : IColumnEncryptionService
         byte[] byteArray => Convert.ToBase64String(byteArray),
         DateTime dateTime => dateTime.ToString("O", CultureInfo.InvariantCulture),
         DateTimeOffset dateTimeOffset => dateTimeOffset.ToString("O", CultureInfo.InvariantCulture),
+        DateOnly dateOnly => dateOnly.ToString("O", CultureInfo.InvariantCulture),
         System.Collections.IEnumerable enumerable => System.Text.Json.JsonSerializer.Serialize(enumerable),
         IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture),
         _ => value.ToString()
@@ -205,6 +206,11 @@ public class ColumnEncryptionService : IColumnEncryptionService
         if (targetType == typeof(DateTimeOffset))
         {
             return DateTimeOffset.Parse(plainText, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
+        }
+
+        if (targetType == typeof(DateOnly))
+        {
+            return DateOnly.ParseExact(plainText, "O", CultureInfo.InvariantCulture);
         }
 
         if (targetType.IsArray)

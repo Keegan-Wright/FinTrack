@@ -315,6 +315,19 @@ public class ColumnEncryptionServiceTests : UnitTestBase
     }
 
     [Test]
+    public async Task EndToEnd_DateOnly_RoundTrips()
+    {
+        // Arrange
+        DateOnly day = new(2026, 3, 1);
+
+        // Act
+        DateOnly decrypted = _subject.Decrypt<DateOnly>(_subject.Encrypt(day));
+
+        // Assert
+        await Assert.That(decrypted).IsEqualTo(day);
+    }
+
+    [Test]
     public async Task EndToEnd_Array_Success()
     {
         // Arrange
