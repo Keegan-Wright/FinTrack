@@ -86,6 +86,39 @@ public class RulesServiceTests : InfrastructureTestBase
     }
 
     [Test]
+    public async Task AddRuleAsync_AnotherUsersBill_Throws()
+    {
+        // Arrange
+        await SeedAsync(Username);
+        await Scenario.Do(s => s.UserScenario.WithUser(OtherUsername))
+            .Do(s => s.BankConnectionScenario.WithConnection("theirs", OtherUsername))
+            .Do(s => s.BankAccountScenario.WithAccount("theirs", "theirs"))
+            .Do(s => s.BillScenario.WithBill("theirs", OtherUsername, "theirs"));
+        SaveRule rule = TagGroceries("shopping");
+        rule.Actions = [new RuleAction { Type = RuleActionType.PayBill, BillId = Scenario.BillMappings["theirs"] }];
+
+        // Act & Assert
+        await Assert.That(async () => await BuildSubject(Username).AddRuleAsync(rule, CancellationToken))
+            .Throws<InvalidOperationException>();
+    }
+
+    [Test]
+    public async Task AddRuleAsync_TheirOwnBill_SavesIt()
+    {
+        // Arrange
+        await SeedAsync(Username);
+        await Scenario.Do(s => s.BillScenario.WithBill("streaming", Username, "main"));
+        SaveRule rule = TagGroceries("shopping");
+        rule.Actions = [new RuleAction { Type = RuleActionType.PayBill, BillId = Scenario.BillMappings["streaming"] }];
+
+        // Act
+        Rule added = await BuildSubject(Username).AddRuleAsync(rule, CancellationToken);
+
+        // Assert
+        await Assert.That(added.Actions.Single().BillId).IsEqualTo(Scenario.BillMappings["streaming"]);
+    }
+
+    [Test]
     public async Task AddRuleAsync_OnAnotherUsersAccount_Throws()
     {
         // Arrange

@@ -51,4 +51,7 @@ public static partial class LoggerMessages
 
     [LoggerMessage(LogLevel.Information, "Applied rule {ruleId} to the {reached} existing transactions it reaches for user {userId}, {changed} changed")]
     public static partial void LogAppliedRuleToExisting(this ILogger logger, Guid userId, Guid ruleId, int reached, int changed);
+
+    [LoggerMessage(LogLevel.Information, "Synced bills for user {userId}, {added} added, {ended} ended, {matched} transactions matched, {pricesChanged} prices changed")]
+    public static partial void LogSyncedBills(this ILogger logger, Guid userId, int added, int ended, int matched, int pricesChanged);
 }

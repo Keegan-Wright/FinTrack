@@ -63,6 +63,7 @@ public static class RuleText
         RuleActionType.MarkAsTransfer => "Mark as a transfer",
         RuleActionType.MarkNotATransfer => "Mark as not a transfer",
         RuleActionType.HideClassification => "Hide bank classification",
+        RuleActionType.PayBill => "Pay bill",
         _ => type.ToString()
     };
 

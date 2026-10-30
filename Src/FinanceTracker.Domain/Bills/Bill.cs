@@ -204,6 +204,24 @@ public sealed class Bill : AggregateRoot
     }
 
     /// <summary>
+    /// Follows a price change, the price having changed when <paramref name="latest"/>, its latest paid period, was
+    /// paid outside the tolerance. The new amount applies from the day after that period's due date, so the period
+    /// itself still shows <see cref="BillState.Changed"/> and the next one expects the new price.
+    /// </summary>
+    /// <returns>Whether the expected amount changed.</returns>
+    public bool FollowPrice(BillPeriod latest)
+    {
+        ArgumentNullException.ThrowIfNull(latest);
+
+        if (latest.State != BillState.Changed || latest.Paid <= 0)
+        {
+            return false;
+        }
+
+        return ChangeAmount(latest.Paid, latest.Due.AddDays(1));
+    }
+
+    /// <summary>
     /// Stops it being due after <paramref name="on"/>, e.g. its standing order was cancelled.
     /// </summary>
     /// <returns>Whether it was running.</returns>

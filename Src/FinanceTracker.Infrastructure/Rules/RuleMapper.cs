@@ -49,7 +49,8 @@ internal static class RuleMapper
     /// </summary>
     public static DomainRuleAction ToDomain(RuleAction action) =>
         new(MapEnum<RuleActionType, DomainRuleActionType>(action.Type), action.ClassificationId,
-            string.IsNullOrWhiteSpace(action.BankClassification) ? null : action.BankClassification.Trim());
+            string.IsNullOrWhiteSpace(action.BankClassification) ? null : action.BankClassification.Trim(),
+            action.BillId);
 
     /// <summary>
     /// A rule to start from that matches <paramref name="transaction"/> its merchant, or the description when the
@@ -141,6 +142,7 @@ internal static class RuleMapper
     {
         Type = MapEnum<DomainRuleActionType, RuleActionType>(action.Type),
         ClassificationId = action.ClassificationId,
-        BankClassification = action.BankClassification
+        BankClassification = action.BankClassification,
+        BillId = action.BillId
     };
 }

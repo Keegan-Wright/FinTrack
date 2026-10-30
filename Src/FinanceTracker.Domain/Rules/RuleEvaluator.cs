@@ -8,7 +8,8 @@ namespace FinanceTracker.Domain.Rules;
 /// actions stacking
 /// <list type="bullet">
 /// <item>Tags from every matching rule are added, each credited to the first rule that added it.</item>
-/// <item>The transfer answer has one value, so the first matching rule to give one wins.</item>
+/// <item>The transfer answer has one value, so the first matching rule to give one wins. The same for the bill it
+/// pays.</item>
 /// <item>A matching rule with <see cref="Rule.StopProcessing"/> ends the run.</item>
 /// </list>
 /// </summary>
@@ -30,6 +31,7 @@ public static class RuleEvaluator
         List<RuleTag> tags = [];
         List<HiddenClassification> hidden = [];
         RuleTransfer? transfer = null;
+        RuleBill? bill = null;
 
         // By id after order so rules sharing a position always run the same way
         IEnumerable<Rule> enabled = rules
@@ -60,6 +62,9 @@ public static class RuleEvaluator
                     case RuleActionType.HideClassification:
                         Hide(hidden, action.BankClassification!, rule.Id);
                         break;
+                    case RuleActionType.PayBill:
+                        bill ??= new RuleBill(action.BillId!.Value, rule.Id);
+                        break;
                     default:
                         transfer ??= new RuleTransfer(ToDecision(action.Type), rule.Id);
                         break;
@@ -72,7 +77,7 @@ public static class RuleEvaluator
             }
         }
 
-        return new RuleOutcome(tags, transfer, hidden);
+        return new RuleOutcome(tags, transfer, hidden, bill);
     }
 
     /// <summary>

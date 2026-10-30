@@ -26,5 +26,10 @@ public enum RuleActionType
     /// <summary>
     /// Hides one of the bank's classifications, every matching rule's are hidden.
     /// </summary>
-    HideClassification = 4
+    HideClassification = 4,
+
+    /// <summary>
+    /// Decides it pays a bill. The first matching rule to decide wins.
+    /// </summary>
+    PayBill = 5
 }

@@ -221,6 +221,38 @@ public class BillTests
             .Throws<ArgumentOutOfRangeException>();
 
     [Test]
+    public async Task FollowPrice_ChangedPeriod_ExpectsTheNewPriceFromTheDayAfterItsDueDate()
+    {
+        // Arrange
+        Bill bill = Build(BillFrequency.Monthly, new DateOnly(2026, 1, 10), amount: 10.99m);
+        BillPeriod changed = new(new DateOnly(2026, 3, 10), 10.99m, BillState.Changed, 12.99m,
+            new DateOnly(2026, 3, 8), [Guid.NewGuid()]);
+
+        // Act
+        bool followed = bill.FollowPrice(changed);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(followed).IsTrue();
+            await Assert.That(bill.ExpectedOn(new DateOnly(2026, 3, 10))).IsEqualTo(10.99m);
+            await Assert.That(bill.ExpectedOn(new DateOnly(2026, 4, 10))).IsEqualTo(12.99m);
+        }
+    }
+
+    [Test]
+    public async Task FollowPrice_PaidAsExpected_ChangesNothing()
+    {
+        // Arrange
+        Bill bill = Build(BillFrequency.Monthly, new DateOnly(2026, 1, 10), amount: 10.99m);
+        BillPeriod paid = new(new DateOnly(2026, 3, 10), 10.99m, BillState.Paid, 10.99m, new DateOnly(2026, 3, 10),
+            [Guid.NewGuid()]);
+
+        // Act & Assert
+        await Assert.That(bill.FollowPrice(paid)).IsFalse();
+    }
+
+    [Test]
     public async Task EndThenReopen_IsDueAgain()
     {
         // Arrange

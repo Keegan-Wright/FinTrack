@@ -111,6 +111,66 @@ public class SaveRuleValidatorTests : UnitTestBase
         await Assert.That(result.IsValid).IsTrue();
     }
 
+    [Test]
+    public async Task ValidateAsync_PayBillWithABill_IsValid()
+    {
+        // Arrange
+        SaveRule rule = Valid();
+        rule.Actions = [new RuleAction { Type = RuleActionType.PayBill, BillId = Guid.CreateVersion7() }];
+
+        // Act
+        ValidationResult result = await _subject.ValidateAsync(rule, CancellationToken);
+
+        // Assert
+        await Assert.That(result.IsValid).IsTrue();
+    }
+
+    [Test]
+    public async Task ValidateAsync_PayBillWithoutABill_IsInvalid()
+    {
+        // Arrange
+        SaveRule rule = Valid();
+        rule.Actions = [new RuleAction { Type = RuleActionType.PayBill }];
+
+        // Act
+        ValidationResult result = await _subject.ValidateAsync(rule, CancellationToken);
+
+        // Assert
+        await Assert.That(result.Errors.Select(static x => x.ErrorMessage)).Contains("Choose a bill");
+    }
+
+    [Test]
+    public async Task ValidateAsync_TwoBills_IsInvalid()
+    {
+        // Arrange
+        SaveRule rule = Valid();
+        rule.Actions =
+        [
+            new RuleAction { Type = RuleActionType.PayBill, BillId = Guid.CreateVersion7() },
+            new RuleAction { Type = RuleActionType.PayBill, BillId = Guid.CreateVersion7() }
+        ];
+
+        // Act
+        ValidationResult result = await _subject.ValidateAsync(rule, CancellationToken);
+
+        // Assert
+        await Assert.That(result.Errors.Select(static x => x.ErrorMessage)).Contains("A rule can only pay one bill");
+    }
+
+    [Test]
+    public async Task ValidateAsync_BillOnAnotherAction_IsInvalid()
+    {
+        // Arrange
+        SaveRule rule = Valid();
+        rule.Actions[0].BillId = Guid.CreateVersion7();
+
+        // Act
+        ValidationResult result = await _subject.ValidateAsync(rule, CancellationToken);
+
+        // Assert
+        await Assert.That(result.Errors.Select(static x => x.ErrorMessage)).Contains("Only pay bill takes a bill");
+    }
+
     private static SaveRule Valid() => new()
     {
         Name = "Groceries",

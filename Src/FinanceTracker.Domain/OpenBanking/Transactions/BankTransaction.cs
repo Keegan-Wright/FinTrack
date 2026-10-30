@@ -286,12 +286,12 @@ public sealed class BankTransaction : AggregateRoot
         RemoveClassification(customClassificationId);
 
     /// <summary>
-    /// Whether rule <paramref name="ruleId"/> added one of its tags or gave its transfer answer, so re-applying the
-    /// rules here can take back what that rule no longer gives.
+    /// Whether rule <paramref name="ruleId"/> added one of its tags, gave its transfer answer or said which bill it
+    /// pays, so re-applying the rules here can take back what that rule no longer gives.
     /// </summary>
     public bool WasDecidedBy(Guid ruleId) =>
         _ruleTags.Exists(x => x.RuleId == ruleId) || Transfer?.RuleId == ruleId ||
-        _hiddenClassifications.Exists(x => x.RuleId == ruleId);
+        _hiddenClassifications.Exists(x => x.RuleId == ruleId) || BillPayment?.RuleId == ruleId;
 
     /// <summary>
     /// Hides one of the bank's classifications by hand. A rule hiding it too no longer counts, the user's stands.
@@ -337,9 +337,9 @@ public sealed class BankTransaction : AggregateRoot
     }
 
     /// <summary>
-    /// Records what the user's rules decided, from <see cref="RuleEvaluator.Evaluate"/>. Tags and a transfer answer a
-    /// rule gave before but no longer does are removed, so editing or disabling a rule undoes what it did. Tags are
-    /// left alone once <see cref="TagsSetByUser"/>, and the user's transfer decision is never replaced.
+    /// Records what the user's rules decided, from <see cref="RuleEvaluator.Evaluate"/>. Tags, a transfer answer and a
+    /// bill a rule gave before but no longer does are removed, so editing or disabling a rule undoes what it did. Tags
+    /// are left alone once <see cref="TagsSetByUser"/>, and the user's transfer and bill decisions are never replaced.
     /// </summary>
     /// <returns>Whether anything changed.</returns>
     public bool ApplyRules(RuleOutcome outcome, DateTime decidedAt)
@@ -349,8 +349,32 @@ public sealed class BankTransaction : AggregateRoot
         bool tagsChanged = ApplyRuleTags(outcome.Tags);
         bool transferChanged = ApplyRuleTransfer(outcome.Transfer, decidedAt);
         bool hiddenChanged = ApplyRuleHiding(outcome.HiddenClassifications);
+        bool billChanged = ApplyRuleBill(outcome.Bill, decidedAt);
 
-        return tagsChanged || transferChanged || hiddenChanged;
+        return tagsChanged || transferChanged || hiddenChanged || billChanged;
+    }
+
+    private bool ApplyRuleBill(RuleBill? bill, DateTime decidedAt)
+    {
+        if (bill is null)
+        {
+            // Only a rule's own answer is taken back, the matcher's and the user's stay
+            if (BillPayment?.Source != DecisionSource.Rule)
+            {
+                return false;
+            }
+
+            BillPayment = null;
+            return true;
+        }
+
+        BillPayment payment = BillPayment.FromRule(bill.BillId, bill.RuleId, decidedAt);
+        if (payment.IsSameAs(BillPayment))
+        {
+            return false;
+        }
+
+        return DecideBillPayment(payment);
     }
 
     /// <summary>

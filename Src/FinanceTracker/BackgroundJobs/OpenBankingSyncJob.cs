@@ -3,6 +3,7 @@ using System.Linq.Expressions;
 using FinanceTracker.Contracts;
 using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Infrastructure;
+using FinanceTracker.Infrastructure.Bills;
 using FinanceTracker.Infrastructure.OpenBanking;
 using FinanceTracker.Infrastructure.OpenBanking.Balances;
 using FinanceTracker.Infrastructure.OpenBanking.Transfers;
@@ -83,11 +84,23 @@ public abstract class OpenBankingSyncJob
         }
 
         HashSet<Guid> owners = toSync.Select(static x => x.UserId).ToHashSet();
+
         foreach (Guid userId in owners)
         {
-            await SnapshotBalancesAsync(userId, today, startedAt, performingBackgroundSyncActivity, cancellationToken);
-            await ApplyRulesAsync(userId, startedAt, performingBackgroundSyncActivity, cancellationToken);
-            await MatchTransfersAsync(userId, performingBackgroundSyncActivity, cancellationToken);
+            // Today's snapshots, in the server's time zone, from the balances the sync stored
+            await RunAsOwnerAsync<IBalanceSnapshotService>(userId, "Snapshot balances",
+                performingBackgroundSyncActivity, x => x.SnapshotAsync(today, startedAt, cancellationToken));
+
+            // Rules on what the sync brought in or changed, before transfers so the matcher sees what they decided
+            await RunAsOwnerAsync<IRuleApplicationService>(userId, "Applied rules", performingBackgroundSyncActivity,
+                x => x.ApplyChangesAsync(startedAt, cancellationToken));
+
+            await RunAsOwnerAsync<ITransferMatchingService>(userId, "Matched transfers",
+                performingBackgroundSyncActivity, x => x.MatchChangesAsync(cancellationToken));
+
+            // Bills last, so the matcher sees which bills rules said were paid
+            await RunAsOwnerAsync<IBillSyncService>(userId, "Synced bills", performingBackgroundSyncActivity,
+                x => x.SyncAsync(cancellationToken));
         }
 
         performingBackgroundSyncActivity?.AddEvent(new ActivityEvent("Background sync completed"));
@@ -96,61 +109,20 @@ public abstract class OpenBankingSyncJob
     }
 
     /// <summary>
-    /// Updates the owner's snapshots for <paramref name="today"/>, in the server's time zone, from the balances the
-    /// sync stored.
+    /// Runs <paramref name="run"/> on a <typeparamref name="TService"/> resolved in a scope acting as
+    /// <paramref name="userId"/>, as these services work for the current user. A failure is recorded on
+    /// <paramref name="activity"/> rather than thrown, so it doesn't stop the other steps or owners.
     /// </summary>
-    private async Task SnapshotBalancesAsync(Guid userId, DateOnly today, DateTime syncStartedAt, Activity? activity,
-        CancellationToken cancellationToken)
+    /// <param name="done">What the step did, for the activity event e.g. <c>Applied rules</c>.</param>
+    private async Task RunAsOwnerAsync<TService>(Guid userId, string done, Activity? activity,
+        Func<TService, Task> run) where TService : notnull
     {
         try
         {
             await using AsyncServiceScope scope = _scopeFactory.CreateUserScope(userId);
-            IBalanceSnapshotService balanceSnapshotService =
-                scope.ServiceProvider.GetRequiredService<IBalanceSnapshotService>();
+            await run(scope.ServiceProvider.GetRequiredService<TService>());
 
-            await balanceSnapshotService.SnapshotAsync(today, syncStartedAt, cancellationToken);
-
-            activity?.AddEvent(new ActivityEvent($"Snapshot balances for User {userId}"));
-        }
-        catch (Exception ex)
-        {
-            activity?.AddException(ex);
-        }
-    }
-
-    /// <summary>
-    /// Applies the owner's rules to what the sync brought in or changed.
-    /// </summary>
-    private async Task ApplyRulesAsync(Guid userId, DateTime syncStartedAt, Activity? activity,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            await using AsyncServiceScope scope = _scopeFactory.CreateUserScope(userId);
-            IRuleApplicationService ruleApplicationService =
-                scope.ServiceProvider.GetRequiredService<IRuleApplicationService>();
-
-            await ruleApplicationService.ApplyChangesAsync(syncStartedAt, cancellationToken);
-
-            activity?.AddEvent(new ActivityEvent($"Applied rules for User {userId}"));
-        }
-        catch (Exception ex)
-        {
-            activity?.AddException(ex);
-        }
-    }
-
-    private async Task MatchTransfersAsync(Guid userId, Activity? activity, CancellationToken cancellationToken)
-    {
-        try
-        {
-            await using AsyncServiceScope scope = _scopeFactory.CreateUserScope(userId);
-            ITransferMatchingService transferMatchingService =
-                scope.ServiceProvider.GetRequiredService<ITransferMatchingService>();
-
-            await transferMatchingService.MatchChangesAsync(cancellationToken);
-
-            activity?.AddEvent(new ActivityEvent($"Matched transfers for User {userId}"));
+            activity?.AddEvent(new ActivityEvent($"{done} for User {userId}"));
         }
         catch (Exception ex)
         {

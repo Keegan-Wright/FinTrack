@@ -72,7 +72,8 @@
                                    For="@(() => action.Type)" Variant="Variant.Outlined" Margin="Margin.Dense"
                                    Class="ft-rule-form__action-type">
 
-                            @foreach (RuleActionType type in Enum.GetValues<RuleActionType>())
+                            @* Paying a bill waits for the bills pages, which give it a bill to choose *@
+                            @foreach (RuleActionType type in Enum.GetValues<RuleActionType>().Where(static x => x != RuleActionType.PayBill))
                             {
                                 <MudSelectItem T="RuleActionType" Value="@type">
                                     @RuleText.ActionName(type)

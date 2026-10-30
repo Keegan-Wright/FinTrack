@@ -96,6 +96,9 @@ public static class BillCalculator
         _ => 1
     };
 
-    private static DateOnly LocalDay(DateTime utc, TimeZoneInfo timeZone) =>
+    /// <summary>
+    /// The day <paramref name="utc"/> falls on where the user is.
+    /// </summary>
+    internal static DateOnly LocalDay(DateTime utc, TimeZoneInfo timeZone) =>
         DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(DateTime.SpecifyKind(utc, DateTimeKind.Utc), timeZone));
 }
