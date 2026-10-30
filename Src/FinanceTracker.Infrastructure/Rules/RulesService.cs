@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using FinanceTracker.Contracts.Rules;
 using FinanceTracker.Contracts.Services;
+using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -16,12 +17,15 @@ namespace FinanceTracker.Infrastructure.Rules;
 public class RulesService : ServiceBase<RulesService>, IRulesService
 {
     private readonly IRuleApplicationService _ruleApplicationService;
+    private readonly TimeProvider _timeProvider;
 
     public RulesService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<RulesService> logger,
-        IRuleApplicationService ruleApplicationService) : base(currentUser, financeTrackerContextFactory, logger)
+        IRuleApplicationService ruleApplicationService, TimeProvider timeProvider)
+        : base(currentUser, financeTrackerContextFactory, logger)
     {
         _ruleApplicationService = ruleApplicationService;
+        _timeProvider = timeProvider;
     }
 
     public async IAsyncEnumerable<Rule> GetRulesAsync([EnumeratorCancellation] CancellationToken cancellationToken)
@@ -89,11 +93,7 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
 
         await EnsureTheUsersOwnAsync(context, rule, cancellationToken);
 
-        updated.Rename(rule.Name);
-        updated.ChangeMatchMode(RuleMapper.ToDomain(rule.MatchMode));
-        updated.StopProcessingAfterMatch(rule.StopProcessing);
-        updated.ReplaceConditions(ToDomainConditions(rule));
-        updated.ReplaceActions(ToDomainActions(rule));
+        Overwrite(updated, rule);
 
         if (rule.IsEnabled)
         {
@@ -130,6 +130,50 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
         }
 
         await context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<RulePreview> PreviewRuleAsync(Guid? id, SaveRule rule, CancellationToken cancellationToken)
+    {
+        await using FinanceTrackerContext context =
+            await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+        await EnsureTheUsersOwnAsync(context, rule, cancellationToken);
+
+        // Untracked, the draft and the transactions are changed in memory and never saved
+        List<DomainRule> saved = await context.Rules.OwnedBy(UserId).AsNoTracking().ToListAsync(cancellationToken);
+        DomainRule draft = DraftOf(id, rule, saved);
+
+        List<DomainRule> running = saved
+            .Where(x => x.IsEnabled && x.Id != draft.Id)
+            .Append(draft)
+            .ToList();
+
+        Dictionary<Guid, string> tagNames = await context.CustomClassifications.OwnedBy(UserId)
+            .ToDictionaryAsync(static x => x.Id, static x => x.Tag, cancellationToken);
+
+        // Conditions test encrypted fields, so every transaction is loaded and checked once decrypted
+        List<BankTransaction> transactions = await context.BankTransactions.OwnedBy(UserId).AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        return RulePreviewer.Preview(running, draft, transactions, tagNames, _timeProvider.GetUtcNow().UtcDateTime);
+    }
+
+    public Task<int> ApplyRuleToExistingAsync(Guid id, CancellationToken cancellationToken) =>
+        _ruleApplicationService.ApplyToExistingAsync(id, cancellationToken);
+
+    public async Task<SaveRule> GetDraftFromTransactionAsync(Guid transactionId,
+        CancellationToken cancellationToken)
+    {
+        await using FinanceTrackerContext context =
+            await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+
+        BankTransaction transaction = await context.BankTransactions.OwnedBy(UserId).AsNoTracking()
+            .SingleAsync(x => x.Id == transactionId, cancellationToken);
+
+        List<Guid> tagIds = await context.CustomClassifications.OwnedBy(UserId)
+            .Select(static x => x.Id)
+            .ToListAsync(cancellationToken);
+
+        return RuleMapper.DraftFrom(transaction, tagIds.ToHashSet());
     }
 
     public async Task DeleteRuleAsync(Guid id, CancellationToken cancellationToken)
@@ -203,6 +247,44 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
         {
             throw new InvalidOperationException("A rule can only look at the user's own accounts.");
         }
+    }
+
+    /// <summary>
+    /// <paramref name="rule"/> as a domain rule to preview, switched on whatever it says. The saved one with the
+    /// changes when editing so it keeps its id and place, or a new one running last.
+    /// </summary>
+    /// <param name="saved">The user's rules, untracked.</param>
+    /// <exception cref="InvalidOperationException">None of <paramref name="saved"/> has <paramref name="id"/>.
+    /// </exception>
+    private DomainRule DraftOf(Guid? id, SaveRule rule, List<DomainRule> saved)
+    {
+        DomainRule draft;
+        if (id is { } ruleId)
+        {
+            draft = saved.Single(x => x.Id == ruleId);
+            Overwrite(draft, rule);
+        }
+        else
+        {
+            int order = saved.Count == 0 ? 0 : saved.Max(static x => x.Order) + 1;
+            draft = new DomainRule(UserId, rule.Name, order, RuleMapper.ToDomain(rule.MatchMode),
+                ToDomainConditions(rule), ToDomainActions(rule));
+        }
+
+        draft.Enable();
+        return draft;
+    }
+
+    /// <summary>
+    /// Everything about <paramref name="target"/> from <paramref name="rule"/> except its order and whether it's on.
+    /// </summary>
+    private static void Overwrite(DomainRule target, SaveRule rule)
+    {
+        target.Rename(rule.Name);
+        target.ChangeMatchMode(RuleMapper.ToDomain(rule.MatchMode));
+        target.StopProcessingAfterMatch(rule.StopProcessing);
+        target.ReplaceConditions(ToDomainConditions(rule));
+        target.ReplaceActions(ToDomainActions(rule));
     }
 
     private static List<DomainRuleCondition> ToDomainConditions(SaveRule rule) =>

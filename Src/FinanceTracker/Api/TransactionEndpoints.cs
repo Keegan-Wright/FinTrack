@@ -1,6 +1,7 @@
 using FinanceTracker.Contracts.Api;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Transactions;
+using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace FinanceTracker.Api;
 
@@ -9,7 +10,8 @@ public static class TransactionEndpoints
     extension(RouteGroupBuilder api)
     {
         /// <summary>
-        /// <see cref="ITransactionsService"/> at <see cref="ApiRoutes.Transactions"/>.
+        /// <see cref="ITransactionsService"/> at <see cref="ApiRoutes.Transactions"/>. Transactions that don't exist or
+        /// aren't the user's, and bank classifications they don't have, answer 404.
         /// </summary>
         public RouteGroupBuilder MapTransactionEndpoints()
         {
@@ -19,6 +21,20 @@ public static class TransactionEndpoints
             transactions.MapPost("search", (FilterTransactions request, ITransactionsService service,
                     CancellationToken cancellationToken) =>
                 service.GetAllTransactionsAsync(request, cancellationToken));
+
+            transactions.MapPost("{id:guid}/bank-classifications/hide", async Task<Ok<Transaction>> (Guid id,
+                        ChangeBankClassification request, ITransactionsService service,
+                        CancellationToken cancellationToken) =>
+                    TypedResults.Ok(await service.HideBankClassificationAsync(id, request, cancellationToken)))
+                .Validated<ChangeBankClassification>()
+                .NotFoundWhenMissing();
+
+            transactions.MapPost("{id:guid}/bank-classifications/show", async Task<Ok<Transaction>> (Guid id,
+                        ChangeBankClassification request, ITransactionsService service,
+                        CancellationToken cancellationToken) =>
+                    TypedResults.Ok(await service.ShowBankClassificationAsync(id, request, cancellationToken)))
+                .Validated<ChangeBankClassification>()
+                .NotFoundWhenMissing();
 
             RouteGroupBuilder filters = transactions.MapGroup("filters");
 

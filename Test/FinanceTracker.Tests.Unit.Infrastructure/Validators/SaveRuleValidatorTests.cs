@@ -80,6 +80,37 @@ public class SaveRuleValidatorTests : UnitTestBase
         await Assert.That(result.IsValid).IsFalse();
     }
 
+    [Test]
+    [Arguments(RuleActionType.HideClassification, null)]
+    [Arguments(RuleActionType.MarkAsTransfer, "TV")]
+    public async Task ValidateAsync_BankClassificationOnTheWrongAction_IsInvalid(RuleActionType type,
+        string? bankClassification)
+    {
+        // Arrange
+        SaveRule rule = Valid();
+        rule.Actions = [new RuleAction { Type = type, BankClassification = bankClassification }];
+
+        // Act
+        ValidationResult result = await _subject.ValidateAsync(rule, CancellationToken);
+
+        // Assert
+        await Assert.That(result.IsValid).IsFalse();
+    }
+
+    [Test]
+    public async Task ValidateAsync_HidingABankClassification_IsValid()
+    {
+        // Arrange
+        SaveRule rule = Valid();
+        rule.Actions = [new RuleAction { Type = RuleActionType.HideClassification, BankClassification = "TV" }];
+
+        // Act
+        ValidationResult result = await _subject.ValidateAsync(rule, CancellationToken);
+
+        // Assert
+        await Assert.That(result.IsValid).IsTrue();
+    }
+
     private static SaveRule Valid() => new()
     {
         Name = "Groceries",

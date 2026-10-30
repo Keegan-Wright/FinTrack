@@ -49,3 +49,10 @@
     padding-left: 4px;
     text-transform: none;
 }
+
+.ft-details__hidden {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}

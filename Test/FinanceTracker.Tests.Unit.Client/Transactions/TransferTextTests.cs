@@ -94,6 +94,26 @@ public class TransferTextTests
     }
 
     [Test]
+    [Arguments("Cafes", "Decided by your rule Cafes.")]
+    [Arguments(null, "Decided by one of your rules.")]
+    public async Task Reason_RulesDecision_NamesTheRule(string? ruleName, string expected)
+    {
+        // Arrange
+        TransactionTransfer transfer = new()
+        {
+            State = TransferState.NotATransfer,
+            DecidedBy = TransferDecidedBy.Rule,
+            RuleName = ruleName
+        };
+
+        // Act
+        string reason = TransferText.Reason(transfer);
+
+        // Assert
+        await Assert.That(reason).IsEqualTo(expected);
+    }
+
+    [Test]
     public async Task Reason_CoversEveryMatchReason()
     {
         // Act

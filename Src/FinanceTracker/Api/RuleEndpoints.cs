@@ -46,6 +46,28 @@ public static class RuleEndpoints
                 .Validated<ReorderRules>()
                 .NotFoundWhenMissing();
 
+            rules.MapPost("preview", async Task<Ok<RulePreview>> (SaveRule request, IRulesService service,
+                        CancellationToken cancellationToken) =>
+                    TypedResults.Ok(await service.PreviewRuleAsync(null, request, cancellationToken)))
+                .Validated<SaveRule>()
+                .NotFoundWhenMissing();
+
+            rules.MapPost("{id:guid}/preview", async Task<Ok<RulePreview>> (Guid id, SaveRule request,
+                        IRulesService service, CancellationToken cancellationToken) =>
+                    TypedResults.Ok(await service.PreviewRuleAsync(id, request, cancellationToken)))
+                .Validated<SaveRule>()
+                .NotFoundWhenMissing();
+
+            rules.MapPost("{id:guid}/apply", async Task<Ok<int>> (Guid id, IRulesService service,
+                        CancellationToken cancellationToken) =>
+                    TypedResults.Ok(await service.ApplyRuleToExistingAsync(id, cancellationToken)))
+                .NotFoundWhenMissing();
+
+            rules.MapGet("draft/{transactionId:guid}", async Task<Ok<SaveRule>> (Guid transactionId,
+                        IRulesService service, CancellationToken cancellationToken) =>
+                    TypedResults.Ok(await service.GetDraftFromTransactionAsync(transactionId, cancellationToken)))
+                .NotFoundWhenMissing();
+
             rules.MapDelete("{id:guid}", async Task<NoContent> (Guid id, IRulesService service,
                     CancellationToken cancellationToken) =>
                 {

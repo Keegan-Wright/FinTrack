@@ -18,4 +18,11 @@ public class RuleAction
     /// </summary>
     [Description("The tag to add, for add tag only")]
     public Guid? ClassificationId { get; set; }
+
+    /// <summary>
+    /// The bank's classification <see cref="RuleActionType.HideClassification"/> hides, as the bank sends it, null
+    /// for the other types.
+    /// </summary>
+    [Description("The bank's classification to hide, for hide only")]
+    public string? BankClassification { get; set; }
 }

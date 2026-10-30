@@ -19,6 +19,27 @@ public interface ITransactionsService
         CancellationToken cancellationToken);
 
     /// <summary>
+    /// Hides one of the bank's classifications on one of the user's transactions, leaving it out of its tags, the
+    /// filters and reports. No rule shows it again. Validate the request with
+    /// <see cref="Validation.ChangeBankClassificationValidator"/> first.
+    /// </summary>
+    /// <returns>The transaction as it is now.</returns>
+    /// <exception cref="InvalidOperationException">The user has no transaction with <paramref name="transactionId"/>,
+    /// or the bank didn't classify it that way.</exception>
+    Task<Transaction> HideBankClassificationAsync(Guid transactionId, ChangeBankClassification request,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Shows again a bank classification the user hid on one of their transactions. One a rule hid stays hidden until
+    /// the rule changes. Validate the request with <see cref="Validation.ChangeBankClassificationValidator"/> first.
+    /// </summary>
+    /// <returns>The transaction as it is now.</returns>
+    /// <exception cref="InvalidOperationException">The user has no transaction with
+    /// <paramref name="transactionId"/>.</exception>
+    Task<Transaction> ShowBankClassificationAsync(Guid transactionId, ChangeBankClassification request,
+        CancellationToken cancellationToken);
+
+    /// <summary>
     /// The user's accounts, for the account filter.
     /// </summary>
     IAsyncEnumerable<TransactionAccountFilter> GetAccountsForTransactionFiltersAsync(

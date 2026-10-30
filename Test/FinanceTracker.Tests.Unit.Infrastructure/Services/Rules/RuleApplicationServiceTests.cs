@@ -147,6 +147,65 @@ public class RuleApplicationServiceTests : InfrastructureTestBase
         }
     }
 
+    [Test]
+    public async Task ApplyToExistingAsync_ReachesHistory()
+    {
+        // Arrange
+        await SeedAsync(Username, "mine")
+            .Do(s => s.TransactionScenario.WithTransaction("history", "mine", Details("GROCER STORE 1")))
+            .Do(s => s.TransactionScenario.WithTransaction("other", "mine", Details("CAFE 1")))
+            .Do(s => s.RuleScenario.WithRule("groceries", Username, TagsGroceries));
+
+        // Act
+        int changed = await BuildSubject(Username)
+            .ApplyToExistingAsync(Scenario.RuleMappings["groceries"], CancellationToken);
+
+        // Assert
+        Dictionary<Guid, BankTransaction> stored = await LoadTransactionsAsync();
+        using (Assert.Multiple())
+        {
+            await Assert.That(changed).IsEqualTo(1);
+            await Assert.That(stored[Scenario.TransactionMappings["history"]].CustomClassificationIds)
+                .IsEquivalentTo([Scenario.ClassificationMappings["mine"]]);
+            await Assert.That(stored[Scenario.TransactionMappings["other"]].CustomClassificationIds).IsEmpty();
+        }
+    }
+
+    [Test]
+    public async Task ApplyToExistingAsync_RuleOff_ChangesNothing()
+    {
+        // Arrange
+        await SeedAsync(Username, "mine")
+            .Do(s => s.TransactionScenario.WithTransaction("history", "mine", Details("GROCER STORE 1")))
+            .Do(s => s.RuleScenario.WithRule("groceries", Username, userId =>
+            {
+                Rule rule = TagsGroceries(userId);
+                rule.Disable();
+                return rule;
+            }));
+
+        // Act
+        int changed = await BuildSubject(Username)
+            .ApplyToExistingAsync(Scenario.RuleMappings["groceries"], CancellationToken);
+
+        // Assert
+        await Assert.That(changed).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task ApplyToExistingAsync_AnotherUsersRule_Throws()
+    {
+        // Arrange
+        await SeedAsync(Username, "mine");
+        await SeedAsync(OtherUsername, "theirs")
+            .Do(s => s.RuleScenario.WithRule("groceries", OtherUsername, TagsGroceries));
+
+        // Act & Assert
+        await Assert.That(async () => await BuildSubject(Username)
+                .ApplyToExistingAsync(Scenario.RuleMappings["groceries"], CancellationToken))
+            .Throws<InvalidOperationException>();
+    }
+
     private Task<TestingScenario> SeedAsync(string username, string prefix) =>
         Scenario.Do(s => s.UserScenario.WithUser(username))
             .Do(s => s.BankConnectionScenario.WithConnection(prefix, username))

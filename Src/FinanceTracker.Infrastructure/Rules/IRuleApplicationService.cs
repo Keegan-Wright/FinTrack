@@ -7,8 +7,8 @@ namespace FinanceTracker.Infrastructure.Rules;
 /// and <see cref="Contracts.Services.IRulesService"/> call it.
 /// </summary>
 /// <remarks>
-/// Rules only reach the transactions that arrive or change after they're saved. A user's history is never changed in
-/// bulk without them asking.
+/// Rules only reach the transactions that arrive or change after they're saved. A user's history is only changed in
+/// bulk when they ask, see <see cref="ApplyToExistingAsync"/>.
 /// </remarks>
 public interface IRuleApplicationService
 {
@@ -28,4 +28,13 @@ public interface IRuleApplicationService
     /// </summary>
     /// <returns>How many transactions the rules changed.</returns>
     Task<int> ReapplyAsync(Guid ruleId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Applies the rules to every transaction <paramref name="ruleId"/> reaches, see <see cref="Rule.Reaches"/>,
+    /// however old, when the user asks. All the user's rules run on those, in order, as a sync would. Transfers are
+    /// then re-matched around any whose transfer answer changed.
+    /// </summary>
+    /// <returns>How many transactions changed, 0 when the rule is off.</returns>
+    /// <exception cref="InvalidOperationException">The user has no rule with <paramref name="ruleId"/>.</exception>
+    Task<int> ApplyToExistingAsync(Guid ruleId, CancellationToken cancellationToken);
 }

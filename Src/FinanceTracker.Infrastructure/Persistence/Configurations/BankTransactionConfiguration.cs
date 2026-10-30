@@ -63,5 +63,13 @@ internal sealed class BankTransactionConfiguration : AggregateRootConfiguration<
         // Only ids, which rule added which tag, read with the transaction and never queried on their own
         builder.OwnsMany(x => x.RuleTags, ruleTags => ruleTags.ToJson("RuleTags"));
         builder.Navigation(x => x.RuleTags).HasField("_ruleTags");
+
+        // The bank's classifications the user or a rule hid.
+        builder.OwnsMany(x => x.HiddenClassifications, hidden =>
+        {
+            hidden.ToJson("HiddenClassifications");
+            hidden.Property(x => x.Classification).Encrypted();
+        });
+        builder.Navigation(x => x.HiddenClassifications).HasField("_hiddenClassifications");
     }
 }

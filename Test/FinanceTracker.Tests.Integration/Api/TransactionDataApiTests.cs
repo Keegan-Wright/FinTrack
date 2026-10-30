@@ -20,6 +20,52 @@ namespace FinanceTracker.Tests.Integration.Api;
 /// </summary>
 public class TransactionDataApiTests : IntegrationTestBase
 {
+    [Test]
+    public async Task HideThenShowBankClassification_ChangesTheTagsAndWhatsHidden()
+    {
+        // Arrange
+        SignedInUser user = await RegisterUserAsync();
+        await Scenario.Do(s => s.BankConnectionScenario.WithConnection("bank", user.Username))
+            .Do(s => s.BankAccountScenario.WithAccount("main", "bank"))
+            .Do(s => s.TransactionScenario.WithTransaction("mortgage", "main",
+                new TransactionDetailsFaker().Generate() with { ProviderClassifications = ["Bills", "TV"] }));
+
+        ITransactionsService service = ApiFor(user).Get<ITransactionsService>();
+        Guid id = Scenario.TransactionMappings["mortgage"];
+
+        // Act
+        Transaction hidden = await service.HideBankClassificationAsync(id,
+            new ChangeBankClassification { Classification = "TV" }, CancellationToken);
+        Transaction shown = await service.ShowBankClassificationAsync(id,
+            new ChangeBankClassification { Classification = "TV" }, CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(hidden.Tags).IsEquivalentTo(["Bills"]);
+            await Assert.That(hidden.HiddenBankClassifications.Single().Classification).IsEqualTo("TV");
+            await Assert.That(shown.Tags).IsEquivalentTo(["Bills", "TV"]);
+        }
+    }
+
+    [Test]
+    public async Task HideBankClassification_TheBankDidntSend_ThrowsAsTheServiceDoes()
+    {
+        // Arrange
+        SignedInUser user = await RegisterUserAsync();
+        await Scenario.Do(s => s.BankConnectionScenario.WithConnection("bank", user.Username))
+            .Do(s => s.BankAccountScenario.WithAccount("main", "bank"))
+            .Do(s => s.TransactionScenario.WithTransaction("mortgage", "main",
+                new TransactionDetailsFaker().Generate() with { ProviderClassifications = ["Bills"] }));
+
+        ITransactionsService service = ApiFor(user).Get<ITransactionsService>();
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.HideBankClassificationAsync(
+            Scenario.TransactionMappings["mortgage"], new ChangeBankClassification { Classification = "TV" },
+            CancellationToken));
+    }
+
     private static readonly DateTime Coffee = new(2026, 3, 10, 12, 0, 0, DateTimeKind.Utc);
     private static readonly DateTime Salary = new(2026, 3, 25, 9, 0, 0, DateTimeKind.Utc);
 

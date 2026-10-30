@@ -137,6 +137,26 @@ public class RuleFormTests : ComponentTestBase
         }
     }
 
+    [Test]
+    public async Task ChoosingHide_AsksWhichBankClassification()
+    {
+        // Arrange
+        SaveRule rule = Complete();
+        IRenderedComponent<RuleForm> cut = RenderForm(rule);
+
+        // Act
+        await ChooseAsync(cut, "Do", "Hide bank classification");
+        bool valid = await cut.InvokeAsync(() => cut.Instance.ValidateAsync());
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(rule.Actions.Single().ClassificationId).IsNull();
+            await Assert.That(valid).IsFalse();
+            await Assert.That(cut.Markup).Contains("Enter the bank classification to hide");
+        }
+    }
+
     private IRenderedComponent<RuleForm> RenderForm(SaveRule rule)
     {
         _popovers = Render<MudPopoverProvider>();

@@ -24,7 +24,12 @@ public static class RuleDrafts
         StopProcessing = rule.StopProcessing,
         Conditions = rule.Conditions.Select(Copy).ToList(),
         Actions = rule.Actions
-            .Select(static x => new RuleAction { Type = x.Type, ClassificationId = x.ClassificationId })
+            .Select(static x => new RuleAction
+            {
+                Type = x.Type,
+                ClassificationId = x.ClassificationId,
+                BankClassification = x.BankClassification
+            })
             .ToList()
     };
 

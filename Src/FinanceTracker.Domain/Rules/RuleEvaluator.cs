@@ -28,6 +28,7 @@ public static class RuleEvaluator
         ArgumentNullException.ThrowIfNull(transaction);
 
         List<RuleTag> tags = [];
+        List<HiddenClassification> hidden = [];
         RuleTransfer? transfer = null;
 
         // By id after order so rules sharing a position always run the same way
@@ -51,13 +52,17 @@ public static class RuleEvaluator
 
             foreach (RuleAction action in rule.Actions)
             {
-                if (action.Type == RuleActionType.AddTag)
+                switch (action.Type)
                 {
-                    AddTag(tags, action.ClassificationId!.Value, rule.Id);
-                }
-                else if (transfer is null)
-                {
-                    transfer = new RuleTransfer(ToDecision(action.Type), rule.Id);
+                    case RuleActionType.AddTag:
+                        AddTag(tags, action.ClassificationId!.Value, rule.Id);
+                        break;
+                    case RuleActionType.HideClassification:
+                        Hide(hidden, action.BankClassification!, rule.Id);
+                        break;
+                    default:
+                        transfer ??= new RuleTransfer(ToDecision(action.Type), rule.Id);
+                        break;
                 }
             }
 
@@ -67,7 +72,7 @@ public static class RuleEvaluator
             }
         }
 
-        return new RuleOutcome(tags, transfer);
+        return new RuleOutcome(tags, transfer, hidden);
     }
 
     /// <summary>
@@ -89,6 +94,16 @@ public static class RuleEvaluator
         }
 
         tags.Add(new RuleTag(classificationId, ruleId));
+    }
+
+    private static void Hide(List<HiddenClassification> hidden, string classification, Guid ruleId)
+    {
+        if (hidden.Exists(x => string.Equals(x.Classification, classification, StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        hidden.Add(new HiddenClassification(classification, ruleId));
     }
 
     private static TransferDecision ToDecision(RuleActionType type)

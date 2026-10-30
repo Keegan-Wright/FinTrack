@@ -53,6 +53,8 @@ public class RuleEditorTests : ComponentTestBase
         Services.AddSingleton(classificationService);
 
         _rulesService.GetRuleAsync(_groceries.Id, Arg.Any<CancellationToken>()).Returns(_groceries);
+        _rulesService.UpdateRuleAsync(_groceries.Id, Arg.Any<SaveRule>(), Arg.Any<CancellationToken>())
+            .Returns(_groceries);
     }
 
     [Test]
@@ -126,6 +128,83 @@ public class RuleEditorTests : ComponentTestBase
             await _rulesService.Received(1).DeleteRuleAsync(_groceries.Id, Arg.Any<CancellationToken>());
             await Assert.That(Services.GetRequiredService<NavigationManager>().Uri).EndsWith("/Rules");
         }
+    }
+
+    [Test]
+    public async Task Preview_ShowsWhatWouldChange()
+    {
+        // Arrange
+        Render<MudPopoverProvider>();
+        _rulesService.PreviewRuleAsync(_groceries.Id, Arg.Any<SaveRule>(), Arg.Any<CancellationToken>())
+            .Returns(new RulePreview
+            {
+                Changed = 1,
+                Changes =
+                [
+                    new RulePreviewChange { Description = "GROCER STORE 1", Amount = -12.5m, TagsAdded = ["Shopping"] }
+                ]
+            });
+        IRenderedComponent<RuleEditor> cut = RenderEditor(_groceries.Id);
+
+        // Act
+        await Button(cut, "Preview").ClickAsync(new MouseEventArgs());
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(cut.Markup).Contains("Applying it would change 1 transaction.");
+            await Assert.That(cut.Markup).Contains("GROCER STORE 1");
+            await Assert.That(cut.Markup).Contains("+ Shopping");
+        }
+    }
+
+    [Test]
+    public async Task SaveAndApply_OnceConfirmed_SavesThenAppliesIt()
+    {
+        // Arrange
+        Render<MudPopoverProvider>();
+        IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
+        _rulesService.ApplyRuleToExistingAsync(_groceries.Id, Arg.Any<CancellationToken>()).Returns(3);
+        IRenderedComponent<RuleEditor> cut = RenderEditor(_groceries.Id);
+
+        // Act
+        Button(cut, "Save and apply").Click();
+        await dialogs.WaitForElements("button").Single(x => x.TextContent.Trim() == "Save and apply")
+            .ClickAsync(new MouseEventArgs());
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            Received.InOrder(() =>
+            {
+                _rulesService.UpdateRuleAsync(_groceries.Id, Arg.Any<SaveRule>(), Arg.Any<CancellationToken>());
+                _rulesService.ApplyRuleToExistingAsync(_groceries.Id, Arg.Any<CancellationToken>());
+            });
+            await Assert.That(Services.GetRequiredService<NavigationManager>().Uri).EndsWith("/Rules");
+        }
+    }
+
+    [Test]
+    public async Task NewFromATransaction_StartsFromItsDraft()
+    {
+        // Arrange
+        Render<MudPopoverProvider>();
+        Guid transactionId = Guid.NewGuid();
+        _rulesService.GetDraftFromTransactionAsync(transactionId, Arg.Any<CancellationToken>())
+            .Returns(new SaveRule
+            {
+                Name = "Game Store",
+                Conditions = [new RuleCondition { Field = RuleField.Counterparty, Operator = RuleOperator.Contains,
+                    Value = "Game Store" }],
+                Actions = [new RuleAction { Type = RuleActionType.AddTag, ClassificationId = TagId }]
+            });
+        Services.GetRequiredService<NavigationManager>().NavigateTo($"Rules/new?from={transactionId}");
+
+        // Act
+        IRenderedComponent<RuleEditor> cut = RenderEditor(null);
+
+        // Assert
+        await Assert.That(cut.FindAll("input").Any(x => x.GetAttribute("value") == "Game Store")).IsTrue();
     }
 
     private IRenderedComponent<RuleEditor> RenderEditor(Guid? id) => Render<RuleEditor>(p => p

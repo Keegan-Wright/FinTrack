@@ -19,5 +19,10 @@ public enum RuleActionType
     /// <summary>
     /// Decides it counts as income or spending. The first matching rule to decide wins.
     /// </summary>
-    MarkNotATransfer = 3
+    MarkNotATransfer = 3,
+
+    /// <summary>
+    /// Hides one of the bank's classifications, every matching rule's are hidden.
+    /// </summary>
+    HideClassification = 4
 }

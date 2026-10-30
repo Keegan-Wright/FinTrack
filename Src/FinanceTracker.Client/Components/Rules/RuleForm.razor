@@ -78,6 +78,14 @@
                             }
 
                         </MudSelect>
+                        @if (action.Type == RuleActionType.HideClassification)
+                        {
+                            <MudTextField T="string" Label="Bank classification" @bind-Value="action.BankClassification"
+                                          For="@(() => action.BankClassification)" Variant="Variant.Outlined"
+                                          Margin="Margin.Dense" Immediate="true" Class="ft-rule-form__tag"
+                                          HelperText="As your bank shows it, e.g. TV"
+                                          Validation="@(new Func<string?, string?>(BankClassificationError))"/>
+                        }
                         @if (action.Type == RuleActionType.AddTag)
                         {
                             <MudSelect T="Guid?" Label="Tag" @bind-Value="action.ClassificationId"
@@ -160,6 +168,9 @@
 
     private static string? TagError(Guid? tagId) => tagId is null ? "Choose a tag" : null;
 
+    private static string? BankClassificationError(string? classification) =>
+        string.IsNullOrWhiteSpace(classification) ? "Enter the bank classification to hide" : null;
+
     private void AddCondition() => Model.Conditions.Add(RuleDrafts.NewCondition(RuleField.Description));
 
     private void AddAction() => Model.Actions.Add(new RuleAction { Type = RuleActionType.AddTag });
@@ -170,6 +181,11 @@
         if (type != RuleActionType.AddTag)
         {
             action.ClassificationId = null;
+        }
+
+        if (type != RuleActionType.HideClassification)
+        {
+            action.BankClassification = null;
         }
     }
 

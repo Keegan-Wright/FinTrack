@@ -1,0 +1,25 @@
+.ft-rule-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+}
+
+.ft-rule-preview__buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.ft-rule-preview__changes {
+    padding-top: 4px;
+}
+
+.ft-rule-preview__row {
+    align-items: flex-start;
+}
+
+.ft-rule-preview__pager {
+    display: flex;
+    justify-content: center;
+}

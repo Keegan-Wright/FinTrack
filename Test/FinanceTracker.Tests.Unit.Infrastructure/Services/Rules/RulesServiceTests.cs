@@ -232,6 +232,187 @@ public class RulesServiceTests : InfrastructureTestBase
             .Throws<InvalidOperationException>();
     }
 
+    [Test]
+    public async Task PreviewRuleAsync_NewRule_ShowsWhatWouldChangeWithoutChangingIt()
+    {
+        // Arrange
+        await SeedAsync(Username)
+            .Do(s => s.TransactionScenario.WithTransaction("history", "main", Details("GROCER STORE")))
+            .Do(s => s.TransactionScenario.WithTransaction("other", "main", Details("CAFE")));
+
+        // Act
+        RulePreview preview = await BuildSubject(Username).PreviewRuleAsync(null, TagGroceries("shopping"),
+            CancellationToken);
+
+        // Assert
+        RulePreviewChange change = preview.Changes.Single();
+        using (Assert.Multiple())
+        {
+            await Assert.That(preview.Changed).IsEqualTo(1);
+            await Assert.That(change.TransactionId).IsEqualTo(Scenario.TransactionMappings["history"]);
+            await Assert.That(change.TagsAdded).IsEquivalentTo(["Shopping"]);
+            await Assert.That((await LoadTransactionAsync("history")).CustomClassificationIds).IsEmpty();
+        }
+    }
+
+    [Test]
+    public async Task PreviewRuleAsync_TransactionTaggedByTheUser_IsLeftAlone()
+    {
+        // Arrange
+        await SeedAsync(Username)
+            .Do(s => s.ClassificationScenario.WithClassification("food", Username, "Food"))
+            .Do(s => s.TransactionScenario.WithTransaction("mine", "main", Details("GROCER STORE")))
+            .Do(s => s.TransactionScenario.WithCustomClassification("mine", "food"));
+
+        // Act
+        RulePreview preview = await BuildSubject(Username).PreviewRuleAsync(null, TagGroceries("shopping"),
+            CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(preview.Changed).IsEqualTo(0);
+            await Assert.That(preview.LeftAlone).IsEqualTo(1);
+        }
+    }
+
+    [Test]
+    public async Task PreviewRuleAsync_EditedRule_ShowsWhatItWouldTakeBack()
+    {
+        // Arrange
+        await SeedAsync(Username)
+            .Do(s => s.TransactionScenario.WithTransaction("reached", "main", Details("GROCER STORE")));
+        RulesService subject = BuildSubject(Username);
+        Rule rule = await subject.AddRuleAsync(TagGroceries("shopping"), CancellationToken);
+        await BuildApplication(Username).ApplyChangesAsync(DateTime.MinValue, CancellationToken);
+
+        SaveRule edited = TagGroceries("shopping");
+        edited.Conditions[0].Value = "CAFE";
+
+        // Act
+        RulePreview preview = await subject.PreviewRuleAsync(rule.Id, edited, CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(preview.Changes.Single().TagsRemoved).IsEquivalentTo(["Shopping"]);
+            await Assert.That((await subject.GetRuleAsync(rule.Id, CancellationToken)).Conditions.Single().Value)
+                .IsEqualTo("GROCER STORE");
+        }
+    }
+
+    [Test]
+    public async Task PreviewRuleAsync_HidingABankClassification_ShowsItHidden()
+    {
+        // Arrange
+        await SeedAsync(Username)
+            .Do(s => s.TransactionScenario.WithTransaction("mortgage", "main", Details("MORTGAGE") with
+            {
+                ProviderClassifications = ["Bills", "TV"]
+            }));
+        SaveRule rule = new()
+        {
+            Name = "Mortgage",
+            Conditions = [new RuleCondition { Field = RuleField.Description, Operator = RuleOperator.Contains,
+                Value = "MORTGAGE" }],
+            Actions = [new RuleAction { Type = RuleActionType.HideClassification, BankClassification = "TV" }]
+        };
+
+        // Act
+        RulePreview preview = await BuildSubject(Username).PreviewRuleAsync(null, rule, CancellationToken);
+
+        // Assert
+        await Assert.That(preview.Changes.Single().ClassificationsHidden).IsEquivalentTo(["TV"]);
+    }
+
+    [Test]
+    public async Task GetDraftFromTransactionAsync_HidesWhatTheUserHid()
+    {
+        // Arrange
+        await SeedAsync(Username)
+            .Do(s => s.TransactionScenario.WithTransaction("mortgage", "main", Details("MORTGAGE") with
+            {
+                ProviderClassifications = ["Bills", "TV"]
+            }));
+        await HideAsync("mortgage", "TV");
+
+        // Act
+        SaveRule draft = await BuildSubject(Username)
+            .GetDraftFromTransactionAsync(Scenario.TransactionMappings["mortgage"], CancellationToken);
+
+        // Assert
+        RuleAction hide = draft.Actions.Single();
+        using (Assert.Multiple())
+        {
+            await Assert.That(hide.Type).IsEqualTo(RuleActionType.HideClassification);
+            await Assert.That(hide.BankClassification).IsEqualTo("TV");
+        }
+    }
+
+    [Test]
+    public async Task GetDraftFromTransactionAsync_MatchesTheMerchantAndAddsTheUsersTags()
+    {
+        // Arrange
+        await SeedAsync(Username)
+            .Do(s => s.TransactionScenario.WithTransaction("bought", "main", Details("CARD PAYMENT 123") with
+            {
+                Metadata = new TransactionMetadata(null, null, "Game Store", null, null)
+            }))
+            .Do(s => s.TransactionScenario.WithCustomClassification("bought", "shopping"));
+
+        // Act
+        SaveRule draft = await BuildSubject(Username)
+            .GetDraftFromTransactionAsync(Scenario.TransactionMappings["bought"], CancellationToken);
+
+        // Assert
+        RuleCondition condition = draft.Conditions.Single();
+        using (Assert.Multiple())
+        {
+            await Assert.That(draft.Name).IsEqualTo("Game Store");
+            await Assert.That(condition.Field).IsEqualTo(RuleField.Counterparty);
+            await Assert.That(condition.Value).IsEqualTo("Game Store");
+            await Assert.That(draft.Actions.Single().ClassificationId)
+                .IsEqualTo(Scenario.ClassificationMappings["shopping"]);
+        }
+    }
+
+    [Test]
+    public async Task GetDraftFromTransactionAsync_NoMerchantOrTags_UsesTheDescriptionAndAsksForATag()
+    {
+        // Arrange
+        await SeedAsync(Username)
+            .Do(s => s.TransactionScenario.WithTransaction("bought", "main", Details("GROCER STORE")));
+
+        // Act
+        SaveRule draft = await BuildSubject(Username)
+            .GetDraftFromTransactionAsync(Scenario.TransactionMappings["bought"], CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(draft.Conditions.Single().Field).IsEqualTo(RuleField.Description);
+            await Assert.That(draft.Conditions.Single().Value).IsEqualTo("GROCER STORE");
+            await Assert.That(draft.Actions.Single().Type).IsEqualTo(RuleActionType.AddTag);
+            await Assert.That(draft.Actions.Single().ClassificationId).IsNull();
+        }
+    }
+
+    [Test]
+    public async Task GetDraftFromTransactionAsync_AnotherUsersTransaction_Throws()
+    {
+        // Arrange
+        await SeedAsync(Username);
+        await Scenario.Do(s => s.UserScenario.WithUser(OtherUsername))
+            .Do(s => s.BankConnectionScenario.WithConnection("theirs", OtherUsername))
+            .Do(s => s.BankAccountScenario.WithAccount("theirs", "theirs"))
+            .Do(s => s.TransactionScenario.WithTransaction("theirs", "theirs", Details("GROCER STORE")));
+
+        // Act & Assert
+        await Assert.That(async () => await BuildSubject(Username)
+                .GetDraftFromTransactionAsync(Scenario.TransactionMappings["theirs"], CancellationToken))
+            .Throws<InvalidOperationException>();
+    }
+
     private Task<TestingScenario> SeedAsync(string username) =>
         Scenario.Do(s => s.UserScenario.WithUser(username))
             .Do(s => s.BankConnectionScenario.WithConnection("bank", username))
@@ -267,6 +448,15 @@ public class RulesServiceTests : InfrastructureTestBase
             LabelledAsTransfer = false
         };
 
+    private async Task HideAsync(string transactionName, string classification)
+    {
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        Guid id = Scenario.TransactionMappings[transactionName];
+        BankTransaction transaction = await context.BankTransactions.SingleAsync(x => x.Id == id, CancellationToken);
+        transaction.HideClassification(classification);
+        await context.SaveChangesAsync(CancellationToken);
+    }
+
     private async Task<BankTransaction> LoadTransactionAsync(string name)
     {
         await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
@@ -282,5 +472,5 @@ public class RulesServiceTests : InfrastructureTestBase
 
     private RulesService BuildSubject(string username) =>
         new(CurrentUserFor(username), DbContextFactory, NullLogger<RulesService>.Instance,
-            BuildApplication(username));
+            BuildApplication(username), TimeProvider.System);
 }

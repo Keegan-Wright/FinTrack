@@ -1,6 +1,8 @@
+using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.Rules;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Tests.Unit.Shared;
+using FinanceTracker.Tests.Unit.Shared.Fakers;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.EntityFrameworkCore;
 
@@ -43,7 +45,7 @@ public class RulePersistenceTests : InfrastructureTestBase
     }
 
     [Test]
-    public async Task Rule_NameAndConditionValues_AreStoredAsCiphertext()
+    public async Task Rule_NameConditionValuesAndBankClassifications_AreStoredAsCiphertext()
     {
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser(Username));
@@ -52,10 +54,13 @@ public class RulePersistenceTests : InfrastructureTestBase
                 new RuleCondition(RuleField.Counterparty, RuleOperator.Contains, "Secret Shop"),
                 new RuleCondition(RuleField.Amount, RuleOperator.Between, "12.34", "56.78")
             ],
-            [RuleAction.MarkAsTransfer()]));
+            [RuleAction.MarkAsTransfer(), RuleAction.HideClassification("SecretClassification")]));
 
         // Act
         await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        string actions = await context.Database
+            .SqlQueryRaw<string>("SELECT \"Actions\" AS \"Value\" FROM \"Rules\"")
+            .SingleAsync(CancellationToken);
         string name = await context.Database
             .SqlQueryRaw<string>("SELECT \"Name\" AS \"Value\" FROM \"Rules\"")
             .SingleAsync(CancellationToken);
@@ -71,6 +76,7 @@ public class RulePersistenceTests : InfrastructureTestBase
             await Assert.That(conditions).DoesNotContain("12.34");
             await Assert.That(conditions).DoesNotContain("56.78");
             await Assert.That(conditions).Contains("Counterparty");
+            await Assert.That(actions).DoesNotContain("SecretClassification");
         }
     }
 
@@ -103,6 +109,39 @@ public class RulePersistenceTests : InfrastructureTestBase
             await Assert.That(loaded.Conditions)
                 .IsEquivalentTo([new RuleCondition(RuleField.Description, RuleOperator.StartsWith, "NEW")]);
             await Assert.That(loaded.Actions).IsEquivalentTo([new RuleAction(RuleActionType.AddTag, TagId)]);
+        }
+    }
+
+    [Test]
+    public async Task Transaction_HiddenClassifications_AreStoredAsCiphertext()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("bank", Username))
+            .Do(s => s.BankAccountScenario.WithAccount("main", "bank"))
+            .Do(s => s.TransactionScenario.WithTransaction("mortgage", "main",
+                new TransactionDetailsFaker().Generate() with { ProviderClassifications = ["SecretClassification"] }));
+
+        await using (FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken))
+        {
+            BankTransaction transaction = await context.BankTransactions.SingleAsync(CancellationToken);
+            transaction.HideClassification("SecretClassification");
+            await context.SaveChangesAsync(CancellationToken);
+        }
+
+        // Act
+        await using FinanceTrackerContext verificationContext =
+            await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        string stored = await verificationContext.Database
+            .SqlQueryRaw<string>("SELECT \"HiddenClassifications\" AS \"Value\" FROM \"BankTransactions\"")
+            .SingleAsync(CancellationToken);
+        BankTransaction loaded = await verificationContext.BankTransactions.SingleAsync(CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(stored).DoesNotContain("SecretClassification");
+            await Assert.That(loaded.HiddenClassifications.Single().Classification).IsEqualTo("SecretClassification");
         }
     }
 

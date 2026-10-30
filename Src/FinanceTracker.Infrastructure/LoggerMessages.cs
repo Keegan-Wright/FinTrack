@@ -48,4 +48,7 @@ public static partial class LoggerMessages
 
     [LoggerMessage(LogLevel.Information, "Re-applied rules to the {considered} transactions rule {ruleId} reached for user {userId}, {changed} changed")]
     public static partial void LogReappliedRules(this ILogger logger, Guid userId, Guid ruleId, int considered, int changed);
+
+    [LoggerMessage(LogLevel.Information, "Applied rule {ruleId} to the {reached} existing transactions it reaches for user {userId}, {changed} changed")]
+    public static partial void LogAppliedRuleToExisting(this ILogger logger, Guid userId, Guid ruleId, int reached, int changed);
 }

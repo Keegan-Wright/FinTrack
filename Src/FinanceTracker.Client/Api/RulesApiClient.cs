@@ -52,6 +52,31 @@ public sealed class RulesApiClient : IRulesService
         response.EnsureFound();
     }
 
+    public async Task<RulePreview> PreviewRuleAsync(Guid? id, SaveRule rule, CancellationToken cancellationToken)
+    {
+        string path = id is { } ruleId ? $"{ApiRoutes.Rules}/{ruleId}/preview" : $"{ApiRoutes.Rules}/preview";
+        using HttpResponseMessage response = await _http.PostAsJsonAsync(path, rule, cancellationToken);
+        response.EnsureFound();
+        return await response.ReadRequiredJsonAsync<RulePreview>(cancellationToken);
+    }
+
+    public async Task<int> ApplyRuleToExistingAsync(Guid id, CancellationToken cancellationToken)
+    {
+        using HttpResponseMessage response =
+            await _http.PostAsync($"{ApiRoutes.Rules}/{id}/apply", null, cancellationToken);
+        response.EnsureFound();
+        return await response.ReadRequiredJsonAsync<int>(cancellationToken);
+    }
+
+    public async Task<SaveRule> GetDraftFromTransactionAsync(Guid transactionId,
+        CancellationToken cancellationToken)
+    {
+        using HttpResponseMessage response =
+            await _http.GetAsync($"{ApiRoutes.Rules}/draft/{transactionId}", cancellationToken);
+        response.EnsureFound();
+        return await response.ReadRequiredJsonAsync<SaveRule>(cancellationToken);
+    }
+
     public async Task DeleteRuleAsync(Guid id, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.DeleteAsync($"{ApiRoutes.Rules}/{id}", cancellationToken);

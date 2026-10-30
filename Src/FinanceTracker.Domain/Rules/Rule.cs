@@ -110,8 +110,8 @@ public sealed class Rule : AggregateRoot
     /// <summary>
     /// Replaces the actions, adding each tag once.
     /// </summary>
-    /// <exception cref="ArgumentException">There are no actions, or more than one decides the transfer answer.
-    /// </exception>
+    /// <exception cref="ArgumentException">There are no actions, more than one decides the transfer answer, or one
+    /// that hides a bank classification doesn't say which.</exception>
     public void ReplaceActions(IEnumerable<RuleAction> actions)
     {
         ArgumentNullException.ThrowIfNull(actions);
@@ -127,8 +127,24 @@ public sealed class Rule : AggregateRoot
             throw new ArgumentException("A rule can only decide the transfer answer once.", nameof(actions));
         }
 
+        if (replacements.Exists(static x =>
+                x.Type == RuleActionType.HideClassification && string.IsNullOrWhiteSpace(x.BankClassification)))
+        {
+            throw new ArgumentException("Hiding a bank classification needs to say which.", nameof(actions));
+        }
+
         _actions.Clear();
         _actions.AddRange(replacements);
+    }
+
+    /// <summary>
+    /// Whether applying this rule to <paramref name="transaction"/> could change. It matches now, or it tagged or
+    /// decided it before and may need to take that back.
+    /// </summary>
+    public bool Reaches(BankTransaction transaction)
+    {
+        ArgumentNullException.ThrowIfNull(transaction);
+        return Matches(transaction) || transaction.WasDecidedBy(Id);
     }
 
     /// <summary>

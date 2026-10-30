@@ -31,6 +31,7 @@ internal sealed class RuleConfiguration : AggregateRootConfiguration<Rule>
         {
             actions.ToJson("Actions");
             actions.Property(x => x.Type).HasConversion<string>();
+            actions.Property(x => x.BankClassification).Encrypted();
         });
         builder.Navigation(x => x.Actions).HasField("_actions");
     }

@@ -1,16 +1,17 @@
 @* Everything about one transaction, how it counts and why, and what can be done with it. Used on phones, where the
    transactions list only shows a summary. *@
 @using System.Globalization
+@using FinanceTracker.Client.Components.Rules
 @using FinanceTracker.Client.Components.Transactions
 @using FinanceTracker.Contracts.Transactions
 
 <MudDialog>
-    <TitleContent>@Transaction.Description</TitleContent>
+    <TitleContent>@Shown.Description</TitleContent>
     <DialogContent>
         <div class="ft-details">
             <div class="ft-details__amount">
-                <MoneyText Value="@Transaction.Amount" Signed="true" Typo="Typo.h5"/>
-                @if (Transaction.Pending)
+                <MoneyText Value="@Shown.Amount" Signed="true" Typo="Typo.h5"/>
+                @if (Shown.Pending)
                 {
                     <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Warning">Pending</MudChip>
                 }
@@ -18,26 +19,60 @@
 
             <dl class="ft-details__fields">
                 <dt>Date</dt>
-                <dd>@Transaction.TransactionTime.ToLocalTime().ToString("d MMM yyyy, HH:mm", CultureInfo.CurrentCulture)</dd>
+                <dd>@Shown.TransactionTime.ToLocalTime().ToString("d MMM yyyy, HH:mm", CultureInfo.CurrentCulture)</dd>
                 <dt>Account</dt>
-                <dd>@Transaction.AccountName</dd>
+                <dd>@Shown.AccountName</dd>
                 <dt>Category</dt>
-                <dd>@DisplayText.ToTitle(Transaction.TransactionCategory)</dd>
-                @if (Transaction.Tags.Any())
+                <dd>@DisplayText.ToTitle(Shown.TransactionCategory)</dd>
+                @if (OwnTags.Any())
                 {
                     <dt>Tags</dt>
                     <dd>
                         <div class="ft-chips">
-                            @foreach (var tag in Transaction.Tags)
+                            @foreach (var tag in OwnTags)
                             {
                                 <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@tag</MudChip>
                             }
                         </div>
+                        @foreach (string line in RuleText.TaggedByLines(Shown))
+                        {
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary">@line</MudText>
+                        }
+                    </dd>
+                }
+                @if (Shown.BankClassifications.Count > 0 || Shown.HiddenBankClassifications.Count > 0)
+                {
+                    <dt>From your bank</dt>
+                    <dd>
+                        @if (Shown.BankClassifications.Count > 0)
+                        {
+                            <div class="ft-chips">
+                                @foreach (string classification in Shown.BankClassifications)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                                             OnClose="@(_ => HideAsync(classification))">@classification</MudChip>
+                                }
+                            </div>
+                        }
+                        @foreach (TransactionHiddenClassification hidden in Shown.HiddenBankClassifications)
+                        {
+                            <div class="ft-details__hidden">
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">@HiddenText(hidden)</MudText>
+                                @if (hidden.RuleName is null)
+                                {
+                                    <MudButton Variant="Variant.Text" Size="Size.Small" Color="Color.Primary"
+                                               OnClick="@(() => ShowAsync(hidden.Classification))">Show</MudButton>
+                                }
+                            </div>
+                        }
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                            Hide any your bank got wrong, they're left out of your tags and reports.
+                        </MudText>
                     </dd>
                 }
                 <dt>Counts as</dt>
                 <dd>
-                    @if (Transaction.Transfer is { } transfer)
+                    @if (Shown.Transfer is { } transfer)
                     {
                         <span>@TransferText.Label(transfer)</span>
                         <MudText Typo="Typo.caption" Class="mud-text-secondary">@TransferText.Reason(transfer)</MudText>
@@ -48,7 +83,7 @@
                     }
                     else
                     {
-                        <span>@TransferText.CountsAs(Transaction)</span>
+                        <span>@TransferText.CountsAs(Shown)</span>
                     }
                 </dd>
             </dl>
@@ -58,13 +93,15 @@
                 <div class="ft-details__heading">Actions</div>
                 <MudButton Variant="Variant.Text" FullWidth="true" StartIcon="@Icons.Material.Outlined.Sell"
                            Class="ft-details__action" OnClick="@AddTagsAsync">Add tags</MudButton>
-                @foreach (var action in TransferText.Actions(Transaction.Transfer))
+                @foreach (var action in TransferText.Actions(Shown.Transfer))
                 {
                     <MudButton Variant="Variant.Text" FullWidth="true" StartIcon="@TransferText.ActionIcon(action)"
                                Class="ft-details__action" OnClick="@(() => DecideAsync(action))">
                         @TransferText.ActionLabel(action)
                     </MudButton>
                 }
+                <MudButton Variant="Variant.Text" FullWidth="true" StartIcon="@Icons.Material.Outlined.Rule"
+                           Class="ft-details__action" OnClick="@CreateRuleAsync">Create rule from this</MudButton>
             </div>
         </div>
     </DialogContent>
@@ -77,6 +114,50 @@
     [Parameter] [EditorRequired] public required Transaction Transaction { get; set; }
 
     /// <summary>
+    /// Hides one of the bank's classifications, returning the transaction as it is now, null when it couldn't. The
+    /// dialog stays open so more can be hidden.
+    /// </summary>
+    [Parameter] public Func<string, Task<Transaction?>>? OnHideClassification { get; set; }
+
+    /// <summary>
+    /// Shows again one of the bank's classifications the user hid, as <see cref="OnHideClassification"/>.
+    /// </summary>
+    [Parameter] public Func<string, Task<Transaction?>>? OnShowClassification { get; set; }
+
+    /// <summary>
+    /// The transaction as hiding or showing a bank classification left it.
+    /// </summary>
+    private Transaction? _changed;
+
+    private Transaction Shown => _changed ?? Transaction;
+
+    /// <summary>
+    /// The user's tags and their rules, the bank's are listed on their own so they can be hidden.
+    /// </summary>
+    private IEnumerable<string> OwnTags => Shown.Tags.Except(Shown.BankClassifications);
+
+    internal static string HiddenText(TransactionHiddenClassification hidden) => hidden.RuleName is null
+        ? $"{hidden.Classification} hidden by you"
+        : $"{hidden.Classification} hidden by your rule {hidden.RuleName}";
+
+    private async Task HideAsync(string classification) =>
+        _changed = await ChangeAsync(OnHideClassification, classification);
+
+    private async Task ShowAsync(string classification) =>
+        _changed = await ChangeAsync(OnShowClassification, classification);
+
+    private async Task<Transaction?> ChangeAsync(Func<string, Task<Transaction?>>? change, string classification)
+    {
+        if (change is null)
+        {
+            return _changed;
+        }
+
+        Transaction? updated = await change(classification);
+        return updated ?? _changed;
+    }
+
+    /// <summary>
     /// The user chose to tag it, raised once the dialog has closed.
     /// </summary>
     [Parameter] public EventCallback OnAddTags { get; set; }
@@ -86,11 +167,22 @@
     /// </summary>
     [Parameter] public EventCallback<TransferAction> OnTransferAction { get; set; }
 
+    /// <summary>
+    /// The user chose to make a rule from it, raised once the dialog has closed.
+    /// </summary>
+    [Parameter] public EventCallback OnCreateRule { get; set; }
+
     // Closed first, the tags dialog and the loading overlay open over the page rather than over this
     private async Task AddTagsAsync()
     {
         MudDialog.Close();
         await OnAddTags.InvokeAsync();
+    }
+
+    private async Task CreateRuleAsync()
+    {
+        MudDialog.Close();
+        await OnCreateRule.InvokeAsync();
     }
 
     private async Task DecideAsync(TransferAction action)

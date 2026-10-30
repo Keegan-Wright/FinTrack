@@ -1552,6 +1552,31 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.OwnsMany("FinanceTracker.Domain.OpenBanking.Transactions.HiddenClassification", "HiddenClassifications", b1 =>
+                        {
+                            b1.Property<Guid>("BankTransactionId");
+
+                            b1.Property<int>("__synthesizedOrdinal")
+                                .ValueGeneratedOnAdd();
+
+                            b1.Property<string>("Classification")
+                                .IsRequired()
+                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                            b1.Property<Guid?>("RuleId");
+
+                            b1.HasKey("BankTransactionId", "__synthesizedOrdinal");
+
+                            b1.ToTable("BankTransactions");
+
+                            b1
+                                .ToJson("HiddenClassifications")
+                                .HasColumnType("jsonb");
+
+                            b1.WithOwner()
+                                .HasForeignKey("BankTransactionId");
+                        });
+
                     b.OwnsOne("FinanceTracker.Domain.OpenBanking.Transactions.TransactionMetadata", "Metadata", b1 =>
                         {
                             b1.Property<Guid>("BankTransactionId")
@@ -1660,6 +1685,8 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                                 .HasForeignKey("BankTransactionId");
                         });
 
+                    b.Navigation("HiddenClassifications");
+
                     b.Navigation("Metadata")
                         .IsRequired();
 
@@ -1691,6 +1718,9 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
                             b1.Property<int>("__synthesizedOrdinal")
                                 .ValueGeneratedOnAdd();
+
+                            b1.Property<string>("BankClassification")
+                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
 
                             b1.Property<Guid?>("ClassificationId");
 

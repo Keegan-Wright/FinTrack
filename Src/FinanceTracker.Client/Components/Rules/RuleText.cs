@@ -1,6 +1,7 @@
 using System.Globalization;
 using FinanceTracker.Client.Components.Common;
 using FinanceTracker.Contracts.Rules;
+using FinanceTracker.Contracts.Transactions;
 
 namespace FinanceTracker.Client.Components.Rules;
 
@@ -59,6 +60,7 @@ public static class RuleText
         RuleActionType.AddTag => "Add tag",
         RuleActionType.MarkAsTransfer => "Mark as a transfer",
         RuleActionType.MarkNotATransfer => "Mark as not a transfer",
+        RuleActionType.HideClassification => "Hide bank classification",
         _ => type.ToString()
     };
 
@@ -112,6 +114,11 @@ public static class RuleText
     /// <param name="tagNames">The user's tags by id. A tag not in it reads as deleted.</param>
     public static string Describe(RuleAction action, IReadOnlyDictionary<Guid, string> tagNames)
     {
+        if (action.Type == RuleActionType.HideClassification)
+        {
+            return $"Hide bank classification {action.BankClassification}";
+        }
+
         if (action.Type != RuleActionType.AddTag)
         {
             return ActionName(action.Type);
@@ -165,8 +172,61 @@ public static class RuleText
         return null;
     }
 
+    /// <summary>
+    /// What applying a rule would do to one transaction, e.g. <c>+ Shopping</c>, <c>− Food</c> or
+    /// <c>Marked as a transfer</c>.
+    /// </summary>
+    public static IEnumerable<string> Changes(RulePreviewChange change)
+    {
+        foreach (string tag in change.TagsAdded)
+        {
+            yield return $"+ {tag}";
+        }
+
+        foreach (string tag in change.TagsRemoved)
+        {
+            yield return $"− {tag}";
+        }
+
+        foreach (string classification in change.ClassificationsHidden)
+        {
+            yield return $"Hides {classification}";
+        }
+
+        foreach (string classification in change.ClassificationsShown)
+        {
+            yield return $"Shows {classification}";
+        }
+
+        if (change.TransferAfter != change.TransferBefore)
+        {
+            yield return TransferChange(change.TransferAfter);
+        }
+    }
+
+    /// <summary>
+    /// The rule that added <paramref name="tag"/> to <paramref name="transaction"/>, null when the user added it or it
+    /// came from the bank.
+    /// </summary>
+    public static string? TaggedBy(Transaction transaction, string tag) =>
+        transaction.TagsFromRules.FirstOrDefault(x => x.Tag == tag)?.RuleName;
+
+    /// <summary>
+    /// e.g. <c>Shopping from your rule Groceries</c>, one line per tag a rule added.
+    /// </summary>
+    public static IEnumerable<string> TaggedByLines(Transaction transaction) =>
+        transaction.TagsFromRules.Select(static x => $"{x.Tag} from your rule {x.RuleName}");
+
     public static string TypeName(string value) =>
         string.Equals(value, "Credit", StringComparison.OrdinalIgnoreCase) ? "money in" : "money out";
+
+    private static string TransferChange(TransferState? after) => after switch
+    {
+        TransferState.Transfer => "Marked as a transfer",
+        TransferState.NotATransfer => "Counts as income or spending",
+        TransferState.NeedsReview => "Transfer to review",
+        _ => "Transfer answer taken back"
+    };
 
     private static string Amount(string? value)
     {

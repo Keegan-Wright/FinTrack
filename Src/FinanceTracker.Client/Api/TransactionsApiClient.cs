@@ -1,3 +1,4 @@
+using System.Net.Http.Json;
 using FinanceTracker.Contracts.Api;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Transactions;
@@ -7,7 +8,8 @@ using FinanceTracker.Generated.Enums;
 namespace FinanceTracker.Client.Api;
 
 /// <summary>
-/// <see cref="ITransactionsService"/> over <see cref="ApiRoutes.Transactions"/>.
+/// <see cref="ITransactionsService"/> over <see cref="ApiRoutes.Transactions"/>. The API's 404s come back as the
+/// <see cref="InvalidOperationException"/> the interface documents.
 /// </summary>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Client)]
 [Scoped<ITransactionsService>]
@@ -22,6 +24,23 @@ public sealed class TransactionsApiClient : ITransactionsService
         CancellationToken cancellationToken) =>
         _http.PostStreamAsync<FilterTransactions, Transaction>($"{ApiRoutes.Transactions}/search",
             filterTransactions, cancellationToken);
+
+    public Task<Transaction> HideBankClassificationAsync(Guid transactionId, ChangeBankClassification request,
+        CancellationToken cancellationToken) =>
+        ChangeBankClassificationAsync(transactionId, "hide", request, cancellationToken);
+
+    public Task<Transaction> ShowBankClassificationAsync(Guid transactionId, ChangeBankClassification request,
+        CancellationToken cancellationToken) =>
+        ChangeBankClassificationAsync(transactionId, "show", request, cancellationToken);
+
+    private async Task<Transaction> ChangeBankClassificationAsync(Guid transactionId, string change,
+        ChangeBankClassification request, CancellationToken cancellationToken)
+    {
+        using HttpResponseMessage response = await _http.PostAsJsonAsync(
+            $"{ApiRoutes.Transactions}/{transactionId}/bank-classifications/{change}", request, cancellationToken);
+        response.EnsureFound();
+        return await response.ReadRequiredJsonAsync<Transaction>(cancellationToken);
+    }
 
     public IAsyncEnumerable<TransactionAccountFilter> GetAccountsForTransactionFiltersAsync(
         CancellationToken cancellationToken) =>

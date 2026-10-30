@@ -168,6 +168,25 @@ public class BankTransactionRuleTests
         }
     }
 
+    [Test]
+    public async Task WasDecidedBy_TheRuleThatTaggedOrDecidedIt()
+    {
+        // Arrange
+        Guid tagger = Guid.NewGuid();
+        Guid decider = Guid.NewGuid();
+        BankTransaction transaction = Transaction();
+        transaction.ApplyRules(new RuleOutcome([new RuleTag(Tag("Shopping").Id, tagger)],
+            new RuleTransfer(TransferDecision.NotATransfer, decider)), At);
+
+        // Act & Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(transaction.WasDecidedBy(tagger)).IsTrue();
+            await Assert.That(transaction.WasDecidedBy(decider)).IsTrue();
+            await Assert.That(transaction.WasDecidedBy(Guid.NewGuid())).IsFalse();
+        }
+    }
+
     private static BankTransaction Transaction(string description = "GROCER STORE 123", decimal amount = -12.5m,
         TransactionMetadata? metadata = null, IReadOnlyCollection<string>? providerClassifications = null) =>
         BankTransaction.Import(Account, new TransactionDetails(Guid.NewGuid().ToString(), description,

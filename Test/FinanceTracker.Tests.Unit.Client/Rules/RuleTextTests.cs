@@ -1,5 +1,6 @@
 using FinanceTracker.Client.Components.Rules;
 using FinanceTracker.Contracts.Rules;
+using FinanceTracker.Contracts.Transactions;
 
 namespace FinanceTracker.Tests.Unit.Client.Rules;
 
@@ -62,6 +63,8 @@ public class RuleTextTests
         string deleted = RuleText.Describe(
             new RuleAction { Type = RuleActionType.AddTag, ClassificationId = Guid.NewGuid() }, TagNames);
         string transfer = RuleText.Describe(new RuleAction { Type = RuleActionType.MarkAsTransfer }, TagNames);
+        string hide = RuleText.Describe(
+            new RuleAction { Type = RuleActionType.HideClassification, BankClassification = "TV" }, TagNames);
 
         // Assert
         using (Assert.Multiple())
@@ -69,6 +72,7 @@ public class RuleTextTests
             await Assert.That(tag).IsEqualTo("Add tag Shopping");
             await Assert.That(deleted).IsEqualTo("Add a deleted tag");
             await Assert.That(transfer).IsEqualTo("Mark as a transfer");
+            await Assert.That(hide).IsEqualTo("Hide bank classification TV");
         }
     }
 
@@ -123,6 +127,56 @@ public class RuleTextTests
             await Assert.That(RuleText.OperatorsFor(RuleField.Amount)).DoesNotContain(RuleOperator.Contains);
             await Assert.That(RuleText.OperatorsFor(RuleField.Description)).DoesNotContain(RuleOperator.Between);
             await Assert.That(RuleText.OperatorsFor(RuleField.Account)).IsEquivalentTo([RuleOperator.Equals]);
+        }
+    }
+
+    [Test]
+    public async Task Changes_ListsTagsGainedAndLostThenTheTransferAnswer()
+    {
+        // Arrange
+        RulePreviewChange change = new()
+        {
+            Description = "GAME STORE",
+            TagsAdded = ["Gaming"],
+            TagsRemoved = ["Shopping"],
+            ClassificationsHidden = ["TV"],
+            TransferBefore = null,
+            TransferAfter = TransferState.NotATransfer
+        };
+
+        // Act
+        List<string> changes = RuleText.Changes(change).ToList();
+
+        // Assert
+        await Assert.That(changes).IsEquivalentTo(
+            ["+ Gaming", "− Shopping", "Hides TV", "Counts as income or spending"],
+            TUnit.Assertions.Enums.CollectionOrdering.Matching);
+    }
+
+    [Test]
+    public async Task TaggedBy_NamesTheRuleOnlyForTagsARuleAdded()
+    {
+        // Arrange
+        Transaction transaction = new()
+        {
+            TransactionId = Guid.NewGuid(),
+            Description = "GAME STORE",
+            TransactionType = "Debit",
+            TransactionCategory = "PURCHASE",
+            Amount = -20m,
+            Currency = "GBP",
+            TransactionTime = DateTime.UtcNow,
+            Pending = false,
+            Tags = ["Gaming", "Mine"],
+            TagsFromRules = [new TransactionRuleTag { Tag = "Gaming", RuleId = Guid.NewGuid(), RuleName = "Games" }]
+        };
+
+        // Act & Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(RuleText.TaggedBy(transaction, "Gaming")).IsEqualTo("Games");
+            await Assert.That(RuleText.TaggedBy(transaction, "Mine")).IsNull();
+            await Assert.That(RuleText.TaggedByLines(transaction)).IsEquivalentTo(["Gaming from your rule Games"]);
         }
     }
 

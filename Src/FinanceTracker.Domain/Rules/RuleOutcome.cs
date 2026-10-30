@@ -1,3 +1,5 @@
+using FinanceTracker.Domain.OpenBanking.Transactions;
+
 namespace FinanceTracker.Domain.Rules;
 
 /// <summary>
@@ -6,7 +8,16 @@ namespace FinanceTracker.Domain.Rules;
 /// </summary>
 /// <param name="Tags">The tags to add, each with the rule that added it.</param>
 /// <param name="Transfer">The transfer answer, null when no rule gave one.</param>
-public sealed record RuleOutcome(IReadOnlyList<RuleTag> Tags, RuleTransfer? Transfer)
+/// <param name="HiddenClassifications">The bank's classifications to hide, each with the rule that hid it.</param>
+public sealed record RuleOutcome(IReadOnlyList<RuleTag> Tags, RuleTransfer? Transfer,
+    IReadOnlyList<HiddenClassification> HiddenClassifications)
 {
+    /// <summary>
+    /// Tags and a transfer answer, hiding nothing.
+    /// </summary>
+    public RuleOutcome(IReadOnlyList<RuleTag> tags, RuleTransfer? transfer) : this(tags, transfer, [])
+    {
+    }
+
     public static RuleOutcome None { get; } = new([], null);
 }

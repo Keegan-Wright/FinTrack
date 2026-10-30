@@ -7,7 +7,8 @@ namespace FinanceTracker.Contracts.Validation;
 
 /// <summary>
 /// Requires a name, at least one valid condition, see <see cref="RuleConditionValidator"/>, and at least one action
-/// a tag for each add tag action and at most one action that decides the transfer answer.
+/// a tag for each add tag action, a bank classification for each hide action and at most one action that decides the
+/// transfer answer.
 /// </summary>
 [InjectionCategory(InjectionCategoryType.Validator, ServiceDestinationType.Server | ServiceDestinationType.Client)]
 [Scoped<IValidator<SaveRule>>]
@@ -44,6 +45,16 @@ public class SaveRuleValidator : AbstractValidator<SaveRule>
                 .Null()
                 .When(x => x.Type != RuleActionType.AddTag)
                 .WithMessage("Only add tag takes a tag");
+
+            action.RuleFor(x => x.BankClassification)
+                .NotEmpty()
+                .When(x => x.Type == RuleActionType.HideClassification)
+                .WithMessage("Enter the bank classification to hide");
+
+            action.RuleFor(x => x.BankClassification)
+                .Empty()
+                .When(x => x.Type != RuleActionType.HideClassification)
+                .WithMessage("Only hiding takes a bank classification");
         });
     }
 

@@ -1,4 +1,5 @@
 using FinanceTracker.Domain.OpenBanking.Transactions;
+using FinanceTracker.Domain.OpenBanking.Transfers;
 using FinanceTracker.Domain.Rules;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
@@ -97,6 +98,56 @@ public class RuleApplicationService : ServiceBase<RuleApplicationService>, IRule
         }
 
         return changed;
+    }
+
+    public async Task<int> ApplyToExistingAsync(Guid ruleId, CancellationToken cancellationToken)
+    {
+        await using FinanceTrackerContext context =
+            await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+
+        Rule rule = await context.Rules.OwnedBy(UserId).AsNoTracking()
+            .SingleAsync(x => x.Id == ruleId, cancellationToken);
+        if (!rule.IsEnabled)
+        {
+            return 0;
+        }
+
+        // Conditions test encrypted fields, so every transaction is loaded and checked once decrypted
+        List<BankTransaction> transactions = await context.BankTransactions.OwnedBy(UserId)
+            .ToListAsync(cancellationToken);
+
+        List<BankTransaction> reached = transactions.Where(rule.Reaches).ToList();
+
+        Dictionary<Guid, TransferInfo?> transfersBefore =
+            reached.ToDictionary(static x => x.Id, static x => x.Transfer);
+
+        List<Rule> rules = await LoadEnabledRulesAsync(context, cancellationToken);
+        int changed = Apply(rules, reached);
+
+        await context.SaveChangesAsync(cancellationToken);
+        Logger.LogAppliedRuleToExisting(UserId, ruleId, reached.Count, changed);
+
+        List<Guid> transferChanged = reached
+            .Where(x => TransferChanged(transfersBefore[x.Id], x.Transfer))
+            .Select(static x => x.Id)
+            .ToList();
+
+        if (transferChanged.Count > 0)
+        {
+            await _transferMatchingService.MatchAroundAsync(transferChanged, cancellationToken);
+        }
+
+        return changed;
+    }
+
+    private static bool TransferChanged(TransferInfo? before, TransferInfo? after)
+    {
+        if (before is null)
+        {
+            return after is not null;
+        }
+
+        return !before.IsSameAs(after);
     }
 
     private async Task<List<Rule>> LoadEnabledRulesAsync(FinanceTrackerContext context,

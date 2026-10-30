@@ -177,6 +177,24 @@ public class RuleTests
         Assert.Throws<InvalidOperationException>(rule.Enable);
     }
 
+    [Test]
+    public async Task Reaches_WhatItMatchesAndWhatItDecidedBefore()
+    {
+        // Arrange
+        CustomClassification shopping = Tag("Shopping");
+        Rule rule = Rule("Groceries", 0, DescriptionContains("GROCER"), RuleAction.AddTag(shopping));
+        BankTransaction tagged = Transaction("CAFE 1");
+        tagged.ApplyRules(new RuleOutcome([new RuleTag(shopping.Id, rule.Id)], null), At);
+
+        // Act & Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(rule.Reaches(Transaction("GROCER STORE 123"))).IsTrue();
+            await Assert.That(rule.Reaches(tagged)).IsTrue();
+            await Assert.That(rule.Reaches(Transaction("CAFE 2"))).IsFalse();
+        }
+    }
+
     private static BankTransaction Transaction(string description = "GROCER STORE 123", decimal amount = -12.5m,
         TransactionMetadata? metadata = null, IReadOnlyCollection<string>? providerClassifications = null) =>
         BankTransaction.Import(Account, new TransactionDetails(Guid.NewGuid().ToString(), description,
