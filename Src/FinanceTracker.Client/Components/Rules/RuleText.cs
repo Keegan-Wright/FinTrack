@@ -55,6 +55,8 @@ public static class RuleText
         _ => @operator.ToString()
     };
 
+    public static string MatchModeName(RuleMatchMode matchMode) => matchMode == RuleMatchMode.Any ? "any" : "all";
+
     public static string ActionName(RuleActionType type) => type switch
     {
         RuleActionType.AddTag => "Add tag",

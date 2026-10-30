@@ -1,0 +1,76 @@
+@* One savings goal what's saved of its target, where that comes from, and whether the monthly contribution gets
+   there in time. *@
+@using FinanceTracker.Contracts.SavingsGoals
+
+<div class="ft-savings-goal">
+    <div class="ft-savings-goal__line">
+        <MudText Typo="Typo.body2" Class="ft-savings-goal__name">@Goal.Name</MudText>
+        @if (Goal.Target > 0)
+        {
+            <MudText Typo="Typo.body2" Class="ft-money">@($"{SavingsGoalText.Progress(Goal):P0}")</MudText>
+        }
+        @if (Editable)
+        {
+            <span class="ft-savings-goal__actions">
+                <MudIconButton Icon="@Icons.Material.Outlined.Edit" Size="Size.Small"
+                               aria-label="@($"Edit {Goal.Name}")" OnClick="@OnEdit"/>
+                <MudIconButton Icon="@Icons.Material.Outlined.Delete" Size="Size.Small"
+                               aria-label="@($"Delete {Goal.Name}")" OnClick="@OnDelete"/>
+            </span>
+        }
+    </div>
+
+    @if (Goal.Target > 0)
+    {
+        <MudProgressLinear Value="@(SavingsGoalText.Progress(Goal) * 100)" Rounded="true" Size="Size.Medium"
+                           Color="@(SavingsGoalText.Progress(Goal) >= 1 ? Color.Success : Color.Primary)"
+                           aria-label="@SavingsGoalText.BarLabel(Goal)"/>
+    }
+
+    @if (SavingsGoalText.Problem(Goal) is { } problem)
+    {
+        <MudText Typo="Typo.caption" Color="Color.Warning">@problem</MudText>
+    }
+
+    <div class="ft-savings-goal__details">
+        <MudText Typo="Typo.caption" Class="mud-text-secondary ft-money">@SavingsGoalText.SavedOf(Goal)</MudText>
+        @if (SavingsGoalText.Pace(Goal) is { } pace)
+        {
+            <MudText Typo="Typo.caption" Color="@PaceColor">@pace</MudText>
+        }
+        @if (ShowSource)
+        {
+            <MudText Typo="Typo.caption" Class="mud-text-secondary">@SavingsGoalText.Source(Goal, TagNames)</MudText>
+        }
+    </div>
+</div>
+
+@code {
+
+    [Parameter] [EditorRequired] public required SavingsGoal Goal { get; set; }
+
+    /// <summary>
+    /// The user's tags by id, for a goal that tracks tags.
+    /// </summary>
+    [Parameter] public IReadOnlyDictionary<Guid, string> TagNames { get; set; } = new Dictionary<Guid, string>();
+
+    /// <summary>
+    /// Whether to say where the saved amount comes from.
+    /// </summary>
+    [Parameter] public bool ShowSource { get; set; }
+
+    /// <summary>
+    /// Whether it can be edited or deleted from here.
+    /// </summary>
+    [Parameter] public bool Editable { get; set; }
+
+    [Parameter] public EventCallback OnEdit { get; set; }
+
+    [Parameter] public EventCallback OnDelete { get; set; }
+
+    /// <summary>
+    /// Amber when the contribution won't get there in time, otherwise as quiet as the rest.
+    /// </summary>
+    private Color PaceColor => Goal.OnTrack == false ? Color.Warning : Color.Default;
+
+}

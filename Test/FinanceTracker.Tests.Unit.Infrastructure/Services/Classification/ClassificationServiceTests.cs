@@ -1,7 +1,9 @@
 using FinanceTracker.Contracts.Classifications;
+using FinanceTracker.Domain.Budgeting;
 using FinanceTracker.Domain.Classifications;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.Rules;
+using FinanceTracker.Domain.SavingsGoals;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Classification;
 using FinanceTracker.Tests.Unit.Shared;
@@ -295,6 +297,57 @@ public class ClassificationServiceTests : InfrastructureTestBase
     }
 
     [Test]
+    public async Task RemoveCustomClassificationAsync_DropsItFromBudgets()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.ClassificationScenario.WithClassification("bills", Username))
+            .Do(s => s.ClassificationScenario.WithClassification("travel", Username))
+            .Do(s => s.BudgetScenario.WithBudget("billsOnly", Username, userId => TagBudget(userId, "bills")))
+            .Do(s => s.BudgetScenario.WithBudget("both", Username, userId => TagBudget(userId, "bills", "travel")));
+
+        ClassificationService subject = BuildSubject();
+
+        // Act
+        await subject.RemoveCustomClassificationAsync(Scenario.ClassificationMappings["bills"], CancellationToken);
+
+        // Assert
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        Dictionary<Guid, Budget> budgets = await context.Budgets.ToDictionaryAsync(x => x.Id, CancellationToken);
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(budgets[Scenario.BudgetMappings["billsOnly"]].CoversNothing).IsTrue();
+            await Assert.That(budgets[Scenario.BudgetMappings["both"]].TagIds)
+                .IsEquivalentTo([Scenario.ClassificationMappings["travel"]]);
+        }
+    }
+
+    [Test]
+    public async Task RemoveCustomClassificationAsync_DropsItFromSavingsGoals()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.ClassificationScenario.WithClassification("car", Username))
+            .Do(s => s.SavingsGoalScenario.WithSavingsGoal("car", Username, userId =>
+            {
+                SavingsGoal goal = new(userId, "Car", 0m, 0m, 1000m, null);
+                goal.TrackTags([Scenario.ClassificationMappings["car"]], 0m, new DateOnly(2026, 1, 1));
+                return goal;
+            }));
+
+        ClassificationService subject = BuildSubject();
+
+        // Act
+        await subject.RemoveCustomClassificationAsync(Scenario.ClassificationMappings["car"], CancellationToken);
+
+        // Assert
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        SavingsGoal stored = await context.SavingsGoals.SingleAsync(CancellationToken);
+        await Assert.That(stored.CoversNothing).IsTrue();
+    }
+
+    [Test]
     public async Task RemoveCustomClassificationAsync_OwnedByAnotherUser_Throws()
     {
         // Arrange
@@ -323,4 +376,8 @@ public class ClassificationServiceTests : InfrastructureTestBase
         new(userId, "Tags", 0, RuleMatchMode.All,
             [new RuleCondition(RuleField.Description, RuleOperator.Contains, "BILL")],
             tagNames.Select(x => new RuleAction(RuleActionType.AddTag, Scenario.ClassificationMappings[x])));
+
+    private Budget TagBudget(Guid userId, params string[] tagNames) =>
+        new(userId, "Budget", tagNames.Select(x => Scenario.ClassificationMappings[x]), 100m,
+            new BudgetMonth(2026, 1), RolloverMode.None);
 }

@@ -1,23 +1,19 @@
 @page "/"
-@* The dashboard in/out KPIs, cash flow, top spending, accounts, upcoming payments and budgets, for a chosen
-   date range. *@
+@* The dashboard in/out KPIs, cash flow, top spending, accounts, upcoming payments, this month's budgets and savings
+   goals, for a chosen date range. *@
 @using System.Globalization
 @using FinanceTracker.Client.Components.Dashboard
 @using FinanceTracker.Contracts.Auth
-@using FinanceTracker.Contracts.Account
-@using FinanceTracker.Contracts.Budget
-@using FinanceTracker.Contracts.Dashboard
-@using FinanceTracker.Contracts.HouseholdMember
 @using FinanceTracker.Contracts.Transactions
 @using Microsoft.AspNetCore.Authorization
-@using AccountAndTransactions = FinanceTracker.Contracts.Account.AccountAndTransactions
 @inherits PageComponent
 
 @attribute [Authorize]
 @inject IDashboardService DashboardService
 @inject IAccountService AccountService
 @inject ITransactionsService TransactionsService
-@inject IBudgetCategoriesService BudgetCategoriesService
+@inject ISavingsGoalsService SavingsGoalsService
+@inject IBudgetsService BudgetsService
 @inject IHouseholdMemberService HouseholdMemberService
 @inject TimeProvider TimeProvider
 
@@ -50,8 +46,11 @@
     <MudItem xs="12" md="6">
         <UpcomingPayments Payments="@View.UpcomingPayments"/>
     </MudItem>
-    <MudItem xs="12">
-        <GoalsAndBudgets BudgetCategories="@View.BudgetCategories"/>
+    <MudItem xs="12" md="6">
+        <BudgetsCard Overview="@View.Budgets"/>
+    </MudItem>
+    <MudItem xs="12" md="6">
+        <SavingsGoalsCard SavingsGoals="@View.SavingsGoals"/>
     </MudItem>
 </MudGrid>
 
@@ -122,7 +121,11 @@
 
         var upcomingPayments = await DashboardService.GetUpcomingPaymentsAsync(8, cancellationToken).ToListAsync(cancellationToken);
         var accounts = await AccountService.GetAccountsAndMostRecentTransactionsAsync(1, cancellationToken).ToListAsync(cancellationToken);
-        var budgetCategories = await BudgetCategoriesService.GetBudgetItemsAsync(cancellationToken).ToListAsync(cancellationToken);
+        var savingsGoals = await SavingsGoalsService.GetSavingsGoalsAsync(cancellationToken).ToListAsync(cancellationToken);
+
+        // Budgets run by calendar month, so always this month whatever the range
+        var now = TimeProvider.GetLocalNow().DateTime;
+        var budgets = await BudgetsService.GetMonthAsync(now.Year, now.Month, cancellationToken);
 
         decimal householdIncome = 0;
         await foreach (var member in HouseholdMemberService.GetHouseholdMembersAsync(cancellationToken))
@@ -146,7 +149,8 @@
             ChartNote = chartNote,
             UpcomingPayments = upcomingPayments,
             Accounts = accounts,
-            BudgetCategories = budgetCategories
+            SavingsGoals = savingsGoals,
+            Budgets = budgets
         };
     }
 

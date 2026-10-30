@@ -17,6 +17,14 @@
     vertical-align: middle;
 }
 
+/* The menu MudBlazor wraps the chip in has to shrink too, or the chip keeps its full width and runs into the next
+   column */
+.ft-transfer-anchor ::deep .mud-menu,
+.ft-transfer-anchor ::deep .mud-menu-activator {
+    max-width: 100%;
+    min-width: 0;
+}
+
 .ft-transfer-anchor ::deep .mud-chip {
     max-width: 100%;
 }

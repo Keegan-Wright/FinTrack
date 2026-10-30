@@ -1,12 +1,12 @@
-using FinanceTracker.Domain.Budgeting;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Transactions;
-using FinanceTracker.Infrastructure;
+using FinanceTracker.Domain.SavingsGoals;
 using FinanceTracker.Infrastructure.Encryption;
 using FinanceTracker.Infrastructure.Persistence;
-using FinanceTracker.Tests.Unit.Shared;
+using FinanceTracker.Infrastructure;
 using FinanceTracker.Tests.Unit.Shared.Fakers;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
+using FinanceTracker.Tests.Unit.Shared;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -24,7 +24,7 @@ public class EncryptionKeyRotatorTests : InfrastructureTestBase
     {
         // Arrange
         await SeedAsync();
-        string before = await ReadRawAsync("BudgetCategories", "Name");
+        string before = await ReadRawAsync("SavingsGoals", "Name");
 
         // Act
         int reencrypted = await new EncryptionKeyRotator(DbContextFactory, NullLogger<EncryptionKeyRotator>.Instance)
@@ -34,7 +34,7 @@ public class EncryptionKeyRotatorTests : InfrastructureTestBase
         using (Assert.Multiple())
         {
             await Assert.That(reencrypted).IsEqualTo(0);
-            await Assert.That(await ReadRawAsync("BudgetCategories", "Name")).IsEqualTo(before);
+            await Assert.That(await ReadRawAsync("SavingsGoals", "Name")).IsEqualTo(before);
         }
     }
 
@@ -53,7 +53,7 @@ public class EncryptionKeyRotatorTests : InfrastructureTestBase
         using (Assert.Multiple())
         {
             await Assert.That(reencrypted).IsGreaterThan(0);
-            await Assert.That(await ReadRawAsync("BudgetCategories", "Name")).StartsWith("2:");
+            await Assert.That(await ReadRawAsync("SavingsGoals", "Name")).StartsWith("2:");
             await Assert.That(await ReadRawAsync("BankTransactions", "Amount")).StartsWith("2:");
             await Assert.That(await ReadRawAsync("BankAccounts", "Balance_Current")).StartsWith("2:");
             await Assert.That(await ReadRawAsync("StandingOrders", "Payee")).StartsWith("2:");
@@ -84,7 +84,7 @@ public class EncryptionKeyRotatorTests : InfrastructureTestBase
 
         // Assert
         await using FinanceTrackerContext context = await rotatedFactory.CreateDbContextAsync(CancellationToken);
-        BudgetCategory category = await context.BudgetCategories.SingleAsync(CancellationToken);
+        SavingsGoal category = await context.SavingsGoals.SingleAsync(CancellationToken);
         string blindIndex = await context.BankTransactions
             .Select(static x => EF.Property<string>(x, EntityTypeBuilderExtensions.BlindIndexPropertyName(nameof(BankTransaction.ExternalId))))
             .SingleAsync(CancellationToken);
@@ -194,8 +194,8 @@ public class EncryptionKeyRotatorTests : InfrastructureTestBase
             .Do(s => s.TransactionScenario.WithTransactions("main", 1))
             .Do(s => s.HouseholdMemberScenario.WithHouseholdMember("partner", Username))
             .Do(s => s.HouseholdMemberScenario.WithLinkedAccount("partner", "112233", "12345678"))
-            .Do(s => s.BudgetCategoryScenario.WithBudgetCategory("budget", Username, userId =>
-                new BudgetCategory(userId, "Holidays", 1, 1, 1, null)));
+            .Do(s => s.SavingsGoalScenario.WithSavingsGoal("budget", Username, userId =>
+                new SavingsGoal(userId, "Holidays", 1, 1, 1, null)));
 
     private async Task<string> ReadRawAsync(string table, string column)
     {

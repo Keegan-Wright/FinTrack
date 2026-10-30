@@ -1,0 +1,13 @@
+/* Each goal is a row, divided rather than boxed */
+.ft-goal-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.ft-goal-list > ::deep .ft-savings-goal {
+    padding: 12px 0;
+}
+
+.ft-goal-list > ::deep .ft-savings-goal + .ft-savings-goal {
+    border-top: 1px solid var(--mud-palette-lines-default);
+}

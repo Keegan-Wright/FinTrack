@@ -20,7 +20,7 @@ public static class ApiEndpoints
 
             api.MapAccountEndpoints()
                 .MapAutomationEndpoints()
-                .MapBudgetCategoryEndpoints()
+                .MapBudgetEndpoints()
                 .MapCalendarEndpoints()
                 .MapClassificationEndpoints()
                 .MapDashboardEndpoints()
@@ -28,6 +28,7 @@ public static class ApiEndpoints
                 .MapOpenBankingEndpoints()
                 .MapReportEndpoints()
                 .MapRuleEndpoints()
+                .MapSavingsGoalEndpoints()
                 .MapTransactionEndpoints()
                 .MapTransferEndpoints();
 

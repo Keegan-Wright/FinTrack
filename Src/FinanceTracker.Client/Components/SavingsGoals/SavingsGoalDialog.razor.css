@@ -1,0 +1,13 @@
+.ft-goal-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: min(440px, 100%);
+}
+
+/* Two fields that belong together share a line and stack on a phone */
+.ft-goal-form__pair {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+    gap: 8px 16px;
+}

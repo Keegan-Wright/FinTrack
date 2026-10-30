@@ -1,0 +1,71 @@
+@* This month's budgets nearest their limit, so what needs watching is on the dashboard. *@
+@using FinanceTracker.Client.Components.Budgets
+@using FinanceTracker.Contracts.Budgets
+
+<Section Title="Budgets" Caption="@Caption" Class="h-100">
+    <Actions>
+        <MudButton Href="Budgets" Variant="Variant.Text" Color="Color.Primary" Size="Size.Small">All budgets</MudButton>
+    </Actions>
+    <ChildContent>
+        @if (Nearest.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                No budgets yet. <MudLink Href="Budgets" Typo="Typo.body2">Set one up</MudLink> to keep your spending
+                to a limit.
+            </MudText>
+        }
+        else
+        {
+            <div class="ft-budgets-card">
+                @foreach (BudgetStatus status in Nearest)
+                {
+                    <BudgetRow @key="status.BudgetId" Status="@status" ShowPace="@(Overview?.IsCurrent == true)"/>
+                }
+            </div>
+        }
+    </ChildContent>
+</Section>
+
+@code {
+
+    /// <summary>
+    /// The most budgets shown, the rest are a click away.
+    /// </summary>
+    internal const int MaxShown = 5;
+
+    /// <summary>
+    /// Says when a budget needs fixing, even if it isn't among those shown.
+    /// </summary>
+    private string Caption
+    {
+        get
+        {
+            int needingTags = Overview?.Budgets.Count(static x => x.CoversNothing) ?? 0;
+            if (needingTags == 0)
+            {
+                return "This month, nearest their limit first";
+            }
+
+            return needingTags == 1
+                ? "1 budget needs a tag to track spending"
+                : $"{needingTags} budgets need a tag to track spending";
+        }
+    }
+
+    /// <summary>
+    /// This month's budgets, null until loaded.
+    /// </summary>
+    [Parameter] public BudgetMonthOverview? Overview { get; set; }
+
+    /// <summary>
+    /// The budgets that have used the most of what they allow, after any whose tags were deleted, as those need
+    /// fixing to track anything.
+    /// </summary>
+    internal List<BudgetStatus> Nearest => (Overview?.Budgets ?? [])
+        .OrderByDescending(static x => x.CoversNothing)
+        .ThenByDescending(BudgetText.Progress)
+        .ThenBy(static x => x.Remaining)
+        .Take(MaxShown)
+        .ToList();
+
+}

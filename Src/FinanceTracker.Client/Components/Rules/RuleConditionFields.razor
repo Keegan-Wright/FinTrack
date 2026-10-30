@@ -7,6 +7,7 @@
 
 <div class="ft-condition">
     <MudSelect T="RuleField" Label="Look at" Value="@Condition.Field" ValueChanged="@OnFieldChanged"
+               ToStringFunc="@(static field => RuleText.FieldName(field))"
                For="@(() => Condition.Field)" Variant="Variant.Outlined" Margin="Margin.Dense"
                Class="ft-condition__field">
         @foreach (RuleField field in RuleText.Fields)
@@ -16,6 +17,7 @@
     </MudSelect>
 
     <MudSelect T="RuleOperator" Label="Compare" Value="@Condition.Operator" ValueChanged="@OnOperatorChanged"
+               ToStringFunc="@(static @operator => RuleText.OperatorName(@operator))"
                For="@(() => Condition.Operator)" Variant="Variant.Outlined" Margin="Margin.Dense"
                Disabled="@(RuleText.OperatorsFor(Condition.Field).Count == 1)"
                Validation="@(ConditionValidator.ValidateValue(Condition, nameof(RuleCondition.Operator)))"
@@ -30,6 +32,7 @@
     {
         case RuleField.Type:
             <MudSelect T="string" Label="Which" @bind-Value="Condition.Value" For="@(() => Condition.Value)"
+                       ToStringFunc="@(static value => value is null ? null : RuleText.TypeName(value))"
                        Variant="Variant.Outlined" Margin="Margin.Dense" Class="ft-condition__value">
                 <MudSelectItem T="string" Value="@("Debit")">@RuleText.TypeName("Debit")</MudSelectItem>
                 <MudSelectItem T="string" Value="@("Credit")">@RuleText.TypeName("Credit")</MudSelectItem>
@@ -37,6 +40,7 @@
             break;
         case RuleField.Account:
             <MudSelect T="string" Label="Account" @bind-Value="Condition.Value" For="@(() => Condition.Value)"
+                       ToStringFunc="@AccountName"
                        Variant="Variant.Outlined" Margin="Margin.Dense" Class="ft-condition__value"
                        Validation="@(ConditionValidator.ValidateValue(Condition, nameof(RuleCondition.Value)))">
                 @foreach ((Guid accountId, string accountName) in AccountNames.OrderBy(static x => x.Value))
@@ -96,6 +100,12 @@
     [Parameter] public EventCallback OnRemove { get; set; }
 
     private bool IsRange => Condition.Operator == RuleOperator.Between;
+
+    /// <summary>
+    /// What a chosen account shows as, its name rather than its id.
+    /// </summary>
+    private string? AccountName(string? value) =>
+        Guid.TryParse(value, out Guid accountId) ? AccountNames.GetValueOrDefault(accountId) : null;
 
     private Func<object, string, Task<IEnumerable<string>>> SecondValueValidation =>
         ConditionValidator.ValidateValue(Condition, nameof(RuleCondition.SecondValue));

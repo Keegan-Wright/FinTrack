@@ -1,0 +1,6 @@
+/* A single column like the budgets card beside it */
+.ft-goals-card {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}

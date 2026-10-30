@@ -1,0 +1,13 @@
+/* Each budget is a row, divided rather than boxed */
+.ft-budget-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.ft-budget-list > ::deep .ft-budget {
+    padding: 12px 0;
+}
+
+.ft-budget-list > ::deep .ft-budget + .ft-budget {
+    border-top: 1px solid var(--mud-palette-lines-default);
+}

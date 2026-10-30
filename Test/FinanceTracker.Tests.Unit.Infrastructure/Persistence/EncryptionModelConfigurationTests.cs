@@ -1,12 +1,12 @@
-using FinanceTracker.Domain.Budgeting;
 using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Domain.OpenBanking.Transactions;
-using FinanceTracker.Infrastructure;
+using FinanceTracker.Domain.SavingsGoals;
 using FinanceTracker.Infrastructure.Persistence;
+using FinanceTracker.Infrastructure;
 using FinanceTracker.Tests.Unit.Shared;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.Tests.Unit.Infrastructure.Persistence;
 
@@ -32,8 +32,8 @@ public class EncryptionModelConfigurationTests : InfrastructureTestBase
     }
 
     [Test]
-    [Arguments(typeof(BudgetCategory), nameof(BudgetCategory.Name))]
-    [Arguments(typeof(BudgetCategory), nameof(BudgetCategory.AvailableFunds))]
+    [Arguments(typeof(SavingsGoal), nameof(SavingsGoal.Name))]
+    [Arguments(typeof(SavingsGoal), nameof(SavingsGoal.Saved))]
     [Arguments(typeof(BankConnection), nameof(BankConnection.AccessCode))]
     [Arguments(typeof(BankConnection), nameof(BankConnection.Logo))]
     [Arguments(typeof(AccessToken), nameof(AccessToken.Token))]

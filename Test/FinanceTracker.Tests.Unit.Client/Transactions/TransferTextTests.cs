@@ -145,16 +145,17 @@ public class TransferTextTests
     }
 
     [Test]
-    [Arguments(null, -5, "Spending")]
-    [Arguments(null, 5, "Income")]
-    [Arguments(TransferState.NotATransfer, 5, "Income")]
-    [Arguments(TransferState.Transfer, -5, "Transfer")]
-    [Arguments(TransferState.NeedsReview, -5, "Review")]
-    public async Task CountsAs_SaysHowItCounts(TransferState? state, int amount, string expected)
+    [Arguments(null, -5, "PURCHASE", "Spending")]
+    [Arguments(null, 5, "CREDIT", "Income")]
+    [Arguments(null, 5, "PURCHASE", "Refund")]
+    [Arguments(TransferState.NotATransfer, 5, "CREDIT", "Income")]
+    [Arguments(TransferState.Transfer, -5, "PURCHASE", "Transfer")]
+    [Arguments(TransferState.NeedsReview, -5, "PURCHASE", "Review")]
+    public async Task CountsAs_SaysHowItCounts(TransferState? state, int amount, string category, string expected)
     {
         // Arrange
         Transaction transaction = TransactionListTests.Transaction("Description", amount,
-            transfer: state is { } known ? Transfer(known) : null);
+            transfer: state is { } known ? Transfer(known) : null, category: category);
 
         // Act
         string countsAs = TransferText.CountsAs(transaction);

@@ -27,9 +27,9 @@ public static class ApiRoutes
     public const string Sync = "api/sync";
 
     /// <summary>
-    /// <see cref="Services.IBudgetCategoriesService"/>.
+    /// <see cref="Services.IBudgetsService"/>.
     /// </summary>
-    public const string BudgetCategories = "api/budget-categories";
+    public const string Budgets = "api/budgets";
 
     /// <summary>
     /// <see cref="Services.ICalendarService"/>.
@@ -66,6 +66,11 @@ public static class ApiRoutes
     /// <see cref="Services.IRulesService"/>.
     /// </summary>
     public const string Rules = "api/rules";
+
+    /// <summary>
+    /// <see cref="Services.ISavingsGoalsService"/>.
+    /// </summary>
+    public const string SavingsGoals = "api/savings-goals";
 
     /// <summary>
     /// <see cref="Services.ITransactionsService"/>.

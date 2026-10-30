@@ -1,0 +1,48 @@
+@* The dashboard's savings goals, how far each has got and whether it's on track. *@
+@using FinanceTracker.Client.Components.SavingsGoals
+@using FinanceTracker.Contracts.SavingsGoals
+<Section Title="Savings goals" Caption="Nearest their target first" Class="h-100">
+    <Actions>
+        <MudButton Href="SavingsGoals" Variant="Variant.Text" Color="Color.Primary" Size="Size.Small">
+            All goals
+        </MudButton>
+    </Actions>
+    <ChildContent>
+        @if (SavingsGoals.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                No savings goals yet. <MudLink Href="SavingsGoals" Typo="Typo.body2">Set one up</MudLink> for something
+                you're saving towards.
+            </MudText>
+        }
+        else
+        {
+            <div class="ft-goals-card">
+                @foreach (SavingsGoal goal in Nearest)
+                {
+                    <SavingsGoalRow @key="goal.Id" Goal="@goal"/>
+                }
+            </div>
+        }
+    </ChildContent>
+</Section>
+
+@code {
+
+    /// <summary>
+    /// The most goals shown, as on the budgets card beside it, the rest are a click away.
+    /// </summary>
+    internal const int MaxShown = 5;
+
+    [Parameter, EditorRequired] public IReadOnlyList<SavingsGoal> SavingsGoals { get; set; } = [];
+
+    /// <summary>
+    /// The goals closest to their target, then those without one by name.
+    /// </summary>
+    internal List<SavingsGoal> Nearest => SavingsGoals
+        .OrderByDescending(SavingsGoalText.Progress)
+        .ThenBy(static x => x.Name, StringComparer.CurrentCultureIgnoreCase)
+        .Take(MaxShown)
+        .ToList();
+
+}

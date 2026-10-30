@@ -41,7 +41,8 @@ public interface IClassificationService
 
     /// <summary>
     /// Deletes one of the user's custom classifications and removes it from every transaction it was applied to, and
-    /// from every rule that adds it. A rule left with nothing to do is disabled.
+    /// from every rule that adds it and every budget and savings goal that covers it. A rule left with nothing to do is
+    /// disabled, a budget or goal left with no tags covers nothing until it's given one.
     /// </summary>
     /// <exception cref="InvalidOperationException">The user has no classification with <paramref name="id"/>.</exception>
     Task RemoveCustomClassificationAsync(Guid id, CancellationToken cancellationToken);

@@ -32,7 +32,8 @@ public static class TransferText
 
     /// <summary>
     /// How a transaction counts in a word, for sorting and where there's no chip <c>Transfer</c>, <c>Review</c>,
-    /// <c>Income</c> or <c>Spending</c>.
+    /// <c>Refund</c>, <c>Income</c> or <c>Spending</c>. Money in the bank calls a purchase is a refund, as budgets
+    /// treat it.
     /// </summary>
     public static string CountsAs(Transaction transaction)
     {
@@ -46,8 +47,16 @@ public static class TransferText
             return "Review";
         }
 
-        return transaction.Amount >= 0 ? "Income" : "Spending";
+        if (transaction.Amount < 0)
+        {
+            return "Spending";
+        }
+
+        return IsRefund(transaction) ? "Refund" : "Income";
     }
+
+    private static bool IsRefund(Transaction transaction) =>
+        string.Equals(transaction.TransactionCategory, "PURCHASE", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Who or where the money moved to or from, e.g. <c>Rainy Day, 4 Oct</c> or <c>Jane Smith</c>. Null when
