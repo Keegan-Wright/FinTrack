@@ -1,0 +1,10 @@
+.ft-month-picker {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.ft-month-picker ::deep .ft-month-picker__label {
+    min-width: 9em;
+    text-align: center;
+}

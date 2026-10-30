@@ -9,6 +9,7 @@ public class PageAccessTests : IntegrationTestBase
     [
         "/",
         "/Accounts",
+        "/Budgets",
         "/Calendar",
         "/Classifications",
         "/HouseholdMembers",
@@ -18,6 +19,7 @@ public class PageAccessTests : IntegrationTestBase
         "/Reports/tags",
         "/Rules",
         "/Rules/new",
+        "/SavingsGoals",
         "/Transactions"
     ];
 

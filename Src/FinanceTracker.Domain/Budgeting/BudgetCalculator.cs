@@ -48,8 +48,9 @@ public static class BudgetCalculator
     }
 
     /// <summary>
-    /// Money out in <paramref name="month"/> that none of <paramref name="budgets"/> cover, so nothing goes unseen.
-    /// Only money out, as income has no budget to be in.
+    /// Money out in <paramref name="month"/> that none of <paramref name="budgets"/> cover, so nothing goes unseen,
+    /// less refunds. Untagged money in could be income or a refund, so only what the bank calls a purchase counts as
+    /// a refund, card refunds come back that way while salary and transfers don't. Never below nothing.
     /// </summary>
     public static decimal Unbudgeted(IEnumerable<Budget> budgets, IEnumerable<BankTransaction> transactions,
         BudgetMonth month, TimeZoneInfo timeZone)
@@ -60,18 +61,30 @@ public static class BudgetCalculator
 
         List<Budget> running = budgets.Where(x => month >= x.FirstMonth).ToList();
 
-        return -transactions
-            .Where(x => x.CountsAsIncomeOrSpending && x.Amount < 0)
+        decimal net = transactions
+            .Where(x => x.CountsAsIncomeOrSpending && (x.Amount < 0 || IsRefund(x)))
             .Where(x => BudgetMonth.Of(x.OccurredAt, timeZone) == month)
             .Where(x => !running.Exists(budget => budget.Covers(x)))
             .Sum(static x => x.Amount);
+
+        return Math.Max(0, -net);
     }
 
     /// <summary>
-    /// Money out less refunds, so a purchase refunded in full leaves the budget as it was.
+    /// The bank's category for a card purchase, money in under it is a refund.
+    /// </summary>
+    private const string PurchaseCategory = "PURCHASE";
+
+    private static bool IsRefund(BankTransaction transaction) =>
+        transaction.Amount > 0 &&
+        string.Equals(transaction.Category, PurchaseCategory, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Money out less refunds, so a purchase refunded in full leaves the budget as it was. Never below nothing: money
+    /// in can cancel spending but not add to what the budget allows, e.g. income that happens to carry the tag.
     /// </summary>
     private static decimal Spent(Dictionary<BudgetMonth, List<BankTransaction>> byMonth, BudgetMonth month) =>
-        -byMonth.GetValueOrDefault(month, []).Sum(static x => x.Amount);
+        Math.Max(0, -byMonth.GetValueOrDefault(month, []).Sum(static x => x.Amount));
 
     private static decimal CarryOver(RolloverMode mode, decimal remaining) => mode switch
     {

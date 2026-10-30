@@ -216,6 +216,8 @@ public class BudgetsServiceTests : InfrastructureTestBase
         {
             Amount = amount,
             Type = amount < 0 ? TransactionType.Debit : TransactionType.Credit,
+            // Money in a purchase would be a refund, so income is categorised as the bank would
+            Category = amount < 0 ? "PURCHASE" : "CREDIT",
             OccurredAt = DateTime.SpecifyKind(occurredAt, DateTimeKind.Utc),
             IsPending = false,
             LabelledAsTransfer = false

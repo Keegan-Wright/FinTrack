@@ -186,4 +186,53 @@ public class SavingsGoalTests
             _ = new SavingsGoal(Guid.Empty, "Test", 0m, 0m, 0m, null));
     }
 
+    [Test]
+    public async Task SavingsGoal_TrackTags_SwitchesSourceAndKeepsTheStart()
+    {
+        var goal = new SavingsGoal(Guid.NewGuid(), "Car", 0m, 0m, 0m, null);
+        Guid tagId = Guid.NewGuid();
+
+        goal.TrackTags([tagId, tagId], 150m, new DateOnly(2026, 2, 1));
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(goal.Source).IsEqualTo(SavingsGoalSource.Tags);
+            await Assert.That(goal.TagIds).IsEquivalentTo([tagId]);
+            await Assert.That(goal.Saved).IsEqualTo(150m);
+            await Assert.That(goal.TrackedFrom).IsEqualTo(new DateOnly(2026, 2, 1));
+        }
+    }
+
+    [Test]
+    public async Task SavingsGoal_TrackAccount_ThenManually_ClearsTheAccount()
+    {
+        var goal = new SavingsGoal(Guid.NewGuid(), "Car", 0m, 0m, 0m, null);
+        goal.TrackAccount(Guid.NewGuid());
+
+        goal.TrackManually(40m);
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(goal.Source).IsEqualTo(SavingsGoalSource.Manual);
+            await Assert.That(goal.AccountId).IsNull();
+            await Assert.That(goal.Saved).IsEqualTo(40m);
+        }
+    }
+
+    [Test]
+    public void SavingsGoal_TrackTags_None_Throws() =>
+        Assert.Throws<ArgumentException>(() =>
+            new SavingsGoal(Guid.NewGuid(), "Car", 0m, 0m, 0m, null).TrackTags([], 0m, new DateOnly(2026, 1, 1)));
+
+    [Test]
+    public async Task SavingsGoal_RemoveTag_ItsLast_CoversNothing()
+    {
+        var goal = new SavingsGoal(Guid.NewGuid(), "Car", 0m, 0m, 0m, null);
+        Guid tagId = Guid.NewGuid();
+        goal.TrackTags([tagId], 0m, new DateOnly(2026, 1, 1));
+
+        goal.RemoveTag(tagId);
+
+        await Assert.That(goal.CoversNothing).IsTrue();
+    }
 }

@@ -29,6 +29,7 @@
                 <MudText Typo="Typo.body2">Match</MudText>
 
                 <MudSelect T="RuleMatchMode" @bind-Value="Model.MatchMode" For="@(() => Model.MatchMode)"
+                           ToStringFunc="@(static mode => RuleText.MatchModeName(mode))"
                            Variant="Variant.Outlined" Margin="Margin.Dense" Class="ft-rule-form__mode"
                            aria-label="How many conditions to match">
 
@@ -66,6 +67,7 @@
                 {
                     <div @key="action" class="ft-rule-form__row ft-rule-form__action">
                         <MudSelect T="RuleActionType" Label="Do" Value="@action.Type"
+                                   ToStringFunc="@(static type => RuleText.ActionName(type))"
                                    ValueChanged="@(type => OnActionTypeChanged(action, type))"
                                    For="@(() => action.Type)" Variant="Variant.Outlined" Margin="Margin.Dense"
                                    Class="ft-rule-form__action-type">
@@ -89,6 +91,7 @@
                         @if (action.Type == RuleActionType.AddTag)
                         {
                             <MudSelect T="Guid?" Label="Tag" @bind-Value="action.ClassificationId"
+                                       ToStringFunc="@TagName"
                                        For="@(() => action.ClassificationId)" Variant="Variant.Outlined"
                                        Margin="Margin.Dense" Class="ft-rule-form__tag"
                                        Validation="@(new Func<Guid?, string?>(TagError))">
@@ -167,6 +170,11 @@
         .Select(static x => x.ErrorMessage);
 
     private static string? TagError(Guid? tagId) => tagId is null ? "Choose a tag" : null;
+
+    /// <summary>
+    /// What a chosen tag shows as, its name rather than its id.
+    /// </summary>
+    private string? TagName(Guid? tagId) => tagId is { } id ? TagNames.GetValueOrDefault(id) : null;
 
     private static string? BankClassificationError(string? classification) =>
         string.IsNullOrWhiteSpace(classification) ? "Enter the bank classification to hide" : null;

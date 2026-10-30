@@ -50,6 +50,11 @@ public sealed class Budget : AggregateRoot
     public RolloverMode RolloverMode { get; private set; }
 
     /// <summary>
+    /// Whether all of its tags have been deleted, so it covers nothing until it's given one.
+    /// </summary>
+    public bool CoversNothing => _tagIds.Count == 0;
+
+    /// <summary>
     /// The first month it runs, before which it has no limit.
     /// </summary>
     public BudgetMonth FirstMonth => _limits[0].Month;
@@ -75,6 +80,13 @@ public sealed class Budget : AggregateRoot
         _tagIds.Clear();
         _tagIds.AddRange(replacements);
     }
+
+    /// <summary>
+    /// Drops a tag being deleted. A budget left with none is kept, see <see cref="CoversNothing"/>, so the user can
+    /// give it another rather than lose its history.
+    /// </summary>
+    /// <returns>Whether the budget covered the tag.</returns>
+    public bool RemoveTag(Guid tagId) => _tagIds.Remove(tagId);
 
     public void ChangeRolloverMode(RolloverMode rolloverMode)
     {

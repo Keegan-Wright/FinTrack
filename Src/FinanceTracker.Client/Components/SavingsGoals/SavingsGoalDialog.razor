@@ -1,0 +1,202 @@
+@* A new savings goal, or an existing one to change: its name, target and monthly contribution, and where its saved
+   amount comes from, a savings account, tagged transactions or typed in. *@
+@using System.Globalization
+@using FinanceTracker.Client.Components.Dialogs
+@using FinanceTracker.Client.Extensions
+@using FinanceTracker.Contracts.SavingsGoals
+@using FluentValidation
+@using FluentValidation.Results
+@inject IValidator<SaveSavingsGoal> Validator
+
+<DialogBase TResponse="SaveSavingsGoal" Title="@(Goal is null ? "New savings goal" : $"Edit {Goal.Name}")"
+            ResponseConstructor="BuildResponseModel">
+    <Content>
+        <MudForm @ref="_form" Model="@_model" class="ft-goal-form">
+            <MudTextField T="string" @bind-Value="_model.Name" Label="Name" For="@(() => _model.Name)"
+                          Validation="@(Validator.ValidateValue(_model, nameof(SaveSavingsGoal.Name)))"
+                          HelperText="e.g. New car" Immediate="true"/>
+
+            <div class="ft-goal-form__pair">
+                <MudTextField T="decimal" @bind-Value="_model.Target" Label="Target" For="@(() => _model.Target)"
+                              InputMode="@(InputMode.@decimal)" Adornment="Adornment.Start"
+                              AdornmentText="@CurrencySymbol" HelperText="0 for no target" Immediate="true"
+                              Validation="@(Validator.ValidateValue(_model, nameof(SaveSavingsGoal.Target)))"/>
+                <MudDatePicker @bind-Date="_model.TargetDate" Label="By" Clearable="true"
+                               HelperText="When you'd like to reach it"/>
+            </div>
+
+            <MudTextField T="decimal" @bind-Value="_model.MonthlyContribution" Label="Monthly contribution"
+                          For="@(() => _model.MonthlyContribution)" InputMode="@(InputMode.@decimal)"
+                          Adornment="Adornment.Start" AdornmentText="@CurrencySymbol" Immediate="true"
+                          HelperText="What you put towards it each month, to see if you're on track"
+                          Validation="@(Validator.ValidateValue(_model, nameof(SaveSavingsGoal.MonthlyContribution)))"/>
+
+            <MudSelect T="SavingsGoalSource" Label="What's saved comes from" @bind-Value="_model.Source"
+                       For="@(() => _model.Source)" ToStringFunc="@(static x => SavingsGoalText.SourceName(x))">
+                @foreach (SavingsGoalSource source in Enum.GetValues<SavingsGoalSource>())
+                {
+                    <MudSelectItem T="SavingsGoalSource" Value="@source">
+                        @SavingsGoalText.SourceName(source)
+                    </MudSelectItem>
+                }
+            </MudSelect>
+
+            @switch (_model.Source)
+            {
+                case SavingsGoalSource.Account:
+                    <MudSelect T="Guid?" Label="Account" @bind-Value="_model.AccountId" For="@(() => _model.AccountId)"
+                               ToStringFunc="@AccountName"
+                               Validation="@(Validator.ValidateValue(_model, nameof(SaveSavingsGoal.AccountId)))"
+                               HelperText="Its balance is what's saved. Each account backs one goal">
+                        @foreach (SavingsGoalAccount account in FreeAccounts)
+                        {
+                            <MudSelectItem T="Guid?" Value="@account.AccountId">@account.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                    @if (!FreeAccounts.Any())
+                    {
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                            Every account already backs a goal, or you have none to choose.
+                        </MudText>
+                    }
+                    break;
+                case SavingsGoalSource.Tags:
+                    <MudSelect T="Guid" Label="Tags" MultiSelection="true" @bind-SelectedValues="_tagIds"
+                               MultiSelectionTextFunc="@TagsText"
+                               HelperText="Money in with any of these adds to it, money out takes from it">
+                        @foreach ((Guid tagId, string tagName) in TagNames.OrderBy(static x => x.Value))
+                        {
+                            <MudSelectItem T="Guid" Value="@tagId">@tagName</MudSelectItem>
+                        }
+                    </MudSelect>
+                    @foreach (string error in ErrorsFor(nameof(SaveSavingsGoal.TagIds)))
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Error">@error</MudText>
+                    }
+                    <div class="ft-goal-form__pair">
+                        <MudDatePicker @bind-Date="_trackedFrom" Label="Counting from"
+                                       HelperText="Tagged transactions from this day count"/>
+                        <MudTextField T="decimal" @bind-Value="_model.Saved" Label="Saved before then"
+                                      For="@(() => _model.Saved)" InputMode="@(InputMode.@decimal)"
+                                      Adornment="Adornment.Start" AdornmentText="@CurrencySymbol" Immediate="true"
+                                      Validation="@(Validator.ValidateValue(_model, nameof(SaveSavingsGoal.Saved)))"/>
+                    </div>
+                    @foreach (string error in ErrorsFor(nameof(SaveSavingsGoal.TrackedFrom)))
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Error">@error</MudText>
+                    }
+                    break;
+                default:
+                    <MudTextField T="decimal" @bind-Value="_model.Saved" Label="Saved so far"
+                                  For="@(() => _model.Saved)"
+                                  InputMode="@(InputMode.@decimal)" Adornment="Adornment.Start"
+                                  AdornmentText="@CurrencySymbol" Immediate="true"
+                                  Validation="@(Validator.ValidateValue(_model, nameof(SaveSavingsGoal.Saved)))"/>
+                    break;
+            }
+        </MudForm>
+    </Content>
+</DialogBase>
+
+@code {
+
+    /// <summary>
+    /// The goal to change, null for a new one.
+    /// </summary>
+    [Parameter] public SavingsGoal? Goal { get; set; }
+
+    /// <summary>
+    /// The user's accounts that could back a goal.
+    /// </summary>
+    [Parameter] [EditorRequired] public required IReadOnlyList<SavingsGoalAccount> Accounts { get; set; }
+
+    /// <summary>
+    /// The user's tags by id.
+    /// </summary>
+    [Parameter] [EditorRequired] public required IReadOnlyDictionary<Guid, string> TagNames { get; set; }
+
+    private MudForm _form = null!;
+    private SaveSavingsGoal _model = new();
+    private IReadOnlyCollection<Guid> _tagIds = [];
+    private DateTime? _trackedFrom = DateTime.Today;
+    private List<ValidationFailure> _errors = [];
+
+    private static string CurrencySymbol => CultureInfo.CurrentCulture.NumberFormat.CurrencySymbol;
+
+    /// <summary>
+    /// Accounts backing no goal, or this one.
+    /// </summary>
+    private IEnumerable<SavingsGoalAccount> FreeAccounts =>
+        Accounts.Where(x => x.GoalId is null || x.GoalId == Goal?.Id);
+
+    protected override void OnInitialized()
+    {
+        if (Goal is null)
+        {
+            return;
+        }
+
+        List<Guid> tagIds = Goal.TagIds.Where(TagNames.ContainsKey).ToList();
+        _model = new SaveSavingsGoal
+        {
+            Name = Goal.Name,
+            Target = Goal.Target,
+            TargetDate = Goal.TargetDate,
+            MonthlyContribution = Goal.MonthlyContribution,
+            Source = Goal.Source,
+            Saved = Goal.StartingAmount,
+            AccountId = Goal.AccountId,
+            TagIds = tagIds
+        };
+        _tagIds = tagIds;
+        _trackedFrom = Goal.TrackedFrom?.ToDateTime(TimeOnly.MinValue) ?? DateTime.Today;
+    }
+
+    private string? AccountName(Guid? accountId) =>
+        Accounts.FirstOrDefault(x => x.AccountId == accountId)?.Name;
+
+    private string TagsText(IReadOnlyList<string> selected)
+    {
+        List<string> names = [];
+        foreach (string value in selected)
+        {
+            if (Guid.TryParse(value, out Guid id) && TagNames.TryGetValue(id, out string? name))
+            {
+                names.Add(name);
+            }
+        }
+
+        return string.Join(", ", names);
+    }
+
+    private IEnumerable<string> ErrorsFor(string propertyName) => _errors
+        .Where(x => x.PropertyName == propertyName)
+        .Select(static x => x.ErrorMessage);
+
+    /// <summary>
+    /// What's on screen, keeping only what the chosen source needs.
+    /// </summary>
+    private async Task<SaveSavingsGoal?> BuildResponseModel()
+    {
+        _model.TagIds = _model.Source == SavingsGoalSource.Tags ? _tagIds.ToList() : [];
+        _model.TrackedFrom = _model.Source == SavingsGoalSource.Tags && _trackedFrom is { } day
+            ? DateOnly.FromDateTime(day)
+            : null;
+        if (_model.Source != SavingsGoalSource.Account)
+        {
+            _model.AccountId = null;
+        }
+
+        await _form.ValidateAsync();
+        ValidationResult result = await Validator.ValidateAsync(_model);
+        _errors = result.Errors.ToList();
+
+        if (!_form.IsValid || !result.IsValid)
+        {
+            return null;
+        }
+
+        return _model;
+    }
+
+}

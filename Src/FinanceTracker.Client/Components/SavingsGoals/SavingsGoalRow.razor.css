@@ -1,0 +1,32 @@
+.ft-savings-goal {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.ft-savings-goal__line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.ft-savings-goal__line ::deep .ft-savings-goal__name {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ft-savings-goal__actions {
+    display: inline-flex;
+    flex: 0 0 auto;
+}
+
+.ft-savings-goal__details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 16px;
+}

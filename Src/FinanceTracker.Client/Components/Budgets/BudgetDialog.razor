@@ -1,0 +1,130 @@
+@* A new budget, or an existing one to change its name, the tags it covers, its monthly limit and what carries
+   over. A changed limit applies from this month on. *@
+@using System.Globalization
+@using FinanceTracker.Client.Components.Dialogs
+@using FinanceTracker.Client.Extensions
+@using FinanceTracker.Contracts.Budgets
+@using FluentValidation
+@using FluentValidation.Results
+@inject IValidator<SaveBudget> Validator
+
+<DialogBase TResponse="SaveBudget" Title="@(Budget is null ? "New budget" : $"Edit {Budget.Name}")"
+            ResponseConstructor="BuildResponseModel">
+    <Content>
+        <MudForm @ref="_form" Model="@_model" class="ft-budget-form">
+            <MudTextField T="string" @bind-Value="_model.Name" Label="Name" For="@(() => _model.Name)"
+                          Validation="@(Validator.ValidateValue(_model, nameof(SaveBudget.Name)))"
+                          HelperText="e.g. Groceries" Immediate="true"/>
+
+            <MudSelect T="Guid" Label="Tags it covers" MultiSelection="true" @bind-SelectedValues="_tagIds"
+                       MultiSelectionTextFunc="@TagsText" HelperText="Spending with any of these counts">
+                @foreach ((Guid tagId, string tagName) in TagNames.OrderBy(static x => x.Value))
+                {
+                    <MudSelectItem T="Guid" Value="@tagId">@tagName</MudSelectItem>
+                }
+            </MudSelect>
+            @if (_tagsError is not null)
+            {
+                <MudText Typo="Typo.caption" Color="Color.Error">@_tagsError</MudText>
+            }
+            @if (TagNames.Count == 0)
+            {
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                    You have no tags yet, <MudLink Href="Classifications" Typo="Typo.caption">make one</MudLink> and
+                    a <MudLink Href="Rules" Typo="Typo.caption">rule</MudLink> to tag your spending.
+                </MudText>
+            }
+
+            <MudTextField T="decimal" @bind-Value="_model.MonthlyLimit" Label="Monthly limit"
+                          For="@(() => _model.MonthlyLimit)" InputMode="@(InputMode.@decimal)"
+                          Adornment="Adornment.Start" AdornmentText="@CurrencySymbol"
+                          Validation="@(Validator.ValidateValue(_model, nameof(SaveBudget.MonthlyLimit)))"
+                          HelperText="@LimitHelp" Immediate="true"/>
+
+            <MudSelect T="RolloverMode" Label="At the end of the month" @bind-Value="_model.RolloverMode"
+                       ToStringFunc="@(static mode => BudgetText.RolloverName(mode))"
+                       For="@(() => _model.RolloverMode)">
+                @foreach (RolloverMode mode in Enum.GetValues<RolloverMode>())
+                {
+                    <MudSelectItem T="RolloverMode" Value="@mode">@BudgetText.RolloverName(mode)</MudSelectItem>
+                }
+            </MudSelect>
+        </MudForm>
+    </Content>
+</DialogBase>
+
+@code {
+
+    /// <summary>
+    /// The budget to change, null for a new one.
+    /// </summary>
+    [Parameter] public Budget? Budget { get; set; }
+
+    /// <summary>
+    /// The user's tags by id.
+    /// </summary>
+    [Parameter] [EditorRequired] public required IReadOnlyDictionary<Guid, string> TagNames { get; set; }
+
+    private MudForm _form = null!;
+    private SaveBudget _model = new();
+    private IReadOnlyCollection<Guid> _tagIds = [];
+    private string? _tagsError;
+
+    private static string CurrencySymbol => CultureInfo.CurrentCulture.NumberFormat.CurrencySymbol;
+
+    private string LimitHelp => Budget is null
+        ? "How much you can spend each month"
+        : "A new limit applies from this month on, earlier months keep theirs";
+
+    protected override void OnInitialized()
+    {
+        if (Budget is null)
+        {
+            return;
+        }
+
+        // A tag deleted before budgets let go of them would otherwise be sent back and refused
+        List<Guid> tagIds = Budget.TagIds.Where(TagNames.ContainsKey).ToList();
+
+        _model = new SaveBudget
+        {
+            Name = Budget.Name,
+            TagIds = tagIds,
+            MonthlyLimit = Budget.MonthlyLimit,
+            RolloverMode = Budget.RolloverMode
+        };
+        _tagIds = tagIds;
+    }
+
+    private string TagsText(IReadOnlyList<string> selected)
+    {
+        List<string> names = [];
+        foreach (string value in selected)
+        {
+            if (Guid.TryParse(value, out Guid id) && TagNames.TryGetValue(id, out string? name))
+            {
+                names.Add(name);
+            }
+        }
+
+        return string.Join(", ", names);
+    }
+
+    private async Task<SaveBudget?> BuildResponseModel()
+    {
+        _model.TagIds = _tagIds.ToList();
+
+        await _form.ValidateAsync();
+        ValidationResult result = await Validator.ValidateAsync(_model);
+        _tagsError = result.Errors
+            .FirstOrDefault(static x => x.PropertyName == nameof(SaveBudget.TagIds))?.ErrorMessage;
+
+        if (!_form.IsValid || !result.IsValid)
+        {
+            return null;
+        }
+
+        return _model;
+    }
+
+}

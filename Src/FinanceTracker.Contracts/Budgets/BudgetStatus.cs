@@ -20,6 +20,12 @@ public class BudgetStatus
     public required string Name { get; init; }
 
     /// <summary>
+    /// Whether all of its tags were deleted, so it covers nothing until it's given one.
+    /// </summary>
+    [Description("Whether all of the budget's tags were deleted, so it covers nothing")]
+    public bool CoversNothing { get; init; }
+
+    /// <summary>
     /// That month's limit.
     /// </summary>
     [Description("That month's limit")]
@@ -38,7 +44,7 @@ public class BudgetStatus
     public decimal Available { get; init; }
 
     /// <summary>
-    /// Money out less refunds, pending included.
+    /// Money out less refunds, pending included, never below 0.
     /// </summary>
     [Description("Money out less refunds, pending included")]
     public decimal Spent { get; init; }

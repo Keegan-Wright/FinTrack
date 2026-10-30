@@ -1,0 +1,234 @@
+@page "/Budgets"
+@* Monthly limits on what the user's tags cover, month by month (IBudgetsService). The current month shows the pace
+   and can be changed, earlier months are as they were. *@
+@using FinanceTracker.Client.Components.Budgets
+@using FinanceTracker.Contracts.Budgets
+@using FinanceTracker.Contracts.Classifications
+@using Microsoft.AspNetCore.Authorization
+@inherits PageComponent
+
+@attribute [Authorize]
+@inject IBudgetsService BudgetsService
+@inject IClassificationService ClassificationService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject TimeProvider TimeProvider
+
+<PageTitle>FinTrack - Budgets</PageTitle>
+<PageHeader Title="Budgets" Subtitle="What you plan to spend each month, and how it's going">
+    <Actions>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Add"
+                   OnClick="@AddAsync">New budget</MudButton>
+    </Actions>
+</PageHeader>
+
+<div class="ft-stack">
+    <Section>
+        <TitleContent>
+            <MonthPicker Month="@Month" Latest="@CurrentMonth" MonthChanged="@ShowMonthAsync"/>
+        </TitleContent>
+        <Actions>
+            @if (Overview is { IsCurrent: false })
+            {
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">As it ended</MudText>
+            }
+        </Actions>
+        <ChildContent>
+            @if (Overview is null or { Budgets.Count: 0 })
+            {
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">@EmptyText</MudText>
+            }
+            else
+            {
+                <div class="ft-budget-list">
+                    @foreach (BudgetStatus status in Overview.Budgets)
+                    {
+                        <BudgetRow @key="status.BudgetId" Status="@status" ShowPace="@Overview.IsCurrent"
+                                   Editable="@Overview.IsCurrent" OnEdit="@(() => EditAsync(status.BudgetId))"
+                                   OnDelete="@(() => DeleteAsync(status))"/>
+                    }
+                </div>
+            }
+        </ChildContent>
+    </Section>
+
+    @if (Overview is not null)
+    {
+        <Section Title="Unbudgeted"
+                 Caption="Money out that none of your budgets cover, less card refunds, so nothing goes unseen">
+            <div class="ft-list__line">
+                <MudText Typo="Typo.body2">
+                    @(Overview.Unbudgeted > 0 ? "Spent with no budget" : "Everything you spent is in a budget")
+                </MudText>
+                <MoneyText Value="@Overview.Unbudgeted"/>
+            </div>
+            @if (Overview.Unbudgeted > 0)
+            {
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                    Tag it with a <MudLink Href="Rules" Typo="Typo.caption">rule</MudLink> and add the tag to a budget
+                    to track it.
+                </MudText>
+            }
+        </Section>
+    }
+</div>
+
+@code {
+
+    /// <summary>
+    /// The month shown, loaded once, see <see cref="PageComponent.LoadOnceAsync{T}"/>.
+    /// </summary>
+    [PersistentState]
+    public BudgetMonthOverview? Overview { get; set; }
+
+    /// <summary>
+    /// The user's budgets, to edit.
+    /// </summary>
+    [PersistentState]
+    public List<Budget>? BudgetList { get; set; }
+
+    /// <summary>
+    /// The user's tags, for the budget dialog.
+    /// </summary>
+    [PersistentState]
+    public List<Classification>? Tags { get; set; }
+
+    private DateOnly CurrentMonth
+    {
+        get
+        {
+            DateTime now = TimeProvider.GetLocalNow().DateTime;
+            return new DateOnly(now.Year, now.Month, 1);
+        }
+    }
+
+    private DateOnly Month => Overview?.Month ?? CurrentMonth;
+
+    private IReadOnlyDictionary<Guid, string> TagNames =>
+        (Tags ?? []).ToDictionary(static x => x.ClassificationId, static x => x.Tag ?? string.Empty);
+
+    private string EmptyText => BudgetList is null or { Count: 0 }
+        ? "No budgets yet. Make one for anything you want to keep to a limit, like £400 a month on groceries."
+        : "None of your budgets had started by this month.";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        DateOnly month = CurrentMonth;
+        Overview = await LoadOnceAsync(Overview, "Loading your budgets", cancellationToken =>
+            BudgetsService.GetMonthAsync(month.Year, month.Month, cancellationToken));
+        BudgetList = await LoadOnceAsync(BudgetList, "Loading your budgets", cancellationToken =>
+            BudgetsService.GetBudgetsAsync(cancellationToken).ToListAsync(cancellationToken).AsTask());
+        Tags = await LoadOnceAsync(Tags, "Loading your budgets", cancellationToken =>
+            ClassificationService.GetAllCustomClassificationsAsync(cancellationToken)
+                .ToListAsync(cancellationToken).AsTask());
+    }
+
+    internal async Task ShowMonthAsync(DateOnly month)
+    {
+        try
+        {
+            SetLoadingState(true, $"Loading {BudgetText.Month(month)}");
+            Overview = await BudgetsService.GetMonthAsync(month.Year, month.Month, _cts.Token);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't load that month, try again", Severity.Error);
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
+    private async Task AddAsync()
+    {
+        SaveBudget? budget = await ShowDialogAsync(null);
+        if (budget is null)
+        {
+            return;
+        }
+
+        await SaveAsync($"{budget.Name} added", () => BudgetsService.AddBudgetAsync(budget, _cts.Token));
+    }
+
+    private async Task EditAsync(Guid budgetId)
+    {
+        Budget? existing = BudgetList?.Find(x => x.Id == budgetId);
+        if (existing is null)
+        {
+            return;
+        }
+
+        SaveBudget? budget = await ShowDialogAsync(existing);
+        if (budget is null)
+        {
+            return;
+        }
+
+        await SaveAsync($"{budget.Name} saved",
+            () => BudgetsService.UpdateBudgetAsync(budgetId, budget, _cts.Token));
+    }
+
+    private async Task DeleteAsync(BudgetStatus status)
+    {
+        bool? confirmed = await DialogService.ShowMessageBoxAsync($"Delete {status.Name}?",
+            "Its transactions keep their tags, only the limit goes.", yesText: "Delete", cancelText: "Cancel");
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        await SaveAsync($"{status.Name} deleted",
+            () => BudgetsService.DeleteBudgetAsync(status.BudgetId, _cts.Token));
+    }
+
+    /// <returns>What the user entered, null when they cancelled.</returns>
+    private async Task<SaveBudget?> ShowDialogAsync(Budget? budget)
+    {
+        DialogParameters<BudgetDialog> parameters = new()
+        {
+            { x => x.Budget, budget },
+            { x => x.TagNames, TagNames }
+        };
+
+        IDialogReference dialog = await DialogService.ShowAsync<BudgetDialog>(null, parameters);
+        DialogResult? result = await dialog.Result;
+
+        if (result is null || result.Canceled)
+        {
+            return null;
+        }
+
+        return (SaveBudget)result.Data!;
+    }
+
+    /// <summary>
+    /// Makes a change, then reloads the month and the budgets so the totals and limits are as saved.
+    /// </summary>
+    private async Task SaveAsync(string done, Func<Task> change)
+    {
+        try
+        {
+            SetLoadingState(true, "Saving…");
+            await change();
+            DateOnly month = Month;
+            Overview = await BudgetsService.GetMonthAsync(month.Year, month.Month, _cts.Token);
+            BudgetList = await BudgetsService.GetBudgetsAsync(_cts.Token).ToListAsync(_cts.Token);
+            Snackbar.Add(done, Severity.Success);
+        }
+        catch (InvalidOperationException)
+        {
+            Snackbar.Add("A tag in this budget isn't yours any more, choose another", Severity.Error);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't save that, try again", Severity.Error);
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
+}

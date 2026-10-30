@@ -1,0 +1,93 @@
+@* One budget in one month what's spent of what's available, a bar with where a steady pace would be, and what's
+   left. Pace only shows for the current month, and past months can't be edited. *@
+@using FinanceTracker.Contracts.Budgets
+
+<div class="ft-budget">
+    <div class="ft-budget__line">
+        <MudText Typo="Typo.body2" Class="ft-budget__name">@Status.Name</MudText>
+        <MudText Typo="Typo.body2" Class="ft-money" Color="@RemainingColor">@BudgetText.Remaining(Status)</MudText>
+        @if (Editable)
+        {
+            <span class="ft-budget__actions">
+                <MudIconButton Icon="@Icons.Material.Outlined.Edit" Size="Size.Small"
+                               aria-label="@($"Edit {Status.Name}")" OnClick="@OnEdit"/>
+                <MudIconButton Icon="@Icons.Material.Outlined.Delete" Size="Size.Small"
+                               aria-label="@($"Delete {Status.Name}")" OnClick="@OnDelete"/>
+            </span>
+        }
+    </div>
+
+    <div class="ft-budget__bar">
+        <MudProgressLinear Value="@(BudgetText.Progress(Status) * 100)" Color="@BarColor" Rounded="true"
+                           Size="Size.Medium" aria-label="@BudgetText.BarLabel(Status)"/>
+        @if (ShowPace)
+        {
+            <span class="ft-budget__pace" style="@($"left: {BudgetText.PaceMarker(Status) * 100:0.##}%")"
+                  title="Where a steady pace would be by today"></span>
+        }
+    </div>
+
+    @if (BudgetText.Problem(Status) is { } problem)
+    {
+        <MudText Typo="Typo.caption" Color="Color.Warning">@problem</MudText>
+    }
+
+    <div class="ft-budget__details">
+        <MudText Typo="Typo.caption" Class="mud-text-secondary ft-money">@BudgetText.SpentOf(Status)</MudText>
+        @if (ShowPace)
+        {
+            <MudText Typo="Typo.caption" Class="mud-text-secondary">@BudgetText.Pace(Status)</MudText>
+        }
+        @if (BudgetText.Pending(Status) is { } pending)
+        {
+            <MudText Typo="Typo.caption" Class="mud-text-secondary">@pending</MudText>
+        }
+        @if (BudgetText.CarriedIn(Status) is { } carried)
+        {
+            <MudText Typo="Typo.caption" Class="mud-text-secondary">@carried</MudText>
+        }
+    </div>
+</div>
+
+@code {
+
+    [Parameter] [EditorRequired] public required BudgetStatus Status { get; set; }
+
+    /// <summary>
+    /// Whether to show where a steady pace would be, the current month only.
+    /// </summary>
+    [Parameter] public bool ShowPace { get; set; }
+
+    /// <summary>
+    /// Whether it can be edited or deleted from here, not in a past month.
+    /// </summary>
+    [Parameter] public bool Editable { get; set; }
+
+    [Parameter] public EventCallback OnEdit { get; set; }
+
+    [Parameter] public EventCallback OnDelete { get; set; }
+
+    private Color RemainingColor => Status.Remaining < 0 ? Color.Error : Color.Default;
+
+    /// <summary>
+    /// Red once over, amber when spending is ahead of a steady pace this month.
+    /// </summary>
+    private Color BarColor
+    {
+        get
+        {
+            if (Status.Remaining < 0)
+            {
+                return Color.Error;
+            }
+
+            if (ShowPace && !Status.OnPace)
+            {
+                return Color.Warning;
+            }
+
+            return Color.Primary;
+        }
+    }
+
+}

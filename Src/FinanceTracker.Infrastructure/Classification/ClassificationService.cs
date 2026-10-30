@@ -1,9 +1,11 @@
 using System.Runtime.CompilerServices;
 using FinanceTracker.Contracts.Classifications;
 using FinanceTracker.Contracts.Services;
+using FinanceTracker.Domain.Budgeting;
 using FinanceTracker.Domain.Classifications;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.Rules;
+using FinanceTracker.Domain.SavingsGoals;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -105,6 +107,18 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
         foreach (Rule rule in rules)
         {
             rule.RemoveTag(id);
+        }
+
+        List<Budget> budgets = await context.Budgets.OwnedBy(UserId).ToListAsync(cancellationToken);
+        foreach (Budget budget in budgets)
+        {
+            budget.RemoveTag(id);
+        }
+
+        List<SavingsGoal> goals = await context.SavingsGoals.OwnedBy(UserId).ToListAsync(cancellationToken);
+        foreach (SavingsGoal goal in goals)
+        {
+            goal.RemoveTag(id);
         }
 
         context.CustomClassifications.Remove(classificationToRemove);

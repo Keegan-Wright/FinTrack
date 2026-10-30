@@ -1,0 +1,163 @@
+@page "/SavingsGoals"
+@* What the user is saving up for, how far each has got and whether it's on track (ISavingsGoalsService). *@
+@using FinanceTracker.Client.Components.SavingsGoals
+@using FinanceTracker.Contracts.Classifications
+@using FinanceTracker.Contracts.SavingsGoals
+@using Microsoft.AspNetCore.Authorization
+@inherits PageComponent
+
+@attribute [Authorize]
+@inject ISavingsGoalsService SavingsGoalsService
+@inject IClassificationService ClassificationService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>FinTrack - Savings goals</PageTitle>
+<PageHeader Title="Savings goals" Subtitle="What you're saving up for, and whether you'll get there in time">
+    <Actions>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Add"
+                   OnClick="@AddAsync">New goal</MudButton>
+    </Actions>
+</PageHeader>
+
+<Section Title="@SectionTitle" Caption="Saved from a savings account's balance, tagged transactions or typed in">
+    @if (Goals is null or { Count: 0 })
+    {
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+            No goals yet. Make one for anything you're saving towards, like £10,000 for a car by next summer.
+        </MudText>
+    }
+    else
+    {
+        <div class="ft-goal-list">
+            @foreach (SavingsGoal goal in Goals)
+            {
+                <SavingsGoalRow @key="goal.Id" Goal="@goal" TagNames="@TagNames" ShowSource="true" Editable="true"
+                                OnEdit="@(() => EditAsync(goal))" OnDelete="@(() => DeleteAsync(goal))"/>
+            }
+        </div>
+    }
+</Section>
+
+@code {
+
+    /// <summary>
+    /// The user's goals, loaded once, see <see cref="PageComponent.LoadOnceAsync{T}"/>.
+    /// </summary>
+    [PersistentState]
+    public List<SavingsGoal>? Goals { get; set; }
+
+    /// <summary>
+    /// The accounts that could back a goal, for the dialog.
+    /// </summary>
+    [PersistentState]
+    public List<SavingsGoalAccount>? Accounts { get; set; }
+
+    /// <summary>
+    /// The user's tags, for the dialog and saying what a goal tracks.
+    /// </summary>
+    [PersistentState]
+    public List<Classification>? Tags { get; set; }
+
+    private IReadOnlyDictionary<Guid, string> TagNames =>
+        (Tags ?? []).ToDictionary(static x => x.ClassificationId, static x => x.Tag ?? string.Empty);
+
+    private string SectionTitle => Goals?.Count == 1 ? "1 goal" : $"{Goals?.Count ?? 0} goals";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        Goals = await LoadOnceAsync(Goals, "Loading your goals", cancellationToken =>
+            SavingsGoalsService.GetSavingsGoalsAsync(cancellationToken).ToListAsync(cancellationToken).AsTask());
+        Accounts = await LoadOnceAsync(Accounts, "Loading your goals", cancellationToken =>
+            SavingsGoalsService.GetSavingsAccountsAsync(cancellationToken).ToListAsync(cancellationToken).AsTask());
+        Tags = await LoadOnceAsync(Tags, "Loading your goals", cancellationToken =>
+            ClassificationService.GetAllCustomClassificationsAsync(cancellationToken)
+                .ToListAsync(cancellationToken).AsTask());
+    }
+
+    private async Task AddAsync()
+    {
+        SaveSavingsGoal? goal = await ShowDialogAsync(null);
+        if (goal is null)
+        {
+            return;
+        }
+
+        await SaveAsync($"{goal.Name} added", () => SavingsGoalsService.AddSavingsGoalAsync(goal, _cts.Token));
+    }
+
+    private async Task EditAsync(SavingsGoal existing)
+    {
+        SaveSavingsGoal? goal = await ShowDialogAsync(existing);
+        if (goal is null)
+        {
+            return;
+        }
+
+        await SaveAsync($"{goal.Name} saved",
+            () => SavingsGoalsService.UpdateSavingsGoalAsync(existing.Id, goal, _cts.Token));
+    }
+
+    private async Task DeleteAsync(SavingsGoal goal)
+    {
+        bool? confirmed = await DialogService.ShowMessageBoxAsync($"Delete {goal.Name}?",
+            "Only the goal goes, your accounts and transactions stay as they are.", yesText: "Delete",
+            cancelText: "Cancel");
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        await SaveAsync($"{goal.Name} deleted", () => SavingsGoalsService.DeleteSavingsGoalAsync(goal.Id, _cts.Token));
+    }
+
+    /// <returns>What the user entered, null when they cancelled.</returns>
+    private async Task<SaveSavingsGoal?> ShowDialogAsync(SavingsGoal? goal)
+    {
+        DialogParameters<SavingsGoalDialog> parameters = new()
+        {
+            { x => x.Goal, goal },
+            { x => x.Accounts, Accounts ?? [] },
+            { x => x.TagNames, TagNames }
+        };
+
+        IDialogReference dialog = await DialogService.ShowAsync<SavingsGoalDialog>(null, parameters);
+        DialogResult? result = await dialog.Result;
+
+        if (result is null || result.Canceled)
+        {
+            return null;
+        }
+
+        return (SaveSavingsGoal)result.Data!;
+    }
+
+    /// <summary>
+    /// Makes a change, then reloads the goals and accounts so the amounts and which accounts are free are as saved.
+    /// </summary>
+    private async Task SaveAsync(string done, Func<Task> change)
+    {
+        try
+        {
+            SetLoadingState(true, "Saving…");
+            await change();
+            Goals = await SavingsGoalsService.GetSavingsGoalsAsync(_cts.Token).ToListAsync(_cts.Token);
+            Accounts = await SavingsGoalsService.GetSavingsAccountsAsync(_cts.Token).ToListAsync(_cts.Token);
+            Snackbar.Add(done, Severity.Success);
+        }
+        catch (InvalidOperationException)
+        {
+            Snackbar.Add("That account or a tag can't be used any more, choose another", Severity.Error);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't save that, try again", Severity.Error);
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
+}

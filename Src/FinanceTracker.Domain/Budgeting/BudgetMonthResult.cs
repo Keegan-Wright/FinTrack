@@ -6,7 +6,7 @@ namespace FinanceTracker.Domain.Budgeting;
 /// <param name="Month">The month.</param>
 /// <param name="Limit">That month's limit.</param>
 /// <param name="CarriedIn">Brought from the month before by the rollover mode, negative when overspending was.</param>
-/// <param name="Spent">Money out less refunds, pending included. Negative when refunds outweigh spending.</param>
+/// <param name="Spent">Money out less refunds, pending included, never below 0.</param>
 /// <param name="Pending">How much of <see cref="Spent"/> is still pending.</param>
 /// <param name="ExpectedByNow">What spending at a steady pace through the month would have reached by today, all of
 /// <see cref="Available"/> for a past month and nothing for a future one.</param>

@@ -71,6 +71,24 @@ public class BudgetTests
         await Assert.That(Groceries(400m).LimitFor(new BudgetMonth(2025, 12))).IsNull();
 
     [Test]
+    public async Task RemoveTag_ItsLastTag_KeepsTheBudgetCoveringNothing()
+    {
+        // Arrange
+        Budget budget = Groceries(400m);
+
+        // Act
+        bool removed = budget.RemoveTag(Shopping);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(removed).IsTrue();
+            await Assert.That(budget.CoversNothing).IsTrue();
+            await Assert.That(budget.LimitFor(January)).IsEqualTo(400m);
+        }
+    }
+
+    [Test]
     public void New_NoTags_Throws() =>
         Assert.Throws<ArgumentException>(() =>
             _ = new Budget(UserId, "Groceries", [], 400m, January, RolloverMode.None));

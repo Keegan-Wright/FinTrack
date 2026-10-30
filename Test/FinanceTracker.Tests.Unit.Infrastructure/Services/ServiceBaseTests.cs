@@ -12,7 +12,7 @@ public class ServiceBaseTests : InfrastructureTestBase
     {
         // Arrange
         SavingsGoalsService subject = new(new CurrentUser(), DbContextFactory,
-            NullLogger<SavingsGoalsService>.Instance);
+            NullLogger<SavingsGoalsService>.Instance, TimeProvider.System);
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(async () =>

@@ -28,6 +28,7 @@ internal static class BudgetMapper
     {
         BudgetId = budget.Id,
         Name = budget.Name,
+        CoversNothing = budget.CoversNothing,
         Limit = result.Limit,
         CarriedIn = result.CarriedIn,
         Available = result.Available,

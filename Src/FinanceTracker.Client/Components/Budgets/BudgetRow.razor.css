@@ -1,0 +1,49 @@
+.ft-budget {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.ft-budget__line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.ft-budget__line ::deep .ft-budget__name {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ft-budget__actions {
+    display: inline-flex;
+    flex: 0 0 auto;
+}
+
+/* The pace marker sits over the bar, a thin line where a steady pace would be by today */
+.ft-budget__bar {
+    position: relative;
+}
+
+.ft-budget__pace {
+    position: absolute;
+    top: -3px;
+    bottom: -3px;
+    width: 2px;
+    margin-left: -1px;
+    border-radius: 1px;
+    background-color: var(--mud-palette-text-primary);
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.ft-budget__details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 16px;
+}

@@ -42,6 +42,28 @@ public class BudgetCalculatorTests
     }
 
     [Test]
+    public async Task ForMonth_MoreInThanOut_StopsAtNothingSpent()
+    {
+        // Arrange, money in carrying the tag outweighs what went out
+        Budget budget = Budget(RolloverMode.CarryUnderspend);
+        BankTransaction[] transactions =
+        [
+            Tagged(-30m, new DateTime(2026, 3, 2), Shopping),
+            Tagged(1200m, new DateTime(2026, 3, 9), Shopping)
+        ];
+
+        // Act
+        BudgetMonthResult result = Calculate(budget, transactions, March);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(result.Spent).IsEqualTo(0m);
+            await Assert.That(result.Remaining).IsEqualTo(100m);
+        }
+    }
+
+    [Test]
     public async Task ForMonth_PendingCountsAndIsShownSeparately()
     {
         // Arrange
@@ -191,14 +213,35 @@ public class BudgetCalculatorTests
             Tagged(-30m, new DateTime(2026, 3, 2), Shopping),
             Tagged(-25m, new DateTime(2026, 3, 3)),
             Tagged(-5m, new DateTime(2026, 3, 4), Gaming),
-            Tagged(2000m, new DateTime(2026, 3, 25))
+            Income(2000m, new DateTime(2026, 3, 25))
         ];
 
         // Act
         decimal unbudgeted = BudgetCalculator.Unbudgeted([budget], transactions, March, TimeZoneInfo.Utc);
 
-        // Assert
+        // Assert, the salary isn't a refund so it doesn't hide the spending
         await Assert.That(unbudgeted).IsEqualTo(30m);
+    }
+
+    [Test]
+    public async Task Unbudgeted_RefundsReduceIt_DownToNothing()
+    {
+        // Arrange, a card refund comes back as a purchase
+        BankTransaction[] partlyRefunded =
+            [Tagged(-25m, new DateTime(2026, 3, 3)), Tagged(10m, new DateTime(2026, 3, 9))];
+        BankTransaction[] overRefunded =
+            [Tagged(-5m, new DateTime(2026, 3, 3)), Tagged(40m, new DateTime(2026, 3, 9))];
+
+        // Act
+        decimal partly = BudgetCalculator.Unbudgeted([], partlyRefunded, March, TimeZoneInfo.Utc);
+        decimal over = BudgetCalculator.Unbudgeted([], overRefunded, March, TimeZoneInfo.Utc);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(partly).IsEqualTo(15m);
+            await Assert.That(over).IsEqualTo(0m);
+        }
     }
 
     private static BudgetMonthResult Calculate(Budget budget, IEnumerable<BankTransaction> transactions,
@@ -207,17 +250,27 @@ public class BudgetCalculatorTests
     private static Budget Budget(RolloverMode mode, BudgetMonth? from = null) =>
         new(UserId, "Shopping", [Shopping], 100m, from ?? March, mode);
 
+    /// <summary>
+    /// A card purchase, or a refund of one when <paramref name="amount"/> is money in.
+    /// </summary>
     private static BankTransaction Tagged(decimal amount, DateTime occurredAt, params Guid[] tagIds) =>
-        Import(amount, occurredAt, false, tagIds);
+        Import(amount, occurredAt, false, "PURCHASE", tagIds);
 
     private static BankTransaction Pending(decimal amount, DateTime occurredAt, params Guid[] tagIds) =>
-        Import(amount, occurredAt, true, tagIds);
+        Import(amount, occurredAt, true, "PURCHASE", tagIds);
 
-    private static BankTransaction Import(decimal amount, DateTime occurredAt, bool pending, Guid[] tagIds)
+    /// <summary>
+    /// Money in the bank doesn't call a purchase, e.g. salary.
+    /// </summary>
+    private static BankTransaction Income(decimal amount, DateTime occurredAt) =>
+        Import(amount, occurredAt, false, "CREDIT", []);
+
+    private static BankTransaction Import(decimal amount, DateTime occurredAt, bool pending, string category,
+        Guid[] tagIds)
     {
         BankTransaction transaction = BankTransaction.Import(Account, new TransactionDetails(
             Guid.NewGuid().ToString(), "PURCHASE", amount < 0 ? TransactionType.Debit : TransactionType.Credit,
-            "PURCHASE", amount, "GBP", DateTime.SpecifyKind(occurredAt, DateTimeKind.Utc), pending, [],
+            category, amount, "GBP", DateTime.SpecifyKind(occurredAt, DateTimeKind.Utc), pending, [],
             TransactionMetadata.None, false));
 
         // Tagged as a rule would, which takes the tag ids as they are

@@ -1,0 +1,6 @@
+.ft-budget-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: min(420px, 100%);
+}

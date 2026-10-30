@@ -1,0 +1,25 @@
+@* Steps through months, back as far as needed and forward no further than the current one. *@
+
+<div class="ft-month-picker">
+    <MudIconButton Icon="@Icons.Material.Outlined.ChevronLeft" Size="Size.Small" aria-label="Previous month"
+                   OnClick="@(() => MonthChanged.InvokeAsync(Month.AddMonths(-1)))"/>
+    <MudText Typo="Typo.subtitle1" Class="ft-month-picker__label">@BudgetText.Month(Month)</MudText>
+    <MudIconButton Icon="@Icons.Material.Outlined.ChevronRight" Size="Size.Small" aria-label="Next month"
+                   Disabled="@(Month >= Latest)" OnClick="@(() => MonthChanged.InvokeAsync(Month.AddMonths(1)))"/>
+</div>
+
+@code {
+
+    /// <summary>
+    /// The month shown, as its first day.
+    /// </summary>
+    [Parameter] [EditorRequired] public required DateOnly Month { get; set; }
+
+    [Parameter] public EventCallback<DateOnly> MonthChanged { get; set; }
+
+    /// <summary>
+    /// The furthest forward it goes, the current month as its first day.
+    /// </summary>
+    [Parameter] [EditorRequired] public required DateOnly Latest { get; set; }
+
+}

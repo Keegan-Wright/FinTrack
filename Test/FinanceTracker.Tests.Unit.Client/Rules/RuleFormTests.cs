@@ -157,6 +157,28 @@ public class RuleFormTests : ComponentTestBase
         }
     }
 
+    [Test]
+    public async Task Render_ChosenValues_ShowAsTheyReadNotTheirIds()
+    {
+        // Act
+        IRenderedComponent<RuleForm> cut = RenderForm(Complete());
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(SelectValue(cut, "Look at")).IsEqualTo("Merchant or payee");
+            await Assert.That(SelectValue(cut, "Compare")).IsEqualTo("contains");
+            await Assert.That(SelectValue(cut, "Do")).IsEqualTo("Add tag");
+            await Assert.That(SelectValue(cut, "Tag")).IsEqualTo("Shopping");
+        }
+    }
+
+    private static string? SelectValue(IRenderedComponent<RuleForm> cut, string label) =>
+        cut.FindAll(".mud-input-control")
+            .Single(x => x.QuerySelector("label")?.TextContent.Trim() == label)
+            .QuerySelector("input")!
+            .GetAttribute("value");
+
     private IRenderedComponent<RuleForm> RenderForm(SaveRule rule)
     {
         _popovers = Render<MudPopoverProvider>();

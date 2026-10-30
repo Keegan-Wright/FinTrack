@@ -26,8 +26,9 @@ public class BudgetMonthOverview
     public List<BudgetStatus> Budgets { get; init; } = [];
 
     /// <summary>
-    /// Money out that month that no budget covers, so nothing goes unseen.
+    /// Money out that month that no budget covers, less card refunds (money in the bank calls a purchase), never
+    /// below 0.
     /// </summary>
-    [Description("Money out that month that no budget covers")]
+    [Description("Money out that month that no budget covers, less card refunds")]
     public decimal Unbudgeted { get; init; }
 }

@@ -77,12 +77,12 @@ public class TransactionListTests : ComponentTestBase
     }
 
     internal static Transaction Transaction(string description, decimal amount, bool pending = false,
-        TransactionTransfer? transfer = null) => new()
+        TransactionTransfer? transfer = null, string category = "PURCHASE") => new()
     {
         TransactionId = Guid.NewGuid(),
         Description = description,
         TransactionType = amount < 0 ? "Debit" : "Credit",
-        TransactionCategory = "PURCHASE",
+        TransactionCategory = category,
         Amount = amount,
         Currency = "GBP",
         TransactionTime = new DateTime(2026, 10, 4, 12, 0, 0, DateTimeKind.Utc),
