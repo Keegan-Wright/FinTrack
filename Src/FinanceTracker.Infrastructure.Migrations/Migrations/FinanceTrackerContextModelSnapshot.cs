@@ -38,13 +38,17 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.Property<DateTime>("Created")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<bool>("EndedByUser")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("EndedOn")
                         .HasColumnType("text")
                         .HasAnnotation("FinanceTracker.EncrptedColumn", true);
 
                     b.Property<string>("Frequency")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -119,7 +123,8 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
                     b.Property<string>("Frequency")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
 
                     b.Property<bool>("IsDismissed")
                         .HasColumnType("boolean");

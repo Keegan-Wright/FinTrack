@@ -105,6 +105,11 @@ public sealed class Bill : AggregateRoot
     public bool HasEnded => EndedOn is not null;
 
     /// <summary>
+    /// Whether the user ended it, which a sync never undoes, see <see cref="Reopen"/>.
+    /// </summary>
+    public bool EndedByUser { get; private set; }
+
+    /// <summary>
     /// How far a period's payment can be from the expected amount, as a percentage of it, and still count as paid.
     /// </summary>
     public decimal TolerancePercent { get; private set; }
@@ -237,10 +242,43 @@ public sealed class Bill : AggregateRoot
     }
 
     /// <summary>
-    /// Makes it due again after <see cref="End"/>.
+    /// The user stops it being due after <paramref name="on"/>. Unlike <see cref="End"/>, a sync won't reopen it
+    /// while its standing order or direct debit still runs, only <see cref="ReopenByUser"/> does. One that had
+    /// already ended keeps the day it ended.
+    /// </summary>
+    /// <returns>Whether it changed.</returns>
+    public bool EndByUser(DateOnly on)
+    {
+        if (EndedByUser)
+        {
+            return false;
+        }
+
+        EndedOn ??= on;
+        EndedByUser = true;
+        return true;
+    }
+
+    /// <summary>
+    /// Makes it due again after <see cref="End"/>, e.g. its standing order restarted. Leaves one the user ended.
     /// </summary>
     /// <returns>Whether it had ended.</returns>
     public bool Reopen()
+    {
+        if (!HasEnded || EndedByUser)
+        {
+            return false;
+        }
+
+        EndedOn = null;
+        return true;
+    }
+
+    /// <summary>
+    /// The user makes it due again, however it ended. A sync ends it again if its source is gone.
+    /// </summary>
+    /// <returns>Whether it had ended.</returns>
+    public bool ReopenByUser()
     {
         if (!HasEnded)
         {
@@ -248,6 +286,7 @@ public sealed class Bill : AggregateRoot
         }
 
         EndedOn = null;
+        EndedByUser = false;
         return true;
     }
 

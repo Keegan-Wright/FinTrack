@@ -49,6 +49,7 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     StartsOn = table.Column<string>(type: "text", nullable: false),
                     Anchor = table.Column<string>(type: "text", nullable: false),
                     EndedOn = table.Column<string>(type: "text", nullable: true),
+                    EndedByUser = table.Column<bool>(type: "boolean", nullable: false),
                     TolerancePercent = table.Column<decimal>(type: "numeric", nullable: false),
                     Created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     Updated = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
@@ -67,6 +68,42 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_Bills_BankAccounts_AccountId",
+                        column: x => x.AccountId,
+                        principalTable: "BankAccounts",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "BillSuggestions",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    AccountId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Key = table.Column<string>(type: "text", nullable: false),
+                    Name = table.Column<string>(type: "text", nullable: false),
+                    Frequency = table.Column<string>(type: "text", nullable: false),
+                    Amount = table.Column<string>(type: "text", nullable: false),
+                    FirstPaidOn = table.Column<string>(type: "text", nullable: false),
+                    LastPaidOn = table.Column<string>(type: "text", nullable: false),
+                    PaymentIds = table.Column<Guid[]>(type: "uuid[]", nullable: false),
+                    IsDismissed = table.Column<bool>(type: "boolean", nullable: false),
+                    Created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    Updated = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_BillSuggestions", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_BillSuggestions_AspNetUsers_UserId",
+                        column: x => x.UserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_BillSuggestions_BankAccounts_AccountId",
                         column: x => x.AccountId,
                         principalTable: "BankAccounts",
                         principalColumn: "Id",
@@ -94,6 +131,16 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                 name: "IX_Bills_UserId",
                 table: "Bills",
                 column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_BillSuggestions_AccountId",
+                table: "BillSuggestions",
+                column: "AccountId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_BillSuggestions_UserId",
+                table: "BillSuggestions",
+                column: "UserId");
         }
 
         /// <inheritdoc />
@@ -101,6 +148,9 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
         {
             migrationBuilder.DropTable(
                 name: "Bills");
+
+            migrationBuilder.DropTable(
+                name: "BillSuggestions");
 
             migrationBuilder.DropIndex(
                 name: "IX_BankTransactions_BillPayment_BillId",
