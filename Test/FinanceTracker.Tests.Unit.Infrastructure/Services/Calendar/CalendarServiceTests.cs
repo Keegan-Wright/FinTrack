@@ -1,12 +1,12 @@
 using FinanceTracker.Contracts.Calendar;
-using FinanceTracker.Domain.Budgeting;
 using FinanceTracker.Domain.OpenBanking.Transactions;
+using FinanceTracker.Domain.OpenBanking.Transfers;
+using FinanceTracker.Domain.SavingsGoals;
 using FinanceTracker.Infrastructure.Calendar;
-using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Fakers;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
+using FinanceTracker.Tests.Unit.Shared;
 using Microsoft.Extensions.Logging.Abstractions;
-using FinanceTracker.Domain.OpenBanking.Transfers;
 
 namespace FinanceTracker.Tests.Unit.Infrastructure.Services.Calendar;
 
@@ -137,12 +137,12 @@ public class CalendarServiceTests : InfrastructureTestBase
         // Arrange
         DateTime goalDate = new(2026, 5, 20, 0, 0, 0, DateTimeKind.Utc);
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
-            .Do(s => s.BudgetCategoryScenario.WithBudgetCategory("holiday", Username, userId =>
-                new BudgetCategory(userId, "Holiday", 0, 0, 1000, goalDate)))
-            .Do(s => s.BudgetCategoryScenario.WithBudgetCategory("no-goal", Username, userId =>
-                new BudgetCategory(userId, "No Goal", 0, 0, 0, null)))
-            .Do(s => s.BudgetCategoryScenario.WithBudgetCategory("next-month", Username, userId =>
-                new BudgetCategory(userId, "Next Month", 0, 0, 0, goalDate.AddMonths(1))));
+            .Do(s => s.SavingsGoalScenario.WithSavingsGoal("holiday", Username, userId =>
+                new SavingsGoal(userId, "Holiday", 0, 0, 1000, goalDate)))
+            .Do(s => s.SavingsGoalScenario.WithSavingsGoal("no-goal", Username, userId =>
+                new SavingsGoal(userId, "No Goal", 0, 0, 0, null)))
+            .Do(s => s.SavingsGoalScenario.WithSavingsGoal("next-month", Username, userId =>
+                new SavingsGoal(userId, "Next Month", 0, 0, 0, goalDate.AddMonths(1))));
 
         CalendarService subject = BuildSubject();
 
@@ -172,8 +172,8 @@ public class CalendarServiceTests : InfrastructureTestBase
             .Do(s => s.BankAccountScenario.WithAccount("other", "other-bank"))
             .Do(s => s.TransactionScenario.WithTransaction("theirs", "other",
                 new TransactionDetailsFaker().Generate() with { OccurredAt = date }))
-            .Do(s => s.BudgetCategoryScenario.WithBudgetCategory("their-goal", OtherUsername, userId =>
-                new BudgetCategory(userId, "Theirs", 0, 0, 0, date)));
+            .Do(s => s.SavingsGoalScenario.WithSavingsGoal("their-goal", OtherUsername, userId =>
+                new SavingsGoal(userId, "Theirs", 0, 0, 0, date)));
 
         CalendarService subject = BuildSubject();
 
@@ -194,8 +194,8 @@ public class CalendarServiceTests : InfrastructureTestBase
     {
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
-            .Do(s => s.BudgetCategoryScenario.WithBudgetCategory("last-month", Username, userId =>
-                new BudgetCategory(userId, "Last Month", 0, 0, 0, new DateTime(2026, 4, 30, 0, 0, 0, DateTimeKind.Utc))));
+            .Do(s => s.SavingsGoalScenario.WithSavingsGoal("last-month", Username, userId =>
+                new SavingsGoal(userId, "Last Month", 0, 0, 0, new DateTime(2026, 4, 30, 0, 0, 0, DateTimeKind.Utc))));
 
         CalendarService subject = BuildSubject();
 

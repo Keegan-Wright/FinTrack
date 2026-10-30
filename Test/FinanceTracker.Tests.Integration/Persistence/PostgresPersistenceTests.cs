@@ -1,9 +1,9 @@
-using FinanceTracker.Domain.Budgeting;
 using FinanceTracker.Domain.OpenBanking.Connections;
+using FinanceTracker.Domain.SavingsGoals;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.Tests.Integration.Persistence;
 
@@ -68,16 +68,16 @@ public class PostgresPersistenceTests : IntegrationTestBase
         // Arrange
         string username = UniqueName();
         await Scenario.Do(s => s.UserScenario.WithUser(username))
-            .Do(s => s.BudgetCategoryScenario.WithBudgetCategory("first", username, userId =>
-                new BudgetCategory(userId, "Holidays", 1, 1, 1, null)))
-            .Do(s => s.BudgetCategoryScenario.WithBudgetCategory("second", username, userId =>
-                new BudgetCategory(userId, "Holidays", 1, 1, 1, null)));
+            .Do(s => s.SavingsGoalScenario.WithSavingsGoal("first", username, userId =>
+                new SavingsGoal(userId, "Holidays", 1, 1, 1, null)))
+            .Do(s => s.SavingsGoalScenario.WithSavingsGoal("second", username, userId =>
+                new SavingsGoal(userId, "Holidays", 1, 1, 1, null)));
 
         // Act
-        string first = await ReadRawColumnAsync<BudgetCategory>(nameof(BudgetCategory.Name),
-            Scenario.BudgetCategoryMappings["first"]);
-        string second = await ReadRawColumnAsync<BudgetCategory>(nameof(BudgetCategory.Name),
-            Scenario.BudgetCategoryMappings["second"]);
+        string first = await ReadRawColumnAsync<SavingsGoal>(nameof(SavingsGoal.Name),
+            Scenario.SavingsGoalMappings["first"]);
+        string second = await ReadRawColumnAsync<SavingsGoal>(nameof(SavingsGoal.Name),
+            Scenario.SavingsGoalMappings["second"]);
 
         // Assert
         using (Assert.Multiple())
@@ -118,16 +118,16 @@ public class PostgresPersistenceTests : IntegrationTestBase
         // Arrange
         string username = UniqueName();
         await Scenario.Do(s => s.UserScenario.WithUser(username))
-            .Do(s => s.BudgetCategoryScenario.WithBudgetCategory("groceries", username, userId =>
-                new BudgetCategory(userId, "Groceries", 100, 100, 0, null)));
+            .Do(s => s.SavingsGoalScenario.WithSavingsGoal("groceries", username, userId =>
+                new SavingsGoal(userId, "Groceries", 100, 100, 0, null)));
 
-        Guid categoryId = Scenario.BudgetCategoryMappings["groceries"];
+        Guid goalId = Scenario.SavingsGoalMappings["groceries"];
 
         await using FinanceTrackerContext first = await DbContextFactory.CreateDbContextAsync(CancellationToken);
         await using FinanceTrackerContext second = await DbContextFactory.CreateDbContextAsync(CancellationToken);
 
-        BudgetCategory firstCopy = await first.BudgetCategories.SingleAsync(x => x.Id == categoryId, CancellationToken);
-        BudgetCategory secondCopy = await second.BudgetCategories.SingleAsync(x => x.Id == categoryId, CancellationToken);
+        SavingsGoal firstCopy = await first.SavingsGoals.SingleAsync(x => x.Id == goalId, CancellationToken);
+        SavingsGoal secondCopy = await second.SavingsGoals.SingleAsync(x => x.Id == goalId, CancellationToken);
 
         firstCopy.Rename("Food");
         await first.SaveChangesAsync(CancellationToken);

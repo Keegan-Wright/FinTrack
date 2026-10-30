@@ -3,9 +3,10 @@ using FinanceTracker.Domain.Household;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Domain.OpenBanking.Transactions;
+using FinanceTracker.Domain.SavingsGoals;
 using FinanceTracker.Infrastructure;
-using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
+using FinanceTracker.Tests.Unit.Shared;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.Tests.Unit.Infrastructure.Persistence;
@@ -21,20 +22,20 @@ public class FinanceTrackerContextTests : InfrastructureTestBase
         // Arrange
         DateTime goalDate = new(2027, 6, 1, 0, 0, 0, DateTimeKind.Utc);
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
-            .Do(s => s.BudgetCategoryScenario.WithBudgetCategory("budget", Username, userId =>
-                new BudgetCategory(userId, "Encrypted Budget", 77.25m, 3, 500, goalDate)));
+            .Do(s => s.SavingsGoalScenario.WithSavingsGoal("budget", Username, userId =>
+                new SavingsGoal(userId, "Encrypted Budget", 77.25m, 3, 500, goalDate)));
 
         // Act
         await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
-        BudgetCategory loaded = await context.BudgetCategories.SingleAsync(CancellationToken);
+        SavingsGoal loaded = await context.SavingsGoals.SingleAsync(CancellationToken);
 
         // Assert
         using (Assert.Multiple())
         {
             await Assert.That(loaded.Name).IsEqualTo("Encrypted Budget");
-            await Assert.That(loaded.AvailableFunds).IsEqualTo(77.25m);
-            await Assert.That(loaded.GoalCompletionDate).IsEqualTo(goalDate);
-            await Assert.That(loaded.GoalCompletionDate!.Value.Kind).IsEqualTo(DateTimeKind.Utc);
+            await Assert.That(loaded.Saved).IsEqualTo(77.25m);
+            await Assert.That(loaded.TargetDate).IsEqualTo(goalDate);
+            await Assert.That(loaded.TargetDate!.Value.Kind).IsEqualTo(DateTimeKind.Utc);
         }
     }
 
@@ -43,13 +44,13 @@ public class FinanceTrackerContextTests : InfrastructureTestBase
     {
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
-            .Do(s => s.BudgetCategoryScenario.WithBudgetCategory("budget", Username, userId =>
-                new BudgetCategory(userId, "Secret Budget", 1, 1, 1, null)));
+            .Do(s => s.SavingsGoalScenario.WithSavingsGoal("budget", Username, userId =>
+                new SavingsGoal(userId, "Secret Budget", 1, 1, 1, null)));
 
         // Act
         await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
         string stored = await context.Database
-            .SqlQueryRaw<string>("SELECT \"Name\" AS \"Value\" FROM \"BudgetCategories\"")
+            .SqlQueryRaw<string>("SELECT \"Name\" AS \"Value\" FROM \"SavingsGoals\"")
             .SingleAsync(CancellationToken);
 
         // Assert
@@ -300,7 +301,7 @@ public class FinanceTrackerContextTests : InfrastructureTestBase
             .Do(s => s.BankAccountScenario.WithStandingOrders("main", new Shared.Fakers.StandingOrderDetailsFaker().Generate()))
             .Do(s => s.TransactionScenario.WithTransactions("main", 2))
             .Do(s => s.ClassificationScenario.WithClassification("tag", Username))
-            .Do(s => s.BudgetCategoryScenario.WithBudgetCategory("budget", Username))
+            .Do(s => s.SavingsGoalScenario.WithSavingsGoal("budget", Username))
             .Do(s => s.DebtScenario.WithDebt("loan", Username))
             .Do(s => s.HouseholdMemberScenario.WithHouseholdMember("partner", Username))
             .Do(s => s.DebtScenario.WithDebt("their-loan", OtherUsername));
@@ -323,7 +324,7 @@ public class FinanceTrackerContextTests : InfrastructureTestBase
             await Assert.That(await verificationContext.BankAccounts.CountAsync(CancellationToken)).IsEqualTo(0);
             await Assert.That(await verificationContext.BankTransactions.CountAsync(CancellationToken)).IsEqualTo(0);
             await Assert.That(await verificationContext.CustomClassifications.CountAsync(CancellationToken)).IsEqualTo(0);
-            await Assert.That(await verificationContext.BudgetCategories.CountAsync(CancellationToken)).IsEqualTo(0);
+            await Assert.That(await verificationContext.SavingsGoals.CountAsync(CancellationToken)).IsEqualTo(0);
             await Assert.That(await verificationContext.HouseholdMembers.CountAsync(CancellationToken)).IsEqualTo(0);
             await Assert.That(await verificationContext.Debts.Select(x => x.Id).ToListAsync(CancellationToken))
                 .IsEquivalentTo([Scenario.DebtMappings["their-loan"]]);

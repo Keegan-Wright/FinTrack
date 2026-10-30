@@ -50,8 +50,8 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
             .GroupBy(static x => x.TransactionTime.Date)
             .ToList();
 
-        List<CalendarGoalItem> goalItems = await context.BudgetCategories.OwnedBy(UserId)
-            .Select(x => new CalendarGoalItem { Name = x.Name, GoalCompletionDate = x.GoalCompletionDate })
+        List<CalendarGoalItem> goalItems = await context.SavingsGoals.OwnedBy(UserId)
+            .Select(x => new CalendarGoalItem { Name = x.Name, GoalCompletionDate = x.TargetDate })
             .ToListAsync(cancellationToken);
 
         List<IGrouping<DateTime, CalendarGoalItem>> goals = goalItems

@@ -1,5 +1,5 @@
 using FinanceTracker.Infrastructure;
-using FinanceTracker.Infrastructure.Budget;
+using FinanceTracker.Infrastructure.SavingsGoals;
 using FinanceTracker.Tests.Unit.Shared;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -11,11 +11,11 @@ public class ServiceBaseTests : InfrastructureTestBase
     public async Task UserId_WhenNoUserIsSet_Throws()
     {
         // Arrange
-        BudgetCategoriesService subject = new(new CurrentUser(), DbContextFactory,
-            NullLogger<BudgetCategoriesService>.Instance);
+        SavingsGoalsService subject = new(new CurrentUser(), DbContextFactory,
+            NullLogger<SavingsGoalsService>.Instance);
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(async () =>
-            await subject.GetBudgetItemsAsync(CancellationToken).ToListAsync(CancellationToken));
+            await subject.GetSavingsGoalsAsync(CancellationToken).ToListAsync(CancellationToken));
     }
 }

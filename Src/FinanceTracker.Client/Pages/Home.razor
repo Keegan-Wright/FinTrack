@@ -4,20 +4,15 @@
 @using System.Globalization
 @using FinanceTracker.Client.Components.Dashboard
 @using FinanceTracker.Contracts.Auth
-@using FinanceTracker.Contracts.Account
-@using FinanceTracker.Contracts.Budget
-@using FinanceTracker.Contracts.Dashboard
-@using FinanceTracker.Contracts.HouseholdMember
 @using FinanceTracker.Contracts.Transactions
 @using Microsoft.AspNetCore.Authorization
-@using AccountAndTransactions = FinanceTracker.Contracts.Account.AccountAndTransactions
 @inherits PageComponent
 
 @attribute [Authorize]
 @inject IDashboardService DashboardService
 @inject IAccountService AccountService
 @inject ITransactionsService TransactionsService
-@inject IBudgetCategoriesService BudgetCategoriesService
+@inject ISavingsGoalsService SavingsGoalsService
 @inject IHouseholdMemberService HouseholdMemberService
 @inject TimeProvider TimeProvider
 
@@ -51,7 +46,7 @@
         <UpcomingPayments Payments="@View.UpcomingPayments"/>
     </MudItem>
     <MudItem xs="12">
-        <GoalsAndBudgets BudgetCategories="@View.BudgetCategories"/>
+        <GoalsAndBudgets SavingsGoals="@View.SavingsGoals"/>
     </MudItem>
 </MudGrid>
 
@@ -122,7 +117,7 @@
 
         var upcomingPayments = await DashboardService.GetUpcomingPaymentsAsync(8, cancellationToken).ToListAsync(cancellationToken);
         var accounts = await AccountService.GetAccountsAndMostRecentTransactionsAsync(1, cancellationToken).ToListAsync(cancellationToken);
-        var budgetCategories = await BudgetCategoriesService.GetBudgetItemsAsync(cancellationToken).ToListAsync(cancellationToken);
+        var savingsGoals = await SavingsGoalsService.GetSavingsGoalsAsync(cancellationToken).ToListAsync(cancellationToken);
 
         decimal householdIncome = 0;
         await foreach (var member in HouseholdMemberService.GetHouseholdMembersAsync(cancellationToken))
@@ -146,7 +141,7 @@
             ChartNote = chartNote,
             UpcomingPayments = upcomingPayments,
             Accounts = accounts,
-            BudgetCategories = budgetCategories
+            SavingsGoals = savingsGoals
         };
     }
 

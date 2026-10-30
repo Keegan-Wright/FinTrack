@@ -17,7 +17,7 @@ public sealed class TestingScenario
     public BankAccountScenario BankAccountScenario { get; init; }
     public TransactionScenario TransactionScenario { get; init; }
     public ClassificationScenario ClassificationScenario { get; init; }
-    public BudgetCategoryScenario BudgetCategoryScenario { get; init; }
+    public SavingsGoalScenario SavingsGoalScenario { get; init; }
     public DebtScenario DebtScenario { get; init; }
     public HouseholdMemberScenario HouseholdMemberScenario { get; init; }
     public AutomationScenario AutomationScenario { get; init; }
@@ -29,7 +29,7 @@ public sealed class TestingScenario
     public Dictionary<string, Guid> AccountMappings { get; set; } = [];
     public Dictionary<string, Guid> TransactionMappings { get; set; } = [];
     public Dictionary<string, Guid> ClassificationMappings { get; set; } = [];
-    public Dictionary<string, Guid> BudgetCategoryMappings { get; set; } = [];
+    public Dictionary<string, Guid> SavingsGoalMappings { get; set; } = [];
     public Dictionary<string, Guid> DebtMappings { get; set; } = [];
     public Dictionary<string, Guid> HouseholdMemberMappings { get; set; } = [];
     public Dictionary<string, Guid> CronTickerMappings { get; set; } = [];
@@ -46,7 +46,7 @@ public sealed class TestingScenario
         BankAccountScenario = new BankAccountScenario(this);
         TransactionScenario = new TransactionScenario(this);
         ClassificationScenario = new ClassificationScenario(this);
-        BudgetCategoryScenario = new BudgetCategoryScenario(this);
+        SavingsGoalScenario = new SavingsGoalScenario(this);
         DebtScenario = new DebtScenario(this);
         HouseholdMemberScenario = new HouseholdMemberScenario(this);
         AutomationScenario = new AutomationScenario(this);

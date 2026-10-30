@@ -1,12 +1,12 @@
 using Bogus;
-using FinanceTracker.Domain.Budgeting;
+using FinanceTracker.Domain.SavingsGoals;
 
 namespace FinanceTracker.Tests.Unit.Shared.Fakers;
 
-public sealed class BudgetCategoryFaker : Faker<BudgetCategory>
+public sealed class SavingsGoalFaker : Faker<SavingsGoal>
 {
-    public BudgetCategoryFaker(Guid userId) =>
-        CustomInstantiator(f => new BudgetCategory(userId,
+    public SavingsGoalFaker(Guid userId) =>
+        CustomInstantiator(f => new SavingsGoal(userId,
             f.Commerce.Department(),
             f.Finance.Amount(0, 1000),
             f.Finance.Amount(0, 500),

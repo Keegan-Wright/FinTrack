@@ -20,7 +20,7 @@ public static class ApiEndpoints
 
             api.MapAccountEndpoints()
                 .MapAutomationEndpoints()
-                .MapBudgetCategoryEndpoints()
+                .MapSavingsGoalEndpoints()
                 .MapCalendarEndpoints()
                 .MapClassificationEndpoints()
                 .MapDashboardEndpoints()

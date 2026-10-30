@@ -22,57 +22,6 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("FinanceTracker.Domain.Budgeting.BudgetCategory", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("AvailableFunds")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
-
-                    b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("GoalCompletionDate")
-                        .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
-
-                    b.Property<string>("MonthlyStart")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
-                    b.Property<string>("SavingsGoal")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
-
-                    b.Property<DateTime?>("Updated")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("BudgetCategories", (string)null);
-                });
-
             modelBuilder.Entity("FinanceTracker.Domain.Budgeting.Debt", b =>
                 {
                     b.Property<Guid>("Id")
@@ -116,6 +65,57 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Debts", (string)null);
+                });
+
+            modelBuilder.Entity("FinanceTracker.Domain.SavingsGoals.SavingsGoal", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("MonthlyContribution")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<string>("Saved")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.Property<string>("Target")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.Property<string>("TargetDate")
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.Property<DateTime?>("Updated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("SavingsGoals", (string)null);
                 });
 
             modelBuilder.Entity("FinanceTracker.Domain.Classifications.CustomClassification", b =>
@@ -946,7 +946,7 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("DataProtectionKeys");
+                    b.ToTable("DataProtectionKeys", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
@@ -1238,7 +1238,7 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.ToTable("TimeTickers", "ticker");
                 });
 
-            modelBuilder.Entity("FinanceTracker.Domain.Budgeting.BudgetCategory", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.Budgeting.Debt", b =>
                 {
                     b.HasOne("FinanceTracker.Domain.Identity.FinanceTrackerUser", null)
                         .WithMany()
@@ -1247,7 +1247,7 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("FinanceTracker.Domain.Budgeting.Debt", b =>
+            modelBuilder.Entity("FinanceTracker.Domain.SavingsGoals.SavingsGoal", b =>
                 {
                     b.HasOne("FinanceTracker.Domain.Identity.FinanceTrackerUser", null)
                         .WithMany()
@@ -1360,35 +1360,7 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
                             b1.HasKey("BankAccountId");
 
-                            b1.ToTable("BankAccounts");
-
-                            b1.WithOwner()
-                                .HasForeignKey("BankAccountId");
-                        });
-
-                    b.OwnsOne("FinanceTracker.Domain.OpenBanking.Accounts.AccountIdentifier", "Identifier", b1 =>
-                        {
-                            b1.Property<Guid>("BankAccountId")
-                                .HasColumnType("uuid");
-
-                            b1.Property<string>("Iban")
-                                .HasColumnType("text")
-                                .HasColumnName("Identifier_Iban")
-                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
-
-                            b1.Property<string>("Number")
-                                .HasColumnType("text")
-                                .HasColumnName("Identifier_Number")
-                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
-
-                            b1.Property<string>("SortCode")
-                                .HasColumnType("text")
-                                .HasColumnName("Identifier_SortCode")
-                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
-
-                            b1.HasKey("BankAccountId");
-
-                            b1.ToTable("BankAccounts");
+                            b1.ToTable("BankAccounts", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("BankAccountId");
@@ -1426,7 +1398,35 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
                             b1.HasKey("BankAccountId");
 
-                            b1.ToTable("BankAccounts");
+                            b1.ToTable("BankAccounts", (string)null);
+
+                            b1.WithOwner()
+                                .HasForeignKey("BankAccountId");
+                        });
+
+                    b.OwnsOne("FinanceTracker.Domain.OpenBanking.Accounts.AccountIdentifier", "Identifier", b1 =>
+                        {
+                            b1.Property<Guid>("BankAccountId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("Iban")
+                                .HasColumnType("text")
+                                .HasColumnName("Identifier_Iban")
+                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                            b1.Property<string>("Number")
+                                .HasColumnType("text")
+                                .HasColumnName("Identifier_Number")
+                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                            b1.Property<string>("SortCode")
+                                .HasColumnType("text")
+                                .HasColumnName("Identifier_SortCode")
+                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                            b1.HasKey("BankAccountId");
+
+                            b1.ToTable("BankAccounts", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("BankAccountId");
@@ -1510,7 +1510,7 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
                             b1.HasKey("BalanceSnapshotId");
 
-                            b1.ToTable("BalanceSnapshots");
+                            b1.ToTable("BalanceSnapshots", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("BalanceSnapshotId");
@@ -1567,7 +1567,7 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
                             b1.HasKey("BankTransactionId", "__synthesizedOrdinal");
 
-                            b1.ToTable("BankTransactions");
+                            b1.ToTable("BankTransactions", (string)null);
 
                             b1
                                 .ToJson("HiddenClassifications")
@@ -1609,7 +1609,30 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
                             b1.HasKey("BankTransactionId");
 
-                            b1.ToTable("BankTransactions");
+                            b1.ToTable("BankTransactions", (string)null);
+
+                            b1.WithOwner()
+                                .HasForeignKey("BankTransactionId");
+                        });
+
+                    b.OwnsMany("FinanceTracker.Domain.Rules.RuleTag", "RuleTags", b1 =>
+                        {
+                            b1.Property<Guid>("BankTransactionId");
+
+                            b1.Property<int>("__synthesizedOrdinal")
+                                .ValueGeneratedOnAdd();
+
+                            b1.Property<Guid>("ClassificationId");
+
+                            b1.Property<Guid>("RuleId");
+
+                            b1.HasKey("BankTransactionId", "__synthesizedOrdinal");
+
+                            b1.ToTable("BankTransactions", (string)null);
+
+                            b1
+                                .ToJson("RuleTags")
+                                .HasColumnType("jsonb");
 
                             b1.WithOwner()
                                 .HasForeignKey("BankTransactionId");
@@ -1656,30 +1679,7 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
                             b1.HasKey("BankTransactionId");
 
-                            b1.ToTable("BankTransactions");
-
-                            b1.WithOwner()
-                                .HasForeignKey("BankTransactionId");
-                        });
-
-                    b.OwnsMany("FinanceTracker.Domain.Rules.RuleTag", "RuleTags", b1 =>
-                        {
-                            b1.Property<Guid>("BankTransactionId");
-
-                            b1.Property<int>("__synthesizedOrdinal")
-                                .ValueGeneratedOnAdd();
-
-                            b1.Property<Guid>("ClassificationId");
-
-                            b1.Property<Guid>("RuleId");
-
-                            b1.HasKey("BankTransactionId", "__synthesizedOrdinal");
-
-                            b1.ToTable("BankTransactions");
-
-                            b1
-                                .ToJson("RuleTags")
-                                .HasColumnType("jsonb");
+                            b1.ToTable("BankTransactions", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("BankTransactionId");
@@ -1729,7 +1729,7 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
                             b1.HasKey("RuleId", "__synthesizedOrdinal");
 
-                            b1.ToTable("Rules");
+                            b1.ToTable("Rules", (string)null);
 
                             b1
                                 .ToJson("Actions")
@@ -1763,7 +1763,7 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
                             b1.HasKey("RuleId", "__synthesizedOrdinal");
 
-                            b1.ToTable("Rules");
+                            b1.ToTable("Rules", (string)null);
 
                             b1
                                 .ToJson("Conditions")

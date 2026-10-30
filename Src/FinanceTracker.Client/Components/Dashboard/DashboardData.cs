@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 using FinanceTracker.Contracts.Account;
-using FinanceTracker.Contracts.Budget;
+using FinanceTracker.Contracts.SavingsGoals;
 using FinanceTracker.Contracts.Dashboard;
 using FinanceTracker.Contracts.Transactions;
 
@@ -57,7 +57,7 @@ public sealed class DashboardData
 
     public List<AccountAndTransactions> Accounts { get; init; } = [];
 
-    public List<BudgetCategory> BudgetCategories { get; init; } = [];
+    public List<SavingsGoal> SavingsGoals { get; init; } = [];
 
     [JsonIgnore]
     public decimal Net => (Spent?.TotalIn ?? 0) + (Spent?.TotalOut ?? 0);
