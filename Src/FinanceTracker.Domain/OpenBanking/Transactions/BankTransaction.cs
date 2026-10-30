@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using FinanceTracker.Domain.Bills;
 using FinanceTracker.Domain.Classifications;
 using FinanceTracker.Domain.Common;
 using FinanceTracker.Domain.OpenBanking.Accounts;
@@ -65,6 +66,11 @@ public sealed class BankTransaction : AggregateRoot
     /// Whether this is money moved between the user's own accounts, null until something decides.
     /// </summary>
     public TransferInfo? Transfer { get; private set; }
+
+    /// <summary>
+    /// Whether this pays a <see cref="Bill"/>, null until something decides.
+    /// </summary>
+    public BillPayment? BillPayment { get; private set; }
 
     /// <summary>
     /// Whether the transaction belongs in income and spending totals, every transaction does unless it's decided to
@@ -186,6 +192,63 @@ public sealed class BankTransaction : AggregateRoot
     public void MarkNotATransfer(DateTime decidedAt) =>
         Transfer = new TransferInfo(TransferDecision.NotATransfer, DecisionSource.User, null, null, null, null,
             decidedAt);
+
+    /// <summary>
+    /// Whether this pays <paramref name="billId"/>.
+    /// </summary>
+    public bool PaysBill(Guid billId) => BillPayment?.BillId == billId;
+
+    /// <summary>
+    /// Records <paramref name="payment"/> unless a source with higher precedence has already decided.
+    /// </summary>
+    /// <returns>Whether it was recorded.</returns>
+    public bool DecideBillPayment(BillPayment payment)
+    {
+        ArgumentNullException.ThrowIfNull(payment);
+
+        if (BillPayment is not null && BillPayment.Source > payment.Source)
+        {
+            return false;
+        }
+
+        BillPayment = payment;
+        return true;
+    }
+
+    /// <summary>
+    /// Removes the decision if <paramref name="source"/> or a lower one made it.
+    /// </summary>
+    /// <returns>Whether there was a decision to remove.</returns>
+    public bool ClearBillPayment(DecisionSource source)
+    {
+        if (BillPayment is null || BillPayment.Source > source)
+        {
+            return false;
+        }
+
+        BillPayment = null;
+        return true;
+    }
+
+    /// <summary>
+    /// The user says this pays <paramref name="bill"/>, which matching and rules then leave alone.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">The bill belongs to another user.</exception>
+    public void PayBill(Bill bill, DateTime decidedAt)
+    {
+        ArgumentNullException.ThrowIfNull(bill);
+        if (bill.UserId != UserId)
+        {
+            throw new InvalidOperationException("Cannot pay another user's bill with this transaction.");
+        }
+
+        BillPayment = new BillPayment(bill.Id, DecisionSource.User, decidedAt);
+    }
+
+    /// <summary>
+    /// The user says this pays no bill, which matching and rules then leave alone.
+    /// </summary>
+    public void PayNoBill(DateTime decidedAt) => BillPayment = new BillPayment(null, DecisionSource.User, decidedAt);
 
     /// <summary>
     /// The user tags the transaction, which from now on rules leave its tags alone, see <see cref="TagsSetByUser"/>.

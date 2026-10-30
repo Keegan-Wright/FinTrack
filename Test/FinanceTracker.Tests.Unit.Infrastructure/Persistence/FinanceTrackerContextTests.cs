@@ -1,4 +1,6 @@
+using FinanceTracker.Domain.Bills;
 using FinanceTracker.Domain.Budgeting;
+using FinanceTracker.Domain.Common;
 using FinanceTracker.Domain.Household;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Connections;
@@ -173,6 +175,61 @@ public class FinanceTrackerContextTests : InfrastructureTestBase
             await Assert.That(connection.ActiveToken!.Token).IsEqualTo("plain-token");
             await Assert.That(connection.ActiveToken.RefreshToken).IsEqualTo("plain-refresh");
             await Assert.That(storedToken).IsNotEqualTo("plain-token");
+        }
+    }
+
+    [Test]
+    public async Task Bills_AndTheirPayments_RoundTripThroughTheDatabase()
+    {
+        // Arrange
+        DateTime paidAt = new(2026, 2, 10, 9, 0, 0, DateTimeKind.Utc);
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("bank", Username))
+            .Do(s => s.BankAccountScenario.WithAccount("main", "bank"))
+            .Do(s => s.TransactionScenario.WithTransaction("payment", "main", new TransactionDetails("ext-1",
+                "Streamco", TransactionType.Debit, "PURCHASE", -12.99m, "GBP", paidAt, false, [],
+                TransactionMetadata.None, false)))
+            .Do(s => s.BillScenario.WithBill("streaming", Username, "main", (userId, accountId) =>
+            {
+                Bill bill = new(userId, accountId, "Streaming", "Streamco", BillFrequency.Monthly, 9.99m,
+                    new DateOnly(2026, 1, 10), BillSource.Manual);
+                bill.ChangeAmount(12.99m, new DateOnly(2026, 2, 11));
+                bill.ChangeTolerance(2.5m);
+                bill.End(new DateOnly(2026, 6, 30));
+                return bill;
+            }));
+
+        Guid billId = Scenario.BillMappings["streaming"];
+        await using (FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken))
+        {
+            BankTransaction transaction = await context.BankTransactions.SingleAsync(CancellationToken);
+            transaction.DecideBillPayment(BillPayment.Matched(billId, paidAt));
+            await context.SaveChangesAsync(CancellationToken);
+        }
+
+        // Act
+        await using FinanceTrackerContext verificationContext =
+            await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        Bill loaded = await verificationContext.Bills.SingleAsync(CancellationToken);
+        BankTransaction paid = await verificationContext.BankTransactions
+            .SingleAsync(x => x.BillPayment!.BillId == billId, CancellationToken);
+        string storedName = await verificationContext.Database
+            .SqlQueryRaw<string>("SELECT \"Name\" AS \"Value\" FROM \"Bills\"")
+            .SingleAsync(CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(loaded.Name).IsEqualTo("Streaming");
+            await Assert.That(loaded.Payee).IsEqualTo("Streamco");
+            await Assert.That(loaded.Frequency).IsEqualTo(BillFrequency.Monthly);
+            await Assert.That(loaded.StartsOn).IsEqualTo(new DateOnly(2026, 1, 10));
+            await Assert.That(loaded.EndedOn).IsEqualTo(new DateOnly(2026, 6, 30));
+            await Assert.That(loaded.TolerancePercent).IsEqualTo(2.5m);
+            await Assert.That(loaded.ExpectedOn(new DateOnly(2026, 2, 10))).IsEqualTo(9.99m);
+            await Assert.That(loaded.ExpectedOn(new DateOnly(2026, 3, 10))).IsEqualTo(12.99m);
+            await Assert.That(paid.BillPayment!.Source).IsEqualTo(DecisionSource.Matcher);
+            await Assert.That(storedName).DoesNotContain("Streaming");
         }
     }
 
