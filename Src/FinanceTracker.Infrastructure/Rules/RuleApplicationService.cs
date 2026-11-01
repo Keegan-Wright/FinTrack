@@ -15,7 +15,6 @@ public class RuleApplicationService : ServiceBase<RuleApplicationService>, IRule
 {
     private readonly ITransferMatchingService _transferMatchingService;
     private readonly TimeProvider _timeProvider;
-    private DateTime Now => _timeProvider.GetUtcNow().UtcDateTime;
 
     public RuleApplicationService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<RuleApplicationService> logger,
@@ -30,7 +29,7 @@ public class RuleApplicationService : ServiceBase<RuleApplicationService>, IRule
     {
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
-        DateTime startedAt = Now;
+        DateTime startedAt = _timeProvider.UtcNow;
 
         RuleCheckpoint? checkpoint = await context.RuleCheckpoints.OwnedBy(UserId)
             .SingleOrDefaultAsync(cancellationToken);
@@ -72,7 +71,8 @@ public class RuleApplicationService : ServiceBase<RuleApplicationService>, IRule
 
         List<BankTransaction> transactions = await context.BankTransactions.OwnedBy(UserId)
             .Where(x => x.RuleTags.Any(t => t.RuleId == ruleId) ||
-                        (x.Transfer != null && x.Transfer.RuleId == ruleId))
+                        (x.Transfer != null && x.Transfer.RuleId == ruleId) ||
+                        (x.BillPayment != null && x.BillPayment.RuleId == ruleId))
             .ToListAsync(cancellationToken);
 
         if (transactions.Count == 0)
@@ -158,7 +158,7 @@ public class RuleApplicationService : ServiceBase<RuleApplicationService>, IRule
 
     private int Apply(List<Rule> rules, List<BankTransaction> transactions)
     {
-        DateTime decidedAt = Now;
+        DateTime decidedAt = _timeProvider.UtcNow;
         int changed = 0;
 
         foreach (BankTransaction transaction in transactions)

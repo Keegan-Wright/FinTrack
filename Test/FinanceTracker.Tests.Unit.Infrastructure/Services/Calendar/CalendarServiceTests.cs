@@ -1,4 +1,5 @@
 using FinanceTracker.Contracts.Calendar;
+using FinanceTracker.Domain.Bills;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.OpenBanking.Transfers;
 using FinanceTracker.Domain.SavingsGoals;
@@ -7,6 +8,7 @@ using FinanceTracker.Tests.Unit.Shared.Fakers;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using FinanceTracker.Tests.Unit.Shared;
 using Microsoft.Extensions.Logging.Abstractions;
+using BillState = FinanceTracker.Contracts.Bills.BillState;
 
 namespace FinanceTracker.Tests.Unit.Infrastructure.Services.Calendar;
 
@@ -162,6 +164,34 @@ public class CalendarServiceTests : InfrastructureTestBase
     }
 
     [Test]
+    public async Task GetMonthItemsAsync_PlacesBillsOnTheirDueDatesWithTheirState()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("bank", Username))
+            .Do(s => s.BankAccountScenario.WithAccount("main", "bank"))
+            .Do(s => s.BillScenario.WithBill("streaming", Username, "main", static (userId, accountId) =>
+                new Bill(userId, accountId, "Streaming", "Streamco", BillFrequency.Weekly, 5m,
+                    new DateOnly(2026, 5, 4), BillSource.Manual)));
+
+        CalendarService subject = BuildSubject();
+
+        // Act
+        List<CalendarItems> days = await subject.GetMonthItemsAsync(5, 2026, CancellationToken)
+            .ToListAsync(CancellationToken);
+
+        // Assert, today is the 18th so the earlier ones are past their grace and late
+        using (Assert.Multiple())
+        {
+            await Assert.That(days.Where(x => x.Bills.Any()).Select(x => x.Date.Day)).IsEquivalentTo([4, 11, 18, 25]);
+            await Assert.That(days.Single(x => x.Date.Day == 4).Bills.Single().State).IsEqualTo(BillState.Late);
+            await Assert.That(days.Single(x => x.Date.Day == 18).Bills.Single().State)
+                .IsEqualTo(BillState.Upcoming);
+            await Assert.That(days.Single(x => x.Date.Day == 25).Bills.Single().Amount).IsEqualTo(5m);
+        }
+    }
+
+    [Test]
     public async Task GetMonthItemsAsync_OnlyIncludesCurrentUsersData()
     {
         // Arrange
@@ -208,5 +238,6 @@ public class CalendarServiceTests : InfrastructureTestBase
     }
 
     private CalendarService BuildSubject() =>
-        new(CurrentUserFor(Username), DbContextFactory, NullLogger<CalendarService>.Instance);
+        new(CurrentUserFor(Username), DbContextFactory, NullLogger<CalendarService>.Instance,
+            new FixedTimeProvider(new DateTime(2026, 5, 18, 12, 0, 0, DateTimeKind.Utc)));
 }

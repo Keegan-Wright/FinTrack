@@ -1,6 +1,8 @@
 using System.Runtime.CompilerServices;
 using FinanceTracker.Contracts.Calendar;
 using FinanceTracker.Contracts.Services;
+using FinanceTracker.Domain.Bills;
+using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.OpenBanking.Transfers;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
@@ -14,9 +16,13 @@ namespace FinanceTracker.Infrastructure.Calendar;
 [Scoped<ICalendarService>]
 public class CalendarService : ServiceBase<CalendarService>, ICalendarService
 {
-    public CalendarService(ICurrentUser currentUser, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<CalendarService> logger)
-        : base(currentUser, financeTrackerContextFactory, logger)
+    private readonly TimeProvider _timeProvider;
+
+    public CalendarService(ICurrentUser currentUser,
+        IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<CalendarService> logger,
+        TimeProvider timeProvider) : base(currentUser, financeTrackerContextFactory, logger)
     {
+        _timeProvider = timeProvider;
     }
 
     public async IAsyncEnumerable<CalendarItems> GetMonthItemsAsync(int month, int year,
@@ -59,6 +65,9 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
             .GroupBy(static x => x.GoalCompletionDate!.Value.Date)
             .ToList();
 
+        Dictionary<DateOnly, List<CalendarBillItem>> bills = await LoadBillsAsync(context,
+            DateOnly.FromDateTime(startDate), DateOnly.FromDateTime(endDate).AddDays(-1), cancellationToken);
+
         for (int i = 0; i < daysInMonth; i++)
         {
             DateTime date = startDate.AddDays(i);
@@ -67,10 +76,60 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
             {
                 Date = date,
                 Transactions = transactions.Where(x => x.Key == date).SelectMany(static x => x),
-                Goals = goals.Where(x => x.Key == date).SelectMany(static x => x)
+                Goals = goals.Where(x => x.Key == date).SelectMany(static x => x),
+                Bills = bills.GetValueOrDefault(DateOnly.FromDateTime(date), [])
             };
 
             yield return response;
         }
+    }
+
+    /// <summary>
+    /// Each bill's periods due from <paramref name="first"/> to <paramref name="last"/>, by the day they're due.
+    /// </summary>
+    private async Task<Dictionary<DateOnly, List<CalendarBillItem>>> LoadBillsAsync(FinanceTrackerContext context,
+        DateOnly first, DateOnly last, CancellationToken cancellationToken)
+    {
+        List<Bill> bills = await context.Bills.OwnedBy(UserId).AsNoTracking().ToListAsync(cancellationToken);
+        List<BankTransaction> payments = await context.BankTransactions.OwnedBy(UserId).AsNoTracking()
+            .Where(static x => x.BillPayment != null && x.BillPayment.BillId != null)
+            .ToListAsync(cancellationToken);
+
+        DateOnly today = _timeProvider.Today;
+        Dictionary<DateOnly, List<CalendarBillItem>> byDay = [];
+
+        foreach (Bill bill in bills)
+        {
+            foreach (BillPeriod period in BillCalculator.Periods(bill, payments, first, last,
+                         _timeProvider.LocalTimeZone, today))
+            {
+                if (!byDay.TryGetValue(period.Due, out List<CalendarBillItem>? items))
+                {
+                    items = [];
+                    byDay.Add(period.Due, items);
+                }
+
+                items.Add(ToItem(bill, period));
+            }
+        }
+
+        return byDay;
+    }
+
+    private static CalendarBillItem ToItem(Bill bill, BillPeriod period)
+    {
+        decimal amount = period.Expected;
+        if (period.PaymentIds.Count > 0)
+        {
+            amount = period.Paid;
+        }
+
+        return new CalendarBillItem
+        {
+            BillId = bill.Id,
+            Name = bill.Name,
+            Amount = amount,
+            State = Enum.Parse<Contracts.Bills.BillState>(period.State.ToString())
+        };
     }
 }

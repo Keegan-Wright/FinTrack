@@ -20,3 +20,9 @@
     text-transform: uppercase;
     color: var(--mud-palette-text-secondary);
 }
+
+.ft-upcoming__end {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}

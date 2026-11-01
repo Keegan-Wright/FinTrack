@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using FinanceTracker.Domain.Bills;
 using FinanceTracker.Domain.Classifications;
 using FinanceTracker.Domain.Common;
 using FinanceTracker.Domain.OpenBanking.Accounts;
@@ -65,6 +66,11 @@ public sealed class BankTransaction : AggregateRoot
     /// Whether this is money moved between the user's own accounts, null until something decides.
     /// </summary>
     public TransferInfo? Transfer { get; private set; }
+
+    /// <summary>
+    /// Whether this pays a <see cref="Bill"/>, null until something decides.
+    /// </summary>
+    public BillPayment? BillPayment { get; private set; }
 
     /// <summary>
     /// Whether the transaction belongs in income and spending totals, every transaction does unless it's decided to
@@ -188,6 +194,79 @@ public sealed class BankTransaction : AggregateRoot
             decidedAt);
 
     /// <summary>
+    /// Whether this pays <paramref name="billId"/>.
+    /// </summary>
+    public bool PaysBill(Guid billId) => BillPayment?.BillId == billId;
+
+    /// <summary>
+    /// Records <paramref name="payment"/> unless a source with higher precedence has already decided.
+    /// </summary>
+    /// <returns>Whether it was recorded.</returns>
+    public bool DecideBillPayment(BillPayment payment)
+    {
+        ArgumentNullException.ThrowIfNull(payment);
+
+        if (BillPayment is not null && BillPayment.Source > payment.Source)
+        {
+            return false;
+        }
+
+        BillPayment = payment;
+        return true;
+    }
+
+    /// <summary>
+    /// Removes the decision if <paramref name="source"/> or a lower one made it.
+    /// </summary>
+    /// <returns>Whether there was a decision to remove.</returns>
+    public bool ClearBillPayment(DecisionSource source)
+    {
+        if (BillPayment is null || BillPayment.Source > source)
+        {
+            return false;
+        }
+
+        BillPayment = null;
+        return true;
+    }
+
+    /// <summary>
+    /// The user says this pays <paramref name="bill"/>, which matching and rules then leave alone.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">The bill belongs to another user.</exception>
+    public void PayBill(Bill bill, DateTime decidedAt)
+    {
+        ArgumentNullException.ThrowIfNull(bill);
+        if (bill.UserId != UserId)
+        {
+            throw new InvalidOperationException("Cannot pay another user's bill with this transaction.");
+        }
+
+        BillPayment = new BillPayment(bill.Id, DecisionSource.User, decidedAt);
+    }
+
+    /// <summary>
+    /// Drops the payment of a bill being deleted, whoever decided it, so the transaction pays nothing until matched
+    /// again.
+    /// </summary>
+    /// <returns>Whether it paid the bill.</returns>
+    public bool RemoveDeletedBill(Guid billId)
+    {
+        if (!PaysBill(billId))
+        {
+            return false;
+        }
+
+        BillPayment = null;
+        return true;
+    }
+
+    /// <summary>
+    /// The user says this pays no bill, which matching and rules then leave alone.
+    /// </summary>
+    public void PayNoBill(DateTime decidedAt) => BillPayment = new BillPayment(null, DecisionSource.User, decidedAt);
+
+    /// <summary>
     /// The user tags the transaction, which from now on rules leave its tags alone, see <see cref="TagsSetByUser"/>.
     /// </summary>
     public void Classify(CustomClassification classification)
@@ -223,12 +302,12 @@ public sealed class BankTransaction : AggregateRoot
         RemoveClassification(customClassificationId);
 
     /// <summary>
-    /// Whether rule <paramref name="ruleId"/> added one of its tags or gave its transfer answer, so re-applying the
-    /// rules here can take back what that rule no longer gives.
+    /// Whether rule <paramref name="ruleId"/> added one of its tags, gave its transfer answer or said which bill it
+    /// pays, so re-applying the rules here can take back what that rule no longer gives.
     /// </summary>
     public bool WasDecidedBy(Guid ruleId) =>
         _ruleTags.Exists(x => x.RuleId == ruleId) || Transfer?.RuleId == ruleId ||
-        _hiddenClassifications.Exists(x => x.RuleId == ruleId);
+        _hiddenClassifications.Exists(x => x.RuleId == ruleId) || BillPayment?.RuleId == ruleId;
 
     /// <summary>
     /// Hides one of the bank's classifications by hand. A rule hiding it too no longer counts, the user's stands.
@@ -274,9 +353,9 @@ public sealed class BankTransaction : AggregateRoot
     }
 
     /// <summary>
-    /// Records what the user's rules decided, from <see cref="RuleEvaluator.Evaluate"/>. Tags and a transfer answer a
-    /// rule gave before but no longer does are removed, so editing or disabling a rule undoes what it did. Tags are
-    /// left alone once <see cref="TagsSetByUser"/>, and the user's transfer decision is never replaced.
+    /// Records what the user's rules decided, from <see cref="RuleEvaluator.Evaluate"/>. Tags, a transfer answer and a
+    /// bill a rule gave before but no longer does are removed, so editing or disabling a rule undoes what it did. Tags
+    /// are left alone once <see cref="TagsSetByUser"/>, and the user's transfer and bill decisions are never replaced.
     /// </summary>
     /// <returns>Whether anything changed.</returns>
     public bool ApplyRules(RuleOutcome outcome, DateTime decidedAt)
@@ -286,8 +365,32 @@ public sealed class BankTransaction : AggregateRoot
         bool tagsChanged = ApplyRuleTags(outcome.Tags);
         bool transferChanged = ApplyRuleTransfer(outcome.Transfer, decidedAt);
         bool hiddenChanged = ApplyRuleHiding(outcome.HiddenClassifications);
+        bool billChanged = ApplyRuleBill(outcome.Bill, decidedAt);
 
-        return tagsChanged || transferChanged || hiddenChanged;
+        return tagsChanged || transferChanged || hiddenChanged || billChanged;
+    }
+
+    private bool ApplyRuleBill(RuleBill? bill, DateTime decidedAt)
+    {
+        if (bill is null)
+        {
+            // Only a rule's own answer is taken back, the matcher's and the user's stay
+            if (BillPayment?.Source != DecisionSource.Rule)
+            {
+                return false;
+            }
+
+            BillPayment = null;
+            return true;
+        }
+
+        BillPayment payment = BillPayment.FromRule(bill.BillId, bill.RuleId, decidedAt);
+        if (payment.IsSameAs(BillPayment))
+        {
+            return false;
+        }
+
+        return DecideBillPayment(payment);
     }
 
     /// <summary>

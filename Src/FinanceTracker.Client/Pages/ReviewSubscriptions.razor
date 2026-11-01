@@ -1,0 +1,96 @@
+@page "/Review/Subscriptions"
+@* Repeat payments that look like subscriptions, each with the payments behind it, for the user to make a bill or
+   dismiss (IBillsService). Nothing becomes a bill until they say so. *@
+@using FinanceTracker.Client.Components.Review
+@using FinanceTracker.Contracts.Bills
+@using Microsoft.AspNetCore.Authorization
+@inherits PageComponent
+
+@attribute [Authorize]
+@inject IBillsService BillsService
+@inject ISnackbar Snackbar
+@inject TimeProvider TimeProvider
+
+<PageTitle>FinTrack - Review subscriptions</PageTitle>
+<PageHeader Title="Review subscriptions" Subtitle="@Subtitle"/>
+
+<LoadingFrame Loading="@_loading" Message="Gathering what needs a look…" MinHeight="320" Cover="false">
+    @if (!_loading)
+    {
+        <Section Title="Might be subscriptions"
+                 Caption="Payments that repeat, but aren't a standing order or direct debit">
+            @if (_suggestions.Count == 0)
+            {
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                    All caught up. FinTrack asks here when the same payment comes out at least three times in a row.
+                </MudText>
+            }
+            else
+            {
+                <div class="ft-list">
+                    @foreach (BillSuggestion suggestion in _suggestions)
+                    {
+                        <div class="ft-list__row" @key="suggestion.Id">
+                            <SuggestionRow Suggestion="@suggestion" Today="@Today"
+                                           OnDecide="@(isBill => DecideAsync(suggestion, isBill))"/>
+                        </div>
+                    }
+                </div>
+            }
+        </Section>
+    }
+</LoadingFrame>
+
+@code {
+
+    private List<BillSuggestion> _suggestions = [];
+    private bool _loading = true;
+    private bool _loaded;
+
+    private DateOnly Today => DateOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime);
+
+    private string Subtitle => _loading || _suggestions.Count == 0
+        ? "Repeat payments that might be bills"
+        : $"{_suggestions.Count} to review";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // The prerender shows the spinner, the browser loads the list once it's interactive
+        if (RendererInfo.IsInteractive && !_loaded)
+        {
+            _loaded = true;
+            _suggestions = await BillsService.GetSuggestionsAsync(_cts.Token).ToListAsync(_cts.Token);
+            _loading = false;
+        }
+    }
+
+    private async Task DecideAsync(BillSuggestion suggestion, bool isBill)
+    {
+        try
+        {
+            SetLoadingState(true, "Saving…");
+            if (isBill)
+            {
+                Bill bill = await BillsService.ConfirmSuggestionAsync(suggestion.Id, _cts.Token);
+                Snackbar.Add($"{bill.Name} is a bill now", Severity.Success);
+            }
+            else
+            {
+                await BillsService.DismissSuggestionAsync(suggestion.Id, _cts.Token);
+                Snackbar.Add($"{suggestion.Name} won't be suggested again", Severity.Success);
+            }
+
+            _suggestions.Remove(suggestion);
+            await RefreshSubscriptionsToReviewAsync(BillsService);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't update that, try again", Severity.Error);
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
+}

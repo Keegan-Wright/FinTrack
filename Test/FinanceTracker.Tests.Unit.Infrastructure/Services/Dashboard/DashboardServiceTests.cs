@@ -1,11 +1,15 @@
 using FinanceTracker.Contracts.Dashboard;
-using FinanceTracker.Domain.OpenBanking.Accounts;
+using FinanceTracker.Domain.Bills;
+using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Dashboard;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Fakers;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using FinanceTracker.Domain.OpenBanking.Transfers;
+using BillState = FinanceTracker.Contracts.Bills.BillState;
+using DomainBill = FinanceTracker.Domain.Bills.Bill;
 
 namespace FinanceTracker.Tests.Unit.Infrastructure.Services.Dashboard;
 
@@ -124,145 +128,20 @@ public class DashboardServiceTests : InfrastructureTestBase
     }
 
     [Test]
-    public async Task GetUpcomingPaymentsAsync_IncludesFutureStandingOrdersOnly()
+    public async Task GetUpcomingPaymentsAsync_BillsFromAWeekAgoSoonestFirst()
     {
         // Arrange
-        StandingOrderDetails upcoming = new StandingOrderDetailsFaker().Generate() with
-        {
-            Payee = "Landlord", NextPaymentDate = Now.AddDays(3), NextPaymentAmount = 750m
-        };
-        StandingOrderDetails lapsed = new StandingOrderDetailsFaker().Generate() with
-        {
-            Payee = "Old Gym", NextPaymentDate = Now.AddDays(-3)
-        };
-
         await SeedAccountAsync()
-            .Do(s => s.BankAccountScenario.WithStandingOrders("main", upcoming, lapsed));
-
-        DashboardService subject = BuildSubject();
-
-        // Act
-        List<UpcomingPayment> payments = await subject.GetUpcomingPaymentsAsync(10, CancellationToken)
-            .ToListAsync(CancellationToken);
-
-        // Assert
-        UpcomingPayment payment = payments.Single();
-
-        using (Assert.Multiple())
-        {
-            await Assert.That(payment.PaymentName).IsEqualTo("Landlord");
-            await Assert.That(payment.PaymentType).IsEqualTo("Standing Order");
-            await Assert.That(payment.Amount).IsEqualTo(750m);
-            await Assert.That(payment.PaymentDate).IsEqualTo(upcoming.NextPaymentDate);
-        }
-    }
-
-    [Test]
-    public async Task GetUpcomingPaymentsAsync_MapsDirectDebit()
-    {
-        // Arrange
-        DirectDebitDetails directDebit = new DirectDebitDetailsFaker().Generate() with
-        {
-            Name = "Energy", PreviousPaymentDate = Now.AddDays(-1), PreviousPaymentAmount = 80m
-        };
-
-        await SeedAccountAsync()
-            .Do(s => s.BankAccountScenario.WithDirectDebits("main", directDebit));
-
-        DashboardService subject = BuildSubject();
-
-        // Act
-        List<UpcomingPayment> payments = await subject.GetUpcomingPaymentsAsync(10, CancellationToken)
-            .ToListAsync(CancellationToken);
-
-        // Assert
-        UpcomingPayment payment = payments.Single();
-
-        using (Assert.Multiple())
-        {
-            await Assert.That(payment.PaymentName).IsEqualTo("Energy");
-            await Assert.That(payment.PaymentType).IsEqualTo("Direct Debit");
-            await Assert.That(payment.Amount).IsEqualTo(80m);
-        }
-    }
-
-    [Test]
-    // Paid earlier this month, next is a month on
-    [Arguments("2026-01-05T09:00:00", "2026-01-10T12:00:00", "2026-02-05T09:00:00")]
-    // Paid last month and still to come this month
-    [Arguments("2025-12-15T09:00:00", "2026-01-10T12:00:00", "2026-01-15T09:00:00")]
-    // Paid last month and already due this month
-    [Arguments("2025-12-05T09:00:00", "2026-01-10T12:00:00", "2026-02-05T09:00:00")]
-    // Last known payment months ago
-    [Arguments("2024-06-20T09:00:00", "2026-01-10T12:00:00", "2026-01-20T09:00:00")]
-    // Short months don't drift the payment day
-    [Arguments("2026-01-31T09:00:00", "2026-03-29T12:00:00", "2026-03-31T09:00:00")]
-    [Arguments("2026-01-31T09:00:00", "2026-02-10T12:00:00", "2026-02-28T09:00:00")]
-    // Due later today
-    [Arguments("2025-12-10T13:00:00", "2026-01-10T12:00:00", "2026-01-10T13:00:00")]
-    public async Task GetUpcomingPaymentsAsync_ProjectsDirectDebitToNextMonthlyPayment(string previousPayment, string now,
-        string expectedNextPayment)
-    {
-        // Arrange
-        DirectDebitDetails directDebit = new DirectDebitDetailsFaker().Generate() with
-        {
-            PreviousPaymentDate = Utc(previousPayment), PreviousPaymentAmount = 80m
-        };
-
-        await SeedAccountAsync()
-            .Do(s => s.BankAccountScenario.WithDirectDebits("main", directDebit));
-
-        DashboardService subject = BuildSubject(Utc(now));
-
-        // Act
-        List<UpcomingPayment> payments = await subject.GetUpcomingPaymentsAsync(10, CancellationToken)
-            .ToListAsync(CancellationToken);
-
-        // Assert
-        await Assert.That(payments.Single().PaymentDate).IsEqualTo(Utc(expectedNextPayment));
-    }
-
-    [Test]
-    public async Task GetUpcomingPaymentsAsync_IgnoresDirectDebitsWithNoPreviousPayment()
-    {
-        // Arrange
-        DirectDebitDetails directDebit = new DirectDebitDetailsFaker().Generate() with
-        {
-            PreviousPaymentDate = Now.AddDays(-5), PreviousPaymentAmount = 0m
-        };
-
-        await SeedAccountAsync()
-            .Do(s => s.BankAccountScenario.WithDirectDebits("main", directDebit));
-
-        DashboardService subject = BuildSubject();
-
-        // Act
-        List<UpcomingPayment> payments = await subject.GetUpcomingPaymentsAsync(10, CancellationToken)
-            .ToListAsync(CancellationToken);
-
-        // Assert
-        await Assert.That(payments.Count).IsEqualTo(0);
-    }
-
-    [Test]
-    public async Task GetUpcomingPaymentsAsync_OrdersByDateAndTakesRequestedNumber()
-    {
-        // Arrange
-        StandingOrderDetails[] standingOrders = Enumerable.Range(1, 4)
-            .Select(i => new StandingOrderDetailsFaker().Generate() with
-            {
-                Payee = $"Payee {i}", NextPaymentDate = Now.AddDays(10 - i)
-            })
-            .ToArray();
-        DirectDebitDetails directDebit = new DirectDebitDetailsFaker().Generate() with
-        {
-            Name = "Direct Debit", PreviousPaymentDate = Now.AddDays(1).AddMonths(-1), PreviousPaymentAmount = 10m
-        };
-
-        await SeedAccountAsync()
-            .Do(s => s.BankAccountScenario.WithStandingOrders("main", standingOrders))
-            .Do(s => s.BankAccountScenario.WithDirectDebits("main", directDebit));
-
+            .Do(s => s.BillScenario.WithBill("rent", Username, "main", (userId, accountId) =>
+                Monthly(userId, accountId, "Rent", 650m, new DateOnly(2025, 6, 15), BillSource.StandingOrder,
+                    Guid.NewGuid())))
+            .Do(s => s.BillScenario.WithBill("streaming", Username, "main", (userId, accountId) =>
+                Monthly(userId, accountId, "Streaming", 9.99m, new DateOnly(2025, 6, 9))))
+            .Do(s => s.BillScenario.WithBill("gym", Username, "main", (userId, accountId) =>
+                Monthly(userId, accountId, "Gym", 30m, new DateOnly(2025, 6, 5))))
+            .Do(s => s.TransactionScenario.WithTransaction("streaming-paid", "main",
+                Transaction(-10.20m, new DateTime(2026, 1, 9, 12, 0, 0, DateTimeKind.Utc))));
+        await PayAsync("streaming-paid", "streaming");
         DashboardService subject = BuildSubject();
 
         // Act
@@ -270,27 +149,32 @@ public class DashboardServiceTests : InfrastructureTestBase
             .ToListAsync(CancellationToken);
 
         // Assert
-        await Assert.That(string.Join(",", payments.Select(x => x.PaymentName)))
-            .IsEqualTo("Direct Debit,Payee 4,Payee 3");
+        using (Assert.Multiple())
+        {
+            await Assert.That(payments.Select(static x => x.PaymentName)).IsEquivalentTo(
+                ["Gym", "Streaming", "Rent"], TUnit.Assertions.Enums.CollectionOrdering.Matching);
+            await Assert.That(payments[0].State).IsEqualTo(BillState.Late);
+            await Assert.That(payments[0].Due).IsEqualTo(new DateOnly(2026, 1, 5));
+            await Assert.That(payments[1].State).IsEqualTo(BillState.Paid);
+            await Assert.That(payments[1].Amount).IsEqualTo(10.20m);
+            await Assert.That(payments[2].State).IsEqualTo(BillState.Upcoming);
+            await Assert.That(payments[2].Amount).IsEqualTo(650m);
+            await Assert.That(payments[2].PaymentType).IsEqualTo("Standing order");
+            await Assert.That(payments[2].BillId).IsEqualTo(Scenario.BillMappings["rent"]);
+        }
     }
 
     [Test]
-    public async Task GetUpcomingPaymentsAsync_OnlyIncludesCurrentUsersPayments()
+    public async Task GetUpcomingPaymentsAsync_EndedBill_LeavesOutWhatsNoLongerDue()
     {
         // Arrange
-        await Scenario.Do(s => s.UserScenario.WithUser(Username))
-            .Do(s => s.UserScenario.WithUser(OtherUsername))
-            .Do(s => s.BankConnectionScenario.WithConnection("other-bank", OtherUsername))
-            .Do(s => s.BankAccountScenario.WithAccount("other", "other-bank"))
-            .Do(s => s.BankAccountScenario.WithStandingOrders("other", new StandingOrderDetailsFaker().Generate() with
+        await SeedAccountAsync()
+            .Do(s => s.BillScenario.WithBill("gym", Username, "main", (userId, accountId) =>
             {
-                NextPaymentDate = Now.AddDays(2)
-            }))
-            .Do(s => s.BankAccountScenario.WithDirectDebits("other", new DirectDebitDetailsFaker().Generate() with
-            {
-                PreviousPaymentDate = Now.AddDays(-2), PreviousPaymentAmount = 10m
+                DomainBill bill = Monthly(userId, accountId, "Gym", 30m, new DateOnly(2025, 6, 20));
+                bill.EndByUser(new DateOnly(2026, 1, 10));
+                return bill;
             }));
-
         DashboardService subject = BuildSubject();
 
         // Act
@@ -298,7 +182,41 @@ public class DashboardServiceTests : InfrastructureTestBase
             .ToListAsync(CancellationToken);
 
         // Assert
-        await Assert.That(payments.Count).IsEqualTo(0);
+        await Assert.That(payments).IsEmpty();
+    }
+
+    [Test]
+    public async Task GetUpcomingPaymentsAsync_OnlyIncludesCurrentUsersBills()
+    {
+        // Arrange
+        await SeedAccountAsync()
+            .Do(s => s.UserScenario.WithUser(OtherUsername))
+            .Do(s => s.BankConnectionScenario.WithConnection("other-bank", OtherUsername))
+            .Do(s => s.BankAccountScenario.WithAccount("other", "other-bank"))
+            .Do(s => s.BillScenario.WithBill("theirs", OtherUsername, "other", (userId, accountId) =>
+                Monthly(userId, accountId, "Their rent", 900m, new DateOnly(2025, 6, 15))));
+        DashboardService subject = BuildSubject();
+
+        // Act
+        List<UpcomingPayment> payments = await subject.GetUpcomingPaymentsAsync(10, CancellationToken)
+            .ToListAsync(CancellationToken);
+
+        // Assert
+        await Assert.That(payments).IsEmpty();
+    }
+
+    private static DomainBill Monthly(Guid userId, Guid accountId, string name, decimal amount, DateOnly startsOn,
+        BillSource source = BillSource.Manual, Guid? sourceId = null) =>
+        new(userId, accountId, name, name, BillFrequency.Monthly, amount, startsOn, source, sourceId);
+
+    private async Task PayAsync(string transactionName, string billName)
+    {
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        Guid transactionId = Scenario.TransactionMappings[transactionName];
+        Domain.OpenBanking.Transactions.BankTransaction transaction =
+            await context.BankTransactions.SingleAsync(x => x.Id == transactionId, CancellationToken);
+        transaction.DecideBillPayment(BillPayment.Matched(Scenario.BillMappings[billName], Now));
+        await context.SaveChangesAsync(CancellationToken);
     }
 
     private Task<TestingScenario> SeedAccountAsync() =>
@@ -309,9 +227,6 @@ public class DashboardServiceTests : InfrastructureTestBase
     private static Domain.OpenBanking.Transactions.TransactionDetails Transaction(decimal amount, DateTime occurredAt,
         string category = "PURCHASE") =>
         new TransactionDetailsFaker().Generate() with { Amount = amount, OccurredAt = occurredAt, Category = category };
-
-    private static DateTime Utc(string value) =>
-        DateTime.SpecifyKind(DateTime.Parse(value, System.Globalization.CultureInfo.InvariantCulture), DateTimeKind.Utc);
 
     private DashboardService BuildSubject(DateTime? now = null) => new(CurrentUserFor(Username), DbContextFactory,
         NullLogger<DashboardService>.Instance, new FixedTimeProvider(now ?? Now));

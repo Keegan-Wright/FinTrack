@@ -1,0 +1,291 @@
+@page "/Bills"
+@* What the user is committed to paying, month by month. Each bill's state in the month, the
+   committed total, and the bills that have ended. Standing orders and direct debits arrive as bills by themselves,
+   subscriptions are suggested on the review page. *@
+@using FinanceTracker.Client.Components.Bills
+@using FinanceTracker.Client.Components.Budgets
+@using FinanceTracker.Contracts.Bills
+@using FinanceTracker.Contracts.Transactions
+@using Microsoft.AspNetCore.Authorization
+@inherits PageComponent
+
+@attribute [Authorize]
+@inject IBillsService BillsService
+@inject ITransactionsService TransactionsService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject TimeProvider TimeProvider
+
+<PageTitle>FinTrack - Bills</PageTitle>
+<PageHeader Title="Bills" Subtitle="What you're committed to paying, and whether it's been paid">
+    <Actions>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Add"
+                   OnClick="@AddAsync">New bill</MudButton>
+    </Actions>
+</PageHeader>
+
+<div class="ft-stack">
+    @if (_suggestionCount > 0)
+    {
+        <Section>
+            <div class="ft-list__line">
+                <MudText Typo="Typo.body2">@SuggestionsText</MudText>
+                <MudButton Variant="Variant.Text" Color="Color.Primary" Href="Review/Subscriptions">Review</MudButton>
+            </div>
+        </Section>
+    }
+
+    @if (Overview is not null)
+    {
+        <StatStrip>
+            <Stat Label="Committed a month" Value="@Overview.Committed">
+                Every running bill, spread over a month
+            </Stat>
+            <Stat Label="@($"Due in {BudgetText.Month(Overview.Month)}")" Value="@Overview.Due">
+                @BillText.PaidOfDue(Overview)
+            </Stat>
+        </StatStrip>
+    }
+
+    <Section>
+        <TitleContent>
+            <MonthPicker Month="@Month" Latest="@CurrentMonth.AddMonths(1)" MonthChanged="@ShowMonthAsync"/>
+        </TitleContent>
+        <Actions>
+            @if (IsPast)
+            {
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">As it ended</MudText>
+            }
+        </Actions>
+        <ChildContent>
+            @if (Overview is null or { Bills.Count: 0 })
+            {
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">@EmptyText</MudText>
+            }
+            else
+            {
+                <div class="ft-bill-list">
+                    @foreach (BillStatus status in Overview.Bills)
+                    {
+                        <BillRow @key="status.Bill.Id" Bill="@status.Bill" Periods="@status.Periods" Today="@Today"
+                                 Editable="@(!IsPast)" OnEdit="@(() => EditAsync(status.Bill))"
+                                 OnEnd="@(() => EndAsync(status.Bill))" OnReopen="@(() => ReopenAsync(status.Bill))"
+                                 OnDelete="@(() => DeleteAsync(status.Bill))"/>
+                    }
+                </div>
+            }
+        </ChildContent>
+    </Section>
+
+    @if (Ended.Count > 0)
+    {
+        <Section Title="Ended" Caption="Nothing more is due on these, reopen one if it starts again">
+            <div class="ft-bill-list">
+                @foreach (Bill bill in Ended)
+                {
+                    <BillRow @key="bill.Id" Bill="@bill" Today="@Today" Editable="true"
+                             OnEdit="@(() => EditAsync(bill))" OnReopen="@(() => ReopenAsync(bill))"
+                             OnDelete="@(() => DeleteAsync(bill))"/>
+                }
+            </div>
+        </Section>
+    }
+</div>
+
+@code {
+
+    /// <summary>
+    /// The month shown, loaded once, see <see cref="PageComponent.LoadOnceAsync{T}"/>.
+    /// </summary>
+    [PersistentState]
+    public BillMonthOverview? Overview { get; set; }
+
+    /// <summary>
+    /// All of the user's bills, for the ended ones.
+    /// </summary>
+    [PersistentState]
+    public List<Bill>? BillList { get; set; }
+
+    /// <summary>
+    /// The user's accounts, for the bill dialog.
+    /// </summary>
+    [PersistentState]
+    public List<TransactionAccountFilter>? Accounts { get; set; }
+
+    /// <summary>
+    /// How many repeat payments are suggested as subscriptions, to point to the review page.
+    /// </summary>
+    private int _suggestionCount;
+
+    private DateOnly Today => DateOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime);
+
+    private DateOnly CurrentMonth => new(Today.Year, Today.Month, 1);
+
+    private DateOnly Month => Overview?.Month ?? CurrentMonth;
+
+    private bool IsPast => Month < CurrentMonth;
+
+    /// <summary>
+    /// Bills that have ended by today, which the months from now on leave out.
+    /// </summary>
+    private List<Bill> Ended => (BillList ?? []).Where(x => x.EndedOn <= Today).ToList();
+
+    private string EmptyText => BillList is null or { Count: 0 }
+        ? "No bills yet. Your standing orders and direct debits show here after a sync, or add one yourself."
+        : "No bills were due in this month.";
+
+    private string SuggestionsText => _suggestionCount == 1
+        ? "1 repeat payment looks like a subscription"
+        : $"{_suggestionCount} repeat payments look like subscriptions";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        DateOnly month = CurrentMonth;
+        Overview = await LoadOnceAsync(Overview, "Loading your bills", cancellationToken =>
+            BillsService.GetMonthAsync(month.Year, month.Month, cancellationToken));
+        BillList = await LoadOnceAsync(BillList, "Loading your bills", cancellationToken =>
+            BillsService.GetBillsAsync(cancellationToken).ToListAsync(cancellationToken).AsTask());
+        Accounts = await LoadOnceAsync(Accounts, "Loading your bills", cancellationToken =>
+            TransactionsService.GetAccountsForTransactionFiltersAsync(cancellationToken)
+                .ToListAsync(cancellationToken).AsTask());
+        await LoadSuggestionCountAsync();
+    }
+
+    /// <summary>
+    /// A single count, so it isn't kept with the prerender like the rest.
+    /// </summary>
+    private async Task LoadSuggestionCountAsync()
+    {
+        try
+        {
+            _suggestionCount = await RefreshSubscriptionsToReviewAsync(BillsService);
+        }
+        catch (HttpRequestException)
+        {
+            // Only the pointer to the review page, the bills still show
+        }
+    }
+
+    internal async Task ShowMonthAsync(DateOnly month)
+    {
+        try
+        {
+            SetLoadingState(true, $"Loading {BudgetText.Month(month)}");
+            Overview = await BillsService.GetMonthAsync(month.Year, month.Month, _cts.Token);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't load that month, try again", Severity.Error);
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
+    private async Task AddAsync()
+    {
+        SaveBill? bill = await ShowDialogAsync(null);
+        if (bill is null)
+        {
+            return;
+        }
+
+        await SaveAsync($"{bill.Name} added", () => BillsService.AddBillAsync(bill, _cts.Token));
+    }
+
+    private async Task EditAsync(Bill existing)
+    {
+        SaveBill? bill = await ShowDialogAsync(existing);
+        if (bill is null)
+        {
+            return;
+        }
+
+        await SaveAsync($"{bill.Name} saved", () => BillsService.UpdateBillAsync(existing.Id, bill, _cts.Token));
+    }
+
+    private async Task EndAsync(Bill bill)
+    {
+        bool? confirmed = await DialogService.ShowMessageBoxAsync($"End {bill.Name}?",
+            "Nothing more will be due on it, its payments so far stay. You can reopen it later.", yesText: "End",
+            cancelText: "Cancel");
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        await SaveAsync($"{bill.Name} ended", () => BillsService.EndBillAsync(bill.Id, _cts.Token));
+    }
+
+    private Task ReopenAsync(Bill bill) =>
+        SaveAsync($"{bill.Name} reopened", () => BillsService.ReopenBillAsync(bill.Id, _cts.Token));
+
+    private async Task DeleteAsync(Bill bill)
+    {
+        bool? confirmed = await DialogService.ShowMessageBoxAsync($"Delete {bill.Name}?",
+            "Its payments stay, they just won't count towards a bill.", yesText: "Delete", cancelText: "Cancel");
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        await SaveAsync($"{bill.Name} deleted", () => BillsService.DeleteBillAsync(bill.Id, _cts.Token));
+    }
+
+    /// <returns>What the user entered, null when they cancelled.</returns>
+    private async Task<SaveBill?> ShowDialogAsync(Bill? bill)
+    {
+        DialogParameters<BillDialog> parameters = new()
+        {
+            { x => x.Bill, bill },
+            { x => x.Accounts, Accounts ?? [] }
+        };
+
+        IDialogReference dialog = await DialogService.ShowAsync<BillDialog>(null, parameters);
+        DialogResult? result = await dialog.Result;
+
+        if (result is null || result.Canceled)
+        {
+            return null;
+        }
+
+        return (SaveBill)result.Data!;
+    }
+
+    /// <summary>
+    /// Makes a change, then reloads the month and the bills so the totals and states are as saved. A new bill can
+    /// cover a suggested subscription, so the count is refreshed too.
+    /// </summary>
+    private async Task SaveAsync(string done, Func<Task> change)
+    {
+        try
+        {
+            SetLoadingState(true, "Saving…");
+            await change();
+            DateOnly month = Month;
+            Overview = await BillsService.GetMonthAsync(month.Year, month.Month, _cts.Token);
+            BillList = await BillsService.GetBillsAsync(_cts.Token).ToListAsync(_cts.Token);
+            _suggestionCount = await RefreshSubscriptionsToReviewAsync(BillsService);
+            Snackbar.Add(done, Severity.Success);
+        }
+        catch (NotSupportedException)
+        {
+            Snackbar.Add("A bill from a standing order or direct debit can only be ended", Severity.Error);
+        }
+        catch (InvalidOperationException)
+        {
+            Snackbar.Add("That account isn't yours any more, choose another", Severity.Error);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't save that, try again", Severity.Error);
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
+}

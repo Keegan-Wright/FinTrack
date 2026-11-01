@@ -1,5 +1,6 @@
 using Bunit;
 using FinanceTracker.Client;
+using FinanceTracker.Contracts.Bills;
 using FinanceTracker.Contracts.Classifications;
 using FinanceTracker.Contracts.Rules;
 using FinanceTracker.Contracts.Services;
@@ -30,6 +31,9 @@ public class RulesPageTests : ComponentTestBase
         Services.AddSingleton(_rulesService);
         Services.AddSingleton(transactionsService);
         Services.AddSingleton(classificationService);
+        IBillsService billsService = Substitute.For<IBillsService>();
+        billsService.GetBillsAsync(Arg.Any<CancellationToken>()).Returns(AsyncEnumerable.Empty<Bill>());
+        Services.AddSingleton(billsService);
 
         _rulesService.GetRulesAsync(Arg.Any<CancellationToken>()).Returns(_ => _rules.ToAsyncEnumerable());
     }

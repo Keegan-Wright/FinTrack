@@ -86,6 +86,14 @@
                         <span>@TransferText.CountsAs(Shown)</span>
                     }
                 </dd>
+                @if (Shown.Bill is { } bill)
+                {
+                    <dt>Pays</dt>
+                    <dd>
+                        <span>@BillLabel(bill)</span>
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary">@BillReason(bill)</MudText>
+                    </dd>
+                }
             </dl>
 
             @* A list rather than footer buttons, so actions rules add later are just more rows *@
@@ -100,6 +108,8 @@
                         @TransferText.ActionLabel(action)
                     </MudButton>
                 }
+                <MudButton Variant="Variant.Text" FullWidth="true" StartIcon="@Icons.Material.Outlined.EventRepeat"
+                           Class="ft-details__action" OnClick="@PayBillAsync">Pays a bill…</MudButton>
                 <MudButton Variant="Variant.Text" FullWidth="true" StartIcon="@Icons.Material.Outlined.Rule"
                            Class="ft-details__action" OnClick="@CreateRuleAsync">Create rule from this</MudButton>
             </div>
@@ -171,6 +181,32 @@
     /// The user chose to make a rule from it, raised once the dialog has closed.
     /// </summary>
     [Parameter] public EventCallback OnCreateRule { get; set; }
+
+    /// <summary>
+    /// The user chose to say which bill it pays, raised once the dialog has closed.
+    /// </summary>
+    [Parameter] public EventCallback OnPayBill { get; set; }
+
+    /// <summary>
+    /// e.g. <c>Rent</c>, or <c>No bill</c> when the user said it pays none.
+    /// </summary>
+    internal static string BillLabel(TransactionBill bill) => bill.BillName ?? "No bill";
+
+    /// <summary>
+    /// Who said so, e.g. <c>Matched by FinTrack</c> or <c>By your rule Rent</c>.
+    /// </summary>
+    internal static string BillReason(TransactionBill bill) => bill.DecidedBy switch
+    {
+        TransferDecidedBy.User => "Chosen by you",
+        TransferDecidedBy.Rule => $"By your rule {bill.RuleName}",
+        _ => "Matched by FinTrack"
+    };
+
+    private async Task PayBillAsync()
+    {
+        MudDialog.Close();
+        await OnPayBill.InvokeAsync();
+    }
 
     // Closed first, the tags dialog and the loading overlay open over the page rather than over this
     private async Task AddTagsAsync()

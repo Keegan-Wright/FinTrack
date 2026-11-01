@@ -3,7 +3,8 @@ using System.Text.Json.Serialization;
 namespace FinanceTracker.Contracts.Transactions;
 
 /// <summary>
-/// Who decided whether a transaction is a transfer. The user's decisions are never changed by FinTrack.
+/// Who decided whether a transaction is a transfer, or which bill it pays. The user's decisions are never changed by
+/// FinTrack.
 /// </summary>
 [JsonConverter(typeof(JsonStringEnumConverter<TransferDecidedBy>))]
 public enum TransferDecidedBy

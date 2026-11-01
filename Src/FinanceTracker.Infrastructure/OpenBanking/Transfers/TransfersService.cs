@@ -119,7 +119,7 @@ public class TransfersService : ServiceBase<TransfersService>, ITransfersService
                 affected.Add(before);
             }
 
-            decide(transaction, partner, _timeProvider.GetUtcNow().UtcDateTime);
+            decide(transaction, partner, _timeProvider.UtcNow);
             await context.SaveChangesAsync(cancellationToken);
         }
 

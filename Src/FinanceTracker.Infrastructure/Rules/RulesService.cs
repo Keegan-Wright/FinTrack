@@ -154,7 +154,7 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
         List<BankTransaction> transactions = await context.BankTransactions.OwnedBy(UserId).AsNoTracking()
             .ToListAsync(cancellationToken);
 
-        return RulePreviewer.Preview(running, draft, transactions, tagNames, _timeProvider.GetUtcNow().UtcDateTime);
+        return RulePreviewer.Preview(running, draft, transactions, tagNames, _timeProvider.UtcNow);
     }
 
     public Task<int> ApplyRuleToExistingAsync(Guid id, CancellationToken cancellationToken) =>
@@ -193,13 +193,37 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
     /// <summary>
     /// The page only offers the user's own tags and accounts, this covers calls that don't come from it.
     /// </summary>
-    /// <exception cref="InvalidOperationException">An action adds a tag, or a condition names an account, that
-    /// doesn't exist or isn't the user's.</exception>
+    /// <exception cref="InvalidOperationException">An action adds a tag or pays a bill, or a condition names an
+    /// account, that doesn't exist or isn't the user's.</exception>
     private async Task EnsureTheUsersOwnAsync(FinanceTrackerContext context, SaveRule rule,
         CancellationToken cancellationToken)
     {
         await EnsureTagsAreTheUsersAsync(context, rule, cancellationToken);
+        await EnsureBillsAreTheUsersAsync(context, rule, cancellationToken);
         await EnsureAccountsAreTheUsersAsync(context, rule, cancellationToken);
+    }
+
+    private async Task EnsureBillsAreTheUsersAsync(FinanceTrackerContext context, SaveRule rule,
+        CancellationToken cancellationToken)
+    {
+        List<Guid> billIds = rule.Actions
+            .Select(static x => x.BillId)
+            .OfType<Guid>()
+            .Distinct()
+            .ToList();
+
+        if (billIds.Count == 0)
+        {
+            return;
+        }
+
+        int owned = await context.Bills.OwnedBy(UserId)
+            .CountAsync(x => billIds.Contains(x.Id), cancellationToken);
+
+        if (owned != billIds.Count)
+        {
+            throw new InvalidOperationException("A rule can only pay the user's own bills.");
+        }
     }
 
     private async Task EnsureTagsAreTheUsersAsync(FinanceTrackerContext context, SaveRule rule,

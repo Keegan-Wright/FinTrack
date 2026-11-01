@@ -1,51 +1,110 @@
-@* The dashboard's next standing order and direct debit payments. *@
+@* The dashboard's bill payments due soon or just gone, those paid ticked off and late ones flagged. *@
 @using System.Globalization
+@using FinanceTracker.Client.Components.Bills
+@using FinanceTracker.Contracts.Bills
 @using FinanceTracker.Contracts.Dashboard
 @inject TimeProvider TimeProvider
-<Section Title="Upcoming payments" Caption="Standing orders and direct debits" Class="h-100">
-    @if (Payments.Count == 0)
-    {
-        <MudText Typo="Typo.body2" Class="mud-text-secondary">No upcoming payments found.</MudText>
-    }
-    else
-    {
-        <div class="ft-list ft-list--scroll ft-list--short">
-            @foreach (var p in Payments)
-            {
-                var date = p.PaymentDate.ToLocalTime();
-                var daysUntil = (date.Date - TimeProvider.GetLocalNow().Date).Days;
-                <div class="ft-list__row">
-                    <div class="ft-date-badge">
-                        <span class="ft-date-badge__day">@date.Day</span>
-                        <span class="ft-date-badge__month">@date.ToString("MMM", CultureInfo.CurrentCulture)</span>
+<Section Title="Upcoming payments" Caption="Your bills, those just paid ticked off" Class="h-100">
+    <Actions>
+        <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" Href="Bills">All bills</MudButton>
+    </Actions>
+    <ChildContent>
+        @if (Payments.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                No bills due. Your standing orders and direct debits show here after a sync.
+            </MudText>
+        }
+        else
+        {
+            <div class="ft-list ft-list--scroll ft-list--short">
+                @foreach (UpcomingPayment payment in Payments)
+                {
+                    <div class="ft-list__row">
+                        <div class="ft-date-badge">
+                            <span class="ft-date-badge__day">@payment.Due.Day</span>
+                            <span class="ft-date-badge__month">@MonthOf(payment.Due)</span>
+                        </div>
+                        <div class="ft-list__main">
+                            <MudText Typo="Typo.body2" Class="text-truncate">@payment.PaymentName</MudText>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                @payment.PaymentType ·
+                                <MudText Typo="Typo.caption" HtmlTag="span" Color="@StatusColor(payment)">
+                                    @Status(payment)
+                                </MudText>
+                            </MudText>
+                        </div>
+                        <div class="ft-list__end ft-upcoming__end">
+                            @if (payment.State is BillState.Paid or BillState.Changed)
+                            {
+                                <MudIcon Icon="@Icons.Material.Outlined.CheckCircle" Size="Size.Small"
+                                         Color="Color.Success" aria-label="Paid"/>
+                            }
+                            <MoneyText Value="@payment.Amount"/>
+                        </div>
                     </div>
-                    <div class="ft-list__main">
-                        <MudText Typo="Typo.body2" Class="text-truncate">@p.PaymentName</MudText>
-                        <MudText Typo="Typo.caption" Class="mud-text-secondary">
-                            @p.PaymentType ·
-                            <MudText Typo="Typo.caption" HtmlTag="span"
-                                     Color="@(daysUntil <= 1 ? Color.Warning : Color.Inherit)">@DueInLabel(daysUntil)</MudText>
-                        </MudText>
-                    </div>
-                    <div class="ft-list__end">
-                        <MoneyText Value="@Math.Abs(p.Amount)"/>
-                    </div>
-                </div>
-            }
-        </div>
-    }
+                }
+            </div>
+        }
+    </ChildContent>
 </Section>
 
 @code {
 
     [Parameter, EditorRequired] public IReadOnlyList<UpcomingPayment> Payments { get; set; } = [];
 
-    private static string DueInLabel(int days) => days switch
+    private DateOnly Today => DateOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime);
+
+    private static string MonthOf(DateOnly day) => day.ToString("MMM", CultureInfo.CurrentCulture);
+
+    /// <summary>
+    /// e.g. <c>paid</c>, <c>late</c>, <c>today</c> or <c>in 3 days</c>.
+    /// </summary>
+    internal string Status(UpcomingPayment payment)
     {
-        < 0 => "overdue",
-        0 => "today",
-        1 => "tomorrow",
-        _ => $"in {days} days"
-    };
+        if (payment.State == BillState.Paid)
+        {
+            return "paid";
+        }
+
+        if (payment.State == BillState.Changed)
+        {
+            return "paid, price changed";
+        }
+
+        if (payment.State == BillState.Late)
+        {
+            return "late";
+        }
+
+        int days = payment.Due.DayNumber - Today.DayNumber;
+        return days switch
+        {
+            < 0 => "due, not paid yet",
+            0 => "today",
+            1 => "tomorrow",
+            _ => $"in {days} days"
+        };
+    }
+
+    private Color StatusColor(UpcomingPayment payment)
+    {
+        if (payment.State is BillState.Paid or BillState.Changed)
+        {
+            return BillText.StateColor(payment.State);
+        }
+
+        if (payment.State == BillState.Late)
+        {
+            return Color.Error;
+        }
+
+        if (payment.Due.DayNumber - Today.DayNumber <= 1)
+        {
+            return Color.Warning;
+        }
+
+        return Color.Inherit;
+    }
 
 }

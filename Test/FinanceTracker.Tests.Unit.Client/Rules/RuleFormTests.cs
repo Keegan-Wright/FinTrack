@@ -14,6 +14,8 @@ public class RuleFormTests : ComponentTestBase
 {
     private static readonly Guid TagId = Guid.NewGuid();
     private static readonly Dictionary<Guid, string> TagNames = new() { [TagId] = "Shopping" };
+    private static readonly Guid BillId = Guid.NewGuid();
+    private static readonly Dictionary<Guid, string> BillNames = new() { [BillId] = "Rent" };
 
     private IRenderedComponent<MudPopoverProvider> _popovers = null!;
 
@@ -158,6 +160,29 @@ public class RuleFormTests : ComponentTestBase
     }
 
     [Test]
+    public async Task ChoosingPayBill_AsksWhichBillAndDropsTheTag()
+    {
+        // Arrange
+        SaveRule rule = Complete();
+        IRenderedComponent<RuleForm> cut = RenderForm(rule);
+
+        // Act
+        await ChooseAsync(cut, "Do", "Pay bill");
+        await ChooseAsync(cut, "Bill", "Rent");
+        bool valid = await cut.InvokeAsync(() => cut.Instance.ValidateAsync());
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(rule.Actions.Single().Type).IsEqualTo(RuleActionType.PayBill);
+            await Assert.That(rule.Actions.Single().BillId).IsEqualTo(BillId);
+            await Assert.That(rule.Actions.Single().ClassificationId).IsNull();
+            await Assert.That(SelectValue(cut, "Bill")).IsEqualTo("Rent");
+            await Assert.That(valid).IsTrue();
+        }
+    }
+
+    [Test]
     public async Task Render_ChosenValues_ShowAsTheyReadNotTheirIds()
     {
         // Act
@@ -185,7 +210,8 @@ public class RuleFormTests : ComponentTestBase
         return Render<RuleForm>(parameters => parameters
             .Add(x => x.Model, rule)
             .Add(x => x.AccountNames, new Dictionary<Guid, string>())
-            .Add(x => x.TagNames, TagNames));
+            .Add(x => x.TagNames, TagNames)
+            .Add(x => x.BillNames, BillNames));
     }
 
     /// <summary>

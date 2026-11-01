@@ -27,6 +27,11 @@ public static class ApiRoutes
     public const string Sync = "api/sync";
 
     /// <summary>
+    /// <see cref="Services.IBillsService"/>.
+    /// </summary>
+    public const string Bills = "api/bills";
+
+    /// <summary>
     /// <see cref="Services.IBudgetsService"/>.
     /// </summary>
     public const string Budgets = "api/budgets";

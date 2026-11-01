@@ -77,7 +77,7 @@ public class TransactionListTests : ComponentTestBase
     }
 
     internal static Transaction Transaction(string description, decimal amount, bool pending = false,
-        TransactionTransfer? transfer = null, string category = "PURCHASE") => new()
+        TransactionTransfer? transfer = null, string category = "PURCHASE", TransactionBill? bill = null) => new()
     {
         TransactionId = Guid.NewGuid(),
         Description = description,
@@ -89,6 +89,7 @@ public class TransactionListTests : ComponentTestBase
         Pending = pending,
         Tags = [],
         AccountName = "Current",
-        Transfer = transfer
+        Transfer = transfer,
+        Bill = bill
     };
 }

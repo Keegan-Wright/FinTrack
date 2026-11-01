@@ -54,7 +54,7 @@ internal static class QueryableBlindIndexExtensions
         public IQueryable<TEntity> WhereEncryptedDayWithin(Expression<Func<TEntity, DateTime>> encryptedProperty,
             DateTime? from, DateTime? to, FinanceTrackerContext context)
         {
-            DateTime now = context.TimeProvider.GetUtcNow().UtcDateTime;
+            DateTime now = context.TimeProvider.UtcNow;
 
             // All time, nothing to narrow
             if (from is null && to is null)

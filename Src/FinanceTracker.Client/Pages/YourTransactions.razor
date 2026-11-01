@@ -2,9 +2,11 @@
 @* Every transaction, filterable, with custom classifications applied from here and whether each is a transfer decided. A grid on larger screens, a compact list with a details dialog on phones. Loads in the browser only, the list is too big to
    send twice. *@
 @using System.Globalization
+@using FinanceTracker.Client.Components.Bills
 @using FinanceTracker.Client.Components.Dialogs
 @using FinanceTracker.Client.Components.Rules
 @using FinanceTracker.Client.Components.Transactions
+@using FinanceTracker.Contracts.Bills
 @using FinanceTracker.Contracts.Classifications
 @using FinanceTracker.Contracts.Transactions
 @using Microsoft.AspNetCore.Authorization
@@ -16,6 +18,7 @@
 @inject IClassificationService ClassificationsService
 @inject ITransfersService TransfersService
 @inject IDialogService DialogService
+@inject IBillsService BillsService
 @inject ISnackbar Snackbar
 @inject NavigationManager NavigationManager
 
@@ -135,6 +138,8 @@
                                         @TransferText.ActionLabel(action)
                                     </MudMenuItem>
                                 }
+                                <MudMenuItem Icon="@Icons.Material.Outlined.EventRepeat"
+                                             OnClick="@(() => PayBillAsync(context.Item))">Pays a bill…</MudMenuItem>
                                 <MudMenuItem Icon="@Icons.Material.Outlined.Rule"
                                              OnClick="@(() => CreateRuleFrom(context.Item))">
                                     Create rule from this
@@ -213,6 +218,7 @@
             { x => x.Transaction, transaction },
             { x => x.OnAddTags, EventCallback.Factory.Create(this, () => AddClassificationsAsync(transaction)) },
             { x => x.OnCreateRule, EventCallback.Factory.Create(this, () => CreateRuleFrom(transaction)) },
+            { x => x.OnPayBill, EventCallback.Factory.Create(this, () => PayBillAsync(transaction)) },
             {
                 x => x.OnHideClassification,
                 classification => ChangeBankClassificationAsync(transaction, classification, hide: true)
@@ -308,6 +314,50 @@
         {
             Snackbar.Add($"Couldn't {(hide ? "hide" : "show")} {classification}, try again", Severity.Error);
             return null;
+        }
+    }
+
+    /// <summary>
+    /// Asks which bill <paramref name="transaction"/> pays, then swaps in how it is now.
+    /// </summary>
+    private async Task PayBillAsync(Transaction transaction)
+    {
+        List<Bill> bills = await BillsService.GetBillsAsync(_cts.Token).ToListAsync(_cts.Token);
+        DialogParameters<PayBillDialog> parameters = new()
+        {
+            { x => x.Transaction, transaction },
+            { x => x.Bills, bills }
+        };
+
+        IDialogReference dialog = await DialogService.ShowAsync<PayBillDialog>(null, parameters);
+        DialogResult? result = await dialog.Result;
+        if (result is null || result.Canceled)
+        {
+            return;
+        }
+
+        try
+        {
+            SetLoadingState(true, "Saving…");
+            Transaction updated = await BillsService.PayBillAsync(transaction.TransactionId, (PayBill)result.Data!,
+                _cts.Token);
+
+            int index = _transactions.FindIndex(x => x.TransactionId == updated.TransactionId);
+            if (index >= 0)
+            {
+                _transactions[index] = updated;
+            }
+
+            Snackbar.Add(updated.Bill?.BillName is { } name ? $"It pays {name} now" : "It pays no bill now",
+                Severity.Success);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't save that, try again", Severity.Error);
+        }
+        finally
+        {
+            SetLoadingState(false);
         }
     }
 

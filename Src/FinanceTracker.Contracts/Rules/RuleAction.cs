@@ -25,4 +25,10 @@ public class RuleAction
     /// </summary>
     [Description("The bank's classification to hide, for hide only")]
     public string? BankClassification { get; set; }
+
+    /// <summary>
+    /// The bill <see cref="RuleActionType.PayBill"/> says it pays, null for the other types.
+    /// </summary>
+    [Description("The bill it pays, for pay bill only")]
+    public Guid? BillId { get; set; }
 }

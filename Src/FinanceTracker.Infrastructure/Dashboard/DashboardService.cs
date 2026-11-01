@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using FinanceTracker.Contracts.Dashboard;
 using FinanceTracker.Contracts.Services;
+using FinanceTracker.Domain.Bills;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.OpenBanking.Transfers;
 using FinanceTracker.Generated.Attributes;
@@ -22,12 +23,15 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
         public bool IsTransfer { get; init; }
     }
 
-    private sealed class DirectDebitLite
-    {
-        public decimal PreviousPaymentAmount { get; init; }
-        public DateTime PreviousPaymentTimeStamp { get; init; }
-        public string Name { get; init; } = string.Empty;
-    }
+    /// <summary>
+    /// How far back payments show, so one just paid is ticked off rather than gone, and a late one stays.
+    /// </summary>
+    private const int RecentDays = 7;
+
+    /// <summary>
+    /// How far ahead payments show, enough to reach the next of every monthly bill.
+    /// </summary>
+    private const int AheadDays = 45;
 
     private readonly TimeProvider _timeProvider;
 
@@ -75,67 +79,58 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
     public async IAsyncEnumerable<UpcomingPayment> GetUpcomingPaymentsAsync(int numberToFetch,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        List<UpcomingPayment> upcomingPayments = [];
-
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        DateTime nowUtc = _timeProvider.GetUtcNow().UtcDateTime;
+        DateOnly today = _timeProvider.Today;
+        DateOnly from = today.AddDays(-RecentDays);
+        DateOnly to = today.AddDays(AheadDays);
+        TimeZoneInfo timeZone = _timeProvider.LocalTimeZone;
 
-        List<UpcomingPayment> standingOrders = await context.BankAccounts.OwnedBy(UserId)
-            .SelectMany(static x => x.StandingOrders)
-            .Select(x => new UpcomingPayment
-            {
-                Amount = x.NextPaymentAmount,
-                PaymentDate = x.NextPaymentDate,
-                PaymentName = x.Payee,
-                PaymentType = "Standing Order"
-            })
+        List<Bill> bills = await context.Bills.OwnedBy(UserId).AsNoTracking().ToListAsync(cancellationToken);
+        List<BankTransaction> payments = await context.BankTransactions.OwnedBy(UserId).AsNoTracking()
+            .Where(static x => x.BillPayment != null && x.BillPayment.BillId != null)
             .ToListAsync(cancellationToken);
 
-        upcomingPayments.AddRange(standingOrders.Where(x => x.PaymentDate > nowUtc));
-
-        List<DirectDebitLite> directDebitItems = await context.BankAccounts.OwnedBy(UserId)
-            .SelectMany(static x => x.DirectDebits)
-            .Select(x => new DirectDebitLite
-            {
-                PreviousPaymentAmount = x.PreviousPaymentAmount,
-                PreviousPaymentTimeStamp = x.PreviousPaymentDate,
-                Name = x.Name
-            })
-            .ToListAsync(cancellationToken);
-
-        // This feels like a hack but we can only request direct debits once a token is generated every ~90 days
-        // Unless we want to use a refresh token every login
-        upcomingPayments.AddRange(directDebitItems
-            .Where(x => x.PreviousPaymentAmount != 0)
-            .Select(x => new UpcomingPayment
-            {
-                Amount = x.PreviousPaymentAmount,
-                PaymentDate = NextMonthlyPaymentAfter(x.PreviousPaymentTimeStamp, nowUtc),
-                PaymentName = x.Name,
-                PaymentType = "Direct Debit"
-            }));
-
-
-        await foreach (UpcomingPayment upcomingPayment in upcomingPayments
-                           .OrderBy(x => x.PaymentDate)
-                           .Take(numberToFetch)
-                           .ToAsyncEnumerable().WithCancellation(cancellationToken))
+        List<UpcomingPayment> upcoming = [];
+        foreach (Bill bill in bills)
         {
-            yield return upcomingPayment;
+            foreach (BillPeriod period in BillCalculator.Periods(bill, payments, from, to, timeZone, today))
+            {
+                upcoming.Add(ToUpcoming(bill, period));
+            }
+        }
+
+        foreach (UpcomingPayment payment in upcoming.OrderBy(static x => x.Due).Take(numberToFetch))
+        {
+            yield return payment;
         }
     }
 
-    /// <summary>
-    /// The first monthly anniversary of <paramref name="previousPayment"/> after <paramref name="now"/>.
-    /// Always offset from the previous payment so short months don't drift the day.
-    /// </summary>
-    private static DateTime NextMonthlyPaymentAfter(DateTime previousPayment, DateTime now)
+    private static UpcomingPayment ToUpcoming(Bill bill, BillPeriod period)
     {
-        int monthsSince = ((now.Year - previousPayment.Year) * 12) + now.Month - previousPayment.Month;
-        DateTime next = previousPayment.AddMonths(Math.Max(monthsSince, 0));
+        decimal amount = period.Expected;
+        if (period.PaymentIds.Count > 0)
+        {
+            amount = period.Paid;
+        }
 
-        return next > now ? next : previousPayment.AddMonths(Math.Max(monthsSince, 0) + 1);
+        return new UpcomingPayment
+        {
+            BillId = bill.Id,
+            PaymentName = bill.Name,
+            Amount = amount,
+            Due = period.Due,
+            State = Enum.Parse<Contracts.Bills.BillState>(period.State.ToString()),
+            PaymentType = SourceName(bill.Source)
+        };
     }
+
+    private static string SourceName(BillSource source) => source switch
+    {
+        BillSource.StandingOrder => "Standing order",
+        BillSource.DirectDebit => "Direct debit",
+        BillSource.Detected => "Subscription",
+        _ => "Bill"
+    };
 }

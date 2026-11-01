@@ -1,14 +1,23 @@
+using FinanceTracker.Contracts.Bills;
+using FinanceTracker.Contracts.Dashboard;
+using FinanceTracker.Contracts.Services;
+using FinanceTracker.Domain.Common;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Domain.OpenBanking.Transactions;
+using FinanceTracker.Domain.Rules;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.OpenBanking.TrueLayer.Contracts;
+using FinanceTracker.Tests.Integration.Http;
 using FinanceTracker.Tests.Unit.Shared.Fakers.TrueLayer;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.EntityFrameworkCore;
 using TickerQ.Utilities;
 using TickerQ.Utilities.Entities;
 using TickerQ.Utilities.Enums;
+using DomainBill = FinanceTracker.Domain.Bills.Bill;
+using DomainBillFrequency = FinanceTracker.Domain.Bills.BillFrequency;
+using DomainBillSource = FinanceTracker.Domain.Bills.BillSource;
 
 namespace FinanceTracker.Tests.Integration.OpenBanking;
 
@@ -77,6 +86,152 @@ public class BackgroundSyncTests : IntegrationTestBase
                 .IsEquivalentTo(transactions.Append(pending).Select(x => x.TransactionId));
             await Assert.That(syncLog).IsEquivalentTo(
                 [SyncType.Account, SyncType.Balance, SyncType.StandingOrders, SyncType.DirectDebits, SyncType.Transactions]);
+        }
+    }
+
+    [Test]
+    public async Task Sync_ASyncedStandingOrder_ShowsAsAnUpcomingPaymentOnTheDashboard()
+    {
+        // Arrange
+        SignedInUser user = await RegisterUserAsync();
+        string accessToken = UniqueName("token");
+        await Scenario.Do(s => s.BankConnectionScenario.WithConnection("bank", user.Username))
+            .Do(s => s.BankConnectionScenario.WithAccessToken("bank", token: accessToken));
+
+        // Quarterly, so only the one payment falls in the dashboard's window
+        DateTime nextPayment = DateTime.UtcNow.Date.AddDays(10).AddHours(12);
+        ExternalOpenBankingAccountStandingOrder standingOrder = new ExternalOpenBankingAccountStandingOrderFaker().Generate();
+        standingOrder.Frequency = "Quarterly";
+        standingOrder.NextPaymentDate = nextPayment;
+
+        await App.TrueLayer.StubAccountAsync(accessToken, new ExternalOpenBankingAccountFaker().Generate(),
+            standingOrders: [standingOrder]);
+
+        // Act
+        await RunSyncAsync();
+        List<UpcomingPayment> upcoming = await ApiFor(user).Get<IDashboardService>()
+            .GetUpcomingPaymentsAsync(5, CancellationToken).ToListAsync(CancellationToken);
+
+        // Assert
+        UpcomingPayment payment = upcoming.Single();
+        using (Assert.Multiple())
+        {
+            await Assert.That(payment.PaymentName).IsEqualTo(standingOrder.Payee);
+            await Assert.That(payment.PaymentType).IsEqualTo("Standing order");
+            await Assert.That(payment.Amount).IsEqualTo(standingOrder.NextPaymentAmount);
+            await Assert.That(payment.Due).IsEqualTo(DateOnly.FromDateTime(nextPayment));
+        }
+    }
+
+    [Test]
+    public async Task Sync_AStandingOrderAndItsPaymentTogether_ShowsThatPaymentAsPaid()
+    {
+        // Arrange
+        SignedInUser user = await RegisterUserAsync();
+        string accessToken = UniqueName("token");
+        await Scenario.Do(s => s.BankConnectionScenario.WithConnection("bank", user.Username))
+            .Do(s => s.BankConnectionScenario.WithAccessToken("bank", token: accessToken));
+
+        DateTime lastPayment = DateTime.UtcNow.Date.AddDays(-2).AddHours(12);
+        ExternalOpenBankingAccountStandingOrder standingOrder = WeeklyStandingOrder(lastPayment);
+        ExternalOpenBankingAccountTransaction payment =
+            Debit(standingOrder.Payee, -standingOrder.NextPaymentAmount, lastPayment);
+
+        await App.TrueLayer.StubAccountAsync(accessToken, new ExternalOpenBankingAccountFaker().Generate(),
+            transactions: [payment], standingOrders: [standingOrder]);
+
+        // Act
+        await RunSyncAsync();
+        List<UpcomingPayment> upcoming = await ApiFor(user).Get<IDashboardService>()
+            .GetUpcomingPaymentsAsync(5, CancellationToken).ToListAsync(CancellationToken);
+
+        // Assert
+        UpcomingPayment paid = upcoming.Single(x => x.Due == DateOnly.FromDateTime(lastPayment));
+        using (Assert.Multiple())
+        {
+            await Assert.That(paid.State).IsEqualTo(BillState.Paid);
+            await Assert.That(paid.Amount).IsEqualTo(standingOrder.NextPaymentAmount);
+        }
+    }
+
+    [Test]
+    public async Task Sync_ARulePaysABill_TheMatcherLeavesThatPeriodToTheRule()
+    {
+        // Arrange
+        SignedInUser user = await RegisterUserAsync();
+        string accessToken = UniqueName("token");
+        ExternalOpenBankingAccount account = new ExternalOpenBankingAccountFaker().Generate();
+        DateTime due = DateTime.UtcNow.Date.AddDays(-2).AddHours(12);
+        DomainBill? rent = null;
+
+        await Scenario.Do(s => s.BankConnectionScenario.WithConnection("bank", user.Username))
+            .Do(s => s.BankConnectionScenario.WithAccessToken("bank", token: accessToken))
+            .Do(s => s.BankAccountScenario.WithAccount("main", "bank", (userId, connectionId) =>
+                new BankAccount(userId, connectionId, account.AccountId, "TRANSACTION", "Main", "GBP")))
+            .Do(s => s.BillScenario.WithBill("rent", user.Username, "main", (userId, accountId) =>
+                rent = new DomainBill(userId, accountId, "Rent", "Landlord", DomainBillFrequency.Monthly, 650m,
+                    DateOnly.FromDateTime(due), DomainBillSource.Manual)))
+            .Do(s => s.RuleScenario.WithRule("rent", user.Username, userId =>
+                new Rule(userId, "Rent share", 0, RuleMatchMode.All,
+                    [new RuleCondition(RuleField.Description, RuleOperator.Contains, "RENT SHARE")],
+                    [RuleAction.PayBill(rent!)])));
+
+        // The matcher would pay the bill with the payment to the landlord, if it ran before the rule
+        ExternalOpenBankingAccountTransaction rulesPayment = Debit("RENT SHARE", -650m, due);
+        ExternalOpenBankingAccountTransaction landlordPayment = Debit("LANDLORD", -650m, due.AddHours(1));
+
+        await App.TrueLayer.StubAccountAsync(accessToken, account, transactions: [rulesPayment, landlordPayment]);
+
+        // Act
+        await RunSyncAsync();
+
+        // Assert
+        Guid connectionId = Scenario.ConnectionMappings["bank"];
+        BankTransaction paidByRule = await SyncedTransactionAsync(connectionId, rulesPayment.TransactionId);
+        BankTransaction toLandlord = await SyncedTransactionAsync(connectionId, landlordPayment.TransactionId);
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(paidByRule.PaysBill(rent!.Id)).IsTrue();
+            await Assert.That(paidByRule.WasDecidedBy(Scenario.RuleMappings["rent"])).IsTrue();
+            await Assert.That(toLandlord.BillPayment).IsNull();
+        }
+    }
+
+    [Test]
+    public async Task Sync_AfterTheUserSaysAPaymentPaysNoBill_LeavesItUnpaid()
+    {
+        // Arrange
+        SignedInUser user = await RegisterUserAsync();
+        string accessToken = UniqueName("token");
+        await Scenario.Do(s => s.BankConnectionScenario.WithConnection("bank", user.Username))
+            .Do(s => s.BankConnectionScenario.WithAccessToken("bank", token: accessToken));
+
+        DateTime lastPayment = DateTime.UtcNow.Date.AddDays(-2).AddHours(12);
+        ExternalOpenBankingAccountStandingOrder standingOrder = WeeklyStandingOrder(lastPayment);
+        ExternalOpenBankingAccountTransaction payment =
+            Debit(standingOrder.Payee, -standingOrder.NextPaymentAmount, lastPayment);
+
+        await App.TrueLayer.StubAccountAsync(accessToken, new ExternalOpenBankingAccountFaker().Generate(),
+            transactions: [payment], standingOrders: [standingOrder]);
+
+        await RunSyncAsync();
+
+        Guid connectionId = Scenario.ConnectionMappings["bank"];
+        BankTransaction matched = await SyncedTransactionAsync(connectionId, payment.TransactionId);
+        await ApiFor(user).Get<IBillsService>()
+            .PayBillAsync(matched.Id, new PayBill { BillId = null }, CancellationToken);
+
+        // Act
+        await RunSyncAsync();
+
+        // Assert
+        BankTransaction resynced = await SyncedTransactionAsync(connectionId, payment.TransactionId);
+        using (Assert.Multiple())
+        {
+            await Assert.That(matched.BillPayment!.Source).IsEqualTo(DecisionSource.Matcher);
+            await Assert.That(resynced.BillPayment!.BillId).IsNull();
+            await Assert.That(resynced.BillPayment!.Source).IsEqualTo(DecisionSource.User);
         }
     }
 
@@ -179,6 +334,48 @@ public class BackgroundSyncTests : IntegrationTestBase
             .SingleAsync(x => x.Id == connectionId, CancellationToken);
 
         await Assert.That(connection.ActiveToken).IsNull();
+    }
+
+    /// <summary>
+    /// A standing order last paid on <paramref name="lastPayment"/>. Weekly, so the dates don't depend on how long
+    /// the month is.
+    /// </summary>
+    private static ExternalOpenBankingAccountStandingOrder WeeklyStandingOrder(DateTime lastPayment)
+    {
+        ExternalOpenBankingAccountStandingOrder standingOrder = new ExternalOpenBankingAccountStandingOrderFaker().Generate();
+        standingOrder.Frequency = "Weekly";
+        standingOrder.FirstPaymentDate = lastPayment.AddDays(-7);
+        standingOrder.NextPaymentDate = lastPayment.AddDays(7);
+        return standingOrder;
+    }
+
+    private static ExternalOpenBankingAccountTransaction Debit(string description, decimal amount, DateTime timestamp)
+    {
+        ExternalOpenBankingAccountTransaction transaction = new ExternalOpenBankingAccountTransactionFaker().Generate();
+        transaction.Description = description;
+        transaction.TransactionType = "DEBIT";
+        transaction.Amount = amount;
+        transaction.Timestamp = timestamp;
+        return transaction;
+    }
+
+    /// <summary>
+    /// The transaction the sync stored for <paramref name="externalId"/>, compared in memory as it's encrypted.
+    /// </summary>
+    private async Task<BankTransaction> SyncedTransactionAsync(Guid connectionId, string externalId)
+    {
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+
+        List<Guid> accountIds = await context.BankAccounts
+            .Where(x => x.ConnectionId == connectionId)
+            .Select(x => x.Id)
+            .ToListAsync(CancellationToken);
+
+        List<BankTransaction> transactions = await context.BankTransactions
+            .Where(x => accountIds.Contains(x.AccountId))
+            .ToListAsync(CancellationToken);
+
+        return transactions.Single(x => x.ExternalId == externalId);
     }
 
     private Task RunSyncAsync() => RunJobAsync(SyncFunction);

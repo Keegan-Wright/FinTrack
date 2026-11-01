@@ -110,8 +110,8 @@ public sealed class Rule : AggregateRoot
     /// <summary>
     /// Replaces the actions, adding each tag once.
     /// </summary>
-    /// <exception cref="ArgumentException">There are no actions, more than one decides the transfer answer, or one
-    /// that hides a bank classification doesn't say which.</exception>
+    /// <exception cref="ArgumentException">There are no actions, more than one decides the transfer answer or pays a
+    /// bill, or one that hides a bank classification or pays a bill doesn't say which.</exception>
     public void ReplaceActions(IEnumerable<RuleAction> actions)
     {
         ArgumentNullException.ThrowIfNull(actions);
@@ -131,6 +131,18 @@ public sealed class Rule : AggregateRoot
                 x.Type == RuleActionType.HideClassification && string.IsNullOrWhiteSpace(x.BankClassification)))
         {
             throw new ArgumentException("Hiding a bank classification needs to say which.", nameof(actions));
+        }
+
+        List<RuleAction> paysBill = replacements.Where(static x => x.Type == RuleActionType.PayBill).ToList();
+
+        if (paysBill.Count > 1)
+        {
+            throw new ArgumentException("A rule can only pay one bill.", nameof(actions));
+        }
+
+        if (paysBill.Exists(static x => x.BillId is null))
+        {
+            throw new ArgumentException("Paying a bill needs to say which.", nameof(actions));
         }
 
         _actions.Clear();
@@ -156,6 +168,28 @@ public sealed class Rule : AggregateRoot
     {
         int removed = _actions.RemoveAll(x =>
             x.Type == RuleActionType.AddTag && x.ClassificationId == classificationId);
+
+        if (removed == 0)
+        {
+            return false;
+        }
+
+        if (_actions.Count == 0)
+        {
+            Disable();
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Drops the action that pays a bill being deleted. A rule left with nothing to do is disabled rather than deleted,
+    /// see <see cref="RemoveTag"/>.
+    /// </summary>
+    /// <returns>Whether the rule paid the bill.</returns>
+    public bool RemoveBill(Guid billId)
+    {
+        int removed = _actions.RemoveAll(x => x.Type == RuleActionType.PayBill && x.BillId == billId);
 
         if (removed == 0)
         {

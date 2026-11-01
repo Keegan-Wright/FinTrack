@@ -1,6 +1,7 @@
 @page "/Rules"
 @* The user's rules in the order they run, to reorder, switch on and off. *@
 @using FinanceTracker.Client.Components.Rules
+@using FinanceTracker.Contracts.Bills
 @using FinanceTracker.Contracts.Classifications
 @using FinanceTracker.Contracts.Rules
 @using FinanceTracker.Contracts.Transactions
@@ -11,6 +12,7 @@
 @inject IRulesService RulesService
 @inject ITransactionsService TransactionsService
 @inject IClassificationService ClassificationService
+@inject IBillsService BillsService
 @inject ISnackbar Snackbar
 
 <PageTitle>FinTrack - Rules</PageTitle>
@@ -30,7 +32,7 @@
     }
     else
     {
-        <RuleList Rules="@RuleList" AccountNames="@AccountNames" TagNames="@TagNames"
+        <RuleList Rules="@RuleList" AccountNames="@AccountNames" TagNames="@TagNames" BillNames="@BillNames"
                   OnReorder="@ReorderAsync" OnToggle="@ToggleAsync"/>
     }
 </Section>
@@ -55,11 +57,20 @@
     [PersistentState]
     public List<Classification>? Tags { get; set; }
 
+    /// <summary>
+    /// The user's bills, for actions that pay one.
+    /// </summary>
+    [PersistentState]
+    public List<Bill>? BillList { get; set; }
+
     private IReadOnlyDictionary<Guid, string> AccountNames =>
         (Accounts ?? []).ToDictionary(static x => x.AccountId, static x => x.AccountName);
 
     private IReadOnlyDictionary<Guid, string> TagNames =>
         (Tags ?? []).ToDictionary(static x => x.ClassificationId, static x => x.Tag ?? string.Empty);
+
+    private IReadOnlyDictionary<Guid, string> BillNames =>
+        (BillList ?? []).ToDictionary(static x => x.Id, static x => x.Name);
 
     private string SectionTitle => RuleList?.Count == 1 ? "1 rule" : $"{RuleList?.Count ?? 0} rules";
 
@@ -74,6 +85,8 @@
         Tags = await LoadOnceAsync(Tags, "Loading your rules", cancellationToken =>
             ClassificationService.GetAllCustomClassificationsAsync(cancellationToken)
                 .ToListAsync(cancellationToken).AsTask());
+        BillList = await LoadOnceAsync(BillList, "Loading your rules", cancellationToken =>
+            BillsService.GetBillsAsync(cancellationToken).ToListAsync(cancellationToken).AsTask());
     }
 
     /// <summary>

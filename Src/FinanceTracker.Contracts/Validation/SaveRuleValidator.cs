@@ -7,8 +7,8 @@ namespace FinanceTracker.Contracts.Validation;
 
 /// <summary>
 /// Requires a name, at least one valid condition, see <see cref="RuleConditionValidator"/>, and at least one action
-/// a tag for each add tag action, a bank classification for each hide action and at most one action that decides the
-/// transfer answer.
+/// a tag for each add tag action, a bank classification for each hide action, a bill for each pay bill action, at most
+/// one action that decides the transfer answer and at most one that pays a bill.
 /// </summary>
 [InjectionCategory(InjectionCategoryType.Validator, ServiceDestinationType.Server | ServiceDestinationType.Client)]
 [Scoped<IValidator<SaveRule>>]
@@ -31,6 +31,10 @@ public class SaveRuleValidator : AbstractValidator<SaveRule>
         RuleFor(x => x.Actions)
             .Must(x => x.Count(static action => DecidesTransfer(action.Type)) <= 1)
             .WithMessage("Only one action can decide whether it's a transfer");
+
+        RuleFor(x => x.Actions)
+            .Must(x => x.Count(static action => action.Type == RuleActionType.PayBill) <= 1)
+            .WithMessage("A rule can only pay one bill");
 
         RuleForEach(x => x.Actions).ChildRules(action =>
         {
@@ -55,6 +59,16 @@ public class SaveRuleValidator : AbstractValidator<SaveRule>
                 .Empty()
                 .When(x => x.Type != RuleActionType.HideClassification)
                 .WithMessage("Only hiding takes a bank classification");
+
+            action.RuleFor(x => x.BillId)
+                .NotNull()
+                .When(x => x.Type == RuleActionType.PayBill)
+                .WithMessage("Choose a bill");
+
+            action.RuleFor(x => x.BillId)
+                .Null()
+                .When(x => x.Type != RuleActionType.PayBill)
+                .WithMessage("Only pay bill takes a bill");
         });
     }
 

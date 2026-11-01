@@ -36,7 +36,7 @@ internal sealed class AuditingInterceptor : SaveChangesInterceptor
         TimeProvider clock = context is FinanceTrackerContext financeTrackerContext
             ? financeTrackerContext.TimeProvider
             : TimeProvider.System;
-        DateTime now = clock.GetUtcNow().UtcDateTime;
+        DateTime now = clock.UtcNow;
         foreach (EntityEntry<IAuditable> entry in context.ChangeTracker.Entries<IAuditable>())
         {
             switch (entry.State)

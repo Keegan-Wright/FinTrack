@@ -15,7 +15,6 @@ namespace FinanceTracker.Infrastructure.OpenBanking.Transfers;
 public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITransferMatchingService
 {
     private readonly TimeProvider _timeProvider;
-    private DateTime Now => _timeProvider.GetUtcNow().UtcDateTime;
 
     public TransferMatchingService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<TransferMatchingService> logger,
@@ -28,7 +27,7 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
     {
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
-        DateTime startedAt = Now;
+        DateTime startedAt = _timeProvider.UtcNow;
 
         // Amounts and dates are encrypted, so matching happens in memory. Tracked, so saving writes only the
         // transactions the matcher changed
@@ -42,7 +41,7 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
     {
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
-        DateTime startedAt = Now;
+        DateTime startedAt = _timeProvider.UtcNow;
 
         TransferMatchCheckpoint? checkpoint = await context.TransferMatchCheckpoints.OwnedBy(UserId)
             .SingleOrDefaultAsync(cancellationToken);
@@ -74,7 +73,7 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        DateTime startedAt = Now;
+        DateTime startedAt = _timeProvider.UtcNow;
 
         List<DateTime> dates = await context.BankTransactions.OwnedBy(UserId)
             .Where(x => transactionIds.Contains(x.Id))
@@ -148,7 +147,8 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
         List<HouseholdMember> householdMembers =
             await context.HouseholdMembers.OwnedBy(UserId).ToListAsync(cancellationToken);
 
-        TransferMatchSummary summary = TransferMatcher.Match(accounts, householdMembers, transactions, Now);
+        TransferMatchSummary summary =
+            TransferMatcher.Match(accounts, householdMembers, transactions, _timeProvider.UtcNow);
 
         if (recordCheckpoint)
         {

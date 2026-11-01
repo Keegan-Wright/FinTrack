@@ -26,12 +26,7 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
         _timeProvider = timeProvider;
     }
 
-    /// <summary>
-    /// Today where the server is.
-    /// </summary>
-    private DateOnly Today => DateOnly.FromDateTime(_timeProvider.GetLocalNow().DateTime);
-
-    private BudgetMonth CurrentMonth => BudgetMonth.Of(Today);
+    private BudgetMonth CurrentMonth => BudgetMonth.Of(_timeProvider.Today);
 
     public async Task<BudgetMonthOverview> GetMonthAsync(int year, int month, CancellationToken cancellationToken)
     {
@@ -47,7 +42,7 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
 
         List<BankTransaction> transactions = await LoadTransactionsAsync(context, running, target, cancellationToken);
         TimeZoneInfo timeZone = _timeProvider.LocalTimeZone;
-        DateOnly today = Today;
+        DateOnly today = _timeProvider.Today;
 
         List<BudgetStatus> statuses = running
             .Select(budget => BudgetMapper.ToContract(budget,

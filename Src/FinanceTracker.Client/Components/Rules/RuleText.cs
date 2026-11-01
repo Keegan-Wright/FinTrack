@@ -63,6 +63,7 @@ public static class RuleText
         RuleActionType.MarkAsTransfer => "Mark as a transfer",
         RuleActionType.MarkNotATransfer => "Mark as not a transfer",
         RuleActionType.HideClassification => "Hide bank classification",
+        RuleActionType.PayBill => "Pay bill",
         _ => type.ToString()
     };
 
@@ -114,11 +115,23 @@ public static class RuleText
     }
 
     /// <param name="tagNames">The user's tags by id. A tag not in it reads as deleted.</param>
-    public static string Describe(RuleAction action, IReadOnlyDictionary<Guid, string> tagNames)
+    /// <param name="billNames">The user's bills by id. A bill not in it reads as deleted.</param>
+    public static string Describe(RuleAction action, IReadOnlyDictionary<Guid, string> tagNames,
+        IReadOnlyDictionary<Guid, string>? billNames = null)
     {
         if (action.Type == RuleActionType.HideClassification)
         {
             return $"Hide bank classification {action.BankClassification}";
+        }
+
+        if (action.Type == RuleActionType.PayBill)
+        {
+            if (action.BillId is { } billId && billNames?.TryGetValue(billId, out string? billName) == true)
+            {
+                return $"Pay bill {billName}";
+            }
+
+            return "Pay a deleted bill";
         }
 
         if (action.Type != RuleActionType.AddTag)
@@ -138,7 +151,7 @@ public static class RuleText
     /// One line for the list its conditions joined by and or, then what it does.
     /// </summary>
     public static string Summary(Rule rule, IReadOnlyDictionary<Guid, string> accountNames,
-        IReadOnlyDictionary<Guid, string> tagNames)
+        IReadOnlyDictionary<Guid, string> tagNames, IReadOnlyDictionary<Guid, string>? billNames = null)
     {
         string joiner = rule.MatchMode == RuleMatchMode.Any ? " or " : " and ";
         string conditions = string.Join(joiner, rule.Conditions.Select(x => Describe(x, accountNames)));
@@ -148,7 +161,7 @@ public static class RuleText
             return $"{conditions}, does nothing";
         }
 
-        string actions = string.Join(", ", rule.Actions.Select(x => Describe(x, tagNames)));
+        string actions = string.Join(", ", rule.Actions.Select(x => Describe(x, tagNames, billNames)));
         return $"{conditions} → {actions}";
     }
 

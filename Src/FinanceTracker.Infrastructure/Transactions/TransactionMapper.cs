@@ -1,4 +1,5 @@
 using FinanceTracker.Contracts.Transactions;
+using FinanceTracker.Domain.Bills;
 using FinanceTracker.Domain.Common;
 using FinanceTracker.Domain.Household;
 using FinanceTracker.Domain.OpenBanking.Transactions;
@@ -21,16 +22,18 @@ internal sealed class TransactionMapper
     private readonly Dictionary<Guid, string> _householdMemberNames;
     private readonly Dictionary<Guid, BankTransaction> _partners;
     private readonly Dictionary<Guid, string> _ruleNames;
+    private readonly Dictionary<Guid, string> _billNames;
 
     private TransactionMapper(IReadOnlyDictionary<Guid, string> customTags, Dictionary<Guid, string> accountNames,
         Dictionary<Guid, string> householdMemberNames, Dictionary<Guid, BankTransaction> partners,
-        Dictionary<Guid, string> ruleNames)
+        Dictionary<Guid, string> ruleNames, Dictionary<Guid, string> billNames)
     {
         _customTags = customTags;
         _accountNames = accountNames;
         _householdMemberNames = householdMemberNames;
         _partners = partners;
         _ruleNames = ruleNames;
+        _billNames = billNames;
     }
 
     /// <param name="customTags">The user's custom classifications by id, for the tags.</param>
@@ -50,7 +53,9 @@ internal sealed class TransactionMapper
 
         Dictionary<Guid, string> ruleNames = await LoadRuleNamesAsync(context, userId, transactions, cancellationToken);
 
-        return new TransactionMapper(customTags, accountNames, householdMemberNames, partners, ruleNames);
+        Dictionary<Guid, string> billNames = await LoadBillNamesAsync(context, userId, transactions, cancellationToken);
+
+        return new TransactionMapper(customTags, accountNames, householdMemberNames, partners, ruleNames, billNames);
     }
 
     /// <summary>
@@ -78,6 +83,7 @@ internal sealed class TransactionMapper
         Guid userId, IReadOnlyCollection<BankTransaction> transactions, CancellationToken cancellationToken)
     {
         if (!transactions.Any(static x => x.RuleTags.Count > 0 || x.Transfer?.RuleId is not null ||
+                                          x.BillPayment?.RuleId is not null ||
                                           x.HiddenClassifications.Any(static hidden => !hidden.HiddenByUser)))
         {
             return [];
@@ -87,6 +93,23 @@ internal sealed class TransactionMapper
         List<Rule> rules = await context.Rules.OwnedBy(userId).AsNoTracking().ToListAsync(cancellationToken);
 
         return rules.ToDictionary(static x => x.Id, static x => x.Name);
+    }
+
+    /// <summary>
+    /// Bill names by id, empty when none of <paramref name="transactions"/> pays a bill.
+    /// </summary>
+    private static async Task<Dictionary<Guid, string>> LoadBillNamesAsync(FinanceTrackerContext context,
+        Guid userId, IReadOnlyCollection<BankTransaction> transactions, CancellationToken cancellationToken)
+    {
+        if (!transactions.Any(static x => x.BillPayment?.BillId is not null))
+        {
+            return [];
+        }
+
+        // Names are encrypted, so they're read whole and decrypted
+        List<Bill> bills = await context.Bills.OwnedBy(userId).AsNoTracking().ToListAsync(cancellationToken);
+
+        return bills.ToDictionary(static x => x.Id, static x => x.Name);
     }
 
     /// <summary>
@@ -137,6 +160,7 @@ internal sealed class TransactionMapper
         AccountId = transaction.AccountId,
         AccountName = _accountNames.GetValueOrDefault(transaction.AccountId, string.Empty),
         Transfer = ToContract(transaction.Transfer),
+        Bill = ToContract(transaction.BillPayment),
         TagsFromRules = transaction.RuleTags
             .Where(x => _customTags.ContainsKey(x.ClassificationId))
             .Select(x => new TransactionRuleTag
@@ -193,6 +217,27 @@ internal sealed class TransactionMapper
                 ? _householdMemberNames.GetValueOrDefault(memberId)
                 : null,
             RuleName = transfer.RuleId is { } ruleId ? _ruleNames.GetValueOrDefault(ruleId) : null
+        };
+    }
+
+    private TransactionBill? ToContract(BillPayment? payment)
+    {
+        if (payment is null)
+        {
+            return null;
+        }
+
+        return new TransactionBill
+        {
+            BillId = payment.BillId,
+            BillName = payment.BillId is { } billId ? _billNames.GetValueOrDefault(billId) : null,
+            DecidedBy = payment.Source switch
+            {
+                DecisionSource.User => TransferDecidedBy.User,
+                DecisionSource.Rule => TransferDecidedBy.Rule,
+                _ => TransferDecidedBy.FinTrack
+            },
+            RuleName = payment.RuleId is { } ruleId ? _ruleNames.GetValueOrDefault(ruleId) : null
         };
     }
 }
