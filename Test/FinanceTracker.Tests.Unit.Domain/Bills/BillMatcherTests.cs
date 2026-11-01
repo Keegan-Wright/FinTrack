@@ -69,6 +69,78 @@ public class BillMatcherTests
     }
 
     [Test]
+    public async Task Match_PayeeAsTheCounterparty_PaysTheBill()
+    {
+        // Arrange
+        Bill bill = Streaming();
+        BankTransaction payment = Payment("BANK TRANSFER", -10.99m, new DateTime(2026, 2, 10),
+            new TransactionMetadata(null, null, null, "Netflix", null));
+
+        // Act
+        BillMatcher.Match([bill], [payment], TimeZoneInfo.Utc, At);
+
+        // Assert
+        await Assert.That(payment.PaysBill(bill.Id)).IsTrue();
+    }
+
+    [Test]
+    [Arguments(-10, 2026, 2, 15)]
+    [Arguments(-10, 2026, 2, 5)]
+    [Arguments(-15, 2026, 2, 10)]
+    [Arguments(-5, 2026, 2, 10)]
+    public async Task Match_AtTheEdgeOfTheWindowOrBand_StillMatches(double amount, int year, int month, int day)
+    {
+        // Arrange
+        Bill bill = Streaming(10m);
+        BankTransaction payment = Payment("NETFLIX", (decimal)amount, new DateTime(year, month, day));
+
+        // Act
+        BillMatcher.Match([bill], [payment], TimeZoneInfo.Utc, At);
+
+        // Assert
+        await Assert.That(payment.PaysBill(bill.Id)).IsTrue();
+    }
+
+    [Test]
+    public async Task Match_PaymentLateEveningUtcInSummer_CountsOnTheDayWhereTheUserIs()
+    {
+        // Arrange
+        TimeZoneInfo london = TimeZoneInfo.FindSystemTimeZoneById("Europe/London");
+        Bill bill = new(UserId, Account.Id, "Gym", "Gymco", BillFrequency.Monthly, 30m, new DateOnly(2026, 6, 1),
+            BillSource.Manual);
+
+        // 6 days before the 1 July due date in UTC, but 5 in London, so inside the window
+        BankTransaction payment = Payment("GYMCO", -30m, new DateTime(2026, 6, 25, 23, 30, 0));
+
+        // Act
+        BillMatcher.Match([bill], [payment], london, At);
+
+        // Assert
+        await Assert.That(payment.PaysBill(bill.Id)).IsTrue();
+    }
+
+    [Test]
+    public async Task Match_PeriodARulePaid_IsLeftToTheRule()
+    {
+        // Arrange
+        Bill bill = Streaming();
+        BankTransaction rulesPayment = Payment("NETFLIX GIFT", -5m, new DateTime(2026, 2, 9));
+        rulesPayment.DecideBillPayment(BillPayment.FromRule(bill.Id, Guid.NewGuid(), At));
+        BankTransaction another = Payment("NETFLIX", -10.99m, new DateTime(2026, 2, 10));
+
+        // Act
+        BillMatcher.Match([bill], [rulesPayment, another], TimeZoneInfo.Utc, At);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(another.BillPayment).IsNull();
+            await Assert.That(rulesPayment.PaysBill(bill.Id)).IsTrue();
+            await Assert.That(rulesPayment.BillPayment!.Source).IsEqualTo(DecisionSource.Rule);
+        }
+    }
+
+    [Test]
     public async Task Match_PriceRise_StillMatchesWithinTheBand()
     {
         // Arrange
@@ -210,6 +282,8 @@ public class BillMatcherTests
     [Arguments("Netflix International", "NETFLIX", true)]
     [Arguments("British Gas", "SKY", false)]
     [Arguments("Thames Water", "THAMESWATER DD", true)]
+    [Arguments("British Gas", "BRIT", true)]
+    [Arguments("British Gas", "GAS", false)]
     public async Task IsPaidTo_IgnoresCaseSpacesAndPunctuation(string payee, string description, bool paid) =>
         await Assert.That(BillMatcher.IsPaidTo(
                 new Bill(UserId, Account.Id, payee, payee, BillFrequency.Monthly, 10m, new DateOnly(2026, 1, 10),
