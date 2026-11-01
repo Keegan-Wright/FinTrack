@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using FinanceTracker.Contracts.Api;
 using FinanceTracker.Contracts.Bills;
 using FinanceTracker.Contracts.Services;
+using FinanceTracker.Contracts.Transactions;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 
@@ -72,11 +73,13 @@ public sealed class BillsApiClient : IBillsService
         response.EnsureFound();
     }
 
-    public async Task PayBillAsync(Guid transactionId, PayBill payment, CancellationToken cancellationToken)
+    public async Task<Transaction> PayBillAsync(Guid transactionId, PayBill payment,
+        CancellationToken cancellationToken)
     {
         using HttpResponseMessage response =
             await _http.PutAsJsonAsync($"{ApiRoutes.Bills}/payments/{transactionId}", payment, cancellationToken);
         response.EnsureFound();
+        return await response.ReadRequiredJsonAsync<Transaction>(cancellationToken);
     }
 
     public IAsyncEnumerable<BillSuggestion> GetSuggestionsAsync(CancellationToken cancellationToken) =>

@@ -1,6 +1,7 @@
 using FinanceTracker.Contracts.Api;
 using FinanceTracker.Contracts.Bills;
 using FinanceTracker.Contracts.Services;
+using FinanceTracker.Contracts.Transactions;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace FinanceTracker.Api;
@@ -67,12 +68,9 @@ public static class BillEndpoints
                 })
                 .NotFoundWhenMissing();
 
-            bills.MapPut("payments/{transactionId:guid}", async Task<NoContent> (Guid transactionId,
-                    PayBill request, IBillsService service, CancellationToken cancellationToken) =>
-                {
-                    await service.PayBillAsync(transactionId, request, cancellationToken);
-                    return TypedResults.NoContent();
-                })
+            bills.MapPut("payments/{transactionId:guid}", async Task<Ok<Transaction>> (Guid transactionId,
+                        PayBill request, IBillsService service, CancellationToken cancellationToken) =>
+                    TypedResults.Ok(await service.PayBillAsync(transactionId, request, cancellationToken)))
                 .NotFoundWhenMissing();
 
             bills.MapGet("suggestions", (IBillsService service, CancellationToken cancellationToken) =>

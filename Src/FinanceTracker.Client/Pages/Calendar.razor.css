@@ -92,7 +92,7 @@
     background-color: var(--mud-palette-error);
 }
 
-.ft-calendar ::deep .ft-calendar__goal {
+.ft-calendar ::deep .ft-calendar__icon {
     font-size: 1rem;
 }
 

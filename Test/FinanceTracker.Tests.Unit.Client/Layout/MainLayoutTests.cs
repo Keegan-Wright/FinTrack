@@ -17,6 +17,7 @@ public class MainLayoutTests : ComponentTestBase
     private readonly IAutomationService _automationService = Substitute.For<IAutomationService>();
     private readonly ISyncNotifications _syncNotifications = Substitute.For<ISyncNotifications>();
     private readonly ITransfersService _transfersService = Substitute.For<ITransfersService>();
+    private readonly IBillsService _billsService = Substitute.For<IBillsService>();
     private readonly IOpenBankingService _openBankingService = Substitute.For<IOpenBankingService>();
     private readonly IBrowserViewportService _viewport = Substitute.For<IBrowserViewportService>();
     private readonly ApplicationState _applicationState = new();
@@ -30,6 +31,7 @@ public class MainLayoutTests : ComponentTestBase
         Services.AddSingleton(_automationService);
         Services.AddSingleton(_syncNotifications);
         Services.AddSingleton(_transfersService);
+        Services.AddSingleton(_billsService);
         Services.AddSingleton(_openBankingService);
         Services.AddSingleton(_viewport);
 
@@ -138,6 +140,21 @@ public class MainLayoutTests : ComponentTestBase
         // Assert
         cut.WaitForState(() => cut.FindAll(".ft-nav__count").Count > 0);
         await Assert.That(cut.Find(".ft-nav__count").TextContent.Trim()).IsEqualTo("3");
+    }
+
+    [Test]
+    public async Task Render_SubscriptionsToReview_ShowsTheCountOnTheirLink()
+    {
+        // Arrange
+        _billsService.GetSuggestionCountAsync(Arg.Any<CancellationToken>()).Returns(4);
+
+        // Act
+        IRenderedComponent<MainLayout> cut = RenderLayout();
+
+        // Assert
+        cut.WaitForState(() => cut.FindAll("a[href='Review/Subscriptions'] .ft-nav__count").Count > 0);
+        await Assert.That(cut.Find("a[href='Review/Subscriptions'] .ft-nav__count").TextContent.Trim())
+            .IsEqualTo("4");
     }
 
     [Test]

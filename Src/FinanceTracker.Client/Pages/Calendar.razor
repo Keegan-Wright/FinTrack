@@ -1,8 +1,10 @@
 @page "/Calendar"
-@* A month view of the user's transactions and savings goal dates (ICalendarService). A grid of days with each day's
-   net, and the chosen day's transactions and goals beside it. *@
+@* A month view of the user's transactions, bills and savings goal dates (ICalendarService). A grid of days with each
+   day's net and a marker for bills due, and the chosen day's bills, transactions and goals beside it. *@
 @using System.Globalization
+@using FinanceTracker.Client.Components.Bills
 @using FinanceTracker.Client.Components.Calendar
+@using FinanceTracker.Contracts.Bills
 @using FinanceTracker.Contracts.Calendar
 @using Microsoft.AspNetCore.Authorization
 @inherits PageComponent
@@ -71,10 +73,16 @@
                             {
                                 <span class="@($"ft-calendar__dot {(net < 0 ? "ft-calendar__dot--out" : "ft-calendar__dot--in")}")"></span>
                             }
+                            @if (day.Bills.Any())
+                            {
+                                <MudIcon Icon="@Icons.Material.Outlined.EventRepeat" Size="Size.Small"
+                                         Color="@BillColor(day.Bills)" Class="ft-calendar__icon"
+                                         aria-label="@BillsLabel(day.Bills)"/>
+                            }
                             @if (day.Goals.Any())
                             {
                                 <MudIcon Icon="@Icons.Material.Filled.Flag" Size="Size.Small" Color="Color.Warning"
-                                         Class="ft-calendar__goal"/>
+                                         Class="ft-calendar__icon"/>
                             }
                         </span>
                     </button>
@@ -86,13 +94,26 @@
         @* A busy day scrolls inside the calendar's height beside it *@
         <Section Title="@_selectedDate.ToString("dddd d MMMM", CultureInfo.CurrentCulture)"
                  Caption="@SelectedCaption" Class="h-100" ScrollBody="true">
-            @if (SelectedDay is null || (!SelectedDay.Transactions.Any() && !SelectedDay.Goals.Any()))
+            @if (SelectedDay is null || IsQuiet(SelectedDay))
             {
                 <MudText Typo="Typo.body2" Class="mud-text-secondary">A quiet day, nothing in or out.</MudText>
             }
             else
             {
                 <div class="ft-list">
+                    @foreach (CalendarBillItem bill in SelectedDay.Bills)
+                    {
+                        <div class="ft-list__row">
+                            <MudIcon Icon="@BillText.StateIcon(bill.State)" Color="@BillText.StateColor(bill.State)"/>
+                            <div class="ft-list__main">
+                                <MudText Typo="Typo.body2" Class="text-truncate">@bill.Name</MudText>
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">@BillStateText(bill.State)</MudText>
+                            </div>
+                            <div class="ft-list__end">
+                                <MoneyText Value="@bill.Amount"/>
+                            </div>
+                        </div>
+                    }
                     @foreach (var goal in SelectedDay.Goals)
                     {
                         <div class="ft-list__row">
@@ -154,6 +175,43 @@
 
     private int LeadingBlanks =>
         CalendarGrid.LeadingBlanks(MonthStart, CultureInfo.CurrentCulture.DateTimeFormat.FirstDayOfWeek);
+
+    private static bool IsQuiet(CalendarItems day) =>
+        !day.Transactions.Any() && !day.Goals.Any() && !day.Bills.Any();
+
+    /// <summary>
+    /// The colour of the day's most pressing bill late, then a price change, then due, then paid.
+    /// </summary>
+    private static Color BillColor(IEnumerable<CalendarBillItem> bills)
+    {
+        List<BillState> states = bills.Select(static x => x.State).ToList();
+        foreach (BillState state in new[] { BillState.Late, BillState.Changed, BillState.Upcoming })
+        {
+            if (states.Contains(state))
+            {
+                return BillText.StateColor(state);
+            }
+        }
+
+        return BillText.StateColor(BillState.Paid);
+    }
+
+    /// <summary>
+    /// e.g. <c>2 bills due</c>, for screen readers.
+    /// </summary>
+    private static string BillsLabel(IEnumerable<CalendarBillItem> bills)
+    {
+        int count = bills.Count();
+        return count == 1 ? "1 bill due" : $"{count} bills due";
+    }
+
+    private static string BillStateText(BillState state) => state switch
+    {
+        BillState.Paid => "Bill paid",
+        BillState.Late => "Bill late, not paid yet",
+        BillState.Changed => "Bill paid, price changed",
+        _ => "Bill due"
+    };
 
     private string SelectedCaption
     {

@@ -1,0 +1,74 @@
+@* A subscription suggested from repeat payments: who to, how often and how much, the payments behind it, and the
+   user's choice. *@
+@using System.Globalization
+@using FinanceTracker.Client.Components.Bills
+@using FinanceTracker.Contracts.Bills
+
+<div class="ft-suggestion">
+    <div class="ft-suggestion__line">
+        <div class="ft-suggestion__text">
+            <MudText Typo="Typo.body2" Class="text-truncate">@Suggestion.Name</MudText>
+            <MudText Typo="Typo.caption" Class="mud-text-secondary text-truncate">@Summary</MudText>
+        </div>
+        <MoneyText Value="@Suggestion.Amount"/>
+    </div>
+
+    <div class="ft-suggestion__payments">
+        @foreach (SuggestedPayment payment in Suggestion.Payments)
+        {
+            <div class="ft-suggestion__payment">
+                <MudText Typo="Typo.caption" Class="mud-text-secondary text-truncate">@PaymentText(payment)</MudText>
+                <MoneyText Value="@payment.Amount" Signed="true" Typo="Typo.caption"/>
+            </div>
+        }
+    </div>
+
+    <div class="ft-suggestion__actions">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                   OnClick="@(() => OnDecide.InvokeAsync(true))">It's a bill</MudButton>
+        <MudButton Variant="Variant.Text" Size="Size.Small"
+                   OnClick="@(() => OnDecide.InvokeAsync(false))">Not a bill</MudButton>
+    </div>
+</div>
+
+@code {
+
+    [Parameter] [EditorRequired] public required BillSuggestion Suggestion { get; set; }
+
+    /// <summary>
+    /// Today where the user is, for how dates read.
+    /// </summary>
+    [Parameter] [EditorRequired] public required DateOnly Today { get; set; }
+
+    /// <summary>
+    /// The user chose, true to make it a bill.
+    /// </summary>
+    [Parameter] public EventCallback<bool> OnDecide { get; set; }
+
+    /// <summary>
+    /// e.g. <c>Card · Monthly · next due 12 Nov</c>.
+    /// </summary>
+    private string Summary
+    {
+        get
+        {
+            string summary = $"{Suggestion.AccountName} · {BillText.FrequencyName(Suggestion.Frequency)}";
+            if (Suggestion.NextDue is { } nextDue)
+            {
+                summary += $" · next due {BillText.Day(nextDue, Today)}";
+            }
+
+            return summary;
+        }
+    }
+
+    /// <summary>
+    /// e.g. <c>12 Oct 2026 · NETFLIX.COM 866-579</c>.
+    /// </summary>
+    private static string PaymentText(SuggestedPayment payment)
+    {
+        string day = payment.OccurredAt.ToLocalTime().ToString("d MMM yyyy", CultureInfo.CurrentCulture);
+        return $"{day} · {payment.Description}";
+    }
+
+}

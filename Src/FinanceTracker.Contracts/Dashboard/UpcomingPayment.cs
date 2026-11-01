@@ -1,35 +1,46 @@
 using System.ComponentModel;
+using FinanceTracker.Contracts.Bills;
 
 namespace FinanceTracker.Contracts.Dashboard;
 
 /// <summary>
-/// A standing order or direct debit payment due soon.
+/// One of a bill's payments due soon or just gone, and whether it's been paid.
 /// </summary>
 public class UpcomingPayment
 {
     /// <summary>
-    /// The payee, or the direct debit's name.
+    /// The bill it's for.
     /// </summary>
-    [Description("Name or description of the upcoming payment")]
+    [Description("The bill the payment is for")]
+    public Guid BillId { get; init; }
+
+    /// <summary>
+    /// The bill's name.
+    /// </summary>
+    [Description("Name of the bill the payment is for")]
     public required string PaymentName { get; init; }
 
     /// <summary>
-    /// The payment's amount as the bank reports it, for a direct debit the previous payment's. The sign varies by bank,
-    /// show it as <see cref="Math.Abs(decimal)"/>.
+    /// What was paid once it's been paid, otherwise what's expected.
     /// </summary>
-    [Description("Amount of the upcoming payment")]
+    [Description("Amount of the payment, what was paid once paid")]
     public decimal Amount { get; init; }
 
     /// <summary>
-    /// When the payment is due. Estimated for direct debits, see <see
-    /// cref="Services.IDashboardService.GetUpcomingPaymentsAsync"/>.
+    /// When it's due.
     /// </summary>
     [Description("Date when the payment is due")]
-    public DateTime PaymentDate { get; init; }
+    public DateOnly Due { get; init; }
 
     /// <summary>
-    /// <c>Standing Order</c> or <c>Direct Debit</c>.
+    /// Whether it's been paid, is late or still to come.
     /// </summary>
-    [Description("Type or category of the payment (e.g., Bill, Subscription, etc.)")]
+    [Description("Whether the payment has been paid, is late or is still to come")]
+    public BillState State { get; init; }
+
+    /// <summary>
+    /// Where the bill came from, e.g. <c>Standing order</c> or <c>Subscription</c>.
+    /// </summary>
+    [Description("Where the bill came from, e.g. standing order or subscription")]
     public required string PaymentType { get; init; }
 }

@@ -8,6 +8,7 @@ using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.Rules;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
+using FinanceTracker.Infrastructure.Transactions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Bill = FinanceTracker.Contracts.Bills.Bill;
@@ -16,6 +17,7 @@ using DomainBill = FinanceTracker.Domain.Bills.Bill;
 using DomainBillPeriod = FinanceTracker.Domain.Bills.BillPeriod;
 using DomainBillSource = FinanceTracker.Domain.Bills.BillSource;
 using DomainBillSuggestion = FinanceTracker.Domain.Bills.BillSuggestion;
+using Transaction = FinanceTracker.Contracts.Transactions.Transaction;
 
 namespace FinanceTracker.Infrastructure.Bills;
 
@@ -198,7 +200,8 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
         await context.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task PayBillAsync(Guid transactionId, PayBill payment, CancellationToken cancellationToken)
+    public async Task<Transaction> PayBillAsync(Guid transactionId, PayBill payment,
+        CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
@@ -218,6 +221,13 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
         }
 
         await context.SaveChangesAsync(cancellationToken);
+
+        Dictionary<Guid, string> customTags = await context.CustomClassifications.OwnedBy(UserId)
+            .ToDictionaryAsync(static x => x.Id, static x => x.Tag, cancellationToken);
+        TransactionMapper mapper =
+            await TransactionMapper.LoadAsync(context, UserId, customTags, [transaction], cancellationToken);
+
+        return mapper.ToContract(transaction);
     }
 
     public async IAsyncEnumerable<BillSuggestion> GetSuggestionsAsync(

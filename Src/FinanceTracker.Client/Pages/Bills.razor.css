@@ -1,0 +1,13 @@
+/* Each bill is a row, divided rather than boxed */
+.ft-bill-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.ft-bill-list > ::deep .ft-bill {
+    padding: 12px 0;
+}
+
+.ft-bill-list > ::deep .ft-bill + .ft-bill {
+    border-top: 1px solid var(--mud-palette-lines-default);
+}

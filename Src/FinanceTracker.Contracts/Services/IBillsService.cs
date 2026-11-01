@@ -68,9 +68,11 @@ public interface IBillsService
     /// <summary>
     /// The user says which bill a transaction pays, or that it pays none. Matching and rules leave it alone after.
     /// </summary>
+    /// <returns>The transaction as it is now.</returns>
     /// <exception cref="InvalidOperationException">The user has no transaction with
     /// <paramref name="transactionId"/>, or no bill with <see cref="PayBill.BillId"/>.</exception>
-    Task PayBillAsync(Guid transactionId, PayBill payment, CancellationToken cancellationToken);
+    Task<Transactions.Transaction> PayBillAsync(Guid transactionId, PayBill payment,
+        CancellationToken cancellationToken);
 
     /// <summary>
     /// The subscriptions suggested from the user's repeat payments, waiting for them to confirm or dismiss, latest

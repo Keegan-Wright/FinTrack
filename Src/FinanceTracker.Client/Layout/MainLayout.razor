@@ -9,6 +9,7 @@
 @inject IAutomationService AutomationService
 @inject ISyncNotifications SyncNotifications
 @inject ITransfersService TransfersService
+@inject IBillsService BillsService
 @inject IOpenBankingService OpenBankingService
 @inject ISnackbar Snackbar
 
@@ -48,6 +49,7 @@
     <MudDrawer id="nav-drawer" @bind-Open="_drawerOpen" Breakpoint="@LayoutBase.DrawerBreakpoint"
                ClipMode="DrawerClipMode.Always" Elevation="0" data-mud-static-monitored="true">
         <NavMenu TransfersToReview="@ApplicationState.TransfersToReview"
+                 SubscriptionsToReview="@ApplicationState.SubscriptionsToReview"
                  ConnectionsToRenew="@ApplicationState.ConnectionsToRenew"/>
         <MudSpacer/>
         @if (BackgroundSyncTime != null || ApplicationState.Syncing)
@@ -126,17 +128,18 @@
     {
         ApplicationState.Syncing = false;
 
-        // Matching runs with the sync, so there may be new ones to review too
+        // Matching and suggesting run with the sync, so there may be new ones to review too
         await RefreshSyncDetailsAsync();
         Snackbar.Add("Your accounts have been synced", Severity.Success);
     }
 
     /// <summary>
-    /// When the accounts last synced, how many transfers wait for review and how many connections need renewing,
-    /// fetched together as none needs the others.
+    /// When the accounts last synced, how many transfers and subscriptions wait for review and how many connections
+    /// need renewing, fetched together as none needs the others.
     /// </summary>
     private Task RefreshSyncDetailsAsync() =>
-        Task.WhenAll(GetLatestSyncTimeAsync(), GetTransfersToReviewAsync(), GetConnectionsToRenewAsync());
+        Task.WhenAll(GetLatestSyncTimeAsync(), GetTransfersToReviewAsync(), GetSubscriptionsToReviewAsync(),
+            GetConnectionsToRenewAsync());
 
     private async Task GetLatestSyncTimeAsync()
     {
@@ -149,6 +152,18 @@
         try
         {
             ApplicationState.TransfersToReview = await TransfersService.GetReviewCountAsync(_cts.Token);
+        }
+        catch (HttpRequestException)
+        {
+            // Only the navigation's count, the page itself still works
+        }
+    }
+
+    private async Task GetSubscriptionsToReviewAsync()
+    {
+        try
+        {
+            ApplicationState.SubscriptionsToReview = await BillsService.GetSuggestionCountAsync(_cts.Token);
         }
         catch (HttpRequestException)
         {

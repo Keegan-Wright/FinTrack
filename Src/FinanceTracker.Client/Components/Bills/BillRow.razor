@@ -1,0 +1,82 @@
+@* One bill. Its name and what it costs, where it's paid from and how often, how each of its periods in the month
+   stands, and when it's next due and was last paid. *@
+@using FinanceTracker.Contracts.Bills
+
+<div class="ft-bill">
+    <div class="ft-bill__line">
+        <MudText Typo="Typo.body2" Class="ft-bill__name">@Bill.Name</MudText>
+        <MoneyText Value="@Bill.ExpectedAmount"/>
+        @if (Editable)
+        {
+            <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true"
+                     AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
+                     aria-label="@($"Actions for {Bill.Name}")">
+                <MudMenuItem Icon="@Icons.Material.Outlined.Edit" OnClick="@OnEdit">Edit</MudMenuItem>
+                @if (Bill.EndedOn is null)
+                {
+                    <MudMenuItem Icon="@Icons.Material.Outlined.EventBusy" OnClick="@OnEnd">End</MudMenuItem>
+                }
+                else
+                {
+                    <MudMenuItem Icon="@Icons.Material.Outlined.EventRepeat" OnClick="@OnReopen">Reopen</MudMenuItem>
+                }
+                @if (Bill.CanDelete)
+                {
+                    <MudMenuItem Icon="@Icons.Material.Outlined.Delete" OnClick="@OnDelete">Delete</MudMenuItem>
+                }
+            </MudMenu>
+        }
+    </div>
+
+    <MudText Typo="Typo.caption" Class="mud-text-secondary ft-bill__summary">@BillText.Summary(Bill)</MudText>
+
+    @if (Periods is not null)
+    {
+        <div class="ft-bill__periods">
+            @if (Periods.Count == 0)
+            {
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">Not due this month</MudText>
+            }
+            @foreach (BillPeriod period in Periods)
+            {
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@BillText.StateColor(period.State)"
+                         Icon="@BillText.StateIcon(period.State)">@BillText.PeriodLabel(period, Today)</MudChip>
+                @if (BillText.Changed(period) is { } changed)
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Warning">@changed</MudText>
+                }
+            }
+        </div>
+    }
+
+    <MudText Typo="Typo.caption" Class="mud-text-secondary">@BillText.Dates(Bill, Today)</MudText>
+</div>
+
+@code {
+
+    [Parameter] [EditorRequired] public required Bill Bill { get; set; }
+
+    /// <summary>
+    /// Its periods due in the month shown, null to leave them out, e.g. for an ended bill.
+    /// </summary>
+    [Parameter] public IReadOnlyList<BillPeriod>? Periods { get; set; }
+
+    /// <summary>
+    /// Today where the user is, for how dates read.
+    /// </summary>
+    [Parameter] [EditorRequired] public required DateOnly Today { get; set; }
+
+    /// <summary>
+    /// Whether it can be changed from here, not in a past month.
+    /// </summary>
+    [Parameter] public bool Editable { get; set; }
+
+    [Parameter] public EventCallback OnEdit { get; set; }
+
+    [Parameter] public EventCallback OnEnd { get; set; }
+
+    [Parameter] public EventCallback OnReopen { get; set; }
+
+    [Parameter] public EventCallback OnDelete { get; set; }
+
+}

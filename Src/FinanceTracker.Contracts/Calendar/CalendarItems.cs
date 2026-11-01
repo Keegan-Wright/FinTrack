@@ -26,6 +26,12 @@ public class CalendarItems
     public IEnumerable<CalendarGoalItem> Goals { get; init; } = [];
 
     /// <summary>
+    /// Bills due on the day, paid or not.
+    /// </summary>
+    [Description("List of bills due on this date and how each stands")]
+    public IEnumerable<CalendarBillItem> Bills { get; init; } = [];
+
+    /// <summary>
     /// User events on the day. Always empty for now, see <see cref="CalendarEventItem"/>.
     /// </summary>
     [Description("List of calendar events for this date")]

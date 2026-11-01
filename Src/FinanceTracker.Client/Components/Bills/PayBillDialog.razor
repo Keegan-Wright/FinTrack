@@ -1,0 +1,66 @@
+@* Which bill a transaction pays, chosen by the user when matching got it wrong or missed it. Choosing none stops it
+   being matched to any. *@
+@using FinanceTracker.Client.Components.Dialogs
+@using FinanceTracker.Contracts.Bills
+@using FinanceTracker.Contracts.Transactions
+
+<DialogBase TResponse="PayBill" Title="@($"What does {Transaction.Description} pay?")"
+            ResponseConstructor="BuildResponseModel">
+    <Content>
+        <div class="ft-pay-bill">
+            <MudSelect T="Guid" Label="Pays" @bind-Value="_billId" ToStringFunc="@BillName"
+                       HelperText="It counts towards that bill from now on, matching leaves it alone">
+                <MudSelectItem T="Guid" Value="@Guid.Empty">No bill</MudSelectItem>
+                @foreach (Bill bill in Bills.OrderBy(static x => x.Name))
+                {
+                    <MudSelectItem T="Guid" Value="@bill.Id">@bill.Name</MudSelectItem>
+                }
+            </MudSelect>
+            @if (Bills.Count == 0)
+            {
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                    You have no bills yet, <MudLink Href="Bills" Typo="Typo.caption">add one</MudLink> first.
+                </MudText>
+            }
+        </div>
+    </Content>
+</DialogBase>
+
+@code {
+
+    [Parameter] [EditorRequired] public required Transaction Transaction { get; set; }
+
+    /// <summary>
+    /// The user's bills to choose from.
+    /// </summary>
+    [Parameter] [EditorRequired] public required IReadOnlyList<Bill> Bills { get; set; }
+
+    /// <summary>
+    /// The bill chosen, <see cref="Guid.Empty"/> for none.
+    /// </summary>
+    private Guid _billId;
+
+    protected override void OnInitialized() => _billId = Transaction.Bill?.BillId ?? Guid.Empty;
+
+    private string BillName(Guid billId)
+    {
+        if (billId == Guid.Empty)
+        {
+            return "No bill";
+        }
+
+        return Bills.FirstOrDefault(x => x.Id == billId)?.Name ?? string.Empty;
+    }
+
+    private Task<PayBill?> BuildResponseModel()
+    {
+        Guid? billId = null;
+        if (_billId != Guid.Empty)
+        {
+            billId = _billId;
+        }
+
+        return Task.FromResult<PayBill?>(new PayBill { BillId = billId });
+    }
+
+}

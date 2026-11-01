@@ -18,13 +18,11 @@ public interface IDashboardService
         CancellationToken cancellationToken);
 
     /// <summary>
-    /// The user's next standing order and direct debit payments, soonest first.
+    /// The user's bill payments due from a week ago on, soonest first, so those just paid show ticked off and late
+    /// ones show until they're paid.
     /// </summary>
     /// <param name="numberToFetch">The most payments to return.</param>
     /// <param name="cancellationToken">Cancels the lookup.</param>
-    /// <remarks>
-    /// Banks only report a direct debit's previous payment, so its next one is estimated as a month after it.
-    /// </remarks>
     IAsyncEnumerable<UpcomingPayment> GetUpcomingPaymentsAsync(int numberToFetch,
         CancellationToken cancellationToken);
 }

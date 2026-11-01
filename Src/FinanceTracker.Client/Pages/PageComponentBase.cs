@@ -68,6 +68,18 @@ public class PageComponent : ComponentBase, IDisposable
         ApplicationState.TransfersToReview = await transfersService.GetReviewCountAsync(_cts.Token);
 
     /// <summary>
+    /// Updates the navigation's count of subscriptions to review, after the user confirms or dismisses one or adds a
+    /// bill that covers one.
+    /// </summary>
+    /// <returns>The new count, for the page to show too.</returns>
+    internal async Task<int> RefreshSubscriptionsToReviewAsync(IBillsService billsService)
+    {
+        int count = await billsService.GetSuggestionCountAsync(_cts.Token);
+        ApplicationState.SubscriptionsToReview = count;
+        return count;
+    }
+
+    /// <summary>
     /// Updates the count of connections to renew in the navigation and banner.
     /// </summary>
     internal void RefreshConnectionsToRenew(IEnumerable<BankConnectionSummary> connections) =>

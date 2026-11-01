@@ -176,6 +176,25 @@ public class TransactionDetailsDialogTests : ComponentTestBase
             : []
     };
 
+    [Test]
+    [Arguments(TransferDecidedBy.FinTrack, "Matched by FinTrack")]
+    [Arguments(TransferDecidedBy.User, "Chosen by you")]
+    public async Task Render_PaysABill_SaysWhichAndWhoSaidSo(TransferDecidedBy decidedBy, string reason)
+    {
+        // Act
+        await OpenAsync(TransactionListTests.Transaction("ENERGY CO", -42m,
+            bill: new TransactionBill { BillId = Guid.NewGuid(), BillName = "Energy", DecidedBy = decidedBy }));
+
+        // Assert
+        string details = _provider.Find(".ft-details").TextContent;
+        using (Assert.Multiple())
+        {
+            await Assert.That(details).Contains("Pays");
+            await Assert.That(details).Contains("Energy");
+            await Assert.That(details).Contains(reason);
+        }
+    }
+
     private async Task OpenAsync(Transaction transaction, Action<TransferAction>? onTransferAction = null,
         Action? onAddTags = null, Action? onCreateRule = null, Func<string, Task<Transaction?>>? onHide = null)
     {

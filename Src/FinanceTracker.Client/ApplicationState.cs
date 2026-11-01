@@ -88,6 +88,25 @@ public sealed class ApplicationState : INotifyPropertyChanged
     }
 
     /// <summary>
+    /// How many repeat payments are suggested as subscriptions and waiting for the user, shown in the navigation.
+    /// Refreshed after each sync and each decision.
+    /// </summary>
+    public int SubscriptionsToReview
+    {
+        get;
+        set
+        {
+            if (value == field)
+            {
+                return;
+            }
+
+            field = value;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>
     /// How many bank connections need their consent renewing soon or already have lapsed, shown in the navigation and
     /// a banner. Refreshed after each sync or renewal.
     /// </summary>

@@ -72,8 +72,7 @@
                                    For="@(() => action.Type)" Variant="Variant.Outlined" Margin="Margin.Dense"
                                    Class="ft-rule-form__action-type">
 
-                            @* Paying a bill waits for the bills pages, which give it a bill to choose *@
-                            @foreach (RuleActionType type in Enum.GetValues<RuleActionType>().Where(static x => x != RuleActionType.PayBill))
+                            @foreach (RuleActionType type in Enum.GetValues<RuleActionType>())
                             {
                                 <MudSelectItem T="RuleActionType" Value="@type">
                                     @RuleText.ActionName(type)
@@ -102,6 +101,18 @@
                                 }
                             </MudSelect>
                         }
+                        @if (action.Type == RuleActionType.PayBill)
+                        {
+                            <MudSelect T="Guid?" Label="Bill" @bind-Value="action.BillId" ToStringFunc="@BillName"
+                                       For="@(() => action.BillId)" Variant="Variant.Outlined"
+                                       Margin="Margin.Dense" Class="ft-rule-form__tag"
+                                       Validation="@(new Func<Guid?, string?>(BillError))">
+                                @foreach ((Guid billId, string billName) in BillNames.OrderBy(static x => x.Value))
+                                {
+                                    <MudSelectItem T="Guid?" Value="@billId">@billName</MudSelectItem>
+                                }
+                            </MudSelect>
+                        }
                         <span class="ft-rule-form__end">
                             <MudIconButton Icon="@Icons.Material.Outlined.Close" Size="Size.Small"
                                            Disabled="@(Model.Actions.Count == 1)" aria-label="Remove action"
@@ -115,6 +126,13 @@
                 <MudText Typo="Typo.caption" Class="mud-text-secondary">
                     You have no tags yet, <MudLink Href="Classifications" Typo="Typo.caption">make one</MudLink> to
                     add it with a rule.
+                </MudText>
+            }
+            @if (BillNames.Count == 0 && Model.Actions.Exists(static x => x.Type == RuleActionType.PayBill))
+            {
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                    You have no bills yet, <MudLink Href="Bills" Typo="Typo.caption">add one</MudLink> to pay it with a
+                    rule.
                 </MudText>
             }
             @foreach (string error in ErrorsFor(nameof(SaveRule.Actions)))
@@ -142,6 +160,11 @@
     /// The user's tags by id, offered for an action that adds one.
     /// </summary>
     [Parameter] [EditorRequired] public required IReadOnlyDictionary<Guid, string> TagNames { get; set; }
+
+    /// <summary>
+    /// The user's bills by id, offered for an action that pays one.
+    /// </summary>
+    [Parameter] public IReadOnlyDictionary<Guid, string> BillNames { get; set; } = new Dictionary<Guid, string>();
 
     private MudForm _form = null!;
 
@@ -177,6 +200,13 @@
     /// </summary>
     private string? TagName(Guid? tagId) => tagId is { } id ? TagNames.GetValueOrDefault(id) : null;
 
+    private static string? BillError(Guid? billId) => billId is null ? "Choose a bill" : null;
+
+    /// <summary>
+    /// What a chosen bill shows as, its name rather than its id.
+    /// </summary>
+    private string? BillName(Guid? billId) => billId is { } id ? BillNames.GetValueOrDefault(id) : null;
+
     private static string? BankClassificationError(string? classification) =>
         string.IsNullOrWhiteSpace(classification) ? "Enter the bank classification to hide" : null;
 
@@ -195,6 +225,11 @@
         if (type != RuleActionType.HideClassification)
         {
             action.BankClassification = null;
+        }
+
+        if (type != RuleActionType.PayBill)
+        {
+            action.BillId = null;
         }
     }
 

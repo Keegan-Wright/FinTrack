@@ -1,6 +1,7 @@
 using Bunit;
 using FinanceTracker.Client;
 using FinanceTracker.Client.Pages;
+using FinanceTracker.Contracts.Bills;
 using FinanceTracker.Contracts.Classifications;
 using FinanceTracker.Contracts.Rules;
 using FinanceTracker.Contracts.Services;
@@ -51,6 +52,9 @@ public class RuleEditorTests : ComponentTestBase
         Services.AddSingleton(_rulesService);
         Services.AddSingleton(transactionsService);
         Services.AddSingleton(classificationService);
+        IBillsService billsService = Substitute.For<IBillsService>();
+        billsService.GetBillsAsync(Arg.Any<CancellationToken>()).Returns(AsyncEnumerable.Empty<Bill>());
+        Services.AddSingleton(billsService);
 
         _rulesService.GetRuleAsync(_groceries.Id, Arg.Any<CancellationToken>()).Returns(_groceries);
         _rulesService.UpdateRuleAsync(_groceries.Id, Arg.Any<SaveRule>(), Arg.Any<CancellationToken>())

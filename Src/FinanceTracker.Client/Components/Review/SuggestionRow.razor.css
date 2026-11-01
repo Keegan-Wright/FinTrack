@@ -1,0 +1,44 @@
+.ft-suggestion {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+}
+
+.ft-suggestion__line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-width: 0;
+}
+
+.ft-suggestion__text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+/* The payments behind it, set in from the line above */
+.ft-suggestion__payments {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-left: 12px;
+    border-left: 2px solid var(--mud-palette-lines-default);
+}
+
+.ft-suggestion__payment {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-width: 0;
+}
+
+.ft-suggestion__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}

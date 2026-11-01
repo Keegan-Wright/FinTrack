@@ -1,0 +1,170 @@
+@* A new bill, or an existing one to change. Its name, who it's paid to and from which account, how often and when
+   it's due, and what it costs. A standing order's schedule and amount follow the bank's, so they can't be changed
+   here, and a bill from a standing order or direct debit stays on its account. *@
+@using System.Globalization
+@using FinanceTracker.Client.Components.Dialogs
+@using FinanceTracker.Client.Extensions
+@using FinanceTracker.Contracts.Bills
+@using FinanceTracker.Contracts.Transactions
+@using FluentValidation
+@using FluentValidation.Results
+@inject IValidator<SaveBill> Validator
+
+<DialogBase TResponse="SaveBill" Title="@(Bill is null ? "New bill" : $"Edit {Bill.Name}")"
+            ResponseConstructor="BuildResponseModel">
+    <Content>
+        <MudForm @ref="_form" Model="@_model" class="ft-bill-form">
+            <MudTextField T="string" @bind-Value="_model.Name" Label="Name" For="@(() => _model.Name)"
+                          Validation="@(Validator.ValidateValue(_model, nameof(SaveBill.Name)))"
+                          HelperText="e.g. Rent" Immediate="true"/>
+
+            <MudTextField T="string" @bind-Value="_model.Payee" Label="Paid to" For="@(() => _model.Payee)"
+                          Validation="@(Validator.ValidateValue(_model, nameof(SaveBill.Payee)))"
+                          HelperText="As it reads on your statement, payments to them are matched to this bill"
+                          Immediate="true"/>
+
+            <MudSelect T="Guid" Label="Paid from" @bind-Value="_model.AccountId" For="@(() => _model.AccountId)"
+                       ToStringFunc="@AccountName" Disabled="@FromTheBank"
+                       Validation="@(Validator.ValidateValue(_model, nameof(SaveBill.AccountId)))"
+                       HelperText="@AccountHelp">
+                @foreach (TransactionAccountFilter account in Accounts)
+                {
+                    <MudSelectItem T="Guid" Value="@account.AccountId">@account.AccountName</MudSelectItem>
+                }
+            </MudSelect>
+
+            <div class="ft-bill-form__pair">
+                <MudSelect T="BillFrequency" Label="How often" @bind-Value="_model.Frequency"
+                           For="@(() => _model.Frequency)" Disabled="@FollowsTheBank"
+                           ToStringFunc="@(static x => BillText.FrequencyName(x))">
+                    @foreach (BillFrequency frequency in Enum.GetValues<BillFrequency>())
+                    {
+                        <MudSelectItem T="BillFrequency" Value="@frequency">
+                            @BillText.FrequencyName(frequency)
+                        </MudSelectItem>
+                    }
+                </MudSelect>
+                <MudDatePicker @bind-Date="_nextDue" Label="@(Bill is null ? "First due" : "Next due")"
+                               Disabled="@FollowsTheBank"/>
+            </div>
+            @foreach (string error in ErrorsFor(nameof(SaveBill.NextDue)))
+            {
+                <MudText Typo="Typo.caption" Color="Color.Error">@error</MudText>
+            }
+
+            <div class="ft-bill-form__pair">
+                <MudTextField T="decimal" @bind-Value="_model.ExpectedAmount" Label="Amount"
+                              For="@(() => _model.ExpectedAmount)" InputMode="@(InputMode.@decimal)"
+                              Adornment="Adornment.Start" AdornmentText="@CurrencySymbol" Disabled="@FollowsTheBank"
+                              Validation="@(Validator.ValidateValue(_model, nameof(SaveBill.ExpectedAmount)))"
+                              HelperText="@AmountHelp" Immediate="true"/>
+                <MudTextField T="decimal" @bind-Value="_model.TolerancePercent" Label="Allow a difference of"
+                              For="@(() => _model.TolerancePercent)" InputMode="@(InputMode.@decimal)"
+                              Adornment="Adornment.End" AdornmentText="%"
+                              Validation="@(Validator.ValidateValue(_model, nameof(SaveBill.TolerancePercent)))"
+                              HelperText="Paid outside this, it shows as a price change" Immediate="true"/>
+            </div>
+
+            @if (FollowsTheBank)
+            {
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                    From your standing order, your bank keeps its schedule and amount up to date.
+                </MudText>
+            }
+        </MudForm>
+    </Content>
+</DialogBase>
+
+@code {
+
+    /// <summary>
+    /// The bill to change, null for a new one.
+    /// </summary>
+    [Parameter] public Bill? Bill { get; set; }
+
+    /// <summary>
+    /// The user's accounts to pay from.
+    /// </summary>
+    [Parameter] [EditorRequired] public required IReadOnlyList<TransactionAccountFilter> Accounts { get; set; }
+
+    private MudForm _form = null!;
+    private SaveBill _model = new();
+    private DateTime? _nextDue;
+    private List<ValidationFailure> _errors = [];
+
+    private static string CurrencySymbol => CultureInfo.CurrentCulture.NumberFormat.CurrencySymbol;
+
+    private bool FollowsTheBank => Bill?.FollowsTheBank == true;
+
+    /// <summary>
+    /// Seeded from a standing order or direct debit, so it stays on that account.
+    /// </summary>
+    private bool FromTheBank => Bill is { CanDelete: false };
+
+    private string AccountHelp => FromTheBank
+        ? "It stays with its standing order or direct debit's account"
+        : "Payments from this account are matched to it";
+
+    private string AmountHelp => Bill is null
+        ? "What it costs each time"
+        : "A new amount applies from today, earlier payments keep theirs";
+
+    protected override void OnInitialized()
+    {
+        if (Bill is null)
+        {
+            _model.AccountId = Accounts.FirstOrDefault()?.AccountId ?? Guid.Empty;
+            return;
+        }
+
+        _model = new SaveBill
+        {
+            Name = Bill.Name,
+            Payee = Bill.Payee,
+            AccountId = Bill.AccountId,
+            Frequency = Bill.Frequency,
+            NextDue = Bill.NextDue ?? Bill.StartsOn,
+            ExpectedAmount = Bill.ExpectedAmount,
+            TolerancePercent = Bill.TolerancePercent
+        };
+        _nextDue = _model.NextDue.ToDateTime(TimeOnly.MinValue);
+    }
+
+    private string? AccountName(Guid accountId)
+    {
+        TransactionAccountFilter? account = Accounts.FirstOrDefault(x => x.AccountId == accountId);
+        if (account is not null)
+        {
+            return account.AccountName;
+        }
+
+        // Its account could be one the filters don't list, keep showing the name the bill has
+        if (Bill is not null && Bill.AccountId == accountId)
+        {
+            return Bill.AccountName;
+        }
+
+        return null;
+    }
+
+    private IEnumerable<string> ErrorsFor(string propertyName) => _errors
+        .Where(x => x.PropertyName == propertyName)
+        .Select(static x => x.ErrorMessage);
+
+    private async Task<SaveBill?> BuildResponseModel()
+    {
+        _model.NextDue = _nextDue is { } nextDue ? DateOnly.FromDateTime(nextDue) : default;
+
+        await _form.ValidateAsync();
+        ValidationResult result = await Validator.ValidateAsync(_model);
+        _errors = result.Errors.ToList();
+
+        if (!_form.IsValid || !result.IsValid)
+        {
+            return null;
+        }
+
+        return _model;
+    }
+
+}

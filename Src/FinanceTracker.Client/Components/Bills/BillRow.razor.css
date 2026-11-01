@@ -1,0 +1,39 @@
+.ft-bill {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.ft-bill__line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.ft-bill__line ::deep .ft-bill__name {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ft-bill ::deep .ft-bill__summary {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Chips wrap under each other on a phone, a weekly bill has a few */
+.ft-bill__periods {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+}
+
+.ft-bill__periods ::deep .mud-chip {
+    margin: 0;
+}

@@ -12,6 +12,7 @@
         <MudNavLink Href="Transactions" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.ReceiptLong">Transactions</MudNavLink>
         <MudNavLink Href="Calendar" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.CalendarMonth">Calendar</MudNavLink>
         <MudNavLink Href="Budgets" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.AccountBalanceWallet">Budgets</MudNavLink>
+        <MudNavLink Href="Bills" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.EventRepeat">Bills</MudNavLink>
         <MudNavLink Href="SavingsGoals" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Savings">Savings goals</MudNavLink>
         <MudNavLink Href="Review" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.FactCheck">
             <span class="ft-nav__label">
@@ -19,6 +20,15 @@
                 @if (TransfersToReview > 0)
                 {
                     <span class="ft-nav__count" aria-label="@($"{TransfersToReview} to review")">@TransfersToReview</span>
+                }
+            </span>
+        </MudNavLink>
+        <MudNavLink Href="Review/Subscriptions" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Subscriptions">
+            <span class="ft-nav__label">
+                Review subscriptions
+                @if (SubscriptionsToReview > 0)
+                {
+                    <span class="ft-nav__count" aria-label="@($"{SubscriptionsToReview} to review")">@SubscriptionsToReview</span>
                 }
             </span>
         </MudNavLink>
@@ -51,6 +61,12 @@
     /// Shown beside the review link when there are any, see <see cref="ApplicationState.TransfersToReview"/>.
     /// </summary>
     [Parameter] public int TransfersToReview { get; set; }
+
+    /// <summary>
+    /// Shown beside the subscriptions review link when there are any, see
+    /// <see cref="ApplicationState.SubscriptionsToReview"/>.
+    /// </summary>
+    [Parameter] public int SubscriptionsToReview { get; set; }
 
     /// <summary>
     /// Shown beside the bank connections link when there are any, see

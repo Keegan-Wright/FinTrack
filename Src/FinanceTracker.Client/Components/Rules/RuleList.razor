@@ -28,7 +28,7 @@
                     </MudLink>
 
                     <MudText Typo="Typo.caption" Class="mud-text-secondary ft-rule__summary">
-                        @RuleText.Summary(context, AccountNames, TagNames)
+                        @RuleText.Summary(context, AccountNames, TagNames, BillNames)
                     </MudText>
                     @if (problem is not null)
                     {
@@ -72,6 +72,11 @@
     /// The user's tags by id, for the actions that add them.
     /// </summary>
     [Parameter] [EditorRequired] public required IReadOnlyDictionary<Guid, string> TagNames { get; set; }
+
+    /// <summary>
+    /// The user's bills by id, for the actions that pay one.
+    /// </summary>
+    [Parameter] public IReadOnlyDictionary<Guid, string> BillNames { get; set; } = new Dictionary<Guid, string>();
 
     /// <summary>
     /// The rules in their new order, after one is dragged or moved with the arrows.

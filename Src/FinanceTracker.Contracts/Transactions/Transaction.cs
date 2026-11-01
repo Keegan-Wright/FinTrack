@@ -87,6 +87,12 @@ public class Transaction
     public TransactionTransfer? Transfer { get; init; }
 
     /// <summary>
+    /// Which bill it pays, null until something decides.
+    /// </summary>
+    [Description("Which bill the transaction pays, null until matched or decided")]
+    public TransactionBill? Bill { get; init; }
+
+    /// <summary>
     /// Which of <see cref="Tags"/> the user's rules added, and which rule added each.
     /// </summary>
     [Description("The tags the user's rules added, and which rule added each")]

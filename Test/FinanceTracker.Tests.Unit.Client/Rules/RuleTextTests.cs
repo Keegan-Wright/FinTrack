@@ -55,6 +55,27 @@ public class RuleTextTests
     }
 
     [Test]
+    public async Task Describe_PayBill_NamesTheBillOrSaysItsGone()
+    {
+        // Arrange
+        Guid billId = Guid.NewGuid();
+        Dictionary<Guid, string> billNames = new() { [billId] = "Rent" };
+
+        // Act
+        string known = RuleText.Describe(new RuleAction { Type = RuleActionType.PayBill, BillId = billId },
+            new Dictionary<Guid, string>(), billNames);
+        string deleted = RuleText.Describe(new RuleAction { Type = RuleActionType.PayBill, BillId = Guid.NewGuid() },
+            new Dictionary<Guid, string>(), billNames);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(known).IsEqualTo("Pay bill Rent");
+            await Assert.That(deleted).IsEqualTo("Pay a deleted bill");
+        }
+    }
+
+    [Test]
     public async Task Describe_Actions_NameTheTagOrSayItsGone()
     {
         // Act
