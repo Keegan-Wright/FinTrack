@@ -6,7 +6,7 @@ using FinanceTracker.Contracts.Reports.Category;
 using FinanceTracker.Contracts.Reports.SpentInTimePeriod;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Transactions;
-using FinanceTracker.Domain.OpenBanking.Accounts;
+using FinanceTracker.Domain.Bills;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Tests.Integration.Http;
 using FinanceTracker.Tests.Unit.Shared.Fakers;
@@ -179,7 +179,7 @@ public class TransactionDataApiTests : IntegrationTestBase
         {
             await Assert.That(spent.TotalIn).IsEqualTo(2000m);
             await Assert.That(spent.TotalOut).IsEqualTo(-3.50m);
-            await Assert.That(upcoming.Select(x => x.PaymentName)).IsEquivalentTo(["Landlord"]);
+            await Assert.That(upcoming.Select(x => x.PaymentName)).IsEquivalentTo(["Rent"]);
         }
     }
 
@@ -206,16 +206,14 @@ public class TransactionDataApiTests : IntegrationTestBase
     {
         SignedInUser user = await RegisterUserAsync();
 
-        StandingOrderDetails rent = new StandingOrderDetailsFaker().Generate() with
-        {
-            Payee = "Landlord",
-            NextPaymentDate = DateTime.UtcNow.AddDays(10)
-        };
+        DateOnly rentDue = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(10));
 
         await Scenario.Do(s => s.BankConnectionScenario.WithConnection("bank", user.Username))
             .Do(s => s.BankAccountScenario.WithAccount("main", "bank"))
             .Do(s => s.BankAccountScenario.WithBalance("main"))
-            .Do(s => s.BankAccountScenario.WithStandingOrders("main", rent))
+            .Do(s => s.BillScenario.WithBill("rent", user.Username, "main", (userId, accountId) =>
+                new Bill(userId, accountId, "Rent", "Landlord", BillFrequency.Quarterly, 650m, rentDue,
+                    BillSource.Manual)))
             .Do(s => s.TransactionScenario.WithTransaction("coffee", "main", Details(-3.50m, TransactionType.Debit,
                 "PURCHASE", Coffee, ["Groceries"])))
             .Do(s => s.TransactionScenario.WithTransaction("salary", "main", Details(2000m, TransactionType.Credit,
