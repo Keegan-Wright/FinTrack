@@ -1,6 +1,7 @@
 @page "/HouseholdMembers"
 @* Adds the people in the user's household and their incomes, and how to recognise money moved to or from them.*@
 @using FinanceTracker.Client.Components.Dialogs
+@using FinanceTracker.Contracts
 @using FinanceTracker.Contracts.HouseholdMember
 @using Microsoft.AspNetCore.Authorization
 @inherits PageComponent
@@ -126,6 +127,10 @@
             (Members ??= []).Add(householdMember);
             Snackbar.Add($"{householdMember.FirstName} added", Severity.Success);
         }
+        catch (NameTakenException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Warning);
+        }
         catch (Exception)
         {
             Snackbar.Add("Couldn't add them, try again", Severity.Error);
@@ -161,6 +166,10 @@
                 _cts.Token);
             Members![Members.IndexOf(member)] = saved;
             Snackbar.Add($"{saved.FirstName} updated", Severity.Success);
+        }
+        catch (NameTakenException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Warning);
         }
         catch (Exception)
         {

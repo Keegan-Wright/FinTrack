@@ -14,6 +14,10 @@ internal sealed class HouseholdMemberConfiguration : AggregateRootConfiguration<
         builder.Property(x => x.LastName).Encrypted();
         builder.Property(x => x.Income).Encrypted();
 
+        // One person per first and last name for each user in any case, see NameCheck
+        string nameKey = builder.HasNameBlindIndex(x => x.FirstName, x => x.LastName);
+        builder.HasIndex(nameof(HouseholdMember.UserId), nameKey).IsUnique();
+
         builder.Property(x => x.PayeeNames).Encrypted();
         builder.PrimitiveCollection(x => x.PayeeNames).HasField("_payeeNames");
 

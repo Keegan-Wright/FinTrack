@@ -35,6 +35,7 @@ public interface ISavingsGoalsService
     /// <returns>The goal as stored.</returns>
     /// <exception cref="InvalidOperationException">The account isn't the user's, is a card or backs another goal, or
     /// a tag isn't the user's.</exception>
+    /// <exception cref="NameTakenException">The user already has a goal called that, in any case.</exception>
     Task<SavingsGoal> AddSavingsGoalAsync(SaveSavingsGoal goal, CancellationToken cancellationToken);
 
     /// <summary>
@@ -43,6 +44,7 @@ public interface ISavingsGoalsService
     /// </summary>
     /// <exception cref="InvalidOperationException">The user has no goal with <paramref name="id"/>, or the account or a
     /// tag can't be used, as for <see cref="AddSavingsGoalAsync"/>.</exception>
+    /// <exception cref="NameTakenException">The user already has another goal called that, in any case.</exception>
     Task<SavingsGoal> UpdateSavingsGoalAsync(Guid id, SaveSavingsGoal goal, CancellationToken cancellationToken);
 
     /// <summary>

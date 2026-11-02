@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.Debts;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Domain.Debts;
@@ -80,13 +81,15 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
+        await EnsureNameIsFreeAsync(context, debt.Name, null, cancellationToken);
+
         DomainDebt added = new(UserId, debt.Name, debt.Lender, debt.StartingBalance, debt.StartedOn,
             debt.InterestRate, debt.MonthlyPayment);
         added.SetPayOffGoal(debt.PayOffGoal);
         await LinkAsync(context, added, debt.AccountId, cancellationToken);
 
         context.Debts.Add(added);
-        await context.SaveChangesAsync(cancellationToken);
+        await NameCheck.SaveKeepingNamesApartAsync(context, NameTakenException.Debt, debt.Name, cancellationToken);
 
         return await ToContractAsync(context, added, cancellationToken);
     }
@@ -98,6 +101,7 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
 
         DomainDebt updated = await context.Debts.OwnedBy(UserId).SingleAsync(x => x.Id == id, cancellationToken);
 
+        await EnsureNameIsFreeAsync(context, debt.Name, id, cancellationToken);
         updated.Rename(debt.Name);
         updated.ChangeLender(debt.Lender);
         updated.ChangeStartingBalance(debt.StartingBalance, debt.StartedOn);
@@ -107,9 +111,21 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
 
         await LinkAsync(context, updated, debt.AccountId, cancellationToken);
 
-        await context.SaveChangesAsync(cancellationToken);
+        await NameCheck.SaveKeepingNamesApartAsync(context, NameTakenException.Debt, debt.Name, cancellationToken);
 
         return await ToContractAsync(context, updated, cancellationToken);
+    }
+
+    /// <summary>
+    /// Paid off debts count, as their payments still name them.
+    /// </summary>
+    /// <exception cref="NameTakenException">Another of the user's debts is called <paramref name="name"/>.
+    /// </exception>
+    private async Task EnsureNameIsFreeAsync(FinanceTrackerContext context, string name, Guid? exceptId,
+        CancellationToken cancellationToken)
+    {
+        List<DomainDebt> existing = await context.Debts.OwnedBy(UserId).AsNoTracking().ToListAsync(cancellationToken);
+        NameCheck.EnsureFree(existing.Select(static x => (x.Id, x.Name)), name, exceptId, NameTakenException.Debt);
     }
 
     public async Task DeleteDebtAsync(Guid id, CancellationToken cancellationToken)

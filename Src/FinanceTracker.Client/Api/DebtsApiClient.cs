@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
+using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.Api;
 using FinanceTracker.Contracts.Debts;
 using FinanceTracker.Contracts.Services;
@@ -37,7 +38,7 @@ public sealed class DebtsApiClient : IDebtsService
     public async Task<Debt> AddDebtAsync(SaveDebt debt, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.PostAsJsonAsync(ApiRoutes.Debts, debt, cancellationToken);
-        response.EnsureFound();
+        response.EnsureNameFree(NameTakenException.Debt, debt.Name);
         return await response.ReadRequiredJsonAsync<Debt>(cancellationToken);
     }
 
@@ -45,7 +46,7 @@ public sealed class DebtsApiClient : IDebtsService
     {
         using HttpResponseMessage response =
             await _http.PutAsJsonAsync($"{ApiRoutes.Debts}/{id}", debt, cancellationToken);
-        response.EnsureFound();
+        response.EnsureNameFree(NameTakenException.Debt, debt.Name);
         return await response.ReadRequiredJsonAsync<Debt>(cancellationToken);
     }
 

@@ -64,7 +64,7 @@ public static class SubscriptionDetector
             List<BankTransaction> ordered = payments.OrderBy(static x => x.OccurredAt).ToList();
             BankTransaction latest = ordered[^1];
 
-            if (CoveredByABill(bills, latest))
+            if (BillCovering(bills, latest) is not null)
             {
                 continue;
             }
@@ -124,17 +124,24 @@ public static class SubscriptionDetector
         transaction.Amount < 0 && !transaction.IsPending && transaction.CountsAsIncomeOrSpending &&
         transaction.BillPayment is null;
 
-    private static bool CoveredByABill(IReadOnlyCollection<Bill> bills, BankTransaction latest)
+    /// <summary>
+    /// The running bill on <paramref name="payment"/>'s account it's paid to, null when there's none, so it isn't a
+    /// new subscription.
+    /// </summary>
+    public static Bill? BillCovering(IReadOnlyCollection<Bill> bills, BankTransaction payment)
     {
+        ArgumentNullException.ThrowIfNull(bills);
+        ArgumentNullException.ThrowIfNull(payment);
+
         foreach (Bill bill in bills)
         {
-            if (!bill.HasEnded && bill.AccountId == latest.AccountId && BillMatcher.IsPaidTo(bill, latest))
+            if (!bill.HasEnded && bill.AccountId == payment.AccountId && BillMatcher.IsPaidTo(bill, payment))
             {
-                return true;
+                return bill;
             }
         }
 
-        return false;
+        return null;
     }
 
     /// <summary>

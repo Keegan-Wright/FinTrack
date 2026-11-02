@@ -36,6 +36,8 @@ public interface ICalendarService
     /// </summary>
     /// <returns>The event as stored, with its new id.</returns>
     /// <exception cref="InvalidOperationException">The savings goal isn't the user's.</exception>
+    /// <exception cref="NameTakenException">It creates a goal, and the user already has a goal called its title.
+    /// </exception>
     Task<CalendarEvent> AddEventAsync(SaveCalendarEvent calendarEvent, CancellationToken cancellationToken);
 
     /// <summary>
@@ -44,6 +46,8 @@ public interface ICalendarService
     /// </summary>
     /// <exception cref="InvalidOperationException">The user has no event with <paramref name="id"/>, or the savings
     /// goal isn't theirs.</exception>
+    /// <exception cref="NameTakenException">It creates a goal, and the user already has a goal called its title.
+    /// </exception>
     Task<CalendarEvent> UpdateEventAsync(Guid id, SaveCalendarEvent calendarEvent,
         CancellationToken cancellationToken);
 

@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.Classifications;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Domain.Budgeting;
@@ -60,7 +61,8 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
         CustomClassification newClassification = new(UserId, classification.Tag);
         context.CustomClassifications.Add(newClassification);
 
-        await context.SaveChangesAsync(cancellationToken);
+        await NameCheck.SaveKeepingNamesApartAsync(context, NameTakenException.Tag, classification.Tag,
+            cancellationToken);
 
         return new Contracts.Classifications.Classification { Tag = newClassification.Tag, ClassificationId = newClassification.Id };
     }
@@ -76,7 +78,7 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
         await EnsureTagIsFreeAsync(context, request.Tag, id, cancellationToken);
         classification.Rename(request.Tag);
 
-        await context.SaveChangesAsync(cancellationToken);
+        await NameCheck.SaveKeepingNamesApartAsync(context, NameTakenException.Tag, request.Tag, cancellationToken);
 
         return new Contracts.Classifications.Classification { Tag = classification.Tag, ClassificationId = classification.Id };
     }
@@ -143,23 +145,12 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
         await context.SaveChangesAsync(cancellationToken);
     }
 
-    /// <summary>
-    /// Throws when another of the user's tags already has <paramref name="tag"/> as its name, in any case, so
-    /// "holiday" and "Holiday" can't both exist.
-    /// </summary>
-    /// <param name="exceptId">The tag being renamed, which can keep its own name in a different case.</param>
+    /// <exception cref="NameTakenException">Another of the user's tags is called <paramref name="tag"/>.</exception>
     private async Task EnsureTagIsFreeAsync(FinanceTrackerContext context, string tag, Guid? exceptId,
         CancellationToken cancellationToken)
     {
-        // Tags are encrypted, so they're compared once decrypted
         List<CustomClassification> existing = await context.CustomClassifications.OwnedBy(UserId).AsNoTracking()
             .ToListAsync(cancellationToken);
-
-        bool taken = existing.Any(x => x.Id != exceptId &&
-                                       string.Equals(x.Tag.Trim(), tag.Trim(), StringComparison.OrdinalIgnoreCase));
-        if (taken)
-        {
-            throw new DuplicateTagException(tag.Trim());
-        }
+        NameCheck.EnsureFree(existing.Select(static x => (x.Id, x.Tag)), tag, exceptId, NameTakenException.Tag);
     }
 }

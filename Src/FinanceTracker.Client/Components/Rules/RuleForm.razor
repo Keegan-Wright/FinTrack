@@ -181,7 +181,8 @@
     [Parameter] [EditorRequired] public required IReadOnlyDictionary<Guid, string> TagNames { get; set; }
 
     /// <summary>
-    /// The user's bills by id, offered for an action that pays one.
+    /// The user's bills by id, as they read where one is picked for an action that pays one, see
+    /// <see cref="Bills.BillText.PickerLabel"/>.
     /// </summary>
     [Parameter] public IReadOnlyDictionary<Guid, string> BillNames { get; set; } = new Dictionary<Guid, string>();
 

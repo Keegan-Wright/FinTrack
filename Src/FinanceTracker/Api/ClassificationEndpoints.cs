@@ -26,35 +26,18 @@ public static class ClassificationEndpoints
                     TypedResults.Ok(await service.GetClassificationAsync(id, cancellationToken)))
                 .NotFoundWhenMissing();
 
-            classifications.MapPost(string.Empty, async Task<Results<Ok<Classification>, ProblemHttpResult>> (
-                    AddClassifications request, IClassificationService service, CancellationToken cancellationToken) =>
-                {
-                    try
-                    {
-                        return TypedResults.Ok(await service.AddCustomClassificationAsync(request, cancellationToken));
-                    }
-                    catch (DuplicateTagException ex)
-                    {
-                        return TypedResults.Problem(ex.Message, statusCode: StatusCodes.Status409Conflict);
-                    }
-                })
-                .Validated<AddClassifications>();
+            classifications.MapPost(string.Empty, async Task<Ok<Classification>> (AddClassifications request,
+                        IClassificationService service, CancellationToken cancellationToken) =>
+                    TypedResults.Ok(await service.AddCustomClassificationAsync(request, cancellationToken)))
+                .Validated<AddClassifications>()
+                .ConflictWhenNameTaken();
 
-            classifications.MapPut("{id:guid}", async Task<Results<Ok<Classification>, ProblemHttpResult>> (Guid id,
-                    RenameClassification request, IClassificationService service,
-                    CancellationToken cancellationToken) =>
-                {
-                    try
-                    {
-                        return TypedResults.Ok(
-                            await service.RenameCustomClassificationAsync(id, request, cancellationToken));
-                    }
-                    catch (DuplicateTagException ex)
-                    {
-                        return TypedResults.Problem(ex.Message, statusCode: StatusCodes.Status409Conflict);
-                    }
-                })
+            classifications.MapPut("{id:guid}", async Task<Ok<Classification>> (Guid id,
+                        RenameClassification request, IClassificationService service,
+                        CancellationToken cancellationToken) =>
+                    TypedResults.Ok(await service.RenameCustomClassificationAsync(id, request, cancellationToken)))
                 .Validated<RenameClassification>()
+                .ConflictWhenNameTaken()
                 .NotFoundWhenMissing();
 
             classifications.MapPost("transactions", async Task<NoContent> (

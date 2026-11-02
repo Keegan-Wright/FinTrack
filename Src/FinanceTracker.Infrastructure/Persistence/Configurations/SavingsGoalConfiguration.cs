@@ -24,6 +24,10 @@ internal sealed class SavingsGoalConfiguration : AggregateRootConfiguration<Savi
         builder.PrimitiveCollection(x => x.TagIds).HasField("_tagIds");
         builder.Ignore(x => x.CoversNothing);
 
+        // One goal per name for each user in any case, see NameCheck
+        string nameKey = builder.HasNameBlindIndex(x => x.Name);
+        builder.HasIndex(nameof(SavingsGoal.UserId), nameKey).IsUnique();
+
         // One goal per account, so its balance isn't counted twice
         builder.HasIndex(x => x.AccountId).IsUnique().HasFilter("\"AccountId\" IS NOT NULL");
     }

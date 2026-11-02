@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.Api;
 using FinanceTracker.Contracts.Calendar;
 using FinanceTracker.Contracts.Services;
@@ -33,7 +34,7 @@ public sealed class CalendarApiClient : ICalendarService
         CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.PostAsJsonAsync(Events, calendarEvent, cancellationToken);
-        response.EnsureFound();
+        response.EnsureNameFree(NameTakenException.SavingsGoal, calendarEvent.Title);
         return await response.ReadRequiredJsonAsync<CalendarEvent>(cancellationToken);
     }
 
@@ -42,7 +43,7 @@ public sealed class CalendarApiClient : ICalendarService
     {
         using HttpResponseMessage response =
             await _http.PutAsJsonAsync($"{Events}/{id}", calendarEvent, cancellationToken);
-        response.EnsureFound();
+        response.EnsureNameFree(NameTakenException.SavingsGoal, calendarEvent.Title);
         return await response.ReadRequiredJsonAsync<CalendarEvent>(cancellationToken);
     }
 

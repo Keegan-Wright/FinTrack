@@ -3,6 +3,7 @@
    and the payments that paid it off. *@
 @using System.Globalization
 @using FinanceTracker.Client.Components.Debts
+@using FinanceTracker.Contracts
 @using FinanceTracker.Contracts.Debts
 @using FinanceTracker.Contracts.Transactions
 @using Microsoft.AspNetCore.Authorization
@@ -207,6 +208,10 @@ else
             await DebtsService.UpdateDebtAsync(existing.Id, debt, _cts.Token);
             Detail = await DebtsService.GetDebtAsync(existing.Id, _cts.Token);
             Snackbar.Add($"{debt.Name} saved", Severity.Success);
+        }
+        catch (NameTakenException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Warning);
         }
         catch (InvalidOperationException)
         {

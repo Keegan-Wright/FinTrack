@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.Calendar;
 using FinanceTracker.Contracts.Debts;
 using FinanceTracker.Contracts.Services;
@@ -8,6 +9,7 @@ using FinanceTracker.Domain.OpenBanking.Transfers;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using FinanceTracker.Infrastructure.Persistence;
+using FinanceTracker.Infrastructure.SavingsGoals;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using CalendarEvent = FinanceTracker.Contracts.Calendar.CalendarEvent;
@@ -136,7 +138,8 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
         DomainSavingsGoal? goal = await ApplyAsync(context, added, calendarEvent, cancellationToken);
 
         context.CalendarEvents.Add(added);
-        await context.SaveChangesAsync(cancellationToken);
+        await NameCheck.SaveKeepingNamesApartAsync(context, NameTakenException.SavingsGoal, calendarEvent.Title,
+            cancellationToken);
         return CalendarEventMapper.ToContract(added, goal?.Name, _timeProvider.Today);
     }
 
@@ -152,7 +155,8 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
         updated.Reschedule(calendarEvent.Date, CalendarEventMapper.ToDomain(calendarEvent.Recurrence));
         DomainSavingsGoal? goal = await ApplyAsync(context, updated, calendarEvent, cancellationToken);
 
-        await context.SaveChangesAsync(cancellationToken);
+        await NameCheck.SaveKeepingNamesApartAsync(context, NameTakenException.SavingsGoal, calendarEvent.Title,
+            cancellationToken);
         return CalendarEventMapper.ToContract(updated, goal?.Name, _timeProvider.Today);
     }
 
@@ -201,11 +205,13 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
     /// A new goal named after the event and aimed at its target by its next date, the user's chosen goal, or none.
     /// </summary>
     /// <exception cref="InvalidOperationException">The chosen goal isn't the user's.</exception>
+    /// <exception cref="NameTakenException">A new goal's name, the event's title, is already a goal's.</exception>
     private async Task<DomainSavingsGoal?> GoalForAsync(FinanceTrackerContext context, DomainCalendarEvent target,
         SaveCalendarEvent calendarEvent, CancellationToken cancellationToken)
     {
         if (calendarEvent.CreateSavingsGoal)
         {
+            await SavingsGoalNames.EnsureFreeAsync(context, UserId, target.Title, null, cancellationToken);
             DateOnly targetDate = target.NextOn(_timeProvider.Today) ?? target.Date;
             DomainSavingsGoal created = new(UserId, target.Title, 0, 0, calendarEvent.SavingsTarget ?? 0,
                 targetDate.ToDateTime(TimeOnly.MinValue));

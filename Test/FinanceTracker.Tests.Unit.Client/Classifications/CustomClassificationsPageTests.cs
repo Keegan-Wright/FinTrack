@@ -2,6 +2,7 @@ using AngleSharp.Dom;
 using Bunit;
 using FinanceTracker.Client;
 using FinanceTracker.Client.Pages;
+using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.Classifications;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Validation;
@@ -66,7 +67,7 @@ public class CustomClassificationsPageTests : ComponentTestBase
         // Arrange
         _classificationService.RenameCustomClassificationAsync(_holiday.ClassificationId,
                 Arg.Any<RenameClassification>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(new DuplicateTagException("Kids"));
+            .ThrowsAsync(new NameTakenException(NameTakenException.Tag, "Kids"));
         IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
         IRenderedComponent<MudPopoverProvider> popovers = Render<MudPopoverProvider>();
         IRenderedComponent<MudSnackbarProvider> snackbars = Render<MudSnackbarProvider>();

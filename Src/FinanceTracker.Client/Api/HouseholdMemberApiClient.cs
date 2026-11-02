@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.Api;
 using FinanceTracker.Contracts.HouseholdMember;
 using FinanceTracker.Contracts.Services;
@@ -23,17 +24,21 @@ public sealed class HouseholdMemberApiClient : IHouseholdMemberService
     public IAsyncEnumerable<HouseholdMember> GetHouseholdMembersAsync(CancellationToken cancellationToken) =>
         _http.GetStreamAsync<HouseholdMember>(ApiRoutes.HouseholdMembers, cancellationToken);
 
-    public Task<HouseholdMember> AddHouseholdMemberAsync(AddHouseholdMember categoryToAdd,
-        CancellationToken cancellationToken) =>
-        _http.PostReadAsync<AddHouseholdMember, HouseholdMember>(ApiRoutes.HouseholdMembers, categoryToAdd,
-            cancellationToken);
+    public async Task<HouseholdMember> AddHouseholdMemberAsync(AddHouseholdMember categoryToAdd,
+        CancellationToken cancellationToken)
+    {
+        using HttpResponseMessage response =
+            await _http.PostAsJsonAsync(ApiRoutes.HouseholdMembers, categoryToAdd, cancellationToken);
+        response.EnsureNameFree(NameTakenException.Person, $"{categoryToAdd.FirstName} {categoryToAdd.LastName}");
+        return await response.ReadRequiredJsonAsync<HouseholdMember>(cancellationToken);
+    }
 
     public async Task<HouseholdMember> UpdateHouseholdMemberAsync(Guid id, UpdateHouseholdMember request,
         CancellationToken cancellationToken)
     {
         using HttpResponseMessage response =
             await _http.PutAsJsonAsync($"{ApiRoutes.HouseholdMembers}/{id}", request, cancellationToken);
-        response.EnsureFound();
+        response.EnsureNameFree(NameTakenException.Person, $"{request.FirstName} {request.LastName}");
         return await response.ReadRequiredJsonAsync<HouseholdMember>(cancellationToken);
     }
 

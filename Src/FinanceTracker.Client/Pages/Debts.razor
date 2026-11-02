@@ -2,6 +2,7 @@
 @* What the user owes and is paying off. What's left in all, what goes on them each month and when
    the last is paid off, then each debt's progress and forecast against its goal. *@
 @using FinanceTracker.Client.Components.Debts
+@using FinanceTracker.Contracts
 @using FinanceTracker.Contracts.Debts
 @using FinanceTracker.Contracts.Transactions
 @using Microsoft.AspNetCore.Authorization
@@ -193,6 +194,10 @@
             await change();
             DebtList = await DebtsService.GetDebtsAsync(_cts.Token).ToListAsync(_cts.Token);
             Snackbar.Add(done, Severity.Success);
+        }
+        catch (NameTakenException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Warning);
         }
         catch (InvalidOperationException)
         {

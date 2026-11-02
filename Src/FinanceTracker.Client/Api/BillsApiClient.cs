@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using FinanceTracker.Contracts.Api;
 using FinanceTracker.Contracts.Bills;
 using FinanceTracker.Contracts.Services;
@@ -93,8 +94,36 @@ public sealed class BillsApiClient : IBillsService
         return await response.ReadRequiredJsonAsync<int>(cancellationToken);
     }
 
-    public Task<Bill> ConfirmSuggestionAsync(Guid id, CancellationToken cancellationToken) =>
-        PostForBillAsync($"{ApiRoutes.Bills}/suggestions/{id}/confirm", cancellationToken);
+    public async Task<Bill> ConfirmSuggestionAsync(Guid id, CancellationToken cancellationToken)
+    {
+        using HttpResponseMessage response =
+            await _http.PostAsync($"{ApiRoutes.Bills}/suggestions/{id}/confirm", null, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.Conflict)
+        {
+            throw new AlreadyABillException(await CoveringBillNameAsync(response, cancellationToken));
+        }
+
+        response.EnsureFound();
+        return await response.ReadRequiredJsonAsync<Bill>(cancellationToken);
+    }
+
+    /// <summary>
+    /// The bill a 409 for confirming a suggestion names, see <see cref="AlreadyABillException.BillNameField"/>.
+    /// </summary>
+    private static async Task<string> CoveringBillNameAsync(HttpResponseMessage response,
+        CancellationToken cancellationToken)
+    {
+        using JsonDocument problem = await response.Content.ReadFromJsonAsync<JsonDocument>(cancellationToken)
+            ?? throw new InvalidOperationException("The API's 409 had no body.");
+
+        if (problem.RootElement.TryGetProperty(AlreadyABillException.BillNameField, out JsonElement billName) &&
+            billName.GetString() is { } name)
+        {
+            return name;
+        }
+
+        return "another bill";
+    }
 
     public async Task DismissSuggestionAsync(Guid id, CancellationToken cancellationToken)
     {

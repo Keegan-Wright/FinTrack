@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.SavingsGoals;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Domain.OpenBanking.Accounts;
@@ -85,13 +86,15 @@ public class SavingsGoalsService : ServiceBase<SavingsGoalsService>, ISavingsGoa
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
         await EnsureSourceIsTheUsersAsync(context, null, goal, cancellationToken);
+        await SavingsGoalNames.EnsureFreeAsync(context, UserId, goal.Name, null, cancellationToken);
 
         DomainSavingsGoal added = new(UserId, goal.Name, goal.Saved, goal.MonthlyContribution, goal.Target,
             goal.TargetDate);
         Track(added, goal);
 
         context.SavingsGoals.Add(added);
-        await context.SaveChangesAsync(cancellationToken);
+        await NameCheck.SaveKeepingNamesApartAsync(context, NameTakenException.SavingsGoal, goal.Name,
+            cancellationToken);
 
         return (await ToContractsAsync(context, [added], cancellationToken)).Single();
     }
@@ -105,13 +108,15 @@ public class SavingsGoalsService : ServiceBase<SavingsGoalsService>, ISavingsGoa
         DomainSavingsGoal updated = await context.SavingsGoals.OwnedBy(UserId)
             .SingleAsync(x => x.Id == id, cancellationToken);
         await EnsureSourceIsTheUsersAsync(context, id, goal, cancellationToken);
+        await SavingsGoalNames.EnsureFreeAsync(context, UserId, goal.Name, id, cancellationToken);
 
         updated.Rename(goal.Name);
         updated.ChangeMonthlyContribution(goal.MonthlyContribution);
         updated.SetTarget(goal.Target, goal.TargetDate);
         Track(updated, goal);
 
-        await context.SaveChangesAsync(cancellationToken);
+        await NameCheck.SaveKeepingNamesApartAsync(context, NameTakenException.SavingsGoal, goal.Name,
+            cancellationToken);
 
         return (await ToContractsAsync(context, [updated], cancellationToken)).Single();
     }

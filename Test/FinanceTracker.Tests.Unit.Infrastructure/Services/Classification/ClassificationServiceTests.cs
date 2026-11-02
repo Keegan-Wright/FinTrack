@@ -1,3 +1,4 @@
+using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.Classifications;
 using FinanceTracker.Domain.Budgeting;
 using FinanceTracker.Domain.Classifications;
@@ -53,7 +54,7 @@ public class ClassificationServiceTests : InfrastructureTestBase
         ClassificationService subject = BuildSubject();
 
         // Act
-        DuplicateTagException? exception = await Assert.ThrowsAsync<DuplicateTagException>(() =>
+        NameTakenException? exception = await Assert.ThrowsAsync<NameTakenException>(() =>
             subject.AddCustomClassificationAsync(new AddClassifications { Tag = tag }, CancellationToken));
 
         // Assert
@@ -61,7 +62,7 @@ public class ClassificationServiceTests : InfrastructureTestBase
             .GetAllCustomClassificationsAsync(CancellationToken).ToListAsync(CancellationToken);
         using (Assert.Multiple())
         {
-            await Assert.That(exception!.Tag).IsEqualTo(tag.Trim());
+            await Assert.That(exception!.Name).IsEqualTo(tag.Trim());
             await Assert.That(all).Count().IsEqualTo(1);
         }
     }
@@ -159,7 +160,7 @@ public class ClassificationServiceTests : InfrastructureTestBase
         Guid id = Scenario.ClassificationMappings["holiday"];
 
         // Act
-        await Assert.ThrowsAsync<DuplicateTagException>(() =>
+        await Assert.ThrowsAsync<NameTakenException>(() =>
             subject.RenameCustomClassificationAsync(id, new RenameClassification { Tag = "travel" },
                 CancellationToken));
 

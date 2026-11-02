@@ -12,7 +12,8 @@ public static class BillEndpoints
     {
         /// <summary>
         /// <see cref="IBillsService"/> at <see cref="ApiRoutes.Bills"/>. Ids that don't exist or aren't the user's,
-        /// and accounts that aren't theirs, answer 404. Deleting a bill that can only be ended answers 409.
+        /// and accounts that aren't theirs, answer 404. Deleting a bill that can only be ended, and
+        /// confirming a suggestion a bill already covers, answer 409.
         /// </summary>
         public RouteGroupBuilder MapBillEndpoints()
         {
@@ -80,9 +81,19 @@ public static class BillEndpoints
                     CancellationToken cancellationToken) =>
                 TypedResults.Ok(await service.GetSuggestionCountAsync(cancellationToken)));
 
-            bills.MapPost("suggestions/{id:guid}/confirm", async Task<Ok<Bill>> (Guid id, IBillsService service,
-                        CancellationToken cancellationToken) =>
-                    TypedResults.Ok(await service.ConfirmSuggestionAsync(id, cancellationToken)))
+            bills.MapPost("suggestions/{id:guid}/confirm", async Task<Results<Ok<Bill>, ProblemHttpResult>> (Guid id,
+                    IBillsService service, CancellationToken cancellationToken) =>
+                {
+                    try
+                    {
+                        return TypedResults.Ok(await service.ConfirmSuggestionAsync(id, cancellationToken));
+                    }
+                    catch (AlreadyABillException ex)
+                    {
+                        return TypedResults.Problem(ex.Message, statusCode: StatusCodes.Status409Conflict,
+                            extensions: new Dictionary<string, object?> { [AlreadyABillException.BillNameField] = ex.BillName });
+                    }
+                })
                 .NotFoundWhenMissing();
 
             bills.MapPost("suggestions/{id:guid}/dismiss", async Task<NoContent> (Guid id, IBillsService service,

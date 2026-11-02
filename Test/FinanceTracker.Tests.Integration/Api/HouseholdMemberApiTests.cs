@@ -1,4 +1,5 @@
 using System.Net;
+using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.HouseholdMember;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Tests.Integration.Http;
@@ -102,6 +103,24 @@ public class HouseholdMemberApiTests : IntegrationTestBase
         await Assert.ThrowsAsync<InvalidOperationException>(() => ApiFor(other).Get<IHouseholdMemberService>()
             .UpdateHouseholdMemberAsync(theirs.Id,
                 new UpdateHouseholdMember { FirstName = "A", LastName = "B", Income = 0m }, CancellationToken));
+    }
+
+    [Test]
+    public async Task AddHouseholdMember_SameNameAsSomeoneInTheHousehold_ThrowsAsTheServiceDoes()
+    {
+        // Arrange
+        SignedInUser user = await RegisterUserAsync();
+        IHouseholdMemberService service = ApiFor(user).Get<IHouseholdMemberService>();
+        await service.AddHouseholdMemberAsync(
+            new AddHouseholdMember { FirstName = "Jane", LastName = "Doe", Income = 1m }, CancellationToken);
+
+        // Act
+        NameTakenException? exception = await Assert.ThrowsAsync<NameTakenException>(() =>
+            service.AddHouseholdMemberAsync(
+                new AddHouseholdMember { FirstName = "Jane", LastName = "Doe", Income = 2m }, CancellationToken));
+
+        // Assert
+        await Assert.That(exception!.Message).IsEqualTo("You already have a person called Jane Doe");
     }
 
     [Test]

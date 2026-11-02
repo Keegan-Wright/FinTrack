@@ -91,6 +91,8 @@ public interface IBillsService
     /// <returns>The new bill.</returns>
     /// <exception cref="InvalidOperationException">The user has no waiting suggestion with <paramref name="id"/>.
     /// </exception>
+    /// <exception cref="AlreadyABillException">A bill added since already covers its payments, the suggestion is
+    /// removed.</exception>
     Task<Bill> ConfirmSuggestionAsync(Guid id, CancellationToken cancellationToken);
 
     /// <summary>

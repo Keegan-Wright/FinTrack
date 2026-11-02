@@ -1,5 +1,5 @@
-using System.Net;
 using System.Net.Http.Json;
+using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.Api;
 using FinanceTracker.Contracts.Classifications;
 using FinanceTracker.Contracts.Services;
@@ -11,7 +11,7 @@ namespace FinanceTracker.Client.Api;
 /// <summary>
 /// <see cref="IClassificationService"/> over <see cref="ApiRoutes.Classifications"/>. The API's 404s come back as the
 /// <see cref="InvalidOperationException"/> the interface documents, and its 409s as the
-/// <see cref="DuplicateTagException"/>.
+/// <see cref="NameTakenException"/>.
 /// </summary>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Client)]
 [Scoped<IClassificationService>]
@@ -38,8 +38,7 @@ public sealed class ClassificationApiClient : IClassificationService
     {
         using HttpResponseMessage response =
             await _http.PostAsJsonAsync(ApiRoutes.Classifications, classification, cancellationToken);
-        ThrowIfTaken(response, classification.Tag);
-        response.EnsureSuccessStatusCode();
+        response.EnsureNameFree(NameTakenException.Tag, classification.Tag);
         return await response.ReadRequiredJsonAsync<Classification>(cancellationToken);
     }
 
@@ -48,8 +47,7 @@ public sealed class ClassificationApiClient : IClassificationService
     {
         using HttpResponseMessage response =
             await _http.PutAsJsonAsync($"{ApiRoutes.Classifications}/{id}", request, cancellationToken);
-        ThrowIfTaken(response, request.Tag);
-        response.EnsureFound();
+        response.EnsureNameFree(NameTakenException.Tag, request.Tag);
         return await response.ReadRequiredJsonAsync<Classification>(cancellationToken);
     }
 
@@ -66,13 +64,5 @@ public sealed class ClassificationApiClient : IClassificationService
         using HttpResponseMessage response =
             await _http.DeleteAsync($"{ApiRoutes.Classifications}/{id}", cancellationToken);
         response.EnsureFound();
-    }
-
-    private static void ThrowIfTaken(HttpResponseMessage response, string tag)
-    {
-        if (response.StatusCode == HttpStatusCode.Conflict)
-        {
-            throw new DuplicateTagException(tag.Trim());
-        }
     }
 }

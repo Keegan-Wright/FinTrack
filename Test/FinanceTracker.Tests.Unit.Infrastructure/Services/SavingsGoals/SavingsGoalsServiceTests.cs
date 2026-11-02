@@ -1,3 +1,4 @@
+using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.SavingsGoals;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Transactions;
@@ -72,6 +73,66 @@ public class SavingsGoalsServiceTests : InfrastructureTestBase
         // Assert
         await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
         await Assert.That(await context.SavingsGoals.CountAsync(CancellationToken)).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task AddSavingsGoalAsync_NameTheyAlreadyHave_ThrowsAndPersistsNothing()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.SavingsGoalScenario.WithSavingsGoal("holiday", Username, userId =>
+                new DomainSavingsGoal(userId, "Holiday", 0, 0, 1000, null)));
+        SavingsGoalsService subject = BuildSubject(Username);
+
+        // Act
+        NameTakenException? exception = await Assert.ThrowsAsync<NameTakenException>(() =>
+            subject.AddSavingsGoalAsync(new SaveSavingsGoal { Name = "holiday", Target = 500 }, CancellationToken));
+
+        // Assert
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        using (Assert.Multiple())
+        {
+            await Assert.That(exception!.Message).IsEqualTo("You already have a savings goal called holiday");
+            await Assert.That(await context.SavingsGoals.CountAsync(CancellationToken)).IsEqualTo(1);
+        }
+    }
+
+    [Test]
+    public async Task AddSavingsGoalAsync_NameAnotherUserHas_IsAllowed()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.UserScenario.WithUser(OtherUsername))
+            .Do(s => s.SavingsGoalScenario.WithSavingsGoal("theirs", OtherUsername, userId =>
+                new DomainSavingsGoal(userId, "Holiday", 0, 0, 1000, null)));
+        SavingsGoalsService subject = BuildSubject(Username);
+
+        // Act
+        SavingsGoal added = await subject.AddSavingsGoalAsync(new SaveSavingsGoal { Name = "Holiday", Target = 500 },
+            CancellationToken);
+
+        // Assert
+        await Assert.That(added.Name).IsEqualTo("Holiday");
+    }
+
+    [Test]
+    public async Task UpdateSavingsGoalAsync_ToAnotherGoalsName_ThrowsAndKeepsTheName()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.SavingsGoalScenario.WithSavingsGoal("holiday", Username, userId =>
+                new DomainSavingsGoal(userId, "Holiday", 0, 0, 1000, null)))
+            .Do(s => s.SavingsGoalScenario.WithSavingsGoal("car", Username, userId =>
+                new DomainSavingsGoal(userId, "Car", 0, 0, 1000, null)));
+        SavingsGoalsService subject = BuildSubject(Username);
+        Guid carId = Scenario.SavingsGoalMappings["car"];
+
+        // Act
+        await Assert.ThrowsAsync<NameTakenException>(() => subject.UpdateSavingsGoalAsync(carId,
+            new SaveSavingsGoal { Name = "Holiday", Target = 1000 }, CancellationToken));
+
+        // Assert
+        await Assert.That((await subject.GetSavingsGoalAsync(carId, CancellationToken)).Name).IsEqualTo("Car");
     }
 
     [Test]

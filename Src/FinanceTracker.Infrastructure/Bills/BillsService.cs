@@ -273,14 +273,17 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
             DomainBillSuggestion suggestion = await context.BillSuggestions.OwnedBy(UserId)
                 .SingleAsync(x => x.Id == id && !x.IsDismissed, cancellationToken);
 
-            bill = suggestion.ToBill();
-            context.Bills.Add(bill);
-
-            // Matched rather than the user's, so matching can still move a payment that fits another bill better
             List<Guid> paymentIds = suggestion.PaymentIds.ToList();
             List<BankTransaction> payments = await context.BankTransactions.OwnedBy(UserId)
                 .Where(x => paymentIds.Contains(x.Id))
                 .ToListAsync(cancellationToken);
+
+            await EnsureNotCoveredAsync(context, suggestion, payments, cancellationToken);
+
+            bill = suggestion.ToBill();
+            context.Bills.Add(bill);
+
+            // Matched rather than the user's, so matching can still move a payment that fits another bill better
             foreach (BankTransaction payment in payments)
             {
                 payment.DecideBillPayment(BillPayment.Matched(bill.Id, _timeProvider.UtcNow));
@@ -292,6 +295,34 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
 
         await MatchHistoryAsync(bill, cancellationToken);
         return await GetBillAsync(bill.Id, cancellationToken);
+    }
+
+    /// <summary>
+    /// A bill added since the suggestion was made may already cover its payments. The next sync would drop it, so
+    /// it's dropped now rather than made a second bill for the same payments.
+    /// </summary>
+    /// <exception cref="AlreadyABillException">A running bill on its account is paid by its latest payment.
+    /// </exception>
+    private async Task EnsureNotCoveredAsync(FinanceTrackerContext context, DomainBillSuggestion suggestion,
+        List<BankTransaction> payments, CancellationToken cancellationToken)
+    {
+        BankTransaction? latest = payments.MaxBy(static x => x.OccurredAt);
+        if (latest is null)
+        {
+            return;
+        }
+
+        List<DomainBill> bills = await context.Bills.OwnedBy(UserId).AsNoTracking()
+            .Where(x => x.AccountId == suggestion.AccountId)
+            .ToListAsync(cancellationToken);
+        if (SubscriptionDetector.BillCovering(bills, latest) is not { } covering)
+        {
+            return;
+        }
+
+        context.BillSuggestions.Remove(suggestion);
+        await context.SaveChangesAsync(cancellationToken);
+        throw new AlreadyABillException(covering.Name);
     }
 
     public async Task DismissSuggestionAsync(Guid id, CancellationToken cancellationToken)

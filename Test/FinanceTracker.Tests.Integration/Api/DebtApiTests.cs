@@ -1,4 +1,5 @@
 using System.Net;
+using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.Debts;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Transactions;
@@ -62,6 +63,22 @@ public class DebtApiTests : IntegrationTestBase
 
         // Assert
         await Assert.That(exception!.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+    }
+
+    [Test]
+    public async Task AddDebt_NameTheyAlreadyHave_ThrowsAsTheServiceDoes()
+    {
+        // Arrange
+        SignedInUser user = await RegisterUserAsync();
+        IDebtsService service = ApiFor(user).Get<IDebtsService>();
+        await service.AddDebtAsync(CarLoan(new DateOnly(2026, 1, 1)), CancellationToken);
+
+        // Act
+        NameTakenException? exception = await Assert.ThrowsAsync<NameTakenException>(() =>
+            service.AddDebtAsync(CarLoan(new DateOnly(2026, 6, 1)), CancellationToken));
+
+        // Assert
+        await Assert.That(exception!.Message).IsEqualTo("You already have a debt called Car loan");
     }
 
     [Test]

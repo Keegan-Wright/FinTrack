@@ -31,12 +31,14 @@ public static class DebtEndpoints
                         CancellationToken cancellationToken) =>
                     TypedResults.Ok(await service.AddDebtAsync(request, cancellationToken)))
                 .Validated<SaveDebt>()
+                .ConflictWhenNameTaken()
                 .NotFoundWhenMissing();
 
             debts.MapPut("{id:guid}", async Task<Ok<Debt>> (Guid id, SaveDebt request, IDebtsService service,
                         CancellationToken cancellationToken) =>
                     TypedResults.Ok(await service.UpdateDebtAsync(id, request, cancellationToken)))
                 .Validated<SaveDebt>()
+                .ConflictWhenNameTaken()
                 .NotFoundWhenMissing();
 
             debts.MapDelete("{id:guid}", async Task<NoContent> (Guid id, IDebtsService service,

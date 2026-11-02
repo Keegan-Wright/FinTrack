@@ -1,6 +1,7 @@
 @page "/SavingsGoals"
 @* What the user is saving up for, how far each has got and whether it's on track (ISavingsGoalsService). *@
 @using FinanceTracker.Client.Components.SavingsGoals
+@using FinanceTracker.Contracts
 @using FinanceTracker.Contracts.Classifications
 @using FinanceTracker.Contracts.SavingsGoals
 @using Microsoft.AspNetCore.Authorization
@@ -145,6 +146,10 @@
             Goals = await SavingsGoalsService.GetSavingsGoalsAsync(_cts.Token).ToListAsync(_cts.Token);
             Accounts = await SavingsGoalsService.GetSavingsAccountsAsync(_cts.Token).ToListAsync(_cts.Token);
             Snackbar.Add(done, Severity.Success);
+        }
+        catch (NameTakenException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Warning);
         }
         catch (InvalidOperationException)
         {

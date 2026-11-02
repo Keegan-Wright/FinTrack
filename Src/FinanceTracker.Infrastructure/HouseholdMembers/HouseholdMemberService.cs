@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.HouseholdMember;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Domain.OpenBanking.Accounts;
@@ -43,11 +44,14 @@ public class HouseholdMemberService : ServiceBase<HouseholdMemberService>, IHous
     {
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+        await EnsureNameIsFreeAsync(context, categoryToAdd.FirstName, categoryToAdd.LastName, null,
+            cancellationToken);
         Domain.Household.HouseholdMember householdMember = new(UserId, categoryToAdd.FirstName,
             categoryToAdd.LastName, categoryToAdd.Income);
 
         context.HouseholdMembers.Add(householdMember);
-        await context.SaveChangesAsync(cancellationToken);
+        await NameCheck.SaveKeepingNamesApartAsync(context, NameTakenException.Person,
+            FullName(categoryToAdd.FirstName, categoryToAdd.LastName), cancellationToken);
 
         return ToContract(householdMember);
     }
@@ -62,9 +66,11 @@ public class HouseholdMemberService : ServiceBase<HouseholdMemberService>, IHous
             await context.HouseholdMembers.OwnedBy(UserId).SingleOrDefaultAsync(x => x.Id == id, cancellationToken)
             ?? throw new InvalidOperationException($"Household member {id} was not found.");
 
+        await EnsureNameIsFreeAsync(context, request.FirstName, request.LastName, id, cancellationToken);
         householdMember.Rename(request.FirstName, request.LastName);
         householdMember.ChangeIncome(request.Income);
-        await context.SaveChangesAsync(cancellationToken);
+        await NameCheck.SaveKeepingNamesApartAsync(context, NameTakenException.Person,
+            FullName(request.FirstName, request.LastName), cancellationToken);
 
         return ToContract(householdMember);
     }
@@ -119,6 +125,20 @@ public class HouseholdMemberService : ServiceBase<HouseholdMemberService>, IHous
         return true;
 
     }
+
+    /// <exception cref="NameTakenException">Someone else in the household has the same first and last name.
+    /// </exception>
+    private async Task EnsureNameIsFreeAsync(FinanceTrackerContext context, string firstName, string lastName,
+        Guid? exceptId, CancellationToken cancellationToken)
+    {
+        List<Domain.Household.HouseholdMember> existing = await context.HouseholdMembers.OwnedBy(UserId)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+        NameCheck.EnsureFree(existing.Select(static x => (x.Id, FullName(x.FirstName, x.LastName))),
+            FullName(firstName, lastName), exceptId, NameTakenException.Person);
+    }
+
+    private static string FullName(string firstName, string lastName) => $"{firstName.Trim()} {lastName.Trim()}";
 
     private static HouseholdMember ToContract(Domain.Household.HouseholdMember householdMember) => new()
     {

@@ -1,4 +1,5 @@
 using System.Net;
+using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.Calendar;
 using FinanceTracker.Contracts.SavingsGoals;
 using FinanceTracker.Contracts.Services;
@@ -110,6 +111,23 @@ public class CalendarEventApiTests : IntegrationTestBase
             await Assert.That(loaded.Notes).IsEqualTo("Book a table");
             await Assert.That(loaded.Date).IsEqualTo(new DateOnly(2026, 3, 14));
         }
+    }
+
+    [Test]
+    public async Task AddEvent_CreatingAGoalWithATakenName_ThrowsAsTheServiceDoes()
+    {
+        // Arrange
+        SignedInUser user = await RegisterUserAsync();
+        ApiSession api = ApiFor(user);
+        await api.Get<ISavingsGoalsService>()
+            .AddSavingsGoalAsync(new SaveSavingsGoal { Name = "Birthday", Target = 50m }, CancellationToken);
+        SaveCalendarEvent birthday = Birthday();
+        birthday.SavingsTarget = 100m;
+        birthday.CreateSavingsGoal = true;
+
+        // Act & Assert
+        await Assert.ThrowsAsync<NameTakenException>(() =>
+            api.Get<ICalendarService>().AddEventAsync(birthday, CancellationToken));
     }
 
     private static SaveCalendarEvent Birthday() => new()

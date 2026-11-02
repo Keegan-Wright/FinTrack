@@ -32,12 +32,14 @@ public static class SavingsGoalEndpoints
                         ISavingsGoalsService service, CancellationToken cancellationToken) =>
                     TypedResults.Ok(await service.AddSavingsGoalAsync(request, cancellationToken)))
                 .Validated<SaveSavingsGoal>()
+                .ConflictWhenNameTaken()
                 .NotFoundWhenMissing();
 
             goals.MapPut("{id:guid}", async Task<Ok<SavingsGoal>> (Guid id, SaveSavingsGoal request,
                         ISavingsGoalsService service, CancellationToken cancellationToken) =>
                     TypedResults.Ok(await service.UpdateSavingsGoalAsync(id, request, cancellationToken)))
                 .Validated<SaveSavingsGoal>()
+                .ConflictWhenNameTaken()
                 .NotFoundWhenMissing();
 
             goals.MapDelete("{id:guid}", async Task<Results<NoContent, NotFound>> (Guid id,

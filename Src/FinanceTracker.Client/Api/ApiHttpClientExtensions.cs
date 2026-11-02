@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
+using FinanceTracker.Contracts;
 
 namespace FinanceTracker.Client.Api;
 
@@ -89,6 +90,25 @@ public static class ApiHttpClientExtensions
             }
 
             response.EnsureSuccessStatusCode();
+        }
+
+        /// <summary>
+        /// For the services that also throw <see cref="NameTakenException"/> when the user already has something
+        /// called that, which the API answers with 409.
+        /// </summary>
+        /// <param name="kind">What's named, e.g. <c>savings goal</c>.</param>
+        /// <param name="name">The name that was sent.</param>
+        /// <exception cref="NameTakenException">The API answered 409.</exception>
+        /// <exception cref="InvalidOperationException">The API answered 404.</exception>
+        /// <exception cref="HttpRequestException">The API answered with any other failure.</exception>
+        public void EnsureNameFree(string kind, string name)
+        {
+            if (response.StatusCode == HttpStatusCode.Conflict)
+            {
+                throw new NameTakenException(kind, name.Trim());
+            }
+
+            response.EnsureFound();
         }
 
         /// <summary>

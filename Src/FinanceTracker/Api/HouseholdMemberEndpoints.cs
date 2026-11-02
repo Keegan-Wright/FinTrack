@@ -23,12 +23,14 @@ public static class HouseholdMemberEndpoints
             members.MapPost(string.Empty, async Task<Ok<HouseholdMember>> (AddHouseholdMember request,
                         IHouseholdMemberService service, CancellationToken cancellationToken) =>
                     TypedResults.Ok(await service.AddHouseholdMemberAsync(request, cancellationToken)))
-                .Validated<AddHouseholdMember>();
+                .Validated<AddHouseholdMember>()
+                .ConflictWhenNameTaken();
 
             members.MapPut("{id:guid}", async Task<Ok<HouseholdMember>> (Guid id, UpdateHouseholdMember request,
                         IHouseholdMemberService service, CancellationToken cancellationToken) =>
                     TypedResults.Ok(await service.UpdateHouseholdMemberAsync(id, request, cancellationToken)))
                 .Validated<UpdateHouseholdMember>()
+                .ConflictWhenNameTaken()
                 .NotFoundWhenMissing();
 
             members.MapPut("{id:guid}/recognition", async Task<Ok<HouseholdMemberRecognitionSaved>> (Guid id,

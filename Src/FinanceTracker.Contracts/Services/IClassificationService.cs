@@ -27,7 +27,7 @@ public interface IClassificationService
     /// <see cref="Validation.AddClassificationsRequestValidator"/> first.
     /// </summary>
     /// <returns>The classification as stored, with its new id.</returns>
-    /// <exception cref="DuplicateTagException">The user already has a tag called that, in any case.</exception>
+    /// <exception cref="NameTakenException">The user already has a tag called that, in any case.</exception>
     Task<Classification> AddCustomClassificationAsync(AddClassifications classification,
         CancellationToken cancellationToken);
 
@@ -36,7 +36,7 @@ public interface IClassificationService
     /// </summary>
     /// <returns>The classification as stored.</returns>
     /// <exception cref="InvalidOperationException">The user has no classification with <paramref name="id"/>.</exception>
-    /// <exception cref="DuplicateTagException">The user already has another tag called that, in any case.</exception>
+    /// <exception cref="NameTakenException">The user already has another tag called that, in any case.</exception>
     Task<Classification> RenameCustomClassificationAsync(Guid id, RenameClassification request,
         CancellationToken cancellationToken);
 

@@ -28,6 +28,8 @@ public interface IDebtsService
     /// </summary>
     /// <returns>The debt as stored, with its new id.</returns>
     /// <exception cref="InvalidOperationException">The account isn't the user's.</exception>
+    /// <exception cref="NameTakenException">The user already has a debt called that, paid off or not, in any case.
+    /// </exception>
     Task<Debt> AddDebtAsync(SaveDebt debt, CancellationToken cancellationToken);
 
     /// <summary>
@@ -35,6 +37,8 @@ public interface IDebtsService
     /// </summary>
     /// <exception cref="InvalidOperationException">The user has no debt with <paramref name="id"/>, or the account
     /// isn't theirs.</exception>
+    /// <exception cref="NameTakenException">The user already has another debt called that, paid off or not, in any
+    /// case.</exception>
     Task<Debt> UpdateDebtAsync(Guid id, SaveDebt debt, CancellationToken cancellationToken);
 
     /// <summary>

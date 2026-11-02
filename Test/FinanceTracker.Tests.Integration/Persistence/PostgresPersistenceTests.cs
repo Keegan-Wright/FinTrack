@@ -1,3 +1,4 @@
+using FinanceTracker.Contracts;
 using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Domain.SavingsGoals;
 using FinanceTracker.Infrastructure;
@@ -65,12 +66,14 @@ public class PostgresPersistenceTests : IntegrationTestBase
     [Test]
     public async Task EncryptedColumns_SameValueIsStoredDifferently()
     {
-        // Arrange
+        // Arrange, two users as one can't have two goals with the same name
         string username = UniqueName();
+        string otherUsername = UniqueName();
         await Scenario.Do(s => s.UserScenario.WithUser(username))
+            .Do(s => s.UserScenario.WithUser(otherUsername))
             .Do(s => s.SavingsGoalScenario.WithSavingsGoal("first", username, userId =>
                 new SavingsGoal(userId, "Holidays", 1, 1, 1, null)))
-            .Do(s => s.SavingsGoalScenario.WithSavingsGoal("second", username, userId =>
+            .Do(s => s.SavingsGoalScenario.WithSavingsGoal("second", otherUsername, userId =>
                 new SavingsGoal(userId, "Holidays", 1, 1, 1, null)));
 
         // Act
@@ -85,6 +88,23 @@ public class PostgresPersistenceTests : IntegrationTestBase
             await Assert.That(first).IsNotEqualTo(second);
             await Assert.That(first).StartsWith("1:");
         }
+    }
+
+    [Test]
+    public async Task SaveKeepingNamesApart_PostgresRefusingAName_ThrowsNameTaken()
+    {
+        // Arrange, as if two saves passed the name check at once
+        string username = UniqueName();
+        await Scenario.Do(s => s.UserScenario.WithUser(username))
+            .Do(s => s.SavingsGoalScenario.WithSavingsGoal("first", username, userId =>
+                new SavingsGoal(userId, "Holidays", 1, 1, 1, null)));
+
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        context.SavingsGoals.Add(new SavingsGoal(Scenario.UserMappings[username], "HOLIDAYS", 1, 1, 1, null));
+
+        // Act & Assert
+        await Assert.ThrowsAsync<NameTakenException>(() => NameCheck.SaveKeepingNamesApartAsync(context,
+            NameTakenException.SavingsGoal, "HOLIDAYS", CancellationToken));
     }
 
     [Test]

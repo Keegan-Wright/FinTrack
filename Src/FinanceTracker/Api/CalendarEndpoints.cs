@@ -28,12 +28,14 @@ public static class CalendarEndpoints
                         ICalendarService service, CancellationToken cancellationToken) =>
                     TypedResults.Ok(await service.AddEventAsync(request, cancellationToken)))
                 .Validated<SaveCalendarEvent>()
+                .ConflictWhenNameTaken()
                 .NotFoundWhenMissing();
 
             calendar.MapPut("events/{id:guid}", async Task<Ok<CalendarEvent>> (Guid id, SaveCalendarEvent request,
                         ICalendarService service, CancellationToken cancellationToken) =>
                     TypedResults.Ok(await service.UpdateEventAsync(id, request, cancellationToken)))
                 .Validated<SaveCalendarEvent>()
+                .ConflictWhenNameTaken()
                 .NotFoundWhenMissing();
 
             calendar.MapDelete("events/{id:guid}", async Task<NoContent> (Guid id, ICalendarService service,

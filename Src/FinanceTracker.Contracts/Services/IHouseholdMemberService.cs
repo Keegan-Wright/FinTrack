@@ -16,6 +16,8 @@ public interface IHouseholdMemberService
     /// <see cref="Validation.AddHouseholdMemberRequestValidator"/> first.
     /// </summary>
     /// <returns>The member as stored.</returns>
+    /// <exception cref="NameTakenException">Someone in the household already has that first and last name, in any
+    /// case.</exception>
     Task<HouseholdMember.HouseholdMember> AddHouseholdMemberAsync(HouseholdMember.AddHouseholdMember categoryToAdd,
         CancellationToken cancellationToken);
 
@@ -24,6 +26,8 @@ public interface IHouseholdMemberService
     /// </summary>
     /// <returns>The member as stored.</returns>
     /// <exception cref="InvalidOperationException">The user has no member with <paramref name="id"/>.</exception>
+    /// <exception cref="NameTakenException">Someone else in the household already has that first and last name, in
+    /// any case.</exception>
     Task<HouseholdMember.HouseholdMember> UpdateHouseholdMemberAsync(Guid id,
         HouseholdMember.UpdateHouseholdMember request, CancellationToken cancellationToken);
 

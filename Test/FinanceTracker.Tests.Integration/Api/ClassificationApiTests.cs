@@ -1,3 +1,4 @@
+using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.Classifications;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Transactions;
@@ -78,7 +79,7 @@ public class ClassificationApiTests : IntegrationTestBase
         await service.AddCustomClassificationAsync(new AddClassifications { Tag = "Holiday" }, CancellationToken);
 
         // Act
-        DuplicateTagException? exception = await Assert.ThrowsAsync<DuplicateTagException>(() =>
+        NameTakenException? exception = await Assert.ThrowsAsync<NameTakenException>(() =>
             service.AddCustomClassificationAsync(new AddClassifications { Tag = "holiday" }, CancellationToken));
 
         // Assert
@@ -96,7 +97,7 @@ public class ClassificationApiTests : IntegrationTestBase
         await service.AddCustomClassificationAsync(new AddClassifications { Tag = "Travel" }, CancellationToken);
 
         // Act & Assert
-        await Assert.ThrowsAsync<DuplicateTagException>(() => service.RenameCustomClassificationAsync(
+        await Assert.ThrowsAsync<NameTakenException>(() => service.RenameCustomClassificationAsync(
             holiday.ClassificationId, new RenameClassification { Tag = "Travel" }, CancellationToken));
     }
 

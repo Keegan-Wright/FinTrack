@@ -5,6 +5,7 @@
 @using System.Globalization
 @using FinanceTracker.Client.Components.Bills
 @using FinanceTracker.Client.Components.Calendar
+@using FinanceTracker.Contracts
 @using FinanceTracker.Contracts.Bills
 @using FinanceTracker.Contracts.Calendar
 @using FinanceTracker.Contracts.SavingsGoals
@@ -427,6 +428,10 @@
             await change();
             Days = await LoadMonthAsync(_cts.Token);
             Snackbar.Add(done, Severity.Success);
+        }
+        catch (NameTakenException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Warning);
         }
         catch (InvalidOperationException)
         {

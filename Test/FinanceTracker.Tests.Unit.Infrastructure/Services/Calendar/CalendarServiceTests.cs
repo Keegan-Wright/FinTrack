@@ -1,3 +1,4 @@
+using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.Calendar;
 using FinanceTracker.Domain.Bills;
 using FinanceTracker.Domain.Debts;
@@ -342,6 +343,30 @@ public class CalendarServiceTests : InfrastructureTestBase
             await Assert.That(item.SavingsGoalName).IsEqualTo("Gifts");
             await Assert.That(item.Saved).IsEqualTo(40m);
             await Assert.That(item.SavingsTarget).IsEqualTo(100m);
+        }
+    }
+
+    [Test]
+    public async Task AddEventAsync_CreatingAGoalWithATakenName_ThrowsAndAddsNothing()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.SavingsGoalScenario.WithSavingsGoal("birthday", Username, userId =>
+                new SavingsGoal(userId, "Birthday", 0, 0, 50, null)));
+        CalendarService subject = BuildSubject();
+        SaveCalendarEvent birthday = Birthday();
+        birthday.SavingsTarget = 100m;
+        birthday.CreateSavingsGoal = true;
+
+        // Act
+        await Assert.ThrowsAsync<NameTakenException>(() => subject.AddEventAsync(birthday, CancellationToken));
+
+        // Assert
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        using (Assert.Multiple())
+        {
+            await Assert.That(await context.CalendarEvents.CountAsync(CancellationToken)).IsEqualTo(0);
+            await Assert.That(await context.SavingsGoals.CountAsync(CancellationToken)).IsEqualTo(1);
         }
     }
 

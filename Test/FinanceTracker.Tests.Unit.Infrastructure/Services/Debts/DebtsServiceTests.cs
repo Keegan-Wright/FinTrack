@@ -1,3 +1,4 @@
+using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.Debts;
 using FinanceTracker.Contracts.Transactions;
 using FinanceTracker.Domain.Common;
@@ -109,6 +110,62 @@ public class DebtsServiceTests : InfrastructureTestBase
             await Assert.That(detail.History.Select(x => x.Owed)).IsEquivalentTo([550m, 450m],
                 TUnit.Assertions.Enums.CollectionOrdering.Matching);
         }
+    }
+
+    [Test]
+    public async Task AddDebtAsync_NameOfOneTheyHadBefore_ThrowsAndAddsNothing()
+    {
+        // Arrange, the old one counts even once it's paid off, as its payments still name it
+        await SeedAsync();
+        DebtsService subject = BuildSubject(Username);
+        await subject.AddDebtAsync(CarLoan(), CancellationToken);
+        SaveDebt another = CarLoan();
+        another.Name = " car LOAN";
+
+        // Act
+        NameTakenException? exception = await Assert.ThrowsAsync<NameTakenException>(() =>
+            subject.AddDebtAsync(another, CancellationToken));
+
+        // Assert
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        using (Assert.Multiple())
+        {
+            await Assert.That(exception!.Message).IsEqualTo("You already have a debt called car LOAN");
+            await Assert.That(await context.Debts.CountAsync(CancellationToken)).IsEqualTo(1);
+        }
+    }
+
+    [Test]
+    public async Task UpdateDebtAsync_KeepingItsOwnName_Saves()
+    {
+        // Arrange
+        await SeedAsync();
+        DebtsService subject = BuildSubject(Username);
+        Debt added = await subject.AddDebtAsync(CarLoan(), CancellationToken);
+        SaveDebt edited = CarLoan();
+        edited.MonthlyPayment = 150m;
+
+        // Act
+        Debt updated = await subject.UpdateDebtAsync(added.Id, edited, CancellationToken);
+
+        // Assert
+        await Assert.That(updated.MonthlyPayment).IsEqualTo(150m);
+    }
+
+    [Test]
+    public async Task UpdateDebtAsync_ToAnotherDebtsName_Throws()
+    {
+        // Arrange
+        await SeedAsync();
+        DebtsService subject = BuildSubject(Username);
+        await subject.AddDebtAsync(CarLoan(), CancellationToken);
+        SaveDebt sofa = CarLoan();
+        sofa.Name = "Sofa";
+        Debt added = await subject.AddDebtAsync(sofa, CancellationToken);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<NameTakenException>(() =>
+            subject.UpdateDebtAsync(added.Id, CarLoan(), CancellationToken));
     }
 
     [Test]

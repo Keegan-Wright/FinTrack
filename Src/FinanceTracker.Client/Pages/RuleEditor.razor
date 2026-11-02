@@ -3,6 +3,7 @@
 @* Makes a rule or edits one (IRulesService), optionally starting from a transaction (?from={transactionId}). A new
    or edited rule reaches the transactions that arrive from the next sync, unless the user previews it and applies it
    to the ones they have. *@
+@using FinanceTracker.Client.Components.Bills
 @using FinanceTracker.Client.Components.Rules
 @using FinanceTracker.Contracts.Bills
 @using FinanceTracker.Contracts.Classifications
@@ -121,7 +122,7 @@ else
         (Tags ?? []).ToDictionary(static x => x.ClassificationId, static x => x.Tag ?? string.Empty);
 
     private IReadOnlyDictionary<Guid, string> BillNames =>
-        (BillList ?? []).ToDictionary(static x => x.Id, static x => x.Name);
+        (BillList ?? []).ToDictionary(static x => x.Id, BillText.PickerLabel);
 
     private IReadOnlyDictionary<Guid, string> DebtNames =>
         (DebtList ?? []).ToDictionary(static x => x.Id, static x => x.Name);

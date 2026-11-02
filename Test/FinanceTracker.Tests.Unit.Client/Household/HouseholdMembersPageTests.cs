@@ -2,6 +2,7 @@ using AngleSharp.Dom;
 using Bunit;
 using FinanceTracker.Client;
 using FinanceTracker.Client.Pages;
+using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.HouseholdMember;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Validation;
@@ -9,6 +10,7 @@ using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 
 namespace FinanceTracker.Tests.Unit.Client.Household;
 
@@ -78,6 +80,29 @@ public class HouseholdMembersPageTests : ComponentTestBase
                 Arg.Any<CancellationToken>());
             await Assert.That(cut.Markup).Contains("£2,500.00");
         }
+    }
+
+    [Test]
+    public async Task Edit_ToSomeoneElsesName_SaysSo()
+    {
+        // Arrange
+        _householdMemberService.UpdateHouseholdMemberAsync(_partner.Id, Arg.Any<UpdateHouseholdMember>(),
+                Arg.Any<CancellationToken>())
+            .ThrowsAsync(new NameTakenException(NameTakenException.Person, "Sam Smith"));
+        IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
+        IRenderedComponent<MudPopoverProvider> popovers = Render<MudPopoverProvider>();
+        IRenderedComponent<MudSnackbarProvider> snackbars = Render<MudSnackbarProvider>();
+        IRenderedComponent<HouseholdMembers> cut =
+            Render<HouseholdMembers>(p => p.AddCascadingValue(_applicationState));
+
+        // Act
+        Task choosing = await RowMenu.StartAsync(cut, popovers, "Jane Smith", "Edit");
+        Field(dialogs, "First name").Input("Sam");
+        await RowMenu.ConfirmAsync(dialogs, "OK");
+        await choosing;
+
+        // Assert
+        await Assert.That(snackbars.Markup).Contains("You already have a person called Sam Smith");
     }
 
     [Test]

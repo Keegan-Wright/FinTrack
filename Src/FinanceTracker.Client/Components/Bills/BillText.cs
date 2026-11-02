@@ -37,6 +37,22 @@ public static class BillText
         $"{bill.AccountName} · {FrequencyName(bill.Frequency)} · {SourceName(bill.Source)}";
 
     /// <summary>
+    /// How a bill reads where one is picked, telling apart bills with the same name, e.g.
+    /// <c>Phone · Joint · £12.00 monthly</c>, or <c>… · ended</c> once it has.
+    /// </summary>
+    public static string PickerLabel(Bill bill)
+    {
+        string label = $"{bill.Name} · {bill.AccountName} · {CurrencyFormatter.Format(bill.ExpectedAmount)} " +
+                       FrequencyName(bill.Frequency).ToLowerInvariant();
+        if (bill.EndedOn is not null)
+        {
+            return $"{label} · ended";
+        }
+
+        return label;
+    }
+
+    /// <summary>
     /// e.g. <c>4 Nov</c>, with the year when it isn't this one.
     /// </summary>
     public static string Day(DateOnly day, DateOnly today)

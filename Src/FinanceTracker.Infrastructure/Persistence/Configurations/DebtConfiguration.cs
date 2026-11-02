@@ -19,6 +19,10 @@ internal sealed class DebtConfiguration : AggregateRootConfiguration<Debt>
         builder.Property(x => x.MonthlyPayment).Encrypted();
         builder.Property(x => x.PayOffGoal).Encrypted();
 
+        // One debt per name for each user in any case, paid off or not, see NameCheck
+        string nameKey = builder.HasNameBlindIndex(x => x.Name);
+        builder.HasIndex(nameof(Debt.UserId), nameKey).IsUnique();
+
         // Outlives its account, working out what's owed from its payments again
         builder.HasOne<BankAccount>()
             .WithMany()
