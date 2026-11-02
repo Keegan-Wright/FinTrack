@@ -1,0 +1,32 @@
+/* Each payment is a row, divided rather than boxed */
+.ft-payment-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.ft-payment {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    padding: 10px 0;
+}
+
+.ft-payment + .ft-payment {
+    border-top: 1px solid var(--mud-palette-lines-default);
+}
+
+.ft-payment__line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.ft-payment__line ::deep .ft-payment__description {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}

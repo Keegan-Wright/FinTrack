@@ -195,8 +195,48 @@ public class TransactionDetailsDialogTests : ComponentTestBase
         }
     }
 
+    [Test]
+    public async Task Render_PaysOffADebt_SaysWhichAndWhoSaidSo()
+    {
+        // Act
+        await OpenAsync(TransactionListTests.Transaction("CAR FINANCE", -250m,
+            debt: new TransactionDebt
+            {
+                DebtId = Guid.NewGuid(), DebtName = "Car loan", DecidedBy = TransferDecidedBy.Rule,
+                RuleName = "Car finance"
+            }));
+
+        // Assert
+        string details = _provider.Find(".ft-details").TextContent;
+        using (Assert.Multiple())
+        {
+            await Assert.That(details).Contains("Pays off");
+            await Assert.That(details).Contains("Car loan");
+            await Assert.That(details).Contains("By your rule Car finance");
+        }
+    }
+
+    [Test]
+    public async Task Choose_PaysOffADebt_ClosesAndRaisesIt()
+    {
+        // Arrange
+        bool payDebt = false;
+        await OpenAsync(TransactionListTests.Transaction("CAR FINANCE", -250m), onPayDebt: () => payDebt = true);
+
+        // Act
+        Button("Pays off a debt").Click();
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(payDebt).IsTrue();
+            await Assert.That(_provider.FindAll(".ft-details")).IsEmpty();
+        }
+    }
+
     private async Task OpenAsync(Transaction transaction, Action<TransferAction>? onTransferAction = null,
-        Action? onAddTags = null, Action? onCreateRule = null, Func<string, Task<Transaction?>>? onHide = null)
+        Action? onAddTags = null, Action? onCreateRule = null, Func<string, Task<Transaction?>>? onHide = null,
+        Action? onPayDebt = null)
     {
         _provider = Render<MudDialogProvider>();
         IDialogService dialogService = Services.GetRequiredService<IDialogService>();
@@ -206,7 +246,8 @@ public class TransactionDetailsDialogTests : ComponentTestBase
             { x => x.OnTransferAction, EventCallback.Factory.Create(this, onTransferAction ?? (_ => { })) },
             { x => x.OnAddTags, EventCallback.Factory.Create(this, onAddTags ?? (() => { })) },
             { x => x.OnCreateRule, EventCallback.Factory.Create(this, onCreateRule ?? (() => { })) },
-            { x => x.OnHideClassification, onHide }
+            { x => x.OnHideClassification, onHide },
+            { x => x.OnPayDebt, EventCallback.Factory.Create(this, onPayDebt ?? (() => { })) }
         };
 
         await _provider.InvokeAsync(() => dialogService.ShowAsync<TransactionDetailsDialog>(null, parameters));

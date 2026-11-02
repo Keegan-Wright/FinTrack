@@ -1,5 +1,6 @@
 using FinanceTracker.Domain.Bills;
 using FinanceTracker.Domain.Budgeting;
+using FinanceTracker.Domain.Calendar;
 using FinanceTracker.Domain.Debts;
 using FinanceTracker.Domain.Classifications;
 using FinanceTracker.Domain.Household;
@@ -71,6 +72,7 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
     public DbSet<Bill> Bills { get; private set; }
     public DbSet<BillSuggestion> BillSuggestions { get; private set; }
     public DbSet<Debt> Debts { get; private set; }
+    public DbSet<CalendarEvent> CalendarEvents { get; private set; }
     public DbSet<HouseholdMember> HouseholdMembers { get; private set; }
     public DbSet<TransferMatchCheckpoint> TransferMatchCheckpoints { get; private set; }
     public DbSet<BalanceSnapshot> BalanceSnapshots { get; private set; }

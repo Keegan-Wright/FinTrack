@@ -1,0 +1,18 @@
+.ft-overpayment {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* The amount and its button share a line, the button drops under it on a phone */
+.ft-overpayment__form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 16px;
+}
+
+.ft-overpayment__form ::deep .ft-overpayment__amount {
+    flex: 1 1 200px;
+    max-width: 280px;
+}

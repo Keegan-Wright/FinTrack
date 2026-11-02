@@ -117,8 +117,9 @@ public static class RuleText
 
     /// <param name="tagNames">The user's tags by id. A tag not in it reads as deleted.</param>
     /// <param name="billNames">The user's bills by id. A bill not in it reads as deleted.</param>
+    /// <param name="debtNames">The user's debts by id. A debt not in it reads as deleted.</param>
     public static string Describe(RuleAction action, IReadOnlyDictionary<Guid, string> tagNames,
-        IReadOnlyDictionary<Guid, string>? billNames = null)
+        IReadOnlyDictionary<Guid, string>? billNames = null, IReadOnlyDictionary<Guid, string>? debtNames = null)
     {
         if (action.Type == RuleActionType.HideClassification)
         {
@@ -133,6 +134,16 @@ public static class RuleText
             }
 
             return "Pay a deleted bill";
+        }
+
+        if (action.Type == RuleActionType.PayDebt)
+        {
+            if (action.DebtId is { } debtId && debtNames?.TryGetValue(debtId, out string? debtName) == true)
+            {
+                return $"Pay off debt {debtName}";
+            }
+
+            return "Pay off a deleted debt";
         }
 
         if (action.Type != RuleActionType.AddTag)
@@ -152,7 +163,8 @@ public static class RuleText
     /// One line for the list its conditions joined by and or, then what it does.
     /// </summary>
     public static string Summary(Rule rule, IReadOnlyDictionary<Guid, string> accountNames,
-        IReadOnlyDictionary<Guid, string> tagNames, IReadOnlyDictionary<Guid, string>? billNames = null)
+        IReadOnlyDictionary<Guid, string> tagNames, IReadOnlyDictionary<Guid, string>? billNames = null,
+        IReadOnlyDictionary<Guid, string>? debtNames = null)
     {
         string joiner = rule.MatchMode == RuleMatchMode.Any ? " or " : " and ";
         string conditions = string.Join(joiner, rule.Conditions.Select(x => Describe(x, accountNames)));
@@ -162,7 +174,7 @@ public static class RuleText
             return $"{conditions}, does nothing";
         }
 
-        string actions = string.Join(", ", rule.Actions.Select(x => Describe(x, tagNames, billNames)));
+        string actions = string.Join(", ", rule.Actions.Select(x => Describe(x, tagNames, billNames, debtNames)));
         return $"{conditions} → {actions}";
     }
 
@@ -218,6 +230,42 @@ public static class RuleText
         {
             yield return TransferChange(change.TransferAfter);
         }
+
+        if (change.BillAfter != change.BillBefore)
+        {
+            yield return BillChange(change.BillBefore, change.BillAfter);
+        }
+
+        if (change.DebtAfter != change.DebtBefore)
+        {
+            yield return DebtChange(change.DebtBefore, change.DebtAfter);
+        }
+    }
+
+    /// <summary>
+    /// e.g. <c>Pays Streaming</c>, or <c>Stops paying Streaming</c> when a rule takes the bill back.
+    /// </summary>
+    private static string BillChange(string? before, string? after)
+    {
+        if (after is null)
+        {
+            return $"Stops paying {before}";
+        }
+
+        return $"Pays {after}";
+    }
+
+    /// <summary>
+    /// e.g. <c>Pays off Car loan</c>, or <c>Stops paying off Car loan</c> when a rule takes the debt back.
+    /// </summary>
+    private static string DebtChange(string? before, string? after)
+    {
+        if (after is null)
+        {
+            return $"Stops paying off {before}";
+        }
+
+        return $"Pays off {after}";
     }
 
     /// <summary>

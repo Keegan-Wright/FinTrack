@@ -1,0 +1,194 @@
+@* A new calendar event, or an existing one to change. What it is, when, whether it's every year, notes, and what to
+   save for it in a savings goal the user picks or creates, which can move on to the next year once each passes. *@
+@using System.Globalization
+@using FinanceTracker.Client.Components.Dialogs
+@using FinanceTracker.Client.Extensions
+@using FinanceTracker.Contracts.Calendar
+@using FinanceTracker.Contracts.SavingsGoals
+@using FluentValidation
+@using FluentValidation.Results
+@inject IValidator<SaveCalendarEvent> Validator
+
+<DialogBase TResponse="SaveCalendarEvent" Title="@(Event is null ? "New event" : $"Edit {Event.Title}")"
+            ResponseConstructor="BuildResponseModel">
+    <Content>
+        <MudForm @ref="_form" Model="@_model" class="ft-event-form">
+            <MudTextField T="string" @bind-Value="_model.Title" Label="Title" For="@(() => _model.Title)"
+                          Validation="@(Validator.ValidateValue(_model, nameof(SaveCalendarEvent.Title)))"
+                          HelperText="e.g. Birthday or Summer trip" Immediate="true"/>
+
+            <div class="ft-event-form__pair">
+                <MudDatePicker @bind-Date="_date" Label="On"/>
+                <MudSwitch T="bool" Value="@IsYearly" ValueChanged="@OnYearlyChanged" Color="Color.Primary"
+                           Label="Every year"/>
+            </div>
+            @foreach (string error in ErrorsFor(nameof(SaveCalendarEvent.Date)))
+            {
+                <MudText Typo="Typo.caption" Color="Color.Error">@error</MudText>
+            }
+
+            <MudTextField T="string" @bind-Value="_model.Notes" Label="Notes" Lines="2" Sizing="InputSizing.Auto"
+                          HelperText="Optional, anything to remember"/>
+
+            <div class="ft-event-form__pair">
+                <MudTextField T="decimal?" @bind-Value="_model.SavingsTarget" Label="Save for it"
+                              For="@(() => _model.SavingsTarget)" InputMode="@(InputMode.@decimal)"
+                              Adornment="Adornment.Start" AdornmentText="@CurrencySymbol" Clearable="true"
+                              Validation="@(Validator.ValidateValue(_model, nameof(SaveCalendarEvent.SavingsTarget)))"
+                              HelperText="Optional, what you'd like put by" Immediate="true"/>
+                <MudSelect T="string" Label="Savings goal" Value="@_goal" ValueChanged="@OnGoalChanged"
+                           ToStringFunc="@GoalName" HelperText="Where you're saving for it">
+                    <MudSelectItem T="string" Value="@NoGoal">None</MudSelectItem>
+                    <MudSelectItem T="string" Value="@NewGoal">Create a new goal</MudSelectItem>
+                    @foreach (SavingsGoal goal in Goals.OrderBy(static x => x.Name))
+                    {
+                        <MudSelectItem T="string" Value="@goal.Id.ToString()">@goal.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </div>
+            @foreach (string error in ErrorsFor(nameof(SaveCalendarEvent.SavingsGoalId)))
+            {
+                <MudText Typo="Typo.caption" Color="Color.Error">@error</MudText>
+            }
+            @if (_goal == NewGoal)
+            {
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                    A goal named after it is made, aiming for what to save by its next date.
+                </MudText>
+            }
+
+            @if (IsYearly && _goal != NoGoal)
+            {
+                <MudSwitch T="bool" @bind-Value="_model.RollsGoalOn" Color="Color.Primary"
+                           Label="Move the goal on to next year once it's passed"/>
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                    The day after, the goal aims for its next date, with what to save as its target.
+                </MudText>
+            }
+            @foreach (string error in ErrorsFor(nameof(SaveCalendarEvent.RollsGoalOn)))
+            {
+                <MudText Typo="Typo.caption" Color="Color.Error">@error</MudText>
+            }
+        </MudForm>
+    </Content>
+</DialogBase>
+
+@code {
+
+    private const string NoGoal = "none";
+
+    private const string NewGoal = "new";
+
+    /// <summary>
+    /// The event to change, null for a new one.
+    /// </summary>
+    [Parameter] public CalendarEvent? Event { get; set; }
+
+    /// <summary>
+    /// The day a new event is on.
+    /// </summary>
+    [Parameter] public DateOnly Day { get; set; }
+
+    /// <summary>
+    /// The user's savings goals to choose from.
+    /// </summary>
+    [Parameter] [EditorRequired] public required IReadOnlyList<SavingsGoal> Goals { get; set; }
+
+    private MudForm _form = null!;
+    private SaveCalendarEvent _model = new();
+    private DateTime? _date;
+    private string _goal = NoGoal;
+    private List<ValidationFailure> _errors = [];
+
+    private static string CurrencySymbol => CultureInfo.CurrentCulture.NumberFormat.CurrencySymbol;
+
+    private bool IsYearly => _model.Recurrence == EventRecurrence.Yearly;
+
+    protected override void OnInitialized()
+    {
+        if (Event is null)
+        {
+            _date = Day.ToDateTime(TimeOnly.MinValue);
+            return;
+        }
+
+        _model = new SaveCalendarEvent
+        {
+            Title = Event.Title,
+            Date = Event.Date,
+            Recurrence = Event.Recurrence,
+            Notes = Event.Notes,
+            SavingsTarget = Event.SavingsTarget,
+            SavingsGoalId = Event.SavingsGoalId,
+            RollsGoalOn = Event.RollsGoalOn
+        };
+        _date = Event.Date.ToDateTime(TimeOnly.MinValue);
+        _goal = Event.SavingsGoalId?.ToString() ?? NoGoal;
+    }
+
+    private void OnYearlyChanged(bool yearly)
+    {
+        _model.Recurrence = yearly ? EventRecurrence.Yearly : EventRecurrence.None;
+        if (!yearly)
+        {
+            _model.RollsGoalOn = false;
+        }
+    }
+
+    private void OnGoalChanged(string goal)
+    {
+        _goal = goal;
+        if (goal == NoGoal)
+        {
+            _model.RollsGoalOn = false;
+        }
+    }
+
+    private string GoalName(string goal)
+    {
+        if (goal == NoGoal)
+        {
+            return "None";
+        }
+
+        if (goal == NewGoal)
+        {
+            return "Create a new goal";
+        }
+
+        SavingsGoal? chosen = Goals.FirstOrDefault(x => x.Id.ToString() == goal);
+        if (chosen is not null)
+        {
+            return chosen.Name;
+        }
+
+        // Its goal could have gone since the list loaded, keep showing the name the event has
+        return Event?.SavingsGoalName ?? string.Empty;
+    }
+
+    private IEnumerable<string> ErrorsFor(string propertyName) => _errors
+        .Where(x => x.PropertyName == propertyName)
+        .Select(static x => x.ErrorMessage);
+
+    /// <summary>
+    /// What's on screen, with the goal chosen, created or none.
+    /// </summary>
+    private async Task<SaveCalendarEvent?> BuildResponseModel()
+    {
+        _model.Date = _date is { } date ? DateOnly.FromDateTime(date) : default;
+        _model.CreateSavingsGoal = _goal == NewGoal;
+        _model.SavingsGoalId = Guid.TryParse(_goal, out Guid goalId) ? goalId : null;
+
+        await _form.ValidateAsync();
+        ValidationResult result = await Validator.ValidateAsync(_model);
+        _errors = result.Errors.ToList();
+
+        if (!_form.IsValid || !result.IsValid)
+        {
+            return null;
+        }
+
+        return _model;
+    }
+
+}

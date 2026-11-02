@@ -1,0 +1,13 @@
+/* Each debt is a row, divided rather than boxed */
+.ft-debt-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.ft-debt-list > ::deep .ft-debt {
+    padding: 12px 0;
+}
+
+.ft-debt-list > ::deep .ft-debt + .ft-debt {
+    border-top: 1px solid var(--mud-palette-lines-default);
+}

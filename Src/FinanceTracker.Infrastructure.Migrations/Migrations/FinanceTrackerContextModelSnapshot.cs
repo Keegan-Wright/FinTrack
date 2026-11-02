@@ -209,6 +209,64 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.ToTable("Budgets", (string)null);
                 });
 
+            modelBuilder.Entity("FinanceTracker.Domain.Calendar.CalendarEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Date")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.Property<string>("Recurrence")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.Property<bool>("RollsGoalOn")
+                        .HasColumnType("boolean");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<Guid?>("SavingsGoalId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SavingsTarget")
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.Property<DateTime?>("Updated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SavingsGoalId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("CalendarEvents", (string)null);
+                });
+
             modelBuilder.Entity("FinanceTracker.Domain.Classifications.CustomClassification", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1561,6 +1619,20 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                         });
 
                     b.Navigation("Limits");
+                });
+
+            modelBuilder.Entity("FinanceTracker.Domain.Calendar.CalendarEvent", b =>
+                {
+                    b.HasOne("FinanceTracker.Domain.SavingsGoals.SavingsGoal", null)
+                        .WithMany()
+                        .HasForeignKey("SavingsGoalId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("FinanceTracker.Domain.Identity.FinanceTrackerUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("FinanceTracker.Domain.Classifications.CustomClassification", b =>

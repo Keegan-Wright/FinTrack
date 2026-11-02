@@ -1,16 +1,21 @@
 @page "/Calendar"
-@* A month view of the user's transactions, bills and savings goal dates (ICalendarService). A grid of days with each
-   day's net and a marker for bills due, and the chosen day's bills, transactions and goals beside it. *@
+@* A month view of the user's transactions, bills, savings goal and debt dates, and their own events
+   (ICalendarService). A grid of days with each day's net and markers for what's on, and the chosen day's events,
+   bills, debts, goals and transactions beside it, where events are added, changed and deleted. *@
 @using System.Globalization
 @using FinanceTracker.Client.Components.Bills
 @using FinanceTracker.Client.Components.Calendar
 @using FinanceTracker.Contracts.Bills
 @using FinanceTracker.Contracts.Calendar
+@using FinanceTracker.Contracts.SavingsGoals
 @using Microsoft.AspNetCore.Authorization
 @inherits PageComponent
 
 @attribute [Authorize]
 @inject ICalendarService CalendarService
+@inject ISavingsGoalsService SavingsGoalsService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
 @inject TimeProvider TimeProvider
 
 <PageTitle>FinTrack - Calendar</PageTitle>
@@ -84,6 +89,17 @@
                                 <MudIcon Icon="@Icons.Material.Filled.Flag" Size="Size.Small" Color="Color.Warning"
                                          Class="ft-calendar__icon"/>
                             }
+                            @if (day.Events.Any())
+                            {
+                                <MudIcon Icon="@Icons.Material.Outlined.Celebration" Size="Size.Small"
+                                         Color="Color.Primary" Class="ft-calendar__icon"
+                                         aria-label="@CalendarText.EventsLabel(day.Events.Count())"/>
+                            }
+                            @if (day.Debts.Any())
+                            {
+                                <MudIcon Icon="@Icons.Material.Outlined.CreditScore" Size="Size.Small"
+                                         Color="Color.Success" Class="ft-calendar__icon"/>
+                            }
                         </span>
                     </button>
                 }
@@ -94,53 +110,98 @@
         @* A busy day scrolls inside the calendar's height beside it *@
         <Section Title="@_selectedDate.ToString("dddd d MMMM", CultureInfo.CurrentCulture)"
                  Caption="@SelectedCaption" Class="h-100" ScrollBody="true">
-            @if (SelectedDay is null || IsQuiet(SelectedDay))
-            {
-                <MudText Typo="Typo.body2" Class="mud-text-secondary">A quiet day, nothing in or out.</MudText>
-            }
-            else
-            {
-                <div class="ft-list">
-                    @foreach (CalendarBillItem bill in SelectedDay.Bills)
-                    {
-                        <div class="ft-list__row">
-                            <MudIcon Icon="@BillText.StateIcon(bill.State)" Color="@BillText.StateColor(bill.State)"/>
-                            <div class="ft-list__main">
-                                <MudText Typo="Typo.body2" Class="text-truncate">@bill.Name</MudText>
-                                <MudText Typo="Typo.caption" Class="mud-text-secondary">@BillStateText(bill.State)</MudText>
+            <Actions>
+                <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                           StartIcon="@Icons.Material.Outlined.Add" OnClick="@AddEventAsync">Add event</MudButton>
+            </Actions>
+            <ChildContent>
+                @if (SelectedDay is null || IsQuiet(SelectedDay))
+                {
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">A quiet day, nothing in or out.</MudText>
+                }
+                else
+                {
+                    <div class="ft-list">
+                        @foreach (CalendarEventItem calendarEvent in SelectedDay.Events)
+                        {
+                            <div class="ft-list__row">
+                                <MudIcon Icon="@Icons.Material.Outlined.Celebration" Color="Color.Primary"/>
+                                <div class="ft-list__main">
+                                    <MudText Typo="Typo.body2" Class="text-truncate">@calendarEvent.Title</MudText>
+                                    <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                        @(CalendarText.Saving(calendarEvent) ?? CalendarText.Kind(calendarEvent))
+                                    </MudText>
+                                    @if (calendarEvent.Notes is { } notes)
+                                    {
+                                        <MudText Typo="Typo.caption" Class="mud-text-secondary">@notes</MudText>
+                                    }
+                                </div>
+                                <div class="ft-list__end">
+                                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true"
+                                             AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
+                                             aria-label="@($"Actions for {calendarEvent.Title}")">
+                                        <MudMenuItem Icon="@Icons.Material.Outlined.Edit"
+                                                     OnClick="@(() => EditEventAsync(calendarEvent))">Edit</MudMenuItem>
+                                        <MudMenuItem Icon="@Icons.Material.Outlined.Delete"
+                                                     OnClick="@(() => DeleteEventAsync(calendarEvent))">Delete</MudMenuItem>
+                                    </MudMenu>
+                                </div>
                             </div>
-                            <div class="ft-list__end">
-                                <MoneyText Value="@bill.Amount"/>
+                        }
+                        @foreach (CalendarDebtItem debt in SelectedDay.Debts)
+                        {
+                            <div class="ft-list__row">
+                                <MudIcon Icon="@Icons.Material.Outlined.CreditScore"
+                                         Color="@(debt.OnTrack == false ? Color.Warning : Color.Success)"/>
+                                <div class="ft-list__main">
+                                    <MudLink Href="@($"Debts/{debt.DebtId}")" Typo="Typo.body2" Class="text-truncate">
+                                        @debt.Name
+                                    </MudLink>
+                                    <MudText Typo="Typo.caption" Class="mud-text-secondary">@CalendarText.DebtDate(debt)</MudText>
+                                </div>
                             </div>
-                        </div>
-                    }
-                    @foreach (var goal in SelectedDay.Goals)
-                    {
-                        <div class="ft-list__row">
-                            <MudIcon Icon="@Icons.Material.Filled.Flag" Color="Color.Warning"/>
-                            <div class="ft-list__main">
-                                <MudText Typo="Typo.body2" Class="text-truncate">@goal.Name</MudText>
-                                <MudText Typo="Typo.caption" Class="mud-text-secondary">Savings goal due</MudText>
+                        }
+                        @foreach (CalendarBillItem bill in SelectedDay.Bills)
+                        {
+                            <div class="ft-list__row">
+                                <MudIcon Icon="@BillText.StateIcon(bill.State)" Color="@BillText.StateColor(bill.State)"/>
+                                <div class="ft-list__main">
+                                    <MudText Typo="Typo.body2" Class="text-truncate">@bill.Name</MudText>
+                                    <MudText Typo="Typo.caption" Class="mud-text-secondary">@BillStateText(bill.State)</MudText>
+                                </div>
+                                <div class="ft-list__end">
+                                    <MoneyText Value="@bill.Amount"/>
+                                </div>
                             </div>
-                        </div>
-                    }
-                    @foreach (var transaction in SelectedDay.Transactions.OrderBy(static x => x.TransactionTime))
-                    {
-                        <div class="ft-list__row">
-                            <div class="ft-list__main">
-                                <MudText Typo="Typo.body2" Class="text-truncate">@transaction.Description</MudText>
-                                <MudText Typo="Typo.caption" Class="mud-text-secondary">
-                                    @transaction.TransactionTime.ToLocalTime().ToString("HH:mm", CultureInfo.CurrentCulture)
-                                    · @DisplayText.ToTitle(transaction.TransactionType)
-                                </MudText>
+                        }
+                        @foreach (var goal in SelectedDay.Goals)
+                        {
+                            <div class="ft-list__row">
+                                <MudIcon Icon="@Icons.Material.Filled.Flag" Color="Color.Warning"/>
+                                <div class="ft-list__main">
+                                    <MudText Typo="Typo.body2" Class="text-truncate">@goal.Name</MudText>
+                                    <MudText Typo="Typo.caption" Class="mud-text-secondary">Savings goal due</MudText>
+                                </div>
                             </div>
-                            <div class="ft-list__end">
-                                <MoneyText Value="@transaction.Amount" Signed="true"/>
+                        }
+                        @foreach (var transaction in SelectedDay.Transactions.OrderBy(static x => x.TransactionTime))
+                        {
+                            <div class="ft-list__row">
+                                <div class="ft-list__main">
+                                    <MudText Typo="Typo.body2" Class="text-truncate">@transaction.Description</MudText>
+                                    <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                        @transaction.TransactionTime.ToLocalTime().ToString("HH:mm", CultureInfo.CurrentCulture)
+                                        · @DisplayText.ToTitle(transaction.TransactionType)
+                                    </MudText>
+                                </div>
+                                <div class="ft-list__end">
+                                    <MoneyText Value="@transaction.Amount" Signed="true"/>
+                                </div>
                             </div>
-                        </div>
-                    }
-                </div>
-            }
+                        }
+                    </div>
+                }
+            </ChildContent>
         </Section>
     </MudItem>
 </MudGrid>
@@ -177,7 +238,7 @@
         CalendarGrid.LeadingBlanks(MonthStart, CultureInfo.CurrentCulture.DateTimeFormat.FirstDayOfWeek);
 
     private static bool IsQuiet(CalendarItems day) =>
-        !day.Transactions.Any() && !day.Goals.Any() && !day.Bills.Any();
+        !day.Transactions.Any() && !day.Goals.Any() && !day.Bills.Any() && !day.Events.Any() && !day.Debts.Any();
 
     /// <summary>
     /// The colour of the day's most pressing bill late, then a price change, then due, then paid.
@@ -274,6 +335,112 @@
         if (selected)
             classes += " ft-calendar__day--selected";
         return classes;
+    }
+
+    private async Task AddEventAsync()
+    {
+        SaveCalendarEvent? calendarEvent = await ShowEventDialogAsync(null);
+        if (calendarEvent is null)
+        {
+            return;
+        }
+
+        await SaveEventAsync($"{calendarEvent.Title} added",
+            () => CalendarService.AddEventAsync(calendarEvent, _cts.Token));
+    }
+
+    private async Task EditEventAsync(CalendarEventItem item)
+    {
+        CalendarEvent? existing = await FindEventAsync(item.EventId);
+        if (existing is null)
+        {
+            Snackbar.Add($"{item.Title} isn't there any more", Severity.Error);
+            await ReloadAsync();
+            return;
+        }
+
+        SaveCalendarEvent? calendarEvent = await ShowEventDialogAsync(existing);
+        if (calendarEvent is null)
+        {
+            return;
+        }
+
+        await SaveEventAsync($"{calendarEvent.Title} saved",
+            () => CalendarService.UpdateEventAsync(existing.Id, calendarEvent, _cts.Token));
+    }
+
+    private async Task DeleteEventAsync(CalendarEventItem item)
+    {
+        string message = item.IsYearly
+            ? "It goes from every year. Its savings goal stays."
+            : "Its savings goal stays.";
+        bool? confirmed = await DialogService.ShowMessageBoxAsync($"Delete {item.Title}?", message,
+            yesText: "Delete", cancelText: "Cancel");
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        await SaveEventAsync($"{item.Title} deleted", () => CalendarService.DeleteEventAsync(item.EventId, _cts.Token));
+    }
+
+    /// <summary>
+    /// The event as it's saved, null when it's gone. The day only has what it shows.
+    /// </summary>
+    private async Task<CalendarEvent?> FindEventAsync(Guid id)
+    {
+        List<CalendarEvent> calendarEvents = await CalendarService.GetEventsAsync(_cts.Token).ToListAsync(_cts.Token);
+        return calendarEvents.FirstOrDefault(x => x.Id == id);
+    }
+
+    /// <returns>What the user entered, null when they cancelled.</returns>
+    private async Task<SaveCalendarEvent?> ShowEventDialogAsync(CalendarEvent? calendarEvent)
+    {
+        List<SavingsGoal> goals = await SavingsGoalsService.GetSavingsGoalsAsync(_cts.Token).ToListAsync(_cts.Token);
+        DialogParameters<CalendarEventDialog> parameters = new()
+        {
+            { x => x.Event, calendarEvent },
+            { x => x.Day, DateOnly.FromDateTime(_selectedDate) },
+            { x => x.Goals, goals }
+        };
+
+        IDialogReference dialog = await DialogService.ShowAsync<CalendarEventDialog>(null, parameters);
+        DialogResult? result = await dialog.Result;
+
+        if (result is null || result.Canceled)
+        {
+            return null;
+        }
+
+        return (SaveCalendarEvent)result.Data!;
+    }
+
+    /// <summary>
+    /// Makes a change, then reloads the month, keeping the chosen day.
+    /// </summary>
+    private async Task SaveEventAsync(string done, Func<Task> change)
+    {
+        DateTime selected = _selectedDate;
+        try
+        {
+            SetLoadingState(true, "Saving…");
+            await change();
+            Days = await LoadMonthAsync(_cts.Token);
+            Snackbar.Add(done, Severity.Success);
+        }
+        catch (InvalidOperationException)
+        {
+            Snackbar.Add("That goal or event isn't there any more, try again", Severity.Error);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't save that, try again", Severity.Error);
+        }
+        finally
+        {
+            _selectedDate = selected;
+            SetLoadingState(false);
+        }
     }
 
     private Task<List<CalendarItems>> LoadMonthAsync(CancellationToken cancellationToken)

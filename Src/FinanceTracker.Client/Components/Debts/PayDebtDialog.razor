@@ -1,0 +1,65 @@
+@* Which debt a transaction pays off, chosen by the user. Choosing none stops rules linking it to one. *@
+@using FinanceTracker.Client.Components.Dialogs
+@using FinanceTracker.Contracts.Debts
+@using FinanceTracker.Contracts.Transactions
+
+<DialogBase TResponse="PayDebt" Title="@($"What does {Transaction.Description} pay off?")"
+            ResponseConstructor="BuildResponseModel">
+    <Content>
+        <div class="ft-pay-debt">
+            <MudSelect T="Guid" Label="Pays off" @bind-Value="_debtId" ToStringFunc="@DebtName"
+                       HelperText="It comes off that debt from now on, rules leave it alone">
+                <MudSelectItem T="Guid" Value="@Guid.Empty">No debt</MudSelectItem>
+                @foreach (Debt debt in Debts.OrderBy(static x => x.Name))
+                {
+                    <MudSelectItem T="Guid" Value="@debt.Id">@debt.Name</MudSelectItem>
+                }
+            </MudSelect>
+            @if (Debts.Count == 0)
+            {
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                    You have no debts yet, <MudLink Href="Debts" Typo="Typo.caption">add one</MudLink> first.
+                </MudText>
+            }
+        </div>
+    </Content>
+</DialogBase>
+
+@code {
+
+    [Parameter] [EditorRequired] public required Transaction Transaction { get; set; }
+
+    /// <summary>
+    /// The user's debts to choose from.
+    /// </summary>
+    [Parameter] [EditorRequired] public required IReadOnlyList<Debt> Debts { get; set; }
+
+    /// <summary>
+    /// The debt chosen, <see cref="Guid.Empty"/> for none.
+    /// </summary>
+    private Guid _debtId;
+
+    protected override void OnInitialized() => _debtId = Transaction.Debt?.DebtId ?? Guid.Empty;
+
+    private string DebtName(Guid debtId)
+    {
+        if (debtId == Guid.Empty)
+        {
+            return "No debt";
+        }
+
+        return Debts.FirstOrDefault(x => x.Id == debtId)?.Name ?? string.Empty;
+    }
+
+    private Task<PayDebt?> BuildResponseModel()
+    {
+        Guid? debtId = null;
+        if (_debtId != Guid.Empty)
+        {
+            debtId = _debtId;
+        }
+
+        return Task.FromResult<PayDebt?>(new PayDebt { DebtId = debtId });
+    }
+
+}

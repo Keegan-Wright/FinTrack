@@ -1,0 +1,156 @@
+@* A new debt, or an existing one to change. Its name and lender, what was owed and from when, the interest rate and
+   monthly payment, when the user wants it paid off, and optionally the loan or card account whose balance says
+   what's owed. *@
+@using System.Globalization
+@using FinanceTracker.Client.Components.Dialogs
+@using FinanceTracker.Client.Extensions
+@using FinanceTracker.Contracts.Debts
+@using FinanceTracker.Contracts.Transactions
+@using FluentValidation
+@using FluentValidation.Results
+@inject IValidator<SaveDebt> Validator
+
+<DialogBase TResponse="SaveDebt" Title="@(Debt is null ? "New debt" : $"Edit {Debt.Name}")"
+            ResponseConstructor="BuildResponseModel">
+    <Content>
+        <MudForm @ref="_form" Model="@_model" class="ft-debt-form">
+            <div class="ft-debt-form__pair">
+                <MudTextField T="string" @bind-Value="_model.Name" Label="Name" For="@(() => _model.Name)"
+                              Validation="@(Validator.ValidateValue(_model, nameof(SaveDebt.Name)))"
+                              HelperText="e.g. Car loan" Immediate="true"/>
+                <MudTextField T="string" @bind-Value="_model.Lender" Label="Lender" For="@(() => _model.Lender)"
+                              HelperText="Who it's owed to, optional" Immediate="true"/>
+            </div>
+
+            <div class="ft-debt-form__pair">
+                <MudTextField T="decimal" @bind-Value="_model.StartingBalance" Label="Owed"
+                              For="@(() => _model.StartingBalance)" InputMode="@(InputMode.@decimal)"
+                              Adornment="Adornment.Start" AdornmentText="@CurrencySymbol" Immediate="true"
+                              Validation="@(Validator.ValidateValue(_model, nameof(SaveDebt.StartingBalance)))"
+                              HelperText="What you owed on the day below"/>
+                <MudDatePicker @bind-Date="_startedOn" Label="On" HelperText="Payments count from this day"/>
+            </div>
+            @foreach (string error in ErrorsFor(nameof(SaveDebt.StartedOn)))
+            {
+                <MudText Typo="Typo.caption" Color="Color.Error">@error</MudText>
+            }
+
+            <div class="ft-debt-form__pair">
+                <MudTextField T="decimal" @bind-Value="_model.InterestRate" Label="Interest rate"
+                              For="@(() => _model.InterestRate)" InputMode="@(InputMode.@decimal)"
+                              Adornment="Adornment.End" AdornmentText="% APR" Immediate="true"
+                              Validation="@(Validator.ValidateValue(_model, nameof(SaveDebt.InterestRate)))"
+                              HelperText="0 for none"/>
+                <MudTextField T="decimal" @bind-Value="_model.MonthlyPayment" Label="Monthly payment"
+                              For="@(() => _model.MonthlyPayment)" InputMode="@(InputMode.@decimal)"
+                              Adornment="Adornment.Start" AdornmentText="@CurrencySymbol" Immediate="true"
+                              Validation="@(Validator.ValidateValue(_model, nameof(SaveDebt.MonthlyPayment)))"
+                              HelperText="What you pay each month"/>
+            </div>
+
+            <MudDatePicker @bind-Date="_payOffGoal" Label="Pay off by" Clearable="true"
+                           HelperText="Optional, to see if you're on track"/>
+            @foreach (string error in ErrorsFor(nameof(SaveDebt.PayOffGoal)))
+            {
+                <MudText Typo="Typo.caption" Color="Color.Error">@error</MudText>
+            }
+
+            <MudSelect T="Guid?" Label="Balance from" @bind-Value="_model.AccountId" ToStringFunc="@AccountName"
+                       HelperText="A loan or card account that syncs what's owed, or none to work it out from payments">
+                <MudSelectItem T="Guid?" Value="@((Guid?)null)">None, from my payments</MudSelectItem>
+                @foreach (TransactionAccountFilter account in Accounts)
+                {
+                    <MudSelectItem T="Guid?" Value="@account.AccountId">@account.AccountName</MudSelectItem>
+                }
+            </MudSelect>
+        </MudForm>
+    </Content>
+</DialogBase>
+
+@code {
+
+    /// <summary>
+    /// The debt to change, null for a new one.
+    /// </summary>
+    [Parameter] public Debt? Debt { get; set; }
+
+    /// <summary>
+    /// The user's accounts that could say what's owed.
+    /// </summary>
+    [Parameter] [EditorRequired] public required IReadOnlyList<TransactionAccountFilter> Accounts { get; set; }
+
+    /// <summary>
+    /// Today where the user is, a new debt's start.
+    /// </summary>
+    [Parameter] [EditorRequired] public required DateOnly Today { get; set; }
+
+    private MudForm _form = null!;
+    private SaveDebt _model = new();
+    private DateTime? _startedOn;
+    private DateTime? _payOffGoal;
+    private List<ValidationFailure> _errors = [];
+
+    private static string CurrencySymbol => CultureInfo.CurrentCulture.NumberFormat.CurrencySymbol;
+
+    protected override void OnInitialized()
+    {
+        if (Debt is null)
+        {
+            _startedOn = Today.ToDateTime(TimeOnly.MinValue);
+            return;
+        }
+
+        _model = new SaveDebt
+        {
+            Name = Debt.Name,
+            Lender = Debt.Lender,
+            StartingBalance = Debt.StartingBalance,
+            StartedOn = Debt.StartedOn,
+            InterestRate = Debt.InterestRate,
+            MonthlyPayment = Debt.MonthlyPayment,
+            AccountId = Debt.AccountId,
+            PayOffGoal = Debt.PayOffGoal
+        };
+        _startedOn = Debt.StartedOn.ToDateTime(TimeOnly.MinValue);
+        _payOffGoal = Debt.PayOffGoal?.ToDateTime(TimeOnly.MinValue);
+    }
+
+    private string AccountName(Guid? accountId)
+    {
+        if (accountId is null)
+        {
+            return "None, from my payments";
+        }
+
+        TransactionAccountFilter? account = Accounts.FirstOrDefault(x => x.AccountId == accountId);
+        if (account is not null)
+        {
+            return account.AccountName;
+        }
+
+        // Its account could be one the filters don't list, keep showing the name the debt has
+        return Debt?.AccountName ?? string.Empty;
+    }
+
+    private IEnumerable<string> ErrorsFor(string propertyName) => _errors
+        .Where(x => x.PropertyName == propertyName)
+        .Select(static x => x.ErrorMessage);
+
+    private async Task<SaveDebt?> BuildResponseModel()
+    {
+        _model.StartedOn = _startedOn is { } startedOn ? DateOnly.FromDateTime(startedOn) : default;
+        _model.PayOffGoal = _payOffGoal is { } payOffGoal ? DateOnly.FromDateTime(payOffGoal) : null;
+
+        await _form.ValidateAsync();
+        ValidationResult result = await Validator.ValidateAsync(_model);
+        _errors = result.Errors.ToList();
+
+        if (!_form.IsValid || !result.IsValid)
+        {
+            return null;
+        }
+
+        return _model;
+    }
+
+}

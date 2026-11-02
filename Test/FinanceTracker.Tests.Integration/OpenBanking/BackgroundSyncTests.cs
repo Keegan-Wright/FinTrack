@@ -2,12 +2,14 @@ using FinanceTracker.Contracts.Bills;
 using FinanceTracker.Contracts.Dashboard;
 using FinanceTracker.Contracts.Debts;
 using FinanceTracker.Contracts.Services;
+using FinanceTracker.Domain.Calendar;
 using FinanceTracker.Domain.Common;
 using FinanceTracker.Domain.NetWorth;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.Rules;
+using FinanceTracker.Domain.SavingsGoals;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.OpenBanking.TrueLayer.Contracts;
 using FinanceTracker.Tests.Integration.Http;
@@ -34,6 +36,7 @@ public class BackgroundSyncTests : IntegrationTestBase
     private const string SyncFunction = "SyncAllOpenBankingDetailsAsync";
     private const string UserSyncFunction = "SyncUserOpenBankingDetailsAsync";
     private const string MonitorFunction = "MonitorOpenBankingTokenExpirationAsync";
+    private const string MoveGoalsOnFunction = "MoveEventSavingsGoalsOnAsync";
     private static readonly TimeSpan JobTimeout = TimeSpan.FromSeconds(90);
 
     [Test]
@@ -387,6 +390,40 @@ public class BackgroundSyncTests : IntegrationTestBase
             .SingleAsync(x => x.Id == connectionId, CancellationToken);
 
         await Assert.That(connection.ActiveToken).IsNull();
+    }
+
+    [Test]
+    public async Task EventGoalsJob_MovesAPassedYearlyEventsGoalOnToNextYear()
+    {
+        // Arrange
+        string username = UniqueName();
+        DateOnly lastTime = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-10);
+        SavingsGoal? gifts = null;
+        await Scenario.Do(s => s.UserScenario.WithUser(username))
+            .Do(s => s.SavingsGoalScenario.WithSavingsGoal("gifts", username, userId =>
+                gifts = new SavingsGoal(userId, "Gifts", 0m, 0m, 60m, lastTime.ToDateTime(TimeOnly.MinValue))))
+            .Do(s => s.CalendarEventScenario.WithEvent("birthday", username, userId =>
+            {
+                CalendarEvent birthday = new(userId, "Birthday", lastTime.AddYears(-1), EventRecurrence.Yearly);
+                birthday.SetSavingsTarget(100m);
+                birthday.LinkSavingsGoal(gifts!);
+                birthday.SetRollsGoalOn(true);
+                return birthday;
+            }));
+
+        // Act
+        await RunJobAsync(MoveGoalsOnFunction);
+
+        // Assert
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        SavingsGoal goal = await context.SavingsGoals.AsNoTracking()
+            .SingleAsync(x => x.Id == Scenario.SavingsGoalMappings["gifts"], CancellationToken);
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(goal.TargetDate).IsEqualTo(lastTime.AddYears(1).ToDateTime(TimeOnly.MinValue));
+            await Assert.That(goal.Target).IsEqualTo(100m);
+        }
     }
 
     /// <summary>

@@ -105,6 +105,48 @@ public class HouseholdMemberServiceTests : InfrastructureTestBase
     }
 
     [Test]
+    public async Task UpdateHouseholdMemberAsync_WhenOwned_SavesTheNameAndIncome()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.HouseholdMemberScenario.WithHouseholdMember("partner", Username, userId =>
+                new Domain.Household.HouseholdMember(userId, "Jane", "Doe", 1000)));
+
+        HouseholdMemberService subject = BuildSubject();
+        Guid id = Scenario.HouseholdMemberMappings["partner"];
+
+        // Act
+        HouseholdMember updated = await subject.UpdateHouseholdMemberAsync(id,
+            new UpdateHouseholdMember { FirstName = "Janet", LastName = "Smith", Income = 1500 }, CancellationToken);
+
+        // Assert
+        HouseholdMember stored = (await subject.GetHouseholdMembersAsync(CancellationToken)
+            .ToListAsync(CancellationToken)).Single();
+        using (Assert.Multiple())
+        {
+            await Assert.That(updated.FirstName).IsEqualTo("Janet");
+            await Assert.That(stored.LastName).IsEqualTo("Smith");
+            await Assert.That(stored.Income).IsEqualTo(1500m);
+        }
+    }
+
+    [Test]
+    public async Task UpdateHouseholdMemberAsync_WhenOwnedByAnotherUser_Throws()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.UserScenario.WithUser(OtherUsername))
+            .Do(s => s.HouseholdMemberScenario.WithHouseholdMember("theirs", OtherUsername));
+
+        HouseholdMemberService subject = BuildSubject();
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            subject.UpdateHouseholdMemberAsync(Scenario.HouseholdMemberMappings["theirs"],
+                new UpdateHouseholdMember { FirstName = "A", LastName = "B", Income = 0 }, CancellationToken));
+    }
+
+    [Test]
     public async Task DeleteHouseholdMemberAsync_WhenExists_RemovesMemberAndReturnsTrue()
     {
         // Arrange

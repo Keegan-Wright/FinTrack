@@ -47,6 +47,75 @@ public class ClassificationApiTests : IntegrationTestBase
     }
 
     [Test]
+    public async Task RenameCustomClassification_IsSavedAndListed()
+    {
+        // Arrange
+        SignedInUser user = await RegisterUserAsync();
+        IClassificationService service = ApiFor(user).Get<IClassificationService>();
+        Classification added = await service.AddCustomClassificationAsync(new AddClassifications { Tag = "Holiday" },
+            CancellationToken);
+
+        // Act
+        Classification renamed = await service.RenameCustomClassificationAsync(added.ClassificationId,
+            new RenameClassification { Tag = "Travel" }, CancellationToken);
+        List<Classification> listed = await service.GetAllCustomClassificationsAsync(CancellationToken)
+            .ToListAsync(CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(renamed.Tag).IsEqualTo("Travel");
+            await Assert.That(listed.Single().Tag).IsEqualTo("Travel");
+        }
+    }
+
+    [Test]
+    public async Task AddCustomClassification_ThatTheyAlreadyHave_ThrowsAsTheServiceDoes()
+    {
+        // Arrange
+        SignedInUser user = await RegisterUserAsync();
+        IClassificationService service = ApiFor(user).Get<IClassificationService>();
+        await service.AddCustomClassificationAsync(new AddClassifications { Tag = "Holiday" }, CancellationToken);
+
+        // Act
+        DuplicateTagException? exception = await Assert.ThrowsAsync<DuplicateTagException>(() =>
+            service.AddCustomClassificationAsync(new AddClassifications { Tag = "holiday" }, CancellationToken));
+
+        // Assert
+        await Assert.That(exception!.Message).IsEqualTo("You already have a tag called holiday");
+    }
+
+    [Test]
+    public async Task RenameCustomClassification_ToOneTheyAlreadyHave_ThrowsAsTheServiceDoes()
+    {
+        // Arrange
+        SignedInUser user = await RegisterUserAsync();
+        IClassificationService service = ApiFor(user).Get<IClassificationService>();
+        Classification holiday = await service.AddCustomClassificationAsync(new AddClassifications { Tag = "Holiday" },
+            CancellationToken);
+        await service.AddCustomClassificationAsync(new AddClassifications { Tag = "Travel" }, CancellationToken);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<DuplicateTagException>(() => service.RenameCustomClassificationAsync(
+            holiday.ClassificationId, new RenameClassification { Tag = "Travel" }, CancellationToken));
+    }
+
+    [Test]
+    public async Task RenameCustomClassification_OfAnotherUser_ThrowsAsTheServiceDoes()
+    {
+        // Arrange
+        SignedInUser owner = await RegisterUserAsync();
+        SignedInUser other = await RegisterUserAsync();
+        Classification theirs = await ApiFor(owner).Get<IClassificationService>()
+            .AddCustomClassificationAsync(new AddClassifications { Tag = "Holiday" }, CancellationToken);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(() => ApiFor(other).Get<IClassificationService>()
+            .RenameCustomClassificationAsync(theirs.ClassificationId, new RenameClassification { Tag = "Mine" },
+                CancellationToken));
+    }
+
+    [Test]
     public async Task GetClassification_ThatDoesNotExist_ThrowsAsTheServiceDoes()
     {
         // Arrange

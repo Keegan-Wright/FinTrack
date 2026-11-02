@@ -55,12 +55,30 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
+        await EnsureTagIsFreeAsync(context, classification.Tag, null, cancellationToken);
+
         CustomClassification newClassification = new(UserId, classification.Tag);
         context.CustomClassifications.Add(newClassification);
 
         await context.SaveChangesAsync(cancellationToken);
 
         return new Contracts.Classifications.Classification { Tag = newClassification.Tag, ClassificationId = newClassification.Id };
+    }
+
+    public async Task<Contracts.Classifications.Classification> RenameCustomClassificationAsync(Guid id,
+        RenameClassification request, CancellationToken cancellationToken)
+    {
+        await using FinanceTrackerContext context =
+            await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+
+        CustomClassification classification = await context.CustomClassifications.OwnedBy(UserId)
+            .SingleAsync(x => x.Id == id, cancellationToken);
+        await EnsureTagIsFreeAsync(context, request.Tag, id, cancellationToken);
+        classification.Rename(request.Tag);
+
+        await context.SaveChangesAsync(cancellationToken);
+
+        return new Contracts.Classifications.Classification { Tag = classification.Tag, ClassificationId = classification.Id };
     }
 
     public async Task AddCustomClassificationsToTransactionAsync(
@@ -123,5 +141,25 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
 
         context.CustomClassifications.Remove(classificationToRemove);
         await context.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Throws when another of the user's tags already has <paramref name="tag"/> as its name, in any case, so
+    /// "holiday" and "Holiday" can't both exist.
+    /// </summary>
+    /// <param name="exceptId">The tag being renamed, which can keep its own name in a different case.</param>
+    private async Task EnsureTagIsFreeAsync(FinanceTrackerContext context, string tag, Guid? exceptId,
+        CancellationToken cancellationToken)
+    {
+        // Tags are encrypted, so they're compared once decrypted
+        List<CustomClassification> existing = await context.CustomClassifications.OwnedBy(UserId).AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        bool taken = existing.Any(x => x.Id != exceptId &&
+                                       string.Equals(x.Tag.Trim(), tag.Trim(), StringComparison.OrdinalIgnoreCase));
+        if (taken)
+        {
+            throw new DuplicateTagException(tag.Trim());
+        }
     }
 }

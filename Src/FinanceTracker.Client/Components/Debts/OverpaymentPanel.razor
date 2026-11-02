@@ -1,0 +1,69 @@
+@* What paying a different amount each month would do to when a debt is paid off, against its forecast now. *@
+@using System.Globalization
+@using FinanceTracker.Contracts.Debts
+@inject IDebtsService DebtsService
+
+<div class="ft-overpayment">
+    <div class="ft-overpayment__form">
+        <MudTextField T="decimal" @bind-Value="_monthlyPayment" Label="If I paid each month"
+                      InputMode="@(InputMode.@decimal)" Adornment="Adornment.Start" AdornmentText="@CurrencySymbol"
+                      Class="ft-overpayment__amount"/>
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@ForecastAsync" Disabled="@_busy">
+            Work it out
+        </MudButton>
+    </div>
+    @if (_error is not null)
+    {
+        <MudText Typo="Typo.caption" Color="Color.Error">@_error</MudText>
+    }
+    else if (_result is not null)
+    {
+        <MudText Typo="Typo.body2" Class="ft-overpayment__result">@_result</MudText>
+    }
+</div>
+
+@code {
+
+    [Parameter] [EditorRequired] public required Debt Debt { get; set; }
+
+    private decimal _monthlyPayment;
+    private string? _result;
+    private string? _error;
+    private bool _busy;
+
+    private static string CurrencySymbol => CultureInfo.CurrentCulture.NumberFormat.CurrencySymbol;
+
+    protected override void OnInitialized() => _monthlyPayment = SuggestedPayment(Debt.MonthlyPayment);
+
+    /// <summary>
+    /// A round amount above what's paid now to start from, e.g. £300 for £250.
+    /// </summary>
+    internal static decimal SuggestedPayment(decimal monthlyPayment) =>
+        Math.Floor(monthlyPayment / 50) * 50 + 50;
+
+    private async Task ForecastAsync()
+    {
+        _error = null;
+        if (_monthlyPayment <= 0)
+        {
+            _error = "Enter more than 0";
+            return;
+        }
+
+        try
+        {
+            _busy = true;
+            DebtForecast forecast = await DebtsService.ForecastAsync(Debt.Id, _monthlyPayment, CancellationToken.None);
+            _result = DebtText.Compare(Debt.Forecast, forecast, _monthlyPayment);
+        }
+        catch (Exception)
+        {
+            _error = "Couldn't work that out, try again";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+}

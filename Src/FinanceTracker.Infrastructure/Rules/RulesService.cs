@@ -149,12 +149,17 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
 
         Dictionary<Guid, string> tagNames = await context.CustomClassifications.OwnedBy(UserId)
             .ToDictionaryAsync(static x => x.Id, static x => x.Tag, cancellationToken);
+        Dictionary<Guid, string> billNames = await context.Bills.OwnedBy(UserId)
+            .ToDictionaryAsync(static x => x.Id, static x => x.Name, cancellationToken);
+        Dictionary<Guid, string> debtNames = await context.Debts.OwnedBy(UserId)
+            .ToDictionaryAsync(static x => x.Id, static x => x.Name, cancellationToken);
 
         // Conditions test encrypted fields, so every transaction is loaded and checked once decrypted
         List<BankTransaction> transactions = await context.BankTransactions.OwnedBy(UserId).AsNoTracking()
             .ToListAsync(cancellationToken);
 
-        return RulePreviewer.Preview(running, draft, transactions, tagNames, _timeProvider.UtcNow);
+        RulePreviewNames names = new(tagNames, billNames, debtNames);
+        return RulePreviewer.Preview(running, draft, transactions, names, _timeProvider.UtcNow);
     }
 
     public Task<int> ApplyRuleToExistingAsync(Guid id, CancellationToken cancellationToken) =>

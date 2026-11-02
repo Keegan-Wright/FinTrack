@@ -1,6 +1,7 @@
 @* Everything about one transaction, how it counts and why, and what can be done with it. Used on phones, where the
    transactions list only shows a summary. *@
 @using System.Globalization
+@using FinanceTracker.Client.Components.Debts
 @using FinanceTracker.Client.Components.Rules
 @using FinanceTracker.Client.Components.Transactions
 @using FinanceTracker.Contracts.Transactions
@@ -94,6 +95,16 @@
                         <MudText Typo="Typo.caption" Class="mud-text-secondary">@BillReason(bill)</MudText>
                     </dd>
                 }
+                @if (Shown.Debt is { } debt)
+                {
+                    <dt>Pays off</dt>
+                    <dd>
+                        <span>@DebtText.Label(debt)</span>
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                            @DebtText.Reason(debt.DecidedBy, debt.RuleName)
+                        </MudText>
+                    </dd>
+                }
             </dl>
 
             @* A list rather than footer buttons, so actions rules add later are just more rows *@
@@ -109,7 +120,9 @@
                     </MudButton>
                 }
                 <MudButton Variant="Variant.Text" FullWidth="true" StartIcon="@Icons.Material.Outlined.EventRepeat"
-                           Class="ft-details__action" OnClick="@PayBillAsync">Pays a bill…</MudButton>
+                           Class="ft-details__action" OnClick="@PayBillAsync">Pays a bill</MudButton>
+                <MudButton Variant="Variant.Text" FullWidth="true" StartIcon="@Icons.Material.Outlined.CreditScore"
+                           Class="ft-details__action" OnClick="@PayDebtAsync">Pays off a debt</MudButton>
                 <MudButton Variant="Variant.Text" FullWidth="true" StartIcon="@Icons.Material.Outlined.Rule"
                            Class="ft-details__action" OnClick="@CreateRuleAsync">Create rule from this</MudButton>
             </div>
@@ -188,6 +201,11 @@
     [Parameter] public EventCallback OnPayBill { get; set; }
 
     /// <summary>
+    /// The user chose to say which debt it pays off, raised once the dialog has closed.
+    /// </summary>
+    [Parameter] public EventCallback OnPayDebt { get; set; }
+
+    /// <summary>
     /// e.g. <c>Rent</c>, or <c>No bill</c> when the user said it pays none.
     /// </summary>
     internal static string BillLabel(TransactionBill bill) => bill.BillName ?? "No bill";
@@ -206,6 +224,12 @@
     {
         MudDialog.Close();
         await OnPayBill.InvokeAsync();
+    }
+
+    private async Task PayDebtAsync()
+    {
+        MudDialog.Close();
+        await OnPayDebt.InvokeAsync();
     }
 
     // Closed first, the tags dialog and the loading overlay open over the page rather than over this

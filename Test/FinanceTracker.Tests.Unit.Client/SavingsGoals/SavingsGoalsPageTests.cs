@@ -55,7 +55,7 @@ public class SavingsGoalsPageTests : ComponentTestBase
             await Assert.That(cut.Markup).Contains("Car");
             await Assert.That(cut.Markup).Contains("£1,300.00 of £10,000.00");
             await Assert.That(cut.Markup).Contains("Balance of Rainy Day");
-            await Assert.That(cut.FindAll("button[aria-label='Edit Car']")).Count().IsEqualTo(1);
+            await Assert.That(cut.FindAll("[aria-label='Actions for Car']")).Count().IsEqualTo(1);
         }
     }
 

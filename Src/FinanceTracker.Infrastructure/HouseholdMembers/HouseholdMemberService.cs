@@ -52,6 +52,23 @@ public class HouseholdMemberService : ServiceBase<HouseholdMemberService>, IHous
         return ToContract(householdMember);
     }
 
+    public async Task<HouseholdMember> UpdateHouseholdMemberAsync(Guid id, UpdateHouseholdMember request,
+        CancellationToken cancellationToken)
+    {
+        await using FinanceTrackerContext context =
+            await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+
+        Domain.Household.HouseholdMember householdMember =
+            await context.HouseholdMembers.OwnedBy(UserId).SingleOrDefaultAsync(x => x.Id == id, cancellationToken)
+            ?? throw new InvalidOperationException($"Household member {id} was not found.");
+
+        householdMember.Rename(request.FirstName, request.LastName);
+        householdMember.ChangeIncome(request.Income);
+        await context.SaveChangesAsync(cancellationToken);
+
+        return ToContract(householdMember);
+    }
+
     public async Task<HouseholdMemberRecognitionSaved> UpdateRecognitionAsync(Guid id,
         UpdateHouseholdMemberRecognition request, CancellationToken cancellationToken)
     {

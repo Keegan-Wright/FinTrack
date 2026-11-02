@@ -390,6 +390,80 @@ public class RulesServiceTests : InfrastructureTestBase
     }
 
     [Test]
+    public async Task PreviewRuleAsync_PayingABill_NamesTheBill()
+    {
+        // Arrange
+        await SeedAsync(Username)
+            .Do(s => s.BillScenario.WithBill("streaming", Username, "main"))
+            .Do(s => s.TransactionScenario.WithTransaction("payment", "main", Details("GROCER STORE")));
+        SaveRule rule = TagGroceries("shopping");
+        rule.Actions = [new RuleAction { Type = RuleActionType.PayBill, BillId = Scenario.BillMappings["streaming"] }];
+        string billName = await BillNameAsync("streaming");
+
+        // Act
+        RulePreview preview = await BuildSubject(Username).PreviewRuleAsync(null, rule, CancellationToken);
+
+        // Assert
+        RulePreviewChange change = preview.Changes.Single();
+        using (Assert.Multiple())
+        {
+            await Assert.That(change.BillBefore).IsNull();
+            await Assert.That(change.BillAfter).IsEqualTo(billName);
+            await Assert.That((await LoadTransactionAsync("payment")).BillPayment).IsNull();
+        }
+    }
+
+    [Test]
+    public async Task PreviewRuleAsync_PayingOffADebt_NamesTheDebt()
+    {
+        // Arrange
+        await SeedAsync(Username)
+            .Do(s => s.DebtScenario.WithDebt("loan", Username))
+            .Do(s => s.TransactionScenario.WithTransaction("payment", "main", Details("GROCER STORE")));
+        SaveRule rule = TagGroceries("shopping");
+        rule.Actions = [new RuleAction { Type = RuleActionType.PayDebt, DebtId = Scenario.DebtMappings["loan"] }];
+        string debtName = await DebtNameAsync("loan");
+
+        // Act
+        RulePreview preview = await BuildSubject(Username).PreviewRuleAsync(null, rule, CancellationToken);
+
+        // Assert
+        RulePreviewChange change = preview.Changes.Single();
+        using (Assert.Multiple())
+        {
+            await Assert.That(change.DebtBefore).IsNull();
+            await Assert.That(change.DebtAfter).IsEqualTo(debtName);
+            await Assert.That((await LoadTransactionAsync("payment")).DebtPayment).IsNull();
+        }
+    }
+
+    [Test]
+    public async Task PreviewRuleAsync_EditedRuleNoLongerPayingOffADebt_ShowsItTakenBack()
+    {
+        // Arrange
+        await SeedAsync(Username)
+            .Do(s => s.DebtScenario.WithDebt("loan", Username))
+            .Do(s => s.TransactionScenario.WithTransaction("payment", "main", Details("GROCER STORE")));
+        SaveRule paying = TagGroceries("shopping");
+        paying.Actions = [new RuleAction { Type = RuleActionType.PayDebt, DebtId = Scenario.DebtMappings["loan"] }];
+        RulesService subject = BuildSubject(Username);
+        Rule rule = await subject.AddRuleAsync(paying, CancellationToken);
+        await BuildApplication(Username).ApplyChangesAsync(DateTime.MinValue, CancellationToken);
+        string debtName = await DebtNameAsync("loan");
+
+        // Act
+        RulePreview preview = await subject.PreviewRuleAsync(rule.Id, TagGroceries("shopping"), CancellationToken);
+
+        // Assert
+        RulePreviewChange change = preview.Changes.Single();
+        using (Assert.Multiple())
+        {
+            await Assert.That(change.DebtBefore).IsEqualTo(debtName);
+            await Assert.That(change.DebtAfter).IsNull();
+        }
+    }
+
+    [Test]
     public async Task GetDraftFromTransactionAsync_HidesWhatTheUserHid()
     {
         // Arrange
@@ -519,6 +593,20 @@ public class RulesServiceTests : InfrastructureTestBase
         BankTransaction transaction = await context.BankTransactions.SingleAsync(x => x.Id == id, CancellationToken);
         transaction.HideClassification(classification);
         await context.SaveChangesAsync(CancellationToken);
+    }
+
+    private async Task<string> BillNameAsync(string name)
+    {
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        Guid id = Scenario.BillMappings[name];
+        return (await context.Bills.SingleAsync(x => x.Id == id, CancellationToken)).Name;
+    }
+
+    private async Task<string> DebtNameAsync(string name)
+    {
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        Guid id = Scenario.DebtMappings[name];
+        return (await context.Debts.SingleAsync(x => x.Id == id, CancellationToken)).Name;
     }
 
     private async Task<BankTransaction> LoadTransactionAsync(string name)

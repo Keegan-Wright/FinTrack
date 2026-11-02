@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Json;
 using FinanceTracker.Contracts.Api;
 using FinanceTracker.Contracts.Classifications;
@@ -9,7 +10,8 @@ namespace FinanceTracker.Client.Api;
 
 /// <summary>
 /// <see cref="IClassificationService"/> over <see cref="ApiRoutes.Classifications"/>. The API's 404s come back as the
-/// <see cref="InvalidOperationException"/> the interface documents.
+/// <see cref="InvalidOperationException"/> the interface documents, and its 409s as the
+/// <see cref="DuplicateTagException"/>.
 /// </summary>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Client)]
 [Scoped<IClassificationService>]
@@ -31,10 +33,25 @@ public sealed class ClassificationApiClient : IClassificationService
         return await response.ReadRequiredJsonAsync<GetClassification>(cancellationToken);
     }
 
-    public Task<Classification> AddCustomClassificationAsync(AddClassifications classification,
-        CancellationToken cancellationToken) =>
-        _http.PostReadAsync<AddClassifications, Classification>(ApiRoutes.Classifications, classification,
-            cancellationToken);
+    public async Task<Classification> AddCustomClassificationAsync(AddClassifications classification,
+        CancellationToken cancellationToken)
+    {
+        using HttpResponseMessage response =
+            await _http.PostAsJsonAsync(ApiRoutes.Classifications, classification, cancellationToken);
+        ThrowIfTaken(response, classification.Tag);
+        response.EnsureSuccessStatusCode();
+        return await response.ReadRequiredJsonAsync<Classification>(cancellationToken);
+    }
+
+    public async Task<Classification> RenameCustomClassificationAsync(Guid id, RenameClassification request,
+        CancellationToken cancellationToken)
+    {
+        using HttpResponseMessage response =
+            await _http.PutAsJsonAsync($"{ApiRoutes.Classifications}/{id}", request, cancellationToken);
+        ThrowIfTaken(response, request.Tag);
+        response.EnsureFound();
+        return await response.ReadRequiredJsonAsync<Classification>(cancellationToken);
+    }
 
     public async Task AddCustomClassificationsToTransactionAsync(AddCustomClassificationsToTransaction model,
         CancellationToken cancellationToken)
@@ -49,5 +66,13 @@ public sealed class ClassificationApiClient : IClassificationService
         using HttpResponseMessage response =
             await _http.DeleteAsync($"{ApiRoutes.Classifications}/{id}", cancellationToken);
         response.EnsureFound();
+    }
+
+    private static void ThrowIfTaken(HttpResponseMessage response, string tag)
+    {
+        if (response.StatusCode == HttpStatusCode.Conflict)
+        {
+            throw new DuplicateTagException(tag.Trim());
+        }
     }
 }

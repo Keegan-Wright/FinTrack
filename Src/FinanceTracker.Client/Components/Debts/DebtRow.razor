@@ -1,0 +1,56 @@
+@* One debt. What's left of it, how much is paid off, its terms, when it's paid off and how that stands against the
+   goal. Its name opens its detail. *@
+@using FinanceTracker.Contracts.Debts
+
+<div class="ft-debt">
+    <div class="ft-debt__line">
+        <MudLink Href="@($"Debts/{Debt.Id}")" Typo="Typo.body2" Class="ft-debt__name">@Debt.Name</MudLink>
+        <MoneyText Value="@Debt.Owed"/>
+        @if (Editable)
+        {
+            <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true"
+                     AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
+                     aria-label="@($"Actions for {Debt.Name}")">
+                <MudMenuItem Icon="@Icons.Material.Outlined.Edit" OnClick="@OnEdit">Edit</MudMenuItem>
+                <MudMenuItem Icon="@Icons.Material.Outlined.Delete" OnClick="@OnDelete">Delete</MudMenuItem>
+            </MudMenu>
+        }
+    </div>
+
+    <MudProgressLinear Value="@(DebtText.Progress(Debt) * 100)" Rounded="true" Size="Size.Medium"
+                       Color="@(DebtText.IsPaidOff(Debt) ? Color.Success : Color.Primary)"
+                       aria-label="@DebtText.BarLabel(Debt)"/>
+
+    <div class="ft-debt__details">
+        <MudText Typo="Typo.caption" Class="mud-text-secondary ft-money">@DebtText.OwedOf(Debt)</MudText>
+        <MudText Typo="Typo.caption" Color="@ForecastColor">@DebtText.Forecast(Debt.Forecast)</MudText>
+        @if (DebtText.Goal(Debt) is { } goal)
+        {
+            <MudText Typo="Typo.caption" Color="@GoalColor">@goal</MudText>
+        }
+    </div>
+
+    <MudText Typo="Typo.caption" Class="mud-text-secondary">@DebtText.Terms(Debt)</MudText>
+</div>
+
+@code {
+
+    [Parameter] [EditorRequired] public required Debt Debt { get; set; }
+
+    /// <summary>
+    /// Whether it can be edited or deleted from here.
+    /// </summary>
+    [Parameter] public bool Editable { get; set; }
+
+    [Parameter] public EventCallback OnEdit { get; set; }
+
+    [Parameter] public EventCallback OnDelete { get; set; }
+
+    /// <summary>
+    /// Amber when it's never paid off, otherwise as quiet as the rest.
+    /// </summary>
+    private Color ForecastColor => Debt.Forecast.PaidOffOn is null ? Color.Warning : Color.Default;
+
+    private Color GoalColor => Debt.OnTrack == false ? Color.Warning : Color.Default;
+
+}

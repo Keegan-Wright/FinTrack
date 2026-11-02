@@ -20,10 +20,6 @@
     white-space: nowrap;
 }
 
-.ft-budget__actions {
-    display: inline-flex;
-    flex: 0 0 auto;
-}
 
 /* The pace marker sits over the bar, a thin line where a steady pace would be by today */
 .ft-budget__bar {

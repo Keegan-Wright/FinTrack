@@ -28,6 +28,15 @@ public sealed class HouseholdMemberApiClient : IHouseholdMemberService
         _http.PostReadAsync<AddHouseholdMember, HouseholdMember>(ApiRoutes.HouseholdMembers, categoryToAdd,
             cancellationToken);
 
+    public async Task<HouseholdMember> UpdateHouseholdMemberAsync(Guid id, UpdateHouseholdMember request,
+        CancellationToken cancellationToken)
+    {
+        using HttpResponseMessage response =
+            await _http.PutAsJsonAsync($"{ApiRoutes.HouseholdMembers}/{id}", request, cancellationToken);
+        response.EnsureFound();
+        return await response.ReadRequiredJsonAsync<HouseholdMember>(cancellationToken);
+    }
+
     public async Task<HouseholdMemberRecognitionSaved> UpdateRecognitionAsync(Guid id,
         UpdateHouseholdMemberRecognition request, CancellationToken cancellationToken)
     {
