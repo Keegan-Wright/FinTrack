@@ -11,7 +11,7 @@ public static class ClassificationEndpoints
     {
         /// <summary>
         /// <see cref="IClassificationService"/> at <see cref="ApiRoutes.Classifications"/>. Ids that don't exist or
-        /// aren't the user's answer 404.
+        /// aren't the user's answer 404, a tag name the user already has answers 409.
         /// </summary>
         public RouteGroupBuilder MapClassificationEndpoints()
         {
@@ -29,7 +29,16 @@ public static class ClassificationEndpoints
             classifications.MapPost(string.Empty, async Task<Ok<Classification>> (AddClassifications request,
                         IClassificationService service, CancellationToken cancellationToken) =>
                     TypedResults.Ok(await service.AddCustomClassificationAsync(request, cancellationToken)))
-                .Validated<AddClassifications>();
+                .Validated<AddClassifications>()
+                .ConflictWhenNameTaken();
+
+            classifications.MapPut("{id:guid}", async Task<Ok<Classification>> (Guid id,
+                        RenameClassification request, IClassificationService service,
+                        CancellationToken cancellationToken) =>
+                    TypedResults.Ok(await service.RenameCustomClassificationAsync(id, request, cancellationToken)))
+                .Validated<RenameClassification>()
+                .ConflictWhenNameTaken()
+                .NotFoundWhenMissing();
 
             classifications.MapPost("transactions", async Task<NoContent> (
                     AddCustomClassificationsToTransaction request, IClassificationService service,

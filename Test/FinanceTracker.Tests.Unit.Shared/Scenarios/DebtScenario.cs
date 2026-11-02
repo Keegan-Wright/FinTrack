@@ -1,4 +1,4 @@
-using FinanceTracker.Domain.Budgeting;
+using FinanceTracker.Domain.Debts;
 using FinanceTracker.Tests.Unit.Shared.Fakers;
 
 namespace FinanceTracker.Tests.Unit.Shared.Scenarios;

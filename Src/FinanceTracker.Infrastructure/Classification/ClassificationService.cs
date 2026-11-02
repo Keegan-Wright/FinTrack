@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.Classifications;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Domain.Budgeting;
@@ -55,12 +56,31 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
+        await EnsureTagIsFreeAsync(context, classification.Tag, null, cancellationToken);
+
         CustomClassification newClassification = new(UserId, classification.Tag);
         context.CustomClassifications.Add(newClassification);
 
-        await context.SaveChangesAsync(cancellationToken);
+        await NameCheck.SaveKeepingNamesApartAsync(context, NameTakenException.Tag, classification.Tag,
+            cancellationToken);
 
         return new Contracts.Classifications.Classification { Tag = newClassification.Tag, ClassificationId = newClassification.Id };
+    }
+
+    public async Task<Contracts.Classifications.Classification> RenameCustomClassificationAsync(Guid id,
+        RenameClassification request, CancellationToken cancellationToken)
+    {
+        await using FinanceTrackerContext context =
+            await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+
+        CustomClassification classification = await context.CustomClassifications.OwnedBy(UserId)
+            .SingleAsync(x => x.Id == id, cancellationToken);
+        await EnsureTagIsFreeAsync(context, request.Tag, id, cancellationToken);
+        classification.Rename(request.Tag);
+
+        await NameCheck.SaveKeepingNamesApartAsync(context, NameTakenException.Tag, request.Tag, cancellationToken);
+
+        return new Contracts.Classifications.Classification { Tag = classification.Tag, ClassificationId = classification.Id };
     }
 
     public async Task AddCustomClassificationsToTransactionAsync(
@@ -123,5 +143,14 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
 
         context.CustomClassifications.Remove(classificationToRemove);
         await context.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <exception cref="NameTakenException">Another of the user's tags is called <paramref name="tag"/>.</exception>
+    private async Task EnsureTagIsFreeAsync(FinanceTrackerContext context, string tag, Guid? exceptId,
+        CancellationToken cancellationToken)
+    {
+        List<CustomClassification> existing = await context.CustomClassifications.OwnedBy(UserId).AsNoTracking()
+            .ToListAsync(cancellationToken);
+        NameCheck.EnsureFree(existing.Select(static x => (x.Id, x.Tag)), tag, exceptId, NameTakenException.Tag);
     }
 }

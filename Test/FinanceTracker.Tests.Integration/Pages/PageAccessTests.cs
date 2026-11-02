@@ -13,6 +13,8 @@ public class PageAccessTests : IntegrationTestBase
         "/Budgets",
         "/Calendar",
         "/Classifications",
+        "/Debts",
+        $"/Debts/{Guid.NewGuid()}",
         "/HouseholdMembers",
         "/ProviderSetup",
         "/Reports",

@@ -16,6 +16,8 @@ public class RuleFormTests : ComponentTestBase
     private static readonly Dictionary<Guid, string> TagNames = new() { [TagId] = "Shopping" };
     private static readonly Guid BillId = Guid.NewGuid();
     private static readonly Dictionary<Guid, string> BillNames = new() { [BillId] = "Rent" };
+    private static readonly Guid DebtId = Guid.NewGuid();
+    private static readonly Dictionary<Guid, string> DebtNames = new() { [DebtId] = "Car loan" };
 
     private IRenderedComponent<MudPopoverProvider> _popovers = null!;
 
@@ -183,6 +185,48 @@ public class RuleFormTests : ComponentTestBase
     }
 
     [Test]
+    public async Task ChoosingPayDebt_AsksWhichDebtAndDropsTheTag()
+    {
+        // Arrange
+        SaveRule rule = Complete();
+        IRenderedComponent<RuleForm> cut = RenderForm(rule);
+
+        // Act
+        await ChooseAsync(cut, "Do", "Pay off debt");
+        await ChooseAsync(cut, "Debt", "Car loan");
+        bool valid = await cut.InvokeAsync(() => cut.Instance.ValidateAsync());
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(rule.Actions.Single().Type).IsEqualTo(RuleActionType.PayDebt);
+            await Assert.That(rule.Actions.Single().DebtId).IsEqualTo(DebtId);
+            await Assert.That(rule.Actions.Single().ClassificationId).IsNull();
+            await Assert.That(SelectValue(cut, "Debt")).IsEqualTo("Car loan");
+            await Assert.That(valid).IsTrue();
+        }
+    }
+
+    [Test]
+    public async Task ChoosingPayDebt_WithoutChoosingOne_IsInvalid()
+    {
+        // Arrange
+        SaveRule rule = Complete();
+        IRenderedComponent<RuleForm> cut = RenderForm(rule);
+
+        // Act
+        await ChooseAsync(cut, "Do", "Pay off debt");
+        bool valid = await cut.InvokeAsync(() => cut.Instance.ValidateAsync());
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(valid).IsFalse();
+            await Assert.That(cut.Markup).Contains("Choose a debt");
+        }
+    }
+
+    [Test]
     public async Task Render_ChosenValues_ShowAsTheyReadNotTheirIds()
     {
         // Act
@@ -211,7 +255,8 @@ public class RuleFormTests : ComponentTestBase
             .Add(x => x.Model, rule)
             .Add(x => x.AccountNames, new Dictionary<Guid, string>())
             .Add(x => x.TagNames, TagNames)
-            .Add(x => x.BillNames, BillNames));
+            .Add(x => x.BillNames, BillNames)
+            .Add(x => x.DebtNames, DebtNames));
     }
 
     /// <summary>

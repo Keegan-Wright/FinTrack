@@ -149,12 +149,17 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
 
         Dictionary<Guid, string> tagNames = await context.CustomClassifications.OwnedBy(UserId)
             .ToDictionaryAsync(static x => x.Id, static x => x.Tag, cancellationToken);
+        Dictionary<Guid, string> billNames = await context.Bills.OwnedBy(UserId)
+            .ToDictionaryAsync(static x => x.Id, static x => x.Name, cancellationToken);
+        Dictionary<Guid, string> debtNames = await context.Debts.OwnedBy(UserId)
+            .ToDictionaryAsync(static x => x.Id, static x => x.Name, cancellationToken);
 
         // Conditions test encrypted fields, so every transaction is loaded and checked once decrypted
         List<BankTransaction> transactions = await context.BankTransactions.OwnedBy(UserId).AsNoTracking()
             .ToListAsync(cancellationToken);
 
-        return RulePreviewer.Preview(running, draft, transactions, tagNames, _timeProvider.UtcNow);
+        RulePreviewNames names = new(tagNames, billNames, debtNames);
+        return RulePreviewer.Preview(running, draft, transactions, names, _timeProvider.UtcNow);
     }
 
     public Task<int> ApplyRuleToExistingAsync(Guid id, CancellationToken cancellationToken) =>
@@ -193,13 +198,14 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
     /// <summary>
     /// The page only offers the user's own tags and accounts, this covers calls that don't come from it.
     /// </summary>
-    /// <exception cref="InvalidOperationException">An action adds a tag or pays a bill, or a condition names an
-    /// account, that doesn't exist or isn't the user's.</exception>
+    /// <exception cref="InvalidOperationException">An action adds a tag or pays a bill or debt, or a condition names
+    /// an account, that doesn't exist or isn't the user's.</exception>
     private async Task EnsureTheUsersOwnAsync(FinanceTrackerContext context, SaveRule rule,
         CancellationToken cancellationToken)
     {
         await EnsureTagsAreTheUsersAsync(context, rule, cancellationToken);
         await EnsureBillsAreTheUsersAsync(context, rule, cancellationToken);
+        await EnsureDebtsAreTheUsersAsync(context, rule, cancellationToken);
         await EnsureAccountsAreTheUsersAsync(context, rule, cancellationToken);
     }
 
@@ -223,6 +229,29 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
         if (owned != billIds.Count)
         {
             throw new InvalidOperationException("A rule can only pay the user's own bills.");
+        }
+    }
+
+    private async Task EnsureDebtsAreTheUsersAsync(FinanceTrackerContext context, SaveRule rule,
+        CancellationToken cancellationToken)
+    {
+        List<Guid> debtIds = rule.Actions
+            .Select(static x => x.DebtId)
+            .OfType<Guid>()
+            .Distinct()
+            .ToList();
+
+        if (debtIds.Count == 0)
+        {
+            return;
+        }
+
+        int owned = await context.Debts.OwnedBy(UserId)
+            .CountAsync(x => debtIds.Contains(x.Id), cancellationToken);
+
+        if (owned != debtIds.Count)
+        {
+            throw new InvalidOperationException("A rule can only pay off the user's own debts.");
         }
     }
 

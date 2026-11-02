@@ -28,6 +28,26 @@ public static class EntityTypeBuilderExtensions
         }
 
         /// <summary>
+        /// Adds a blind index on a name held in <paramref name="encryptedProperties"/>, ignoring case and spaces at
+        /// either end, see <see cref="NameBlindIndex"/>, for a unique index that keeps a user's names apart.
+        /// </summary>
+        /// <returns>The blind index property's name, for use in indexes.</returns>
+        public string HasNameBlindIndex(params Expression<Func<TEntity, string>>[] encryptedProperties)
+        {
+            ArgumentNullException.ThrowIfNull(builder);
+            ArgumentOutOfRangeException.ThrowIfZero(encryptedProperties.Length);
+
+            string sources = string.Join(',', encryptedProperties
+                .Select(static x => ((MemberExpression)x.Body).Member.Name));
+
+            builder.Property<string>(NameBlindIndex.PropertyName)
+                .IsRequired()
+                .HasAnnotation(Annotations.NameBlindIndexSourceAnnotation, sources);
+
+            return NameBlindIndex.PropertyName;
+        }
+
+        /// <summary>
         /// Adds a blind index on the UTC day of an encrypted date, see <see cref="DayBlindIndex"/>, so date ranges can
         /// be looked up without decrypting every row.
         /// </summary>

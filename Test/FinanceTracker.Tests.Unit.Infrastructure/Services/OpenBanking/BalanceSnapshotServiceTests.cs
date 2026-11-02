@@ -1,3 +1,4 @@
+using FinanceTracker.Domain.Debts;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.NetWorth;
 using FinanceTracker.Domain.OpenBanking.Balances;
@@ -50,6 +51,37 @@ public class BalanceSnapshotServiceTests : InfrastructureTestBase
             await Assert.That(netWorth.IsStale).IsFalse();
             await Assert.That(await LoadNetWorthAsync()).Count().IsEqualTo(1);
         }
+    }
+
+    [Test]
+    public async Task SnapshotAsync_DebtsNotOnAnAccount_CountAsLiabilities()
+    {
+        // Arrange
+        await SeedAccountsAsync(Username, "mine")
+            .Do(s => s.BankAccountScenario.WithBalance("mine-current", Balance(-100m, Morning)))
+            .Do(s => s.BankAccountScenario.WithSyncLog("mine-current", SyncType.Balance, Morning))
+            .Do(s => s.DebtScenario.WithDebt("loan", Username, static userId =>
+                new Debt(userId, "Car loan", null, 4000m, new DateOnly(2026, 1, 1), 0m, 200m)))
+            .Do(s => s.DebtScenario.WithDebt("card", Username, static userId =>
+                new Debt(userId, "Card", null, 900m, new DateOnly(2026, 1, 1), 19.9m, 50m)));
+
+        // The card's balance is already in its account's
+        await using (FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken))
+        {
+            Guid cardId = Scenario.DebtMappings["card"];
+            Guid accountId = Scenario.AccountMappings["mine-current"];
+            Debt card = await context.Debts.SingleAsync(x => x.Id == cardId, CancellationToken);
+            card.LinkAccount(await context.BankAccounts.SingleAsync(x => x.Id == accountId, CancellationToken));
+            await context.SaveChangesAsync(CancellationToken);
+        }
+
+        BalanceSnapshotService subject = BuildSubject(Username);
+
+        // Act
+        NetWorthSnapshot? netWorth = await subject.SnapshotAsync(Day, Morning, CancellationToken);
+
+        // Assert
+        await Assert.That(netWorth!.Liabilities).IsEqualTo(4100m);
     }
 
     [Test]
@@ -286,5 +318,6 @@ public class BalanceSnapshotServiceTests : InfrastructureTestBase
     }
 
     private BalanceSnapshotService BuildSubject(string username) =>
-        new(CurrentUserFor(username), DbContextFactory, NullLogger<BalanceSnapshotService>.Instance);
+        new(CurrentUserFor(username), DbContextFactory, NullLogger<BalanceSnapshotService>.Instance,
+            new FixedTimeProvider(Evening));
 }

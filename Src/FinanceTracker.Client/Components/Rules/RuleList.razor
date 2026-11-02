@@ -1,9 +1,9 @@
-@* The user's rules in the order they run. Each can be dragged by its handle or moved a place with the arrows, switched
-   on or off, and opened to edit. *@
+@* The user's rules in the order they run. Each can be dragged by its handle, switched on or off, and edited, moved a
+   place or deleted from its menu. *@
 @using FinanceTracker.Contracts.Rules
 
 <div class="ft-rules">
-    @* Keyed on the order so a move from either the arrows or a drop rebuilds the zone in the new order *@
+    @* Keyed on the order so a move from either the menu or a drop rebuilds the zone in the new order *@
     <MudDropContainer T="Rule" @key="@OrderKey" Items="@Rules" ItemsSelector="@((_, _) => true)"
                       ItemDropped="@OnDroppedAsync" ItemDraggingClass="ft-rule--dragging">
         <ChildContent>
@@ -28,7 +28,7 @@
                     </MudLink>
 
                     <MudText Typo="Typo.caption" Class="mud-text-secondary ft-rule__summary">
-                        @RuleText.Summary(context, AccountNames, TagNames, BillNames)
+                        @RuleText.Summary(context, AccountNames, TagNames, BillNames, DebtNames)
                     </MudText>
                     @if (problem is not null)
                     {
@@ -40,15 +40,17 @@
                            ValueChanged="@(_ => OnToggle.InvokeAsync(context))"
                            aria-label="@($"Run {context.Name}")"/>
 
-                <span class="ft-rule__move">
-
-                    <MudIconButton Icon="@Icons.Material.Outlined.ArrowUpward" Size="Size.Small"
-                                   Disabled="@(index == 0)" aria-label="@($"Move {context.Name} up")"
-                                   OnClick="@(() => MoveAsync(context, index - 1))"/>
-                    <MudIconButton Icon="@Icons.Material.Outlined.ArrowDownward" Size="Size.Small"
-                                   Disabled="@(index == Rules.Count - 1)" aria-label="@($"Move {context.Name} down")"
-                                   OnClick="@(() => MoveAsync(context, index + 1))"/>
-                </span>
+                <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true"
+                         AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
+                         aria-label="@($"Actions for {context.Name}")">
+                    <MudMenuItem Icon="@Icons.Material.Outlined.Edit" Href="@($"Rules/{context.Id}")">Edit</MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Outlined.ArrowUpward" Disabled="@(index == 0)"
+                                 OnClick="@(() => MoveAsync(context, index - 1))">Move up</MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Outlined.ArrowDownward" Disabled="@(index == Rules.Count - 1)"
+                                 OnClick="@(() => MoveAsync(context, index + 1))">Move down</MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Outlined.Delete"
+                                 OnClick="@(() => OnDelete.InvokeAsync(context))">Delete</MudMenuItem>
+                </MudMenu>
             </div>
         </ItemRenderer>
     </MudDropContainer>
@@ -79,7 +81,12 @@
     [Parameter] public IReadOnlyDictionary<Guid, string> BillNames { get; set; } = new Dictionary<Guid, string>();
 
     /// <summary>
-    /// The rules in their new order, after one is dragged or moved with the arrows.
+    /// The user's debts by id, for actions that pay one off.
+    /// </summary>
+    [Parameter] public IReadOnlyDictionary<Guid, string> DebtNames { get; set; } = new Dictionary<Guid, string>();
+
+    /// <summary>
+    /// The rules in their new order, after one is dragged or moved from its menu.
     /// </summary>
     [Parameter] public EventCallback<IReadOnlyList<Rule>> OnReorder { get; set; }
 
@@ -87,6 +94,8 @@
     /// A rule to switch on if it's off, or off if it's on.
     /// </summary>
     [Parameter] public EventCallback<Rule> OnToggle { get; set; }
+
+    [Parameter] public EventCallback<Rule> OnDelete { get; set; }
 
     private string OrderKey => string.Join(',', Rules.Select(static x => x.Id));
 

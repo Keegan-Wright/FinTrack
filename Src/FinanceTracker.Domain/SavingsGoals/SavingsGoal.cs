@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using FinanceTracker.Domain.Common;
+using FinanceTracker.Domain.OpenBanking.Transactions;
 
 namespace FinanceTracker.Domain.SavingsGoals;
 
@@ -78,6 +79,36 @@ public sealed class SavingsGoal : AggregateRoot
     /// Whether it tracks tags and all of them were deleted, so nothing counts until it's given one.
     /// </summary>
     public bool CoversNothing => Source == SavingsGoalSource.Tags && _tagIds.Count == 0;
+
+    /// <summary>
+    /// Whether <paramref name="transaction"/> moves what's saved: any on the goal's account, or one with a goal's tag
+    /// from its <see cref="TrackedFrom"/> day on. Nothing counts towards a typed in goal.
+    /// </summary>
+    /// <param name="timeZone">Where the user is, so a transaction falls on the day it was where they are.</param>
+    public bool Counts(BankTransaction transaction, TimeZoneInfo timeZone)
+    {
+        ArgumentNullException.ThrowIfNull(transaction);
+        ArgumentNullException.ThrowIfNull(timeZone);
+
+        if (Source == SavingsGoalSource.Account)
+        {
+            return AccountId == transaction.AccountId;
+        }
+
+        if (Source != SavingsGoalSource.Tags || TrackedFrom is not { } from)
+        {
+            return false;
+        }
+
+        if (!transaction.CustomClassificationIds.Any(_tagIds.Contains))
+        {
+            return false;
+        }
+
+        DateTime local = TimeZoneInfo.ConvertTime(DateTime.SpecifyKind(transaction.OccurredAt, DateTimeKind.Utc),
+            timeZone);
+        return DateOnly.FromDateTime(local) >= from;
+    }
 
     [MemberNotNull(nameof(Name))]
     public void Rename(string name)

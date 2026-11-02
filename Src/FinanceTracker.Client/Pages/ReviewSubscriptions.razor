@@ -83,6 +83,12 @@
             _suggestions.Remove(suggestion);
             await RefreshSubscriptionsToReviewAsync(BillsService);
         }
+        catch (AlreadyABillException ex)
+        {
+            _suggestions.Remove(suggestion);
+            await RefreshSubscriptionsToReviewAsync(BillsService);
+            Snackbar.Add(ex.Message, Severity.Info);
+        }
         catch (Exception)
         {
             Snackbar.Add("Couldn't update that, try again", Severity.Error);

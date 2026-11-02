@@ -1,6 +1,7 @@
 using FinanceTracker.Domain.Bills;
 using FinanceTracker.Domain.Budgeting;
 using FinanceTracker.Domain.Common;
+using FinanceTracker.Domain.Debts;
 using FinanceTracker.Domain.Household;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Connections;
@@ -284,7 +285,7 @@ public class FinanceTrackerContextTests : InfrastructureTestBase
         Guid debtId;
         using (FinanceTrackerContext context = DbContextFactory.CreateDbContext())
         {
-            Debt debt = new(userId, "Loan", 10m, null, null);
+            Debt debt = new(userId, "Loan", null, 1000m, new DateOnly(2026, 1, 1), 0m, 10m);
             context.Debts.Add(debt);
             context.SaveChanges();
 

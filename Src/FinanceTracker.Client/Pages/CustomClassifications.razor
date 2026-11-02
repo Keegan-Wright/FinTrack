@@ -2,6 +2,7 @@
 @* Adds and removes the user's custom classifications, the tags they can put on transactions
    (IClassificationService). *@
 @using FinanceTracker.Client.Components.Dialogs
+@using FinanceTracker.Contracts
 @using FinanceTracker.Contracts.Classifications
 @using Microsoft.AspNetCore.Authorization
 @inherits PageComponent
@@ -42,12 +43,23 @@
             {
                 <MudText Typo="Typo.body2" Class="mud-text-secondary">No tags match that search.</MudText>
             }
-            <div class="ft-chips">
+            <div class="ft-list">
                 @foreach (var classification in shown)
                 {
-                    <MudChip T="string" Variant="Variant.Outlined" Icon="@Icons.Material.Outlined.Sell">
-                        @classification.Tag
-                    </MudChip>
+                    <div class="ft-list__row">
+                        <MudIcon Icon="@Icons.Material.Outlined.Sell" Size="Size.Small" Class="mud-text-secondary"/>
+                        <div class="ft-list__main">
+                            <MudText Typo="Typo.body2" Class="text-truncate">@classification.Tag</MudText>
+                        </div>
+                        <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true"
+                                 AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
+                                 aria-label="@($"Actions for {classification.Tag}")">
+                            <MudMenuItem Icon="@Icons.Material.Outlined.Edit"
+                                         OnClick="@(() => RenameAsync(classification))">Rename</MudMenuItem>
+                            <MudMenuItem Icon="@Icons.Material.Outlined.Delete"
+                                         OnClick="@(() => DeleteAsync(classification))">Delete</MudMenuItem>
+                        </MudMenu>
+                    </div>
                 }
             </div>
         }
@@ -98,9 +110,74 @@
             (Classifications ??= []).Add(classification);
             Snackbar.Add($"Tag \"{classification.Tag}\" added", Severity.Success);
         }
+        catch (NameTakenException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Warning);
+        }
         catch (Exception)
         {
             Snackbar.Add("Couldn't add that tag, try again", Severity.Error);
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
+    internal async Task RenameAsync(Classification classification)
+    {
+        DialogParameters<AddClassificationDialog> parameters = new() { { x => x.Tag, classification.Tag } };
+        IDialogReference dialogRef = await DialogService.ShowAsync<AddClassificationDialog>(null, parameters);
+        DialogResult? result = await dialogRef.Result;
+        if (result is null || result.Canceled)
+        {
+            return;
+        }
+
+        try
+        {
+            SetLoadingState(true, "Relabelling…");
+            RenameClassification rename = new() { Tag = ((AddClassifications)result.Data!).Tag };
+            Classification renamed = await ClassificationService.RenameCustomClassificationAsync(
+                classification.ClassificationId, rename, _cts.Token);
+            Classifications![Classifications.IndexOf(classification)] = renamed;
+            Snackbar.Add($"Renamed to \"{renamed.Tag}\"", Severity.Success);
+        }
+        catch (NameTakenException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Warning);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't rename that tag, try again", Severity.Error);
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
+    internal async Task DeleteAsync(Classification classification)
+    {
+        bool? confirmed = await DialogService.ShowMessageBoxAsync($"Delete {classification.Tag}?",
+            "It comes off every transaction, and out of the rules, budgets and savings goals that use it. A rule left " +
+            "with nothing to do is turned off.",
+            yesText: "Delete", cancelText: "Cancel");
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        try
+        {
+            SetLoadingState(true, $"Deleting {classification.Tag}…");
+            await ClassificationService.RemoveCustomClassificationAsync(classification.ClassificationId, _cts.Token);
+            Classifications!.Remove(classification);
+            Snackbar.Add($"Tag \"{classification.Tag}\" deleted", Severity.Success);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't delete that tag, try again", Severity.Error);
         }
         finally
         {

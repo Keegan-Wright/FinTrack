@@ -13,10 +13,14 @@ namespace FinanceTracker.Infrastructure.Transactions;
 [Scoped<ITransactionsService>]
 public class TransactionsService : ServiceBase<TransactionsService>, ITransactionsService
 {
+    private readonly TimeProvider _timeProvider;
+
     public TransactionsService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
-        ILogger<TransactionsService> logger) : base(currentUser, financeTrackerContextFactory, logger)
+        ILogger<TransactionsService> logger, TimeProvider timeProvider)
+        : base(currentUser, financeTrackerContextFactory, logger)
     {
+        _timeProvider = timeProvider;
     }
 
     public async IAsyncEnumerable<Transaction> GetAllTransactionsAsync(
@@ -26,7 +30,8 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        TransactionCriteria criteria = TransactionCriteria.From(filterTransactions);
+        TransactionCriteria criteria = await TransactionCriteria.From(filterTransactions)
+            .WithSavingsGoalsAsync(context, UserId, _timeProvider.LocalTimeZone, cancellationToken);
         Dictionary<Guid, string> customTags = await context.CustomClassifications.OwnedBy(UserId)
             .ToDictionaryAsync(static x => x.Id, static x => x.Tag, cancellationToken);
 
@@ -42,7 +47,8 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
             .ToList();
 
         TransactionMapper mapper =
-            await TransactionMapper.LoadAsync(context, UserId, customTags, matching, cancellationToken);
+            await TransactionMapper.LoadAsync(context, UserId, customTags, matching,
+                _timeProvider.LocalTimeZone, cancellationToken);
 
         foreach (BankTransaction transaction in matching)
         {
@@ -86,7 +92,8 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
         Dictionary<Guid, string> customTags = await context.CustomClassifications.OwnedBy(UserId)
             .ToDictionaryAsync(static x => x.Id, static x => x.Tag, cancellationToken);
         TransactionMapper mapper =
-            await TransactionMapper.LoadAsync(context, UserId, customTags, [transaction], cancellationToken);
+            await TransactionMapper.LoadAsync(context, UserId, customTags, [transaction],
+                _timeProvider.LocalTimeZone, cancellationToken);
 
         return mapper.ToContract(transaction);
     }

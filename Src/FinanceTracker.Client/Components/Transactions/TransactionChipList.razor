@@ -1,0 +1,38 @@
+@* A transaction's bill, subscription, debt and savings goals, linking to each, then its tags and the bank's
+   classifications, as chips that wrap. See TransactionChips for what's shown and in what order. *@
+@using FinanceTracker.Contracts.Transactions
+
+@if (Chips.Count > 0)
+{
+    @* Clicking a link stays on the link rather than opening the row it's in *@
+    <div class="ft-chips ft-transaction-chips" @onclick:stopPropagation="true">
+        @foreach (TransactionChip chip in Chips)
+        {
+            <MudChip T="string" Size="Size.Small" Variant="@VariantFor(chip)" Color="@ColorFor(chip)"
+                     Icon="@chip.Icon" Href="@chip.Href" title="@chip.Title"
+                     Class="@ClassFor(chip)">@chip.Text</MudChip>
+        }
+    </div>
+}
+
+@code {
+
+    [Parameter] [EditorRequired] public required Transaction Transaction { get; set; }
+
+    /// <summary>
+    /// Only the bill, subscription, debt and goals, for the compact phone list.
+    /// </summary>
+    [Parameter] public bool LinksOnly { get; set; }
+
+    private IReadOnlyList<TransactionChip> Chips => TransactionChips.For(Transaction, LinksOnly);
+
+    private static Variant VariantFor(TransactionChip chip) =>
+        chip.Kind == TransactionChipKind.Link ? Variant.Outlined : Variant.Text;
+
+    private static Color ColorFor(TransactionChip chip) =>
+        chip.Kind == TransactionChipKind.Link ? Color.Primary : Color.Default;
+
+    private static string? ClassFor(TransactionChip chip) =>
+        chip.Kind == TransactionChipKind.Bank ? "ft-transaction-chips__bank" : null;
+
+}

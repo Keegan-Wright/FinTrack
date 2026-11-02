@@ -45,6 +45,23 @@ public class NetWorthSnapshotTests
     }
 
     [Test]
+    public async Task NetWorthSnapshot_DebtsNotOnAnAccount_CountAsLiabilities()
+    {
+        NetWorthSnapshot snapshot = new(UserId, Day, [Balance(1200m), Balance(-150m)], debts: 4000m);
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(snapshot.Liabilities).IsEqualTo(4150m);
+            await Assert.That(snapshot.NetWorth).IsEqualTo(-2950m);
+        }
+    }
+
+    [Test]
+    public async Task NetWorthSnapshot_NegativeDebts_Throws() =>
+        await Assert.That(() => new NetWorthSnapshot(UserId, Day, [], debts: -1m))
+            .Throws<ArgumentOutOfRangeException>();
+
+    [Test]
     public async Task NetWorthSnapshot_NoBalances_IsZero()
     {
         NetWorthSnapshot snapshot = new(UserId, Day, []);

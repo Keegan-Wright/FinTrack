@@ -31,4 +31,10 @@ public class RuleAction
     /// </summary>
     [Description("The bill it pays, for pay bill only")]
     public Guid? BillId { get; set; }
+
+    /// <summary>
+    /// The debt <see cref="RuleActionType.PayDebt"/> says it pays off, null for the other types.
+    /// </summary>
+    [Description("The debt it pays off, for pay debt only")]
+    public Guid? DebtId { get; set; }
 }

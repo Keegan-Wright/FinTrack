@@ -1,3 +1,4 @@
+using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.Classifications;
 using FinanceTracker.Domain.Budgeting;
 using FinanceTracker.Domain.Classifications;
@@ -42,7 +43,9 @@ public class ClassificationServiceTests : InfrastructureTestBase
     }
 
     [Test]
-    public async Task AddCustomClassificationAsync_DuplicateTagForUser_Throws()
+    [Arguments("Groceries")]
+    [Arguments(" groceries ")]
+    public async Task AddCustomClassificationAsync_DuplicateTagForUser_ThrowsAndAddsNothing(string tag)
     {
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
@@ -50,9 +53,18 @@ public class ClassificationServiceTests : InfrastructureTestBase
 
         ClassificationService subject = BuildSubject();
 
-        // Act & Assert
-        await Assert.ThrowsAsync<DbUpdateException>(() =>
-            subject.AddCustomClassificationAsync(new AddClassifications { Tag = "Groceries" }, CancellationToken));
+        // Act
+        NameTakenException? exception = await Assert.ThrowsAsync<NameTakenException>(() =>
+            subject.AddCustomClassificationAsync(new AddClassifications { Tag = tag }, CancellationToken));
+
+        // Assert
+        List<Contracts.Classifications.Classification> all = await subject
+            .GetAllCustomClassificationsAsync(CancellationToken).ToListAsync(CancellationToken);
+        using (Assert.Multiple())
+        {
+            await Assert.That(exception!.Name).IsEqualTo(tag.Trim());
+            await Assert.That(all).Count().IsEqualTo(1);
+        }
     }
 
     [Test]
@@ -110,6 +122,84 @@ public class ClassificationServiceTests : InfrastructureTestBase
 
         // Assert
         await Assert.That(classifications.Count).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task RenameCustomClassificationAsync_WhenOwned_SavesTheNewName()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.ClassificationScenario.WithClassification("holiday", Username, "Holiday"));
+
+        ClassificationService subject = BuildSubject();
+        Guid id = Scenario.ClassificationMappings["holiday"];
+
+        // Act
+        Contracts.Classifications.Classification renamed = await subject.RenameCustomClassificationAsync(id,
+            new RenameClassification { Tag = "Travel" }, CancellationToken);
+
+        // Assert
+        GetClassification stored = await subject.GetClassificationAsync(id, CancellationToken);
+        using (Assert.Multiple())
+        {
+            await Assert.That(renamed.Tag).IsEqualTo("Travel");
+            await Assert.That(renamed.ClassificationId).IsEqualTo(id);
+            await Assert.That(stored.Tag).IsEqualTo("Travel");
+        }
+    }
+
+    [Test]
+    public async Task RenameCustomClassificationAsync_ToAnotherOfTheirTags_ThrowsAndKeepsTheName()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.ClassificationScenario.WithClassification("holiday", Username, "Holiday"))
+            .Do(s => s.ClassificationScenario.WithClassification("travel", Username, "Travel"));
+
+        ClassificationService subject = BuildSubject();
+        Guid id = Scenario.ClassificationMappings["holiday"];
+
+        // Act
+        await Assert.ThrowsAsync<NameTakenException>(() =>
+            subject.RenameCustomClassificationAsync(id, new RenameClassification { Tag = "travel" },
+                CancellationToken));
+
+        // Assert
+        await Assert.That((await subject.GetClassificationAsync(id, CancellationToken)).Tag).IsEqualTo("Holiday");
+    }
+
+    [Test]
+    public async Task RenameCustomClassificationAsync_ToItsOwnNameInAnotherCase_SavesIt()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.ClassificationScenario.WithClassification("holiday", Username, "holiday"));
+
+        ClassificationService subject = BuildSubject();
+
+        // Act
+        Contracts.Classifications.Classification renamed = await subject.RenameCustomClassificationAsync(
+            Scenario.ClassificationMappings["holiday"], new RenameClassification { Tag = "Holiday" },
+            CancellationToken);
+
+        // Assert
+        await Assert.That(renamed.Tag).IsEqualTo("Holiday");
+    }
+
+    [Test]
+    public async Task RenameCustomClassificationAsync_WhenOwnedByAnotherUser_Throws()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.UserScenario.WithUser(OtherUsername))
+            .Do(s => s.ClassificationScenario.WithClassification("theirs", OtherUsername));
+
+        ClassificationService subject = BuildSubject();
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            subject.RenameCustomClassificationAsync(Scenario.ClassificationMappings["theirs"],
+                new RenameClassification { Tag = "Mine now" }, CancellationToken));
     }
 
     [Test]

@@ -1,0 +1,216 @@
+@page "/Debts"
+@* What the user owes and is paying off. What's left in all, what goes on them each month and when
+   the last is paid off, then each debt's progress and forecast against its goal. *@
+@using FinanceTracker.Client.Components.Debts
+@using FinanceTracker.Contracts
+@using FinanceTracker.Contracts.Debts
+@using FinanceTracker.Contracts.Transactions
+@using Microsoft.AspNetCore.Authorization
+@inherits PageComponent
+
+@attribute [Authorize]
+@inject IDebtsService DebtsService
+@inject ITransactionsService TransactionsService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject TimeProvider TimeProvider
+
+<PageTitle>FinTrack - Debts</PageTitle>
+<PageHeader Title="Debts" Subtitle="What you owe, and when you'll have paid it off">
+    <Actions>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Add"
+                   OnClick="@AddAsync">New debt</MudButton>
+    </Actions>
+</PageHeader>
+
+<div class="ft-stack">
+    @if (DebtList is { Count: > 0 })
+    {
+        <StatStrip>
+            <Stat Label="Owed" Value="@DebtList.Sum(static x => x.Owed)">
+                Across @DebtCountText
+            </Stat>
+            <Stat Label="Paid each month" Value="@MonthlyPayments">
+                @DebtFreeText
+            </Stat>
+        </StatStrip>
+    }
+
+    <Section Title="Paying off" Caption="Link payments with a rule, or from a transaction's actions">
+        @if (Owing.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">@EmptyText</MudText>
+        }
+        else
+        {
+            <div class="ft-debt-list">
+                @foreach (Debt debt in Owing)
+                {
+                    <DebtRow @key="debt.Id" Debt="@debt" Editable="true" OnEdit="@(() => EditAsync(debt))"
+                             OnDelete="@(() => DeleteAsync(debt))"/>
+                }
+            </div>
+        }
+    </Section>
+
+    @if (PaidOff.Count > 0)
+    {
+        <Section Title="Paid off" Caption="Nothing left to pay on these">
+            <div class="ft-debt-list">
+                @foreach (Debt debt in PaidOff)
+                {
+                    <DebtRow @key="debt.Id" Debt="@debt" Editable="true" OnEdit="@(() => EditAsync(debt))"
+                             OnDelete="@(() => DeleteAsync(debt))"/>
+                }
+            </div>
+        </Section>
+    }
+</div>
+
+@code {
+
+    /// <summary>
+    /// The user's debts, loaded once, see <see cref="PageComponent.LoadOnceAsync{T}"/>.
+    /// </summary>
+    [PersistentState]
+    public List<Debt>? DebtList { get; set; }
+
+    /// <summary>
+    /// The user's accounts, for linking a debt to one.
+    /// </summary>
+    [PersistentState]
+    public List<TransactionAccountFilter>? Accounts { get; set; }
+
+    private DateOnly Today => DateOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime);
+
+    private List<Debt> Owing => (DebtList ?? []).Where(static x => !DebtText.IsPaidOff(x)).ToList();
+
+    private List<Debt> PaidOff => (DebtList ?? []).Where(DebtText.IsPaidOff).ToList();
+
+    private decimal MonthlyPayments => Owing.Sum(static x => x.MonthlyPayment);
+
+    private string DebtCountText => DebtList?.Count == 1 ? "1 debt" : $"{DebtList?.Count ?? 0} debts";
+
+    private string EmptyText => DebtList is null or { Count: 0 }
+        ? "No debts yet. Add a loan, card or finance agreement to see when it's paid off."
+        : "Everything's paid off.";
+
+    /// <summary>
+    /// When the last debt is paid off, as each is going.
+    /// </summary>
+    private string DebtFreeText
+    {
+        get
+        {
+            if (Owing.Count == 0)
+            {
+                return "Nothing left to pay";
+            }
+
+            if (Owing.Any(static x => x.Forecast.PaidOffOn is null))
+            {
+                return "One isn't paid off at its payment";
+            }
+
+            DateOnly last = Owing.Max(static x => x.Forecast.PaidOffOn!.Value);
+            return $"Debt free by {DebtText.Month(last)}";
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        DebtList = await LoadOnceAsync(DebtList, "Loading your debts", cancellationToken =>
+            DebtsService.GetDebtsAsync(cancellationToken).ToListAsync(cancellationToken).AsTask());
+        Accounts = await LoadOnceAsync(Accounts, "Loading your debts", cancellationToken =>
+            TransactionsService.GetAccountsForTransactionFiltersAsync(cancellationToken)
+                .ToListAsync(cancellationToken).AsTask());
+    }
+
+    private async Task AddAsync()
+    {
+        SaveDebt? debt = await ShowDialogAsync(null);
+        if (debt is null)
+        {
+            return;
+        }
+
+        await SaveAsync($"{debt.Name} added", () => DebtsService.AddDebtAsync(debt, _cts.Token));
+    }
+
+    private async Task EditAsync(Debt existing)
+    {
+        SaveDebt? debt = await ShowDialogAsync(existing);
+        if (debt is null)
+        {
+            return;
+        }
+
+        await SaveAsync($"{debt.Name} saved", () => DebtsService.UpdateDebtAsync(existing.Id, debt, _cts.Token));
+    }
+
+    private async Task DeleteAsync(Debt debt)
+    {
+        bool? confirmed = await DialogService.ShowMessageBoxAsync($"Delete {debt.Name}?",
+            "Its payments stay, they just won't pay off a debt. Rules that paid it off stop doing so.",
+            yesText: "Delete", cancelText: "Cancel");
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        await SaveAsync($"{debt.Name} deleted", () => DebtsService.DeleteDebtAsync(debt.Id, _cts.Token));
+    }
+
+    /// <returns>What the user entered, null when they cancelled.</returns>
+    private async Task<SaveDebt?> ShowDialogAsync(Debt? debt)
+    {
+        DialogParameters<DebtDialog> parameters = new()
+        {
+            { x => x.Debt, debt },
+            { x => x.Accounts, Accounts ?? [] },
+            { x => x.Today, Today }
+        };
+
+        IDialogReference dialog = await DialogService.ShowAsync<DebtDialog>(null, parameters);
+        DialogResult? result = await dialog.Result;
+
+        if (result is null || result.Canceled)
+        {
+            return null;
+        }
+
+        return (SaveDebt)result.Data!;
+    }
+
+    /// <summary>
+    /// Makes a change, then reloads the debts so what's owed and the forecasts are as saved.
+    /// </summary>
+    private async Task SaveAsync(string done, Func<Task> change)
+    {
+        try
+        {
+            SetLoadingState(true, "Saving…");
+            await change();
+            DebtList = await DebtsService.GetDebtsAsync(_cts.Token).ToListAsync(_cts.Token);
+            Snackbar.Add(done, Severity.Success);
+        }
+        catch (NameTakenException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Warning);
+        }
+        catch (InvalidOperationException)
+        {
+            Snackbar.Add("That account isn't yours any more, choose another", Severity.Error);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't save that, try again", Severity.Error);
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
+}

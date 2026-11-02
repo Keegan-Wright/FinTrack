@@ -1,11 +1,11 @@
-@* Asks for a new household member's name and income, validated as you type. *@
+@* Asks for a household member's name and income, new or changed, validated as you type. *@
 @using System.Globalization
 @using FinanceTracker.Contracts.HouseholdMember
 @using FinanceTracker.Client.Extensions
 @using FluentValidation
 @inject IValidator<AddHouseholdMember> Validator
 
-<DialogBase TResponse="AddHouseholdMember" Title="Add a person" ResponseConstructor="BuildResponseModel">
+<DialogBase TResponse="AddHouseholdMember" Title="@Title" ResponseConstructor="BuildResponseModel">
     <Content>
         <MudForm @ref="_form" Model="@_model">
             <MudGrid>
@@ -35,8 +35,27 @@
 
 @code {
 
+    /// <summary>
+    /// The member being edited, null to add a new one.
+    /// </summary>
+    [Parameter] public HouseholdMember? Member { get; set; }
+
     private MudForm _form = null!;
     private AddHouseholdMember _model = new() { FirstName = string.Empty, LastName = string.Empty, Income = 0 };
+
+    private string Title => Member is null ? "Add a person" : $"Edit {Member.FirstName}";
+
+    protected override void OnInitialized()
+    {
+        if (Member is null)
+        {
+            return;
+        }
+
+        _model.FirstName = Member.FirstName;
+        _model.LastName = Member.LastName;
+        _model.Income = Member.Income ?? 0;
+    }
 
     private static string CurrencySymbol => CultureInfo.CurrentCulture.NumberFormat.CurrencySymbol;
 

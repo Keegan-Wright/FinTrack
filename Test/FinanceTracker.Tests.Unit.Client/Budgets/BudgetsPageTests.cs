@@ -47,7 +47,7 @@ public class BudgetsPageTests : ComponentTestBase
             await Assert.That(cut.Markup).Contains("March 2026");
             await Assert.That(cut.Markup).Contains("Groceries");
             await Assert.That(cut.Markup).Contains("Spent with no budget");
-            await Assert.That(cut.FindAll("button[aria-label='Edit Groceries']")).Count().IsEqualTo(1);
+            await Assert.That(cut.FindAll("[aria-label='Actions for Groceries']")).Count().IsEqualTo(1);
         }
     }
 
@@ -66,7 +66,7 @@ public class BudgetsPageTests : ComponentTestBase
         {
             await Assert.That(cut.Markup).Contains("February 2026");
             await Assert.That(cut.Markup).Contains("As it ended");
-            await Assert.That(cut.FindAll("button[aria-label='Edit Groceries']")).IsEmpty();
+            await Assert.That(cut.FindAll("[aria-label='Actions for Groceries']")).IsEmpty();
         }
     }
 

@@ -145,6 +145,18 @@ public sealed class Rule : AggregateRoot
             throw new ArgumentException("Paying a bill needs to say which.", nameof(actions));
         }
 
+        List<RuleAction> paysDebt = replacements.Where(static x => x.Type == RuleActionType.PayDebt).ToList();
+
+        if (paysDebt.Count > 1)
+        {
+            throw new ArgumentException("A rule can only pay off one debt.", nameof(actions));
+        }
+
+        if (paysDebt.Exists(static x => x.DebtId is null))
+        {
+            throw new ArgumentException("Paying off a debt needs to say which.", nameof(actions));
+        }
+
         _actions.Clear();
         _actions.AddRange(replacements);
     }
@@ -190,6 +202,28 @@ public sealed class Rule : AggregateRoot
     public bool RemoveBill(Guid billId)
     {
         int removed = _actions.RemoveAll(x => x.Type == RuleActionType.PayBill && x.BillId == billId);
+
+        if (removed == 0)
+        {
+            return false;
+        }
+
+        if (_actions.Count == 0)
+        {
+            Disable();
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Drops the action that pays off a debt being deleted. A rule left with nothing to do is disabled rather than
+    /// deleted, see <see cref="RemoveTag"/>.
+    /// </summary>
+    /// <returns>Whether the rule paid off the debt.</returns>
+    public bool RemoveDebt(Guid debtId)
+    {
+        int removed = _actions.RemoveAll(x => x.Type == RuleActionType.PayDebt && x.DebtId == debtId);
 
         if (removed == 0)
         {

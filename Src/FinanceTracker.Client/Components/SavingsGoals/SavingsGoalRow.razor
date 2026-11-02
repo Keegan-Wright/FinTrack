@@ -11,12 +11,12 @@
         }
         @if (Editable)
         {
-            <span class="ft-savings-goal__actions">
-                <MudIconButton Icon="@Icons.Material.Outlined.Edit" Size="Size.Small"
-                               aria-label="@($"Edit {Goal.Name}")" OnClick="@OnEdit"/>
-                <MudIconButton Icon="@Icons.Material.Outlined.Delete" Size="Size.Small"
-                               aria-label="@($"Delete {Goal.Name}")" OnClick="@OnDelete"/>
-            </span>
+            <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true"
+                     AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
+                     aria-label="@($"Actions for {Goal.Name}")">
+                <MudMenuItem Icon="@Icons.Material.Outlined.Edit" OnClick="@OnEdit">Edit</MudMenuItem>
+                <MudMenuItem Icon="@Icons.Material.Outlined.Delete" OnClick="@OnDelete">Delete</MudMenuItem>
+            </MudMenu>
         }
     </div>
 

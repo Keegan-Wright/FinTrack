@@ -93,6 +93,12 @@ public class Transaction
     public TransactionBill? Bill { get; init; }
 
     /// <summary>
+    /// Which debt it pays off, null until a rule or the user decides.
+    /// </summary>
+    [Description("Which debt the transaction pays off, null until decided")]
+    public TransactionDebt? Debt { get; init; }
+
+    /// <summary>
     /// Which of <see cref="Tags"/> the user's rules added, and which rule added each.
     /// </summary>
     [Description("The tags the user's rules added, and which rule added each")]
@@ -109,4 +115,16 @@ public class Transaction
     /// </summary>
     [Description("The bank's classifications hidden by the user or their rules")]
     public List<TransactionHiddenClassification> HiddenBankClassifications { get; init; } = [];
+
+    /// <summary>
+    /// The user's own tags on it, by name, added by them or their rules, also among <see cref="Tags"/>.
+    /// </summary>
+    [Description("The user's own tags on the transaction")]
+    public List<string> CustomTags { get; set; } = [];
+
+    /// <summary>
+    /// The savings goals it counts towards, through the goal's account or tags.
+    /// </summary>
+    [Description("The savings goals the transaction counts towards")]
+    public List<TransactionSavingsGoal> SavingsGoals { get; init; } = [];
 }

@@ -32,8 +32,14 @@ public class CalendarItems
     public IEnumerable<CalendarBillItem> Bills { get; init; } = [];
 
     /// <summary>
-    /// User events on the day. Always empty for now, see <see cref="CalendarEventItem"/>.
+    /// The user's own events on the day, yearly ones each year.
     /// </summary>
-    [Description("List of calendar events for this date")]
+    [Description("List of the user's calendar events on this date")]
     public IEnumerable<CalendarEventItem> Events { get; init; } = [];
+
+    /// <summary>
+    /// Debts forecast to be paid off, or the user wants paid off, on the day.
+    /// </summary>
+    [Description("Debts forecast to be paid off, or the user wants paid off, on this date")]
+    public IEnumerable<CalendarDebtItem> Debts { get; init; } = [];
 }

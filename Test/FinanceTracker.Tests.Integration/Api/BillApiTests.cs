@@ -128,6 +128,38 @@ public class BillApiTests : IntegrationTestBase
     }
 
     [Test]
+    public async Task ConfirmSuggestion_ABillAlreadyCoversIt_ThrowsAsTheServiceDoes()
+    {
+        // Arrange
+        SignedInUser user = await RegisterUserAsync();
+        DateOnly today = DateOnly.FromDateTime(DateTime.Now);
+        await SeedAccountAsync(user, "main")
+            .Do(s => s.TransactionScenario.WithTransaction("first", "main", Paid("STREAMCO", -9.99m,
+                today.AddMonths(-2))))
+            .Do(s => s.TransactionScenario.WithTransaction("second", "main", Paid("STREAMCO", -9.99m,
+                today.AddMonths(-1))))
+            .Do(s => s.TransactionScenario.WithTransaction("third", "main", Paid("STREAMCO", -9.99m, today)))
+            .Do(s => s.BillScenario.WithSuggestion("streaming", user.Username, "main", "Streamco", 9.99m,
+                today.AddMonths(-2), today, "first", "second", "third"))
+            .Do(s => s.BillScenario.WithBill("mine", user.Username, "main", (userId, accountId) =>
+                new FinanceTracker.Domain.Bills.Bill(userId, accountId, "Streaming", "Streamco",
+                    FinanceTracker.Domain.Bills.BillFrequency.Monthly, 9.99m, today.AddMonths(-3),
+                    FinanceTracker.Domain.Bills.BillSource.Manual)));
+        IBillsService service = ApiFor(user).Get<IBillsService>();
+
+        // Act
+        AlreadyABillException? exception = await Assert.ThrowsAsync<AlreadyABillException>(() =>
+            service.ConfirmSuggestionAsync(Scenario.BillSuggestionMappings["streaming"], CancellationToken));
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(exception!.BillName).IsEqualTo("Streaming");
+            await Assert.That(await service.GetSuggestionCountAsync(CancellationToken)).IsEqualTo(0);
+        }
+    }
+
+    [Test]
     public async Task Bills_AreStoredEncryptedAndReadBack()
     {
         // Arrange

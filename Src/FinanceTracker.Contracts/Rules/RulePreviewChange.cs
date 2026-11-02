@@ -67,4 +67,28 @@ public class RulePreviewChange
     /// </summary>
     [Description("How it would count")]
     public TransferState? TransferAfter { get; init; }
+
+    /// <summary>
+    /// The bill it pays now, by name, null when it pays none.
+    /// </summary>
+    [Description("The bill it pays now")]
+    public string? BillBefore { get; init; }
+
+    /// <summary>
+    /// The bill it would pay, by name, null when it would pay none.
+    /// </summary>
+    [Description("The bill it would pay")]
+    public string? BillAfter { get; init; }
+
+    /// <summary>
+    /// The debt it pays off now, by name, null when it pays none.
+    /// </summary>
+    [Description("The debt it pays off now")]
+    public string? DebtBefore { get; init; }
+
+    /// <summary>
+    /// The debt it would pay off, by name, null when it would pay none.
+    /// </summary>
+    [Description("The debt it would pay off")]
+    public string? DebtAfter { get; init; }
 }

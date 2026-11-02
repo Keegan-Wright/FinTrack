@@ -61,10 +61,12 @@
         </PropertyColumn>
         <TemplateColumn Title="" Sortable="false" Hideable="false" CellClass="ft-grid__actions">
             <CellTemplate>
-                <MudTooltip Text="Edit job">
-                    <MudIconButton Icon="@Icons.Material.Outlined.Edit" Size="Size.Small" aria-label="Edit job"
-                                   OnClick="@(() => EditCronItem(context.Item))"/>
-                </MudTooltip>
+                <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true"
+                         AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
+                         aria-label="@($"Actions for {context.Item.Function}")">
+                    <MudMenuItem Icon="@Icons.Material.Outlined.Edit"
+                                 OnClick="@(() => EditCronItem(context.Item))">Edit</MudMenuItem>
+                </MudMenu>
             </CellTemplate>
         </TemplateColumn>
     </Columns>

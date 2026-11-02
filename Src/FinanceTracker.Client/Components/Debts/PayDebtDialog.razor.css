@@ -1,0 +1,6 @@
+.ft-pay-debt {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: min(360px, 100%);
+}

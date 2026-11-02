@@ -78,7 +78,10 @@ public static class ReportTree
         SearchTerm = request.SearchTerm,
         FromDate = from ?? request.FromDate,
         ToDate = to ?? request.ToDate,
-        Tags = tags ?? request.Tags
+        Tags = tags ?? request.Tags,
+        BillIds = request.BillIds,
+        DebtIds = request.DebtIds,
+        SavingsGoalIds = request.SavingsGoalIds
     };
 
     // An account report counts transfers, see ReportNode.IncludesTransfers

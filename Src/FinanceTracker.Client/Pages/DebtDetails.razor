@@ -1,0 +1,258 @@
+@page "/Debts/{Id:guid}"
+@* One debt (IDebtsService) what's left and when it's paid off, what it owed over time, what paying more would do,
+   and the payments that paid it off. *@
+@using System.Globalization
+@using FinanceTracker.Client.Components.Debts
+@using FinanceTracker.Contracts
+@using FinanceTracker.Contracts.Debts
+@using FinanceTracker.Contracts.Transactions
+@using Microsoft.AspNetCore.Authorization
+@inherits PageComponent
+
+@attribute [Authorize]
+@inject IDebtsService DebtsService
+@inject ITransactionsService TransactionsService
+@inject IDialogService DialogService
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+@inject TimeProvider TimeProvider
+
+<PageTitle>FinTrack - @Title</PageTitle>
+<PageHeader Title="@Title" Subtitle="@Subtitle">
+    <Actions>
+        <MudButton Href="Debts" Variant="Variant.Text" StartIcon="@Icons.Material.Outlined.ArrowBack">
+            All debts
+        </MudButton>
+        @if (Detail is not null)
+        {
+            <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true"
+                     AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
+                     aria-label="@($"Actions for {Detail.Debt.Name}")">
+                <MudMenuItem Icon="@Icons.Material.Outlined.Edit" OnClick="@EditAsync">Edit</MudMenuItem>
+                <MudMenuItem Icon="@Icons.Material.Outlined.Delete" OnClick="@DeleteAsync">Delete</MudMenuItem>
+            </MudMenu>
+        }
+    </Actions>
+</PageHeader>
+
+@if (Detail is null)
+{
+    <Section>
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+            That debt doesn't exist any more. <MudLink Href="Debts" Typo="Typo.body2">Back to your debts</MudLink>
+        </MudText>
+    </Section>
+}
+else
+{
+    Debt debt = Detail.Debt;
+    <div class="ft-stack">
+        <StatStrip>
+            <Stat Label="Owed" Value="@debt.Owed">@DebtText.OwedOf(debt)</Stat>
+            <Stat Label="Paid" Value="@debt.Paid">@($"{debt.PaidOffPercent:0}% of it paid off")</Stat>
+            <Stat Label="Monthly payment" Value="@debt.MonthlyPayment">@DebtText.Forecast(debt.Forecast)</Stat>
+        </StatStrip>
+
+        @if (DebtText.Goal(debt) is { } goal)
+        {
+            <MudAlert Severity="@(debt.OnTrack == true ? Severity.Success : Severity.Warning)" Dense="true">
+                @goal
+            </MudAlert>
+        }
+
+        <MudGrid Spacing="4">
+            <MudItem xs="12" md="8">
+                <Section Title="What's owed" Caption="@HistoryCaption" Class="h-100">
+                    <DebtBalanceChart History="@Detail.History"/>
+                </Section>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <Section Title="Pay it off sooner" Caption="Try a different monthly payment" Class="h-100">
+                    @if (DebtText.IsPaidOff(debt))
+                    {
+                        <MudText Typo="Typo.body2" Class="mud-text-secondary">It's paid off.</MudText>
+                    }
+                    else
+                    {
+                        @if (DebtText.InterestToPay(debt.Forecast) is { } interest)
+                        {
+                            <MudText Typo="Typo.body2" Class="mb-2">@interest</MudText>
+                        }
+                        <OverpaymentPanel @key="debt" Debt="@debt"/>
+                    }
+                </Section>
+            </MudItem>
+        </MudGrid>
+
+        <Section Title="Payments" Caption="@PaymentsCaption">
+            @if (Detail.Payments.Count == 0)
+            {
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                    None yet. Say a transaction pays it off from its actions, or
+                    <MudLink Href="Rules/new" Typo="Typo.body2">make a rule</MudLink> to link them as they arrive.
+                </MudText>
+            }
+            else
+            {
+                <div class="ft-payment-list">
+                    @foreach (DebtPaymentItem payment in Detail.Payments)
+                    {
+                        <div @key="payment.TransactionId" class="ft-payment">
+                            <div class="ft-payment__line">
+                                <MudText Typo="Typo.body2" Class="ft-payment__description">@payment.Description</MudText>
+                                <MoneyText Value="@payment.Amount"/>
+                            </div>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary">@PaymentSummary(payment)</MudText>
+                        </div>
+                    }
+                </div>
+            }
+        </Section>
+    </div>
+}
+
+@code {
+
+    [Parameter] public Guid Id { get; set; }
+
+    /// <summary>
+    /// The debt, loaded once, see <see cref="PageComponent.LoadOnceAsync{T}"/>. Null when it doesn't exist or isn't
+    /// the user's.
+    /// </summary>
+    [PersistentState]
+    public DebtDetail? Detail { get; set; }
+
+    /// <summary>
+    /// The user's accounts, for editing which one it's linked to.
+    /// </summary>
+    [PersistentState]
+    public List<TransactionAccountFilter>? Accounts { get; set; }
+
+    private DateOnly Today => DateOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime);
+
+    private string Title => Detail?.Debt.Name ?? "Debt";
+
+    private string Subtitle => Detail is null ? string.Empty : DebtText.Terms(Detail.Debt);
+
+    private string HistoryCaption => Detail?.Debt.AccountId is null
+        ? "From what was owed at the start, less payments, plus interest each month"
+        : "From the linked account's balance at each month end";
+
+    private string PaymentsCaption => Detail?.Debt.AccountId is null
+        ? "Latest first, these are what come off what's owed"
+        : "Latest first, what's owed follows the account's balance";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        Accounts = await LoadOnceAsync(Accounts, "Loading the debt", cancellationToken =>
+            TransactionsService.GetAccountsForTransactionFiltersAsync(cancellationToken)
+                .ToListAsync(cancellationToken).AsTask());
+
+        if (Detail is null)
+        {
+            Detail = await LoadDetailAsync();
+        }
+    }
+
+    /// <summary>
+    /// The debt as it is now, null when it doesn't exist or isn't the user's.
+    /// </summary>
+    private async Task<DebtDetail?> LoadDetailAsync()
+    {
+        try
+        {
+            SetLoadingState(true, "Loading the debt");
+            return await DebtsService.GetDebtAsync(Id, _cts.Token);
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
+    /// <summary>
+    /// e.g. <c>12 Oct 2026 · Current account · By your rule Car loan</c>.
+    /// </summary>
+    private static string PaymentSummary(DebtPaymentItem payment)
+    {
+        string day = payment.PaidAt.ToLocalTime().ToString("d MMM yyyy", CultureInfo.CurrentCulture);
+        return $"{day} · {payment.AccountName} · {DebtText.Reason(payment.DecidedBy, payment.RuleName)}";
+    }
+
+    private async Task EditAsync()
+    {
+        Debt existing = Detail!.Debt;
+        DialogParameters<DebtDialog> parameters = new()
+        {
+            { x => x.Debt, existing },
+            { x => x.Accounts, Accounts ?? [] },
+            { x => x.Today, Today }
+        };
+
+        IDialogReference dialog = await DialogService.ShowAsync<DebtDialog>(null, parameters);
+        DialogResult? result = await dialog.Result;
+        if (result is null || result.Canceled)
+        {
+            return;
+        }
+
+        var debt = (SaveDebt)result.Data!;
+        try
+        {
+            SetLoadingState(true, "Saving…");
+            await DebtsService.UpdateDebtAsync(existing.Id, debt, _cts.Token);
+            Detail = await DebtsService.GetDebtAsync(existing.Id, _cts.Token);
+            Snackbar.Add($"{debt.Name} saved", Severity.Success);
+        }
+        catch (NameTakenException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Warning);
+        }
+        catch (InvalidOperationException)
+        {
+            Snackbar.Add("That account isn't yours any more, choose another", Severity.Error);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't save that, try again", Severity.Error);
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
+    private async Task DeleteAsync()
+    {
+        Debt debt = Detail!.Debt;
+        bool? confirmed = await DialogService.ShowMessageBoxAsync($"Delete {debt.Name}?",
+            "Its payments stay, they just won't pay off a debt. Rules that paid it off stop doing so.",
+            yesText: "Delete", cancelText: "Cancel");
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        try
+        {
+            SetLoadingState(true, "Deleting…");
+            await DebtsService.DeleteDebtAsync(debt.Id, _cts.Token);
+            Snackbar.Add($"{debt.Name} deleted", Severity.Success);
+            NavigationManager.NavigateTo("Debts");
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't delete that, try again", Severity.Error);
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
+}

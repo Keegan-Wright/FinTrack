@@ -52,6 +52,11 @@ public static class ApiRoutes
     public const string Dashboard = "api/dashboard";
 
     /// <summary>
+    /// <see cref="Services.IDebtsService"/>.
+    /// </summary>
+    public const string Debts = "api/debts";
+
+    /// <summary>
     /// <see cref="Services.IHouseholdMemberService"/>.
     /// </summary>
     public const string HouseholdMembers = "api/household-members";

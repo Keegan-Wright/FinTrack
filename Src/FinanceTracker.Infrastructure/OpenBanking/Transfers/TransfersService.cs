@@ -165,6 +165,7 @@ public class TransfersService : ServiceBase<TransfersService>, ITransfersService
         Dictionary<Guid, string> customTags = await context.CustomClassifications.OwnedBy(UserId)
             .ToDictionaryAsync(static x => x.Id, static x => x.Tag, cancellationToken);
 
-        return await TransactionMapper.LoadAsync(context, UserId, customTags, transactions, cancellationToken);
+        return await TransactionMapper.LoadAsync(context, UserId, customTags, transactions,
+            _timeProvider.LocalTimeZone, cancellationToken);
     }
 }

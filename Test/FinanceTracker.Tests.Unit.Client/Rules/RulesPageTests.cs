@@ -1,11 +1,13 @@
 using Bunit;
 using FinanceTracker.Client;
 using FinanceTracker.Contracts.Bills;
+using FinanceTracker.Contracts.Debts;
 using FinanceTracker.Contracts.Classifications;
 using FinanceTracker.Contracts.Rules;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Transactions;
 using Microsoft.Extensions.DependencyInjection;
+using MudBlazor;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using RulesPage = FinanceTracker.Client.Pages.Rules;
@@ -33,7 +35,10 @@ public class RulesPageTests : ComponentTestBase
         Services.AddSingleton(classificationService);
         IBillsService billsService = Substitute.For<IBillsService>();
         billsService.GetBillsAsync(Arg.Any<CancellationToken>()).Returns(AsyncEnumerable.Empty<Bill>());
+        IDebtsService debtsService = Substitute.For<IDebtsService>();
+        debtsService.GetDebtsAsync(Arg.Any<CancellationToken>()).Returns(AsyncEnumerable.Empty<Debt>());
         Services.AddSingleton(billsService);
+        Services.AddSingleton(debtsService);
 
         _rulesService.GetRulesAsync(Arg.Any<CancellationToken>()).Returns(_ => _rules.ToAsyncEnumerable());
     }
@@ -42,10 +47,11 @@ public class RulesPageTests : ComponentTestBase
     public async Task Reorder_Saves_TheRulesInTheirNewOrder()
     {
         // Arrange
+        IRenderedComponent<MudPopoverProvider> popovers = Render<MudPopoverProvider>();
         IRenderedComponent<RulesPage> cut = RenderPage();
 
         // Act
-        cut.Find("button[aria-label='Move Second up']").Click();
+        await RowMenu.ChooseAsync(cut, popovers, "Second", "Move up");
 
         // Assert
         using (Assert.Multiple())
@@ -64,14 +70,53 @@ public class RulesPageTests : ComponentTestBase
         // Arrange
         _rulesService.ReorderRulesAsync(Arg.Any<ReorderRules>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new HttpRequestException("offline"));
+        IRenderedComponent<MudPopoverProvider> popovers = Render<MudPopoverProvider>();
         IRenderedComponent<RulesPage> cut = RenderPage();
 
         // Act
-        cut.Find("button[aria-label='Move Second up']").Click();
+        await RowMenu.ChooseAsync(cut, popovers, "Second", "Move up");
 
         // Assert
         await Assert.That(Names(cut)).IsEquivalentTo(["First", "Second"],
             TUnit.Assertions.Enums.CollectionOrdering.Matching);
+    }
+
+    [Test]
+    public async Task Delete_Confirmed_DeletesTheRuleAndTakesItOffTheList()
+    {
+        // Arrange
+        IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
+        IRenderedComponent<MudPopoverProvider> popovers = Render<MudPopoverProvider>();
+        IRenderedComponent<RulesPage> cut = RenderPage();
+
+        // Act
+        Task choosing = await RowMenu.StartAsync(cut, popovers, "First", "Delete");
+        await RowMenu.ConfirmAsync(dialogs, "Delete");
+        await choosing;
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await _rulesService.Received(1).DeleteRuleAsync(_rules[0].Id, Arg.Any<CancellationToken>());
+            await Assert.That(Names(cut)).IsEquivalentTo(["Second"]);
+        }
+    }
+
+    [Test]
+    public async Task Delete_Cancelled_KeepsTheRule()
+    {
+        // Arrange
+        IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
+        IRenderedComponent<MudPopoverProvider> popovers = Render<MudPopoverProvider>();
+        IRenderedComponent<RulesPage> cut = RenderPage();
+
+        // Act
+        Task choosing = await RowMenu.StartAsync(cut, popovers, "First", "Delete");
+        await RowMenu.ConfirmAsync(dialogs, "Cancel");
+        await choosing;
+
+        // Assert
+        await _rulesService.DidNotReceive().DeleteRuleAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [Test]

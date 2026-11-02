@@ -442,5 +442,6 @@ public class ReportServiceTests : InfrastructureTestBase
         await context.SaveChangesAsync(CancellationToken);
     }
 
-    private ReportService BuildSubject() => new(CurrentUserFor(Username), DbContextFactory, NullLogger<ReportService>.Instance);
+    private ReportService BuildSubject() =>
+        new(CurrentUserFor(Username), DbContextFactory, NullLogger<ReportService>.Instance, TimeProvider.System);
 }

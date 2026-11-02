@@ -46,8 +46,11 @@ public class ActiveTransactionFiltersTests
         // Arrange
         Guid providerId = Guid.NewGuid();
         Guid accountId = Guid.NewGuid();
+        Guid billId = Guid.NewGuid();
+        Guid debtId = Guid.NewGuid();
+        Guid goalId = Guid.NewGuid();
         ActiveTransactionFilters filters = new([providerId], [accountId], ["PURCHASE"], ["Debit"], ["Food"],
-            new DateRange(null, new DateTime(2026, 8, 31)), "coffee");
+            new DateRange(null, new DateTime(2026, 8, 31)), "coffee", [billId], [debtId], [goalId]);
 
         // Act
         FilterTransactions request = filters.ToRequest();
@@ -63,6 +66,9 @@ public class ActiveTransactionFiltersTests
             await Assert.That(request.SearchTerm).IsEqualTo("coffee");
             await Assert.That(request.FromDate).IsNull();
             await Assert.That(request.ToDate).IsEqualTo(new DateTime(2026, 9, 1).AddTicks(-1));
+            await Assert.That(request.BillIds!).IsEquivalentTo([billId]);
+            await Assert.That(request.DebtIds!).IsEquivalentTo([debtId]);
+            await Assert.That(request.SavingsGoalIds!).IsEquivalentTo([goalId]);
         }
     }
 }

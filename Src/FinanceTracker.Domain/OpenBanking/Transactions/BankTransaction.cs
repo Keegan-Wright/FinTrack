@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using FinanceTracker.Domain.Bills;
 using FinanceTracker.Domain.Classifications;
 using FinanceTracker.Domain.Common;
+using FinanceTracker.Domain.Debts;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Transfers;
 using FinanceTracker.Domain.Rules;
@@ -71,6 +72,11 @@ public sealed class BankTransaction : AggregateRoot
     /// Whether this pays a <see cref="Bill"/>, null until something decides.
     /// </summary>
     public BillPayment? BillPayment { get; private set; }
+
+    /// <summary>
+    /// Whether this pays off a <see cref="Debt"/>, null until a rule or the user decides.
+    /// </summary>
+    public DebtPayment? DebtPayment { get; private set; }
 
     /// <summary>
     /// Whether the transaction belongs in income and spending totals, every transaction does unless it's decided to
@@ -267,6 +273,46 @@ public sealed class BankTransaction : AggregateRoot
     public void PayNoBill(DateTime decidedAt) => BillPayment = new BillPayment(null, DecisionSource.User, decidedAt);
 
     /// <summary>
+    /// Whether this pays off <paramref name="debtId"/>.
+    /// </summary>
+    public bool PaysDebt(Guid debtId) => DebtPayment?.DebtId == debtId;
+
+    /// <summary>
+    /// The user says this pays off <paramref name="debt"/>, which rules then leave alone.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">The debt belongs to another user.</exception>
+    public void PayDebt(Debt debt, DateTime decidedAt)
+    {
+        ArgumentNullException.ThrowIfNull(debt);
+        if (debt.UserId != UserId)
+        {
+            throw new InvalidOperationException("Cannot pay another user's debt with this transaction.");
+        }
+
+        DebtPayment = new DebtPayment(debt.Id, DecisionSource.User, decidedAt);
+    }
+
+    /// <summary>
+    /// The user says this pays off no debt, which rules then leave alone.
+    /// </summary>
+    public void PayNoDebt(DateTime decidedAt) => DebtPayment = new DebtPayment(null, DecisionSource.User, decidedAt);
+
+    /// <summary>
+    /// Drops the payment of a debt being deleted, whoever decided it.
+    /// </summary>
+    /// <returns>Whether it paid the debt.</returns>
+    public bool RemoveDeletedDebt(Guid debtId)
+    {
+        if (!PaysDebt(debtId))
+        {
+            return false;
+        }
+
+        DebtPayment = null;
+        return true;
+    }
+
+    /// <summary>
     /// The user tags the transaction, which from now on rules leave its tags alone, see <see cref="TagsSetByUser"/>.
     /// </summary>
     public void Classify(CustomClassification classification)
@@ -302,12 +348,13 @@ public sealed class BankTransaction : AggregateRoot
         RemoveClassification(customClassificationId);
 
     /// <summary>
-    /// Whether rule <paramref name="ruleId"/> added one of its tags, gave its transfer answer or said which bill it
-    /// pays, so re-applying the rules here can take back what that rule no longer gives.
+    /// Whether rule <paramref name="ruleId"/> added one of its tags, gave its transfer answer or said which bill or
+    /// debt it pays, so re-applying the rules here can take back what that rule no longer gives.
     /// </summary>
     public bool WasDecidedBy(Guid ruleId) =>
         _ruleTags.Exists(x => x.RuleId == ruleId) || Transfer?.RuleId == ruleId ||
-        _hiddenClassifications.Exists(x => x.RuleId == ruleId) || BillPayment?.RuleId == ruleId;
+        _hiddenClassifications.Exists(x => x.RuleId == ruleId) || BillPayment?.RuleId == ruleId ||
+        DebtPayment?.RuleId == ruleId;
 
     /// <summary>
     /// Hides one of the bank's classifications by hand. A rule hiding it too no longer counts, the user's stands.
@@ -353,9 +400,10 @@ public sealed class BankTransaction : AggregateRoot
     }
 
     /// <summary>
-    /// Records what the user's rules decided, from <see cref="RuleEvaluator.Evaluate"/>. Tags, a transfer answer and a
-    /// bill a rule gave before but no longer does are removed, so editing or disabling a rule undoes what it did. Tags
-    /// are left alone once <see cref="TagsSetByUser"/>, and the user's transfer and bill decisions are never replaced.
+    /// Records what the user's rules decided, from <see cref="RuleEvaluator.Evaluate"/>. Tags, a transfer answer, a
+    /// bill and a debt a rule gave before but no longer does are removed, so editing or disabling a rule undoes what it
+    /// did. Tags are left alone once <see cref="TagsSetByUser"/>, and the user's transfer, bill and debt decisions are
+    /// never replaced.
     /// </summary>
     /// <returns>Whether anything changed.</returns>
     public bool ApplyRules(RuleOutcome outcome, DateTime decidedAt)
@@ -366,8 +414,38 @@ public sealed class BankTransaction : AggregateRoot
         bool transferChanged = ApplyRuleTransfer(outcome.Transfer, decidedAt);
         bool hiddenChanged = ApplyRuleHiding(outcome.HiddenClassifications);
         bool billChanged = ApplyRuleBill(outcome.Bill, decidedAt);
+        bool debtChanged = ApplyRuleDebt(outcome.Debt, decidedAt);
 
-        return tagsChanged || transferChanged || hiddenChanged || billChanged;
+        return tagsChanged || transferChanged || hiddenChanged || billChanged || debtChanged;
+    }
+
+    private bool ApplyRuleDebt(RuleDebt? debt, DateTime decidedAt)
+    {
+        if (debt is null)
+        {
+            // Only a rule's own answer is taken back, the user's stays
+            if (DebtPayment?.Source != DecisionSource.Rule)
+            {
+                return false;
+            }
+
+            DebtPayment = null;
+            return true;
+        }
+
+        if (DebtPayment?.Source == DecisionSource.User)
+        {
+            return false;
+        }
+
+        DebtPayment payment = DebtPayment.FromRule(debt.DebtId, debt.RuleId, decidedAt);
+        if (payment.IsSameAs(DebtPayment))
+        {
+            return false;
+        }
+
+        DebtPayment = payment;
+        return true;
     }
 
     private bool ApplyRuleBill(RuleBill? bill, DateTime decidedAt)

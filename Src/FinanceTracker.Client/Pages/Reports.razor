@@ -13,6 +13,9 @@
 
 @inject IReportService ReportService
 @inject ITransactionsService TransactionsService
+@inject IBillsService BillsService
+@inject IDebtsService DebtsService
+@inject ISavingsGoalsService SavingsGoalsService
 @inject NavigationManager NavigationManager
 
 <PageTitle>FinTrack - Reports</PageTitle>
@@ -31,6 +34,9 @@
                             ProviderFilterItems="@Filters.Providers"
                             TransactionTagFilterItems="@Filters.Tags"
                             TransactionTypeFilterItems="@Filters.Types"
+                            BillFilterItems="@Filters.Bills"
+                            DebtFilterItems="@Filters.Debts"
+                            SavingsGoalFilterItems="@Filters.SavingsGoals"
                             SearchTransactions="@ApplyFiltersAsync"/>
     </ChildContent>
 </PageHeader>
@@ -135,7 +141,8 @@
     {
         await base.OnInitializedAsync();
         FilterOptions = await LoadOnceAsync(FilterOptions, "Loading filters",
-            cancellationToken => TransactionFilterOptions.LoadAsync(TransactionsService, cancellationToken));
+            cancellationToken => TransactionFilterOptions.LoadAsync(TransactionsService, BillsService, DebtsService,
+                SavingsGoalsService, cancellationToken));
     }
 
     protected override async Task OnParametersSetAsync()

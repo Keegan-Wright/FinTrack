@@ -43,11 +43,6 @@
     white-space: nowrap;
 }
 
-.ft-rule__move {
-    display: inline-flex;
-    flex: 0 0 auto;
-}
-
 /* A phone keeps the name and controls, the summary wraps rather than vanishing off the edge */
 @media (max-width: 599.98px) {
     .ft-rule__main ::deep .ft-rule__summary {

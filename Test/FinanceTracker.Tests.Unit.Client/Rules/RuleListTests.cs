@@ -1,4 +1,3 @@
-using AngleSharp.Dom;
 using Bunit;
 using FinanceTracker.Client.Components.Rules;
 using FinanceTracker.Contracts.Rules;
@@ -13,6 +12,7 @@ public class RuleListTests : ComponentTestBase
     private readonly List<Rule> _rules = [Rule("First"), Rule("Second"), Rule("Third")];
     private IReadOnlyList<Rule>? _reordered;
     private Rule? _toggled;
+    private Rule? _deleted;
 
     [Test]
     public async Task Render_ShowsTheRulesNumberedInOrder()
@@ -34,10 +34,11 @@ public class RuleListTests : ComponentTestBase
     public async Task MoveUp_PutsTheRuleOnePlaceEarlier()
     {
         // Arrange
+        IRenderedComponent<MudPopoverProvider> popovers = Render<MudPopoverProvider>();
         IRenderedComponent<RuleList> cut = RenderList();
 
         // Act
-        Button(cut, "Move Third up").Click();
+        await RowMenu.ChooseAsync(cut, popovers, "Third", "Move up");
 
         // Assert
         await Assert.That(Names(_reordered)).IsEquivalentTo(["First", "Third", "Second"],
@@ -45,18 +46,47 @@ public class RuleListTests : ComponentTestBase
     }
 
     [Test]
-    public async Task MoveButtons_AtTheEnds_AreDisabled()
+    public async Task Menu_FirstRule_CantMoveUp()
     {
-        // Act
+        // Arrange
+        IRenderedComponent<MudPopoverProvider> popovers = Render<MudPopoverProvider>();
         IRenderedComponent<RuleList> cut = RenderList();
 
+        // Act
+        IReadOnlyList<(string Text, bool Disabled)> items = await RowMenu.ItemsAsync(cut, popovers, "First");
+
         // Assert
-        using (Assert.Multiple())
-        {
-            await Assert.That(Button(cut, "Move First up").HasAttribute("disabled")).IsTrue();
-            await Assert.That(Button(cut, "Move Third down").HasAttribute("disabled")).IsTrue();
-            await Assert.That(Button(cut, "Move Second up").HasAttribute("disabled")).IsFalse();
-        }
+        await Assert.That(items).IsEquivalentTo(
+            [("Edit", false), ("Move up", true), ("Move down", false), ("Delete", false)],
+            TUnit.Assertions.Enums.CollectionOrdering.Matching);
+    }
+
+    [Test]
+    public async Task Menu_LastRule_CantMoveDown()
+    {
+        // Arrange
+        IRenderedComponent<MudPopoverProvider> popovers = Render<MudPopoverProvider>();
+        IRenderedComponent<RuleList> cut = RenderList();
+
+        // Act
+        IReadOnlyList<(string Text, bool Disabled)> items = await RowMenu.ItemsAsync(cut, popovers, "Third");
+
+        // Assert
+        await Assert.That(items).Contains(("Move down", true));
+    }
+
+    [Test]
+    public async Task Delete_AsksToDeleteThatRule()
+    {
+        // Arrange
+        IRenderedComponent<MudPopoverProvider> popovers = Render<MudPopoverProvider>();
+        IRenderedComponent<RuleList> cut = RenderList();
+
+        // Act
+        await RowMenu.ChooseAsync(cut, popovers, "Second", "Delete");
+
+        // Assert
+        await Assert.That(_deleted?.Name).IsEqualTo("Second");
     }
 
     [Test]
@@ -121,10 +151,8 @@ public class RuleListTests : ComponentTestBase
         .Add(x => x.AccountNames, NoNames)
         .Add(x => x.TagNames, NoNames)
         .Add(x => x.OnReorder, (IReadOnlyList<Rule> reordered) => _reordered = reordered)
-        .Add(x => x.OnToggle, (Rule rule) => _toggled = rule));
-
-    private static IElement Button(IRenderedComponent<RuleList> cut, string label) =>
-        cut.FindAll("button").Single(x => x.GetAttribute("aria-label") == label);
+        .Add(x => x.OnToggle, (Rule rule) => _toggled = rule)
+        .Add(x => x.OnDelete, (Rule rule) => _deleted = rule));
 
     private static IEnumerable<string>? Names(IReadOnlyList<Rule>? rules) => rules?.Select(static x => x.Name);
 

@@ -1,0 +1,88 @@
+@* What a debt owed over time, from its start to today. *@
+@using System.Globalization
+@using ApexCharts
+@using FinanceTracker.Contracts.Debts
+
+@if (History.Count < 2)
+{
+    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+        Not enough history yet, it builds up month by month.
+    </MudText>
+}
+else
+{
+    @* Keyed on the options, which are rebuilt for new data or a dark mode toggle, so the chart redraws with them *@
+    <LoadingFrame Loading="@(!_drawn)" Message="Charting what's owed…" MinHeight="@ChartHeight">
+        <ApexChart @key="_options" TItem="DebtBalancePoint" Options="@_options" Height="@ChartHeight"
+                   OnRendered="@(() => _drawn = true)">
+            <ApexPointSeries TItem="DebtBalancePoint" Items="@History" Name="Owed" SeriesType="SeriesType.Area"
+                             XValue="@(static p => Label(p))" YValue="@(static p => p.Owed)"/>
+        </ApexChart>
+    </LoadingFrame>
+}
+
+@code {
+
+    private const int ChartHeight = 260;
+
+    private const int MaxAxisLabels = 8;
+
+    private const int MaxPhoneAxisLabels = 4;
+
+    [CascadingParameter(Name = "IsDarkMode")] public bool IsDarkMode { get; set; }
+
+    /// <summary>
+    /// What it owed, oldest first.
+    /// </summary>
+    [Parameter] [EditorRequired] public required IReadOnlyList<DebtBalancePoint> History { get; set; }
+
+    private ApexChartOptions<DebtBalancePoint> _options = new();
+    private IReadOnlyList<DebtBalancePoint>? _builtFrom;
+    private bool? _optionsDarkMode;
+    private bool _drawn;
+
+    protected override void OnParametersSet()
+    {
+        if (ReferenceEquals(_builtFrom, History) && _optionsDarkMode == IsDarkMode)
+        {
+            return;
+        }
+
+        _builtFrom = History;
+        _optionsDarkMode = IsDarkMode;
+        _options = CreateOptions();
+        _drawn = false;
+    }
+
+    /// <summary>
+    /// e.g. <c>31 Oct 26</c>, by day as today's point can share a month with the one before.
+    /// </summary>
+    private static string Label(DebtBalancePoint point) => point.On.ToString("d MMM yy", CultureInfo.CurrentCulture);
+
+    private ApexChartOptions<DebtBalancePoint> CreateOptions()
+    {
+        var options = ChartDefaults.Create<DebtBalancePoint>(IsDarkMode);
+        options.Colors = [ChartDefaults.MoneyOutColor];
+        options.Legend = new Legend { Show = false };
+        options.Stroke = new Stroke { Width = 2, Curve = Curve.Straight };
+        options.Fill = new Fill { Type = new List<FillType> { FillType.Gradient } };
+        options.Xaxis = new XAxis
+        {
+            TickAmount = Math.Min(History.Count, MaxAxisLabels),
+            Labels = new XAxisLabels { Rotate = 0, HideOverlappingLabels = true }
+        };
+        options.Responsive =
+        [
+            new Responsive<DebtBalancePoint>
+            {
+                Breakpoint = ChartDefaults.PhoneBreakpoint,
+                Options = new ApexChartOptions<DebtBalancePoint>
+                {
+                    Xaxis = new XAxis { TickAmount = Math.Min(History.Count, MaxPhoneAxisLabels) }
+                }
+            }
+        ];
+        return options;
+    }
+
+}

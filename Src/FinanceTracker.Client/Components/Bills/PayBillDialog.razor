@@ -13,7 +13,7 @@
                 <MudSelectItem T="Guid" Value="@Guid.Empty">No bill</MudSelectItem>
                 @foreach (Bill bill in Bills.OrderBy(static x => x.Name))
                 {
-                    <MudSelectItem T="Guid" Value="@bill.Id">@bill.Name</MudSelectItem>
+                    <MudSelectItem T="Guid" Value="@bill.Id">@BillText.PickerLabel(bill)</MudSelectItem>
                 }
             </MudSelect>
             @if (Bills.Count == 0)
@@ -49,7 +49,13 @@
             return "No bill";
         }
 
-        return Bills.FirstOrDefault(x => x.Id == billId)?.Name ?? string.Empty;
+        Bill? bill = Bills.FirstOrDefault(x => x.Id == billId);
+        if (bill is null)
+        {
+            return string.Empty;
+        }
+
+        return BillText.PickerLabel(bill);
     }
 
     private Task<PayBill?> BuildResponseModel()

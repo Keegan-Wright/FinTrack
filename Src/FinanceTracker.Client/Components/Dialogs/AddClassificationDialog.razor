@@ -1,9 +1,9 @@
-@* Asks for a new custom classification's tag, validated as you type. *@
+@* Asks for a custom classification's tag, new or renamed, validated as you type. *@
 @using FinanceTracker.Contracts.Classifications
 @using FinanceTracker.Client.Extensions
 @using FluentValidation
 @inject IValidator<AddClassifications> Validator
-<DialogBase TResponse="AddClassifications" Title="New tag"
+<DialogBase TResponse="AddClassifications" Title="@(Tag is null ? "New tag" : $"Rename {Tag}")"
             ResponseConstructor="BuildResponseModel">
     <Content>
         <MudForm @ref="_form" Model="@_model">
@@ -22,8 +22,15 @@
 
 @code {
 
+    /// <summary>
+    /// The tag being renamed, null for a new one.
+    /// </summary>
+    [Parameter] public string? Tag { get; set; }
+
     private MudForm _form = null!;
     private AddClassifications _model = new() { Tag = string.Empty };
+
+    protected override void OnInitialized() => _model.Tag = Tag ?? string.Empty;
 
     private async Task<AddClassifications?> BuildResponseModel()
     {

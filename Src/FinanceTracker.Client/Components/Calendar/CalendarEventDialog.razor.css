@@ -1,0 +1,14 @@
+.ft-event-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: min(440px, 100%);
+}
+
+/* Two fields that belong together share a line and stack on a phone */
+.ft-event-form__pair {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+    align-items: center;
+    gap: 8px 16px;
+}

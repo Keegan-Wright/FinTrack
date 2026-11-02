@@ -16,9 +16,9 @@ internal static class RulePreviewer
     /// <param name="rules">The user's rules that would run, in any order, <paramref name="draft"/> among them.</param>
     /// <param name="draft">The rule being previewed, only the transactions it reaches are looked at.</param>
     /// <param name="transactions">The user's transactions, untracked, as they're changed in place.</param>
-    /// <param name="tagNames">The user's tags by id.</param>
+    /// <param name="names">The user's tags, bills and debts by id, to say what changes by name.</param>
     public static RulePreview Preview(IReadOnlyList<DomainRule> rules, DomainRule draft,
-        IEnumerable<BankTransaction> transactions, IReadOnlyDictionary<Guid, string> tagNames, DateTime now)
+        IEnumerable<BankTransaction> transactions, RulePreviewNames names, DateTime now)
     {
         List<RulePreviewChange> changes = [];
         int leftAlone = 0;
@@ -35,7 +35,7 @@ internal static class RulePreviewer
 
             if (transaction.ApplyRules(outcome, now))
             {
-                changes.Add(ToChange(transaction, before, tagNames));
+                changes.Add(ToChange(transaction, before, names));
             }
         }
 
@@ -48,7 +48,7 @@ internal static class RulePreviewer
     }
 
     private static RulePreviewChange ToChange(BankTransaction transaction, RulePreviewSnapshot before,
-        IReadOnlyDictionary<Guid, string> tagNames)
+        RulePreviewNames names)
     {
         RulePreviewSnapshot after = RulePreviewSnapshot.Of(transaction);
 
@@ -58,13 +58,27 @@ internal static class RulePreviewer
             Description = transaction.Description,
             Amount = transaction.Amount,
             TransactionTime = transaction.OccurredAt,
-            TagsAdded = Names(after.Tags.Except(before.Tags), tagNames),
-            TagsRemoved = Names(before.Tags.Except(after.Tags), tagNames),
+            TagsAdded = Names(after.Tags.Except(before.Tags), names.Tags),
+            TagsRemoved = Names(before.Tags.Except(after.Tags), names.Tags),
             ClassificationsHidden = before.Visible.Except(after.Visible).Order().ToList(),
             ClassificationsShown = after.Visible.Except(before.Visible).Order().ToList(),
             TransferBefore = ToContract(before.Transfer),
-            TransferAfter = ToContract(after.Transfer)
+            TransferAfter = ToContract(after.Transfer),
+            BillBefore = NameOf(before.BillId, names.Bills),
+            BillAfter = NameOf(after.BillId, names.Bills),
+            DebtBefore = NameOf(before.DebtId, names.Debts),
+            DebtAfter = NameOf(after.DebtId, names.Debts)
         };
+    }
+
+    private static string? NameOf(Guid? id, IReadOnlyDictionary<Guid, string> names)
+    {
+        if (id is not { } value)
+        {
+            return null;
+        }
+
+        return names.GetValueOrDefault(value);
     }
 
     private static List<string> Names(IEnumerable<Guid> tagIds, IReadOnlyDictionary<Guid, string> tagNames) =>

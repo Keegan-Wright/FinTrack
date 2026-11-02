@@ -14,10 +14,12 @@ public sealed class NetWorthSnapshot : AggregateRoot
     {
     }
 
-    public NetWorthSnapshot(Guid userId, DateOnly date, IReadOnlyCollection<BalanceSnapshot> balances) : base(userId)
+    /// <param name="debts">What the debts not linked to an account owed that day, see <see cref="Total"/>.</param>
+    public NetWorthSnapshot(Guid userId, DateOnly date, IReadOnlyCollection<BalanceSnapshot> balances,
+        decimal debts = 0) : base(userId)
     {
         Date = date;
-        Total(balances);
+        Total(balances, debts);
     }
 
     public DateOnly Date { get; private set; }
@@ -28,7 +30,7 @@ public sealed class NetWorthSnapshot : AggregateRoot
     public decimal Assets { get; private set; }
 
     /// <summary>
-    /// What's owed, as a positive amount. Overdrawn accounts for now, cards and debts later.
+    /// What's owed, as a positive amount. Overdrawn accounts, cards and debts.
     /// </summary>
     public decimal Liabilities { get; private set; }
 
@@ -43,12 +45,16 @@ public sealed class NetWorthSnapshot : AggregateRoot
     /// Totals the day's balances, replacing the previous totals. Uses each account's current balance, not the
     /// available one, which can include an overdraft limit or pending payments.
     /// </summary>
-    public void Total(IReadOnlyCollection<BalanceSnapshot> balances)
+    /// <param name="debts">What the debts not linked to an account owed that day, as a positive amount. A debt linked
+    /// to an account is already in its balance.</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="debts"/> is negative.</exception>
+    public void Total(IReadOnlyCollection<BalanceSnapshot> balances, decimal debts = 0)
     {
         ArgumentNullException.ThrowIfNull(balances);
+        ArgumentOutOfRangeException.ThrowIfNegative(debts);
 
         decimal assets = 0;
-        decimal liabilities = 0;
+        decimal liabilities = debts;
         bool isStale = false;
 
         foreach (BalanceSnapshot snapshot in balances)

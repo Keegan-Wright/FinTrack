@@ -6,6 +6,7 @@ using FinanceTracker.Contracts.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 
 namespace FinanceTracker.Tests.Unit.Client.Review;
 
@@ -47,6 +48,28 @@ public class ReviewSubscriptionsPageTests : ComponentTestBase
             await Assert.That(cut.Markup).Contains("All caught up");
             await Assert.That(_applicationState.SubscriptionsToReview).IsEqualTo(0);
         }
+    }
+
+    [Test]
+    public async Task Confirm_ABillAlreadyCoversIt_SaysWhichAndTakesItOffTheList()
+    {
+        // Arrange
+        BillSuggestion suggestion = SuggestionRowTests.Suggestion();
+        _billsService.GetSuggestionsAsync(Arg.Any<CancellationToken>())
+            .Returns(new[] { suggestion }.ToAsyncEnumerable());
+        _billsService.ConfirmSuggestionAsync(suggestion.Id, Arg.Any<CancellationToken>())
+            .ThrowsAsync(new AlreadyABillException("Streaming"));
+        _billsService.GetSuggestionCountAsync(Arg.Any<CancellationToken>()).Returns(0);
+        IRenderedComponent<MudBlazor.MudSnackbarProvider> snackbars = Render<MudBlazor.MudSnackbarProvider>();
+        IRenderedComponent<ReviewSubscriptions> cut = RenderPage();
+        cut.WaitForState(() => cut.FindAll(".ft-suggestion").Count > 0);
+
+        // Act
+        cut.FindAll("button").Single(x => x.TextContent.Trim() == "It's a bill").Click();
+
+        // Assert
+        cut.WaitForState(() => cut.FindAll(".ft-suggestion").Count == 0);
+        await Assert.That(snackbars.Markup).Contains("Your bill Streaming already covers these payments");
     }
 
     [Test]

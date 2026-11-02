@@ -20,10 +20,6 @@
     white-space: nowrap;
 }
 
-.ft-savings-goal__actions {
-    display: inline-flex;
-    flex: 0 0 auto;
-}
 
 .ft-savings-goal__details {
     display: flex;

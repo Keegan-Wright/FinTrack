@@ -1,6 +1,8 @@
 using FinanceTracker.Contracts.Transactions;
 using FinanceTracker.Domain.OpenBanking.Transactions;
+using FinanceTracker.Domain.SavingsGoals;
 using FinanceTracker.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.Infrastructure.Transactions;
 
@@ -15,10 +17,41 @@ internal sealed record TransactionCriteria(
     IReadOnlyCollection<string>? Tags,
     string? SearchTerm,
     DateTime? FromDate,
-    DateTime? ToDate)
+    DateTime? ToDate,
+    IReadOnlyCollection<Guid>? BillIds,
+    IReadOnlyCollection<Guid>? DebtIds,
+    IReadOnlyCollection<Guid>? SavingsGoalIds)
 {
+    /// <summary>
+    /// The goals chosen in <see cref="SavingsGoalIds"/>, see <see cref="WithSavingsGoalsAsync"/>.
+    /// </summary>
+    private IReadOnlyList<SavingsGoal> _savingsGoals = [];
+
+    private TimeZoneInfo _timeZone = TimeZoneInfo.Utc;
+
     public static TransactionCriteria From(FilterTransactions filter) => new(filter.AccountIds, filter.ProviderIds,
-        filter.Types, filter.Categories, filter.Tags, filter.SearchTerm, filter.FromDate, filter.ToDate);
+        filter.Types, filter.Categories, filter.Tags, filter.SearchTerm, filter.FromDate, filter.ToDate,
+        filter.BillIds, filter.DebtIds, filter.SavingsGoalIds);
+
+    /// <summary>
+    /// Loads the goals chosen in <see cref="SavingsGoalIds"/>, which <see cref="MatchesClientFilters"/> needs to tell
+    /// what counts towards them. Goals that aren't the user's are left out, so they match nothing.
+    /// </summary>
+    /// <param name="timeZone">Where the user is, for the day a tag goal tracks from.</param>
+    public async Task<TransactionCriteria> WithSavingsGoalsAsync(FinanceTrackerContext context, Guid userId,
+        TimeZoneInfo timeZone, CancellationToken cancellationToken)
+    {
+        if (SavingsGoalIds is not { Count: > 0 })
+        {
+            return this;
+        }
+
+        List<SavingsGoal> goals = await context.SavingsGoals.OwnedBy(userId).AsNoTracking()
+            .Where(x => SavingsGoalIds.Contains(x.Id))
+            .ToListAsync(cancellationToken);
+
+        return this with { _savingsGoals = goals, _timeZone = timeZone };
+    }
 
     public IQueryable<BankTransaction> ApplyServerFilters(IQueryable<BankTransaction> query,
         FinanceTrackerContext context)
@@ -26,6 +59,18 @@ internal sealed record TransactionCriteria(
         if (AccountIds is { Count: > 0 })
         {
             query = query.Where(x => AccountIds.Contains(x.AccountId));
+        }
+
+        if (BillIds is { Count: > 0 })
+        {
+            query = query.Where(x => x.BillPayment != null && x.BillPayment.BillId != null &&
+                                     BillIds.Contains(x.BillPayment.BillId.Value));
+        }
+
+        if (DebtIds is { Count: > 0 })
+        {
+            query = query.Where(x => x.DebtPayment != null && x.DebtPayment.DebtId != null &&
+                                     DebtIds.Contains(x.DebtPayment.DebtId.Value));
         }
 
         if (ProviderIds is { Count: > 0 })
@@ -66,6 +111,11 @@ internal sealed record TransactionCriteria(
         }
 
         if (ToDate is { } toDate && transaction.OccurredAt > toDate)
+        {
+            return false;
+        }
+
+        if (SavingsGoalIds is { Count: > 0 } && !_savingsGoals.Any(x => x.Counts(transaction, _timeZone)))
         {
             return false;
         }

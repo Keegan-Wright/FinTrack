@@ -1,0 +1,4 @@
+/* The bank's classifications sit quieter than what the user and their rules chose */
+.ft-transaction-chips ::deep .ft-transaction-chips__bank {
+    color: var(--mud-palette-text-secondary);
+}

@@ -1,6 +1,7 @@
 @page "/HouseholdMembers"
 @* Adds the people in the user's household and their incomes, and how to recognise money moved to or from them.*@
 @using FinanceTracker.Client.Components.Dialogs
+@using FinanceTracker.Contracts
 @using FinanceTracker.Contracts.HouseholdMember
 @using Microsoft.AspNetCore.Authorization
 @inherits PageComponent
@@ -50,11 +51,16 @@
                             <MudText Typo="Typo.body2" Class="mud-text-secondary">Not set</MudText>
                         }
                     </div>
-                    <MudTooltip Text="Recognise their payments">
-                        <MudIconButton Icon="@Icons.Material.Outlined.PersonSearch" Size="Size.Small"
-                                       aria-label="@($"Recognise {member.FirstName}'s payments")"
-                                       OnClick="@(() => RecognisePayments(member))"/>
-                    </MudTooltip>
+                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true"
+                             AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
+                             aria-label="@($"Actions for {member.FirstName} {member.LastName}")">
+                        <MudMenuItem Icon="@Icons.Material.Outlined.Edit"
+                                     OnClick="@(() => EditAsync(member))">Edit</MudMenuItem>
+                        <MudMenuItem Icon="@Icons.Material.Outlined.PersonSearch"
+                                     OnClick="@(() => RecognisePayments(member))">Recognise their payments</MudMenuItem>
+                        <MudMenuItem Icon="@Icons.Material.Outlined.Delete"
+                                     OnClick="@(() => DeleteAsync(member))">Delete</MudMenuItem>
+                    </MudMenu>
                 </div>
             }
         </div>
@@ -121,9 +127,81 @@
             (Members ??= []).Add(householdMember);
             Snackbar.Add($"{householdMember.FirstName} added", Severity.Success);
         }
+        catch (NameTakenException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Warning);
+        }
         catch (Exception)
         {
             Snackbar.Add("Couldn't add them, try again", Severity.Error);
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
+    internal async Task EditAsync(HouseholdMember member)
+    {
+        DialogParameters<AddHouseholdMemberDialog> parameters = new() { { x => x.Member, member } };
+        IDialogReference dialogRef = await DialogService.ShowAsync<AddHouseholdMemberDialog>(null, parameters);
+        DialogResult? result = await dialogRef.Result;
+        if (result is null || result.Canceled)
+        {
+            return;
+        }
+
+        AddHouseholdMember entered = (AddHouseholdMember)result.Data!;
+        UpdateHouseholdMember update = new()
+        {
+            FirstName = entered.FirstName,
+            LastName = entered.LastName,
+            Income = entered.Income
+        };
+
+        try
+        {
+            SetLoadingState(true, $"Updating {member.FirstName}…");
+            HouseholdMember saved = await HouseholdMemberService.UpdateHouseholdMemberAsync(member.Id, update,
+                _cts.Token);
+            Members![Members.IndexOf(member)] = saved;
+            Snackbar.Add($"{saved.FirstName} updated", Severity.Success);
+        }
+        catch (NameTakenException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Warning);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't save that, try again", Severity.Error);
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
+    internal async Task DeleteAsync(HouseholdMember member)
+    {
+        bool? confirmed = await DialogService.ShowMessageBoxAsync($"Delete {member.FirstName} {member.LastName}?",
+            "Their income leaves your household income. Money to or from them is no longer recognised, so it counts " +
+            "as income or spending again, or goes back to review.",
+            yesText: "Delete", cancelText: "Cancel");
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        try
+        {
+            SetLoadingState(true, $"Removing {member.FirstName}…");
+            await HouseholdMemberService.DeleteHouseholdMemberAsync(member.Id, _cts.Token);
+            Members!.Remove(member);
+            Snackbar.Add($"{member.FirstName} deleted", Severity.Success);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't delete them, try again", Severity.Error);
         }
         finally
         {

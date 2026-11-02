@@ -3,11 +3,13 @@
    send twice. *@
 @using System.Globalization
 @using FinanceTracker.Client.Components.Bills
+@using FinanceTracker.Client.Components.Debts
 @using FinanceTracker.Client.Components.Dialogs
 @using FinanceTracker.Client.Components.Rules
 @using FinanceTracker.Client.Components.Transactions
 @using FinanceTracker.Contracts.Bills
 @using FinanceTracker.Contracts.Classifications
+@using FinanceTracker.Contracts.Debts
 @using FinanceTracker.Contracts.Transactions
 @using Microsoft.AspNetCore.Authorization
 @inherits PageComponent
@@ -19,6 +21,8 @@
 @inject ITransfersService TransfersService
 @inject IDialogService DialogService
 @inject IBillsService BillsService
+@inject IDebtsService DebtsService
+@inject ISavingsGoalsService SavingsGoalsService
 @inject ISnackbar Snackbar
 @inject NavigationManager NavigationManager
 
@@ -29,6 +33,9 @@
                         CategoryFilterItems="@Filters.Categories"
                         ProviderFilterItems="@Filters.Providers"
                         TransactionTypeFilterItems="@Filters.Types"
+                        BillFilterItems="@Filters.Bills"
+                        DebtFilterItems="@Filters.Debts"
+                        SavingsGoalFilterItems="@Filters.SavingsGoals"
                         SearchTransactions="@SearchTransactionsAsync"/>
 </PageHeader>
 
@@ -98,23 +105,9 @@
                             <span class="mud-text-secondary">@DisplayText.ToTitle(context.Item.TransactionCategory)</span>
                         </CellTemplate>
                     </PropertyColumn>
-                    <TemplateColumn Title="Tags" Sortable="false">
+                    <TemplateColumn Title="Tagged and linked" Sortable="false">
                         <CellTemplate>
-                            <div class="ft-chips">
-                                @foreach (var tag in context.Item.Tags)
-                                {
-                                    @if (RuleText.TaggedBy(context.Item, tag) is { } ruleName)
-                                    {
-                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text"
-                                                 Icon="@Icons.Material.Outlined.Rule"
-                                                 title="@($"From your rule {ruleName}")">@tag</MudChip>
-                                    }
-                                    else
-                                    {
-                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@tag</MudChip>
-                                    }
-                                }
-                            </div>
+                            <TransactionChipList Transaction="@context.Item"/>
                         </CellTemplate>
                     </TemplateColumn>
                     <PropertyColumn Property="x => x.Amount" Title="Amount" Sortable="true"
@@ -139,7 +132,9 @@
                                     </MudMenuItem>
                                 }
                                 <MudMenuItem Icon="@Icons.Material.Outlined.EventRepeat"
-                                             OnClick="@(() => PayBillAsync(context.Item))">Pays a bill…</MudMenuItem>
+                                             OnClick="@(() => PayBillAsync(context.Item))">Pays a bill</MudMenuItem>
+                                <MudMenuItem Icon="@Icons.Material.Outlined.CreditScore"
+                                             OnClick="@(() => PayDebtAsync(context.Item))">Pays off a debt</MudMenuItem>
                                 <MudMenuItem Icon="@Icons.Material.Outlined.Rule"
                                              OnClick="@(() => CreateRuleFrom(context.Item))">
                                     Create rule from this
@@ -182,7 +177,8 @@
     {
         await base.OnInitializedAsync();
         FilterOptions = await LoadOnceAsync(FilterOptions, "Loading filters",
-            cancellationToken => TransactionFilterOptions.LoadAsync(TransactionsService, cancellationToken));
+            cancellationToken => TransactionFilterOptions.LoadAsync(TransactionsService, BillsService, DebtsService,
+                SavingsGoalsService, cancellationToken));
     }
 
     protected override async Task OnParametersSetAsync()
@@ -219,6 +215,7 @@
             { x => x.OnAddTags, EventCallback.Factory.Create(this, () => AddClassificationsAsync(transaction)) },
             { x => x.OnCreateRule, EventCallback.Factory.Create(this, () => CreateRuleFrom(transaction)) },
             { x => x.OnPayBill, EventCallback.Factory.Create(this, () => PayBillAsync(transaction)) },
+            { x => x.OnPayDebt, EventCallback.Factory.Create(this, () => PayDebtAsync(transaction)) },
             {
                 x => x.OnHideClassification,
                 classification => ChangeBankClassificationAsync(transaction, classification, hide: true)
@@ -361,6 +358,50 @@
         }
     }
 
+    /// <summary>
+    /// Asks which debt <paramref name="transaction"/> pays off, then swaps in how it is now.
+    /// </summary>
+    private async Task PayDebtAsync(Transaction transaction)
+    {
+        List<Debt> debts = await DebtsService.GetDebtsAsync(_cts.Token).ToListAsync(_cts.Token);
+        DialogParameters<PayDebtDialog> parameters = new()
+        {
+            { x => x.Transaction, transaction },
+            { x => x.Debts, debts }
+        };
+
+        IDialogReference dialog = await DialogService.ShowAsync<PayDebtDialog>(null, parameters);
+        DialogResult? result = await dialog.Result;
+        if (result is null || result.Canceled)
+        {
+            return;
+        }
+
+        try
+        {
+            SetLoadingState(true, "Saving…");
+            Transaction updated = await DebtsService.PayDebtAsync(transaction.TransactionId, (PayDebt)result.Data!,
+                _cts.Token);
+
+            int index = _transactions.FindIndex(x => x.TransactionId == updated.TransactionId);
+            if (index >= 0)
+            {
+                _transactions[index] = updated;
+            }
+
+            Snackbar.Add(updated.Debt?.DebtName is { } name ? $"It pays off {name} now" : "It pays off no debt now",
+                Severity.Success);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't save that, try again", Severity.Error);
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
     private void CreateRuleFrom(Transaction transaction) =>
         NavigationManager.NavigateTo($"Rules/new?from={transaction.TransactionId}");
 
@@ -397,10 +438,11 @@
             await ClassificationsService.AddCustomClassificationsToTransactionAsync(classificationsToAdd, _cts.Token);
 
             var added = classificationsToAdd.Classifications.Select(static c => c.ClassificationId).ToHashSet();
-            transaction.Tags = transaction.Tags
-                .Concat(classifications.Where(x => added.Contains(x.ClassificationId)).Select(static x => x.Tag!))
-                .Distinct()
+            List<string> addedTags = classifications.Where(x => added.Contains(x.ClassificationId))
+                .Select(static x => x.Tag!)
                 .ToList();
+            transaction.Tags = transaction.Tags.Concat(addedTags).Distinct().ToList();
+            transaction.CustomTags = transaction.CustomTags.Concat(addedTags).Distinct().ToList();
             Snackbar.Add("Tags added", Severity.Success);
         }
         catch (Exception)

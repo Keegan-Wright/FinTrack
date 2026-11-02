@@ -31,5 +31,10 @@ public enum RuleActionType
     /// <summary>
     /// Decides it pays a bill. The first matching rule to decide wins.
     /// </summary>
-    PayBill = 5
+    PayBill = 5,
+
+    /// <summary>
+    /// Decides it pays off a debt. The first matching rule to decide wins.
+    /// </summary>
+    PayDebt = 6
 }

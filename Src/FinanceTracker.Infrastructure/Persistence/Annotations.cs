@@ -16,4 +16,10 @@ public static class Annotations
     /// On a day blind index shadow property, the name of the encrypted date property whose UTC day it hashes.
     /// </summary>
     internal const string DayBlindIndexSourceAnnotation = "FinanceTracker.DayBlindIndexSource";
+
+    /// <summary>
+    /// On a name blind index shadow property, the encrypted properties whose name it hashes, comma separated in
+    /// order, see <see cref="NameBlindIndex"/>.
+    /// </summary>
+    internal const string NameBlindIndexSourceAnnotation = "FinanceTracker.NameBlindIndexSource";
 }

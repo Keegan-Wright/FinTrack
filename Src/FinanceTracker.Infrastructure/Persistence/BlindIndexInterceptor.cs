@@ -62,6 +62,13 @@ internal sealed class BlindIndexInterceptor : SaveChangesInterceptor
             return entry.Property(source).CurrentValue as string ?? string.Empty;
         }
 
+        // A name across one or more encrypted properties, ignoring case
+        if (property.FindAnnotation(Annotations.NameBlindIndexSourceAnnotation)?.Value is string nameSources)
+        {
+            return NameBlindIndex.Value(nameSources.Split(',')
+                .Select(x => entry.Property(x).CurrentValue as string));
+        }
+
         // The UTC day of an encrypted date
         if (property.FindAnnotation(Annotations.DayBlindIndexSourceAnnotation)?.Value is string daySource)
         {

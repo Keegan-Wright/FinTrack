@@ -36,6 +36,7 @@ public static class BackgroundJobExtensions
             builder.Services.MapTicker<SyncAllOpenBankingDetailsAsync>();
             builder.Services.MapTicker<SyncUserOpenBankingDetailsAsync, SyncUserOpenBankingDetailsRequest>();
             builder.Services.MapTicker<MonitorOpenBankingTokenExpirationAsync>();
+            builder.Services.MapTicker<MoveEventSavingsGoalsOnAsync>();
 
             builder.Services.AddScoped<IOpenBankingSyncScheduler, TickerQOpenBankingSyncScheduler>();
             builder.Services.AddSingleton<ISyncNotifier, SyncNotifier>();

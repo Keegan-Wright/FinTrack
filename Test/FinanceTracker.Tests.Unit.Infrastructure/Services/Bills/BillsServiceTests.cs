@@ -310,6 +310,45 @@ public class BillsServiceTests : InfrastructureTestBase
     }
 
     [Test]
+    public async Task ConfirmSuggestionAsync_ABillAddedSinceCoversIt_ThrowsAndDropsTheSuggestion()
+    {
+        // Arrange
+        await SeedSuggestionAsync();
+        BillsService subject = BuildSubject(Username);
+        await subject.AddBillAsync(Streaming(new DateOnly(2026, 11, 12)), CancellationToken);
+
+        // Act
+        AlreadyABillException? exception = await Assert.ThrowsAsync<AlreadyABillException>(() =>
+            subject.ConfirmSuggestionAsync(Scenario.BillSuggestionMappings["streaming"], CancellationToken));
+
+        // Assert
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        using (Assert.Multiple())
+        {
+            await Assert.That(exception!.Message).IsEqualTo("Your bill Streaming already covers these payments");
+            await Assert.That(await context.Bills.CountAsync(CancellationToken)).IsEqualTo(1);
+            await Assert.That(await context.BillSuggestions.AnyAsync(CancellationToken)).IsFalse();
+        }
+    }
+
+    [Test]
+    public async Task ConfirmSuggestionAsync_AnEndedBillForThePayee_StillMakesABill()
+    {
+        // Arrange
+        await SeedSuggestionAsync();
+        BillsService subject = BuildSubject(Username);
+        Bill old = await subject.AddBillAsync(Streaming(new DateOnly(2026, 11, 12)), CancellationToken);
+        await subject.EndBillAsync(old.Id, CancellationToken);
+
+        // Act
+        Bill bill = await subject.ConfirmSuggestionAsync(Scenario.BillSuggestionMappings["streaming"],
+            CancellationToken);
+
+        // Assert
+        await Assert.That(bill.Name).IsEqualTo("Streamco");
+    }
+
+    [Test]
     public async Task DismissSuggestionAsync_IsNoLongerWaiting()
     {
         // Arrange

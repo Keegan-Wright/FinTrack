@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.Api;
 using FinanceTracker.Contracts.Classifications;
 using FinanceTracker.Contracts.Services;
@@ -9,7 +10,8 @@ namespace FinanceTracker.Client.Api;
 
 /// <summary>
 /// <see cref="IClassificationService"/> over <see cref="ApiRoutes.Classifications"/>. The API's 404s come back as the
-/// <see cref="InvalidOperationException"/> the interface documents.
+/// <see cref="InvalidOperationException"/> the interface documents, and its 409s as the
+/// <see cref="NameTakenException"/>.
 /// </summary>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Client)]
 [Scoped<IClassificationService>]
@@ -31,10 +33,23 @@ public sealed class ClassificationApiClient : IClassificationService
         return await response.ReadRequiredJsonAsync<GetClassification>(cancellationToken);
     }
 
-    public Task<Classification> AddCustomClassificationAsync(AddClassifications classification,
-        CancellationToken cancellationToken) =>
-        _http.PostReadAsync<AddClassifications, Classification>(ApiRoutes.Classifications, classification,
-            cancellationToken);
+    public async Task<Classification> AddCustomClassificationAsync(AddClassifications classification,
+        CancellationToken cancellationToken)
+    {
+        using HttpResponseMessage response =
+            await _http.PostAsJsonAsync(ApiRoutes.Classifications, classification, cancellationToken);
+        response.EnsureNameFree(NameTakenException.Tag, classification.Tag);
+        return await response.ReadRequiredJsonAsync<Classification>(cancellationToken);
+    }
+
+    public async Task<Classification> RenameCustomClassificationAsync(Guid id, RenameClassification request,
+        CancellationToken cancellationToken)
+    {
+        using HttpResponseMessage response =
+            await _http.PutAsJsonAsync($"{ApiRoutes.Classifications}/{id}", request, cancellationToken);
+        response.EnsureNameFree(NameTakenException.Tag, request.Tag);
+        return await response.ReadRequiredJsonAsync<Classification>(cancellationToken);
+    }
 
     public async Task AddCustomClassificationsToTransactionAsync(AddCustomClassificationsToTransaction model,
         CancellationToken cancellationToken)

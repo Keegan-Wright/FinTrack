@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.Api;
 using FinanceTracker.Contracts.SavingsGoals;
 using FinanceTracker.Contracts.Services;
@@ -38,7 +39,7 @@ public sealed class SavingsGoalsApiClient : ISavingsGoalsService
     {
         using HttpResponseMessage response =
             await _http.PostAsJsonAsync(ApiRoutes.SavingsGoals, goal, cancellationToken);
-        response.EnsureFound();
+        response.EnsureNameFree(NameTakenException.SavingsGoal, goal.Name);
         return await response.ReadRequiredJsonAsync<SavingsGoal>(cancellationToken);
     }
 
@@ -47,7 +48,7 @@ public sealed class SavingsGoalsApiClient : ISavingsGoalsService
     {
         using HttpResponseMessage response =
             await _http.PutAsJsonAsync($"{ApiRoutes.SavingsGoals}/{id}", goal, cancellationToken);
-        response.EnsureFound();
+        response.EnsureNameFree(NameTakenException.SavingsGoal, goal.Name);
         return await response.ReadRequiredJsonAsync<SavingsGoal>(cancellationToken);
     }
 

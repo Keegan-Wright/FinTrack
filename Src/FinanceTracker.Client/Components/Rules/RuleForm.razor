@@ -113,6 +113,18 @@
                                 }
                             </MudSelect>
                         }
+                        @if (action.Type == RuleActionType.PayDebt)
+                        {
+                            <MudSelect T="Guid?" Label="Debt" @bind-Value="action.DebtId" ToStringFunc="@DebtName"
+                                       For="@(() => action.DebtId)" Variant="Variant.Outlined"
+                                       Margin="Margin.Dense" Class="ft-rule-form__tag"
+                                       Validation="@(new Func<Guid?, string?>(DebtError))">
+                                @foreach ((Guid debtId, string debtName) in DebtNames.OrderBy(static x => x.Value))
+                                {
+                                    <MudSelectItem T="Guid?" Value="@debtId">@debtName</MudSelectItem>
+                                }
+                            </MudSelect>
+                        }
                         <span class="ft-rule-form__end">
                             <MudIconButton Icon="@Icons.Material.Outlined.Close" Size="Size.Small"
                                            Disabled="@(Model.Actions.Count == 1)" aria-label="Remove action"
@@ -133,6 +145,13 @@
                 <MudText Typo="Typo.caption" Class="mud-text-secondary">
                     You have no bills yet, <MudLink Href="Bills" Typo="Typo.caption">add one</MudLink> to pay it with a
                     rule.
+                </MudText>
+            }
+            @if (DebtNames.Count == 0 && Model.Actions.Exists(static x => x.Type == RuleActionType.PayDebt))
+            {
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                    You have no debts yet, <MudLink Href="Debts" Typo="Typo.caption">add one</MudLink> to pay it off
+                    with a rule.
                 </MudText>
             }
             @foreach (string error in ErrorsFor(nameof(SaveRule.Actions)))
@@ -162,9 +181,15 @@
     [Parameter] [EditorRequired] public required IReadOnlyDictionary<Guid, string> TagNames { get; set; }
 
     /// <summary>
-    /// The user's bills by id, offered for an action that pays one.
+    /// The user's bills by id, as they read where one is picked for an action that pays one, see
+    /// <see cref="Bills.BillText.PickerLabel"/>.
     /// </summary>
     [Parameter] public IReadOnlyDictionary<Guid, string> BillNames { get; set; } = new Dictionary<Guid, string>();
+
+    /// <summary>
+    /// The user's debts by id, offered for an action that pays one off.
+    /// </summary>
+    [Parameter] public IReadOnlyDictionary<Guid, string> DebtNames { get; set; } = new Dictionary<Guid, string>();
 
     private MudForm _form = null!;
 
@@ -207,6 +232,13 @@
     /// </summary>
     private string? BillName(Guid? billId) => billId is { } id ? BillNames.GetValueOrDefault(id) : null;
 
+    private static string? DebtError(Guid? debtId) => debtId is null ? "Choose a debt" : null;
+
+    /// <summary>
+    /// What a chosen debt shows as, its name rather than its id.
+    /// </summary>
+    private string? DebtName(Guid? debtId) => debtId is { } id ? DebtNames.GetValueOrDefault(id) : null;
+
     private static string? BankClassificationError(string? classification) =>
         string.IsNullOrWhiteSpace(classification) ? "Enter the bank classification to hide" : null;
 
@@ -230,6 +262,11 @@
         if (type != RuleActionType.PayBill)
         {
             action.BillId = null;
+        }
+
+        if (type != RuleActionType.PayDebt)
+        {
+            action.DebtId = null;
         }
     }
 

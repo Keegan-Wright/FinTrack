@@ -8,12 +8,12 @@
         <MudText Typo="Typo.body2" Class="ft-money" Color="@RemainingColor">@BudgetText.Remaining(Status)</MudText>
         @if (Editable)
         {
-            <span class="ft-budget__actions">
-                <MudIconButton Icon="@Icons.Material.Outlined.Edit" Size="Size.Small"
-                               aria-label="@($"Edit {Status.Name}")" OnClick="@OnEdit"/>
-                <MudIconButton Icon="@Icons.Material.Outlined.Delete" Size="Size.Small"
-                               aria-label="@($"Delete {Status.Name}")" OnClick="@OnDelete"/>
-            </span>
+            <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true"
+                     AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
+                     aria-label="@($"Actions for {Status.Name}")">
+                <MudMenuItem Icon="@Icons.Material.Outlined.Edit" OnClick="@OnEdit">Edit</MudMenuItem>
+                <MudMenuItem Icon="@Icons.Material.Outlined.Delete" OnClick="@OnDelete">Delete</MudMenuItem>
+            </MudMenu>
         }
     </div>
 

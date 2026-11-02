@@ -32,6 +32,7 @@ public static class RuleEvaluator
         List<HiddenClassification> hidden = [];
         RuleTransfer? transfer = null;
         RuleBill? bill = null;
+        RuleDebt? debt = null;
 
         // By id after order so rules sharing a position always run the same way
         IEnumerable<Rule> enabled = rules
@@ -65,6 +66,9 @@ public static class RuleEvaluator
                     case RuleActionType.PayBill:
                         bill ??= new RuleBill(action.BillId!.Value, rule.Id);
                         break;
+                    case RuleActionType.PayDebt:
+                        debt ??= new RuleDebt(action.DebtId!.Value, rule.Id);
+                        break;
                     default:
                         transfer ??= new RuleTransfer(ToDecision(action.Type), rule.Id);
                         break;
@@ -77,7 +81,7 @@ public static class RuleEvaluator
             }
         }
 
-        return new RuleOutcome(tags, transfer, hidden, bill);
+        return new RuleOutcome(tags, transfer, hidden, bill, debt);
     }
 
     /// <summary>

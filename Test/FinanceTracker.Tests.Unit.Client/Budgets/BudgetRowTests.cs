@@ -1,6 +1,7 @@
 using Bunit;
 using FinanceTracker.Client.Components.Budgets;
 using FinanceTracker.Contracts.Budgets;
+using MudBlazor;
 
 namespace FinanceTracker.Tests.Unit.Client.Budgets;
 
@@ -12,6 +13,7 @@ public class BudgetRowTests : ComponentTestBase
         // Arrange
         using CultureScope culture = new();
         bool edited = false;
+        IRenderedComponent<MudPopoverProvider> popovers = Render<MudPopoverProvider>();
 
         // Act
         IRenderedComponent<BudgetRow> cut = Render<BudgetRow>(p => p
@@ -19,7 +21,7 @@ public class BudgetRowTests : ComponentTestBase
             .Add(x => x.ShowPace, true)
             .Add(x => x.Editable, true)
             .Add(x => x.OnEdit, () => edited = true));
-        cut.Find("button[aria-label='Edit Groceries']").Click();
+        await RowMenu.ChooseAsync(cut, popovers, "Groceries", "Edit");
 
         // Assert
         using (Assert.Multiple())

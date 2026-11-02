@@ -1,4 +1,5 @@
 using System.Net;
+using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.HouseholdMember;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Tests.Integration.Http;
@@ -61,6 +62,80 @@ public class HouseholdMemberApiTests : IntegrationTestBase
         HttpRequestException? exception = await Assert.ThrowsAsync<HttpRequestException>(() =>
             service.AddHouseholdMemberAsync(
                 new AddHouseholdMember { FirstName = "", LastName = "Doe", Income = -1m }, CancellationToken));
+
+        // Assert
+        await Assert.That(exception!.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+    }
+
+    [Test]
+    public async Task UpdateHouseholdMember_IsSavedAndListed()
+    {
+        // Arrange
+        SignedInUser user = await RegisterUserAsync();
+        IHouseholdMemberService service = ApiFor(user).Get<IHouseholdMemberService>();
+        HouseholdMember added = await service.AddHouseholdMemberAsync(
+            new AddHouseholdMember { FirstName = "Jane", LastName = "Doe", Income = 2500m }, CancellationToken);
+
+        // Act
+        HouseholdMember updated = await service.UpdateHouseholdMemberAsync(added.Id,
+            new UpdateHouseholdMember { FirstName = "Janet", LastName = "Doe", Income = 2750m }, CancellationToken);
+        HouseholdMember listed = (await service.GetHouseholdMembersAsync(CancellationToken)
+            .ToListAsync(CancellationToken)).Single();
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(updated.FirstName).IsEqualTo("Janet");
+            await Assert.That(listed.Income).IsEqualTo(2750m);
+        }
+    }
+
+    [Test]
+    public async Task UpdateHouseholdMember_OfAnotherUser_ThrowsAsTheServiceDoes()
+    {
+        // Arrange
+        SignedInUser owner = await RegisterUserAsync();
+        SignedInUser other = await RegisterUserAsync();
+        HouseholdMember theirs = await ApiFor(owner).Get<IHouseholdMemberService>().AddHouseholdMemberAsync(
+            new AddHouseholdMember { FirstName = "Jane", LastName = "Doe", Income = 1m }, CancellationToken);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(() => ApiFor(other).Get<IHouseholdMemberService>()
+            .UpdateHouseholdMemberAsync(theirs.Id,
+                new UpdateHouseholdMember { FirstName = "A", LastName = "B", Income = 0m }, CancellationToken));
+    }
+
+    [Test]
+    public async Task AddHouseholdMember_SameNameAsSomeoneInTheHousehold_ThrowsAsTheServiceDoes()
+    {
+        // Arrange
+        SignedInUser user = await RegisterUserAsync();
+        IHouseholdMemberService service = ApiFor(user).Get<IHouseholdMemberService>();
+        await service.AddHouseholdMemberAsync(
+            new AddHouseholdMember { FirstName = "Jane", LastName = "Doe", Income = 1m }, CancellationToken);
+
+        // Act
+        NameTakenException? exception = await Assert.ThrowsAsync<NameTakenException>(() =>
+            service.AddHouseholdMemberAsync(
+                new AddHouseholdMember { FirstName = "Jane", LastName = "Doe", Income = 2m }, CancellationToken));
+
+        // Assert
+        await Assert.That(exception!.Message).IsEqualTo("You already have a person called Jane Doe");
+    }
+
+    [Test]
+    public async Task UpdateHouseholdMember_ThatFailsValidation_IsRejected()
+    {
+        // Arrange
+        SignedInUser user = await RegisterUserAsync();
+        IHouseholdMemberService service = ApiFor(user).Get<IHouseholdMemberService>();
+        HouseholdMember added = await service.AddHouseholdMemberAsync(
+            new AddHouseholdMember { FirstName = "Jane", LastName = "Doe", Income = 1m }, CancellationToken);
+
+        // Act
+        HttpRequestException? exception = await Assert.ThrowsAsync<HttpRequestException>(() =>
+            service.UpdateHouseholdMemberAsync(added.Id,
+                new UpdateHouseholdMember { FirstName = "", LastName = "Doe", Income = -1m }, CancellationToken));
 
         // Assert
         await Assert.That(exception!.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);

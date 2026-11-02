@@ -1,3 +1,4 @@
+using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.Classifications;
 using FinanceTracker.Contracts.SavingsGoals;
 using FinanceTracker.Contracts.Services;
@@ -40,6 +41,22 @@ public class SavingsGoalApiTests : IntegrationTestBase
             await Assert.That(deleted).IsTrue();
             await Assert.That(deletedAgain).IsFalse();
         }
+    }
+
+    [Test]
+    public async Task AddSavingsGoal_NameTheyAlreadyHave_ThrowsAsTheServiceDoes()
+    {
+        // Arrange
+        SignedInUser user = await RegisterUserAsync();
+        ISavingsGoalsService service = ApiFor(user).Get<ISavingsGoalsService>();
+        await service.AddSavingsGoalAsync(new SaveSavingsGoal { Name = "Holiday", Target = 1000m }, CancellationToken);
+
+        // Act
+        NameTakenException? exception = await Assert.ThrowsAsync<NameTakenException>(() =>
+            service.AddSavingsGoalAsync(new SaveSavingsGoal { Name = "Holiday", Target = 500m }, CancellationToken));
+
+        // Assert
+        await Assert.That(exception!.Message).IsEqualTo("You already have a savings goal called Holiday");
     }
 
     [Test]

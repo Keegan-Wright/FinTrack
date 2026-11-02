@@ -3,9 +3,11 @@
 @* Makes a rule or edits one (IRulesService), optionally starting from a transaction (?from={transactionId}). A new
    or edited rule reaches the transactions that arrive from the next sync, unless the user previews it and applies it
    to the ones they have. *@
+@using FinanceTracker.Client.Components.Bills
 @using FinanceTracker.Client.Components.Rules
 @using FinanceTracker.Contracts.Bills
 @using FinanceTracker.Contracts.Classifications
+@using FinanceTracker.Contracts.Debts
 @using FinanceTracker.Contracts.Rules
 @using FinanceTracker.Contracts.Transactions
 @using Microsoft.AspNetCore.Authorization
@@ -16,6 +18,7 @@
 @inject ITransactionsService TransactionsService
 @inject IClassificationService ClassificationService
 @inject IBillsService BillsService
+@inject IDebtsService DebtsService
 @inject IDialogService DialogService
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
@@ -40,7 +43,8 @@
 else
 {
     <div class="ft-stack">
-        <RuleForm @ref="_form" Model="@Draft" AccountNames="@AccountNames" TagNames="@TagNames" BillNames="@BillNames"/>
+        <RuleForm @ref="_form" Model="@Draft" AccountNames="@AccountNames" TagNames="@TagNames" BillNames="@BillNames"
+                  DebtNames="@DebtNames"/>
 
         <RulePreviewPanel Preview="@_preview" Busy="@_previewing" CanApply="@Draft.IsEnabled"
                           OnPreview="@PreviewAsync" OnApply="@SaveAndApplyAsync"/>
@@ -95,6 +99,12 @@ else
     [PersistentState]
     public List<Bill>? BillList { get; set; }
 
+    /// <summary>
+    /// The user's debts, for actions that pay one off.
+    /// </summary>
+    [PersistentState]
+    public List<Debt>? DebtList { get; set; }
+
     private RuleForm? _form;
     private RulePreview? _preview;
     private bool _previewing;
@@ -112,7 +122,10 @@ else
         (Tags ?? []).ToDictionary(static x => x.ClassificationId, static x => x.Tag ?? string.Empty);
 
     private IReadOnlyDictionary<Guid, string> BillNames =>
-        (BillList ?? []).ToDictionary(static x => x.Id, static x => x.Name);
+        (BillList ?? []).ToDictionary(static x => x.Id, BillText.PickerLabel);
+
+    private IReadOnlyDictionary<Guid, string> DebtNames =>
+        (DebtList ?? []).ToDictionary(static x => x.Id, static x => x.Name);
 
     protected override async Task OnInitializedAsync()
     {
@@ -125,6 +138,8 @@ else
                 .ToListAsync(cancellationToken).AsTask());
         BillList = await LoadOnceAsync(BillList, "Loading the rule", cancellationToken =>
             BillsService.GetBillsAsync(cancellationToken).ToListAsync(cancellationToken).AsTask());
+        DebtList = await LoadOnceAsync(DebtList, "Loading the rule", cancellationToken =>
+            DebtsService.GetDebtsAsync(cancellationToken).ToListAsync(cancellationToken).AsTask());
 
         if (Draft is null)
         {

@@ -55,6 +55,27 @@ public class RuleTextTests
     }
 
     [Test]
+    public async Task Describe_PayDebt_NamesTheDebtOrSaysItsGone()
+    {
+        // Arrange
+        Guid debtId = Guid.NewGuid();
+        Dictionary<Guid, string> debtNames = new() { [debtId] = "Car loan" };
+
+        // Act
+        string known = RuleText.Describe(new RuleAction { Type = RuleActionType.PayDebt, DebtId = debtId },
+            new Dictionary<Guid, string>(), debtNames: debtNames);
+        string deleted = RuleText.Describe(new RuleAction { Type = RuleActionType.PayDebt, DebtId = Guid.NewGuid() },
+            new Dictionary<Guid, string>(), debtNames: debtNames);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(known).IsEqualTo("Pay off debt Car loan");
+            await Assert.That(deleted).IsEqualTo("Pay off a deleted debt");
+        }
+    }
+
+    [Test]
     public async Task Describe_PayBill_NamesTheBillOrSaysItsGone()
     {
         // Arrange
@@ -172,6 +193,65 @@ public class RuleTextTests
         await Assert.That(changes).IsEquivalentTo(
             ["+ Gaming", "− Shopping", "Hides TV", "Counts as income or spending"],
             TUnit.Assertions.Enums.CollectionOrdering.Matching);
+    }
+
+    [Test]
+    public async Task Changes_SaysWhichBillAndDebtItWouldPay()
+    {
+        // Arrange
+        RulePreviewChange change = new()
+        {
+            Description = "CAR FINANCE",
+            BillAfter = "Streaming",
+            DebtAfter = "Car loan"
+        };
+
+        // Act
+        List<string> changes = RuleText.Changes(change).ToList();
+
+        // Assert
+        await Assert.That(changes).IsEquivalentTo(["Pays Streaming", "Pays off Car loan"],
+            TUnit.Assertions.Enums.CollectionOrdering.Matching);
+    }
+
+    [Test]
+    public async Task Changes_SaysWhichBillAndDebtItWouldStopPaying()
+    {
+        // Arrange
+        RulePreviewChange change = new()
+        {
+            Description = "CAR FINANCE",
+            BillBefore = "Streaming",
+            DebtBefore = "Car loan"
+        };
+
+        // Act
+        List<string> changes = RuleText.Changes(change).ToList();
+
+        // Assert
+        await Assert.That(changes).IsEquivalentTo(["Stops paying Streaming", "Stops paying off Car loan"],
+            TUnit.Assertions.Enums.CollectionOrdering.Matching);
+    }
+
+    [Test]
+    public async Task Changes_SameBillAndDebt_SaysNothingAboutThem()
+    {
+        // Arrange
+        RulePreviewChange change = new()
+        {
+            Description = "CAR FINANCE",
+            TagsAdded = ["Car"],
+            BillBefore = "Streaming",
+            BillAfter = "Streaming",
+            DebtBefore = "Car loan",
+            DebtAfter = "Car loan"
+        };
+
+        // Act
+        List<string> changes = RuleText.Changes(change).ToList();
+
+        // Assert
+        await Assert.That(changes).IsEquivalentTo(["+ Car"]);
     }
 
     [Test]

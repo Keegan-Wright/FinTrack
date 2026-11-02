@@ -1,6 +1,7 @@
 using System.Globalization;
 using FinanceTracker.Client.Components.Common;
 using FinanceTracker.Contracts.Bills;
+using FinanceTracker.Contracts.Transactions;
 using MudBlazor;
 
 namespace FinanceTracker.Client.Components.Bills;
@@ -35,6 +36,32 @@ public static class BillText
     /// </summary>
     public static string Summary(Bill bill) =>
         $"{bill.AccountName} · {FrequencyName(bill.Frequency)} · {SourceName(bill.Source)}";
+
+    /// <summary>
+    /// Who said a transaction pays its bill, e.g. <c>Matched by FinTrack</c> or <c>By your rule Rent</c>.
+    /// </summary>
+    public static string Reason(TransactionBill bill) => bill.DecidedBy switch
+    {
+        TransferDecidedBy.User => "Chosen by you",
+        TransferDecidedBy.Rule => $"By your rule {bill.RuleName}",
+        _ => "Matched by FinTrack"
+    };
+
+    /// <summary>
+    /// How a bill reads where one is picked, telling apart bills with the same name, e.g.
+    /// <c>Phone · Joint · £12.00 monthly</c>, or <c>… · ended</c> once it has.
+    /// </summary>
+    public static string PickerLabel(Bill bill)
+    {
+        string label = $"{bill.Name} · {bill.AccountName} · {CurrencyFormatter.Format(bill.ExpectedAmount)} " +
+                       FrequencyName(bill.Frequency).ToLowerInvariant();
+        if (bill.EndedOn is not null)
+        {
+            return $"{label} · ended";
+        }
+
+        return label;
+    }
 
     /// <summary>
     /// e.g. <c>4 Nov</c>, with the year when it isn't this one.

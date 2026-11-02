@@ -64,6 +64,30 @@
                     <MudSelectItem T="string" Value="@item.Tag">@item.Tag</MudSelectItem>
                 }
             </MudSelect>
+            <MudSelect T="Guid" Label="Bills" MultiSelection="true" Clearable="true" Variant="Variant.Outlined"
+                       Margin="Margin.Dense" MultiSelectionTextFunc="@(list => CountText(list, "bill", "bills"))"
+                       @bind-SelectedValues="_selectedBillIds">
+                @foreach (var item in BillFilterItems)
+                {
+                    <MudSelectItem T="Guid" Value="@item.Id">@item.Name</MudSelectItem>
+                }
+            </MudSelect>
+            <MudSelect T="Guid" Label="Debts" MultiSelection="true" Clearable="true" Variant="Variant.Outlined"
+                       Margin="Margin.Dense" MultiSelectionTextFunc="@(list => CountText(list, "debt", "debts"))"
+                       @bind-SelectedValues="_selectedDebtIds">
+                @foreach (var item in DebtFilterItems)
+                {
+                    <MudSelectItem T="Guid" Value="@item.Id">@item.Name</MudSelectItem>
+                }
+            </MudSelect>
+            <MudSelect T="Guid" Label="Savings goals" MultiSelection="true" Clearable="true" Variant="Variant.Outlined"
+                       Margin="Margin.Dense" MultiSelectionTextFunc="@(list => CountText(list, "goal", "goals"))"
+                       @bind-SelectedValues="_selectedSavingsGoalIds">
+                @foreach (var item in SavingsGoalFilterItems)
+                {
+                    <MudSelectItem T="Guid" Value="@item.Id">@item.Name</MudSelectItem>
+                }
+            </MudSelect>
         </div>
     </MudCollapse>
 </div>
@@ -81,6 +105,15 @@
     [Parameter, EditorRequired] public List<TransactionTagFilter> TransactionTagFilterItems { get; set; } = [];
 
     /// <summary>
+    /// Bills to filter by, subscriptions included.
+    /// </summary>
+    [Parameter] public List<TransactionLinkFilter> BillFilterItems { get; set; } = [];
+
+    [Parameter] public List<TransactionLinkFilter> DebtFilterItems { get; set; } = [];
+
+    [Parameter] public List<TransactionLinkFilter> SavingsGoalFilterItems { get; set; } = [];
+
+    /// <summary>
     /// Raised with the chosen filters when the user applies or clears them.
     /// </summary>
     [Parameter, EditorRequired] public EventCallback<ActiveTransactionFilters> SearchTransactions { get; set; }
@@ -91,6 +124,9 @@
     private IReadOnlyCollection<string> _selectedCategories = [];
     private IReadOnlyCollection<string> _selectedTypes = [];
     private IReadOnlyCollection<string> _selectedTags = [];
+    private IReadOnlyCollection<Guid> _selectedBillIds = [];
+    private IReadOnlyCollection<Guid> _selectedDebtIds = [];
+    private IReadOnlyCollection<Guid> _selectedSavingsGoalIds = [];
     private DateRange? _dateRange;
     private bool _expanded;
 
@@ -98,7 +134,7 @@
     private int MoreFilterCount => new[]
     {
         _selectedProviderIds.Count, _selectedAccountIds.Count, _selectedCategories.Count, _selectedTypes.Count,
-        _selectedTags.Count
+        _selectedTags.Count, _selectedBillIds.Count, _selectedDebtIds.Count, _selectedSavingsGoalIds.Count
     }.Count(static x => x > 0);
 
     private bool HasAnyFilter => MoreFilterCount > 0 || !string.IsNullOrWhiteSpace(_searchTerm) ||
@@ -115,7 +151,7 @@
 
     private Task ApplyAsync() => SearchTransactions.InvokeAsync(new ActiveTransactionFilters(_selectedProviderIds,
         _selectedAccountIds, _selectedCategories, _selectedTypes, _selectedTags, _dateRange,
-        _searchTerm ?? string.Empty));
+        _searchTerm ?? string.Empty, _selectedBillIds, _selectedDebtIds, _selectedSavingsGoalIds));
 
     private Task ClearAsync()
     {
@@ -125,6 +161,9 @@
         _selectedCategories = [];
         _selectedTypes = [];
         _selectedTags = [];
+        _selectedBillIds = [];
+        _selectedDebtIds = [];
+        _selectedSavingsGoalIds = [];
         _dateRange = null;
         return ApplyAsync();
     }

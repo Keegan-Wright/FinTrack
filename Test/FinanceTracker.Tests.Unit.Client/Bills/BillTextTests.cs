@@ -70,6 +70,24 @@ public class BillTextTests
         await Assert.That(BillText.Day(new DateOnly(2027, 1, 3), Today)).IsEqualTo("3 Jan 2027");
     }
 
+    [Test]
+    public async Task PickerLabel_TellsApartBillsWithTheSameName()
+    {
+        // Arrange
+        using CultureScope culture = new();
+
+        // Act
+        string running = BillText.PickerLabel(Bill("Phone"));
+        string ended = BillText.PickerLabel(Bill("Phone", endedOn: Today));
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(running).IsEqualTo("Phone · Current · £9.99 monthly");
+            await Assert.That(ended).IsEqualTo("Phone · Current · £9.99 monthly · ended");
+        }
+    }
+
     internal static Bill Bill(string name = "Energy", DateOnly? endedOn = null, bool paid = true,
         BillSource source = BillSource.DirectDebit) => new()
     {
