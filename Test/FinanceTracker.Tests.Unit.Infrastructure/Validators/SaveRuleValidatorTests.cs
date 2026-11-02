@@ -158,6 +158,67 @@ public class SaveRuleValidatorTests : UnitTestBase
     }
 
     [Test]
+    public async Task ValidateAsync_PayDebtWithADebt_IsValid()
+    {
+        // Arrange
+        SaveRule rule = Valid();
+        rule.Actions = [new RuleAction { Type = RuleActionType.PayDebt, DebtId = Guid.CreateVersion7() }];
+
+        // Act
+        ValidationResult result = await _subject.ValidateAsync(rule, CancellationToken);
+
+        // Assert
+        await Assert.That(result.IsValid).IsTrue();
+    }
+
+    [Test]
+    public async Task ValidateAsync_PayDebtWithoutADebt_IsInvalid()
+    {
+        // Arrange
+        SaveRule rule = Valid();
+        rule.Actions = [new RuleAction { Type = RuleActionType.PayDebt }];
+
+        // Act
+        ValidationResult result = await _subject.ValidateAsync(rule, CancellationToken);
+
+        // Assert
+        await Assert.That(result.Errors.Select(static x => x.ErrorMessage)).Contains("Choose a debt");
+    }
+
+    [Test]
+    public async Task ValidateAsync_TwoDebts_IsInvalid()
+    {
+        // Arrange
+        SaveRule rule = Valid();
+        rule.Actions =
+        [
+            new RuleAction { Type = RuleActionType.PayDebt, DebtId = Guid.CreateVersion7() },
+            new RuleAction { Type = RuleActionType.PayDebt, DebtId = Guid.CreateVersion7() }
+        ];
+
+        // Act
+        ValidationResult result = await _subject.ValidateAsync(rule, CancellationToken);
+
+        // Assert
+        await Assert.That(result.Errors.Select(static x => x.ErrorMessage))
+            .Contains("A rule can only pay off one debt");
+    }
+
+    [Test]
+    public async Task ValidateAsync_DebtOnAnotherAction_IsInvalid()
+    {
+        // Arrange
+        SaveRule rule = Valid();
+        rule.Actions = [new RuleAction { Type = RuleActionType.MarkAsTransfer, DebtId = Guid.CreateVersion7() }];
+
+        // Act
+        ValidationResult result = await _subject.ValidateAsync(rule, CancellationToken);
+
+        // Assert
+        await Assert.That(result.Errors.Select(static x => x.ErrorMessage)).Contains("Only pay debt takes a debt");
+    }
+
+    [Test]
     public async Task ValidateAsync_BillOnAnotherAction_IsInvalid()
     {
         // Arrange

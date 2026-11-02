@@ -93,6 +93,12 @@ public class Transaction
     public TransactionBill? Bill { get; init; }
 
     /// <summary>
+    /// Which debt it pays off, null until a rule or the user decides.
+    /// </summary>
+    [Description("Which debt the transaction pays off, null until decided")]
+    public TransactionDebt? Debt { get; init; }
+
+    /// <summary>
     /// Which of <see cref="Tags"/> the user's rules added, and which rule added each.
     /// </summary>
     [Description("The tags the user's rules added, and which rule added each")]

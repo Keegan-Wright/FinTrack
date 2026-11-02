@@ -193,13 +193,14 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
     /// <summary>
     /// The page only offers the user's own tags and accounts, this covers calls that don't come from it.
     /// </summary>
-    /// <exception cref="InvalidOperationException">An action adds a tag or pays a bill, or a condition names an
-    /// account, that doesn't exist or isn't the user's.</exception>
+    /// <exception cref="InvalidOperationException">An action adds a tag or pays a bill or debt, or a condition names
+    /// an account, that doesn't exist or isn't the user's.</exception>
     private async Task EnsureTheUsersOwnAsync(FinanceTrackerContext context, SaveRule rule,
         CancellationToken cancellationToken)
     {
         await EnsureTagsAreTheUsersAsync(context, rule, cancellationToken);
         await EnsureBillsAreTheUsersAsync(context, rule, cancellationToken);
+        await EnsureDebtsAreTheUsersAsync(context, rule, cancellationToken);
         await EnsureAccountsAreTheUsersAsync(context, rule, cancellationToken);
     }
 
@@ -223,6 +224,29 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
         if (owned != billIds.Count)
         {
             throw new InvalidOperationException("A rule can only pay the user's own bills.");
+        }
+    }
+
+    private async Task EnsureDebtsAreTheUsersAsync(FinanceTrackerContext context, SaveRule rule,
+        CancellationToken cancellationToken)
+    {
+        List<Guid> debtIds = rule.Actions
+            .Select(static x => x.DebtId)
+            .OfType<Guid>()
+            .Distinct()
+            .ToList();
+
+        if (debtIds.Count == 0)
+        {
+            return;
+        }
+
+        int owned = await context.Debts.OwnedBy(UserId)
+            .CountAsync(x => debtIds.Contains(x.Id), cancellationToken);
+
+        if (owned != debtIds.Count)
+        {
+            throw new InvalidOperationException("A rule can only pay off the user's own debts.");
         }
     }
 

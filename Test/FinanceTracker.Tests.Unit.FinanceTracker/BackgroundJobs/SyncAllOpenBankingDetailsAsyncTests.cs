@@ -140,7 +140,7 @@ public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
     }
 
     [Test]
-    public async Task ExecuteAsync_AfterSyncing_SnapshotsEachOwnersBalancesForTodayBeforeMatching()
+    public async Task ExecuteAsync_AfterSyncingAndMatching_SnapshotsEachOwnersBalancesForToday()
     {
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
@@ -155,10 +155,11 @@ public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
         await subject.ExecuteAsync(TickerFunctionContextFactory.Create(), CancellationToken);
 
         // Assert
-        // Every connection has synced first, so net worth covers all of a user's banks
+        // Every connection has synced first, so net worth covers all of a user's banks, and the rules have run, so it
+        // counts the debt payments they linked
         await Assert.That(Snapshots).IsEquivalentTo([
-            (Scenario.UserMappings[Username], Today, Now, 3, false),
-            (Scenario.UserMappings[OtherUsername], Today, Now, 3, false)
+            (Scenario.UserMappings[Username], Today, Now, 3, true),
+            (Scenario.UserMappings[OtherUsername], Today, Now, 3, true)
         ]);
     }
 

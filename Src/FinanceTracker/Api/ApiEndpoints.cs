@@ -25,6 +25,7 @@ public static class ApiEndpoints
                 .MapCalendarEndpoints()
                 .MapClassificationEndpoints()
                 .MapDashboardEndpoints()
+                .MapDebtEndpoints()
                 .MapHouseholdMemberEndpoints()
                 .MapOpenBankingEndpoints()
                 .MapReportEndpoints()

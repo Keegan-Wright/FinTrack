@@ -1,5 +1,6 @@
 using FinanceTracker.Domain.Bills;
 using FinanceTracker.Domain.Budgeting;
+using FinanceTracker.Domain.Debts;
 using FinanceTracker.Domain.Classifications;
 using FinanceTracker.Domain.Household;
 using FinanceTracker.Domain.Identity;

@@ -1,7 +1,9 @@
 using FinanceTracker.Contracts.Bills;
 using FinanceTracker.Contracts.Dashboard;
+using FinanceTracker.Contracts.Debts;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Domain.Common;
+using FinanceTracker.Domain.NetWorth;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Domain.OpenBanking.Transactions;
@@ -18,6 +20,7 @@ using TickerQ.Utilities.Enums;
 using DomainBill = FinanceTracker.Domain.Bills.Bill;
 using DomainBillFrequency = FinanceTracker.Domain.Bills.BillFrequency;
 using DomainBillSource = FinanceTracker.Domain.Bills.BillSource;
+using DomainDebt = FinanceTracker.Domain.Debts.Debt;
 
 namespace FinanceTracker.Tests.Integration.OpenBanking;
 
@@ -195,6 +198,56 @@ public class BackgroundSyncTests : IntegrationTestBase
             await Assert.That(paidByRule.PaysBill(rent!.Id)).IsTrue();
             await Assert.That(paidByRule.WasDecidedBy(Scenario.RuleMappings["rent"])).IsTrue();
             await Assert.That(toLandlord.BillPayment).IsNull();
+        }
+    }
+
+    [Test]
+    public async Task Sync_ARulePaysOffADebt_ItOwesLessAndNetWorthCountsWhatsLeft()
+    {
+        // Arrange
+        SignedInUser user = await RegisterUserAsync();
+        string accessToken = UniqueName("token");
+        DateTime paidAt = DateTime.UtcNow.Date.AddDays(-2).AddHours(12);
+        DomainDebt? loan = null;
+
+        await Scenario.Do(s => s.BankConnectionScenario.WithConnection("bank", user.Username))
+            .Do(s => s.BankConnectionScenario.WithAccessToken("bank", token: accessToken))
+            .Do(s => s.DebtScenario.WithDebt("loan", user.Username, userId =>
+                loan = new DomainDebt(userId, "Car loan", null, 1000m, DateOnly.FromDateTime(paidAt).AddDays(-10), 0m,
+                    100m)))
+            .Do(s => s.RuleScenario.WithRule("car finance", user.Username, userId =>
+                new Rule(userId, "Car finance", 0, RuleMatchMode.All,
+                    [new RuleCondition(RuleField.Description, RuleOperator.Contains, "CAR FINANCE")],
+                    [RuleAction.PayDebt(loan!)])));
+
+        ExternalOpenBankingAccountBalance balance = new ExternalOpenBankingAccountBalanceFaker().Generate();
+        balance.Current = 500m;
+        balance.Available = 500m;
+        ExternalOpenBankingAccountTransaction payment = Debit("CAR FINANCE CO", -100m, paidAt);
+
+        await App.TrueLayer.StubAccountAsync(accessToken, new ExternalOpenBankingAccountFaker().Generate(), [balance],
+            transactions: [payment]);
+
+        // Act
+        await RunSyncAsync();
+        Debt debt = (await ApiFor(user).Get<IDebtsService>().GetDebtsAsync(CancellationToken)
+            .ToListAsync(CancellationToken)).Single();
+
+        // Assert
+        Guid userId = Scenario.UserMappings[user.Username];
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        NetWorthSnapshot netWorth = await context.NetWorthSnapshots.SingleAsync(x => x.UserId == userId,
+            CancellationToken);
+        BankTransaction synced = await SyncedTransactionAsync(Scenario.ConnectionMappings["bank"],
+            payment.TransactionId);
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(synced.PaysDebt(loan!.Id)).IsTrue();
+            await Assert.That(debt.Owed).IsEqualTo(900m);
+            await Assert.That(debt.Paid).IsEqualTo(100m);
+            await Assert.That(netWorth.Assets).IsEqualTo(500m);
+            await Assert.That(netWorth.Liabilities).IsEqualTo(900m);
         }
     }
 

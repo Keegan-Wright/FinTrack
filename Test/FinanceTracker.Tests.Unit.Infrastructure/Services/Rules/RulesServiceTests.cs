@@ -119,6 +119,37 @@ public class RulesServiceTests : InfrastructureTestBase
     }
 
     [Test]
+    public async Task AddRuleAsync_AnotherUsersDebt_Throws()
+    {
+        // Arrange
+        await SeedAsync(Username);
+        await Scenario.Do(s => s.UserScenario.WithUser(OtherUsername))
+            .Do(s => s.DebtScenario.WithDebt("theirs", OtherUsername));
+        SaveRule rule = TagGroceries("shopping");
+        rule.Actions = [new RuleAction { Type = RuleActionType.PayDebt, DebtId = Scenario.DebtMappings["theirs"] }];
+
+        // Act & Assert
+        await Assert.That(async () => await BuildSubject(Username).AddRuleAsync(rule, CancellationToken))
+            .Throws<InvalidOperationException>();
+    }
+
+    [Test]
+    public async Task AddRuleAsync_TheirOwnDebt_SavesIt()
+    {
+        // Arrange
+        await SeedAsync(Username);
+        await Scenario.Do(s => s.DebtScenario.WithDebt("loan", Username));
+        SaveRule rule = TagGroceries("shopping");
+        rule.Actions = [new RuleAction { Type = RuleActionType.PayDebt, DebtId = Scenario.DebtMappings["loan"] }];
+
+        // Act
+        Rule added = await BuildSubject(Username).AddRuleAsync(rule, CancellationToken);
+
+        // Assert
+        await Assert.That(added.Actions.Single().DebtId).IsEqualTo(Scenario.DebtMappings["loan"]);
+    }
+
+    [Test]
     public async Task AddRuleAsync_OnAnotherUsersAccount_Throws()
     {
         // Arrange

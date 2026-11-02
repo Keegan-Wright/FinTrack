@@ -10,8 +10,9 @@ namespace FinanceTracker.Domain.Rules;
 /// <param name="Transfer">The transfer answer, null when no rule gave one.</param>
 /// <param name="HiddenClassifications">The bank's classifications to hide, each with the rule that hid it.</param>
 /// <param name="Bill">The bill it pays, null when no rule said.</param>
+/// <param name="Debt">The debt it pays off, null when no rule said.</param>
 public sealed record RuleOutcome(IReadOnlyList<RuleTag> Tags, RuleTransfer? Transfer,
-    IReadOnlyList<HiddenClassification> HiddenClassifications, RuleBill? Bill = null)
+    IReadOnlyList<HiddenClassification> HiddenClassifications, RuleBill? Bill = null, RuleDebt? Debt = null)
 {
     /// <summary>
     /// Tags and a transfer answer, hiding nothing.

@@ -1,6 +1,8 @@
+using FinanceTracker.Domain.Debts;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.NetWorth;
 using FinanceTracker.Domain.OpenBanking.Balances;
+using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -12,10 +14,13 @@ namespace FinanceTracker.Infrastructure.OpenBanking.Balances;
 [Scoped<IBalanceSnapshotService>]
 public class BalanceSnapshotService : ServiceBase<BalanceSnapshotService>, IBalanceSnapshotService
 {
+    private readonly TimeProvider _timeProvider;
+
     public BalanceSnapshotService(ICurrentUser currentUser,
-        IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<BalanceSnapshotService> logger)
-        : base(currentUser, financeTrackerContextFactory, logger)
+        IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<BalanceSnapshotService> logger,
+        TimeProvider timeProvider) : base(currentUser, financeTrackerContextFactory, logger)
     {
+        _timeProvider = timeProvider;
     }
 
     public async Task<NetWorthSnapshot?> SnapshotAsync(DateOnly day, DateTime balancesSyncedFrom,
@@ -64,17 +69,18 @@ public class BalanceSnapshotService : ServiceBase<BalanceSnapshotService>, IBala
         }
 
         List<BalanceSnapshot> balances = snapshots.Values.ToList();
+        decimal debts = await DebtsOwedAsync(context, day, cancellationToken);
 
         NetWorthSnapshot? netWorth = await context.NetWorthSnapshots.OwnedBy(UserId)
             .SingleOrDefaultAsync(x => x.Date == day, cancellationToken);
         if (netWorth is null)
         {
-            netWorth = new NetWorthSnapshot(UserId, day, balances);
+            netWorth = new NetWorthSnapshot(UserId, day, balances, debts);
             context.NetWorthSnapshots.Add(netWorth);
         }
         else
         {
-            netWorth.Total(balances);
+            netWorth.Total(balances, debts);
         }
 
         await context.SaveChangesAsync(cancellationToken);
@@ -84,4 +90,26 @@ public class BalanceSnapshotService : ServiceBase<BalanceSnapshotService>, IBala
         return netWorth;
     }
 
+    /// <summary>
+    /// What the debts not linked to an account owed on <paramref name="day"/>. Linked ones are in their account's
+    /// balance already.
+    /// </summary>
+    private async Task<decimal> DebtsOwedAsync(FinanceTrackerContext context, DateOnly day,
+        CancellationToken cancellationToken)
+    {
+        List<Debt> debts = await context.Debts.OwnedBy(UserId).AsNoTracking()
+            .Where(static x => x.AccountId == null)
+            .ToListAsync(cancellationToken);
+
+        if (debts.Count == 0)
+        {
+            return 0;
+        }
+
+        List<BankTransaction> payments = await context.BankTransactions.OwnedBy(UserId).AsNoTracking()
+            .Where(static x => x.DebtPayment != null && x.DebtPayment.DebtId != null)
+            .ToListAsync(cancellationToken);
+
+        return debts.Sum(x => DebtCalculator.OwedOn(x, payments, _timeProvider.LocalTimeZone, day));
+    }
 }

@@ -87,10 +87,6 @@ public abstract class OpenBankingSyncJob
 
         foreach (Guid userId in owners)
         {
-            // Today's snapshots, in the server's time zone, from the balances the sync stored
-            await RunAsOwnerAsync<IBalanceSnapshotService>(userId, "Snapshot balances",
-                performingBackgroundSyncActivity, x => x.SnapshotAsync(today, startedAt, cancellationToken));
-
             // Rules on what the sync brought in or changed, before transfers so the matcher sees what they decided
             await RunAsOwnerAsync<IRuleApplicationService>(userId, "Applied rules", performingBackgroundSyncActivity,
                 x => x.ApplyChangesAsync(startedAt, cancellationToken));
@@ -98,9 +94,14 @@ public abstract class OpenBankingSyncJob
             await RunAsOwnerAsync<ITransferMatchingService>(userId, "Matched transfers",
                 performingBackgroundSyncActivity, x => x.MatchChangesAsync(cancellationToken));
 
-            // Bills last, so the matcher sees which bills rules said were paid
+            // Bills after rules, so the matcher sees which bills rules said were paid
             await RunAsOwnerAsync<IBillSyncService>(userId, "Synced bills", performingBackgroundSyncActivity,
                 x => x.SyncAsync(cancellationToken));
+
+            // After the rules, so
+            // net worth counts the debt payments they linked
+            await RunAsOwnerAsync<IBalanceSnapshotService>(userId, "Snapshot balances",
+                performingBackgroundSyncActivity, x => x.SnapshotAsync(today, startedAt, cancellationToken));
         }
 
         performingBackgroundSyncActivity?.AddEvent(new ActivityEvent("Background sync completed"));

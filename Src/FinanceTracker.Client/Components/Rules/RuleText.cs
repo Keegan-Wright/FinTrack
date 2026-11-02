@@ -64,6 +64,7 @@ public static class RuleText
         RuleActionType.MarkNotATransfer => "Mark as not a transfer",
         RuleActionType.HideClassification => "Hide bank classification",
         RuleActionType.PayBill => "Pay bill",
+        RuleActionType.PayDebt => "Pay off debt",
         _ => type.ToString()
     };
 

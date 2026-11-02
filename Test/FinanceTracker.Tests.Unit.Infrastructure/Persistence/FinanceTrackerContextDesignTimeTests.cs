@@ -29,7 +29,7 @@ public class FinanceTrackerContextDesignTimeTests : UnitTestBase
             await Assert.That(context.Database.ProviderName).IsEqualTo("Npgsql.EntityFrameworkCore.PostgreSQL");
             await Assert.That(npgsql.MigrationsAssembly).IsEqualTo("FinanceTracker.Infrastructure.Migrations");
             await Assert.That(npgsql.CommandTimeout).IsEqualTo(FinanceTrackerContext.CommandTimeoutSeconds);
-            await Assert.That(context.Model.FindEntityType(typeof(Domain.Budgeting.Debt))).IsNotNull();
+            await Assert.That(context.Model.FindEntityType(typeof(Domain.Debts.Debt))).IsNotNull();
         }
     }
 }

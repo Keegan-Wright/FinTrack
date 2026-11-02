@@ -72,7 +72,8 @@ public class RuleApplicationService : ServiceBase<RuleApplicationService>, IRule
         List<BankTransaction> transactions = await context.BankTransactions.OwnedBy(UserId)
             .Where(x => x.RuleTags.Any(t => t.RuleId == ruleId) ||
                         (x.Transfer != null && x.Transfer.RuleId == ruleId) ||
-                        (x.BillPayment != null && x.BillPayment.RuleId == ruleId))
+                        (x.BillPayment != null && x.BillPayment.RuleId == ruleId) ||
+                        (x.DebtPayment != null && x.DebtPayment.RuleId == ruleId))
             .ToListAsync(cancellationToken);
 
         if (transactions.Count == 0)

@@ -61,6 +61,17 @@ internal sealed class BankTransactionConfiguration : AggregateRootConfiguration<
             payment.HasIndex(x => x.BillId);
         });
 
+        builder.OwnsOne(x => x.DebtPayment, payment =>
+        {
+            payment.Property(x => x.DebtId).HasColumnName("DebtPayment_DebtId");
+            payment.Property(x => x.Source).HasColumnName("DebtPayment_Source").HasConversion<string>();
+            payment.Property(x => x.DecidedAt).HasColumnName("DebtPayment_DecidedAt");
+            payment.Property(x => x.RuleId).HasColumnName("DebtPayment_RuleId");
+
+            // A debt's payments are loaded by its id
+            payment.HasIndex(x => x.DebtId);
+        });
+
         string externalIdBlindIndex = builder.HasBlindIndex(x => x.ExternalId);
         builder.HasIndex(nameof(BankTransaction.AccountId), externalIdBlindIndex).IsUnique();
 

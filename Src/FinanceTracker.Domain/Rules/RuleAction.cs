@@ -1,5 +1,6 @@
 using FinanceTracker.Domain.Bills;
 using FinanceTracker.Domain.Classifications;
+using FinanceTracker.Domain.Debts;
 
 namespace FinanceTracker.Domain.Rules;
 
@@ -11,8 +12,10 @@ namespace FinanceTracker.Domain.Rules;
 /// <param name="BankClassification">The bank's classification <see cref="RuleActionType.HideClassification"/> hides,
 /// null for the other types.</param>
 /// <param name="BillId">The bill <see cref="RuleActionType.PayBill"/> says it pays, null for the other types.</param>
+/// <param name="DebtId">The debt <see cref="RuleActionType.PayDebt"/> says it pays off, null for the other types.
+/// </param>
 public sealed record RuleAction(RuleActionType Type, Guid? ClassificationId, string? BankClassification = null,
-    Guid? BillId = null)
+    Guid? BillId = null, Guid? DebtId = null)
 {
     public static RuleAction AddTag(CustomClassification classification)
     {
@@ -35,6 +38,12 @@ public sealed record RuleAction(RuleActionType Type, Guid? ClassificationId, str
     {
         ArgumentNullException.ThrowIfNull(bill);
         return new RuleAction(RuleActionType.PayBill, null, null, bill.Id);
+    }
+
+    public static RuleAction PayDebt(Debt debt)
+    {
+        ArgumentNullException.ThrowIfNull(debt);
+        return new RuleAction(RuleActionType.PayDebt, null, null, null, debt.Id);
     }
 
     /// <summary>

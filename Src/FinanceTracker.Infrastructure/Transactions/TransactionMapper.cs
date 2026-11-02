@@ -1,10 +1,12 @@
 using FinanceTracker.Contracts.Transactions;
 using FinanceTracker.Domain.Bills;
 using FinanceTracker.Domain.Common;
+using FinanceTracker.Domain.Debts;
 using FinanceTracker.Domain.Household;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.OpenBanking.Transfers;
 using FinanceTracker.Domain.Rules;
+using FinanceTracker.Infrastructure.Debts;
 using Microsoft.EntityFrameworkCore;
 using Transaction = FinanceTracker.Contracts.Transactions.Transaction;
 
@@ -23,10 +25,11 @@ internal sealed class TransactionMapper
     private readonly Dictionary<Guid, BankTransaction> _partners;
     private readonly Dictionary<Guid, string> _ruleNames;
     private readonly Dictionary<Guid, string> _billNames;
+    private readonly Dictionary<Guid, string> _debtNames;
 
     private TransactionMapper(IReadOnlyDictionary<Guid, string> customTags, Dictionary<Guid, string> accountNames,
         Dictionary<Guid, string> householdMemberNames, Dictionary<Guid, BankTransaction> partners,
-        Dictionary<Guid, string> ruleNames, Dictionary<Guid, string> billNames)
+        Dictionary<Guid, string> ruleNames, Dictionary<Guid, string> billNames, Dictionary<Guid, string> debtNames)
     {
         _customTags = customTags;
         _accountNames = accountNames;
@@ -34,6 +37,7 @@ internal sealed class TransactionMapper
         _partners = partners;
         _ruleNames = ruleNames;
         _billNames = billNames;
+        _debtNames = debtNames;
     }
 
     /// <param name="customTags">The user's custom classifications by id, for the tags.</param>
@@ -55,7 +59,10 @@ internal sealed class TransactionMapper
 
         Dictionary<Guid, string> billNames = await LoadBillNamesAsync(context, userId, transactions, cancellationToken);
 
-        return new TransactionMapper(customTags, accountNames, householdMemberNames, partners, ruleNames, billNames);
+        Dictionary<Guid, string> debtNames = await LoadDebtNamesAsync(context, userId, transactions, cancellationToken);
+
+        return new TransactionMapper(customTags, accountNames, householdMemberNames, partners, ruleNames, billNames,
+            debtNames);
     }
 
     /// <summary>
@@ -84,6 +91,7 @@ internal sealed class TransactionMapper
     {
         if (!transactions.Any(static x => x.RuleTags.Count > 0 || x.Transfer?.RuleId is not null ||
                                           x.BillPayment?.RuleId is not null ||
+                                          x.DebtPayment?.RuleId is not null ||
                                           x.HiddenClassifications.Any(static hidden => !hidden.HiddenByUser)))
         {
             return [];
@@ -110,6 +118,23 @@ internal sealed class TransactionMapper
         List<Bill> bills = await context.Bills.OwnedBy(userId).AsNoTracking().ToListAsync(cancellationToken);
 
         return bills.ToDictionary(static x => x.Id, static x => x.Name);
+    }
+
+    /// <summary>
+    /// Debt names by id, empty when none of <paramref name="transactions"/> pays off a debt.
+    /// </summary>
+    private static async Task<Dictionary<Guid, string>> LoadDebtNamesAsync(FinanceTrackerContext context,
+        Guid userId, IReadOnlyCollection<BankTransaction> transactions, CancellationToken cancellationToken)
+    {
+        if (!transactions.Any(static x => x.DebtPayment?.DebtId is not null))
+        {
+            return [];
+        }
+
+        // Names are encrypted, so they're read whole and decrypted
+        List<Debt> debts = await context.Debts.OwnedBy(userId).AsNoTracking().ToListAsync(cancellationToken);
+
+        return debts.ToDictionary(static x => x.Id, static x => x.Name);
     }
 
     /// <summary>
@@ -161,6 +186,7 @@ internal sealed class TransactionMapper
         AccountName = _accountNames.GetValueOrDefault(transaction.AccountId, string.Empty),
         Transfer = ToContract(transaction.Transfer),
         Bill = ToContract(transaction.BillPayment),
+        Debt = ToContract(transaction.DebtPayment),
         TagsFromRules = transaction.RuleTags
             .Where(x => _customTags.ContainsKey(x.ClassificationId))
             .Select(x => new TransactionRuleTag
@@ -237,6 +263,22 @@ internal sealed class TransactionMapper
                 DecisionSource.Rule => TransferDecidedBy.Rule,
                 _ => TransferDecidedBy.FinTrack
             },
+            RuleName = payment.RuleId is { } ruleId ? _ruleNames.GetValueOrDefault(ruleId) : null
+        };
+    }
+
+    private TransactionDebt? ToContract(DebtPayment? payment)
+    {
+        if (payment is null)
+        {
+            return null;
+        }
+
+        return new TransactionDebt
+        {
+            DebtId = payment.DebtId,
+            DebtName = payment.DebtId is { } debtId ? _debtNames.GetValueOrDefault(debtId) : null,
+            DecidedBy = DebtMapper.DecidedBy(payment.Source),
             RuleName = payment.RuleId is { } ruleId ? _ruleNames.GetValueOrDefault(ruleId) : null
         };
     }

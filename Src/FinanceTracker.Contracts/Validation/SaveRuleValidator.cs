@@ -36,6 +36,10 @@ public class SaveRuleValidator : AbstractValidator<SaveRule>
             .Must(x => x.Count(static action => action.Type == RuleActionType.PayBill) <= 1)
             .WithMessage("A rule can only pay one bill");
 
+        RuleFor(x => x.Actions)
+            .Must(x => x.Count(static action => action.Type == RuleActionType.PayDebt) <= 1)
+            .WithMessage("A rule can only pay off one debt");
+
         RuleForEach(x => x.Actions).ChildRules(action =>
         {
             action.RuleFor(x => x.Type).IsInEnum().WithMessage("Choose what the action does");
@@ -69,6 +73,16 @@ public class SaveRuleValidator : AbstractValidator<SaveRule>
                 .Null()
                 .When(x => x.Type != RuleActionType.PayBill)
                 .WithMessage("Only pay bill takes a bill");
+
+            action.RuleFor(x => x.DebtId)
+                .NotNull()
+                .When(x => x.Type == RuleActionType.PayDebt)
+                .WithMessage("Choose a debt");
+
+            action.RuleFor(x => x.DebtId)
+                .Null()
+                .When(x => x.Type != RuleActionType.PayDebt)
+                .WithMessage("Only pay debt takes a debt");
         });
     }
 
