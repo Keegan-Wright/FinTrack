@@ -51,6 +51,36 @@ public class DebtApiTests : IntegrationTestBase
     }
 
     [Test]
+    public async Task SearchTransactions_ByDebt_ListsOnlyItsPayments()
+    {
+        // Arrange
+        SignedInUser user = await RegisterUserAsync();
+        DateOnly today = DateOnly.FromDateTime(DateTime.Now);
+        await SeedAccountAsync(user, "main")
+            .Do(s => s.TransactionScenario.WithTransaction("payment", "main",
+                Paid("CAR FINANCE", -100m, today.AddDays(-2))))
+            .Do(s => s.TransactionScenario.WithTransaction("other", "main", Paid("CAFE", -4m, today.AddDays(-1))));
+        ApiSession api = ApiFor(user);
+        IDebtsService service = api.Get<IDebtsService>();
+        Debt added = await service.AddDebtAsync(CarLoan(today.AddDays(-10)), CancellationToken);
+        await service.PayDebtAsync(Scenario.TransactionMappings["payment"], new PayDebt { DebtId = added.Id },
+            CancellationToken);
+
+        // Act
+        List<Transaction> found = await api.Get<ITransactionsService>()
+            .GetAllTransactionsAsync(new FilterTransactions { DebtIds = [added.Id] }, CancellationToken)
+            .ToListAsync(CancellationToken);
+
+        // Assert
+        Transaction payment = found.Single();
+        using (Assert.Multiple())
+        {
+            await Assert.That(payment.Description).IsEqualTo("CAR FINANCE");
+            await Assert.That(payment.Debt!.DebtName).IsEqualTo("Car loan");
+        }
+    }
+
+    [Test]
     public async Task AddDebt_Invalid_IsABadRequest()
     {
         // Arrange

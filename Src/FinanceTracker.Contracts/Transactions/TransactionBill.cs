@@ -20,6 +20,13 @@ public class TransactionBill
     public string? BillName { get; init; }
 
     /// <summary>
+    /// Whether the bill is a subscription FinTrack spotted from repeat payments, rather than a standing order, direct
+    /// debit or one the user added.
+    /// </summary>
+    [Description("Whether the bill is a subscription spotted from repeat payments")]
+    public bool IsSubscription { get; init; }
+
+    /// <summary>
     /// Who decided, FinTrack's matching, a rule or the user.
     /// </summary>
     [Description("Who decided which bill the transaction pays")]

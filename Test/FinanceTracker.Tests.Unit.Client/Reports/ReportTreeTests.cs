@@ -156,6 +156,27 @@ public class ReportTreeTests
     }
 
     [Test]
+    public async Task ForDay_KeepsTheBillDebtAndGoalFilters()
+    {
+        // Arrange
+        Guid billId = Guid.NewGuid();
+        Guid debtId = Guid.NewGuid();
+        Guid goalId = Guid.NewGuid();
+        FilterTransactions scope = new() { BillIds = [billId], DebtIds = [debtId], SavingsGoalIds = [goalId] };
+
+        // Act
+        FilterTransactions request = ReportTree.ForDay(scope, new DateTime(2026, 8, 14));
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(request.BillIds!).IsEquivalentTo([billId]);
+            await Assert.That(request.DebtIds!).IsEquivalentTo([debtId]);
+            await Assert.That(request.SavingsGoalIds!).IsEquivalentTo([goalId]);
+        }
+    }
+
+    [Test]
     public async Task EmptyAccounts_AddsTheAccountsWithoutTransactions()
     {
         // Arrange

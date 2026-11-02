@@ -13,12 +13,15 @@ public sealed record ActiveTransactionFilters(
     IEnumerable<string> TransactionTypes,
     IEnumerable<string> TransactionTags,
     DateRange? DateRange,
-    string SearchTerm)
+    string SearchTerm,
+    IEnumerable<Guid> BillIds,
+    IEnumerable<Guid> DebtIds,
+    IEnumerable<Guid> SavingsGoalIds)
 {
     /// <summary>
     /// Nothing filtered, every transaction.
     /// </summary>
-    public static ActiveTransactionFilters None { get; } = new([], [], [], [], [], null, string.Empty);
+    public static ActiveTransactionFilters None { get; } = new([], [], [], [], [], null, string.Empty, [], [], []);
 
     /// <summary>
     /// The filters as the request the transaction and report services take.
@@ -30,6 +33,9 @@ public sealed record ActiveTransactionFilters(
         Categories = Categories.ToList(),
         Types = TransactionTypes.ToList(),
         Tags = TransactionTags.ToList(),
+        BillIds = BillIds.ToList(),
+        DebtIds = DebtIds.ToList(),
+        SavingsGoalIds = SavingsGoalIds.ToList(),
         SearchTerm = SearchTerm,
         FromDate = DateRange?.Start?.Date,
         // The end date is a whole day, through to its last tick.

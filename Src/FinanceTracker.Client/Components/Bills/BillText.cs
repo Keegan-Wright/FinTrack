@@ -1,6 +1,7 @@
 using System.Globalization;
 using FinanceTracker.Client.Components.Common;
 using FinanceTracker.Contracts.Bills;
+using FinanceTracker.Contracts.Transactions;
 using MudBlazor;
 
 namespace FinanceTracker.Client.Components.Bills;
@@ -35,6 +36,16 @@ public static class BillText
     /// </summary>
     public static string Summary(Bill bill) =>
         $"{bill.AccountName} · {FrequencyName(bill.Frequency)} · {SourceName(bill.Source)}";
+
+    /// <summary>
+    /// Who said a transaction pays its bill, e.g. <c>Matched by FinTrack</c> or <c>By your rule Rent</c>.
+    /// </summary>
+    public static string Reason(TransactionBill bill) => bill.DecidedBy switch
+    {
+        TransferDecidedBy.User => "Chosen by you",
+        TransferDecidedBy.Rule => $"By your rule {bill.RuleName}",
+        _ => "Matched by FinTrack"
+    };
 
     /// <summary>
     /// How a bill reads where one is picked, telling apart bills with the same name, e.g.

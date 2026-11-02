@@ -1,6 +1,7 @@
 @* Everything about one transaction, how it counts and why, and what can be done with it. Used on phones, where the
    transactions list only shows a summary. *@
 @using System.Globalization
+@using FinanceTracker.Client.Components.Bills
 @using FinanceTracker.Client.Components.Debts
 @using FinanceTracker.Client.Components.Rules
 @using FinanceTracker.Client.Components.Transactions
@@ -92,7 +93,7 @@
                     <dt>Pays</dt>
                     <dd>
                         <span>@BillLabel(bill)</span>
-                        <MudText Typo="Typo.caption" Class="mud-text-secondary">@BillReason(bill)</MudText>
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary">@BillText.Reason(bill)</MudText>
                     </dd>
                 }
                 @if (Shown.Debt is { } debt)
@@ -209,16 +210,6 @@
     /// e.g. <c>Rent</c>, or <c>No bill</c> when the user said it pays none.
     /// </summary>
     internal static string BillLabel(TransactionBill bill) => bill.BillName ?? "No bill";
-
-    /// <summary>
-    /// Who said so, e.g. <c>Matched by FinTrack</c> or <c>By your rule Rent</c>.
-    /// </summary>
-    internal static string BillReason(TransactionBill bill) => bill.DecidedBy switch
-    {
-        TransferDecidedBy.User => "Chosen by you",
-        TransferDecidedBy.Rule => $"By your rule {bill.RuleName}",
-        _ => "Matched by FinTrack"
-    };
 
     private async Task PayBillAsync()
     {

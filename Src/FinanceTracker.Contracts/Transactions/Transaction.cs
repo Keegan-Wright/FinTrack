@@ -115,4 +115,16 @@ public class Transaction
     /// </summary>
     [Description("The bank's classifications hidden by the user or their rules")]
     public List<TransactionHiddenClassification> HiddenBankClassifications { get; init; } = [];
+
+    /// <summary>
+    /// The user's own tags on it, by name, added by them or their rules, also among <see cref="Tags"/>.
+    /// </summary>
+    [Description("The user's own tags on the transaction")]
+    public List<string> CustomTags { get; set; } = [];
+
+    /// <summary>
+    /// The savings goals it counts towards, through the goal's account or tags.
+    /// </summary>
+    [Description("The savings goals the transaction counts towards")]
+    public List<TransactionSavingsGoal> SavingsGoals { get; init; } = [];
 }

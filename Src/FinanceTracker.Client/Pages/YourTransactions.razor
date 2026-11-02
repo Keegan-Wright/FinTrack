@@ -22,6 +22,7 @@
 @inject IDialogService DialogService
 @inject IBillsService BillsService
 @inject IDebtsService DebtsService
+@inject ISavingsGoalsService SavingsGoalsService
 @inject ISnackbar Snackbar
 @inject NavigationManager NavigationManager
 
@@ -32,6 +33,9 @@
                         CategoryFilterItems="@Filters.Categories"
                         ProviderFilterItems="@Filters.Providers"
                         TransactionTypeFilterItems="@Filters.Types"
+                        BillFilterItems="@Filters.Bills"
+                        DebtFilterItems="@Filters.Debts"
+                        SavingsGoalFilterItems="@Filters.SavingsGoals"
                         SearchTransactions="@SearchTransactionsAsync"/>
 </PageHeader>
 
@@ -101,23 +105,9 @@
                             <span class="mud-text-secondary">@DisplayText.ToTitle(context.Item.TransactionCategory)</span>
                         </CellTemplate>
                     </PropertyColumn>
-                    <TemplateColumn Title="Tags" Sortable="false">
+                    <TemplateColumn Title="Tagged and linked" Sortable="false">
                         <CellTemplate>
-                            <div class="ft-chips">
-                                @foreach (var tag in context.Item.Tags)
-                                {
-                                    @if (RuleText.TaggedBy(context.Item, tag) is { } ruleName)
-                                    {
-                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text"
-                                                 Icon="@Icons.Material.Outlined.Rule"
-                                                 title="@($"From your rule {ruleName}")">@tag</MudChip>
-                                    }
-                                    else
-                                    {
-                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@tag</MudChip>
-                                    }
-                                }
-                            </div>
+                            <TransactionChipList Transaction="@context.Item"/>
                         </CellTemplate>
                     </TemplateColumn>
                     <PropertyColumn Property="x => x.Amount" Title="Amount" Sortable="true"
@@ -187,7 +177,8 @@
     {
         await base.OnInitializedAsync();
         FilterOptions = await LoadOnceAsync(FilterOptions, "Loading filters",
-            cancellationToken => TransactionFilterOptions.LoadAsync(TransactionsService, cancellationToken));
+            cancellationToken => TransactionFilterOptions.LoadAsync(TransactionsService, BillsService, DebtsService,
+                SavingsGoalsService, cancellationToken));
     }
 
     protected override async Task OnParametersSetAsync()
@@ -447,10 +438,11 @@
             await ClassificationsService.AddCustomClassificationsToTransactionAsync(classificationsToAdd, _cts.Token);
 
             var added = classificationsToAdd.Classifications.Select(static c => c.ClassificationId).ToHashSet();
-            transaction.Tags = transaction.Tags
-                .Concat(classifications.Where(x => added.Contains(x.ClassificationId)).Select(static x => x.Tag!))
-                .Distinct()
+            List<string> addedTags = classifications.Where(x => added.Contains(x.ClassificationId))
+                .Select(static x => x.Tag!)
                 .ToList();
+            transaction.Tags = transaction.Tags.Concat(addedTags).Distinct().ToList();
+            transaction.CustomTags = transaction.CustomTags.Concat(addedTags).Distinct().ToList();
             Snackbar.Add("Tags added", Severity.Success);
         }
         catch (Exception)

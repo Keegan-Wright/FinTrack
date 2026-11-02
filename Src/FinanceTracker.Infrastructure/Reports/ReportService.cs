@@ -19,9 +19,13 @@ namespace FinanceTracker.Infrastructure.Reports;
 [Scoped<IReportService>]
 public class ReportService : ServiceBase<ReportService>, IReportService
 {
+    private readonly TimeProvider _timeProvider;
+
     public ReportService(ICurrentUser currentUser, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
-        ILogger<ReportService> logger) : base(currentUser, financeTrackerContextFactory, logger)
+        ILogger<ReportService> logger, TimeProvider timeProvider)
+        : base(currentUser, financeTrackerContextFactory, logger)
     {
+        _timeProvider = timeProvider;
     }
 
     public async IAsyncEnumerable<SpentInTimePeriodReport> GetSpentInTimePeriodReportAsync(
@@ -255,7 +259,8 @@ public class ReportService : ServiceBase<ReportService>, IReportService
         GetTransactionsForReportAsync(FilterTransactions request, FinanceTrackerContext context,
             CancellationToken cancellationToken, bool includeTransfers = false)
     {
-        TransactionCriteria criteria = TransactionCriteria.From(request);
+        TransactionCriteria criteria = await TransactionCriteria.From(request)
+            .WithSavingsGoalsAsync(context, UserId, _timeProvider.LocalTimeZone, cancellationToken);
         Dictionary<Guid, string> customTags = await context.CustomClassifications.OwnedBy(UserId)
             .ToDictionaryAsync(static x => x.Id, static x => x.Tag, cancellationToken);
 

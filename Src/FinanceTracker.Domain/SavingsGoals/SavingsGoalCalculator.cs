@@ -45,12 +45,7 @@ public static class SavingsGoalCalculator
     /// </summary>
     private static decimal Tagged(SavingsGoal goal, IEnumerable<BankTransaction> transactions, TimeZoneInfo timeZone)
     {
-        DateOnly from = goal.TrackedFrom!.Value;
-
-        List<BankTransaction> tagged = transactions
-            .Where(x => x.CustomClassificationIds.Any(goal.TagIds.Contains))
-            .Where(x => LocalDay(x.OccurredAt, timeZone) >= from)
-            .ToList();
+        List<BankTransaction> tagged = transactions.Where(x => goal.Counts(x, timeZone)).ToList();
 
         HashSet<Guid> taggedIds = tagged.Select(static x => x.Id).ToHashSet();
 
@@ -62,9 +57,6 @@ public static class SavingsGoalCalculator
     private static bool IsOutgoingHalfOfTaggedTransfer(BankTransaction transaction, HashSet<Guid> taggedIds) =>
         transaction.Amount < 0 && transaction.Transfer?.PartnerTransactionId is { } partnerId &&
         taggedIds.Contains(partnerId);
-
-    private static DateOnly LocalDay(DateTime utc, TimeZoneInfo timeZone) => DateOnly.FromDateTime(
-        TimeZoneInfo.ConvertTime(DateTime.SpecifyKind(utc, DateTimeKind.Utc), timeZone));
 
     /// <summary>
     /// Saving the monthly contribution from next month on.

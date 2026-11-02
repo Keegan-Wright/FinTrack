@@ -57,4 +57,23 @@ public class FilterTransactions
     /// </summary>
     [Description("List of tags to filter transactions")]
     public IReadOnlyList<string>? Tags { get; init; } = [];
+
+    /// <summary>
+    /// Only transactions paying one of these bills, subscriptions included.
+    /// </summary>
+    [Description("Only transactions paying one of these bills")]
+    public IReadOnlyList<Guid>? BillIds { get; init; } = [];
+
+    /// <summary>
+    /// Only transactions paying off one of these debts.
+    /// </summary>
+    [Description("Only transactions paying off one of these debts")]
+    public IReadOnlyList<Guid>? DebtIds { get; init; } = [];
+
+    /// <summary>
+    /// Only transactions counting towards one of these savings goals: those on its account, or with one of its tags
+    /// from the day it tracks from.
+    /// </summary>
+    [Description("Only transactions counting towards one of these savings goals")]
+    public IReadOnlyList<Guid>? SavingsGoalIds { get; init; } = [];
 }

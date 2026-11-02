@@ -203,7 +203,8 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
         Dictionary<Guid, string> customTags = await context.CustomClassifications.OwnedBy(UserId)
             .ToDictionaryAsync(static x => x.Id, static x => x.Tag, cancellationToken);
         TransactionMapper mapper =
-            await TransactionMapper.LoadAsync(context, UserId, customTags, [transaction], cancellationToken);
+            await TransactionMapper.LoadAsync(context, UserId, customTags, [transaction],
+                _timeProvider.LocalTimeZone, cancellationToken);
 
         return mapper.ToContract(transaction);
     }

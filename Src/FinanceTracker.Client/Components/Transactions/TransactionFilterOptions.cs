@@ -1,3 +1,4 @@
+using FinanceTracker.Client.Components.Bills;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Transactions;
 
@@ -19,8 +20,12 @@ public sealed class TransactionFilterOptions
     public List<TransactionProviderFilter> Providers { get; init; } = [];
     public List<TransactionTypeFilter> Types { get; init; } = [];
     public List<TransactionTagFilter> Tags { get; init; } = [];
+    public List<TransactionLinkFilter> Bills { get; init; } = [];
+    public List<TransactionLinkFilter> Debts { get; init; } = [];
+    public List<TransactionLinkFilter> SavingsGoals { get; init; } = [];
 
     public static async Task<TransactionFilterOptions> LoadAsync(ITransactionsService transactionsService,
+        IBillsService billsService, IDebtsService debtsService, ISavingsGoalsService savingsGoalsService,
         CancellationToken cancellationToken) => new()
     {
         Accounts = await transactionsService.GetAccountsForTransactionFiltersAsync(cancellationToken)
@@ -32,6 +37,18 @@ public sealed class TransactionFilterOptions
         Types = await transactionsService.GetTypesForTransactionFiltersAsync(cancellationToken)
             .ToListAsync(cancellationToken),
         Tags = await transactionsService.GetTagsForTransactionFiltersAsync(cancellationToken)
+            .ToListAsync(cancellationToken),
+        Bills = await billsService.GetBillsAsync(cancellationToken)
+            .OrderBy(static x => x.Name)
+            .Select(static x => new TransactionLinkFilter(x.Id, BillText.PickerLabel(x)))
+            .ToListAsync(cancellationToken),
+        Debts = await debtsService.GetDebtsAsync(cancellationToken)
+            .OrderBy(static x => x.Name)
+            .Select(static x => new TransactionLinkFilter(x.Id, x.Name))
+            .ToListAsync(cancellationToken),
+        SavingsGoals = await savingsGoalsService.GetSavingsGoalsAsync(cancellationToken)
+            .OrderBy(static x => x.Name)
+            .Select(static x => new TransactionLinkFilter(x.Id, x.Name))
             .ToListAsync(cancellationToken)
     };
 }

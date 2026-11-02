@@ -1,5 +1,6 @@
 @* Transactions as a compact list for phones, where a grid stacks every column into a tall card, what it was, where and
-   when, how it counts and the amount. Tapping one opens the rest. Shows a page at a time. *@
+   when, what it pays or counts towards, how it counts and the amount. Tapping one opens the rest. Shows a page at a
+   time. *@
 @using System.Globalization
 @using FinanceTracker.Contracts.Transactions
 
@@ -19,6 +20,7 @@ else
                 <div class="ft-list__main">
                     <MudText Typo="Typo.body2" Class="text-truncate">@transaction.Description</MudText>
                     <MudText Typo="Typo.caption" Class="mud-text-secondary text-truncate">@Where(transaction)</MudText>
+                    <TransactionChipList Transaction="@transaction" LinksOnly="true"/>
                 </div>
                 <div class="ft-list__end ft-transaction__end">
                     <MoneyText Value="@transaction.Amount" Signed="true"/>

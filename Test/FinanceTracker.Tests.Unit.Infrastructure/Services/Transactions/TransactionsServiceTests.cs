@@ -1,5 +1,7 @@
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Transactions;
+using FinanceTracker.Domain.Bills;
+using FinanceTracker.Domain.Debts;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Domain.OpenBanking.Transactions;
@@ -14,6 +16,7 @@ using FinanceTracker.Domain.OpenBanking.Transfers;
 using FinanceTracker.Domain.Household;
 using FinanceTracker.Infrastructure.OpenBanking.Transfers;
 using FinanceTracker.Domain.Rules;
+using FinanceTracker.Domain.SavingsGoals;
 using FinanceTracker.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
@@ -328,6 +331,100 @@ public class TransactionsServiceTests : InfrastructureTestBase
 
         // Assert
         await Assert.That(transactions.Select(x => x.Description)).IsEquivalentTo(["Food", "Flight"]);
+    }
+
+    [Test]
+    public async Task GetAllTransactionsAsync_SaysWhatEachPaysAndCountsTowards()
+    {
+        // Arrange
+        await SeedLinksAsync();
+        TransactionsService subject = BuildSubject();
+
+        // Act
+        Dictionary<string, Transaction> transactions = (await GetAllAsync(subject, new FilterTransactions()))
+            .ToDictionary(static x => x.Description);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(transactions["Streaming"].Bill!.BillName).IsEqualTo("Streaming");
+            await Assert.That(transactions["Streaming"].Bill!.IsSubscription).IsTrue();
+            await Assert.That(transactions["Rent"].Bill!.IsSubscription).IsFalse();
+            await Assert.That(transactions["Car payment"].Debt!.DebtName).IsEqualTo("Car loan");
+            await Assert.That(transactions["Saved"].SavingsGoals.Select(static x => x.Name))
+                .IsEquivalentTo(["Holiday", "Rainy day"]);
+            await Assert.That(transactions["Saved"].CustomTags).IsEquivalentTo(["Holiday"]);
+            await Assert.That(transactions["Rent"].SavingsGoals).IsEmpty();
+        }
+    }
+
+    [Test]
+    public async Task GetAllTransactionsAsync_BillFilter_ReturnsOnlyItsPayments()
+    {
+        // Arrange
+        await SeedLinksAsync();
+        TransactionsService subject = BuildSubject();
+
+        // Act
+        List<Transaction> transactions = await GetAllAsync(subject,
+            new FilterTransactions { BillIds = [Scenario.BillMappings["streaming"]] });
+
+        // Assert
+        await Assert.That(transactions.Select(static x => x.Description)).IsEquivalentTo(["Streaming"]);
+    }
+
+    [Test]
+    public async Task GetAllTransactionsAsync_DebtFilter_ReturnsOnlyItsPayments()
+    {
+        // Arrange
+        await SeedLinksAsync();
+        TransactionsService subject = BuildSubject();
+
+        // Act
+        List<Transaction> transactions = await GetAllAsync(subject,
+            new FilterTransactions { DebtIds = [Scenario.DebtMappings["loan"]] });
+
+        // Assert
+        await Assert.That(transactions.Select(static x => x.Description)).IsEquivalentTo(["Car payment"]);
+    }
+
+    [Test]
+    public async Task GetAllTransactionsAsync_SavingsGoalFilter_ReturnsWhatCountsTowardsIt()
+    {
+        // Arrange
+        await SeedLinksAsync();
+        TransactionsService subject = BuildSubject();
+
+        // Act
+        List<Transaction> byTag = await GetAllAsync(subject,
+            new FilterTransactions { SavingsGoalIds = [Scenario.SavingsGoalMappings["holiday"]] });
+        List<Transaction> byAccount = await GetAllAsync(subject,
+            new FilterTransactions { SavingsGoalIds = [Scenario.SavingsGoalMappings["rainy-day"]] });
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(byTag.Select(static x => x.Description)).IsEquivalentTo(["Saved"]);
+            await Assert.That(byAccount.Select(static x => x.Description)).IsEquivalentTo(["Saved", "Interest"]);
+        }
+    }
+
+    [Test]
+    public async Task GetAllTransactionsAsync_AnotherUsersSavingsGoal_MatchesNothing()
+    {
+        // Arrange
+        await SeedLinksAsync()
+            .Do(s => s.UserScenario.WithUser(OtherUsername))
+            .Do(s => s.SavingsGoalScenario.WithSavingsGoal("theirs", OtherUsername, userId =>
+                new SavingsGoal(userId, "Theirs", 0, 0, 0, null)));
+        TransactionsService subject = BuildSubject();
+
+        // Act
+        List<Transaction> transactions = await GetAllAsync(subject,
+            new FilterTransactions { SavingsGoalIds = [Scenario.SavingsGoalMappings["theirs"]] });
+
+        // Assert
+        await Assert.That(transactions).IsEmpty();
     }
 
     [Test]
@@ -692,6 +789,60 @@ public class TransactionsServiceTests : InfrastructureTestBase
         await context.SaveChangesAsync(CancellationToken);
     }
 
+    /// <summary>
+    /// Rent paid by standing order, a streaming subscription, a car loan payment, and money saved into a savings
+    /// account tagged for a holiday goal, alongside the account's interest.
+    /// </summary>
+    private async Task<TestingScenario> SeedLinksAsync()
+    {
+        DateTime day = new(2026, 10, 12, 12, 0, 0, DateTimeKind.Utc);
+        await SeedAccountAsync()
+            .Do(s => s.BankAccountScenario.WithAccount("savings", "bank"))
+            .Do(s => s.ClassificationScenario.WithClassification("holiday-tag", Username, "Holiday"))
+            .Do(s => s.TransactionScenario.WithTransaction("rent", "main", Details("Rent", day)))
+            .Do(s => s.TransactionScenario.WithTransaction("streaming", "main", Details("Streaming", day)))
+            .Do(s => s.TransactionScenario.WithTransaction("car", "main", Details("Car payment", day)))
+            .Do(s => s.TransactionScenario.WithTransaction("saved", "savings", Details("Saved", day)))
+            .Do(s => s.TransactionScenario.WithTransaction("interest", "savings", Details("Interest", day)))
+            .Do(s => s.TransactionScenario.WithCustomClassification("saved", "holiday-tag"))
+            .Do(s => s.BillScenario.WithBill("rent", Username, "main", (userId, accountId) =>
+                new Bill(userId, accountId, "Rent", "Landlord", BillFrequency.Monthly, 650m,
+                    new DateOnly(2026, 1, 1), BillSource.StandingOrder, Guid.NewGuid())))
+            .Do(s => s.BillScenario.WithBill("streaming", Username, "main", (userId, accountId) =>
+                new Bill(userId, accountId, "Streaming", "Streamco", BillFrequency.Monthly, 9.99m,
+                    new DateOnly(2026, 1, 1), BillSource.Detected)))
+            .Do(s => s.DebtScenario.WithDebt("loan", Username, userId =>
+                new Debt(userId, "Car loan", null, 1000m, new DateOnly(2026, 1, 1), 0m, 100m)))
+            .Do(s => s.SavingsGoalScenario.WithSavingsGoal("holiday", Username, userId =>
+            {
+                SavingsGoal goal = new(userId, "Holiday", 0, 0, 1000, null);
+                goal.TrackTags([Scenario.ClassificationMappings["holiday-tag"]], 0m, new DateOnly(2026, 1, 1));
+                return goal;
+            }))
+            .Do(s => s.SavingsGoalScenario.WithSavingsGoal("rainy-day", Username, userId =>
+            {
+                SavingsGoal goal = new(userId, "Rainy day", 0, 0, 1000, null);
+                goal.TrackAccount(Scenario.AccountMappings["savings"]);
+                return goal;
+            }));
+
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        await LinkAsync(context, "rent", x => x.DecideBillPayment(BillPayment.Matched(Scenario.BillMappings["rent"],
+            day)));
+        await LinkAsync(context, "streaming", x => x.DecideBillPayment(
+            BillPayment.Matched(Scenario.BillMappings["streaming"], day)));
+        Debt loan = await context.Debts.SingleAsync(CancellationToken);
+        await LinkAsync(context, "car", x => x.PayDebt(loan, day));
+        await context.SaveChangesAsync(CancellationToken);
+        return Scenario;
+    }
+
+    private async Task LinkAsync(FinanceTrackerContext context, string transactionName, Action<BankTransaction> link)
+    {
+        Guid id = Scenario.TransactionMappings[transactionName];
+        link(await context.BankTransactions.SingleAsync(x => x.Id == id, CancellationToken));
+    }
+
     private Task<TestingScenario> SeedAccountAsync() =>
         Scenario.Do(s => s.UserScenario.WithUser(Username))
             .Do(s => s.BankConnectionScenario.WithConnection("bank", Username))
@@ -706,5 +857,6 @@ public class TransactionsServiceTests : InfrastructureTestBase
     private Task<List<Transaction>> GetAllAsync(TransactionsService subject, FilterTransactions filter) =>
         subject.GetAllTransactionsAsync(filter, CancellationToken).ToListAsync(CancellationToken).AsTask();
 
-    private TransactionsService BuildSubject() => new(CurrentUserFor(Username), DbContextFactory, NullLogger<TransactionsService>.Instance);
+    private TransactionsService BuildSubject() => new(CurrentUserFor(Username), DbContextFactory,
+        NullLogger<TransactionsService>.Instance, TimeProvider.System);
 }
