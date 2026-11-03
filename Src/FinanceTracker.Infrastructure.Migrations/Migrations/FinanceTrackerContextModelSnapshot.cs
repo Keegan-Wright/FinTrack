@@ -2096,6 +2096,34 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                                 .HasForeignKey("BankTransactionId");
                         });
 
+                    b.OwnsMany("FinanceTracker.Domain.OpenBanking.Transactions.TransactionSplit", "Splits", b1 =>
+                        {
+                            b1.Property<Guid>("BankTransactionId");
+
+                            b1.Property<int>("__synthesizedOrdinal")
+                                .ValueGeneratedOnAdd();
+
+                            b1.Property<string>("Amount")
+                                .IsRequired()
+                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                            b1.Property<string>("Note")
+                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                            b1.Property<Guid?>("TagId");
+
+                            b1.HasKey("BankTransactionId", "__synthesizedOrdinal");
+
+                            b1.ToTable("BankTransactions");
+
+                            b1
+                                .ToJson("Splits")
+                                .HasColumnType("jsonb");
+
+                            b1.WithOwner()
+                                .HasForeignKey("BankTransactionId");
+                        });
+
                     b.OwnsOne("FinanceTracker.Domain.OpenBanking.Transfers.TransferInfo", "Transfer", b1 =>
                         {
                             b1.Property<Guid>("BankTransactionId")
@@ -2176,6 +2204,8 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                         .IsRequired();
 
                     b.Navigation("RuleTags");
+
+                    b.Navigation("Splits");
 
                     b.Navigation("Transfer");
                 });

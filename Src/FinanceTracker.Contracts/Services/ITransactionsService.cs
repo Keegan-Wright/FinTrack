@@ -40,6 +40,27 @@ public interface ITransactionsService
         CancellationToken cancellationToken);
 
     /// <summary>
+    /// Splits one of the user's transactions into tagged parts, replacing any split before. Its tags become the parts
+    /// tags and rules leave them alone from now on. Validate the request with
+    /// <see cref="Validation.SplitTransactionValidator"/> first.
+    /// </summary>
+    /// <returns>The transaction as it is now.</returns>
+    /// <exception cref="InvalidOperationException">The user has no transaction with
+    /// <paramref name="transactionId"/>.</exception>
+    /// <exception cref="CannotSplitTransactionException">It's pending, or the parts don't add up to its amount, are
+    /// signed the other way or use a tag the user doesn't have.</exception>
+    Task<Transaction> SplitAsync(Guid transactionId, SplitTransaction request, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Puts one of the user's split transactions back together, keeping its parts' tags on the whole amount. Nothing
+    /// happens to one that isn't split.
+    /// </summary>
+    /// <returns>The transaction as it is now.</returns>
+    /// <exception cref="InvalidOperationException">The user has no transaction with
+    /// <paramref name="transactionId"/>.</exception>
+    Task<Transaction> UnsplitAsync(Guid transactionId, CancellationToken cancellationToken);
+
+    /// <summary>
     /// The user's accounts, for the account filter.
     /// </summary>
     IAsyncEnumerable<TransactionAccountFilter> GetAccountsForTransactionFiltersAsync(

@@ -777,6 +777,139 @@ public class TransactionsServiceTests : InfrastructureTestBase
         }
     }
 
+    [Test]
+    public async Task SplitAsync_SavesTheParts_WithTheirTags()
+    {
+        // Arrange
+        await SeedSupermarketAsync();
+        TransactionsService subject = BuildSubject();
+        Guid groceries = Scenario.ClassificationMappings["groceries"];
+        Guid household = Scenario.ClassificationMappings["household"];
+
+        // Act
+        await subject.SplitAsync(Scenario.TransactionMappings["shop"], new SplitTransaction
+        {
+            Parts =
+            [
+                new SplitTransactionPart { Amount = -60m, TagId = groceries, Note = "  Weekly shop " },
+                new SplitTransactionPart { Amount = -30m, TagId = household, Note = " " },
+                new SplitTransactionPart { Amount = -10m }
+            ]
+        }, CancellationToken);
+        Transaction saved = (await GetAllAsync(subject, new FilterTransactions())).Single();
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(saved.Splits.Select(static x => (x.Amount, x.Tag, x.Note))).IsEquivalentTo(
+            [
+                (-60m, (string?)"Groceries", (string?)"Weekly shop"),
+                (-30m, "Household", null),
+                (-10m, null, null)
+            ]);
+            await Assert.That(saved.CustomTags).IsEquivalentTo(["Groceries", "Household"]);
+        }
+    }
+
+    [Test]
+    public async Task SplitAsync_PartsThatDontAddUp_ThrowsCannotSplit()
+    {
+        // Arrange
+        await SeedSupermarketAsync();
+
+        // Act & Assert
+        await Assert.That(async () => await BuildSubject().SplitAsync(Scenario.TransactionMappings["shop"],
+                Parts(-60m, -30m), CancellationToken))
+            .Throws<CannotSplitTransactionException>();
+    }
+
+    [Test]
+    public async Task SplitAsync_Pending_ThrowsCannotSplit()
+    {
+        // Arrange
+        await SeedAccountAsync()
+            .Do(s => s.TransactionScenario.WithTransaction("shop", "main", Details("Supermarket") with
+            {
+                Amount = -100m, IsPending = true
+            }));
+
+        // Act & Assert
+        await Assert.That(async () => await BuildSubject().SplitAsync(Scenario.TransactionMappings["shop"],
+                Parts(-60m, -40m), CancellationToken))
+            .Throws<CannotSplitTransactionException>();
+    }
+
+    [Test]
+    public async Task SplitAsync_AnotherUsersTag_ThrowsCannotSplit()
+    {
+        // Arrange
+        await SeedSupermarketAsync();
+        await Scenario.Do(s => s.UserScenario.WithUser(OtherUsername))
+            .Do(s => s.ClassificationScenario.WithClassification("theirs", OtherUsername, "Theirs"));
+        SplitTransaction request = Parts(-60m, -40m);
+        request.Parts[0].TagId = Scenario.ClassificationMappings["theirs"];
+
+        // Act & Assert
+        await Assert.That(async () => await BuildSubject().SplitAsync(Scenario.TransactionMappings["shop"],
+                request, CancellationToken))
+            .Throws<CannotSplitTransactionException>();
+    }
+
+    [Test]
+    public async Task SplitAsync_AnotherUsersTransaction_ThrowsInvalidOperation()
+    {
+        // Arrange
+        await SeedAccountAsync();
+        await Scenario.Do(s => s.UserScenario.WithUser(OtherUsername))
+            .Do(s => s.BankConnectionScenario.WithConnection("theirs", OtherUsername))
+            .Do(s => s.BankAccountScenario.WithAccount("theirs", "theirs"))
+            .Do(s => s.TransactionScenario.WithTransaction("theirs", "theirs", Details("Supermarket") with
+            {
+                Amount = -100m, IsPending = false
+            }));
+
+        // Act & Assert
+        await Assert.That(async () => await BuildSubject().SplitAsync(Scenario.TransactionMappings["theirs"],
+                Parts(-60m, -40m), CancellationToken))
+            .Throws<InvalidOperationException>();
+    }
+
+    [Test]
+    public async Task UnsplitAsync_KeepsThePartsTagsOnTheWhole()
+    {
+        // Arrange
+        await SeedSupermarketAsync();
+        TransactionsService subject = BuildSubject();
+        Guid id = Scenario.TransactionMappings["shop"];
+        SplitTransaction request = Parts(-60m, -40m);
+        request.Parts[0].TagId = Scenario.ClassificationMappings["groceries"];
+        await subject.SplitAsync(id, request, CancellationToken);
+
+        // Act
+        Transaction whole = await subject.UnsplitAsync(id, CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(whole.Splits).IsEmpty();
+            await Assert.That(whole.CustomTags).IsEquivalentTo(["Groceries"]);
+        }
+    }
+
+    private Task<TestingScenario> SeedSupermarketAsync() =>
+        SeedAccountAsync()
+            .Do(s => s.ClassificationScenario.WithClassification("groceries", Username, "Groceries"))
+            .Do(s => s.ClassificationScenario.WithClassification("household", Username, "Household"))
+            .Do(s => s.TransactionScenario.WithTransaction("shop", "main", Details("Supermarket") with
+            {
+                Amount = -100m, IsPending = false
+            }));
+
+    private static SplitTransaction Parts(params decimal[] amounts) => new()
+    {
+        Parts = amounts.Select(static x => new SplitTransactionPart { Amount = x }).ToList()
+    };
+
     private async Task ApplyRulesAsync()
     {
         await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);

@@ -18,6 +18,7 @@ public sealed class BankTransaction : AggregateRoot
     private readonly List<Guid> _customClassificationIds = [];
     private readonly List<RuleTag> _ruleTags = [];
     private readonly List<HiddenClassification> _hiddenClassifications = [];
+    private readonly List<TransactionSplit> _splits = [];
 
     [Obsolete("EF Use Only")]
 #pragma warning disable CS8618 // EF Core sets the properties when it materialises the entity
@@ -117,6 +118,14 @@ public sealed class BankTransaction : AggregateRoot
     /// </summary>
     public bool TagsSetByUser { get; private set; }
 
+    /// <summary>
+    /// The parts the user split it into, adding up to <see cref="Amount"/>, empty when it isn't split. A split
+    /// transaction's <see cref="CustomClassificationIds"/> are its parts' tags.
+    /// </summary>
+    public IReadOnlyList<TransactionSplit> Splits => _splits.AsReadOnly();
+
+    public bool IsSplit => _splits.Count > 0;
+
     public static BankTransaction Import(BankAccount account, TransactionDetails details)
     {
         ArgumentNullException.ThrowIfNull(account);
@@ -133,6 +142,12 @@ public sealed class BankTransaction : AggregateRoot
         {
             throw new InvalidOperationException(
                 $"Cannot update transaction {Id} with details for a different transaction.");
+        }
+
+        // Parts that no longer add up would put the wrong amounts under their tags, the tags stay on the whole
+        if (IsSplit && Amount != details.Amount)
+        {
+            _splits.Clear();
         }
 
         Description = details.Description;
@@ -315,12 +330,19 @@ public sealed class BankTransaction : AggregateRoot
     /// <summary>
     /// The user tags the transaction, which from now on rules leave its tags alone, see <see cref="TagsSetByUser"/>.
     /// </summary>
+    /// <exception cref="InvalidOperationException">The tag is another user's, or the transaction is split and its tags
+    /// are its parts.</exception>
     public void Classify(CustomClassification classification)
     {
         ArgumentNullException.ThrowIfNull(classification);
         if (classification.UserId != UserId)
         {
             throw new InvalidOperationException("Cannot apply another user's classification to this transaction.");
+        }
+
+        if (IsSplit)
+        {
+            throw new InvalidOperationException($"Transaction {Id} is split, tag its parts instead.");
         }
 
         if (!_customClassificationIds.Contains(classification.Id))
@@ -335,17 +357,109 @@ public sealed class BankTransaction : AggregateRoot
     /// <summary>
     /// The user removes a tag, which from now on rules leave its tags alone, see <see cref="TagsSetByUser"/>.
     /// </summary>
+    /// <exception cref="InvalidOperationException">The transaction is split and its tags are its parts.</exception>
     public void Unclassify(Guid customClassificationId)
     {
+        if (IsSplit)
+        {
+            throw new InvalidOperationException($"Transaction {Id} is split, tag its parts instead.");
+        }
+
         RemoveClassification(customClassificationId);
         TagsSetByUser = true;
     }
 
     /// <summary>
-    /// Removes a tag that's been deleted. Not the user editing this transaction, so rules still apply to it.
+    /// Removes a tag that's been deleted, leaving the parts it was on untagged. Not the user editing this transaction,
+    /// so rules still apply to it.
     /// </summary>
-    public void RemoveDeletedClassification(Guid customClassificationId) =>
+    public void RemoveDeletedClassification(Guid customClassificationId)
+    {
         RemoveClassification(customClassificationId);
+
+        for (int i = 0; i < _splits.Count; i++)
+        {
+            if (_splits[i].TagId == customClassificationId)
+            {
+                _splits[i] = _splits[i] with { TagId = null };
+            }
+        }
+    }
+
+    /// <summary>
+    /// The user splits the transaction into <paramref name="parts"/>, replacing any split before. Its tags become the
+    /// parts tags and, as when tagging by hand, rules leave them alone from now on.
+    /// </summary>
+    /// <param name="parts">At least two, each signed like the transaction, adding up to its amount.</param>
+    /// <param name="tags">The tags the parts count under.</param>
+    /// <exception cref="InvalidOperationException">It's pending, so its amount may still change, or a tag is another
+    /// user's.</exception>
+    /// <exception cref="ArgumentException">The parts don't add up, are signed the other way or are zero, there's
+    /// only one, or a part's tag isn't among <paramref name="tags"/>.</exception>
+    public void Split(IReadOnlyList<TransactionSplit> parts, IReadOnlyCollection<CustomClassification> tags)
+    {
+        ArgumentNullException.ThrowIfNull(parts);
+        ArgumentNullException.ThrowIfNull(tags);
+
+        if (IsPending)
+        {
+            throw new InvalidOperationException("A pending transaction can't be split until the bank settles it.");
+        }
+
+        if (tags.Any(x => x.UserId != UserId))
+        {
+            throw new InvalidOperationException("Cannot apply another user's classification to this transaction.");
+        }
+
+        CheckParts(parts, tags);
+
+        _splits.Clear();
+        _splits.AddRange(parts);
+
+        _customClassificationIds.Clear();
+        _customClassificationIds.AddRange(parts.Select(static x => x.TagId).OfType<Guid>().Distinct());
+        _ruleTags.Clear();
+        TagsSetByUser = true;
+    }
+
+    /// <summary>
+    /// The user puts the transaction back together. It keeps its parts' tags, on the whole amount.
+    /// </summary>
+    /// <returns>Whether it was split.</returns>
+    public bool Unsplit()
+    {
+        if (!IsSplit)
+        {
+            return false;
+        }
+
+        _splits.Clear();
+        return true;
+    }
+
+    private void CheckParts(IReadOnlyList<TransactionSplit> parts, IReadOnlyCollection<CustomClassification> tags)
+    {
+        if (parts.Count < 2)
+        {
+            throw new ArgumentException("Split it into at least two parts.", nameof(parts));
+        }
+
+        if (parts.Any(x => x.Amount == 0 || Math.Sign(x.Amount) != Math.Sign(Amount)))
+        {
+            string direction = Amount < 0 ? "out" : "in";
+            throw new ArgumentException($"Each part must be money {direction}, like the transaction.", nameof(parts));
+        }
+
+        if (parts.Sum(static x => x.Amount) != Amount)
+        {
+            throw new ArgumentException("The parts must add up to the transaction's amount.", nameof(parts));
+        }
+
+        if (parts.Any(part => part.TagId is { } tagId && !tags.Any(tag => tag.Id == tagId)))
+        {
+            throw new ArgumentException("One of the parts' tags doesn't exist.", nameof(parts));
+        }
+    }
 
     /// <summary>
     /// Whether rule <paramref name="ruleId"/> added one of its tags, gave its transfer answer or said which bill or
