@@ -1,0 +1,145 @@
+@* One background job whether it's on, its schedule and retries, when it runs next, how its last run went and how
+   often its recent runs succeed, with its run history underneath on request. A scheduled job can be run now or
+   edited from its menu. *@
+@using FinanceTracker.Contracts.Automation
+
+<Section Title="@Name" Caption="@Caption">
+    <Actions>
+        <div class="ft-job__actions">
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@AutomationText.StateColor(Job)">
+                @AutomationText.State(Job)
+            </MudChip>
+            @if (Job.Schedule is not null)
+            {
+                <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true"
+                         AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
+                         aria-label="@($"Actions for {Name}")">
+                    <MudMenuItem Icon="@Icons.Material.Outlined.PlayArrow" OnClick="@OnRunNow"
+                                 Disabled="@IsRunning">Run now</MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Outlined.Edit" OnClick="@OnEdit">Edit</MudMenuItem>
+                </MudMenu>
+            }
+        </div>
+    </Actions>
+    <ChildContent>
+        <dl class="ft-job__facts">
+            @if (Job.Schedule is not null)
+            {
+                <div class="ft-job__fact">
+                    <dt>Schedule</dt>
+                    <dd><code class="ft-code">@Job.Schedule.Expression</code></dd>
+                </div>
+            }
+            <div class="ft-job__fact">
+                <dt>Next run</dt>
+                <dd>@AutomationText.NextRun(Job)</dd>
+            </div>
+            <div class="ft-job__fact">
+                <dt>Last run</dt>
+                <dd class="ft-job__last">
+                    @if (Job.LastRun is not null)
+                    {
+                        <RunStatusChip Status="@Job.LastRun.Status"/>
+                    }
+                    <span>@AutomationText.LastRun(Job)</span>
+                </dd>
+            </div>
+            <div class="ft-job__fact">
+                <dt>Succeeded</dt>
+                <dd>
+                    <MudText Typo="Typo.body2" Color="@AutomationText.SuccessRateColor(Job)">
+                        @AutomationText.SuccessRate(Job)
+                    </MudText>
+                </dd>
+            </div>
+            @if (Job.Schedule is not null)
+            {
+                <div class="ft-job__fact">
+                    <dt>Retries</dt>
+                    <dd>@RetriesText</dd>
+                </div>
+            }
+        </dl>
+
+        <MudButton Variant="Variant.Text" Size="Size.Small" Class="ft-job__history-toggle"
+                   EndIcon="@(ShowRuns ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                   aria-expanded="@(ShowRuns ? "true" : "false")"
+                   OnClick="@ToggleRunsAsync">
+            @(ShowRuns ? "Hide runs" : "Show runs")
+        </MudButton>
+
+        @if (ShowRuns)
+        {
+            <div class="ft-job__history">
+                <JobRunHistory Function="@Job.Function" Name="@Name" Refresh="@Refresh"/>
+            </div>
+        }
+    </ChildContent>
+</Section>
+
+@code {
+
+    [Parameter] [EditorRequired] public required AutomationJobSummary Job { get; set; }
+
+    /// <summary>
+    /// Whether the job's runs are open underneath it.
+    /// </summary>
+    [Parameter] public bool ShowRuns { get; set; }
+
+    [Parameter] public EventCallback<bool> ShowRunsChanged { get; set; }
+
+    /// <summary>
+    /// Changes when the page has loaded the jobs again, so open runs load again too.
+    /// </summary>
+    [Parameter] public int Refresh { get; set; }
+
+    /// <summary>
+    /// Edits the job's schedule, only offered for a scheduled job.
+    /// </summary>
+    [Parameter] public EventCallback OnEdit { get; set; }
+
+    /// <summary>
+    /// Runs the job now, only offered for a scheduled job and not while it's running.
+    /// </summary>
+    [Parameter] public EventCallback OnRunNow { get; set; }
+
+    private bool IsRunning => Job.LastRun?.Status is AutomationRunStatus.Running or AutomationRunStatus.Retrying;
+
+    private string Name => AutomationText.JobName(Job.Function);
+
+    private string Caption
+    {
+        get
+        {
+            if (Job.Schedule is null)
+            {
+                return "Runs when someone asks, e.g. sync now";
+            }
+
+            return Job.Schedule.Description;
+        }
+    }
+
+    // How often a failed run is tried again, and how long it waits before each
+    private string RetriesText
+    {
+        get
+        {
+            AutomationCron schedule = Job.Schedule!;
+            if (schedule.Retries == 0)
+            {
+                return "None";
+            }
+
+            if (schedule.RetryIntervals is not { Length: > 0 } intervals)
+            {
+                return $"{schedule.Retries}, TickerQ's default wait";
+            }
+
+            return $"{schedule.Retries}, after {string.Join(", ", intervals.Select(static x => $"{x}s"))}";
+        }
+    }
+
+    private Task ToggleRunsAsync() => ShowRunsChanged.InvokeAsync(!ShowRuns);
+
+}

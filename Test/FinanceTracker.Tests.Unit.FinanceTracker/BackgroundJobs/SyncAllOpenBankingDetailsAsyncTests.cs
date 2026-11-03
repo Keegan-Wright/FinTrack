@@ -260,6 +260,22 @@ public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
     }
 
     [Test]
+    public async Task ExecuteAsync_TellsAdminsWhenItStartsAndFinishes()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("mine", Username));
+
+        SyncAllOpenBankingDetailsAsync subject = BuildSubject();
+
+        // Act
+        await subject.ExecuteAsync(TickerFunctionContextFactory.Create(), CancellationToken);
+
+        // Assert
+        await SyncNotifier.Received(2).JobChangedAsync(nameof(SyncAllOpenBankingDetailsAsync));
+    }
+
+    [Test]
     public async Task ExecuteAsync_WhenUsersHaveNoConnections_DoesNotSyncOrNotify()
     {
         // Arrange

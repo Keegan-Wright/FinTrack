@@ -1,0 +1,11 @@
+@* A run's status as a small coloured chip. *@
+@using FinanceTracker.Contracts.Automation
+
+<MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@AutomationText.StatusColor(Status)"
+         Class="ft-run-status">@AutomationText.StatusName(Status)</MudChip>
+
+@code {
+
+    [Parameter] [EditorRequired] public AutomationRunStatus Status { get; set; }
+
+}

@@ -33,14 +33,21 @@ public sealed class AutomationScenario : ScenarioBuilder
         return PersistAsync(context => context.CronTickerEntities.Add(cron));
     }
 
-    public Task<TestingScenario> WithCronOccurrence(string cronName, TickerStatus status, DateTime executionTime) =>
-        PersistAsync(context => context.CronTickerOccurrenceEntities.Add(new CronTickerOccurrenceEntity<CronTickerEntity>
+    /// <param name="configure">Adjusts the run before it is saved, e.g. its retries or error.</param>
+    public Task<TestingScenario> WithCronOccurrence(string cronName, TickerStatus status, DateTime executionTime,
+        Action<CronTickerOccurrenceEntity<CronTickerEntity>>? configure = null)
+    {
+        CronTickerOccurrenceEntity<CronTickerEntity> occurrence = new()
         {
             Id = Guid.NewGuid(),
             CronTickerId = Scenario.CronTickerMappings[cronName],
             Status = status,
             ExecutionTime = executionTime
-        }));
+        };
+        configure?.Invoke(occurrence);
+
+        return PersistAsync(context => context.CronTickerOccurrenceEntities.Add(occurrence));
+    }
 
     /// <summary>
     /// A one off, manually triggered run of <paramref name="function"/>.

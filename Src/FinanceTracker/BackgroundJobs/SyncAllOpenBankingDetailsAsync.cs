@@ -26,8 +26,16 @@ public class SyncAllOpenBankingDetailsAsync : OpenBankingSyncJob, ITickerFunctio
     {
         context.CronOccurrenceOperations.SkipIfAlreadyRunning();
 
-        IReadOnlySet<Guid> syncedUsers = await SyncConnectionsAsync(static _ => true, cancellationToken);
+        await JobChangedAsync();
+        try
+        {
+            IReadOnlySet<Guid> syncedUsers = await SyncConnectionsAsync(static _ => true, cancellationToken);
 
-        await NotifyAsync(syncedUsers);
+            await NotifyAsync(syncedUsers);
+        }
+        finally
+        {
+            await JobChangedAsync();
+        }
     }
 }

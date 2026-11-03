@@ -134,6 +134,11 @@ public abstract class OpenBankingSyncJob
         }
     }
 
+    /// <summary>
+    /// Tells admins browsers this job has started or finished, see <see cref="ISyncNotifier.JobChangedAsync"/>.
+    /// </summary>
+    protected Task JobChangedAsync() => _syncNotifier.JobChangedAsync(GetType().Name);
+
     protected async Task NotifyAsync(IEnumerable<Guid> userIds)
     {
         foreach (Guid userId in userIds)
