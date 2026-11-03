@@ -22,6 +22,11 @@ public static class ApiRoutes
     public const string AutomationJobs = "api/automation/jobs";
 
     /// <summary>
+    /// The background jobs' runs, from <see cref="Services.IAutomationService"/>, admins only.
+    /// </summary>
+    public const string AutomationRuns = "api/automation/runs";
+
+    /// <summary>
     /// The user's own syncs, from <see cref="Services.IAutomationService"/>.
     /// </summary>
     public const string Sync = "api/sync";

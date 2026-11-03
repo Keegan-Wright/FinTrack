@@ -19,10 +19,18 @@ public sealed class HubSyncNotifications : ISyncNotifications, IDisposable
 
     public HubSyncNotifications(HubConnection connection) => _connection = connection;
 
-    public async Task<IDisposable> SubscribeAsync(Func<Task> onSyncComplete, CancellationToken cancellationToken)
-    {
-        IDisposable subscription = _connection.On(SyncHubContract.SyncComplete, onSyncComplete);
+    public Task<IDisposable> SubscribeAsync(Func<Task> onSyncComplete, CancellationToken cancellationToken) =>
+        StartedAsync(_connection.On(SyncHubContract.SyncComplete, onSyncComplete), cancellationToken);
 
+    public Task<IDisposable> SubscribeToJobsAsync(Func<string, Task> onJobChanged,
+        CancellationToken cancellationToken) =>
+        StartedAsync(_connection.On(SyncHubContract.JobChanged, onJobChanged), cancellationToken);
+
+    public void Dispose() => _starting.Dispose();
+
+    // The subscription once the connection is up, or disposed if it can't start
+    private async Task<IDisposable> StartedAsync(IDisposable subscription, CancellationToken cancellationToken)
+    {
         try
         {
             await EnsureStartedAsync(cancellationToken);
@@ -35,8 +43,6 @@ public sealed class HubSyncNotifications : ISyncNotifications, IDisposable
 
         return subscription;
     }
-
-    public void Dispose() => _starting.Dispose();
 
     private async Task EnsureStartedAsync(CancellationToken cancellationToken)
     {

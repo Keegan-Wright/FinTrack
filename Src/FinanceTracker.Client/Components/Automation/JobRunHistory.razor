@@ -1,0 +1,165 @@
+@* A job's runs, on its schedule and by hand, newest first a page at a time. A run that failed or was skipped opens
+   to show why. *@
+@using FinanceTracker.Contracts.Automation
+@implements IDisposable
+@inject IAutomationService AutomationService
+
+<LoadingFrame Loading="@_loading" Message="Loading runs" MinHeight="@(_page is null ? 64 : 0)">
+    @if (_failed)
+    {
+        <MudText Typo="Typo.body2" Color="Color.Error">Couldn't load the runs, try again.</MudText>
+    }
+    else if (_page is { Total: 0 })
+    {
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">No runs yet.</MudText>
+    }
+    else if (_page is not null)
+    {
+        <ul class="ft-runs" aria-label="@($"Runs of {Name}")">
+            @foreach (AutomationRun run in _page.Runs)
+            {
+                bool open = _open.Contains(run.Id);
+                <li @key="run.Id" class="ft-run">
+                    <div class="ft-run__line">
+                        <RunStatusChip Status="@run.Status"/>
+                        <MudText Typo="Typo.body2" Class="ft-run__when">@AutomationText.RunWhen(run)</MudText>
+                        @if (run.IsManual)
+                        {
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text">Manual</MudChip>
+                        }
+                        @if (AutomationText.Retries(run) is { } retries)
+                        {
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary">@retries</MudText>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(run.Error))
+                        {
+                            <MudIconButton Size="Size.Small" Class="ft-run__toggle"
+                                           Icon="@(open ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                                           aria-expanded="@(open ? "true" : "false")"
+                                           aria-label="@($"{(open ? "Hide" : "Show")} the error from {AutomationText.When(run.StartedAt ?? run.DueAt)}")"
+                                           OnClick="@(() => Toggle(run.Id))"/>
+                        }
+                    </div>
+                    @if (open)
+                    {
+                        <pre class="ft-run__error">@run.Error</pre>
+                    }
+                </li>
+            }
+        </ul>
+
+        @if (PageCount > 1)
+        {
+            <div class="ft-runs__pager">
+                <MudPagination Count="@PageCount" Selected="@(_pageIndex + 1)" SelectedChanged="@GoToAsync"
+                               Size="Size.Small" BoundaryCount="1" MiddleCount="1"/>
+            </div>
+        }
+    }
+</LoadingFrame>
+
+@code {
+
+    /// <summary>
+    /// Runs to a page.
+    /// </summary>
+    public const int PageSize = 25;
+
+    private readonly CancellationTokenSource _cts = new();
+    private readonly HashSet<Guid> _open = [];
+    private AutomationRunPage? _page;
+    private int _pageIndex;
+    private bool _loading;
+    private bool _failed;
+
+    /// <summary>
+    /// The job, see <see cref="AutomationCron.Function"/>.
+    /// </summary>
+    [Parameter] [EditorRequired] public required string Function { get; set; }
+
+    /// <summary>
+    /// The job's name, for the list's label.
+    /// </summary>
+    [Parameter] [EditorRequired] public required string Name { get; set; }
+
+    /// <summary>
+    /// Changes when the page has loaded the jobs again, the runs on show load again with them.
+    /// </summary>
+    [Parameter] public int Refresh { get; set; }
+
+    private int PageCount => _page is null ? 0 : (_page.Total + PageSize - 1) / PageSize;
+
+    private int _loadedFor;
+
+    protected override Task OnInitializedAsync()
+    {
+        _loadedFor = Refresh;
+        return LoadAsync(0);
+    }
+
+    // The same page again, with any open errors kept open
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Refresh == _loadedFor || _page is null)
+        {
+            return;
+        }
+
+        _loadedFor = Refresh;
+        await LoadAsync(_pageIndex, refreshing: true);
+    }
+
+    private Task GoToAsync(int page) => LoadAsync(page - 1);
+
+    /// <param name="pageIndex">The page, from 0.</param>
+    /// <param name="refreshing">The same page again, without the spinner and keeping open errors open.</param>
+    private async Task LoadAsync(int pageIndex, bool refreshing = false)
+    {
+        if (!refreshing)
+        {
+            _loading = true;
+            _failed = false;
+            StateHasChanged();
+        }
+
+        try
+        {
+            _page = await AutomationService.GetRunsAsync(Function, pageIndex, PageSize, _cts.Token);
+            _pageIndex = pageIndex;
+            _failed = false;
+            if (!refreshing)
+            {
+                _open.Clear();
+            }
+        }
+        catch (OperationCanceledException) when (_cts.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception)
+        {
+            _failed = true;
+        }
+        finally
+        {
+            _loading = false;
+        }
+
+        StateHasChanged();
+    }
+
+    private void Toggle(Guid runId)
+    {
+        if (!_open.Remove(runId))
+        {
+            _open.Add(runId);
+        }
+    }
+
+    public void Dispose()
+    {
+        _cts.Cancel();
+        _cts.Dispose();
+    }
+
+}

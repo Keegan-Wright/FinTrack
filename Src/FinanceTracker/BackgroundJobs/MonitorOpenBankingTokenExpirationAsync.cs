@@ -13,12 +13,14 @@ namespace FinanceTracker.BackgroundJobs;
 public class MonitorOpenBankingTokenExpirationAsync : ITickerFunction
 {
     private readonly IDbContextFactory<FinanceTrackerContext> _dbContextFactory;
+    private readonly ISyncNotifier _syncNotifier;
     private readonly TimeProvider _timeProvider;
 
     public MonitorOpenBankingTokenExpirationAsync(IDbContextFactory<FinanceTrackerContext> dbContextFactory,
-        TimeProvider timeProvider)
+        ISyncNotifier syncNotifier, TimeProvider timeProvider)
     {
         _dbContextFactory = dbContextFactory;
+        _syncNotifier = syncNotifier;
         _timeProvider = timeProvider;
     }
 
@@ -27,6 +29,19 @@ public class MonitorOpenBankingTokenExpirationAsync : ITickerFunction
     {
         context.CronOccurrenceOperations.SkipIfAlreadyRunning();
 
+        await _syncNotifier.JobChangedAsync(nameof(MonitorOpenBankingTokenExpirationAsync));
+        try
+        {
+            await RevokeLapsedConnectionsAsync(cancellationToken);
+        }
+        finally
+        {
+            await _syncNotifier.JobChangedAsync(nameof(MonitorOpenBankingTokenExpirationAsync));
+        }
+    }
+
+    private async Task RevokeLapsedConnectionsAsync(CancellationToken cancellationToken)
+    {
         using Activity? performingMonitoringActivity =
             Telemetry.ActivitySource.StartActivity(nameof(MonitorOpenBankingTokenExpirationAsync));
 

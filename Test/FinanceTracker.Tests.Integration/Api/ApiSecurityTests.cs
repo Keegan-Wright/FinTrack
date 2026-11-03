@@ -37,11 +37,14 @@ public class ApiSecurityTests : IntegrationTestBase
     }
 
     [Test]
-    public async Task AutomationJobs_ForANonAdmin_AreForbidden()
+    [Arguments(ApiRoutes.AutomationJobs)]
+    [Arguments($"{ApiRoutes.AutomationJobs}/summaries")]
+    [Arguments($"{ApiRoutes.AutomationRuns}?function=SyncAllOpenBankingDetailsAsync")]
+    public async Task AutomationJobs_ForANonAdmin_AreForbidden(string path)
     {
         // Arrange
         SignedInUser user = await RegisterUserAsync();
-        using HttpRequestMessage request = ApiRequest(HttpMethod.Get, ApiRoutes.AutomationJobs);
+        using HttpRequestMessage request = ApiRequest(HttpMethod.Get, path);
 
         // Act
         HttpResponseMessage response = await user.Client.SendAsync(request, HttpCompletionOption.ResponseContentRead,
@@ -62,6 +65,21 @@ public class ApiSecurityTests : IntegrationTestBase
 
         // Assert
         await Assert.That(jobs).IsNotEmpty();
+    }
+
+    [Test]
+    public async Task RunNow_ForANonAdmin_IsForbidden()
+    {
+        // Arrange
+        SignedInUser user = await RegisterUserAsync();
+        using HttpRequestMessage request = ApiRequest(HttpMethod.Post, $"{ApiRoutes.AutomationJobs}/{Guid.NewGuid()}/run");
+
+        // Act
+        HttpResponseMessage response = await user.Client.SendAsync(request, HttpCompletionOption.ResponseContentRead,
+            CancellationToken);
+
+        // Assert
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
     }
 
     private static HttpRequestMessage ApiRequest(HttpMethod method, string path)

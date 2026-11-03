@@ -4,6 +4,7 @@ using FinanceTracker.Infrastructure;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.EntityFrameworkCore;
+using NSubstitute;
 
 namespace FinanceTracker.Tests.Unit.FinanceTracker.BackgroundJobs;
 
@@ -11,6 +12,8 @@ public class MonitorOpenBankingTokenExpirationAsyncTests : InfrastructureTestBas
 {
     private const string Username = "primary";
     private const string OtherUsername = "secondary";
+
+    private readonly ISyncNotifier _syncNotifier = Substitute.For<ISyncNotifier>();
 
     [Test]
     public async Task ExecuteAsync_ConsentLapsed_RevokesActiveToken()
@@ -142,5 +145,37 @@ public class MonitorOpenBankingTokenExpirationAsyncTests : InfrastructureTestBas
             .SingleAsync(x => x.Id == id, CancellationToken);
     }
 
-    private MonitorOpenBankingTokenExpirationAsync BuildSubject() => new(DbContextFactory, TimeProvider.System);
+    [Test]
+    public async Task ExecuteAsync_TellsAdminsWhenItStartsAndFinishes()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username));
+        MonitorOpenBankingTokenExpirationAsync subject = BuildSubject();
+
+        // Act
+        await subject.ExecuteAsync(TickerFunctionContextFactory.Create(), CancellationToken);
+
+        // Assert
+        await _syncNotifier.Received(2).JobChangedAsync(nameof(MonitorOpenBankingTokenExpirationAsync));
+    }
+
+    [Test]
+    public async Task ExecuteAsync_WhenItFails_StillTellsAdminsItFinished()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username));
+        MonitorOpenBankingTokenExpirationAsync subject = BuildSubject();
+        using CancellationTokenSource cancelled = new();
+        await cancelled.CancelAsync();
+
+        // Act
+        await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            subject.ExecuteAsync(TickerFunctionContextFactory.Create(), cancelled.Token));
+
+        // Assert
+        await _syncNotifier.Received(2).JobChangedAsync(nameof(MonitorOpenBankingTokenExpirationAsync));
+    }
+
+    private MonitorOpenBankingTokenExpirationAsync BuildSubject() =>
+        new(DbContextFactory, _syncNotifier, TimeProvider.System);
 }

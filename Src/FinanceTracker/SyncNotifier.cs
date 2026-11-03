@@ -5,7 +5,8 @@ using Microsoft.AspNetCore.SignalR;
 namespace FinanceTracker;
 
 /// <summary>
-/// <see cref="ISyncNotifier"/> through <see cref="SyncHub"/>, every connection of the user hears about the sync.
+/// <see cref="ISyncNotifier"/> through <see cref="SyncHub"/>, every connection of the user hears about the sync, and
+/// every admin connection about the jobs.
 /// </summary>
 public class SyncNotifier : ISyncNotifier
 {
@@ -28,6 +29,19 @@ public class SyncNotifier : ISyncNotifier
         {
             // The sync itself succeeded, a missed notification only leaves the page's sync time stale
             _logger.LogSyncNotificationFailed(ex, userId);
+        }
+    }
+
+    public async Task JobChangedAsync(string function)
+    {
+        try
+        {
+            await _hubContext.Clients.Group(SyncHub.AdminsGroup).SendAsync(SyncHubContract.JobChanged, function);
+        }
+        catch (Exception ex)
+        {
+            // The job carries on, the automation page still checks running jobs by itself
+            _logger.LogJobNotificationFailed(ex, function);
         }
     }
 }

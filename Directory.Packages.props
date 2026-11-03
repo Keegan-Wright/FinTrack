@@ -46,6 +46,7 @@
     <PackageVersion Include="OpenTelemetry.Resources.Process" Version="1.15.0-beta.1" />
     <PackageVersion Include="OpenTelemetry.Resources.ProcessRuntime" Version="1.15.0-beta.1" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.EntityFrameworkCore" Version="1.15.0-beta.1" />
+    <PackageVersion Include="NCrontab" Version="3.3.0" />
     <PackageVersion Include="NSubstitute" Version="6.2.0" />
     <PackageVersion Include="Testcontainers.PostgreSql" Version="4.16.0" />
 

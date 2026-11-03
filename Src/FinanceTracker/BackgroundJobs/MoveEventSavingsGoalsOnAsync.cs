@@ -17,12 +17,14 @@ namespace FinanceTracker.BackgroundJobs;
 public class MoveEventSavingsGoalsOnAsync : ITickerFunction
 {
     private readonly IDbContextFactory<FinanceTrackerContext> _dbContextFactory;
+    private readonly ISyncNotifier _syncNotifier;
     private readonly TimeProvider _timeProvider;
 
     public MoveEventSavingsGoalsOnAsync(IDbContextFactory<FinanceTrackerContext> dbContextFactory,
-        TimeProvider timeProvider)
+        ISyncNotifier syncNotifier, TimeProvider timeProvider)
     {
         _dbContextFactory = dbContextFactory;
+        _syncNotifier = syncNotifier;
         _timeProvider = timeProvider;
     }
 
@@ -31,6 +33,19 @@ public class MoveEventSavingsGoalsOnAsync : ITickerFunction
     {
         context.CronOccurrenceOperations.SkipIfAlreadyRunning();
 
+        await _syncNotifier.JobChangedAsync(nameof(MoveEventSavingsGoalsOnAsync));
+        try
+        {
+            await MoveGoalsOnAsync(cancellationToken);
+        }
+        finally
+        {
+            await _syncNotifier.JobChangedAsync(nameof(MoveEventSavingsGoalsOnAsync));
+        }
+    }
+
+    private async Task MoveGoalsOnAsync(CancellationToken cancellationToken)
+    {
         using Activity? activity = Telemetry.ActivitySource.StartActivity(nameof(MoveEventSavingsGoalsOnAsync));
 
         await using FinanceTrackerContext dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
