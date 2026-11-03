@@ -3,6 +3,7 @@ using FinanceTracker.Contracts.Account;
 using FinanceTracker.Contracts.Budgets;
 using FinanceTracker.Contracts.SavingsGoals;
 using FinanceTracker.Contracts.Dashboard;
+using FinanceTracker.Contracts.NetWorth;
 using FinanceTracker.Contracts.Transactions;
 
 namespace FinanceTracker.Client.Components.Dashboard;
@@ -64,6 +65,11 @@ public sealed class DashboardData
     /// How this month's budgets are going, null until loaded.
     /// </summary>
     public BudgetMonthOverview? Budgets { get; init; }
+
+    /// <summary>
+    /// Net worth over the range, null until loaded.
+    /// </summary>
+    public NetWorthHistory? NetWorth { get; init; }
 
     [JsonIgnore]
     public decimal Net => (Spent?.TotalIn ?? 0) + (Spent?.TotalOut ?? 0);

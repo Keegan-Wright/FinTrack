@@ -4,6 +4,7 @@ using FinanceTracker.Contracts.Classifications;
 using FinanceTracker.Contracts.SavingsGoals;
 using FinanceTracker.Contracts.Services;
 using Microsoft.Extensions.DependencyInjection;
+using MudBlazor;
 using NSubstitute;
 using SavingsGoalsPage = FinanceTracker.Client.Pages.SavingsGoals;
 
@@ -71,6 +72,27 @@ public class SavingsGoalsPageTests : ComponentTestBase
 
         // Assert
         await Assert.That(cut.Markup).Contains("No goals yet");
+    }
+
+    [Test]
+    [Arguments(SavingsGoalSource.Account, true)]
+    [Arguments(SavingsGoalSource.Tags, true)]
+    [Arguments(SavingsGoalSource.Manual, false)]
+    public async Task Menu_OffersHistoryForGoalsThatTrackSomething(SavingsGoalSource source, bool offered)
+    {
+        // Arrange
+        _goalsService.GetSavingsGoalsAsync(Arg.Any<CancellationToken>()).Returns(new[]
+        {
+            new SavingsGoal { Id = Guid.NewGuid(), Name = "Car", Source = source }
+        }.ToAsyncEnumerable());
+        IRenderedComponent<MudPopoverProvider> popovers = Render<MudPopoverProvider>();
+        IRenderedComponent<SavingsGoalsPage> cut = RenderPage();
+
+        // Act
+        IReadOnlyList<(string Text, bool Disabled)> items = await RowMenu.ItemsAsync(cut, popovers, "Car");
+
+        // Assert
+        await Assert.That(items.Any(static x => x.Text == "History")).IsEqualTo(offered);
     }
 
     private IRenderedComponent<SavingsGoalsPage> RenderPage() =>

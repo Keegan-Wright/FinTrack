@@ -40,19 +40,61 @@ public static class SavingsGoalCalculator
     }
 
     /// <summary>
-    /// Tagged money in less tagged money out. When both halves of a transfer are tagged, only the money in counts, so a
-    /// rule tagging both sides doesn't cancel itself out.
+    /// What a goal tracking tags had saved at the end of each day from the day it tracks from to
+    /// <paramref name="today"/>: its starting amount plus what's counted, see <see cref="Progress"/>. Empty for any
+    /// other goal, an account goal's history being its account's balances.
     /// </summary>
-    private static decimal Tagged(SavingsGoal goal, IEnumerable<BankTransaction> transactions, TimeZoneInfo timeZone)
+    /// <param name="transactions">The user's transactions, at least those from the goal's
+    /// <see cref="SavingsGoal.TrackedFrom"/> on.</param>
+    /// <param name="timeZone">Where the user is, so a transaction falls on the day it was where they are.</param>
+    public static IReadOnlyList<SavedOn> History(SavingsGoal goal, IEnumerable<BankTransaction> transactions,
+        TimeZoneInfo timeZone, DateOnly today)
+    {
+        ArgumentNullException.ThrowIfNull(goal);
+        ArgumentNullException.ThrowIfNull(transactions);
+        ArgumentNullException.ThrowIfNull(timeZone);
+
+        if (goal.Source != SavingsGoalSource.Tags || goal.TrackedFrom is not { } from)
+        {
+            return [];
+        }
+
+        Dictionary<DateOnly, decimal> savedOn = Counted(goal, transactions, timeZone)
+            .GroupBy(x => LocalDay(x.OccurredAt, timeZone))
+            .ToDictionary(static x => x.Key, static x => x.Sum(static t => t.Amount));
+
+        List<SavedOn> history = [];
+        decimal saved = goal.Saved;
+        for (DateOnly day = from; day <= today; day = day.AddDays(1))
+        {
+            saved += savedOn.GetValueOrDefault(day);
+            history.Add(new SavedOn(day, saved));
+        }
+
+        return history;
+    }
+
+    /// <summary>
+    /// Tagged money in less tagged money out.
+    /// </summary>
+    private static decimal Tagged(SavingsGoal goal, IEnumerable<BankTransaction> transactions, TimeZoneInfo timeZone) =>
+        Counted(goal, transactions, timeZone).Sum(static x => x.Amount);
+
+    /// <summary>
+    /// The transactions that count towards the goal. When both halves of a transfer are tagged, only the money in
+    /// counts, so a rule tagging both sides doesn't cancel itself out.
+    /// </summary>
+    private static List<BankTransaction> Counted(SavingsGoal goal, IEnumerable<BankTransaction> transactions,
+        TimeZoneInfo timeZone)
     {
         List<BankTransaction> tagged = transactions.Where(x => goal.Counts(x, timeZone)).ToList();
-
         HashSet<Guid> taggedIds = tagged.Select(static x => x.Id).ToHashSet();
 
-        return tagged
-            .Where(x => !IsOutgoingHalfOfTaggedTransfer(x, taggedIds))
-            .Sum(static x => x.Amount);
+        return tagged.Where(x => !IsOutgoingHalfOfTaggedTransfer(x, taggedIds)).ToList();
     }
+
+    private static DateOnly LocalDay(DateTime utc, TimeZoneInfo timeZone) => DateOnly.FromDateTime(
+        TimeZoneInfo.ConvertTime(DateTime.SpecifyKind(utc, DateTimeKind.Utc), timeZone));
 
     private static bool IsOutgoingHalfOfTaggedTransfer(BankTransaction transaction, HashSet<Guid> taggedIds) =>
         transaction.Amount < 0 && transaction.Transfer?.PartnerTransactionId is { } partnerId &&

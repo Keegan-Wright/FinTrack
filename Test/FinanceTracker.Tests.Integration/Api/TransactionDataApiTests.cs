@@ -212,6 +212,7 @@ public class TransactionDataApiTests : IntegrationTestBase
             .Do(s => s.BankAccountScenario.WithAccount("main", "bank"))
             .Do(s => s.BankAccountScenario.WithBalance("main"))
             .Do(s => s.BillScenario.WithBill("rent", user.Username, "main", (userId, accountId) =>
+
                 new Bill(userId, accountId, "Rent", "Landlord", BillFrequency.Quarterly, 650m, rentDue,
                     BillSource.Manual)))
             .Do(s => s.TransactionScenario.WithTransaction("coffee", "main", Details(-3.50m, TransactionType.Debit,

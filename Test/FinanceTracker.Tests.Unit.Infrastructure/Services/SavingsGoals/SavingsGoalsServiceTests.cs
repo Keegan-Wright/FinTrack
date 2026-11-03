@@ -1,6 +1,8 @@
 using FinanceTracker.Contracts;
+using FinanceTracker.Contracts.NetWorth;
 using FinanceTracker.Contracts.SavingsGoals;
 using FinanceTracker.Domain.OpenBanking.Accounts;
+using FinanceTracker.Domain.OpenBanking.Balances;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.SavingsGoals;
@@ -380,6 +382,51 @@ public class SavingsGoalsServiceTests : InfrastructureTestBase
             await Assert.That(accounts.Select(static x => x.Name)).IsEquivalentTo(["Current", "Rainy Day"]);
             await Assert.That(accounts.Single(static x => x.Name == "Rainy Day").GoalId).IsEqualTo(goal.Id);
         }
+    }
+
+    [Test]
+    public async Task GetSavingsGoalHistoryAsync_AccountGoal_IsItsAccountsClosingBalances()
+    {
+        // Arrange
+        await SeedAccountsAsync(Username);
+        Guid savingsId = Scenario.AccountMappings["savings"];
+        Guid userId = Scenario.UserMappings[Username];
+        await Scenario.Do(s => s.SavingsGoalScenario.WithSavingsGoal("car", Username, id =>
+        {
+            DomainSavingsGoal goal = new(id, "Car", 0, 0, 1000, null);
+            goal.TrackAccount(savingsId);
+            return goal;
+        }));
+        await using (FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken))
+        {
+            context.BalanceSnapshots.Add(new BalanceSnapshot(userId, savingsId, new DateOnly(2026, 3, 13),
+                new AccountBalance(200m, 200m, DateTime.UtcNow), BalanceSnapshotSource.Derived, isStale: false));
+            context.BalanceSnapshots.Add(new BalanceSnapshot(userId, savingsId, new DateOnly(2026, 3, 14),
+                new AccountBalance(250m, 250m, DateTime.UtcNow), BalanceSnapshotSource.Synced, isStale: false));
+            await context.SaveChangesAsync(CancellationToken);
+        }
+
+        // Act
+        List<BalancePoint> history = await BuildSubject(Username)
+            .GetSavingsGoalHistoryAsync(Scenario.SavingsGoalMappings["car"], CancellationToken);
+
+        // Assert
+        await Assert.That(history.Select(static x => (x.Amount, x.IsDerived))).IsEquivalentTo(
+            [(200m, true), (250m, false)], TUnit.Assertions.Enums.CollectionOrdering.Matching);
+    }
+
+    [Test]
+    public async Task GetSavingsGoalHistoryAsync_AnotherUsersGoal_Throws()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.UserScenario.WithUser(OtherUsername))
+            .Do(s => s.SavingsGoalScenario.WithSavingsGoal("theirs", OtherUsername, id =>
+                new DomainSavingsGoal(id, "Theirs", 0, 0, 0, null)));
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(() => BuildSubject(Username)
+            .GetSavingsGoalHistoryAsync(Scenario.SavingsGoalMappings["theirs"], CancellationToken));
     }
 
     private Task<TestingScenario> SeedAccountsAsync(string username, decimal balance = 0m) =>

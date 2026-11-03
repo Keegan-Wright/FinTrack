@@ -1,0 +1,77 @@
+@* The dashboard's net worth, today's, how it's changed over the dashboard's range, and that range as a small chart. *@
+@using System.Globalization
+@using FinanceTracker.Client.Components.NetWorth
+@using FinanceTracker.Contracts.NetWorth
+<Section Title="Net worth" Caption="@Caption" Class="h-100">
+    <Actions>
+        <MudButton Href="NetWorth" Variant="Variant.Text" Color="Color.Primary" Size="Size.Small">See all</MudButton>
+    </Actions>
+    <ChildContent>
+        @if (History is null or { Points.Count: 0 })
+        {
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                Your net worth starts building up from your first sync.
+            </MudText>
+        }
+        else
+        {
+            <div class="ft-net-worth-card">
+                <div class="ft-net-worth-card__figure">
+                    <MoneyText Value="@History.Points[^1].NetWorth" Typo="Typo.h5"/>
+                    @if (NetWorthText.ChangeAcross(History.Points) is { } change)
+                    {
+                        <MudText Typo="Typo.caption" Color="@ChangeColor">@change</MudText>
+                    }
+                </div>
+                <div class="ft-net-worth-card__chart">
+                    <BalanceHistoryChart Points="@_points" Name="Net worth" Compact="true"
+                                         Height="120"/>
+                </div>
+            </div>
+        }
+    </ChildContent>
+</Section>
+
+@code {
+
+    /// <summary>
+    /// Net worth over the dashboard's range, null until loaded.
+    /// </summary>
+    [Parameter] public NetWorthHistory? History { get; set; }
+
+    /// <summary>
+    /// The first day of the dashboard's range.
+    /// </summary>
+    [Parameter] public DateOnly From { get; set; }
+
+    private string Caption => $"Since {From.ToString("d MMM yyyy", CultureInfo.CurrentCulture)}";
+
+    private Color ChangeColor
+    {
+        get
+        {
+            if (History is not { Points.Count: > 1 } history)
+            {
+                return Color.Default;
+            }
+
+            return NetWorthText.ChangeColor(history.Points[^1].NetWorth - history.Points[0].NetWorth);
+        }
+    }
+
+    private NetWorthHistory? _pointsFrom;
+    private IReadOnlyList<BalancePoint> _points = [];
+
+    // Built once per history, so the chart only redraws when it changes
+    protected override void OnParametersSet()
+    {
+        if (History is null || ReferenceEquals(History, _pointsFrom))
+        {
+            return;
+        }
+
+        _pointsFrom = History;
+        _points = NetWorthText.Points(History);
+    }
+
+}

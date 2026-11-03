@@ -56,6 +56,12 @@ public sealed class BankAccount : AggregateRoot
     /// </summary>
     public CardDetails? Card { get; private set; }
 
+    /// <summary>
+    /// Whether its past closing balances have been worked out, see <see cref="BalanceHistory"/>. Done once, after its
+    /// first sync.
+    /// </summary>
+    public bool HistoryBackfilled { get; private set; }
+
     public IReadOnlyCollection<StandingOrder> StandingOrders => _standingOrders.AsReadOnly();
 
     public IReadOnlyCollection<DirectDebit> DirectDebits => _directDebits.AsReadOnly();
@@ -151,6 +157,8 @@ public sealed class BankAccount : AggregateRoot
     /// stale.
     /// </param>
     /// <exception cref="InvalidOperationException">The account has never had a balance.</exception>
+    public void MarkHistoryBackfilled() => HistoryBackfilled = true;
+
     public BalanceSnapshot SnapshotBalance(DateOnly day, bool synced)
     {
         if (Balance is null)

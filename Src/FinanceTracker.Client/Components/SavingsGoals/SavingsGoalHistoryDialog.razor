@@ -1,0 +1,52 @@
+@* What a savings goal had saved over time, its account's closing balances, or a tag goal's running total. *@
+@using FinanceTracker.Client.Components.NetWorth
+@using FinanceTracker.Contracts.NetWorth
+@using FinanceTracker.Contracts.SavingsGoals
+@inject ISavingsGoalsService SavingsGoalsService
+
+<MudDialog>
+    <TitleContent>@Goal.Name over time</TitleContent>
+    <DialogContent>
+        <LoadingFrame Loading="@(_history is null && !_failed)" Message="Looking back…" MinHeight="280">
+            @if (_failed)
+            {
+                <MudText Typo="Typo.body2" Color="Color.Error">Couldn't load its history, try again.</MudText>
+            }
+            else if (_history is not null)
+            {
+                <BalanceHistoryChart Points="@_history" Name="Saved" Color="@ChartDefaults.MoneyInColor"
+                                     EmptyText="Not enough history yet, it builds up day by day."/>
+                @if (NetWorthText.DerivedNote(_history) is { } note)
+                {
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary">@note</MudText>
+                }
+            }
+        </LoadingFrame>
+    </DialogContent>
+</MudDialog>
+
+@code {
+
+    [Parameter] [EditorRequired] public required SavingsGoal Goal { get; set; }
+
+    private IReadOnlyList<BalancePoint>? _history;
+    private bool _failed;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _history = await SavingsGoalsService.GetSavingsGoalHistoryAsync(Goal.Id, CancellationToken.None);
+        }
+        catch (Exception)
+        {
+            _failed = true;
+        }
+    }
+
+    /// <summary>
+    /// Whether a goal has a history to show, a typed in goal only has what was typed.
+    /// </summary>
+    internal static bool HasHistory(SavingsGoal goal) => goal.Source != SavingsGoalSource.Manual;
+
+}

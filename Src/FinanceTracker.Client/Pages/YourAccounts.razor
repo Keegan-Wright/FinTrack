@@ -1,12 +1,16 @@
 @page "/Accounts"
 @* Each connected account with its balance and newest transactions (IAccountService). *@
 @using System.Globalization
+@using FinanceTracker.Client.Components.NetWorth
 @using FinanceTracker.Contracts.Account
+@using FinanceTracker.Contracts.NetWorth
 @using Microsoft.AspNetCore.Authorization
 @inherits PageComponent
 
 @attribute [Authorize]
 @inject IAccountService AccountService
+@inject INetWorthService NetWorthService
+@inject TimeProvider TimeProvider
 
 <PageTitle>FinTrack - Accounts</PageTitle>
 <PageHeader Title="Accounts" Subtitle="@Subtitle">
@@ -64,6 +68,12 @@ else
                                 </div>
                             }
                         </div>
+
+                        @if (HistoryOf(account) is { Count: > 1 } history)
+                        {
+                            <div class="ft-label mt-4">Last 90 days</div>
+                            <BalanceHistoryChart Points="@history" Name="Balance" Compact="true" Height="80"/>
+                        }
 
                         <div class="ft-label mt-4">Recent activity</div>
                         @if (account.Transactions is null || !account.Transactions.Any())
@@ -124,12 +134,44 @@ else
         : $"{Accounts.Count} {(Accounts.Count == 1 ? "account" : "accounts")} · " +
           $"{CurrencyFormatter.Format(Accounts.Sum(static x => x.AccountBalance))} in total";
 
+    /// <summary>
+    /// Each account's closing balances over the last 90 days, loaded once.
+    /// </summary>
+    [PersistentState]
+    public List<AccountBalanceHistory>? Histories { get; set; }
+
+    private Dictionary<Guid, IReadOnlyList<BalancePoint>> _historyByAccount = [];
+    private List<AccountBalanceHistory>? _historiesFrom;
+
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
         Accounts = await LoadOnceAsync(Accounts, "Loading your accounts", cancellationToken =>
             AccountService.GetAccountsAndMostRecentTransactionsAsync(5, cancellationToken)
                 .ToListAsync(cancellationToken).AsTask());
+
+        Histories = await LoadOnceAsync(Histories, "Loading your accounts", cancellationToken =>
+            NetWorthService.GetBalanceHistoriesAsync(
+                    DateOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime).AddDays(-90), cancellationToken)
+                .ToListAsync(cancellationToken).AsTask());
     }
+
+    /// <summary>
+    /// Looked up by account once per load, and the same lists kept so the charts only redraw when they change.
+    /// </summary>
+    protected override void OnParametersSet()
+    {
+        if (Histories is null || ReferenceEquals(Histories, _historiesFrom))
+        {
+            return;
+        }
+
+        _historiesFrom = Histories;
+        _historyByAccount = Histories.ToDictionary(static x => x.AccountId,
+            static x => (IReadOnlyList<BalancePoint>)x.Points);
+    }
+
+    private IReadOnlyList<BalancePoint>? HistoryOf(AccountAndTransactions account) =>
+        _historyByAccount.GetValueOrDefault(account.AccountId);
 
 }

@@ -42,6 +42,11 @@ public sealed class NetWorthSnapshot : AggregateRoot
     public bool IsStale { get; private set; }
 
     /// <summary>
+    /// At least one of the balances was worked out from transactions rather than synced, so it's approximate.
+    /// </summary>
+    public bool IsDerived { get; private set; }
+
+    /// <summary>
     /// Totals the day's balances, replacing the previous totals. Uses each account's current balance, not the
     /// available one, which can include an overdraft limit or pending payments.
     /// </summary>
@@ -56,6 +61,7 @@ public sealed class NetWorthSnapshot : AggregateRoot
         decimal assets = 0;
         decimal liabilities = debts;
         bool isStale = false;
+        bool isDerived = false;
 
         foreach (BalanceSnapshot snapshot in balances)
         {
@@ -78,10 +84,16 @@ public sealed class NetWorthSnapshot : AggregateRoot
             {
                 isStale = true;
             }
+
+            if (snapshot.Source == BalanceSnapshotSource.Derived)
+            {
+                isDerived = true;
+            }
         }
 
         Assets = assets;
         Liabilities = liabilities;
         IsStale = isStale;
+        IsDerived = isDerived;
     }
 }

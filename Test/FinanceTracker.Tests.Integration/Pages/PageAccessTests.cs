@@ -16,6 +16,7 @@ public class PageAccessTests : IntegrationTestBase
         "/Debts",
         $"/Debts/{Guid.NewGuid()}",
         "/HouseholdMembers",
+        "/NetWorth",
         "/ProviderSetup",
         "/Reports",
         "/Reports/accounts",

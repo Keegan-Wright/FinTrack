@@ -20,4 +20,12 @@ public interface IBalanceSnapshotService
     /// <returns>The day's net worth, or null when no account has a balance yet.</returns>
     Task<NetWorthSnapshot?> SnapshotAsync(DateOnly day, DateTime balancesSyncedFrom,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Works out past closing balances for the accounts that haven't had it done yet, see
+    /// <see cref="BalanceHistory"/>, then re-totals the net worth of each day that gained one. Once per account,
+    /// after the sync that gives it a balance.
+    /// </summary>
+    /// <returns>How many days of balances were added, across the accounts.</returns>
+    Task<int> BackfillAsync(CancellationToken cancellationToken);
 }

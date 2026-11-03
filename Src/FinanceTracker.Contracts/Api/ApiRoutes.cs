@@ -62,6 +62,11 @@ public static class ApiRoutes
     public const string HouseholdMembers = "api/household-members";
 
     /// <summary>
+    /// <see cref="Services.INetWorthService"/>.
+    /// </summary>
+    public const string NetWorth = "api/net-worth";
+
+    /// <summary>
     /// <see cref="Services.IOpenBankingService"/>.
     /// </summary>
     public const string OpenBanking = "api/open-banking";

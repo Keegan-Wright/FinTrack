@@ -2,9 +2,11 @@ using FinanceTracker.Domain.Debts;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.NetWorth;
 using FinanceTracker.Domain.OpenBanking.Balances;
+using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.OpenBanking.Balances;
 using FinanceTracker.Tests.Unit.Shared;
+using FinanceTracker.Tests.Unit.Shared.Fakers;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -293,6 +295,85 @@ public class BalanceSnapshotServiceTests : InfrastructureTestBase
             await Assert.That((await LoadNetWorthAsync()).Select(x => x.UserId)).IsEquivalentTo([userId]);
         }
     }
+
+    [Test]
+    public async Task BackfillAsync_WorksOutPastBalancesAndTheirNetWorthOnce()
+    {
+        // Arrange, 500 today after 100 came in yesterday
+        await SeedAccountsAsync(Username, "mine")
+            .Do(s => s.BankAccountScenario.WithBalance("mine-savings", Balance(500m, Morning)))
+            .Do(s => s.BankAccountScenario.WithSyncLog("mine-savings", SyncType.Balance, Morning))
+            .Do(s => s.TransactionScenario.WithTransaction("in", "mine-savings", Settled(100m, Day.AddDays(-1))));
+        BalanceSnapshotService subject = BuildSubject(Username);
+        await subject.SnapshotAsync(Day, Morning, CancellationToken);
+
+        // Act
+        int days = await subject.BackfillAsync(CancellationToken);
+        int again = await subject.BackfillAsync(CancellationToken);
+
+        // Assert
+        Dictionary<DateOnly, BalanceSnapshot> balances = (await LoadBalancesAsync()).ToDictionary(static x => x.Date);
+        Dictionary<DateOnly, NetWorthSnapshot> netWorth = (await LoadNetWorthAsync()).ToDictionary(static x => x.Date);
+        using (Assert.Multiple())
+        {
+            await Assert.That(days).IsEqualTo(2);
+            await Assert.That(again).IsEqualTo(0);
+            await Assert.That(balances[Day.AddDays(-1)].Balance.Current).IsEqualTo(500m);
+            await Assert.That(balances[Day.AddDays(-2)].Balance.Current).IsEqualTo(400m);
+            await Assert.That(balances[Day.AddDays(-2)].Source).IsEqualTo(BalanceSnapshotSource.Derived);
+            await Assert.That(netWorth[Day.AddDays(-2)].NetWorth).IsEqualTo(400m);
+            await Assert.That(netWorth[Day.AddDays(-2)].IsDerived).IsTrue();
+            await Assert.That(netWorth[Day].IsDerived).IsFalse();
+        }
+    }
+
+    [Test]
+    public async Task BackfillAsync_ANewAccountsHistory_AddsToEarlierDaysNetWorth()
+    {
+        // Arrange, savings synced yesterday before the current account had a balance
+        DateOnly yesterday = Day.AddDays(-1);
+        await SeedAccountsAsync(Username, "mine")
+            .Do(s => s.BankAccountScenario.WithBalance("mine-savings", Balance(500m, Morning.AddDays(-1))))
+            .Do(s => s.BankAccountScenario.WithSyncLog("mine-savings", SyncType.Balance, Morning.AddDays(-1)));
+        BalanceSnapshotService subject = BuildSubject(Username);
+        await subject.SnapshotAsync(yesterday, Morning.AddDays(-1), CancellationToken);
+        await subject.BackfillAsync(CancellationToken);
+
+        await Scenario.Do(s => s.BankAccountScenario.WithBalance("mine-current", Balance(80m, Morning)))
+            .Do(s => s.BankAccountScenario.WithSyncLog("mine-current", SyncType.Balance, Morning))
+            .Do(s => s.TransactionScenario.WithTransaction("spent", "mine-current", Settled(-20m, Day)));
+        await subject.SnapshotAsync(Day, Morning, CancellationToken);
+
+        // Act
+        await subject.BackfillAsync(CancellationToken);
+
+        // Assert, yesterday's 500 plus the current account's 100 before today's spend
+        NetWorthSnapshot before = (await LoadNetWorthAsync()).Single(x => x.Date == yesterday);
+        using (Assert.Multiple())
+        {
+            await Assert.That(before.NetWorth).IsEqualTo(600m);
+            await Assert.That(before.IsDerived).IsTrue();
+        }
+    }
+
+    [Test]
+    public async Task BackfillAsync_NoAccountsWithABalance_DoesNothing()
+    {
+        // Arrange
+        await SeedAccountsAsync(Username, "mine");
+
+        // Act & Assert
+        await Assert.That(await BuildSubject(Username).BackfillAsync(CancellationToken)).IsEqualTo(0);
+    }
+
+    private static TransactionDetails Settled(decimal amount, DateOnly day) =>
+        new TransactionDetailsFaker().Generate() with
+        {
+            Amount = amount,
+            Type = amount < 0 ? TransactionType.Debit : TransactionType.Credit,
+            OccurredAt = day.ToDateTime(new TimeOnly(12, 0), DateTimeKind.Utc),
+            IsPending = false
+        };
 
     private static AccountBalance Balance(decimal amount, DateTime asOf) => new(amount, amount, asOf);
 
