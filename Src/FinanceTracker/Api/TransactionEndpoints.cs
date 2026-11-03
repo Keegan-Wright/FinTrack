@@ -11,7 +11,8 @@ public static class TransactionEndpoints
     {
         /// <summary>
         /// <see cref="ITransactionsService"/> at <see cref="ApiRoutes.Transactions"/>. Transactions that don't exist or
-        /// aren't the user's, and bank classifications they don't have, answer 404.
+        /// aren't the user's, and bank classifications they don't have, answer 404. A split that can't be made answers 409
+        /// with the reason.
         /// </summary>
         public RouteGroupBuilder MapTransactionEndpoints()
         {
@@ -34,6 +35,28 @@ public static class TransactionEndpoints
                         CancellationToken cancellationToken) =>
                     TypedResults.Ok(await service.ShowBankClassificationAsync(id, request, cancellationToken)))
                 .Validated<ChangeBankClassification>()
+                .NotFoundWhenMissing();
+
+            // 409 with the reason when the transaction can't be split that way, e.g. it's pending
+            transactions.MapPut("{id:guid}/splits", async Task<Results<Ok<Transaction>, ProblemHttpResult>> (Guid id,
+                        SplitTransaction request, ITransactionsService service,
+                        CancellationToken cancellationToken) =>
+                    {
+                        try
+                        {
+                            return TypedResults.Ok(await service.SplitAsync(id, request, cancellationToken));
+                        }
+                        catch (CannotSplitTransactionException ex)
+                        {
+                            return TypedResults.Problem(ex.Message, statusCode: StatusCodes.Status409Conflict);
+                        }
+                    })
+                .Validated<SplitTransaction>()
+                .NotFoundWhenMissing();
+
+            transactions.MapDelete("{id:guid}/splits", async Task<Ok<Transaction>> (Guid id,
+                        ITransactionsService service, CancellationToken cancellationToken) =>
+                    TypedResults.Ok(await service.UnsplitAsync(id, cancellationToken)))
                 .NotFoundWhenMissing();
 
             RouteGroupBuilder filters = transactions.MapGroup("filters");

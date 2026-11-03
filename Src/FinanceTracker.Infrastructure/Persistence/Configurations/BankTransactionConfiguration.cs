@@ -93,5 +93,15 @@ internal sealed class BankTransactionConfiguration : AggregateRootConfiguration<
             hidden.Property(x => x.Classification).Encrypted();
         });
         builder.Navigation(x => x.HiddenClassifications).HasField("_hiddenClassifications");
+
+        // Read with the transaction and never queried on their own, amounts and notes encrypted like the transaction's
+        builder.OwnsMany(x => x.Splits, splits =>
+        {
+            splits.ToJson("Splits");
+            splits.Property(x => x.Amount).Encrypted();
+            splits.Property(x => x.Note).Encrypted();
+        });
+        builder.Navigation(x => x.Splits).HasField("_splits");
+        builder.Ignore(x => x.IsSplit);
     }
 }

@@ -7,6 +7,7 @@ using FluentValidation;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
+using FinanceTracker.Tests.Unit.Shared;
 
 namespace FinanceTracker.Tests.Unit.Client.Budgets;
 
@@ -32,7 +33,7 @@ public class BudgetDialogTests : ComponentTestBase
 
         // Act
         Button("OK").Click();
-        DialogResult? result = await _dialog.Result.WaitAsync(TimeSpan.FromSeconds(5));
+        DialogResult? result = await _dialog.Result.WaitAsync(TestTimeouts.Wait);
 
         // Assert
         SaveBudget saved = (SaveBudget)result!.Data!;
@@ -104,7 +105,7 @@ public class BudgetDialogTests : ComponentTestBase
 
         // Act, a dialog that didn't close would leave the result waiting
         Button("OK").Click();
-        DialogResult? result = await _dialog.Result.WaitAsync(TimeSpan.FromSeconds(5));
+        DialogResult? result = await _dialog.Result.WaitAsync(TestTimeouts.Wait);
 
         // Assert
         await Assert.That(((SaveBudget)result!.Data!).TagIds).IsEquivalentTo([Shopping]);

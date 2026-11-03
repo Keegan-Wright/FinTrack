@@ -231,7 +231,16 @@ internal sealed class TransactionMapper
             .Where(x => x.Counts(transaction, _timeZone))
             .Select(static x => new TransactionSavingsGoal { SavingsGoalId = x.Id, Name = x.Name })
             .OrderBy(static x => x.Name)
-            .ToList()
+            .ToList(),
+        Splits = transaction.Splits.Select(ToContract).ToList()
+    };
+
+    private TransactionSplitPart ToContract(TransactionSplit split) => new()
+    {
+        Amount = split.Amount,
+        TagId = split.TagId,
+        Tag = split.TagId is { } tagId ? _customTags.GetValueOrDefault(tagId) : null,
+        Note = split.Note
     };
 
     private TransactionTransfer? ToContract(TransferInfo? transfer)

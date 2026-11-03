@@ -7,6 +7,7 @@ using FinanceTracker.Contracts.Validation;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
+using FinanceTracker.Tests.Unit.Shared;
 
 namespace FinanceTracker.Tests.Unit.Client.Bills;
 
@@ -23,15 +24,16 @@ public class BillDialogTests : ComponentTestBase
     public async Task Save_FilledIn_ReturnsTheBill()
     {
         // Arrange
+        using CultureScope culture = new();
         await OpenAsync(null);
-        Field("Name").Input("Gym");
-        Field("Paid to").Input("GYMCO");
-        Field("First due").Change("12/11/2026");
-        Field("Amount").Input("30");
+        Type("Name", "Gym");
+        Type("Paid to", "GYMCO");
+        Choose("First due", "12/11/2026");
+        Type("Amount", "30");
 
         // Act
         Button("OK").Click();
-        DialogResult? result = await _dialog.Result.WaitAsync(TimeSpan.FromSeconds(5));
+        DialogResult? result = await _dialog.Result.WaitAsync(TestTimeouts.Wait);
 
         // Assert
         SaveBill saved = (SaveBill)result!.Data!;
@@ -50,25 +52,26 @@ public class BillDialogTests : ComponentTestBase
     public async Task Save_NoDueDate_StaysOpenAndSaysSo()
     {
         // Arrange
+        using CultureScope culture = new();
         await OpenAsync(null);
-        Field("Name").Input("Gym");
-        Field("Paid to").Input("GYMCO");
-        Field("Amount").Input("30");
+        Type("Name", "Gym");
+        Type("Paid to", "GYMCO");
+        Type("Amount", "30");
 
         // Act
         Button("OK").Click();
 
         // Assert
-        using (Assert.Multiple())
-        {
-            await Assert.That(_dialogs.Markup).Contains("Choose when it's next due");
-            await Assert.That(_dialog.Result.IsCompleted).IsFalse();
-        }
+        _dialogs.WaitForState(() => _dialogs.Markup.Contains("Choose when it's next due"));
+        await Assert.That(_dialog.Result.IsCompleted).IsFalse();
     }
 
     [Test]
     public async Task Edit_StandingOrder_LeavesTheScheduleAndAmountToTheBank()
     {
+        // Arrange
+        using CultureScope culture = new();
+
         // Act
         await OpenAsync(BillTextTests.Bill("Rent", source: BillSource.StandingOrder));
 
@@ -83,9 +86,11 @@ public class BillDialogTests : ComponentTestBase
         }
     }
 
+    /// <remarks>
+    /// The test holds a <see cref="CultureScope"/> for as long as it runs, dates are typed and read in its culture.
+    /// </remarks>
     private async Task OpenAsync(Bill? bill)
     {
-        using CultureScope culture = new();
         Render<MudPopoverProvider>();
         _dialogs = Render<MudDialogProvider>();
         IDialogService dialogService = Services.GetRequiredService<IDialogService>();
@@ -96,6 +101,25 @@ public class BillDialogTests : ComponentTestBase
         };
 
         _dialog = await _dialogs.InvokeAsync(() => dialogService.ShowAsync<BillDialog>(null, parameters));
+    }
+
+    /// <summary>
+    /// Types into the field labelled <paramref name="label"/> and waits for it to take the text, the field applies it
+    /// after the input event returns.
+    /// </summary>
+    private void Type(string label, string text)
+    {
+        Field(label).Input(text);
+        _dialogs.WaitForState(() => Field(label).GetAttribute("value") == text);
+    }
+
+    /// <summary>
+    /// Enters a date as the picker's field takes one, and waits for it to take it.
+    /// </summary>
+    private void Choose(string label, string date)
+    {
+        Field(label).Change(date);
+        _dialogs.WaitForState(() => Field(label).GetAttribute("value") == date);
     }
 
     private IElement Field(string label) =>

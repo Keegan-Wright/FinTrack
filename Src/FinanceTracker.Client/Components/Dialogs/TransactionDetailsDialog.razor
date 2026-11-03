@@ -26,6 +26,24 @@
                 <dd>@Shown.AccountName</dd>
                 <dt>Category</dt>
                 <dd>@DisplayText.ToTitle(Shown.TransactionCategory)</dd>
+                @if (Shown.Splits.Count > 0)
+                {
+                    <dt>Split into</dt>
+                    <dd>
+                        <ul class="ft-details__parts">
+                            @foreach (TransactionSplitPart part in Shown.Splits)
+                            {
+                                <li>
+                                    <span>@SplitText.PartText(part)</span>
+                                    @if (part.Note is { } note)
+                                    {
+                                        <MudText Typo="Typo.caption" Class="mud-text-secondary">@note</MudText>
+                                    }
+                                </li>
+                            }
+                        </ul>
+                    </dd>
+                }
                 @if (OwnTags.Any())
                 {
                     <dt>Tags</dt>
@@ -111,8 +129,20 @@
             @* A list rather than footer buttons, so actions rules add later are just more rows *@
             <div class="ft-details__actions">
                 <div class="ft-details__heading">Actions</div>
-                <MudButton Variant="Variant.Text" FullWidth="true" StartIcon="@Icons.Material.Outlined.Sell"
-                           Class="ft-details__action" OnClick="@AddTagsAsync">Add tags</MudButton>
+                @* A split transaction's tags are its parts' *@
+                @if (Shown.Splits.Count == 0)
+                {
+                    <MudButton Variant="Variant.Text" FullWidth="true" StartIcon="@Icons.Material.Outlined.Sell"
+                               Class="ft-details__action" OnClick="@AddTagsAsync">Add tags</MudButton>
+                }
+                <MudButton Variant="Variant.Text" FullWidth="true" StartIcon="@Icons.Material.Outlined.CallSplit"
+                           Class="ft-details__action" Disabled="@Shown.Pending"
+                           OnClick="@SplitAsync">@SplitText.ActionLabel(Shown)</MudButton>
+                @if (Shown.Splits.Count > 0)
+                {
+                    <MudButton Variant="Variant.Text" FullWidth="true" StartIcon="@Icons.Material.Outlined.MergeType"
+                               Class="ft-details__action" OnClick="@UnsplitAsync">Remove split</MudButton>
+                }
                 @foreach (var action in TransferText.Actions(Shown.Transfer))
                 {
                     <MudButton Variant="Variant.Text" FullWidth="true" StartIcon="@TransferText.ActionIcon(action)"
@@ -187,6 +217,16 @@
     [Parameter] public EventCallback OnAddTags { get; set; }
 
     /// <summary>
+    /// The user chose to split it or change its split, raised once the dialog has closed.
+    /// </summary>
+    [Parameter] public EventCallback OnSplit { get; set; }
+
+    /// <summary>
+    /// The user chose to put it back together, raised once the dialog has closed.
+    /// </summary>
+    [Parameter] public EventCallback OnUnsplit { get; set; }
+
+    /// <summary>
     /// The user decided about the transfer, raised once the dialog has closed.
     /// </summary>
     [Parameter] public EventCallback<TransferAction> OnTransferAction { get; set; }
@@ -228,6 +268,18 @@
     {
         MudDialog.Close();
         await OnAddTags.InvokeAsync();
+    }
+
+    private async Task SplitAsync()
+    {
+        MudDialog.Close();
+        await OnSplit.InvokeAsync();
+    }
+
+    private async Task UnsplitAsync()
+    {
+        MudDialog.Close();
+        await OnUnsplit.InvokeAsync();
     }
 
     private async Task CreateRuleAsync()

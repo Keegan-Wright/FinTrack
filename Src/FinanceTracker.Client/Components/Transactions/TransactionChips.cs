@@ -8,11 +8,11 @@ namespace FinanceTracker.Client.Components.Transactions;
 
 /// <summary>
 /// What a transaction is for and how it's tagged, the bill, subscription, debt and savings goals it pays or
-/// counts towards first, then the user's tags, then the bank's classifications.
+/// counts towards first, then whether it's split, the user's tags, then the bank's classifications.
 /// </summary>
 public static class TransactionChips
 {
-    /// <param name="linksOnly">Only the bill, subscription, debt and goals, for the compact phone list.</param>
+    /// <param name="linksOnly">Only the bill, subscription, debt, goals and split, for the compact phone list.</param>
     public static IReadOnlyList<TransactionChip> For(Transaction transaction, bool linksOnly = false)
     {
         List<TransactionChip> chips = [];
@@ -28,6 +28,13 @@ public static class TransactionChips
         }
 
         chips.AddRange(transaction.SavingsGoals.Select(Goal));
+
+        // On the phone list too, the amount shown there isn't all one thing
+        if (transaction.Splits.Count > 0)
+        {
+            chips.Add(new TransactionChip($"Split {transaction.Splits.Count} ways", TransactionChipKind.Tag,
+                Icons.Material.Outlined.CallSplit, null, SplitText.Summary(transaction)));
+        }
 
         if (linksOnly)
         {

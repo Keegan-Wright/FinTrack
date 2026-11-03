@@ -122,8 +122,21 @@
                             <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true"
                                      AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
                                      aria-label="@($"Actions for {context.Item.Description}")">
-                                <MudMenuItem Icon="@Icons.Material.Outlined.Sell"
-                                             OnClick="@(() => AddClassificationsAsync(context.Item))">Add tags</MudMenuItem>
+                                @* A split transaction's tags are its parts' *@
+                                @if (context.Item.Splits.Count == 0)
+                                {
+                                    <MudMenuItem Icon="@Icons.Material.Outlined.Sell"
+                                                 OnClick="@(() => AddClassificationsAsync(context.Item))">Add tags</MudMenuItem>
+                                }
+                                <MudMenuItem Icon="@Icons.Material.Outlined.CallSplit" Disabled="@context.Item.Pending"
+                                             OnClick="@(() => SplitAsync(context.Item))">
+                                    @SplitText.ActionLabel(context.Item)
+                                </MudMenuItem>
+                                @if (context.Item.Splits.Count > 0)
+                                {
+                                    <MudMenuItem Icon="@Icons.Material.Outlined.MergeType"
+                                                 OnClick="@(() => UnsplitAsync(context.Item))">Remove split</MudMenuItem>
+                                }
                                 @foreach (var action in TransferText.Actions(context.Item.Transfer))
                                 {
                                     <MudMenuItem Icon="@TransferText.ActionIcon(action)"
@@ -216,6 +229,8 @@
             { x => x.OnCreateRule, EventCallback.Factory.Create(this, () => CreateRuleFrom(transaction)) },
             { x => x.OnPayBill, EventCallback.Factory.Create(this, () => PayBillAsync(transaction)) },
             { x => x.OnPayDebt, EventCallback.Factory.Create(this, () => PayDebtAsync(transaction)) },
+            { x => x.OnSplit, EventCallback.Factory.Create(this, () => SplitAsync(transaction)) },
+            { x => x.OnUnsplit, EventCallback.Factory.Create(this, () => UnsplitAsync(transaction)) },
             {
                 x => x.OnHideClassification,
                 classification => ChangeBankClassificationAsync(transaction, classification, hide: true)
@@ -399,6 +414,86 @@
         finally
         {
             SetLoadingState(false);
+        }
+    }
+
+    /// <summary>
+    /// Asks how to split <paramref name="transaction"/>, then swaps in how it is now.
+    /// </summary>
+    private async Task SplitAsync(Transaction transaction)
+    {
+        List<Classification> tags = await ClassificationsService.GetAllCustomClassificationsAsync(_cts.Token)
+            .ToListAsync(_cts.Token);
+        DialogParameters<SplitTransactionDialog> parameters = new()
+        {
+            { x => x.Transaction, transaction },
+            { x => x.Tags, tags }
+        };
+        DialogOptions options = new() { MaxWidth = MaxWidth.Medium, FullWidth = true };
+
+        IDialogReference dialog = await DialogService.ShowAsync<SplitTransactionDialog>(null, parameters, options);
+        DialogResult? result = await dialog.Result;
+        if (result is null || result.Canceled)
+        {
+            return;
+        }
+
+        try
+        {
+            SetLoadingState(true, "Saving…");
+            SplitTransaction request = (SplitTransaction)result.Data!;
+            Replace(await TransactionsService.SplitAsync(transaction.TransactionId, request, _cts.Token));
+            Snackbar.Add($"Split into {request.Parts.Count} parts", Severity.Success);
+        }
+        catch (CannotSplitTransactionException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Warning);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't split it, try again", Severity.Error);
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
+    /// <summary>
+    /// Puts <paramref name="transaction"/> back together once the user confirms, keeping its parts' tags.
+    /// </summary>
+    private async Task UnsplitAsync(Transaction transaction)
+    {
+        bool? confirmed = await DialogService.ShowMessageBoxAsync("Remove the split?",
+            "It counts as one amount again, with all its parts' tags.", yesText: "Remove split",
+            cancelText: "Cancel");
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        try
+        {
+            SetLoadingState(true, "Saving…");
+            Replace(await TransactionsService.UnsplitAsync(transaction.TransactionId, _cts.Token));
+            Snackbar.Add("Split removed", Severity.Success);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't remove the split, try again", Severity.Error);
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
+    private void Replace(Transaction updated)
+    {
+        int index = _transactions.FindIndex(x => x.TransactionId == updated.TransactionId);
+        if (index >= 0)
+        {
+            _transactions[index] = updated;
         }
     }
 

@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using FinanceTracker.Contracts.Transactions;
 using FinanceTracker.Contracts.Services;
+using FinanceTracker.Domain.Classifications;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
@@ -58,7 +59,7 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
 
     public Task<Transaction> HideBankClassificationAsync(Guid transactionId, ChangeBankClassification request,
         CancellationToken cancellationToken) =>
-        ChangeBankClassificationAsync(transactionId, transaction =>
+        ChangeAsync(transactionId, (_, transaction) =>
         {
             if (!transaction.ProviderClassifications.Contains(request.Classification, StringComparer.OrdinalIgnoreCase))
             {
@@ -67,18 +68,69 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
             }
 
             transaction.HideClassification(request.Classification);
+            return Task.CompletedTask;
         }, cancellationToken);
 
     public Task<Transaction> ShowBankClassificationAsync(Guid transactionId, ChangeBankClassification request,
-        CancellationToken cancellationToken) =>
-        ChangeBankClassificationAsync(transactionId,
-            transaction => transaction.ShowClassification(request.Classification), cancellationToken);
+        CancellationToken cancellationToken)
+    {
+        return ChangeAsync(transactionId, (_, transaction) =>
+        {
+            transaction.ShowClassification(request.Classification);
+            return Task.CompletedTask;
+        }, cancellationToken);
+    }
+
+    public Task<Transaction> SplitAsync(Guid transactionId, SplitTransaction request,
+        CancellationToken cancellationToken)
+    {
+        return ChangeAsync(transactionId, async (context, transaction) =>
+        {
+            List<Guid> tagIds = request.Parts.Select(static x => x.TagId).OfType<Guid>().Distinct().ToList();
+            List<CustomClassification> tags = await context.CustomClassifications.OwnedBy(UserId)
+                .Where(x => tagIds.Contains(x.Id))
+                .ToListAsync(cancellationToken);
+
+            List<TransactionSplit> parts = request.Parts
+                .Select(static x => new TransactionSplit(x.Amount, x.TagId, Trimmed(x.Note)))
+                .ToList();
+
+            try
+            {
+                transaction.Split(parts, tags);
+            }
+            catch (Exception exception) when (exception is ArgumentException or InvalidOperationException)
+            {
+                throw new CannotSplitTransactionException(exception.Message, exception);
+            }
+        }, cancellationToken);
+    }
+
+    public Task<Transaction> UnsplitAsync(Guid transactionId, CancellationToken cancellationToken)
+    {
+        return ChangeAsync(transactionId, (_, transaction) =>
+        {
+            transaction.Unsplit();
+            return Task.CompletedTask;
+        }, cancellationToken);
+    }
+
+    private static string? Trimmed(string? note)
+    {
+        if (string.IsNullOrWhiteSpace(note))
+        {
+            return null;
+        }
+
+        return note.Trim();
+    }
 
     /// <summary>
     /// Makes <paramref name="change"/> to one of the user's transactions and returns it as it is now.
     /// </summary>
-    private async Task<Transaction> ChangeBankClassificationAsync(Guid transactionId,
-        Action<BankTransaction> change, CancellationToken cancellationToken)
+    /// <exception cref="InvalidOperationException">The user has no such transaction.</exception>
+    private async Task<Transaction> ChangeAsync(Guid transactionId,
+        Func<FinanceTrackerContext, BankTransaction, Task> change, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
@@ -86,7 +138,7 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
         BankTransaction transaction = await context.BankTransactions.OwnedBy(UserId)
             .SingleAsync(x => x.Id == transactionId, cancellationToken);
 
-        change(transaction);
+        await change(context, transaction);
         await context.SaveChangesAsync(cancellationToken);
 
         Dictionary<Guid, string> customTags = await context.CustomClassifications.OwnedBy(UserId)

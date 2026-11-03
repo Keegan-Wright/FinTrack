@@ -1,4 +1,6 @@
+using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using FinanceTracker.Contracts.Api;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Transactions;
@@ -9,7 +11,8 @@ namespace FinanceTracker.Client.Api;
 
 /// <summary>
 /// <see cref="ITransactionsService"/> over <see cref="ApiRoutes.Transactions"/>. The API's 404s come back as the
-/// <see cref="InvalidOperationException"/> the interface documents.
+/// <see cref="InvalidOperationException"/> the interface documents, and its 409 for a split that can't be made as
+/// <see cref="CannotSplitTransactionException"/>.
 /// </summary>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Client)]
 [Scoped<ITransactionsService>]
@@ -40,6 +43,44 @@ public sealed class TransactionsApiClient : ITransactionsService
             $"{ApiRoutes.Transactions}/{transactionId}/bank-classifications/{change}", request, cancellationToken);
         response.EnsureFound();
         return await response.ReadRequiredJsonAsync<Transaction>(cancellationToken);
+    }
+
+    public async Task<Transaction> SplitAsync(Guid transactionId, SplitTransaction request,
+        CancellationToken cancellationToken)
+    {
+        using HttpResponseMessage response =
+            await _http.PutAsJsonAsync(Splits(transactionId), request, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.Conflict)
+        {
+            throw new CannotSplitTransactionException(await ReasonAsync(response, cancellationToken));
+        }
+
+        response.EnsureFound();
+        return await response.ReadRequiredJsonAsync<Transaction>(cancellationToken);
+    }
+
+    public async Task<Transaction> UnsplitAsync(Guid transactionId, CancellationToken cancellationToken)
+    {
+        using HttpResponseMessage response = await _http.DeleteAsync(Splits(transactionId), cancellationToken);
+        response.EnsureFound();
+        return await response.ReadRequiredJsonAsync<Transaction>(cancellationToken);
+    }
+
+    private static string Splits(Guid transactionId) => $"{ApiRoutes.Transactions}/{transactionId}/splits";
+
+    /// <summary>
+    /// The problem's detail, which says why the split can't be made.
+    /// </summary>
+    private static async Task<string> ReasonAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    {
+        using JsonDocument? problem = await response.Content.ReadFromJsonAsync<JsonDocument>(cancellationToken);
+        if (problem is not null && problem.RootElement.TryGetProperty("detail", out JsonElement detail) &&
+            detail.GetString() is { } reason)
+        {
+            return reason;
+        }
+
+        return "The transaction can't be split that way.";
     }
 
     public IAsyncEnumerable<TransactionAccountFilter> GetAccountsForTransactionFiltersAsync(

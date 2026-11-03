@@ -127,4 +127,11 @@ public class Transaction
     /// </summary>
     [Description("The savings goals the transaction counts towards")]
     public List<TransactionSavingsGoal> SavingsGoals { get; init; } = [];
+
+    /// <summary>
+    /// The parts the user split it into, adding up to <see cref="Amount"/>, empty when it isn't split. A split
+    /// transaction's <see cref="CustomTags"/> are its parts tags.
+    /// </summary>
+    [Description("The parts the transaction is split into, empty when it isn't split")]
+    public List<TransactionSplitPart> Splits { get; init; } = [];
 }

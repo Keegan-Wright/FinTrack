@@ -1,4 +1,7 @@
+using System.Net;
+using System.Net.Http.Json;
 using FinanceTracker.Contracts.Account;
+using FinanceTracker.Contracts.Api;
 using FinanceTracker.Contracts.Calendar;
 using FinanceTracker.Contracts.Dashboard;
 using FinanceTracker.Contracts.Reports.Account;
@@ -181,6 +184,93 @@ public class TransactionDataApiTests : IntegrationTestBase
             await Assert.That(spent.TotalOut).IsEqualTo(-3.50m);
             await Assert.That(upcoming.Select(x => x.PaymentName)).IsEquivalentTo(["Rent"]);
         }
+    }
+
+    [Test]
+    public async Task SplitThenUnsplit_ChangesThePartsAndKeepsTheTags()
+    {
+        // Arrange
+        SignedInUser user = await SeedShopAsync(isPending: false);
+        ITransactionsService service = ApiFor(user).Get<ITransactionsService>();
+        Guid id = Scenario.TransactionMappings["shop"];
+        Guid groceries = Scenario.ClassificationMappings["groceries"];
+
+        // Act
+        Transaction split = await service.SplitAsync(id, new SplitTransaction
+        {
+            Parts =
+            [
+                new SplitTransactionPart { Amount = -60m, TagId = groceries, Note = "Food" },
+                new SplitTransactionPart { Amount = -40m }
+            ]
+        }, CancellationToken);
+        Transaction whole = await service.UnsplitAsync(id, CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(split.Splits.Select(static x => x.Tag)).IsEquivalentTo(["Groceries", null]);
+            await Assert.That(split.CustomTags).IsEquivalentTo(["Groceries"]);
+            await Assert.That(whole.Splits).IsEmpty();
+            await Assert.That(whole.CustomTags).IsEquivalentTo(["Groceries"]);
+        }
+    }
+
+    [Test]
+    public async Task Split_Pending_ThrowsWithTheReason()
+    {
+        // Arrange
+        SignedInUser user = await SeedShopAsync(isPending: true);
+        ITransactionsService service = ApiFor(user).Get<ITransactionsService>();
+
+        // Act
+        CannotSplitTransactionException? exception = await Assert.ThrowsAsync<CannotSplitTransactionException>(() =>
+            service.SplitAsync(Scenario.TransactionMappings["shop"], new SplitTransaction
+            {
+                Parts = [new SplitTransactionPart { Amount = -60m }, new SplitTransactionPart { Amount = -40m }]
+            }, CancellationToken));
+
+        // Assert
+        await Assert.That(exception!.Message).Contains("pending");
+    }
+
+    [Test]
+    public async Task Split_OnePart_IsABadRequest()
+    {
+        // Arrange
+        SignedInUser user = await SeedShopAsync(isPending: false);
+
+        using HttpRequestMessage request = new(HttpMethod.Put,
+            $"{ApiRoutes.Transactions}/{Scenario.TransactionMappings["shop"]}/splits");
+        request.Headers.Add(ApiHeaders.Request, "1");
+        request.Content = JsonContent.Create(new SplitTransaction
+        {
+            Parts = [new SplitTransactionPart { Amount = -100m }]
+        });
+
+        // Act
+        HttpResponseMessage response = await user.Client.SendAsync(request, HttpCompletionOption.ResponseContentRead,
+            CancellationToken);
+        string body = await response.Content.ReadAsStringAsync(CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+            await Assert.That(body).Contains("at least two parts");
+        }
+    }
+
+    private async Task<SignedInUser> SeedShopAsync(bool isPending)
+    {
+        SignedInUser user = await RegisterUserAsync();
+        await Scenario.Do(s => s.BankConnectionScenario.WithConnection("bank", user.Username))
+            .Do(s => s.BankAccountScenario.WithAccount("main", "bank"))
+            .Do(s => s.ClassificationScenario.WithClassification("groceries", user.Username, "Groceries"))
+            .Do(s => s.TransactionScenario.WithTransaction("shop", "main",
+                new TransactionDetailsFaker().Generate() with { Amount = -100m, IsPending = isPending }));
+
+        return user;
     }
 
     [Test]

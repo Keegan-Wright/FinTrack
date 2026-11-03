@@ -1,3 +1,4 @@
+using FinanceTracker.Domain.Classifications;
 using FinanceTracker.Domain.Budgeting;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Transactions;
@@ -242,6 +243,73 @@ public class BudgetCalculatorTests
             await Assert.That(partly).IsEqualTo(15m);
             await Assert.That(over).IsEqualTo(0m);
         }
+    }
+
+    [Test]
+    public async Task ForMonth_ASplitTransaction_CountsOnlyThePartsWithTheBudgetsTags()
+    {
+        // Arrange
+        CustomClassification groceries = new(UserId, "Groceries");
+        CustomClassification household = new(UserId, "Household");
+        Budget budget = new(UserId, "Groceries", [groceries.Id], 100m, March, RolloverMode.None);
+        BankTransaction shop = Split(new DateTime(2026, 3, 2), (-60m, groceries), (-30m, household), (-10m, null));
+
+        // Act
+        BudgetMonthResult result = Calculate(budget, [shop], March);
+
+        // Assert
+        await Assert.That(result.Spent).IsEqualTo(60m);
+    }
+
+    [Test]
+    public async Task ForMonth_ASplitTransaction_CountsEachPartTowardsItsOwnBudget()
+    {
+        // Arrange, £20 of shopping and £50 on themselves in one payment
+        CustomClassification shopping = new(UserId, "Shopping");
+        CustomClassification personal = new(UserId, "Personal");
+        Budget shoppingBudget = new(UserId, "Shopping", [shopping.Id], 100m, March, RolloverMode.None);
+        Budget personalBudget = new(UserId, "Personal", [personal.Id], 100m, March, RolloverMode.None);
+        BankTransaction payment = Split(new DateTime(2026, 3, 2), (-20m, shopping), (-50m, personal));
+
+        // Act
+        BudgetMonthResult shoppingResult = Calculate(shoppingBudget, [payment], March);
+        BudgetMonthResult personalResult = Calculate(personalBudget, [payment], March);
+        decimal unbudgeted = BudgetCalculator.Unbudgeted([shoppingBudget, personalBudget], [payment], March,
+            TimeZoneInfo.Utc);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(shoppingResult.Spent).IsEqualTo(20m);
+            await Assert.That(personalResult.Spent).IsEqualTo(50m);
+            await Assert.That(unbudgeted).IsEqualTo(0m);
+        }
+    }
+
+    [Test]
+    public async Task Unbudgeted_ASplitTransaction_CountsThePartsNoBudgetCovers()
+    {
+        // Arrange
+        CustomClassification groceries = new(UserId, "Groceries");
+        CustomClassification household = new(UserId, "Household");
+        Budget budget = new(UserId, "Groceries", [groceries.Id], 100m, March, RolloverMode.None);
+        BankTransaction shop = Split(new DateTime(2026, 3, 2), (-60m, groceries), (-30m, household), (-10m, null));
+
+        // Act
+        decimal unbudgeted = BudgetCalculator.Unbudgeted([budget], [shop], March, TimeZoneInfo.Utc);
+
+        // Assert
+        await Assert.That(unbudgeted).IsEqualTo(40m);
+    }
+
+    private static BankTransaction Split(DateTime occurredAt,
+        params (decimal Amount, CustomClassification? Tag)[] parts)
+    {
+        BankTransaction transaction = Tagged(parts.Sum(static x => x.Amount), occurredAt);
+        transaction.Split(parts.Select(static x => new TransactionSplit(x.Amount, x.Tag?.Id, null)).ToList(),
+            parts.Select(static x => x.Tag).OfType<CustomClassification>().ToList());
+
+        return transaction;
     }
 
     private static BudgetMonthResult Calculate(Budget budget, IEnumerable<BankTransaction> transactions,

@@ -133,4 +133,28 @@ public class TransactionChipsTests : ComponentTestBase
             ]
         };
     }
+
+    [Test]
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task For_Split_SaysHowManyWaysAndListsThePartsInItsTooltip(bool linksOnly)
+    {
+        // Arrange
+        using CultureScope culture = new();
+        Transaction transaction = TransactionListTests.Transaction("Supermarket", -100m, splits:
+        [
+            new TransactionSplitPart { Amount = -60m, Tag = "Groceries" },
+            new TransactionSplitPart { Amount = -40m }
+        ]);
+
+        // Act
+        TransactionChip chip = TransactionChips.For(transaction, linksOnly).Single();
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(chip.Text).IsEqualTo("Split 2 ways");
+            await Assert.That(chip.Title).IsEqualTo("Split into £60.00 Groceries, £40.00 untagged");
+        }
+    }
 }

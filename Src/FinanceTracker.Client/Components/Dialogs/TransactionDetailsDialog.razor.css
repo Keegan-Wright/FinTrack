@@ -56,3 +56,17 @@
     justify-content: space-between;
     gap: 8px;
 }
+
+.ft-details__parts {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.ft-details__parts li {
+    display: flex;
+    flex-direction: column;
+}

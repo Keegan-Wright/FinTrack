@@ -4,6 +4,7 @@ using FinanceTracker.Contracts.Services;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Tests.Integration.Http;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
+using FinanceTracker.Tests.Unit.Shared;
 using TickerQ.Utilities.Enums;
 
 namespace FinanceTracker.Tests.Integration.Api;
@@ -138,7 +139,7 @@ public class AutomationApiTests : IntegrationTestBase
         await service.RunNowAsync(job.Id, CancellationToken);
 
         // Assert, told as it starts and as it finishes, then TickerQ records the run as done
-        await finished.Task.WaitAsync(TimeSpan.FromSeconds(90), CancellationToken);
+        await finished.Task.WaitAsync(TestTimeouts.Job, CancellationToken);
         AutomationRun run = await WaitForManualRunAsync(service, MoveGoalsFunction);
         await Assert.That(run.Status).IsEqualTo(AutomationRunStatus.Done);
     }
@@ -210,7 +211,7 @@ public class AutomationApiTests : IntegrationTestBase
         await api.Get<IAutomationService>().RequestSyncAsync(CancellationToken);
 
         // Assert, the user sync always notifies, even with nothing to sync
-        await synced.Task.WaitAsync(TimeSpan.FromSeconds(90), CancellationToken);
+        await synced.Task.WaitAsync(TestTimeouts.Job, CancellationToken);
         await Assert.That(synced.Task.IsCompletedSuccessfully).IsTrue();
     }
 
@@ -218,7 +219,7 @@ public class AutomationApiTests : IntegrationTestBase
     private async Task<AutomationRun> WaitForManualRunAsync(IAutomationService service, string function)
     {
         using CancellationTokenSource timeout = CancellationTokenSource.CreateLinkedTokenSource(CancellationToken);
-        timeout.CancelAfter(TimeSpan.FromSeconds(30));
+        timeout.CancelAfter(TestTimeouts.Job);
 
         while (true)
         {

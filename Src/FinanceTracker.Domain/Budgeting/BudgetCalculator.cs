@@ -35,21 +35,21 @@ public static class BudgetCalculator
         decimal carriedIn = 0;
         for (BudgetMonth current = budget.FirstMonth; current < month; current = current.Next)
         {
-            decimal remaining = budget.LimitFor(current)!.Value + carriedIn - Spent(byMonth, current);
+            decimal remaining = budget.LimitFor(current)!.Value + carriedIn - Spent(budget, byMonth, current);
             carriedIn = CarryOver(budget.RolloverMode, remaining);
         }
 
         decimal limit = budget.LimitFor(month)!.Value;
         List<BankTransaction> inMonth = byMonth.GetValueOrDefault(month, []);
 
-        return new BudgetMonthResult(month, limit, carriedIn, Spent(byMonth, month),
-            -inMonth.Where(static x => x.IsPending).Sum(static x => x.Amount),
+        return new BudgetMonthResult(month, limit, carriedIn, Spent(budget, byMonth, month),
+            -inMonth.Where(static x => x.IsPending).Sum(x => x.AmountUnder(budget.TagIds)),
             ExpectedByNow(limit + carriedIn, month, today));
     }
 
     /// <summary>
     /// Money out in <paramref name="month"/> that none of <paramref name="budgets"/> cover, so nothing goes unseen,
-    /// less refunds. Untagged money in could be income or a refund, so only what the bank calls a purchase counts as
+    /// less refunds. Of a split transaction, the parts none of them cover. Untagged money in could be income or a refund, so only what the bank calls a purchase counts as
     /// a refund, card refunds come back that way while salary and transfers don't. Never below nothing.
     /// </summary>
     public static decimal Unbudgeted(IEnumerable<Budget> budgets, IEnumerable<BankTransaction> transactions,
@@ -59,13 +59,15 @@ public static class BudgetCalculator
         ArgumentNullException.ThrowIfNull(transactions);
         ArgumentNullException.ThrowIfNull(timeZone);
 
-        List<Budget> running = budgets.Where(x => month >= x.FirstMonth).ToList();
+        HashSet<Guid> budgetedTags = budgets
+            .Where(x => month >= x.FirstMonth)
+            .SelectMany(static x => x.TagIds)
+            .ToHashSet();
 
         decimal net = transactions
             .Where(x => x.CountsAsIncomeOrSpending && (x.Amount < 0 || IsRefund(x)))
             .Where(x => BudgetMonth.Of(x.OccurredAt, timeZone) == month)
-            .Where(x => !running.Exists(budget => budget.Covers(x)))
-            .Sum(static x => x.Amount);
+            .Sum(x => x.Amount - x.AmountUnder(budgetedTags));
 
         return Math.Max(0, -net);
     }
@@ -80,11 +82,13 @@ public static class BudgetCalculator
         string.Equals(transaction.Category, PurchaseCategory, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
-    /// Money out less refunds, so a purchase refunded in full leaves the budget as it was. Never below nothing: money
-    /// in can cancel spending but not add to what the budget allows, e.g. income that happens to carry the tag.
+    /// Money out less refunds, so a purchase refunded in full leaves the budget as it was. Of a split transaction, only
+    /// the parts with the budget's tags. Never below nothing: money in can cancel spending but not add to what the
+    /// budget allows, e.g. income that happens to carry the tag.
     /// </summary>
-    private static decimal Spent(Dictionary<BudgetMonth, List<BankTransaction>> byMonth, BudgetMonth month) =>
-        Math.Max(0, -byMonth.GetValueOrDefault(month, []).Sum(static x => x.Amount));
+    private static decimal Spent(Budget budget, Dictionary<BudgetMonth, List<BankTransaction>> byMonth,
+        BudgetMonth month) =>
+        Math.Max(0, -byMonth.GetValueOrDefault(month, []).Sum(x => x.AmountUnder(budget.TagIds)));
 
     private static decimal CarryOver(RolloverMode mode, decimal remaining) => mode switch
     {

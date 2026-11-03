@@ -1,0 +1,119 @@
+@* Splits a transaction into parts, each with a tag or none, e.g. the household half of a supermarket shop. Amounts
+   are entered as money whichever way the transaction went, and it saves only once the parts add up. *@
+@using System.Globalization
+@using FinanceTracker.Contracts.Classifications
+@using FinanceTracker.Contracts.Transactions
+
+<MudDialog>
+    <TitleContent>Split @Transaction.Description</TitleContent>
+    <DialogContent>
+        <div class="ft-split">
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                @Intro Each part counts under its tag in your budgets, goals and reports.
+            </MudText>
+
+            @for (int i = 0; i < _parts.Count; i++)
+            {
+                int index = i;
+                SplitPartDraft part = _parts[index];
+                <div class="ft-split__part" aria-label="@($"Part {index + 1}")" role="group">
+                    <MudTextField T="decimal" @bind-Value="part.Amount" Label="Amount" Immediate="true"
+                                  InputMode="@(InputMode.@decimal)" Adornment="Adornment.Start"
+                                  AdornmentText="@CurrencySymbol" Class="ft-split__amount"/>
+                    <MudSelect T="Guid" Label="Tag" @bind-Value="part.TagId" ToStringFunc="@TagName"
+                               Class="ft-split__tag">
+                        <MudSelectItem T="Guid" Value="@Guid.Empty">No tag</MudSelectItem>
+                        @foreach (Classification tag in Tags.OrderBy(static x => x.Tag))
+                        {
+                            <MudSelectItem T="Guid" Value="@tag.ClassificationId">@tag.Tag</MudSelectItem>
+                        }
+                    </MudSelect>
+                    <MudTextField T="string" @bind-Value="part.Note" Label="Note" Immediate="true"
+                                  MaxLength="@SplitTransaction.MaxNoteLength" Class="ft-split__note"/>
+                    <div class="ft-split__buttons">
+                        <MudIconButton Icon="@Icons.Material.Outlined.Input" Size="Size.Small"
+                                       aria-label="@($"Put the rest in part {index + 1}")" title="Put the rest here"
+                                       Disabled="@(!CanTakeTheRest(part))" OnClick="@(() => TakeTheRest(part))"/>
+                        <MudIconButton Icon="@Icons.Material.Outlined.Delete" Size="Size.Small"
+                                       aria-label="@($"Remove part {index + 1}")" title="Remove this part"
+                                       Disabled="@(_parts.Count <= 2)" OnClick="@(() => _parts.RemoveAt(index))"/>
+                    </div>
+                </div>
+            }
+
+            <div class="ft-split__footer">
+                <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Add"
+                           Disabled="@(_parts.Count >= SplitTransaction.MaxParts)"
+                           OnClick="@(() => _parts.Add(new SplitPartDraft()))">Add a part</MudButton>
+                <MudText Typo="Typo.body2" Color="@RemainingColor" Class="ft-split__remaining" role="status">
+                    @SplitText.RemainingText(Remaining)
+                </MudText>
+            </div>
+
+            @if (Tags.Count == 0)
+            {
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                    You have no tags yet, <MudLink Href="Classifications" Typo="Typo.caption">make one</MudLink> to
+                    count a part under it.
+                </MudText>
+            }
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!SplitText.CanSave(Transaction, _parts))"
+                   OnClick="@Save">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] [EditorRequired] public required Transaction Transaction { get; set; }
+
+    /// <summary>
+    /// The user's tags to choose from.
+    /// </summary>
+    [Parameter] [EditorRequired] public required IReadOnlyList<Classification> Tags { get; set; }
+
+    private List<SplitPartDraft> _parts = [];
+
+    private static string CurrencySymbol => CultureInfo.CurrentCulture.NumberFormat.CurrencySymbol;
+
+    private decimal Remaining => SplitText.Remaining(Transaction, _parts);
+
+    private Color RemainingColor => Remaining == 0 ? Color.Success : Color.Default;
+
+    /// <summary>
+    /// e.g. <c>£100.00 out on 2 Nov 2026.</c>
+    /// </summary>
+    private string Intro
+    {
+        get
+        {
+            string direction = Transaction.Amount < 0 ? "out" : "in";
+            string day = Transaction.TransactionTime.ToLocalTime().ToString("d MMM yyyy", CultureInfo.CurrentCulture);
+            return $"{CurrencyFormatter.Format(Math.Abs(Transaction.Amount))} {direction} on {day}.";
+        }
+    }
+
+    protected override void OnInitialized() => _parts = SplitText.Drafts(Transaction);
+
+    private string TagName(Guid tagId)
+    {
+        if (tagId == Guid.Empty)
+        {
+            return "No tag";
+        }
+
+        return Tags.FirstOrDefault(x => x.ClassificationId == tagId)?.Tag ?? string.Empty;
+    }
+
+    private bool CanTakeTheRest(SplitPartDraft part) => Remaining != 0 && part.Amount + Remaining > 0;
+
+    private void TakeTheRest(SplitPartDraft part) => part.Amount += Remaining;
+
+    private void Save() => MudDialog.Close(DialogResult.Ok(SplitText.Request(Transaction, _parts)));
+
+}
