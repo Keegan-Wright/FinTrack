@@ -1,4 +1,4 @@
-<Project Sdk="Aspire.AppHost.Sdk/13.1.0">
+<Project Sdk="Aspire.AppHost.Sdk/13.6.4">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -7,8 +7,8 @@
     <Nullable>enable</Nullable>
     <AnalysisMode>Recommended</AnalysisMode>
     <UserSecretsId>c41d3b74-0082-44cb-9211-9c1c6c9baade</UserSecretsId>
-    <!-- The Aspire.AppHost.Sdk (13.1.0) predates the hosting packages (13.6.1), which default the CLI bundle off.
-         Nothing used here needs it; align the SDK version and drop this when upgrading Aspire. -->
+    <!-- Aspire 13.6 leaves the CLI bundle off by default and always warns. Turning it on changes where the dashboard
+         and orchestrator are found and expects the Aspire CLI, nothing used here needs it. -->
     <NoWarn>$(NoWarn);ASPIRE010</NoWarn>
   </PropertyGroup>
 
@@ -21,8 +21,6 @@
     <PackageReference Include="Aspire.Hosting.AppHost"/>
     <PackageReference Include="Aspire.Hosting.Docker"/>
     <PackageReference Include="Aspire.Hosting.PostgreSQL"/>
-    <!-- Transitive via Aspire.Hosting, referenced directly to lift it to a patched version -->
-    <PackageReference Include="MessagePack"/>
   </ItemGroup>
 
 </Project>
