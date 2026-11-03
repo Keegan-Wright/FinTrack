@@ -1,8 +1,10 @@
+using System.Net;
 using FinanceTracker.Contracts.Automation;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Tests.Integration.Http;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
+using TickerQ.Utilities.Enums;
 
 namespace FinanceTracker.Tests.Integration.Api;
 
@@ -51,6 +53,60 @@ public class AutomationApiTests : IntegrationTestBase
             RetryIntervals = job.RetryIntervals ?? [],
             IsEnabled = job.IsEnabled
         }, CancellationToken));
+    }
+
+    [Test]
+    public async Task GetJobSummaries_AsAnAdmin_ListsEveryScheduledJob()
+    {
+        // Arrange
+        SignedInUser admin = await RegisterAdminAsync();
+        IAutomationService service = ApiFor(admin).Get<IAutomationService>();
+        List<AutomationCron> jobs = await service.GetJobsAsync(CancellationToken).ToListAsync(CancellationToken);
+
+        // Act
+        List<AutomationJobSummary> summaries = await service.GetJobSummariesAsync(CancellationToken)
+            .ToListAsync(CancellationToken);
+
+        // Assert
+        await Assert.That(summaries.Where(x => x.Schedule is not null).Select(x => x.Function))
+            .IsEquivalentTo(jobs.Select(x => x.Function));
+    }
+
+    [Test]
+    public async Task GetRuns_AsAnAdmin_GivesAPageOfTheJobsRuns()
+    {
+        // Arrange
+        SignedInUser admin = await RegisterAdminAsync();
+        IAutomationService service = ApiFor(admin).Get<IAutomationService>();
+        string function = UniqueName("job");
+        await Scenario.Do(s => s.AutomationScenario.WithTimeTicker(function, TickerStatus.Done, DateTime.UtcNow));
+
+        // Act
+        AutomationRunPage page = await service.GetRunsAsync(function, page: 0, pageSize: 25, CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(page.Total).IsEqualTo(1);
+            await Assert.That(page.Runs.Single().IsManual).IsTrue();
+            await Assert.That(page.Runs.Single().Status).IsEqualTo(AutomationRunStatus.Done);
+        }
+    }
+
+    [Test]
+    public async Task GetRuns_WithTooBigAPage_IsABadRequest()
+    {
+        // Arrange
+        SignedInUser admin = await RegisterAdminAsync();
+        IAutomationService service = ApiFor(admin).Get<IAutomationService>();
+
+        // Act
+        HttpRequestException? exception = await Assert.ThrowsAsync<HttpRequestException>(() =>
+            service.GetRunsAsync("SyncAllOpenBankingDetailsAsync", page: 0, IAutomationService.MaxRunsPageSize + 1,
+                CancellationToken));
+
+        // Assert
+        await Assert.That(exception!.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
     }
 
     [Test]

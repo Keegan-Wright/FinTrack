@@ -1,5 +1,6 @@
 using FinanceTracker.Contracts.Automation;
 using FinanceTracker.Domain.OpenBanking.Accounts;
+using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Automation;
 using FinanceTracker.Infrastructure.OpenBanking;
 using FinanceTracker.Tests.Unit.Shared;
@@ -7,6 +8,8 @@ using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using TickerQ.Utilities.Entities;
+using TickerQ.Utilities.Enums;
+using TUnit.Assertions.Enums;
 using TickerQ.Utilities.Interfaces.Managers;
 
 namespace FinanceTracker.Tests.Unit.Infrastructure.Services.Automation;
@@ -16,11 +19,15 @@ public class AutomationServiceTests : InfrastructureTestBase
     private const string Username = "primary";
     private const string OtherUsername = "secondary";
     private const string SyncFunction = "SyncAllOpenBankingDetailsAsync";
+    private const string UserSyncFunction = "SyncUserOpenBankingDetailsAsync";
 
     private readonly ICronTickerManager<CronTickerEntity> _cronTickerManager =
         Substitute.For<ICronTickerManager<CronTickerEntity>>();
 
     private readonly IOpenBankingSyncScheduler _syncScheduler = Substitute.For<IOpenBankingSyncScheduler>();
+
+    private static readonly DateTime Now = new(2026, 3, 10, 12, 0, 30, DateTimeKind.Utc);
+    private readonly FixedTimeProvider _time = new(Now);
 
     [Test]
     public async Task GetJobsAsync_ReturnsPersistedCronDefinitions()
@@ -205,6 +212,193 @@ public class AutomationServiceTests : InfrastructureTestBase
         await _syncScheduler.Received(1).ScheduleUserSyncAsync(Scenario.UserMappings[Username], CancellationToken);
     }
 
+    [Test]
+    public async Task GetJobSummariesAsync_ForAScheduledJob_GivesItsNextRunLastRunAndSuccessRate()
+    {
+        // Arrange, three finished runs (one failed), the latest still going, and the next one queued up
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.AutomationScenario.WithCronJob("sync", SyncFunction, cron => cron.Expression = "0 0 * * * *"))
+            .Do(s => s.AutomationScenario.WithCronOccurrence("sync", TickerStatus.Done, Now.AddHours(-3)))
+            .Do(s => s.AutomationScenario.WithCronOccurrence("sync", TickerStatus.Failed, Now.AddHours(-2)))
+            .Do(s => s.AutomationScenario.WithCronOccurrence("sync", TickerStatus.DueDone, Now.AddHours(-1)))
+            .Do(s => s.AutomationScenario.WithCronOccurrence("sync", TickerStatus.InProgress, Now.AddMinutes(-1)))
+            .Do(s => s.AutomationScenario.WithCronOccurrence("sync", TickerStatus.Idle, Now.AddMinutes(59)));
+
+        AutomationService subject = BuildSubject();
+
+        // Act
+        List<AutomationJobSummary> summaries = await subject.GetJobSummariesAsync(CancellationToken)
+            .ToListAsync(CancellationToken);
+
+        // Assert
+        AutomationJobSummary sync = summaries.Single();
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(sync.Function).IsEqualTo(SyncFunction);
+            await Assert.That(sync.Schedule?.Id).IsEqualTo(Scenario.CronTickerMappings["sync"]);
+            await Assert.That(sync.NextRunAt).IsEqualTo(_time.ToLocal(new DateTime(2026, 3, 10, 13, 0, 0)));
+            await Assert.That(sync.LastRun?.Status).IsEqualTo(AutomationRunStatus.Running);
+            await Assert.That(sync.LastRun?.DueAt).IsEqualTo(_time.ToLocal(Now.AddMinutes(-1)));
+            await Assert.That(sync.SuccessRate).IsEqualTo(67);
+            await Assert.That(sync.RecentRuns).IsEqualTo(3);
+        }
+    }
+
+    [Test]
+    public async Task GetJobSummariesAsync_ForAPausedJobThatHasNeverRun_HasNoNextOrLastRun()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.AutomationScenario.WithCronJob("sync", SyncFunction, cron => cron.IsEnabled = false));
+
+        AutomationService subject = BuildSubject();
+
+        // Act
+        List<AutomationJobSummary> summaries = await subject.GetJobSummariesAsync(CancellationToken)
+            .ToListAsync(CancellationToken);
+
+        // Assert
+        AutomationJobSummary sync = summaries.Single();
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(sync.NextRunAt).IsNull();
+            await Assert.That(sync.LastRun).IsNull();
+            await Assert.That(sync.SuccessRate).IsNull();
+            await Assert.That(sync.RecentRuns).IsEqualTo(0);
+        }
+    }
+
+    [Test]
+    public async Task GetJobSummariesAsync_ListsJobsOnlyRunByHandAfterTheScheduledOnes()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.AutomationScenario.WithCronJob("sync", SyncFunction))
+            .Do(s => s.AutomationScenario.WithTimeTicker(SyncFunction, TickerStatus.Done, Now.AddHours(-1)))
+            .Do(s => s.AutomationScenario.WithTimeTicker(UserSyncFunction, TickerStatus.Done, Now.AddHours(-2)))
+            .Do(s => s.AutomationScenario.WithTimeTicker(UserSyncFunction, TickerStatus.Failed, Now.AddHours(-1)));
+
+        AutomationService subject = BuildSubject();
+
+        // Act
+        List<AutomationJobSummary> summaries = await subject.GetJobSummariesAsync(CancellationToken)
+            .ToListAsync(CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(summaries.Select(x => x.Function)).IsEquivalentTo([SyncFunction, UserSyncFunction],
+                CollectionOrdering.Matching);
+            await Assert.That(summaries[0].LastRun?.IsManual).IsTrue();
+            await Assert.That(summaries[1].Schedule).IsNull();
+            await Assert.That(summaries[1].NextRunAt).IsNull();
+            await Assert.That(summaries[1].LastRun?.Status).IsEqualTo(AutomationRunStatus.Failed);
+            await Assert.That(summaries[1].SuccessRate).IsEqualTo(50);
+        }
+    }
+
+    [Test]
+    public async Task GetRunsAsync_MergesScheduledAndManualRunsNewestFirstAPageAtATime()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.AutomationScenario.WithCronJob("sync", SyncFunction))
+            .Do(s => s.AutomationScenario.WithCronOccurrence("sync", TickerStatus.Done, Now.AddHours(-4)))
+            .Do(s => s.AutomationScenario.WithTimeTicker(SyncFunction, TickerStatus.Done, Now.AddHours(-3)))
+            .Do(s => s.AutomationScenario.WithCronOccurrence("sync", TickerStatus.Done, Now.AddHours(-2)))
+            .Do(s => s.AutomationScenario.WithTimeTicker(SyncFunction, TickerStatus.Done, Now.AddHours(-1)))
+            .Do(s => s.AutomationScenario.WithTimeTicker(UserSyncFunction, TickerStatus.Done, Now));
+
+        AutomationService subject = BuildSubject();
+
+        // Act
+        AutomationRunPage first = await subject.GetRunsAsync(SyncFunction, page: 0, pageSize: 3, CancellationToken);
+        AutomationRunPage second = await subject.GetRunsAsync(SyncFunction, page: 1, pageSize: 3, CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(first.Total).IsEqualTo(4);
+            await Assert.That(first.Runs.Select(x => x.IsManual)).IsEquivalentTo([true, false, true],
+                CollectionOrdering.Matching);
+            await Assert.That(first.Runs.Select(x => x.DueAt)).IsEquivalentTo(
+                [_time.ToLocal(Now.AddHours(-1)), _time.ToLocal(Now.AddHours(-2)), _time.ToLocal(Now.AddHours(-3))],
+                CollectionOrdering.Matching);
+            await Assert.That(second.Runs.Select(x => x.DueAt)).IsEquivalentTo([_time.ToLocal(Now.AddHours(-4))]);
+        }
+    }
+
+    [Test]
+    public async Task GetRunsAsync_GivesARunsTimingRetriesAndError()
+    {
+        // Arrange
+        DateTime startedAt = Now.AddMinutes(-10).AddSeconds(2);
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.AutomationScenario.WithCronJob("sync", SyncFunction))
+            .Do(s => s.AutomationScenario.WithCronOccurrence("sync", TickerStatus.Failed, Now.AddMinutes(-10),
+                occurrence =>
+                {
+                    occurrence.LockedAt = startedAt;
+                    occurrence.ExecutedAt = startedAt.AddSeconds(5);
+                    occurrence.ElapsedTime = 4500;
+                    occurrence.RetryCount = 2;
+                    occurrence.ExceptionMessage = "The bank timed out";
+                }));
+
+        AutomationService subject = BuildSubject();
+
+        // Act
+        AutomationRunPage page = await subject.GetRunsAsync(SyncFunction, page: 0, pageSize: 25, CancellationToken);
+
+        // Assert
+        AutomationRun run = page.Runs.Single();
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(run.Function).IsEqualTo(SyncFunction);
+            await Assert.That(run.Status).IsEqualTo(AutomationRunStatus.Failed);
+            await Assert.That(run.StartedAt).IsEqualTo(_time.ToLocal(startedAt));
+            await Assert.That(run.Duration).IsEqualTo(TimeSpan.FromMilliseconds(4500));
+            await Assert.That(run.RetryCount).IsEqualTo(2);
+            await Assert.That(run.Error).IsEqualTo("The bank timed out");
+        }
+    }
+
+    [Test]
+    public async Task GetRunsAsync_ForAJobThatHasNeverRun_IsEmpty()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username));
+        AutomationService subject = BuildSubject();
+
+        // Act
+        AutomationRunPage page = await subject.GetRunsAsync(SyncFunction, page: 0, pageSize: 25, CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(page.Runs).IsEmpty();
+            await Assert.That(page.Total).IsEqualTo(0);
+        }
+    }
+
+    [Test]
+    [Arguments(-1, 25)]
+    [Arguments(0, 0)]
+    [Arguments(0, 101)]
+    public async Task GetRunsAsync_OutsideThePageLimits_Throws(int page, int pageSize)
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username));
+        AutomationService subject = BuildSubject();
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            subject.GetRunsAsync(SyncFunction, page, pageSize, CancellationToken));
+    }
+
     private AutomationService BuildSubject() => new(CurrentUserFor(Username), DbContextFactory,
-        NullLogger<AutomationService>.Instance, _cronTickerManager, _syncScheduler);
+        NullLogger<AutomationService>.Instance, _cronTickerManager, _syncScheduler, _time);
 }

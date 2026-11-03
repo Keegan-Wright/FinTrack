@@ -37,11 +37,14 @@ public class ApiSecurityTests : IntegrationTestBase
     }
 
     [Test]
-    public async Task AutomationJobs_ForANonAdmin_AreForbidden()
+    [Arguments(ApiRoutes.AutomationJobs)]
+    [Arguments($"{ApiRoutes.AutomationJobs}/summaries")]
+    [Arguments($"{ApiRoutes.AutomationRuns}?function=SyncAllOpenBankingDetailsAsync")]
+    public async Task AutomationJobs_ForANonAdmin_AreForbidden(string path)
     {
         // Arrange
         SignedInUser user = await RegisterUserAsync();
-        using HttpRequestMessage request = ApiRequest(HttpMethod.Get, ApiRoutes.AutomationJobs);
+        using HttpRequestMessage request = ApiRequest(HttpMethod.Get, path);
 
         // Act
         HttpResponseMessage response = await user.Client.SendAsync(request, HttpCompletionOption.ResponseContentRead,

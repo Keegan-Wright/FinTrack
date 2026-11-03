@@ -9,7 +9,7 @@ using FinanceTracker.Generated.Enums;
 namespace FinanceTracker.Client.Api;
 
 /// <summary>
-/// <see cref="IAutomationService"/> over <see cref="ApiRoutes.AutomationJobs"/> and
+/// <see cref="IAutomationService"/> over <see cref="ApiRoutes.AutomationJobs"/>, <see cref="ApiRoutes.AutomationRuns"/> and
 /// <see cref="ApiRoutes.Sync"/>.
 /// </summary>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Client)]
@@ -23,6 +23,20 @@ public sealed class AutomationApiClient : IAutomationService
 
     public IAsyncEnumerable<AutomationCron> GetJobsAsync(CancellationToken cancellationToken) =>
         _http.GetStreamAsync<AutomationCron>(ApiRoutes.AutomationJobs, cancellationToken);
+
+    public IAsyncEnumerable<AutomationJobSummary> GetJobSummariesAsync(CancellationToken cancellationToken) =>
+        _http.GetStreamAsync<AutomationJobSummary>($"{ApiRoutes.AutomationJobs}/summaries", cancellationToken);
+
+    public async Task<AutomationRunPage> GetRunsAsync(string function, int page, int pageSize,
+        CancellationToken cancellationToken)
+    {
+        string query = $"function={Uri.EscapeDataString(function)}&page={page}&pageSize={pageSize}";
+        using HttpResponseMessage response = await _http.GetAsync($"{ApiRoutes.AutomationRuns}?{query}",
+            cancellationToken);
+
+        response.EnsureSuccessStatusCode();
+        return await response.ReadRequiredJsonAsync<AutomationRunPage>(cancellationToken);
+    }
 
     public async Task<bool> UpdateJobSettingsAsync(UpdateCronJob request, CancellationToken cancellationToken)
     {
