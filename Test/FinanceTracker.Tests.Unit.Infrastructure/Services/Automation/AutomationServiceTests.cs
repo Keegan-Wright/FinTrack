@@ -26,6 +26,9 @@ public class AutomationServiceTests : InfrastructureTestBase
 
     private readonly IOpenBankingSyncScheduler _syncScheduler = Substitute.For<IOpenBankingSyncScheduler>();
 
+    private readonly ITimeTickerManager<TimeTickerEntity> _timeTickerManager =
+        Substitute.For<ITimeTickerManager<TimeTickerEntity>>();
+
     private static readonly DateTime Now = new(2026, 3, 10, 12, 0, 30, DateTimeKind.Utc);
     private readonly FixedTimeProvider _time = new(Now);
 
@@ -331,7 +334,7 @@ public class AutomationServiceTests : InfrastructureTestBase
     }
 
     [Test]
-    public async Task GetRunsAsync_GivesARunsTimingRetriesAndError()
+    public async Task GetRunsAsync_GivesARunsTimingRetriesAndError_StartingWhenItFinishedLessHowLongItTook()
     {
         // Arrange
         DateTime startedAt = Now.AddMinutes(-10).AddSeconds(2);
@@ -340,8 +343,8 @@ public class AutomationServiceTests : InfrastructureTestBase
             .Do(s => s.AutomationScenario.WithCronOccurrence("sync", TickerStatus.Failed, Now.AddMinutes(-10),
                 occurrence =>
                 {
-                    occurrence.LockedAt = startedAt;
-                    occurrence.ExecutedAt = startedAt.AddSeconds(5);
+                    occurrence.LockedAt = startedAt.AddMinutes(-30);
+                    occurrence.ExecutedAt = startedAt.AddMilliseconds(4500);
                     occurrence.ElapsedTime = 4500;
                     occurrence.RetryCount = 2;
                     occurrence.ExceptionMessage = "The bank timed out";
@@ -364,6 +367,49 @@ public class AutomationServiceTests : InfrastructureTestBase
             await Assert.That(run.RetryCount).IsEqualTo(2);
             await Assert.That(run.Error).IsEqualTo("The bank timed out");
         }
+    }
+
+    [Test]
+    public async Task GetRunsAsync_ForTheNextRunQueuedEarly_HasNotStarted()
+    {
+        // Arrange, TickerQ queues and locks the next run well before it's due
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.AutomationScenario.WithCronJob("sync", SyncFunction))
+            .Do(s => s.AutomationScenario.WithCronOccurrence("sync", TickerStatus.Queued, Now.AddHours(1),
+                occurrence => occurrence.LockedAt = Now.AddMinutes(-5)));
+
+        AutomationService subject = BuildSubject();
+
+        // Act
+        AutomationRunPage page = await subject.GetRunsAsync(SyncFunction, page: 0, pageSize: 25, CancellationToken);
+
+        // Assert
+        AutomationRun run = page.Runs.Single();
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(run.Status).IsEqualTo(AutomationRunStatus.Waiting);
+            await Assert.That(run.StartedAt).IsNull();
+            await Assert.That(run.DueAt).IsEqualTo(_time.ToLocal(Now.AddHours(1)));
+        }
+    }
+
+    [Test]
+    public async Task GetRunsAsync_ForARunLockedBeforeItWasDue_StartedWhenDue()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.AutomationScenario.WithCronJob("sync", SyncFunction))
+            .Do(s => s.AutomationScenario.WithCronOccurrence("sync", TickerStatus.InProgress, Now.AddMinutes(-1),
+                occurrence => occurrence.LockedAt = Now.AddMinutes(-40)));
+
+        AutomationService subject = BuildSubject();
+
+        // Act
+        AutomationRunPage page = await subject.GetRunsAsync(SyncFunction, page: 0, pageSize: 25, CancellationToken);
+
+        // Assert
+        await Assert.That(page.Runs.Single().StartedAt).IsEqualTo(_time.ToLocal(Now.AddMinutes(-1)));
     }
 
     [Test]
@@ -399,6 +445,78 @@ public class AutomationServiceTests : InfrastructureTestBase
             subject.GetRunsAsync(SyncFunction, page, pageSize, CancellationToken));
     }
 
+    [Test]
+    public async Task RunNowAsync_QueuesARunOfTheJobNowRetriedLikeItsSchedule()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.AutomationScenario.WithCronJob("sync", SyncFunction, cron =>
+            {
+                cron.Retries = 3;
+                cron.RetryIntervals = [10, 20, 30];
+            }))
+            .Do(s => s.AutomationScenario.WithCronOccurrence("sync", TickerStatus.Done, Now.AddHours(-1)))
+            .Do(s => s.AutomationScenario.WithCronOccurrence("sync", TickerStatus.Queued, Now.AddHours(1)))
+            .Do(s => s.AutomationScenario.WithTimeTicker(SyncFunction, TickerStatus.Failed, Now.AddHours(-2)));
+
+        AutomationService subject = BuildSubject();
+
+        // Act, the next scheduled run queued ahead of time doesn't stop it
+        await subject.RunNowAsync(Scenario.CronTickerMappings["sync"], CancellationToken);
+
+        // Assert
+        await _timeTickerManager.Received(1).AddAsync(Arg.Is<TimeTickerEntity>(x =>
+            x.Function == SyncFunction &&
+            x.ExecutionTime == Now &&
+            x.Retries == 3 &&
+            x.RetryIntervals!.SequenceEqual(new[] { 10, 20, 30 })), CancellationToken);
+    }
+
+    [Test]
+    [Arguments(TickerStatus.InProgress, false)]
+    [Arguments(TickerStatus.Queued, false)]
+    [Arguments(TickerStatus.InProgress, true)]
+    [Arguments(TickerStatus.Queued, true)]
+    [Arguments(TickerStatus.Idle, true)]
+    public async Task RunNowAsync_WhileARunIsGoing_ThrowsAndQueuesNothing(TickerStatus status, bool manual)
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.AutomationScenario.WithCronJob("sync", SyncFunction));
+        if (manual)
+        {
+            await Scenario.Do(s => s.AutomationScenario.WithTimeTicker(SyncFunction, status, Now));
+        }
+        else
+        {
+            await Scenario.Do(s => s.AutomationScenario.WithCronOccurrence("sync", status, Now));
+        }
+
+        AutomationService subject = BuildSubject();
+
+        // Act
+        JobAlreadyRunningException? exception = await Assert.ThrowsAsync<JobAlreadyRunningException>(() =>
+            subject.RunNowAsync(Scenario.CronTickerMappings["sync"], CancellationToken));
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(exception!.Function).IsEqualTo(SyncFunction);
+            await _timeTickerManager.DidNotReceiveWithAnyArgs().AddAsync(default!, default);
+        }
+    }
+
+    [Test]
+    public async Task RunNowAsync_ForAMissingJob_Throws()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username));
+        AutomationService subject = BuildSubject();
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(() => subject.RunNowAsync(Guid.NewGuid(), CancellationToken));
+    }
+
     private AutomationService BuildSubject() => new(CurrentUserFor(Username), DbContextFactory,
-        NullLogger<AutomationService>.Instance, _cronTickerManager, _syncScheduler, _time);
+        NullLogger<AutomationService>.Instance, _cronTickerManager, _timeTickerManager, _syncScheduler, _time);
 }

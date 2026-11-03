@@ -40,6 +40,23 @@ public static class AutomationEndpoints
                 .Validated<UpdateCronJob>()
                 .NotFoundWhenMissing();
 
+            // Queues a run on top of the schedule, unless one is already going
+            jobs.MapPost("{id:guid}/run", async Task<Results<Accepted, ProblemHttpResult>> (Guid id,
+                    IAutomationService service, CancellationToken cancellationToken) =>
+                {
+                    try
+                    {
+                        await service.RunNowAsync(id, cancellationToken);
+                    }
+                    catch (JobAlreadyRunningException ex)
+                    {
+                        return TypedResults.Problem(ex.Message, statusCode: StatusCodes.Status409Conflict);
+                    }
+
+                    return TypedResults.Accepted((string?)null);
+                })
+                .NotFoundWhenMissing();
+
             RouteGroupBuilder runs = api.MapGroup(ApiRoutes.AutomationRuns)
                 .RequireAuthorization(policy => policy.RequireRole(FinTrackRoles.Admin));
 

@@ -5,6 +5,7 @@ using FinanceTracker.Infrastructure;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.EntityFrameworkCore;
+using NSubstitute;
 
 namespace FinanceTracker.Tests.Unit.FinanceTracker.BackgroundJobs;
 
@@ -12,6 +13,8 @@ public class MoveEventSavingsGoalsOnAsyncTests : InfrastructureTestBase
 {
     private const string Username = "primary";
     private static readonly DateOnly Birthday = new(2026, 3, 14);
+
+    private readonly ISyncNotifier _syncNotifier = Substitute.For<ISyncNotifier>();
 
     [Test]
     public async Task ExecuteAsync_TheDayHasPassed_MovesTheGoalOnToNextYear()
@@ -89,5 +92,20 @@ public class MoveEventSavingsGoalsOnAsyncTests : InfrastructureTestBase
             CancellationToken);
     }
 
-    private MoveEventSavingsGoalsOnAsync BuildSubject(DateTime now) => new(DbContextFactory, new FixedTimeProvider(now));
+    [Test]
+    public async Task ExecuteAsync_TellsAdminsWhenItStartsAndFinishes()
+    {
+        // Arrange
+        await SeedAsync(rollsGoalOn: true);
+        MoveEventSavingsGoalsOnAsync subject = BuildSubject(new DateTime(2026, 3, 15, 2, 0, 0, DateTimeKind.Utc));
+
+        // Act
+        await subject.ExecuteAsync(TickerFunctionContextFactory.Create(), CancellationToken);
+
+        // Assert
+        await _syncNotifier.Received(2).JobChangedAsync(nameof(MoveEventSavingsGoalsOnAsync));
+    }
+
+    private MoveEventSavingsGoalsOnAsync BuildSubject(DateTime now) =>
+        new(DbContextFactory, _syncNotifier, new FixedTimeProvider(now));
 }

@@ -17,7 +17,8 @@ public static class TickerRunExtensions
         public AutomationRun ToRun(string function, TimeProvider timeProvider) =>
             new(occurrence.Id, function, occurrence.Status.ToRunStatus(occurrence.RetryCount), IsManual: false,
                 timeProvider.ToLocal(occurrence.ExecutionTime),
-                StartedAt(occurrence.LockedAt, occurrence.ExecutedAt, timeProvider),
+                StartedAt(occurrence.Status, occurrence.ExecutionTime, occurrence.LockedAt, occurrence.ExecutedAt,
+                    occurrence.ElapsedTime, timeProvider),
                 Duration(occurrence.Status, occurrence.ElapsedTime), occurrence.RetryCount,
                 occurrence.ExceptionMessage ?? occurrence.SkippedReason);
     }
@@ -30,7 +31,8 @@ public static class TickerRunExtensions
         public AutomationRun ToRun(TimeProvider timeProvider) =>
             new(ticker.Id, ticker.Function, ticker.Status.ToRunStatus(ticker.RetryCount), IsManual: true,
                 timeProvider.ToLocal(ticker.ExecutionTime ?? ticker.CreatedAt),
-                StartedAt(ticker.LockedAt, ticker.ExecutedAt, timeProvider),
+                StartedAt(ticker.Status, ticker.ExecutionTime ?? ticker.CreatedAt, ticker.LockedAt, ticker.ExecutedAt,
+                    ticker.ElapsedTime, timeProvider),
                 Duration(ticker.Status, ticker.ElapsedTime), ticker.RetryCount,
                 ticker.ExceptionMessage ?? ticker.SkippedReason);
     }
@@ -62,16 +64,35 @@ public static class TickerRunExtensions
         }
     }
 
-    // TickerQ locks a run as it starts it, and records when it executed once it has
-    private static DateTime? StartedAt(DateTime? lockedAt, DateTime? executedAt, TimeProvider timeProvider)
+    /// <summary>
+    /// When the run started. TickerQ queues and locks a scheduled run well before it's due, so being locked doesn't
+    /// mean it has started, and it records when a run finished rather than when it began.
+    /// </summary>
+    private static DateTime? StartedAt(TickerStatus status, DateTime dueAt, DateTime? lockedAt, DateTime? executedAt,
+        long elapsedMilliseconds, TimeProvider timeProvider)
     {
-        DateTime? started = lockedAt ?? executedAt;
-        if (started is null)
+        switch (status)
         {
-            return null;
+            case TickerStatus.Done or TickerStatus.DueDone or TickerStatus.Failed when executedAt is not null:
+                return timeProvider.ToLocal(executedAt.Value.AddMilliseconds(-elapsedMilliseconds));
+            case TickerStatus.InProgress:
+                return timeProvider.ToLocal(Later(lockedAt, dueAt));
+            case TickerStatus.Cancelled or TickerStatus.Skipped when executedAt is not null:
+                return timeProvider.ToLocal(executedAt.Value);
+            default:
+                return null;
+        }
+    }
+
+    // A run can't start before it's due, however early TickerQ locked it
+    private static DateTime Later(DateTime? lockedAt, DateTime dueAt)
+    {
+        if (lockedAt is null || lockedAt < dueAt)
+        {
+            return dueAt;
         }
 
-        return timeProvider.ToLocal(started.Value);
+        return lockedAt.Value;
     }
 
     // TickerQ times each run in milliseconds, and only a finished run's time is the whole of it

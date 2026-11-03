@@ -24,9 +24,17 @@ public class SyncUserOpenBankingDetailsAsync : OpenBankingSyncJob, ITickerFuncti
     {
         Guid userId = context.Request.UserId;
 
-        await SyncConnectionsAsync(x => x.UserId == userId, cancellationToken);
+        await JobChangedAsync();
+        try
+        {
+            await SyncConnectionsAsync(x => x.UserId == userId, cancellationToken);
 
-        // Always tell the user, even with nothing to sync, so their resync doesn't look stuck
-        await NotifyAsync([userId]);
+            // Always tell the user, even with nothing to sync, so their resync doesn't look stuck
+            await NotifyAsync([userId]);
+        }
+        finally
+        {
+            await JobChangedAsync();
+        }
     }
 }

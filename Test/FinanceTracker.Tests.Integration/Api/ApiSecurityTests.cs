@@ -67,6 +67,21 @@ public class ApiSecurityTests : IntegrationTestBase
         await Assert.That(jobs).IsNotEmpty();
     }
 
+    [Test]
+    public async Task RunNow_ForANonAdmin_IsForbidden()
+    {
+        // Arrange
+        SignedInUser user = await RegisterUserAsync();
+        using HttpRequestMessage request = ApiRequest(HttpMethod.Post, $"{ApiRoutes.AutomationJobs}/{Guid.NewGuid()}/run");
+
+        // Act
+        HttpResponseMessage response = await user.Client.SendAsync(request, HttpCompletionOption.ResponseContentRead,
+            CancellationToken);
+
+        // Assert
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+    }
+
     private static HttpRequestMessage ApiRequest(HttpMethod method, string path)
     {
         HttpRequestMessage request = new(method, path);

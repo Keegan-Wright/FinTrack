@@ -11,4 +11,9 @@ public sealed class PrerenderSyncNotifications : ISyncNotifications
     public Task<IDisposable> SubscribeAsync(Func<Task> onSyncComplete, CancellationToken cancellationToken) =>
         throw new NotSupportedException(
             "Sync notifications reach the browser through the sync hub, subscribe after the first render.");
+
+    public Task<IDisposable> SubscribeToJobsAsync(Func<string, Task> onJobChanged,
+        CancellationToken cancellationToken) =>
+        throw new NotSupportedException(
+            "Job notifications reach the browser through the sync hub, subscribe after the first render.");
 }

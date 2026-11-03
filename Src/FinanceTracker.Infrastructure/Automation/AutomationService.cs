@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using System.Runtime.ExceptionServices;
 using FinanceTracker.Contracts.Automation;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Generated.Attributes;
@@ -9,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using TickerQ.Utilities.Entities;
 using TickerQ.Utilities.Enums;
 using TickerQ.Utilities.Interfaces.Managers;
+using TickerQ.Utilities.Models;
 
 namespace FinanceTracker.Infrastructure.Automation;
 
@@ -25,16 +27,22 @@ public class AutomationService :  ServiceBase<AutomationService>, IAutomationSer
         TickerStatus.Skipped
     ];
 
+    // A run started by hand is busy from being asked for until it finishes
+    private static readonly TickerStatus[] ManualBusy = [TickerStatus.Idle, TickerStatus.Queued, TickerStatus.InProgress];
+
     private readonly ICronTickerManager<CronTickerEntity> _cronTickerManager;
+    private readonly ITimeTickerManager<TimeTickerEntity> _timeTickerManager;
     private readonly IOpenBankingSyncScheduler _syncScheduler;
     private readonly TimeProvider _timeProvider;
 
     public AutomationService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<AutomationService> logger,
-        ICronTickerManager<CronTickerEntity> cronTickerManager, IOpenBankingSyncScheduler syncScheduler,
-        TimeProvider timeProvider) : base(currentUser, financeTrackerContextFactory, logger)
+        ICronTickerManager<CronTickerEntity> cronTickerManager, ITimeTickerManager<TimeTickerEntity> timeTickerManager,
+        IOpenBankingSyncScheduler syncScheduler, TimeProvider timeProvider)
+        : base(currentUser, financeTrackerContextFactory, logger)
     {
         _cronTickerManager = cronTickerManager;
+        _timeTickerManager = timeTickerManager;
         _syncScheduler = syncScheduler;
         _timeProvider = timeProvider;
     }
@@ -116,6 +124,43 @@ public class AutomationService :  ServiceBase<AutomationService>, IAutomationSer
         await _cronTickerManager.UpdateAsync(cron, cancellationToken);
 
         return true;
+    }
+
+    public async Task RunNowAsync(Guid id, CancellationToken cancellationToken)
+    {
+        await using FinanceTrackerContext context = await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+        CronTickerEntity cron = await context.CronTickerEntities.AsNoTracking()
+            .FirstAsync(x => x.Id == id, cancellationToken);
+
+        // TickerQ lines up and queues the next scheduled run well before it's due, so a queued one only counts
+        // once it's due
+        DateTime now = _timeProvider.UtcNow;
+        bool scheduledRunBusy = await context.CronTickerOccurrenceEntities
+            .AnyAsync(x => x.CronTickerId == id &&
+                           (x.Status == TickerStatus.InProgress ||
+                            (x.Status == TickerStatus.Queued && x.ExecutionTime <= now)), cancellationToken);
+        bool manualRunBusy = await context.TimeTickerEntities
+            .AnyAsync(x => x.Function == cron.Function && ManualBusy.Contains(x.Status), cancellationToken);
+        if (scheduledRunBusy || manualRunBusy)
+        {
+            throw new JobAlreadyRunningException(cron.Function);
+        }
+
+        // Retried like a scheduled run of the job
+        TickerResult<TimeTickerEntity> queued = await _timeTickerManager.AddAsync(new TimeTickerEntity
+        {
+            Id = Guid.NewGuid(),
+            Function = cron.Function,
+            Description = "Run now",
+            ExecutionTime = now,
+            Retries = cron.Retries,
+            RetryIntervals = cron.RetryIntervals
+        }, cancellationToken);
+
+        if (queued is { IsSucceeded: false, Exception: { } failure })
+        {
+            ExceptionDispatchInfo.Throw(failure);
+        }
     }
 
     public async Task<DateTime?> GetLastSyncTimeAsync(CancellationToken cancellationToken)

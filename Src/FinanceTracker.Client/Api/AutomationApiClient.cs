@@ -38,6 +38,18 @@ public sealed class AutomationApiClient : IAutomationService
         return await response.ReadRequiredJsonAsync<AutomationRunPage>(cancellationToken);
     }
 
+    public async Task RunNowAsync(Guid id, CancellationToken cancellationToken)
+    {
+        using HttpResponseMessage response = await _http.PostAsync($"{ApiRoutes.AutomationJobs}/{id}/run",
+            content: null, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.Conflict)
+        {
+            throw new JobAlreadyRunningException(await FunctionOfAsync(id, cancellationToken));
+        }
+
+        response.EnsureFound();
+    }
+
     public async Task<bool> UpdateJobSettingsAsync(UpdateCronJob request, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.PutAsJsonAsync($"{ApiRoutes.AutomationJobs}/{request.Id}",
@@ -61,5 +73,19 @@ public sealed class AutomationApiClient : IAutomationService
     {
         using HttpResponseMessage response = await _http.PostAsync(ApiRoutes.Sync, content: null, cancellationToken);
         response.EnsureSuccessStatusCode();
+    }
+
+    // The 409 only says the job is running, its function comes from the job list
+    private async Task<string> FunctionOfAsync(Guid id, CancellationToken cancellationToken)
+    {
+        await foreach (AutomationCron job in GetJobsAsync(cancellationToken))
+        {
+            if (job.Id == id)
+            {
+                return job.Function;
+            }
+        }
+
+        return id.ToString();
     }
 }

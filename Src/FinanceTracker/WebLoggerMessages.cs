@@ -21,6 +21,9 @@ public static partial class WebLoggerMessages
     [LoggerMessage(LogLevel.Warning, "Failed to notify the browsers of user {userId} of a completed sync")]
     public static partial void LogSyncNotificationFailed(this ILogger logger, Exception exception, Guid userId);
 
+    [LoggerMessage(LogLevel.Warning, "Failed to tell admins' browsers that job {function} started or finished")]
+    public static partial void LogJobNotificationFailed(this ILogger logger, Exception exception, string function);
+
     [LoggerMessage(LogLevel.Information, "Granted the admin role to user {userId}")]
     public static partial void LogAdminGranted(this ILogger logger, Guid userId);
 

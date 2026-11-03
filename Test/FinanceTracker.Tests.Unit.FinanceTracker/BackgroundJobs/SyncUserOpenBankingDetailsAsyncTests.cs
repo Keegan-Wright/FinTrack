@@ -38,6 +38,25 @@ public class SyncUserOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
     }
 
     [Test]
+    public async Task ExecuteAsync_WhenASyncStepFails_StillTellsAdminsItFinished()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("mine", Username));
+
+        Guid userId = Scenario.UserMappings[Username];
+        SyncNotifier.NotifyAsync(userId).ThrowsAsync(new InvalidOperationException("boom"));
+        SyncUserOpenBankingDetailsAsync subject = BuildSubject();
+
+        // Act
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            subject.ExecuteAsync(ContextFor(userId), CancellationToken));
+
+        // Assert
+        await SyncNotifier.Received(2).JobChangedAsync(nameof(SyncUserOpenBankingDetailsAsync));
+    }
+
+    [Test]
     public async Task ExecuteAsync_NotifiesOnlyTheRequestedUser()
     {
         // Arrange

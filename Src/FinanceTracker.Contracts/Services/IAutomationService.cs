@@ -32,6 +32,15 @@ public interface IAutomationService
     Task<AutomationRunPage> GetRunsAsync(string function, int page, int pageSize, CancellationToken cancellationToken);
 
     /// <summary>
+    /// Queues a run of a scheduled job straight away, on top of its schedule. It shows in the job's runs as manual.
+    /// </summary>
+    /// <param name="id">The job, see <see cref="AutomationCron.Id"/>.</param>
+    /// <param name="cancellationToken">Stops the request.</param>
+    /// <exception cref="InvalidOperationException">No job has the id.</exception>
+    /// <exception cref="JobAlreadyRunningException">A run of the job is going or queued.</exception>
+    Task RunNowAsync(Guid id, CancellationToken cancellationToken);
+
+    /// <summary>
     /// Changes a scheduled job's schedule, retries and whether it runs. Validate the request with
     /// <see cref="Validation.CronJobUpdateRequestValidator"/> first.
     /// </summary>

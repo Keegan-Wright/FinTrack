@@ -1,6 +1,8 @@
 @page "/Automation"
-@* Lists the scheduled background jobs (IAutomationService) and edits their schedule and retries. The jobs run for
-   every user, so only admins can see them. *@
+@* The background jobs (IAutomationService): how each is doing, its runs, running a scheduled job now and editing its
+   schedule and retries. The jobs run for every user, so only admins can see them. Keeps up as jobs start and finish,
+   through the sync hub and by checking every few seconds while one runs. *@
+@using FinanceTracker.Client.Components.Automation
 @using FinanceTracker.Client.Components.Dialogs
 @using FinanceTracker.Contracts.Auth
 @using FinanceTracker.Contracts.Automation
@@ -11,77 +13,49 @@
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject IAutomationService AutomationService
+@inject ISyncNotifications SyncNotifications
+@inject TimeProvider TimeProvider
 
 <PageTitle>FinTrack - Automation</PageTitle>
 <PageHeader Title="Automation" Subtitle="Background jobs that run for every user, admins only"/>
 
-<MudDataGrid T="AutomationCron" Items="@(Jobs ?? [])"
-             SortMode="SortMode.Multiple"
-             Hideable="true"
-             Hover="true"
-             Dense="true"
-             Elevation="0"
-             Outlined="true"
-             RowsPerPage="50"
-             FixedHeader="true"
-             Class="ft-grid">
-    <NoRecordsContent>
-        <MudText Typo="Typo.body2" Class="mud-text-secondary">No jobs scheduled.</MudText>
-    </NoRecordsContent>
-    <Columns>
-        <PropertyColumn Property="x => x.Function" Title="Job" Sortable="true">
-            <CellTemplate>
-                <MudText Typo="Typo.body2">@context.Item.Function</MudText>
-                <MudText Typo="Typo.caption" Class="mud-text-secondary">@context.Item.Description</MudText>
-            </CellTemplate>
-        </PropertyColumn>
-        <PropertyColumn Property="x => x.Expression" Title="Schedule" Sortable="true">
-            <CellTemplate>
-                <code class="ft-code">@context.Item.Expression</code>
-            </CellTemplate>
-        </PropertyColumn>
-        <PropertyColumn Property="x => x.Retries" Title="Retries" Sortable="true"/>
-        <TemplateColumn Title="Retry after (s)" Sortable="false">
-            <CellTemplate>
-                <div class="ft-chips">
-                    @foreach (var interval in context.Item.RetryIntervals ?? [])
-                    {
-                        <MudChip T="int" Size="Size.Small" Variant="Variant.Text">@interval</MudChip>
-                    }
-                </div>
-            </CellTemplate>
-        </TemplateColumn>
-        <PropertyColumn Property="x => x.IsEnabled" Title="Status" Sortable="true">
-            <CellTemplate>
-                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
-                         Color="@(context.Item.IsEnabled ? Color.Success : Color.Default)">
-                    @(context.Item.IsEnabled ? "Enabled" : "Paused")
-                </MudChip>
-            </CellTemplate>
-        </PropertyColumn>
-        <TemplateColumn Title="" Sortable="false" Hideable="false" CellClass="ft-grid__actions">
-            <CellTemplate>
-                <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true"
-                         AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
-                         aria-label="@($"Actions for {context.Item.Function}")">
-                    <MudMenuItem Icon="@Icons.Material.Outlined.Edit"
-                                 OnClick="@(() => EditCronItem(context.Item))">Edit</MudMenuItem>
-                </MudMenu>
-            </CellTemplate>
-        </TemplateColumn>
-    </Columns>
-    <PagerContent>
-        <MudDataGridPager T="AutomationCron"/>
-    </PagerContent>
-</MudDataGrid>
+<div class="ft-stack">
+    @if (Jobs is { Count: 0 })
+    {
+        <Section>
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">No jobs scheduled.</MudText>
+        </Section>
+    }
+    else
+    {
+        @foreach (AutomationJobSummary job in Jobs ?? [])
+        {
+            <AutomationJob @key="job.Function" Job="@job" Refresh="@_refreshes"
+                           ShowRuns="@_showingRuns.Contains(job.Function)"
+                           ShowRunsChanged="@(show => SetShowRuns(job.Function, show))"
+                           OnEdit="@(() => EditCronItem(job.Schedule!))"
+                           OnRunNow="@(() => RunNowAsync(job))"/>
+        }
+    }
+</div>
 
 @code {
 
     /// <summary>
-    /// The background jobs, loaded once, see <see cref="PageComponent.LoadOnceAsync{T}"/>.
+    /// How often the page checks on the jobs while one is running.
+    /// </summary>
+    public static readonly TimeSpan RunningCheckInterval = TimeSpan.FromSeconds(5);
+
+    // The jobs whose runs are open, and a count that tells them to load their runs again
+    private readonly HashSet<string> _showingRuns = [];
+    private int _refreshes;
+    private bool _refreshing;
+
+    /// <summary>
+    /// How each background job is doing, loaded once, see <see cref="PageComponent.LoadOnceAsync{T}"/>.
     /// </summary>
     [PersistentState]
-    public List<AutomationCron>? Jobs { get; set; }
+    public List<AutomationJobSummary>? Jobs { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
@@ -89,8 +63,135 @@
         Jobs = await LoadOnceAsync(Jobs, "Loading jobs", LoadJobsAsync);
     }
 
-    private Task<List<AutomationCron>> LoadJobsAsync(CancellationToken cancellationToken) =>
-        AutomationService.GetJobsAsync(cancellationToken).ToListAsync(cancellationToken).AsTask();
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        if (!firstRender)
+        {
+            return;
+        }
+
+        // Only once interactive, a prerender has no connection to the hub. Leaving the page stops both.
+        _ = CheckWhileRunningAsync();
+        await SubscribeToJobsAsync();
+    }
+
+    // Without the hub the page still catches up on running jobs, just not on ones that start elsewhere
+    private async Task SubscribeToJobsAsync()
+    {
+        try
+        {
+            IDisposable subscription = await SyncNotifications.SubscribeToJobsAsync(
+                _ => InvokeAsync(RefreshAsync), _cts.Token);
+            _cts.Token.Register(subscription.Dispose);
+        }
+        catch (OperationCanceledException) when (_cts.IsCancellationRequested)
+        {
+            // Left the page
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't connect for live updates, refresh to try again", Severity.Warning);
+        }
+    }
+
+    private Task<List<AutomationJobSummary>> LoadJobsAsync(CancellationToken cancellationToken) =>
+        AutomationService.GetJobSummariesAsync(cancellationToken).ToListAsync(cancellationToken).AsTask();
+
+    private bool AnyRunning => Jobs?.Any(static x => x.LastRun?.Status is AutomationRunStatus.Running
+        or AutomationRunStatus.Retrying) == true;
+
+    // A job says it's finished just before TickerQ saves how it went, so a running job is checked on until it's done
+    private async Task CheckWhileRunningAsync()
+    {
+        using PeriodicTimer timer = new(RunningCheckInterval, TimeProvider);
+        try
+        {
+            while (await timer.WaitForNextTickAsync(_cts.Token))
+            {
+                if (AnyRunning)
+                {
+                    await InvokeAsync(RefreshAsync);
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Left the page
+        }
+    }
+
+    /// <summary>
+    /// Loads the jobs again without the loading overlay, and the open runs with them.
+    /// </summary>
+    private async Task RefreshAsync()
+    {
+        if (_refreshing)
+        {
+            return;
+        }
+
+        _refreshing = true;
+        try
+        {
+            Jobs = await LoadJobsAsync(_cts.Token);
+            _refreshes++;
+        }
+        catch (OperationCanceledException) when (_cts.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception)
+        {
+            // Kept as it was, the next change or check tries again
+        }
+        finally
+        {
+            _refreshing = false;
+        }
+
+        StateHasChanged();
+    }
+
+    private void SetShowRuns(string function, bool show)
+    {
+        if (show)
+        {
+            _showingRuns.Add(function);
+        }
+        else
+        {
+            _showingRuns.Remove(function);
+        }
+    }
+
+    private async Task RunNowAsync(AutomationJobSummary job)
+    {
+        string name = AutomationText.JobName(job.Function);
+        bool? confirmed = await DialogService.ShowMessageBoxAsync($"Run {name} now?",
+            "It runs for every user, on top of its schedule.", yesText: "Run now", cancelText: "Cancel");
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        try
+        {
+            await AutomationService.RunNowAsync(job.Schedule!.Id, _cts.Token);
+            Snackbar.Add($"{name} queued", Severity.Success);
+            _showingRuns.Add(job.Function);
+        }
+        catch (JobAlreadyRunningException)
+        {
+            Snackbar.Add($"{name} is already running", Severity.Warning);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add($"Couldn't run {name}, try again", Severity.Error);
+        }
+
+        await RefreshAsync();
+    }
 
     private async Task EditCronItem(AutomationCron job)
     {
