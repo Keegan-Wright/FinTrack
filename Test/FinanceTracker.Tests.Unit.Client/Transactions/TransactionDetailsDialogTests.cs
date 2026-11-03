@@ -234,9 +234,67 @@ public class TransactionDetailsDialogTests : ComponentTestBase
         }
     }
 
+    [Test]
+    public async Task Render_Split_ListsThePartsAndOffersToEditOrRemoveItButNotToTag()
+    {
+        // Arrange
+        using CultureScope culture = new();
+        bool unsplit = false;
+        await OpenAsync(TransactionListTests.Transaction("Supermarket", -100m, splits:
+        [
+            new TransactionSplitPart { Amount = -60m, Tag = "Groceries", Note = "Weekly shop" },
+            new TransactionSplitPart { Amount = -40m }
+        ]), onUnsplit: () => unsplit = true);
+        string details = _provider.Find(".ft-details").TextContent;
+        bool offersTags = _provider.FindAll("button").Any(static x => x.TextContent.Trim() == "Add tags");
+        bool offersEdit = _provider.FindAll("button").Any(static x => x.TextContent.Trim() == "Edit split");
+
+        // Act
+        Button("Remove split").Click();
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(details).Contains("£60.00 Groceries");
+            await Assert.That(details).Contains("Weekly shop");
+            await Assert.That(details).Contains("£40.00 untagged");
+            await Assert.That(offersTags).IsFalse();
+            await Assert.That(offersEdit).IsTrue();
+            await Assert.That(unsplit).IsTrue();
+        }
+    }
+
+    [Test]
+    public async Task Render_Pending_CantBeSplitYet()
+    {
+        // Act
+        await OpenAsync(TransactionListTests.Transaction("Supermarket", -100m, pending: true));
+
+        // Assert
+        await Assert.That(Button("Split once it's settled").HasAttribute("disabled")).IsTrue();
+    }
+
+    [Test]
+    public async Task Choose_Split_ClosesAndRaisesIt()
+    {
+        // Arrange
+        bool split = false;
+        await OpenAsync(TransactionListTests.Transaction("Supermarket", -100m), onSplit: () => split = true);
+
+        // Act
+        Button("Split").Click();
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(split).IsTrue();
+            await Assert.That(_provider.FindAll(".ft-details")).IsEmpty();
+        }
+    }
+
     private async Task OpenAsync(Transaction transaction, Action<TransferAction>? onTransferAction = null,
         Action? onAddTags = null, Action? onCreateRule = null, Func<string, Task<Transaction?>>? onHide = null,
-        Action? onPayDebt = null)
+        Action? onPayDebt = null, Action? onSplit = null, Action? onUnsplit = null)
     {
         _provider = Render<MudDialogProvider>();
         IDialogService dialogService = Services.GetRequiredService<IDialogService>();
@@ -247,7 +305,9 @@ public class TransactionDetailsDialogTests : ComponentTestBase
             { x => x.OnAddTags, EventCallback.Factory.Create(this, onAddTags ?? (() => { })) },
             { x => x.OnCreateRule, EventCallback.Factory.Create(this, onCreateRule ?? (() => { })) },
             { x => x.OnHideClassification, onHide },
-            { x => x.OnPayDebt, EventCallback.Factory.Create(this, onPayDebt ?? (() => { })) }
+            { x => x.OnPayDebt, EventCallback.Factory.Create(this, onPayDebt ?? (() => { })) },
+            { x => x.OnSplit, EventCallback.Factory.Create(this, onSplit ?? (() => { })) },
+            { x => x.OnUnsplit, EventCallback.Factory.Create(this, onUnsplit ?? (() => { })) }
         };
 
         await _provider.InvokeAsync(() => dialogService.ShowAsync<TransactionDetailsDialog>(null, parameters));

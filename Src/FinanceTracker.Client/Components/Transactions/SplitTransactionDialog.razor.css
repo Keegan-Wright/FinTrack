@@ -1,0 +1,47 @@
+.ft-split {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* Amount, tag, note and buttons on one line where there's room */
+.ft-split__part {
+    display: grid;
+    grid-template-columns: 9rem minmax(8rem, 1fr) minmax(8rem, 1fr) auto;
+    align-items: end;
+    gap: 8px;
+}
+
+.ft-split__buttons {
+    display: flex;
+    padding-bottom: 4px;
+}
+
+.ft-split__footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+/* Mobile amount and tag side by side, the note under them */
+@media (max-width: 599.98px) {
+    .ft-split__part {
+        grid-template-columns: 1fr 1fr auto;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--mud-palette-lines-default);
+    }
+
+    .ft-split__part ::deep .ft-split__note {
+        grid-column: 1 / 3;
+        grid-row: 2;
+    }
+
+    .ft-split__buttons {
+        grid-column: 3;
+        grid-row: 1 / 3;
+        flex-direction: column;
+        justify-content: center;
+    }
+}
