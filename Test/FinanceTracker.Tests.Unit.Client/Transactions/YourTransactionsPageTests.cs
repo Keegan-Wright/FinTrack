@@ -22,6 +22,11 @@ public class YourTransactionsPageTests : ComponentTestBase
     private readonly ApplicationState _applicationState = new();
     private readonly List<IBrowserViewportObserver> _viewportObservers = [];
 
+    /// <summary>
+    /// How long a click's work gets, so a step that didn't land fails rather than waits on a dialog forever.
+    /// </summary>
+    private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(5);
+
     public YourTransactionsPageTests()
     {
         AddBunitPersistentComponentState();
@@ -108,6 +113,7 @@ public class YourTransactionsPageTests : ComponentTestBase
     public async Task Split_SavesThePartsAndShowsTheSplit()
     {
         // Arrange
+        using CultureScope culture = new();
         Transaction transaction = TransactionListTests.Transaction("Supermarket", -100m);
         Show(transaction);
         _transactionsService.SplitAsync(transaction.TransactionId, Arg.Any<SplitTransaction>(),
@@ -123,11 +129,13 @@ public class YourTransactionsPageTests : ComponentTestBase
         IRenderedComponent<YourTransactions> cut = await RenderPageAsync();
         Task splitting = await RowMenu.StartAsync(cut, popovers, "Supermarket", "Split");
         dialogs.WaitForElements(".ft-split__amount input")[0].Input("60");
+        dialogs.WaitForState(() => Remaining(dialogs) == "£40.00 left to split");
 
         // Act
         dialogs.FindAll("button").Single(static x => x.GetAttribute("aria-label") == "Put the rest in part 2").Click();
+        dialogs.WaitForState(() => Remaining(dialogs) == "The parts add up");
         dialogs.FindAll("button").Single(static x => x.TextContent.Trim() == "Save").Click();
-        await splitting;
+        await splitting.WaitAsync(Timeout);
 
         // Assert
         cut.WaitForAssertion(() => _transactionsService.Received(1).SplitAsync(transaction.TransactionId,
@@ -157,12 +165,15 @@ public class YourTransactionsPageTests : ComponentTestBase
 
         // Act
         await RowMenu.ConfirmAsync(dialogs, "Remove split");
-        await removing;
+        await removing.WaitAsync(Timeout);
 
         // Assert
         await _transactionsService.Received(1).UnsplitAsync(transaction.TransactionId, Arg.Any<CancellationToken>());
         cut.WaitForState(() => !cut.Markup.Contains("Split 2 ways"));
     }
+
+    private static string Remaining(IRenderedComponent<MudDialogProvider> dialogs) =>
+        dialogs.Find(".ft-split__remaining").TextContent.Trim();
 
     private void Show(Transaction transaction) =>
         _transactionsService.GetAllTransactionsAsync(Arg.Any<FilterTransactions>(), Arg.Any<CancellationToken>())

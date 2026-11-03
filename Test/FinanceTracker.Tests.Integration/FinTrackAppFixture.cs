@@ -9,6 +9,7 @@ using FinanceTracker.Tests.Integration.Http;
 using FinanceTracker.Tests.Integration.OpenBanking;
 using FinanceTracker.Tests.Unit.Shared;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using TUnit.Aspire;
 
 namespace FinanceTracker.Tests.Integration;
@@ -21,6 +22,16 @@ public sealed class FinTrackAppFixture : AspireFixture<Projects.FinanceTracker_A
 {
 
     public static readonly EncryptionConfiguration EncryptionConfiguration = TestEncryptionKeys.Keyring();
+
+    /// <summary>
+    /// The test container's connection limit the app's pool of up to 100, the tests' and TickerQ's, with room over.
+    /// </summary>
+    internal const int MaxConnections = 300;
+
+    /// <summary>
+    /// The most connections the tests themselves open, for seeding and asserting.
+    /// </summary>
+    private const int TestMaxPoolSize = 30;
 
     public FakeTrueLayer TrueLayer { get; } = new();
 
@@ -62,6 +73,10 @@ public sealed class FinTrackAppFixture : AspireFixture<Projects.FinanceTracker_A
             {
                 resource.Annotations.Remove(mount);
             }
+
+            // Tests run in parallel against the app's pool and the test pool at once, more than Postgres' default 100
+            builder.CreateResourceBuilder((PostgresServerResource)resource)
+                .WithArgs("-c", $"max_connections={MaxConnections}");
         }
 
         // The app only reports healthy once it has migrated and is serving requests
@@ -78,8 +93,10 @@ public sealed class FinTrackAppFixture : AspireFixture<Projects.FinanceTracker_A
 
         string? connectionString = await GetConnectionStringAsync(FinTrackResources.Database);
 
+        // Seeding and asserting needs few connections, leaving the rest to the app
+        NpgsqlConnectionStringBuilder connection = new(connectionString) { MaxPoolSize = TestMaxPoolSize };
         DbContextOptions<FinanceTrackerContext> options = new DbContextOptionsBuilder<FinanceTrackerContext>()
-            .UseNpgsql(connectionString)
+            .UseNpgsql(connection.ConnectionString)
             .Options;
 
         DbContextFactory = new NpgsqlDbContextFactory(options, new ColumnEncryptionService(EncryptionConfiguration));

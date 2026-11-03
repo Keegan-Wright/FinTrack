@@ -37,20 +37,17 @@ public class SplitTransactionDialogTests : ComponentTestBase
         using CultureScope culture = new();
         IDialogReference dialog = await OpenAsync(TransactionListTests.Transaction("Supermarket", -100m));
         AmountInputs()[0].Input("60");
+        _provider.WaitForState(() => Remaining() == "£40.00 left to split");
 
         // Act
         Button("Put the rest in part 2").Click();
-        string remaining = Remaining();
+        _provider.WaitForState(() => Remaining() == "The parts add up");
         Button("Save").Click();
-        DialogResult? result = await dialog.Result;
+        DialogResult? result = await dialog.Result.WaitAsync(Timeout);
 
         // Assert
         SplitTransaction request = (SplitTransaction)result!.Data!;
-        using (Assert.Multiple())
-        {
-            await Assert.That(remaining).IsEqualTo("The parts add up");
-            await Assert.That(request.Parts.Select(static x => x.Amount)).IsEquivalentTo([-60m, -40m]);
-        }
+        await Assert.That(request.Parts.Select(static x => x.Amount)).IsEquivalentTo([-60m, -40m]);
     }
 
     [Test]
@@ -62,14 +59,12 @@ public class SplitTransactionDialogTests : ComponentTestBase
 
         // Act
         AmountInputs()[0].Input("70");
+        _provider.WaitForState(() => Remaining() == "£30.00 left to split");
         AmountInputs()[1].Input("40");
 
         // Assert
-        using (Assert.Multiple())
-        {
-            await Assert.That(Remaining()).IsEqualTo("£10.00 more than the transaction");
-            await Assert.That(Button("Save").HasAttribute("disabled")).IsTrue();
-        }
+        _provider.WaitForState(() => Remaining() == "£10.00 more than the transaction");
+        await Assert.That(Button("Save").HasAttribute("disabled")).IsTrue();
     }
 
     [Test]
@@ -80,15 +75,12 @@ public class SplitTransactionDialogTests : ComponentTestBase
 
         // Act
         Button("Add a part").Click();
-        int added = _provider.FindAll(".ft-split__part").Count;
+        _provider.WaitForState(() => _provider.FindAll(".ft-split__part").Count == 3);
         Button("Remove part 3").Click();
 
         // Assert
-        using (Assert.Multiple())
-        {
-            await Assert.That(added).IsEqualTo(3);
-            await Assert.That(_provider.FindAll(".ft-split__part")).Count().IsEqualTo(2);
-        }
+        _provider.WaitForState(() => _provider.FindAll(".ft-split__part").Count == 2);
+        await Assert.That(_provider.FindAll(".ft-split__part")).Count().IsEqualTo(2);
     }
 
     [Test]
@@ -106,13 +98,18 @@ public class SplitTransactionDialogTests : ComponentTestBase
 
         // Act
         Button("Save").Click();
-        DialogResult? result = await dialog.Result;
+        DialogResult? result = await dialog.Result.WaitAsync(Timeout);
 
         // Assert
         SplitTransaction request = (SplitTransaction)result!.Data!;
         await Assert.That(request.Parts.Select(static x => (x.Amount, x.TagId)))
             .IsEquivalentTo([(-60m, (Guid?)groceries), (-40m, null)]);
     }
+
+    /// <summary>
+    /// How long the dialog gets to close, so a click that didn't land fails rather than waits forever.
+    /// </summary>
+    private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(5);
 
     private async Task<IDialogReference> OpenAsync(Transaction transaction, List<Classification>? tags = null)
     {

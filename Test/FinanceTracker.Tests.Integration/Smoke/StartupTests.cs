@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Tests.Integration.Http;
@@ -53,5 +54,20 @@ public class StartupTests : IntegrationTestBase
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+    }
+
+    [Test]
+    public async Task Database_AllowsTheConnectionsParallelTestsNeed()
+    {
+        // Arrange
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+
+        // Act
+        string maxConnections = await context.Database
+            .SqlQueryRaw<string>("SELECT current_setting('max_connections') AS \"Value\"")
+            .SingleAsync(CancellationToken);
+
+        // Assert
+        await Assert.That(int.Parse(maxConnections, CultureInfo.InvariantCulture)).IsEqualTo(FinTrackAppFixture.MaxConnections);
     }
 }
