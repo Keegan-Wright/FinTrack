@@ -875,6 +875,28 @@ public class TransactionsServiceTests : InfrastructureTestBase
     }
 
     [Test]
+    public async Task GetAllTransactionsAsync_FilteredByTag_FindsASplitTransactionWithAPartTaggedSo()
+    {
+        // Arrange
+        await SeedSupermarketAsync();
+        TransactionsService subject = BuildSubject();
+        SplitTransaction request = Parts(-60m, -40m);
+        request.Parts[1].TagId = Scenario.ClassificationMappings["household"];
+        await subject.SplitAsync(Scenario.TransactionMappings["shop"], request, CancellationToken);
+
+        // Act
+        List<Transaction> household = await GetAllAsync(subject, new FilterTransactions { Tags = ["Household"] });
+        List<Transaction> groceries = await GetAllAsync(subject, new FilterTransactions { Tags = ["Groceries"] });
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(household).Count().IsEqualTo(1);
+            await Assert.That(groceries).IsEmpty();
+        }
+    }
+
+    [Test]
     public async Task UnsplitAsync_KeepsThePartsTagsOnTheWhole()
     {
         // Arrange

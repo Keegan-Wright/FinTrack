@@ -12,6 +12,7 @@ namespace FinanceTracker.Contracts.Services;
 /// <remarks>
 /// Every report takes the same filters as the transactions page. Transfers between the user's own accounts or within
 /// their household are left out, except from the account breakdown, which shows each account's own money in and out.
+/// Filtered by tags, a split transaction adds only its parts with one of those tags.
 /// </remarks>
 public interface IReportService
 {
@@ -23,7 +24,7 @@ public interface IReportService
 
     /// <summary>
     /// One report per tag (provider classification or custom classification). A transaction with several tags
-    /// counts towards each of them.
+    /// counts towards each of them, a split one only with its parts that carry the tag.
     /// </summary>
     IAsyncEnumerable<SpentInCategoryReport> GetCategoryBreakdownReportAsync(FilterTransactions request,
         CancellationToken cancellationToken);

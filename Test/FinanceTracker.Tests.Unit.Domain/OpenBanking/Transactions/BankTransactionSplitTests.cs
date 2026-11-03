@@ -249,6 +249,38 @@ public class BankTransactionSplitTests
         await Assert.That(transaction.CustomClassificationIds).IsEquivalentTo([_groceries.Id]);
     }
 
+    [Test]
+    public async Task AmountUnder_Split_IsThePartsWithThoseTags()
+    {
+        // Arrange
+        BankTransaction transaction = Build(-100m);
+        transaction.Split([new(-60m, _groceries.Id, null), new(-30m, _household.Id, null), new(-10m, null, null)],
+            [_groceries, _household]);
+
+        // Act & Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(transaction.AmountUnder([_groceries.Id])).IsEqualTo(-60m);
+            await Assert.That(transaction.AmountUnder([_groceries.Id, _household.Id])).IsEqualTo(-90m);
+            await Assert.That(transaction.AmountUnder([Guid.NewGuid()])).IsEqualTo(0m);
+        }
+    }
+
+    [Test]
+    public async Task AmountUnder_NotSplit_IsAllOfItWhenItHasOneOfTheTags()
+    {
+        // Arrange
+        BankTransaction transaction = Build(-100m);
+        transaction.Classify(_groceries);
+
+        // Act & Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(transaction.AmountUnder([_groceries.Id, _household.Id])).IsEqualTo(-100m);
+            await Assert.That(transaction.AmountUnder([_household.Id])).IsEqualTo(0m);
+        }
+    }
+
     private static BankTransaction Build(decimal amount) => BankTransaction.Import(Account, Details(amount));
 
     private static TransactionDetails Details(decimal amount) =>

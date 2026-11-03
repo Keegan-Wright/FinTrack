@@ -126,6 +126,27 @@ public sealed class BankTransaction : AggregateRoot
 
     public bool IsSplit => _splits.Count > 0;
 
+    /// <summary>
+    /// How much of it counts under any of <paramref name="tagIds"/>, e.g. for a budget: the parts tagged with one of
+    /// them when it's split, otherwise all of it when it has one of them, otherwise nothing.
+    /// </summary>
+    public decimal AmountUnder(IReadOnlyCollection<Guid> tagIds)
+    {
+        ArgumentNullException.ThrowIfNull(tagIds);
+
+        if (IsSplit)
+        {
+            return _splits.Where(x => x.TagId is { } tagId && tagIds.Contains(tagId)).Sum(static x => x.Amount);
+        }
+
+        if (_customClassificationIds.Exists(tagIds.Contains))
+        {
+            return Amount;
+        }
+
+        return 0;
+    }
+
     public static BankTransaction Import(BankAccount account, TransactionDetails details)
     {
         ArgumentNullException.ThrowIfNull(account);

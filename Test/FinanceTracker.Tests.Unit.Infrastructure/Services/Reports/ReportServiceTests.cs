@@ -5,6 +5,7 @@ using FinanceTracker.Contracts.Reports.Category;
 using FinanceTracker.Contracts.Reports.SpentInTimePeriod;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Transactions;
+using FinanceTracker.Domain.Classifications;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Infrastructure;
@@ -412,6 +413,85 @@ public class ReportServiceTests : InfrastructureTestBase
         await Assert.That(reports.Count).IsEqualTo(0);
     }
 
+    [Test]
+    public async Task GetCategoryBreakdownReportAsync_ASplitTransaction_CountsEachPartUnderItsTag()
+    {
+        // Arrange
+        await SeedAccountAsync()
+            .Do(s => s.ClassificationScenario.WithClassification("groceries", Username, "Groceries"))
+            .Do(s => s.ClassificationScenario.WithClassification("household", Username, "Household"))
+            .Do(s => s.TransactionScenario.WithTransaction("shop", "main",
+                Transaction(-100m, January15, classifications: ["Shopping"]) with { IsPending = false }));
+        await SplitAsync("shop", (-50m, "groceries"), (-10m, "groceries"), (-30m, "household"), (-10m, null));
+
+        ReportService subject = BuildSubject();
+
+        // Act
+        List<SpentInCategoryReport> reports = await subject.GetCategoryBreakdownReportAsync(Request(), CancellationToken)
+            .ToListAsync(CancellationToken);
+
+        // Assert, the bank's classification is on the whole of it
+        using (Assert.Multiple())
+        {
+            await Assert.That(reports.Select(static x => (x.Category, x.TotalOut, x.TotalTransactions))).IsEquivalentTo(
+                [("Shopping", -100m, 1), ("Groceries", -60m, 1), ("Household", -30m, 1)]);
+            await Assert.That(reports.Single(static x => x.Category == "Groceries").YearlyBreakdown.Single()
+                .MonthlyBreakdown.Single().DailyBreakdown.Single().TotalOut).IsEqualTo(-60m);
+        }
+    }
+
+    [Test]
+    public async Task Reports_FilteredByTag_CountOnlyTheMatchingPartsOfASplitTransaction()
+    {
+        // Arrange
+        await SeedAccountAsync()
+            .Do(s => s.ClassificationScenario.WithClassification("groceries", Username, "Groceries"))
+            .Do(s => s.ClassificationScenario.WithClassification("household", Username, "Household"))
+            .Do(s => s.TransactionScenario.WithTransaction("shop", "main",
+                Transaction(-100m, January15) with { IsPending = false }))
+            .Do(s => s.TransactionScenario.WithTransaction("cleaner", "main",
+                Transaction(-20m, January20) with { IsPending = false }))
+            .Do(s => s.TransactionScenario.WithCustomClassification("cleaner", "household"));
+        await SplitAsync("shop", (-60m, "groceries"), (-30m, "household"), (-10m, null));
+
+        ReportService subject = BuildSubject();
+        FilterTransactions household = new() { Tags = ["Household"] };
+
+        // Act
+        SpentInTimePeriodReport overTime = (await subject.GetSpentInTimePeriodReportAsync(household, CancellationToken)
+            .ToListAsync(CancellationToken)).Single();
+        SpentInAccountReport byAccount = (await subject.GetAccountBreakdownReportAsync(household, CancellationToken)
+            .ToListAsync(CancellationToken)).Single();
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(overTime.TotalOut).IsEqualTo(-50m);
+            await Assert.That(overTime.TotalTransactions).IsEqualTo(2);
+            await Assert.That(overTime.YearlyBreakdown.Single().MonthlyBreakdown.Single().DailyBreakdown
+                .Select(static x => x.TotalOut)).IsEquivalentTo([-30m, -20m]);
+            await Assert.That(byAccount.TotalOut).IsEqualTo(-50m);
+        }
+    }
+
+    [Test]
+    public async Task GetSpentInTimePeriodReportAsync_NoTagFilter_CountsAllOfASplitTransaction()
+    {
+        // Arrange
+        await SeedAccountAsync()
+            .Do(s => s.ClassificationScenario.WithClassification("groceries", Username, "Groceries"))
+            .Do(s => s.TransactionScenario.WithTransaction("shop", "main",
+                Transaction(-100m, January15) with { IsPending = false }));
+        await SplitAsync("shop", (-60m, "groceries"), (-40m, null));
+
+        // Act
+        SpentInTimePeriodReport report = (await BuildSubject().GetSpentInTimePeriodReportAsync(Request(),
+            CancellationToken).ToListAsync(CancellationToken)).Single();
+
+        // Assert
+        await Assert.That(report.TotalOut).IsEqualTo(-100m);
+    }
+
     private Task<TestingScenario> SeedAccountAsync(string? displayName = null) =>
         Scenario.Do(s => s.UserScenario.WithUser(Username))
             .Do(s => s.BankConnectionScenario.WithConnection("bank", Username))
@@ -439,6 +519,21 @@ public class ReportServiceTests : InfrastructureTestBase
         Guid id = Scenario.TransactionMappings[transactionName];
         BankTransaction transaction = await context.BankTransactions.SingleAsync(x => x.Id == id, CancellationToken);
         transaction.HideClassification(classification);
+        await context.SaveChangesAsync(CancellationToken);
+    }
+
+    private async Task SplitAsync(string transactionName, params (decimal Amount, string? Tag)[] parts)
+    {
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        Guid id = Scenario.TransactionMappings[transactionName];
+        BankTransaction transaction = await context.BankTransactions.SingleAsync(x => x.Id == id, CancellationToken);
+        List<Guid> tagIds = parts.Select(x => x.Tag).OfType<string>()
+            .Select(x => Scenario.ClassificationMappings[x]).ToList();
+        List<CustomClassification> tags = await context.CustomClassifications.Where(x => tagIds.Contains(x.Id))
+            .ToListAsync(CancellationToken);
+
+        transaction.Split(parts.Select(x => new TransactionSplit(x.Amount,
+            x.Tag is null ? null : Scenario.ClassificationMappings[x.Tag], null)).ToList(), tags);
         await context.SaveChangesAsync(CancellationToken);
     }
 

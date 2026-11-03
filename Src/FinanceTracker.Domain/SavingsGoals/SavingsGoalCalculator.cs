@@ -61,7 +61,7 @@ public static class SavingsGoalCalculator
 
         Dictionary<DateOnly, decimal> savedOn = Counted(goal, transactions, timeZone)
             .GroupBy(x => LocalDay(x.OccurredAt, timeZone))
-            .ToDictionary(static x => x.Key, static x => x.Sum(static t => t.Amount));
+            .ToDictionary(static x => x.Key, x => x.Sum(t => t.AmountUnder(goal.TagIds)));
 
         List<SavedOn> history = [];
         decimal saved = goal.Saved;
@@ -75,10 +75,10 @@ public static class SavingsGoalCalculator
     }
 
     /// <summary>
-    /// Tagged money in less tagged money out.
+    /// Tagged money in less tagged money out, of a split transaction only the parts with the goal's tags.
     /// </summary>
     private static decimal Tagged(SavingsGoal goal, IEnumerable<BankTransaction> transactions, TimeZoneInfo timeZone) =>
-        Counted(goal, transactions, timeZone).Sum(static x => x.Amount);
+        Counted(goal, transactions, timeZone).Sum(x => x.AmountUnder(goal.TagIds));
 
     /// <summary>
     /// The transactions that count towards the goal. When both halves of a transfer are tagged, only the money in

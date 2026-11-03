@@ -1,3 +1,4 @@
+using FinanceTracker.Domain.Classifications;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.OpenBanking.Transfers;
@@ -192,6 +193,30 @@ public class SavingsGoalCalculatorTests
     public async Task History_TypedInGoal_IsEmpty() =>
         await Assert.That(SavingsGoalCalculator.History(Goal(saved: 500m),
             [Tagged(Savings, 50m, new DateTime(2026, 3, 13), CarFund)], TimeZoneInfo.Utc, Today)).IsEmpty();
+
+    [Test]
+    public async Task Progress_Tags_ASplitTransaction_CountsOnlyThePartsWithTheGoalsTags()
+    {
+        // Arrange, £100 paid in of which £70 is for the car
+        CustomClassification carFund = new(UserId, "Car fund");
+        CustomClassification holiday = new(UserId, "Holiday");
+        SavingsGoal goal = Goal();
+        goal.TrackTags([carFund.Id], 0m, new DateOnly(2026, 3, 1));
+        BankTransaction paidIn = Tagged(Savings, 100m, new DateTime(2026, 3, 2));
+        paidIn.Split([new TransactionSplit(70m, carFund.Id, null), new TransactionSplit(30m, holiday.Id, null)],
+            [carFund, holiday]);
+
+        // Act
+        SavingsGoalProgress progress = Calculate(goal, transactions: [paidIn]);
+        IReadOnlyList<SavedOn> history = SavingsGoalCalculator.History(goal, [paidIn], TimeZoneInfo.Utc, Today);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(progress.Saved).IsEqualTo(70m);
+            await Assert.That(history[^1].Saved).IsEqualTo(70m);
+        }
+    }
 
     private static SavingsGoalProgress Calculate(SavingsGoal goal, decimal? accountBalance = null,
         IEnumerable<BankTransaction>? transactions = null) =>

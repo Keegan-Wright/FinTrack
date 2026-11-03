@@ -2,6 +2,9 @@ using System.Net;
 using FinanceTracker.Contracts.Budgets;
 using FinanceTracker.Contracts.Classifications;
 using FinanceTracker.Contracts.Services;
+using FinanceTracker.Contracts.Transactions;
+using FinanceTracker.Tests.Unit.Shared.Fakers;
+using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using FinanceTracker.Tests.Integration.Http;
 
 namespace FinanceTracker.Tests.Integration.Api;
@@ -69,6 +72,47 @@ public class BudgetApiTests : IntegrationTestBase
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() => service.GetBudgetAsync(budget.Id, CancellationToken));
+    }
+
+    [Test]
+    public async Task SplitTransaction_CountsOnlyItsPartsWithTheBudgetsTags()
+    {
+        // Arrange, a £100 shop of which £60 is groceries
+        SignedInUser user = await RegisterUserAsync();
+        ApiSession api = ApiFor(user);
+        IClassificationService classifications = api.Get<IClassificationService>();
+        Classification groceries = await classifications
+            .AddCustomClassificationAsync(new AddClassifications { Tag = "Groceries" }, CancellationToken);
+        Classification household = await classifications
+            .AddCustomClassificationAsync(new AddClassifications { Tag = "Household" }, CancellationToken);
+        IBudgetsService service = api.Get<IBudgetsService>();
+        await service.AddBudgetAsync(Groceries(groceries, 400m), CancellationToken);
+        DateTime now = DateTime.Now;
+        await Scenario.Do(s => s.BankConnectionScenario.WithConnection("bank", user.Username))
+            .Do(s => s.BankAccountScenario.WithAccount("main", "bank"))
+            .Do(s => s.TransactionScenario.WithTransaction("shop", "main", new TransactionDetailsFaker().Generate() with
+            {
+                Amount = -100m, Category = "PURCHASE", OccurredAt = DateTime.UtcNow, IsPending = false
+            }));
+        await api.Get<ITransactionsService>().SplitAsync(Scenario.TransactionMappings["shop"], new SplitTransaction
+        {
+            Parts =
+            [
+                new SplitTransactionPart { Amount = -60m, TagId = groceries.ClassificationId },
+                new SplitTransactionPart { Amount = -30m, TagId = household.ClassificationId },
+                new SplitTransactionPart { Amount = -10m }
+            ]
+        }, CancellationToken);
+
+        // Act
+        BudgetMonthOverview month = await service.GetMonthAsync(now.Year, now.Month, CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(month.Budgets.Single().Spent).IsEqualTo(60m);
+            await Assert.That(month.Unbudgeted).IsEqualTo(40m);
+        }
     }
 
     private static SaveBudget Groceries(Classification tag, decimal limit) => new()
