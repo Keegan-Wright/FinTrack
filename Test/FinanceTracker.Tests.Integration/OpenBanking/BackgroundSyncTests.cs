@@ -23,6 +23,7 @@ using DomainBill = FinanceTracker.Domain.Bills.Bill;
 using DomainBillFrequency = FinanceTracker.Domain.Bills.BillFrequency;
 using DomainBillSource = FinanceTracker.Domain.Bills.BillSource;
 using DomainDebt = FinanceTracker.Domain.Debts.Debt;
+using FinanceTracker.Tests.Unit.Shared;
 
 namespace FinanceTracker.Tests.Integration.OpenBanking;
 
@@ -37,7 +38,6 @@ public class BackgroundSyncTests : IntegrationTestBase
     private const string UserSyncFunction = "SyncUserOpenBankingDetailsAsync";
     private const string MonitorFunction = "MonitorOpenBankingTokenExpirationAsync";
     private const string MoveGoalsOnFunction = "MoveEventSavingsGoalsOnAsync";
-    private static readonly TimeSpan JobTimeout = TimeSpan.FromSeconds(90);
 
     [Test]
     public async Task Sync_ImportsAccountsAndTheirData()
@@ -496,7 +496,7 @@ public class BackgroundSyncTests : IntegrationTestBase
         }
 
         using CancellationTokenSource timeout = CancellationTokenSource.CreateLinkedTokenSource(CancellationToken);
-        timeout.CancelAfter(JobTimeout);
+        timeout.CancelAfter(TestTimeouts.Job);
 
         while (true)
         {

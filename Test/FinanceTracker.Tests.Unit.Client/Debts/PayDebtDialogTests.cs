@@ -7,6 +7,7 @@ using FinanceTracker.Tests.Unit.Client.Transactions;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
+using FinanceTracker.Tests.Unit.Shared;
 
 namespace FinanceTracker.Tests.Unit.Client.Debts;
 
@@ -26,7 +27,7 @@ public class PayDebtDialogTests : ComponentTestBase
 
         // Act
         Button("OK").Click();
-        DialogResult? result = await _dialog.Result.WaitAsync(TimeSpan.FromSeconds(5));
+        DialogResult? result = await _dialog.Result.WaitAsync(TestTimeouts.Wait);
 
         // Assert
         await Assert.That(((PayDebt)result!.Data!).DebtId).IsEqualTo(carLoan.Id);
@@ -44,7 +45,7 @@ public class PayDebtDialogTests : ComponentTestBase
 
         // Act
         Button("OK").Click();
-        DialogResult? result = await _dialog.Result.WaitAsync(TimeSpan.FromSeconds(5));
+        DialogResult? result = await _dialog.Result.WaitAsync(TestTimeouts.Wait);
 
         // Assert
         await Assert.That(((PayDebt)result!.Data!).DebtId).IsNull();

@@ -3,6 +3,7 @@ using FinanceTracker.Contracts.Services;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Tests.Integration.Http;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
+using FinanceTracker.Tests.Unit.Shared;
 
 namespace FinanceTracker.Tests.Integration.Api;
 
@@ -93,7 +94,7 @@ public class AutomationApiTests : IntegrationTestBase
         await api.Get<IAutomationService>().RequestSyncAsync(CancellationToken);
 
         // Assert, the user sync always notifies, even with nothing to sync
-        await synced.Task.WaitAsync(TimeSpan.FromSeconds(90), CancellationToken);
+        await synced.Task.WaitAsync(TestTimeouts.Job, CancellationToken);
         await Assert.That(synced.Task.IsCompletedSuccessfully).IsTrue();
     }
 }

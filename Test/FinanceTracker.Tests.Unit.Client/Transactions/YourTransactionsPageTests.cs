@@ -12,6 +12,7 @@ using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
 using MudBlazor.Services;
 using NSubstitute;
+using FinanceTracker.Tests.Unit.Shared;
 
 namespace FinanceTracker.Tests.Unit.Client.Transactions;
 
@@ -21,11 +22,6 @@ public class YourTransactionsPageTests : ComponentTestBase
     private readonly IClassificationService _classificationService = Substitute.For<IClassificationService>();
     private readonly ApplicationState _applicationState = new();
     private readonly List<IBrowserViewportObserver> _viewportObservers = [];
-
-    /// <summary>
-    /// How long a click's work gets, so a step that didn't land fails rather than waits on a dialog forever.
-    /// </summary>
-    private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(5);
 
     public YourTransactionsPageTests()
     {
@@ -135,7 +131,7 @@ public class YourTransactionsPageTests : ComponentTestBase
         dialogs.FindAll("button").Single(static x => x.GetAttribute("aria-label") == "Put the rest in part 2").Click();
         dialogs.WaitForState(() => Remaining(dialogs) == "The parts add up");
         dialogs.FindAll("button").Single(static x => x.TextContent.Trim() == "Save").Click();
-        await splitting.WaitAsync(Timeout);
+        await splitting.WaitAsync(TestTimeouts.Wait);
 
         // Assert
         cut.WaitForAssertion(() => _transactionsService.Received(1).SplitAsync(transaction.TransactionId,
@@ -165,7 +161,7 @@ public class YourTransactionsPageTests : ComponentTestBase
 
         // Act
         await RowMenu.ConfirmAsync(dialogs, "Remove split");
-        await removing.WaitAsync(Timeout);
+        await removing.WaitAsync(TestTimeouts.Wait);
 
         // Assert
         await _transactionsService.Received(1).UnsplitAsync(transaction.TransactionId, Arg.Any<CancellationToken>());

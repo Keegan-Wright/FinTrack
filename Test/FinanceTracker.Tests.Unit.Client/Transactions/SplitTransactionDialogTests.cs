@@ -4,6 +4,7 @@ using FinanceTracker.Contracts.Classifications;
 using FinanceTracker.Contracts.Transactions;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
+using FinanceTracker.Tests.Unit.Shared;
 
 namespace FinanceTracker.Tests.Unit.Client.Transactions;
 
@@ -43,7 +44,7 @@ public class SplitTransactionDialogTests : ComponentTestBase
         Button("Put the rest in part 2").Click();
         _provider.WaitForState(() => Remaining() == "The parts add up");
         Button("Save").Click();
-        DialogResult? result = await dialog.Result.WaitAsync(Timeout);
+        DialogResult? result = await dialog.Result.WaitAsync(TestTimeouts.Wait);
 
         // Assert
         SplitTransaction request = (SplitTransaction)result!.Data!;
@@ -98,18 +99,13 @@ public class SplitTransactionDialogTests : ComponentTestBase
 
         // Act
         Button("Save").Click();
-        DialogResult? result = await dialog.Result.WaitAsync(Timeout);
+        DialogResult? result = await dialog.Result.WaitAsync(TestTimeouts.Wait);
 
         // Assert
         SplitTransaction request = (SplitTransaction)result!.Data!;
         await Assert.That(request.Parts.Select(static x => (x.Amount, x.TagId)))
             .IsEquivalentTo([(-60m, (Guid?)groceries), (-40m, null)]);
     }
-
-    /// <summary>
-    /// How long the dialog gets to close, so a click that didn't land fails rather than waits forever.
-    /// </summary>
-    private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(5);
 
     private async Task<IDialogReference> OpenAsync(Transaction transaction, List<Classification>? tags = null)
     {

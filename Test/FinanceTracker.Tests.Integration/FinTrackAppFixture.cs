@@ -60,7 +60,7 @@ public sealed class FinTrackAppFixture : AspireFixture<Projects.FinanceTracker_A
         "--OIDC:ClientSecret="
     ];
 
-    protected override TimeSpan ResourceTimeout => TimeSpan.FromMinutes(3);
+    protected override TimeSpan ResourceTimeout => TestTimeouts.Startup;
 
     protected override AspireFixtureOptions Options => new() { RetainResourceLogs = true };
 

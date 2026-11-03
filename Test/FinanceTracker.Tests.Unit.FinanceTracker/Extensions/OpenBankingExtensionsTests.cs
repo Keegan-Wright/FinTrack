@@ -6,6 +6,7 @@ using FinanceTracker.Extensions;
 using FinanceTracker.Infrastructure.OpenBanking.TrueLayer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
+using FinanceTracker.Tests.Unit.Shared;
 
 namespace FinanceTracker.Tests.Unit.FinanceTracker.Extensions;
 
@@ -232,7 +233,7 @@ public class OpenBankingExtensionsTests
 
     private static async Task WaitForCallsAsync(StubTrueLayerHandler trueLayer, int calls)
     {
-        using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(5));
+        using CancellationTokenSource timeout = new(TestTimeouts.Wait);
 
         while (trueLayer.Calls < calls)
         {

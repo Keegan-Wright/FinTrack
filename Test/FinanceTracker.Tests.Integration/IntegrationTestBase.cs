@@ -4,6 +4,7 @@ using FinanceTracker.Infrastructure;
 using FinanceTracker.Tests.Integration.Http;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.EntityFrameworkCore;
+using FinanceTracker.Tests.Unit.Shared;
 
 namespace FinanceTracker.Tests.Integration;
 
@@ -29,7 +30,7 @@ public abstract class IntegrationTestBase
     [Before(Test)]
     public void BaseIntegrationSetup()
     {
-        CancellationTokenSource = new CancellationTokenSource(TimeSpan.FromMinutes(2));
+        CancellationTokenSource = new CancellationTokenSource(TestTimeouts.IntegrationTest);
         Scenario = new TestingScenario(DbContextFactory, CancellationToken);
     }
 

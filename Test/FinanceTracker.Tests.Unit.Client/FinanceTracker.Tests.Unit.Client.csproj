@@ -16,4 +16,9 @@
     <ProjectReference Include="..\..\Src\FinanceTracker.Client\FinanceTracker.Client.csproj" />
   </ItemGroup>
 
+  <!-- The standard test timeouts, as a file: referencing the shared project would bring the server's code in -->
+  <ItemGroup>
+    <Compile Include="..\FinanceTracker.Tests.Unit.Shared\TestTimeouts.cs" Link="TestTimeouts.cs" />
+  </ItemGroup>
+
 </Project>

@@ -6,6 +6,7 @@ using FinanceTracker.Contracts.Validation;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
+using FinanceTracker.Tests.Unit.Shared;
 
 namespace FinanceTracker.Tests.Unit.Client.Household;
 
@@ -128,7 +129,7 @@ public class RecogniseHouseholdMemberDialogTests : ComponentTestBase
     private async Task<UpdateHouseholdMemberRecognition?> SaveAsync()
     {
         Button("OK").Click();
-        DialogResult? result = await _dialog.Result.WaitAsync(TimeSpan.FromSeconds(5));
+        DialogResult? result = await _dialog.Result.WaitAsync(TestTimeouts.Wait);
         return result?.Data as UpdateHouseholdMemberRecognition;
     }
 
