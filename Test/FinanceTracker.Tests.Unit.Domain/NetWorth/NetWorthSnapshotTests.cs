@@ -37,6 +37,21 @@ public class NetWorthSnapshotTests
     }
 
     [Test]
+    public async Task NetWorthSnapshot_IsDerivedWhenAnyBalanceIs()
+    {
+        var derived = new BalanceSnapshot(UserId, Guid.CreateVersion7(), Day, new AccountBalance(50m, 50m, AsOf),
+            BalanceSnapshotSource.Derived, isStale: false);
+
+        NetWorthSnapshot snapshot = new(UserId, Day, [Balance(1200m), derived]);
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(snapshot.IsDerived).IsTrue();
+            await Assert.That(new NetWorthSnapshot(UserId, Day, [Balance(1200m)]).IsDerived).IsFalse();
+        }
+    }
+
+    [Test]
     public async Task NetWorthSnapshot_IsStaleWhenAnyBalanceIs()
     {
         NetWorthSnapshot snapshot = new(UserId, Day, [Balance(100m), Balance(50m, isStale: true)]);

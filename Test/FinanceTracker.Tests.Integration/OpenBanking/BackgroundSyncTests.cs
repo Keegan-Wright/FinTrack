@@ -239,8 +239,11 @@ public class BackgroundSyncTests : IntegrationTestBase
         // Assert
         Guid userId = Scenario.UserMappings[user.Username];
         await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
-        NetWorthSnapshot netWorth = await context.NetWorthSnapshots.SingleAsync(x => x.UserId == userId,
-            CancellationToken);
+        List<NetWorthSnapshot> history = await context.NetWorthSnapshots.Where(x => x.UserId == userId)
+            .OrderBy(static x => x.Date)
+            .ToListAsync(CancellationToken);
+        NetWorthSnapshot netWorth = history[^1];
+        NetWorthSnapshot beforePaying = history.Single(x => x.Date == DateOnly.FromDateTime(paidAt).AddDays(-1));
         BankTransaction synced = await SyncedTransactionAsync(Scenario.ConnectionMappings["bank"],
             payment.TransactionId);
 
@@ -251,6 +254,10 @@ public class BackgroundSyncTests : IntegrationTestBase
             await Assert.That(debt.Paid).IsEqualTo(100m);
             await Assert.That(netWorth.Assets).IsEqualTo(500m);
             await Assert.That(netWorth.Liabilities).IsEqualTo(900m);
+            await Assert.That(netWorth.IsDerived).IsFalse();
+            await Assert.That(beforePaying.Assets).IsEqualTo(600m);
+            await Assert.That(beforePaying.Liabilities).IsEqualTo(1000m);
+            await Assert.That(beforePaying.IsDerived).IsTrue();
         }
     }
 

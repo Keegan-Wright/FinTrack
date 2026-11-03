@@ -8,6 +8,12 @@ namespace FinanceTracker.Contracts.Account;
 public class AccountAndTransactions
 {
     /// <summary>
+    /// The account's id.
+    /// </summary>
+    [Description("The account's id")]
+    public Guid AccountId { get; init; }
+
+    /// <summary>
     /// The account's name as the bank reports it.
     /// </summary>
     [Description("Name of the account")]

@@ -163,6 +163,36 @@ public class SavingsGoalCalculatorTests
         }
     }
 
+    [Test]
+    public async Task History_TagGoal_RunsFromItsStartingAmountDayByDay()
+    {
+        // Arrange
+        SavingsGoal goal = Goal();
+        goal.TrackTags([CarFund], 100m, new DateOnly(2026, 3, 12));
+        BankTransaction[] transactions =
+        [
+            Tagged(Savings, 50m, new DateTime(2026, 3, 13), CarFund),
+            Tagged(Savings, -20m, new DateTime(2026, 3, 15), CarFund),
+            Tagged(Savings, 999m, new DateTime(2026, 3, 1), CarFund)
+        ];
+
+        // Act
+        IReadOnlyList<SavedOn> history = SavingsGoalCalculator.History(goal, transactions, TimeZoneInfo.Utc, Today);
+
+        // Assert
+        await Assert.That(history).IsEquivalentTo(
+            [
+                new SavedOn(new DateOnly(2026, 3, 12), 100m), new SavedOn(new DateOnly(2026, 3, 13), 150m),
+                new SavedOn(new DateOnly(2026, 3, 14), 150m), new SavedOn(new DateOnly(2026, 3, 15), 130m)
+            ],
+            TUnit.Assertions.Enums.CollectionOrdering.Matching);
+    }
+
+    [Test]
+    public async Task History_TypedInGoal_IsEmpty() =>
+        await Assert.That(SavingsGoalCalculator.History(Goal(saved: 500m),
+            [Tagged(Savings, 50m, new DateTime(2026, 3, 13), CarFund)], TimeZoneInfo.Utc, Today)).IsEmpty();
+
     private static SavingsGoalProgress Calculate(SavingsGoal goal, decimal? accountBalance = null,
         IEnumerable<BankTransaction>? transactions = null) =>
         SavingsGoalCalculator.Progress(goal, accountBalance, transactions ?? [], TimeZoneInfo.Utc, Today);

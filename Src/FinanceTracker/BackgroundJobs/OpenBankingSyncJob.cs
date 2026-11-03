@@ -98,10 +98,13 @@ public abstract class OpenBankingSyncJob
             await RunAsOwnerAsync<IBillSyncService>(userId, "Synced bills", performingBackgroundSyncActivity,
                 x => x.SyncAsync(cancellationToken));
 
-            // After the rules, so
-            // net worth counts the debt payments they linked
+            // After the rules, so net worth counts the debt payments they linked
             await RunAsOwnerAsync<IBalanceSnapshotService>(userId, "Snapshot balances",
                 performingBackgroundSyncActivity, x => x.SnapshotAsync(today, startedAt, cancellationToken));
+
+            // After today's snapshot, so newly connected accounts are worked back from it
+            await RunAsOwnerAsync<IBalanceSnapshotService>(userId, "Backfilled balance history",
+                performingBackgroundSyncActivity, x => x.BackfillAsync(cancellationToken));
         }
 
         performingBackgroundSyncActivity?.AddEvent(new ActivityEvent("Background sync completed"));

@@ -1,0 +1,170 @@
+@page "/NetWorth"
+@* What the user has less what they owe, over time. Today's figure and how it's changed, a chart over the chosen range,
+   and the accounts, cards and debts that make it up. Days before FinTrack synced are worked out from transactions. *@
+@using System.Globalization
+@using FinanceTracker.Client.Components.NetWorth
+@using FinanceTracker.Contracts.NetWorth
+@using Microsoft.AspNetCore.Authorization
+@inherits PageComponent
+
+@attribute [Authorize]
+@inject INetWorthService NetWorthService
+@inject TimeProvider TimeProvider
+@inject ISnackbar Snackbar
+
+<PageTitle>FinTrack - Net worth</PageTitle>
+<PageHeader Title="Net worth" Subtitle="What you have, less what you owe">
+    <Actions>
+        <MudToggleGroup T="int" Value="@_months" ValueChanged="@SetRangeAsync" Size="Size.Small"
+                        Color="Color.Primary">
+            <MudToggleItem Value="3" Text="3 months"/>
+            <MudToggleItem Value="6" Text="6 months"/>
+            <MudToggleItem Value="12" Text="1 year"/>
+            <MudToggleItem Value="@AllTime" Text="All"/>
+        </MudToggleGroup>
+    </Actions>
+</PageHeader>
+
+<div class="ft-stack">
+    @if (Latest is { } latest)
+    {
+        <StatStrip>
+            <Stat Label="Net worth" Value="@latest.NetWorth" Signed="true">
+                <span class="@ChangeClass(History!.ChangeThisMonth)">
+                    @NetWorthText.Change(History.ChangeThisMonth, "month")
+                </span>
+                · @NetWorthText.Change(History.ChangeThisYear, "year")
+            </Stat>
+            <Stat Label="Assets" Value="@latest.Assets">Accounts in credit</Stat>
+            <Stat Label="Liabilities" Value="@latest.Liabilities">Overdrafts, cards and debts</Stat>
+        </StatStrip>
+    }
+
+    <Section Title="Over time" Caption="@ChartCaption">
+        @if (Latest is null)
+        {
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                Your net worth starts building up from your first sync. Connect a bank on the Accounts page.
+            </MudText>
+        }
+        else
+        {
+            <BalanceHistoryChart Points="@_points" Name="Net worth"/>
+        }
+    </Section>
+
+    @if (Latest is { } today)
+    {
+        <Section Title="What makes it up" Caption="@($"On {Day(today.Date)}, largest first")">
+            <div class="ft-list">
+                @foreach (NetWorthItem item in History!.Breakdown)
+                {
+                    <div class="ft-list__row">
+                        <MudIcon Icon="@NetWorthText.KindIcon(item.Kind)" Size="Size.Small" Class="mud-text-secondary"/>
+                        <div class="ft-list__main">
+                            <MudText Typo="Typo.body2" Class="text-truncate">@item.Name</MudText>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                @NetWorthText.KindName(item.Kind)
+                            </MudText>
+                        </div>
+                        <div class="ft-list__end">
+                            <MoneyText Value="@item.Amount" Signed="true"/>
+                        </div>
+                    </div>
+                }
+            </div>
+        </Section>
+    }
+</div>
+
+@code {
+
+    private const int AllTime = 0;
+
+    /// <summary>
+    /// Net worth over the chosen range, loaded once, see <see cref="PageComponent.LoadOnceAsync{T}"/>.
+    /// </summary>
+    [PersistentState]
+    public NetWorthHistory? History { get; set; }
+
+    private int _months = 6;
+    private NetWorthHistory? _pointsFrom;
+    private IReadOnlyList<BalancePoint> _points = [];
+
+    private NetWorthPoint? Latest => History?.Points.LastOrDefault();
+
+    private string ChartCaption => NetWorthText.DerivedNote(_points) ?? "Each day's closing balances";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        History = await LoadOnceAsync(History, "Totting up your net worth",
+            cancellationToken => NetWorthService.GetNetWorthAsync(From(_months), cancellationToken));
+    }
+
+    protected override void OnParametersSet() => BuildPoints();
+
+    /// <summary>
+    /// Built once per history, so the chart only redraws when it changes.
+    /// </summary>
+    private void BuildPoints()
+    {
+        if (History is null || ReferenceEquals(History, _pointsFrom))
+        {
+            return;
+        }
+
+        _pointsFrom = History;
+        _points = NetWorthText.Points(History);
+    }
+
+    private async Task SetRangeAsync(int months)
+    {
+        if (months == _months)
+        {
+            return;
+        }
+
+        _months = months;
+        try
+        {
+            SetLoadingState(true, "Totting up your net worth");
+            History = await NetWorthService.GetNetWorthAsync(From(months), _cts.Token);
+            BuildPoints();
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't load that range, try again", Severity.Error);
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
+    /// <summary>
+    /// The first day of the last <paramref name="months"/> months, null for all of it.
+    /// </summary>
+    private DateOnly? From(int months)
+    {
+        if (months == AllTime)
+        {
+            return null;
+        }
+
+        return DateOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime).AddMonths(-months);
+    }
+
+    private static string? ChangeClass(decimal? change)
+    {
+        if (change is not { } amount || amount == 0)
+        {
+            return null;
+        }
+
+        return amount > 0 ? "mud-success-text" : "mud-error-text";
+    }
+
+    private static string Day(DateOnly day) => day.ToString("d MMM yyyy", CultureInfo.CurrentCulture);
+
+}

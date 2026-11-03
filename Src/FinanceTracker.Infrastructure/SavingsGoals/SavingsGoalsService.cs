@@ -1,12 +1,15 @@
 using System.Runtime.CompilerServices;
 using FinanceTracker.Contracts;
+using FinanceTracker.Contracts.NetWorth;
 using FinanceTracker.Contracts.SavingsGoals;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Domain.OpenBanking.Accounts;
+using FinanceTracker.Domain.OpenBanking.Balances;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.SavingsGoals;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
+using FinanceTracker.Infrastructure.NetWorth;
 using FinanceTracker.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -79,6 +82,37 @@ public class SavingsGoalsService : ServiceBase<SavingsGoalsService>, ISavingsGoa
                 GoalId = backing.TryGetValue(account.Id, out Guid goalId) ? goalId : null
             };
         }
+    }
+
+    public async Task<List<BalancePoint>> GetSavingsGoalHistoryAsync(Guid id, CancellationToken cancellationToken)
+    {
+        await using FinanceTrackerContext context =
+            await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+
+        DomainSavingsGoal goal = await context.SavingsGoals.OwnedBy(UserId).AsNoTracking()
+            .SingleAsync(x => x.Id == id, cancellationToken);
+
+        if (goal is { Source: DomainSavingsGoalSource.Account, AccountId: { } accountId })
+        {
+            List<BalanceSnapshot> balances = await context.BalanceSnapshots.OwnedBy(UserId).AsNoTracking()
+                .Where(x => x.AccountId == accountId)
+                .OrderBy(static x => x.Date)
+                .ToListAsync(cancellationToken);
+
+            return balances.Select(NetWorthService.ToPoint).ToList();
+        }
+
+        if (goal.Source != DomainSavingsGoalSource.Tags)
+        {
+            return [];
+        }
+
+        List<BankTransaction> transactions = await context.BankTransactions.OwnedBy(UserId).AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        return SavingsGoalCalculator.History(goal, transactions, _timeProvider.LocalTimeZone, _timeProvider.Today)
+            .Select(static x => new BalancePoint { Date = x.Date, Amount = x.Saved })
+            .ToList();
     }
 
     public async Task<SavingsGoal> AddSavingsGoalAsync(SaveSavingsGoal goal, CancellationToken cancellationToken)

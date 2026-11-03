@@ -37,6 +37,9 @@ public static partial class LoggerMessages
     [LoggerMessage(LogLevel.Information, "Updated {refreshed} balance snapshots for {day} for user {userId}, {stale} of the day's snapshots are stale")]
     public static partial void LogSnapshotBalances(this ILogger logger, Guid userId, DateOnly day, int refreshed, int stale);
 
+    [LoggerMessage(LogLevel.Information, "Worked out {days} past closing balances across {accounts} accounts for user {userId}")]
+    public static partial void LogBackfilledBalanceHistory(this ILogger logger, Guid userId, int accounts, int days);
+
     [LoggerMessage(LogLevel.Debug, "No account has a balance to snapshot for {day} for user {userId}")]
     public static partial void LogNoBalancesToSnapshot(this ILogger logger, Guid userId, DateOnly day);
 

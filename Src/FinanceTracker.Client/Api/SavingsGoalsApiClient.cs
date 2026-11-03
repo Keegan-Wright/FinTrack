@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.Api;
+using FinanceTracker.Contracts.NetWorth;
 using FinanceTracker.Contracts.SavingsGoals;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Generated.Attributes;
@@ -34,6 +35,14 @@ public sealed class SavingsGoalsApiClient : ISavingsGoalsService
 
     public IAsyncEnumerable<SavingsGoalAccount> GetSavingsAccountsAsync(CancellationToken cancellationToken) =>
         _http.GetStreamAsync<SavingsGoalAccount>($"{ApiRoutes.SavingsGoals}/accounts", cancellationToken);
+
+    public async Task<List<BalancePoint>> GetSavingsGoalHistoryAsync(Guid id, CancellationToken cancellationToken)
+    {
+        using HttpResponseMessage response =
+            await _http.GetAsync($"{ApiRoutes.SavingsGoals}/{id}/history", cancellationToken);
+        response.EnsureFound();
+        return await response.ReadRequiredJsonAsync<List<BalancePoint>>(cancellationToken);
+    }
 
     public async Task<SavingsGoal> AddSavingsGoalAsync(SaveSavingsGoal goal, CancellationToken cancellationToken)
     {

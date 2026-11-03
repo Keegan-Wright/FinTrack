@@ -1,4 +1,5 @@
 using FinanceTracker.Contracts.Api;
+using FinanceTracker.Contracts.NetWorth;
 using FinanceTracker.Contracts.SavingsGoals;
 using FinanceTracker.Contracts.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -22,6 +23,11 @@ public static class SavingsGoalEndpoints
 
             goals.MapGet("accounts", (ISavingsGoalsService service, CancellationToken cancellationToken) =>
                 service.GetSavingsAccountsAsync(cancellationToken));
+
+            goals.MapGet("{id:guid}/history", async Task<Ok<List<BalancePoint>>> (Guid id,
+                        ISavingsGoalsService service, CancellationToken cancellationToken) =>
+                    TypedResults.Ok(await service.GetSavingsGoalHistoryAsync(id, cancellationToken)))
+                .NotFoundWhenMissing();
 
             goals.MapGet("{id:guid}", async Task<Ok<SavingsGoal>> (Guid id, ISavingsGoalsService service,
                         CancellationToken cancellationToken) =>

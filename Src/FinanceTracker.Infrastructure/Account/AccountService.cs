@@ -44,6 +44,7 @@ public class AccountService : ServiceBase<AccountService>, IAccountService
         {
             yield return new AccountAndTransactions
             {
+                AccountId = account.Id,
                 AccountBalance = account.Balance?.Current ?? 0,
                 AccountName = account.DisplayName,
                 AccountType = account.AccountType,

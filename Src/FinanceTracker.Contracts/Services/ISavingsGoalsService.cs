@@ -29,6 +29,13 @@ public interface ISavingsGoalsService
     IAsyncEnumerable<SavingsGoalAccount> GetSavingsAccountsAsync(CancellationToken cancellationToken);
 
     /// <summary>
+    /// What one of the user's goals had saved at the end of each day: its account's closing balances, or for a tag
+    /// goal its running total from the day it tracks from. Empty for a goal the user types in.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">The user has no goal with <paramref name="id"/>.</exception>
+    Task<List<NetWorth.BalancePoint>> GetSavingsGoalHistoryAsync(Guid id, CancellationToken cancellationToken);
+
+    /// <summary>
     /// Adds a savings goal for the user. Validate the request with
     /// <see cref="Validation.SaveSavingsGoalValidator"/> first.
     /// </summary>

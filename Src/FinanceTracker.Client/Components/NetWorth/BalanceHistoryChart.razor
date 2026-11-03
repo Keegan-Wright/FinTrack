@@ -1,0 +1,110 @@
+@* A balance or net worth over time, synced days as a solid line and days worked out from transactions as a lighter
+   dashed one. Compact drops the axes for a small chart in a card. *@
+@using ApexCharts
+@using FinanceTracker.Contracts.NetWorth
+
+@if (Points.Count < 2)
+{
+    <MudText Typo="Typo.body2" Class="mud-text-secondary">@EmptyText</MudText>
+}
+else
+{
+    @* Keyed on the options, which are rebuilt for new data or a dark mode toggle, so the chart redraws with them *@
+    <LoadingFrame Loading="@(!_drawn)" Message="Charting the history…" MinHeight="@Height">
+        <ApexChart @key="_options" TItem="HistoryChartPoint" Options="@_options" Height="@Height"
+                   OnRendered="@(() => _drawn = true)">
+            <ApexPointSeries TItem="HistoryChartPoint" Items="@_chartPoints" Name="@Name" SeriesType="SeriesType.Line"
+                             XValue="@(static p => p.Label)" YValue="@(static p => p.Synced)"/>
+            <ApexPointSeries TItem="HistoryChartPoint" Items="@_chartPoints" Name="Worked out"
+                             SeriesType="SeriesType.Line"
+                             XValue="@(static p => p.Label)" YValue="@(static p => p.Derived)"/>
+        </ApexChart>
+    </LoadingFrame>
+}
+
+@code {
+
+    private const int MaxAxisLabels = 8;
+
+    private const int MaxPhoneAxisLabels = 4;
+
+    [CascadingParameter(Name = "IsDarkMode")] public bool IsDarkMode { get; set; }
+
+    /// <summary>
+    /// Oldest first.
+    /// </summary>
+    [Parameter] [EditorRequired] public required IReadOnlyList<BalancePoint> Points { get; set; }
+
+    /// <summary>
+    /// What the synced line is, e.g. <c>Net worth</c>, for the tooltip.
+    /// </summary>
+    [Parameter] public string Name { get; set; } = "Balance";
+
+    [Parameter] public string Color { get; set; } = ChartDefaults.NeutralColor;
+
+    [Parameter] public int Height { get; set; } = 280;
+
+    /// <summary>
+    /// No axes or grid, for a small chart in a card.
+    /// </summary>
+    [Parameter] public bool Compact { get; set; }
+
+    [Parameter] public string EmptyText { get; set; } = "Not enough history yet, it builds up with each sync.";
+
+    private ApexChartOptions<HistoryChartPoint> _options = new();
+    private IReadOnlyList<HistoryChartPoint> _chartPoints = [];
+    private IReadOnlyList<BalancePoint>? _builtFrom;
+    private bool? _optionsDarkMode;
+    private bool _drawn;
+
+    protected override void OnParametersSet()
+    {
+        if (ReferenceEquals(_builtFrom, Points) && _optionsDarkMode == IsDarkMode)
+        {
+            return;
+        }
+
+        _builtFrom = Points;
+        _optionsDarkMode = IsDarkMode;
+        _chartPoints = NetWorthText.ChartPoints(Points);
+        _options = CreateOptions();
+        _drawn = false;
+    }
+
+    private ApexChartOptions<HistoryChartPoint> CreateOptions()
+    {
+        var options = ChartDefaults.Create<HistoryChartPoint>(IsDarkMode);
+        options.Colors = [Color, Color];
+        options.Legend = new Legend { Show = false };
+        options.Stroke = new Stroke
+        {
+            Width = new List<double> { 2, 2 }, Curve = Curve.Straight, DashArray = new List<double> { 0, 4 }
+        };
+        options.Markers = new Markers { Size = 0 };
+        options.Xaxis = new XAxis
+        {
+            TickAmount = Math.Min(Points.Count, MaxAxisLabels),
+            Labels = new XAxisLabels { Rotate = 0, HideOverlappingLabels = true }
+        };
+
+        if (Compact)
+        {
+            options.Chart.Sparkline = new ChartSparkline { Enabled = true };
+            return options;
+        }
+
+        options.Responsive =
+        [
+            new Responsive<HistoryChartPoint>
+            {
+                Breakpoint = ChartDefaults.PhoneBreakpoint,
+                Options = new ApexChartOptions<HistoryChartPoint>
+                {
+                    Xaxis = new XAxis { TickAmount = Math.Min(Points.Count, MaxPhoneAxisLabels) }
+                }
+            }
+        ];
+        return options;
+    }
+
+}

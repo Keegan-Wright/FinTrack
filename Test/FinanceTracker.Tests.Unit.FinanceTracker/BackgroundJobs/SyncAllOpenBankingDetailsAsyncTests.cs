@@ -191,6 +191,31 @@ public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
     }
 
     [Test]
+    public async Task ExecuteAsync_AfterSnapshotting_BackfillsEachOwnersBalanceHistory()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.UserScenario.WithUser(OtherUsername))
+            .Do(s => s.BankConnectionScenario.WithConnection("mine", Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("theirs", OtherUsername));
+        List<string> calls = [];
+        BalanceSnapshotService
+            .When(x => x.SnapshotAsync(Arg.Any<DateOnly>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>()))
+            .Do(_ => calls.Add("snapshot"));
+        BalanceSnapshotService.When(x => x.BackfillAsync(Arg.Any<CancellationToken>()))
+            .Do(_ => calls.Add("backfill"));
+
+        SyncAllOpenBankingDetailsAsync subject = BuildSubject();
+
+        // Act
+        await subject.ExecuteAsync(TickerFunctionContextFactory.Create(), CancellationToken);
+
+        // Assert
+        await Assert.That(calls).IsEquivalentTo(["snapshot", "backfill", "snapshot", "backfill"],
+            TUnit.Assertions.Enums.CollectionOrdering.Matching);
+    }
+
+    [Test]
     public async Task ExecuteAsync_AfterSyncing_AppliesEachOwnersRulesBeforeMatching()
     {
         // Arrange

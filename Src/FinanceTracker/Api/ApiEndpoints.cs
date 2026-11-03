@@ -31,6 +31,7 @@ public static class ApiEndpoints
                 .MapReportEndpoints()
                 .MapRuleEndpoints()
                 .MapSavingsGoalEndpoints()
+                .MapNetWorthEndpoints()
                 .MapTransactionEndpoints()
                 .MapTransferEndpoints();
 

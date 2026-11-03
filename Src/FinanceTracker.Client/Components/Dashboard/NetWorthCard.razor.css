@@ -1,0 +1,23 @@
+.ft-net-worth-card {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+}
+
+.ft-net-worth-card__figure {
+    flex: 0 0 auto;
+}
+
+.ft-net-worth-card__chart {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+/* A phone stacks the figure over the chart rather than squeezing the chart */
+@media (max-width: 599.98px) {
+    .ft-net-worth-card {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+}

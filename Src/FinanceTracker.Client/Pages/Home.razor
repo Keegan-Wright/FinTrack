@@ -15,6 +15,7 @@
 @inject ISavingsGoalsService SavingsGoalsService
 @inject IBudgetsService BudgetsService
 @inject IHouseholdMemberService HouseholdMemberService
+@inject INetWorthService NetWorthService
 @inject TimeProvider TimeProvider
 
 <PageTitle>FinTrack - Dashboard</PageTitle>
@@ -39,6 +40,9 @@
     </MudItem>
     <MudItem xs="12" lg="4">
         <TopCategories Transactions="@View.Transactions"/>
+    </MudItem>
+    <MudItem xs="12">
+        <NetWorthCard History="@View.NetWorth" From="@DateOnly.FromDateTime(View.FromDate)"/>
     </MudItem>
     <MudItem xs="12" md="6">
         <AccountsSnapshot Accounts="@View.Accounts"/>
@@ -126,6 +130,7 @@
         // Budgets run by calendar month, so always this month whatever the range
         var now = TimeProvider.GetLocalNow().DateTime;
         var budgets = await BudgetsService.GetMonthAsync(now.Year, now.Month, cancellationToken);
+        var netWorth = await NetWorthService.GetNetWorthAsync(DateOnly.FromDateTime(fromDate), cancellationToken);
 
         decimal householdIncome = 0;
         await foreach (var member in HouseholdMemberService.GetHouseholdMembersAsync(cancellationToken))
@@ -150,7 +155,8 @@
             UpcomingPayments = upcomingPayments,
             Accounts = accounts,
             SavingsGoals = savingsGoals,
-            Budgets = budgets
+            Budgets = budgets,
+            NetWorth = netWorth
         };
     }
 

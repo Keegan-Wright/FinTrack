@@ -547,6 +547,9 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.Property<DateOnly>("Date")
                         .HasColumnType("date");
 
+                    b.Property<bool>("IsDerived")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("IsStale")
                         .HasColumnType("boolean");
 
@@ -604,6 +607,9 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.Property<string>("ExternalId")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<bool>("HistoryBackfilled")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Kind")
                         .IsRequired()

@@ -34,7 +34,8 @@
             @foreach (SavingsGoal goal in Goals)
             {
                 <SavingsGoalRow @key="goal.Id" Goal="@goal" TagNames="@TagNames" ShowSource="true" Editable="true"
-                                OnEdit="@(() => EditAsync(goal))" OnDelete="@(() => DeleteAsync(goal))"/>
+                                OnEdit="@(() => EditAsync(goal))" OnDelete="@(() => DeleteAsync(goal))"
+                                OnHistory="@(() => ShowHistoryAsync(goal))"/>
             }
         </div>
     }
@@ -163,6 +164,14 @@
         {
             SetLoadingState(false);
         }
+    }
+
+
+    private async Task ShowHistoryAsync(SavingsGoal goal)
+    {
+        DialogParameters<SavingsGoalHistoryDialog> parameters = new() { { x => x.Goal, goal } };
+        DialogOptions options = new() { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true };
+        await DialogService.ShowAsync<SavingsGoalHistoryDialog>(null, parameters, options);
     }
 
 }
