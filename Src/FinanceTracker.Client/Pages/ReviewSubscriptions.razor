@@ -47,6 +47,11 @@
     private bool _loading = true;
     private bool _loaded;
 
+    /// <summary>
+    /// The suggestions the user has answered, kept out of a refresh that started before their answer was saved.
+    /// </summary>
+    private readonly HashSet<Guid> _answered = [];
+
     private DateOnly Today => DateOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime);
 
     private string Subtitle => _loading || _suggestions.Count == 0
@@ -62,6 +67,20 @@
             _suggestions = await BillsService.GetSuggestionsAsync(_cts.Token).ToListAsync(_cts.Token);
             _loading = false;
         }
+    }
+
+    /// <summary>
+    /// Adds what the sync suggested, leaving out what the user has answered here.
+    /// </summary>
+    protected override async Task OnSyncedAsync()
+    {
+        if (_loading)
+        {
+            return;
+        }
+
+        List<BillSuggestion> suggestions = await BillsService.GetSuggestionsAsync(_cts.Token).ToListAsync(_cts.Token);
+        _suggestions = suggestions.Where(x => !_answered.Contains(x.Id)).ToList();
     }
 
     private async Task DecideAsync(BillSuggestion suggestion, bool isBill)
@@ -80,12 +99,14 @@
                 Snackbar.Add($"{suggestion.Name} won't be suggested again", Severity.Success);
             }
 
-            _suggestions.Remove(suggestion);
+            _answered.Add(suggestion.Id);
+            _suggestions.RemoveAll(x => x.Id == suggestion.Id);
             await RefreshSubscriptionsToReviewAsync(BillsService);
         }
         catch (AlreadyABillException ex)
         {
-            _suggestions.Remove(suggestion);
+            _answered.Add(suggestion.Id);
+            _suggestions.RemoveAll(x => x.Id == suggestion.Id);
             await RefreshSubscriptionsToReviewAsync(BillsService);
             Snackbar.Add(ex.Message, Severity.Info);
         }

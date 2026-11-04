@@ -46,6 +46,11 @@
     private bool _loading = true;
     private bool _loaded;
 
+    /// <summary>
+    /// The transactions the user has answered, kept out of a refresh that started before their answer was saved.
+    /// </summary>
+    private readonly HashSet<Guid> _answered = [];
+
     private string Subtitle => _loading || _pairs.Count == 0
         ? "Money FinTrack isn't sure moved between your accounts"
         : $"{_pairs.Count} to review";
@@ -60,6 +65,22 @@
             _pairs = ReviewPairs.Group(_toReview);
             _loading = false;
         }
+    }
+
+    /// <summary>
+    /// Adds what the sync put up for review, leaving out what the user has answered here.
+    /// </summary>
+    protected override async Task OnSyncedAsync()
+    {
+        if (_loading)
+        {
+            return;
+        }
+
+        List<Transaction> toReview = await TransfersService.GetTransfersToReviewAsync(_cts.Token)
+            .ToListAsync(_cts.Token);
+        _toReview = toReview.Where(x => !_answered.Contains(x.TransactionId)).ToList();
+        _pairs = ReviewPairs.Group(_toReview);
     }
 
     private async Task DecideAsync(ReviewPair pair, TransferAction action)
@@ -110,7 +131,12 @@
             _toReview.RemoveAll(x => x.TransactionId == transaction.TransactionId);
             if (transaction.Transfer?.State == TransferState.NeedsReview)
             {
+                _answered.Remove(transaction.TransactionId);
                 _toReview.Add(transaction);
+            }
+            else
+            {
+                _answered.Add(transaction.TransactionId);
             }
         }
 

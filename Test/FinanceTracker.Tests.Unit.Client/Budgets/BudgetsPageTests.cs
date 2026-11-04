@@ -84,6 +84,27 @@ public class BudgetsPageTests : ComponentTestBase
         await Assert.That(cut.Markup).Contains("No budgets yet");
     }
 
+    [Test]
+    public async Task Synced_RefreshesTheMonthShown()
+    {
+        // Arrange
+        using CultureScope culture = new();
+        IRenderedComponent<BudgetsPage> cut = RenderPage();
+        await cut.InvokeAsync(() => cut.Find("button[aria-label='Previous month']").Click());
+        cut.WaitForState(() => cut.Markup.Contains("February 2026"));
+
+        // Act
+        await cut.InvokeAsync(_applicationState.NotifySyncedAsync);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(cut.Markup).Contains("February 2026");
+            await _budgetsService.Received(2).GetMonthAsync(2026, 2, Arg.Any<CancellationToken>());
+            await _budgetsService.Received(1).GetMonthAsync(2026, 3, Arg.Any<CancellationToken>());
+        }
+    }
+
     private IRenderedComponent<BudgetsPage> RenderPage() =>
         Render<BudgetsPage>(p => p.AddCascadingValue(_applicationState));
 

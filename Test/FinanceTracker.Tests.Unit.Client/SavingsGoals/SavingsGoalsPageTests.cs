@@ -95,6 +95,30 @@ public class SavingsGoalsPageTests : ComponentTestBase
         await Assert.That(items.Any(static x => x.Text == "History")).IsEqualTo(offered);
     }
 
+    [Test]
+    public async Task Synced_ShowsWhatsSavedNow()
+    {
+        // Arrange
+        using CultureScope culture = new();
+        decimal saved = 1300m;
+        _goalsService.GetSavingsGoalsAsync(Arg.Any<CancellationToken>()).Returns(_ => new[]
+        {
+            new SavingsGoal
+            {
+                Id = Guid.NewGuid(), Name = "Car", Saved = saved, Target = 10000m,
+                Source = SavingsGoalSource.Account, AccountName = "Rainy Day"
+            }
+        }.ToAsyncEnumerable());
+        IRenderedComponent<SavingsGoalsPage> cut = RenderPage();
+        saved = 1450m;
+
+        // Act
+        await cut.InvokeAsync(_applicationState.NotifySyncedAsync);
+
+        // Assert
+        await Assert.That(cut.Markup).Contains("£1,450.00 of £10,000.00");
+    }
+
     private IRenderedComponent<SavingsGoalsPage> RenderPage() =>
         Render<SavingsGoalsPage>(p => p.AddCascadingValue(_applicationState));
 }

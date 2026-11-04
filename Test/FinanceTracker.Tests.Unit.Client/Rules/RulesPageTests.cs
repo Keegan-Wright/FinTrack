@@ -17,21 +17,21 @@ namespace FinanceTracker.Tests.Unit.Client.Rules;
 public class RulesPageTests : ComponentTestBase
 {
     private readonly IRulesService _rulesService = Substitute.For<IRulesService>();
+    private readonly ITransactionsService _transactionsService = Substitute.For<ITransactionsService>();
     private readonly ApplicationState _applicationState = new();
     private readonly List<Rule> _rules = [Rule("First"), Rule("Second")];
 
     public RulesPageTests()
     {
         AddBunitPersistentComponentState();
-        ITransactionsService transactionsService = Substitute.For<ITransactionsService>();
-        transactionsService.GetAccountsForTransactionFiltersAsync(Arg.Any<CancellationToken>())
+        _transactionsService.GetAccountsForTransactionFiltersAsync(Arg.Any<CancellationToken>())
             .Returns(AsyncEnumerable.Empty<TransactionAccountFilter>());
         IClassificationService classificationService = Substitute.For<IClassificationService>();
         classificationService.GetAllCustomClassificationsAsync(Arg.Any<CancellationToken>())
             .Returns(AsyncEnumerable.Empty<Classification>());
 
         Services.AddSingleton(_rulesService);
-        Services.AddSingleton(transactionsService);
+        Services.AddSingleton(_transactionsService);
         Services.AddSingleton(classificationService);
         IBillsService billsService = Substitute.For<IBillsService>();
         billsService.GetBillsAsync(Arg.Any<CancellationToken>()).Returns(AsyncEnumerable.Empty<Bill>());
@@ -151,6 +151,25 @@ public class RulesPageTests : ComponentTestBase
 
         // Assert
         await Assert.That(cut.Markup).Contains("No rules yet");
+    }
+
+    [Test]
+    public async Task Synced_RefreshesTheAccountsButKeepsTheRules()
+    {
+        // Arrange
+        IRenderedComponent<RulesPage> cut = RenderPage();
+
+        // Act
+        await cut.InvokeAsync(_applicationState.NotifySyncedAsync);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            _transactionsService.Received(2).GetAccountsForTransactionFiltersAsync(Arg.Any<CancellationToken>());
+            _rulesService.Received(1).GetRulesAsync(Arg.Any<CancellationToken>());
+            await Assert.That(Names(cut)).IsEquivalentTo(["First", "Second"],
+                TUnit.Assertions.Enums.CollectionOrdering.Matching);
+        }
     }
 
     private IRenderedComponent<RulesPage> RenderPage() =>

@@ -105,6 +105,16 @@
     }
 
     /// <summary>
+    /// The names of new accounts and bills from the sync, which the rules can show. The rules themselves stay.
+    /// </summary>
+    protected override async Task OnSyncedAsync()
+    {
+        Accounts = await TransactionsService.GetAccountsForTransactionFiltersAsync(_cts.Token)
+            .ToListAsync(_cts.Token);
+        BillList = await BillsService.GetBillsAsync(_cts.Token).ToListAsync(_cts.Token);
+    }
+
+    /// <summary>
     /// Shown in the new order straight away, and put back if it can't be saved.
     /// </summary>
     internal async Task ReorderAsync(IReadOnlyList<Rule> reordered)

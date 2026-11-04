@@ -99,6 +99,26 @@ public class DebtsPageTests : ComponentTestBase
         await Assert.That(cut.Markup).Contains("No debts yet");
     }
 
+    [Test]
+    public async Task Synced_ShowsWhatsOwedNow()
+    {
+        // Arrange
+        using CultureScope culture = new();
+        Debts(DebtTextTests.Debt("Car loan", owed: 900m, forecast: DebtTextTests.Paying(4, new DateOnly(2027, 3, 2))));
+        IRenderedComponent<DebtsPage> cut = RenderPage();
+        Debts(DebtTextTests.Debt("Car loan", owed: 650m, forecast: DebtTextTests.Paying(3, new DateOnly(2027, 2, 2))));
+
+        // Act
+        await cut.InvokeAsync(_applicationState.NotifySyncedAsync);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(cut.Markup).Contains("£650.00");
+            await Assert.That(cut.Markup).Contains("Debt free by Feb 2027");
+        }
+    }
+
     private void Debts(params Debt[] debts) =>
         _debtsService.GetDebtsAsync(Arg.Any<CancellationToken>()).Returns(_ => debts.ToAsyncEnumerable());
 

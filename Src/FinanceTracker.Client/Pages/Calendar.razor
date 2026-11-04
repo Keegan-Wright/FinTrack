@@ -299,6 +299,21 @@
         _selectedDate = DefaultSelectedDate();
     }
 
+    /// <summary>
+    /// The same month and day, with what the sync brought in.
+    /// </summary>
+    protected override async Task OnSyncedAsync()
+    {
+        DateTime month = MonthStart;
+        List<CalendarItems> days = await LoadMonthAsync(_cts.Token);
+
+        // The user moved to another month meanwhile, which loads that month itself
+        if (MonthStart == month)
+        {
+            Days = days;
+        }
+    }
+
     private async Task ChangeMonthAsync(int months)
     {
         Month = MonthStart.AddMonths(months);

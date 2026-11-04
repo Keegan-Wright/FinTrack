@@ -124,6 +124,21 @@
                 .ToListAsync(cancellationToken).AsTask());
     }
 
+    /// <summary>
+    /// The same month, with the spending the sync brought in.
+    /// </summary>
+    protected override async Task OnSyncedAsync()
+    {
+        DateOnly month = Month;
+        BudgetMonthOverview overview = await BudgetsService.GetMonthAsync(month.Year, month.Month, _cts.Token);
+
+        // The user moved to another month meanwhile, which loads that month itself
+        if (Month == month)
+        {
+            Overview = overview;
+        }
+    }
+
     internal async Task ShowMonthAsync(DateOnly month)
     {
         try

@@ -104,6 +104,27 @@ public class DebtDetailsPageTests : ComponentTestBase
             .Contains("At £300.00 a month it's paid off by Feb 2027, 1 month sooner, saving £8.00 interest");
     }
 
+    [Test]
+    public async Task Synced_ShowsTheNewPayments()
+    {
+        // Arrange
+        using CultureScope culture = new();
+        Detail();
+        IRenderedComponent<DebtDetailsPage> cut = RenderPage();
+        Detail(new DebtPaymentItem
+        {
+            TransactionId = Guid.NewGuid(), Description = "CAR FINANCE", AccountName = "Current", Amount = 100m,
+            PaidAt = new DateTime(2026, 11, 2, 12, 0, 0, DateTimeKind.Utc), DecidedBy = TransferDecidedBy.Rule,
+            RuleName = "Car finance"
+        });
+
+        // Act
+        await cut.InvokeAsync(_applicationState.NotifySyncedAsync);
+
+        // Assert
+        await Assert.That(cut.Markup).Contains("2 Nov 2026 · Current · By your rule Car finance");
+    }
+
     private void Detail(params DebtPaymentItem[] payments) =>
         _debtsService.GetDebtAsync(_debt.Id, Arg.Any<CancellationToken>()).Returns(new DebtDetail
         {

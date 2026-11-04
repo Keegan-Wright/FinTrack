@@ -167,6 +167,28 @@
         }
     }
 
+    /// <summary>
+    /// The same month, with the payments, standing orders and direct debits the sync brought in, and new accounts
+    /// for the bill dialog.
+    /// </summary>
+    protected override async Task OnSyncedAsync()
+    {
+        DateOnly month = Month;
+        BillMonthOverview overview = await BillsService.GetMonthAsync(month.Year, month.Month, _cts.Token);
+        BillList = await BillsService.GetBillsAsync(_cts.Token).ToListAsync(_cts.Token);
+
+        Accounts = await TransactionsService.GetAccountsForTransactionFiltersAsync(_cts.Token)
+            .ToListAsync(_cts.Token);
+
+        await LoadSuggestionCountAsync();
+
+        // The user moved to another month meanwhile, which loads that month itself
+        if (Month == month)
+        {
+            Overview = overview;
+        }
+    }
+
     internal async Task ShowMonthAsync(DateOnly month)
     {
         try

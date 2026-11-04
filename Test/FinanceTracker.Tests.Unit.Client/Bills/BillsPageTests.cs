@@ -126,6 +126,30 @@ public class BillsPageTests : ComponentTestBase
         await Assert.That(cut.Markup).Contains("Your standing orders and direct debits show here after a sync");
     }
 
+    [Test]
+    public async Task Synced_RefreshesTheMonthShownAndTheBills()
+    {
+        // Arrange
+        using CultureScope culture = new();
+        IRenderedComponent<BillsPage> cut = RenderPage();
+        await cut.InvokeAsync(() => cut.Find("button[aria-label='Previous month']").Click());
+        cut.WaitForState(() => cut.Markup.Contains("September 2026"));
+        _billsService.GetSuggestionCountAsync(Arg.Any<CancellationToken>()).Returns(2);
+
+        // Act
+        await cut.InvokeAsync(_applicationState.NotifySyncedAsync);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(cut.Markup).Contains("September 2026");
+            await Assert.That(cut.Markup).Contains("2 repeat payments look like subscriptions");
+            await _billsService.Received(2).GetMonthAsync(2026, 9, Arg.Any<CancellationToken>());
+            await _billsService.Received(1).GetMonthAsync(2026, 10, Arg.Any<CancellationToken>());
+            _billsService.Received(2).GetBillsAsync(Arg.Any<CancellationToken>());
+        }
+    }
+
     private IRenderedComponent<BillsPage> RenderPage() =>
         Render<BillsPage>(p => p.AddCascadingValue(_applicationState));
 

@@ -91,6 +91,39 @@ public class ReviewSubscriptionsPageTests : ComponentTestBase
         await _billsService.Received(1).DismissSuggestionAsync(suggestion.Id, Arg.Any<CancellationToken>());
     }
 
+    [Test]
+    public async Task Synced_AddsNewSuggestionsAndKeepsAnsweredOnesOff()
+    {
+        // Arrange
+        BillSuggestion answered = SuggestionRowTests.Suggestion("Streamco");
+        BillSuggestion waiting = SuggestionRowTests.Suggestion("Gym");
+        BillSuggestion added = SuggestionRowTests.Suggestion("Music");
+        List<BillSuggestion> suggestions = [answered, waiting];
+        _billsService.GetSuggestionsAsync(Arg.Any<CancellationToken>()).Returns(_ => suggestions.ToAsyncEnumerable());
+        Render<MudBlazor.MudSnackbarProvider>();
+        IRenderedComponent<ReviewSubscriptions> cut = RenderPage();
+        cut.WaitForState(() => cut.FindAll(".ft-suggestion").Count == 2);
+        await cut.InvokeAsync(() => cut.FindAll(".ft-suggestion")
+            .Single(x => x.TextContent.Contains("Streamco"))
+            .QuerySelectorAll("button").Single(x => x.TextContent.Trim() == "Not a bill").Click());
+        cut.WaitForState(() => cut.FindAll(".ft-suggestion").Count == 1);
+
+        // A refresh that started before the answer was saved still has it
+        suggestions = [answered, waiting, added];
+
+        // Act
+        await cut.InvokeAsync(_applicationState.NotifySyncedAsync);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(cut.FindAll(".ft-suggestion")).Count().IsEqualTo(2);
+            await Assert.That(cut.Markup).Contains("Gym");
+            await Assert.That(cut.Markup).Contains("Music");
+            await Assert.That(cut.Markup).DoesNotContain("Streamco");
+        }
+    }
+
     private IRenderedComponent<ReviewSubscriptions> RenderPage() =>
         Render<ReviewSubscriptions>(p => p.AddCascadingValue(_applicationState));
 }

@@ -62,9 +62,10 @@ public class ReviewPairRowTests : ComponentTestBase
         await Assert.That(chosen).IsEqualTo(expected);
     }
 
-    private static Transaction Transaction(string description, string account, decimal amount) => new()
+    internal static Transaction Transaction(string description, string account, decimal amount,
+        TransferState state = TransferState.NeedsReview, Guid? id = null) => new()
     {
-        TransactionId = Guid.NewGuid(),
+        TransactionId = id ?? Guid.NewGuid(),
         Description = description,
         TransactionType = amount < 0 ? "Debit" : "Credit",
         TransactionCategory = "TRANSFER",
@@ -76,7 +77,7 @@ public class ReviewPairRowTests : ComponentTestBase
         AccountName = account,
         Transfer = new TransactionTransfer
         {
-            State = TransferState.NeedsReview,
+            State = state,
             DecidedBy = TransferDecidedBy.FinTrack,
             Reason = TransferMatchReason.MirrorPair
         }
