@@ -62,6 +62,11 @@ public static class ApiRoutes
     public const string Debts = "api/debts";
 
     /// <summary>
+    /// <see cref="Services.IExportsService"/>.
+    /// </summary>
+    public const string Exports = "api/exports";
+
+    /// <summary>
     /// <see cref="Services.IHouseholdMemberService"/>.
     /// </summary>
     public const string HouseholdMembers = "api/household-members";

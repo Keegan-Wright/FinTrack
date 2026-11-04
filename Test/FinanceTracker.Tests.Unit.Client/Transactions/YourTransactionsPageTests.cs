@@ -12,6 +12,7 @@ using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
 using MudBlazor.Services;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using FinanceTracker.Tests.Unit.Shared;
 
 namespace FinanceTracker.Tests.Unit.Client.Transactions;
@@ -20,6 +21,7 @@ public class YourTransactionsPageTests : ComponentTestBase
 {
     private readonly ITransactionsService _transactionsService = Substitute.For<ITransactionsService>();
     private readonly IClassificationService _classificationService = Substitute.For<IClassificationService>();
+    private readonly IExportsService _exportsService = Substitute.For<IExportsService>();
     private readonly ApplicationState _applicationState = new();
     private readonly List<IBrowserViewportObserver> _viewportObservers = [];
 
@@ -49,6 +51,9 @@ public class YourTransactionsPageTests : ComponentTestBase
 
         Services.AddSingleton(_transactionsService);
         Services.AddSingleton(_classificationService);
+        Services.AddSingleton(_exportsService);
+        Services.AddSingleton<TimeProvider>(new FixedTimeProvider(new DateTime(2026, 11, 4, 12, 0, 0,
+            DateTimeKind.Utc)));
         Services.AddSingleton(Substitute.For<ITransfersService>());
         Services.AddSingleton(billsService);
         Services.AddSingleton(debtsService);
@@ -166,6 +171,54 @@ public class YourTransactionsPageTests : ComponentTestBase
         // Assert
         await _transactionsService.Received(1).UnsplitAsync(transaction.TransactionId, Arg.Any<CancellationToken>());
         cut.WaitForState(() => !cut.Markup.Contains("Split 2 ways"));
+    }
+
+    [Test]
+    public async Task ExportCsv_SavesWhatTheFiltersShowAsAFile()
+    {
+        // Arrange
+        Show(TransactionListTests.Transaction("Supermarket", -100m));
+        IRenderedComponent<YourTransactions> cut = await RenderPageAsync();
+        cut.Find("input[placeholder='Search descriptions']").Input("Super");
+        cut.WaitForState(() => cut.Find("input[placeholder='Search descriptions']").GetAttribute("value") == "Super");
+        await cut.FindAll("button").Single(static x => x.TextContent.Trim() == "Apply").ClickAsync(new());
+        cut.WaitForState(() => cut.Markup.Contains("Actions for Supermarket"));
+
+        // Act
+        await cut.InvokeAsync(() => cut.FindAll("button").Single(static x => x.TextContent.Trim() == "Export CSV")
+            .Click());
+
+        // Assert
+        cut.WaitForState(() => JSInterop.Invocations.Any(static x => x.Identifier == "ftDownloadFile"));
+        JSRuntimeInvocation saved = JSInterop.Invocations.Single(static x => x.Identifier == "ftDownloadFile");
+        using (Assert.Multiple())
+        {
+            await _exportsService.Received(1).WriteTransactionsCsvAsync(
+                Arg.Is<FilterTransactions>(x => x.SearchTerm == "Super"), Arg.Any<Stream>(),
+                Arg.Any<CancellationToken>());
+            await Assert.That(saved.Arguments[0]).IsEqualTo("fintrack-transactions-2026-11-04.csv");
+            await Assert.That(saved.Arguments[1]).IsEqualTo("text/csv");
+        }
+    }
+
+    [Test]
+    public async Task ExportCsv_WhenItFails_SaysSo()
+    {
+        // Arrange
+        Show(TransactionListTests.Transaction("Supermarket", -100m));
+        _exportsService.WriteTransactionsCsvAsync(Arg.Any<FilterTransactions>(), Arg.Any<Stream>(),
+                Arg.Any<CancellationToken>())
+            .ThrowsAsync(new HttpRequestException("The server didn't answer"));
+        IRenderedComponent<MudSnackbarProvider> snackbars = Render<MudSnackbarProvider>();
+        IRenderedComponent<YourTransactions> cut = await RenderPageAsync();
+
+        // Act
+        await cut.InvokeAsync(() => cut.FindAll("button").Single(static x => x.TextContent.Trim() == "Export CSV")
+            .Click());
+
+        // Assert
+        snackbars.WaitForState(() => snackbars.Markup.Contains("Couldn't export your transactions, try again"));
+        await Assert.That(JSInterop.Invocations.Any(static x => x.Identifier == "ftDownloadFile")).IsFalse();
     }
 
     [Test]

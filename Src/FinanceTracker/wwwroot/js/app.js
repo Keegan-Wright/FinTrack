@@ -20,6 +20,20 @@ function ftTogglePassword(input) {
     }
 }
 
+// Saves a file the app has fetched, e.g. an export (FinanceTracker.Client.Extensions.FileDownloadExtensions). The
+// stream arrives from .NET as a DotNetStreamReference, a link to it is clicked, then let go of.
+async function ftDownloadFile(fileName, contentType, streamReference) {
+    const buffer = await streamReference.arrayBuffer();
+    const url = URL.createObjectURL(new Blob([buffer], { type: contentType }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+}
+
 // Supports the sticky page header (PageHeader.razor, PageHeader.razor.css):
 // - marks the page as scrolled so the header can tighten, see .ft-scrolled. The gap between the two thresholds stops
 //   it flickering when the header's change in height moves the page.
