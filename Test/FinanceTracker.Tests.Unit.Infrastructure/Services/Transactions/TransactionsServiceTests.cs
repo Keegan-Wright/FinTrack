@@ -924,7 +924,8 @@ public class TransactionsServiceTests : InfrastructureTestBase
             .Do(s => s.ClassificationScenario.WithClassification("household", Username, "Household"))
             .Do(s => s.TransactionScenario.WithTransaction("shop", "main", Details("Supermarket") with
             {
-                Amount = -100m, IsPending = false
+                // No bank classifications, the fakes can be called Groceries, which the tag filter matches too
+                Amount = -100m, IsPending = false, ProviderClassifications = []
             }));
 
     private static SplitTransaction Parts(params decimal[] amounts) => new()

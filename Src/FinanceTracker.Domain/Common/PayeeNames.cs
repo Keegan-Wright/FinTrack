@@ -10,8 +10,9 @@ namespace FinanceTracker.Domain.Common;
 public static class PayeeNames
 {
     /// <summary>
-    /// The merchant or counterparty the bank named, otherwise the description. Digits are dropped as they're usually
-    /// a reference that changes each time, e.g. <c>NETFLIX.COM 866-579</c>.
+    /// The merchant or counterparty the bank named, otherwise the description. Words with a digit in are dropped as
+    /// they're usually a reference that changes each time, e.g. <c>NETFLIX.COM 866-579</c> or
+    /// <c>ACME PAYROLL REF00P2118CXWF4</c>. When that leaves nothing, e.g. <c>7ELEVEN</c>, only the digits go.
     /// </summary>
     public static string Name(BankTransaction transaction)
     {
@@ -21,17 +22,14 @@ public static class PayeeNames
                       ?? transaction.Metadata.CounterPartyPreferredName
                       ?? transaction.Description;
 
-        StringBuilder builder = new(name.Length);
-        foreach (char character in name)
+        string[] words = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        List<string> withoutReferences = words.Where(static x => !x.Any(char.IsDigit)).ToList();
+        if (withoutReferences.Count > 0)
         {
-            if (!char.IsDigit(character))
-            {
-                builder.Append(character);
-            }
+            return Tidy(withoutReferences);
         }
 
-        string[] words = builder.ToString().Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        return string.Join(' ', words).Trim(' ', '-', '*', '#', '/', '.');
+        return Tidy(words.Select(WithoutDigits).Where(static x => x.Length > 0).ToList());
     }
 
     /// <summary>
@@ -52,4 +50,20 @@ public static class PayeeNames
 
         return builder.ToString();
     }
+
+    private static string WithoutDigits(string word)
+    {
+        StringBuilder builder = new(word.Length);
+        foreach (char character in word)
+        {
+            if (!char.IsDigit(character))
+            {
+                builder.Append(character);
+            }
+        }
+
+        return builder.ToString();
+    }
+
+    private static string Tidy(List<string> words) => string.Join(' ', words).Trim(' ', '-', '*', '#', '/', '.');
 }

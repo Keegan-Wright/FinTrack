@@ -1,10 +1,13 @@
 using FinanceTracker.Contracts.Budgets;
 using FinanceTracker.Domain.Budgeting;
 using FinanceTracker.Domain.OpenBanking.Transactions;
+using FinanceTracker.Domain.PayPeriods;
+using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Budgets;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Fakers;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Budget = FinanceTracker.Contracts.Budgets.Budget;
 using DomainBudget = FinanceTracker.Domain.Budgeting.Budget;
@@ -106,6 +109,33 @@ public class BudgetsServiceTests : InfrastructureTestBase
             await Assert.That(groceries.Spent).IsEqualTo(30m);
             await Assert.That(groceries.Remaining).IsEqualTo(370m);
             await Assert.That(overview.Unbudgeted).IsEqualTo(4.5m);
+        }
+    }
+
+    [Test]
+    public async Task GetMonthAsync_PaidOnTheLastWorkingDay_RunsFromPayToPay()
+    {
+        // Arrange: paid Friday 27 Feb, so March runs to the day before the next pay on Tuesday 31 March
+        await SeedAsync(Username)
+            .Do(s => s.BudgetScenario.WithBudget("groceries", Username, userId => DomainGroceries(userId, February)))
+            .Do(s => s.TransactionScenario.WithTransaction("after-pay", "main",
+                Spend(-30m, new DateTime(2026, 2, 28, 12, 0, 0))))
+            .Do(s => s.TransactionScenario.WithCustomClassification("after-pay", "shopping"))
+            .Do(s => s.TransactionScenario.WithTransaction("before-pay", "main",
+                Spend(-20m, new DateTime(2026, 2, 26, 12, 0, 0))))
+            .Do(s => s.TransactionScenario.WithCustomClassification("before-pay", "shopping"));
+        await PaidOnTheLastWorkingDayAsync(new DateOnly(2026, 1, 30), new DateOnly(2026, 2, 27));
+
+        // Act
+        BudgetMonthOverview overview = await BuildSubject(Username).GetMonthAsync(2026, 3, CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(overview.IsCurrent).IsTrue();
+            await Assert.That(overview.Start).IsEqualTo(new DateOnly(2026, 2, 27));
+            await Assert.That(overview.End).IsEqualTo(new DateOnly(2026, 3, 30));
+            await Assert.That(overview.Budgets.Single().Spent).IsEqualTo(30m);
         }
     }
 
@@ -222,6 +252,15 @@ public class BudgetsServiceTests : InfrastructureTestBase
             IsPending = false,
             LabelledAsTransfer = false
         };
+
+    private async Task PaidOnTheLastWorkingDayAsync(params DateOnly[] payDays)
+    {
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        Guid userId = (await context.Users.SingleAsync(x => x.UserName == Username, CancellationToken)).Id;
+        context.PaySchedules.Add(new PaySchedule(userId, new DetectedPay(Scenario.AccountMappings["main"], "ACMELTD",
+            "ACME LTD", 2400m, PayPattern.LastWorkingDay, payDays)));
+        await context.SaveChangesAsync(CancellationToken);
+    }
 
     private BudgetsService BuildSubject(string username) =>
         new(CurrentUserFor(username), DbContextFactory, NullLogger<BudgetsService>.Instance,

@@ -1,9 +1,13 @@
+using FinanceTracker.Domain.Common;
 using FinanceTracker.Domain.OpenBanking.Transactions;
+using FinanceTracker.Domain.PayPeriods;
 
 namespace FinanceTracker.Domain.Budgeting;
 
 /// <summary>
-/// Works out how budgets are doing from the user's transactions, nothing about spending is stored.
+/// Works out how budgets are doing from the user's transactions, nothing about spending is stored. A
+/// <see cref="BudgetMonth"/> is the user's period named after that month, from pay to pay or a calendar month, see
+/// <see cref="PayCalendar"/>, so past months are worked out the same way as the current one.
 /// </summary>
 public static class BudgetCalculator
 {
@@ -13,13 +17,15 @@ public static class BudgetCalculator
     /// <param name="transactions">The user's transactions, at least those from the budget's first month on.</param>
     /// <param name="timeZone">Where the user is, so a transaction falls in the month it was where they are.</param>
     /// <param name="today">Today where the user is, for the pace.</param>
+    /// <param name="calendar">The user's periods, which month each transaction counts in.</param>
     /// <returns>Null before the budget's first month.</returns>
     public static BudgetMonthResult? ForMonth(Budget budget, IEnumerable<BankTransaction> transactions,
-        BudgetMonth month, TimeZoneInfo timeZone, DateOnly today)
+        BudgetMonth month, TimeZoneInfo timeZone, DateOnly today, PayCalendar calendar)
     {
         ArgumentNullException.ThrowIfNull(budget);
         ArgumentNullException.ThrowIfNull(transactions);
         ArgumentNullException.ThrowIfNull(timeZone);
+        ArgumentNullException.ThrowIfNull(calendar);
 
         if (month < budget.FirstMonth)
         {
@@ -28,7 +34,7 @@ public static class BudgetCalculator
 
         Dictionary<BudgetMonth, List<BankTransaction>> byMonth = transactions
             .Where(budget.Covers)
-            .GroupBy(x => BudgetMonth.Of(x.OccurredAt, timeZone))
+            .GroupBy(x => MonthOf(x.OccurredAt.LocalDayIn(timeZone), calendar))
             .Where(x => x.Key >= budget.FirstMonth && x.Key <= month)
             .ToDictionary(static x => x.Key, static x => x.ToList());
 
@@ -44,7 +50,7 @@ public static class BudgetCalculator
 
         return new BudgetMonthResult(month, limit, carriedIn, Spent(budget, byMonth, month),
             -inMonth.Where(static x => x.IsPending).Sum(x => x.AmountUnder(budget.TagIds)),
-            ExpectedByNow(limit + carriedIn, month, today));
+            ExpectedByNow(limit + carriedIn, month, today, calendar));
     }
 
     /// <summary>
@@ -53,11 +59,12 @@ public static class BudgetCalculator
     /// a refund, card refunds come back that way while salary and transfers don't. Never below nothing.
     /// </summary>
     public static decimal Unbudgeted(IEnumerable<Budget> budgets, IEnumerable<BankTransaction> transactions,
-        BudgetMonth month, TimeZoneInfo timeZone)
+        BudgetMonth month, TimeZoneInfo timeZone, PayCalendar calendar)
     {
         ArgumentNullException.ThrowIfNull(budgets);
         ArgumentNullException.ThrowIfNull(transactions);
         ArgumentNullException.ThrowIfNull(timeZone);
+        ArgumentNullException.ThrowIfNull(calendar);
 
         HashSet<Guid> budgetedTags = budgets
             .Where(x => month >= x.FirstMonth)
@@ -66,7 +73,7 @@ public static class BudgetCalculator
 
         decimal net = transactions
             .Where(x => x.CountsAsIncomeOrSpending && (x.Amount < 0 || IsRefund(x)))
-            .Where(x => BudgetMonth.Of(x.OccurredAt, timeZone) == month)
+            .Where(x => MonthOf(x.OccurredAt.LocalDayIn(timeZone), calendar) == month)
             .Sum(x => x.Amount - x.AmountUnder(budgetedTags));
 
         return Math.Max(0, -net);
@@ -98,11 +105,22 @@ public static class BudgetCalculator
     };
 
     /// <summary>
-    /// A straight line through the month: by the 15th of 30 days, half of <paramref name="available"/>.
+    /// The month the period <paramref name="day"/> falls in is named after.
     /// </summary>
-    private static decimal ExpectedByNow(decimal available, BudgetMonth month, DateOnly today)
+    public static BudgetMonth MonthOf(DateOnly day, PayCalendar calendar)
     {
-        BudgetMonth current = BudgetMonth.Of(today);
+        ArgumentNullException.ThrowIfNull(calendar);
+
+        PayPeriod period = calendar.Containing(day);
+        return new BudgetMonth(period.Year, period.Month);
+    }
+
+    /// <summary>
+    /// A straight line through the period: by day 15 of 30, half of <paramref name="available"/>.
+    /// </summary>
+    private static decimal ExpectedByNow(decimal available, BudgetMonth month, DateOnly today, PayCalendar calendar)
+    {
+        BudgetMonth current = MonthOf(today, calendar);
         if (month < current)
         {
             return available;
@@ -113,6 +131,8 @@ public static class BudgetCalculator
             return 0;
         }
 
-        return Math.Round(available * today.Day / month.Days, 2);
+        PayPeriod period = calendar.Named(month.Year, month.Month);
+        int daysIn = today.DayNumber - period.Start.DayNumber + 1;
+        return Math.Round(available * daysIn / period.Days, 2);
     }
 }

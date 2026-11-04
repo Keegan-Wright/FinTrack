@@ -1,0 +1,59 @@
+@* Which of the user's incomes is their pay, when the largest isn't it, e.g. a second job paid more some months. *@
+@using FinanceTracker.Client.Components.Dialogs
+@using FinanceTracker.Contracts.PayPeriods
+
+<DialogBase TResponse="ChooseIncome" Title="Which is your pay?" ResponseConstructor="BuildResponseModel">
+    <Content>
+        <MudSelect T="Income" Label="Your pay" @bind-Value="_income" ToStringFunc="@Name"
+                   HelperText="Your periods run from one of its pays to the next, even when another is larger">
+            @foreach (Income income in Incomes)
+            {
+                <MudSelectItem T="Income" Value="@income">@PayText.Label(income)</MudSelectItem>
+            }
+        </MudSelect>
+    </Content>
+</DialogBase>
+
+@code {
+
+    /// <summary>
+    /// Everything coming in like pay, the largest first.
+    /// </summary>
+    [Parameter] [EditorRequired] public required IReadOnlyList<Income> Incomes { get; set; }
+
+    /// <summary>
+    /// The pay now, chosen to start with.
+    /// </summary>
+    [Parameter] public Income? Current { get; set; }
+
+    private Income? _income;
+
+    protected override void OnInitialized()
+    {
+        _income = Incomes.FirstOrDefault(IsCurrent) ?? Incomes.FirstOrDefault();
+    }
+
+    private bool IsCurrent(Income income) =>
+        Current is not null && income.AccountId == Current.AccountId && income.Key == Current.Key;
+
+    private static string Name(Income? income)
+    {
+        if (income is null)
+        {
+            return string.Empty;
+        }
+
+        return PayText.Label(income);
+    }
+
+    private Task<ChooseIncome?> BuildResponseModel()
+    {
+        if (_income is null)
+        {
+            return Task.FromResult<ChooseIncome?>(null);
+        }
+
+        return Task.FromResult<ChooseIncome?>(new ChooseIncome { AccountId = _income.AccountId, Key = _income.Key });
+    }
+
+}

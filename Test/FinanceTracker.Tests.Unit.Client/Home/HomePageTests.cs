@@ -8,6 +8,7 @@ using FinanceTracker.Contracts.NetWorth;
 using FinanceTracker.Contracts.SavingsGoals;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Transactions;
+using FinanceTracker.Tests.Unit.Client.PayPeriods;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
@@ -20,6 +21,8 @@ public class HomePageTests : ComponentTestBase
     private static readonly DateTime Now = new(2026, 11, 4, 12, 0, 0, DateTimeKind.Utc);
 
     private readonly IDashboardService _dashboardService = Substitute.For<IDashboardService>();
+    private readonly IPayPeriodsService _payPeriodsService = Substitute.For<IPayPeriodsService>();
+    private readonly IBudgetsService _budgetsService = Substitute.For<IBudgetsService>();
     private readonly ApplicationState _applicationState = new();
 
     public HomePageTests()
@@ -36,8 +39,7 @@ public class HomePageTests : ComponentTestBase
         ISavingsGoalsService goalsService = Substitute.For<ISavingsGoalsService>();
         goalsService.GetSavingsGoalsAsync(Arg.Any<CancellationToken>())
             .Returns(_ => AsyncEnumerable.Empty<SavingsGoal>());
-        IBudgetsService budgetsService = Substitute.For<IBudgetsService>();
-        budgetsService.GetMonthAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+        _budgetsService.GetMonthAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new BudgetMonthOverview());
         IHouseholdMemberService householdService = Substitute.For<IHouseholdMemberService>();
         householdService.GetHouseholdMembersAsync(Arg.Any<CancellationToken>())
@@ -55,11 +57,33 @@ public class HomePageTests : ComponentTestBase
         Services.AddSingleton(accountService);
         Services.AddSingleton(transactionsService);
         Services.AddSingleton(goalsService);
-        Services.AddSingleton(budgetsService);
+        Services.AddSingleton(_budgetsService);
+        Services.AddSingleton(_payPeriodsService);
+        _payPeriodsService.GetYourPayAsync(Arg.Any<CancellationToken>()).Returns(YourPays.NoneYet(2026, 11));
         Services.AddSingleton(householdService);
         Services.AddSingleton(netWorthService);
         Services.AddSingleton<TimeProvider>(new FixedTimeProvider(Now));
         SetRendererInfo(new RendererInfo("WebAssembly", isInteractive: true));
+    }
+
+    [Test]
+    public async Task Render_PayPickedUp_ThisPayPeriodFromPayDay()
+    {
+        // Arrange
+        _payPeriodsService.GetYourPayAsync(Arg.Any<CancellationToken>()).Returns(YourPays.FromPayToPay());
+
+        // Act
+        IRenderedComponent<HomePage> cut = Render<HomePage>(p => p.AddCascadingValue(_applicationState));
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(cut.FindAll("button").Any(static x => x.TextContent.Trim() == "This pay period"))
+                .IsTrue();
+            await _dashboardService.Received(1).GetSpentInTimePeriod(new DateTime(2026, 10, 30), Arg.Any<DateTime>(),
+                Arg.Any<CancellationToken>());
+            await _budgetsService.Received(1).GetMonthAsync(2026, 11, Arg.Any<CancellationToken>());
+        }
     }
 
     [Test]

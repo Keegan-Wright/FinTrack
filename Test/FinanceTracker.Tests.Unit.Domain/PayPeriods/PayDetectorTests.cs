@@ -40,6 +40,28 @@ public class PayDetectorTests
     }
 
     [Test]
+    public async Task Detect_AReferenceThatChangesEachMonth_IsStillOnePayer()
+    {
+        // Arrange
+        List<BankTransaction> transactions =
+        [
+            Credit("ACME PAYROLL L ACME PAY REF00P2116V7DZ3", 2400m, 8, 28),
+            Credit("ACME PAYROLL L ACME PAY REF00P2117R2R93", 2400m, 9, 30),
+            Credit("ACME PAYROLL L ACME PAY REF00P2118CXWF4", 2400m, 10, 30)
+        ];
+
+        // Act
+        DetectedPay pay = PayDetector.Detect(transactions, TimeZoneInfo.Utc, Today).Single();
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(pay.Name).IsEqualTo("ACME PAYROLL L ACME PAY");
+            await Assert.That(pay.PayDays).Count().IsEqualTo(3);
+        }
+    }
+
+    [Test]
     public async Task Detect_TwoPays_IsNothingYet()
     {
         // Arrange

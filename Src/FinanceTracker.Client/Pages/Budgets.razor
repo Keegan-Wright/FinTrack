@@ -1,14 +1,18 @@
 @page "/Budgets"
-@* Monthly limits on what the user's tags cover, month by month (IBudgetsService). The current month shows the pace
-   and can be changed, earlier months are as they were. *@
+@* Monthly limits on what the user's tags cover, month by month (IBudgetsService). A month runs from pay to pay once
+   the user's pay is picked up (IPayPeriodsService), otherwise it's the calendar month. The current month shows the
+   pace and can be changed, earlier months are as they were. *@
 @using FinanceTracker.Client.Components.Budgets
+@using FinanceTracker.Client.Components.PayPeriods
 @using FinanceTracker.Contracts.Budgets
 @using FinanceTracker.Contracts.Classifications
+@using FinanceTracker.Contracts.PayPeriods
 @using Microsoft.AspNetCore.Authorization
 @inherits PageComponent
 
 @attribute [Authorize]
 @inject IBudgetsService BudgetsService
+@inject IPayPeriodsService PayPeriodsService
 @inject IClassificationService ClassificationService
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
@@ -23,14 +27,19 @@
 </PageHeader>
 
 <div class="ft-stack">
+    @if (Pay is not null)
+    {
+        <YourPayLine Pay="@Pay" OnChooseIncome="@ChooseIncomeAsync" OnUsePayPeriods="@UsePayPeriodsAsync"/>
+    }
+
     <Section>
         <TitleContent>
             <MonthPicker Month="@Month" Latest="@CurrentMonth" MonthChanged="@ShowMonthAsync"/>
         </TitleContent>
         <Actions>
-            @if (Overview is { IsCurrent: false })
+            @if (PeriodCaption is { } caption)
             {
-                <MudText Typo="Typo.caption" Class="mud-text-secondary">As it ended</MudText>
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">@caption</MudText>
             }
         </Actions>
         <ChildContent>
@@ -93,12 +102,58 @@
     [PersistentState]
     public List<Classification>? Tags { get; set; }
 
+    /// <summary>
+    /// The user's pay, which their months run between.
+    /// </summary>
+    [PersistentState]
+    public YourPay? Pay { get; set; }
+
+    /// <summary>
+    /// The month today's period is named after, which is the next calendar month once a late month pay is in.
+    /// </summary>
     private DateOnly CurrentMonth
     {
         get
         {
+            if (Pay is not null)
+            {
+                return Pay.CurrentPeriod.Month;
+            }
+
             DateTime now = TimeProvider.GetLocalNow().DateTime;
             return new DateOnly(now.Year, now.Month, 1);
+        }
+    }
+
+    /// <summary>
+    /// e.g. <c>30 Oct – 29 Nov · As it ended</c>, the dates only when months run from pay to pay.
+    /// </summary>
+    private string? PeriodCaption
+    {
+        get
+        {
+            if (Overview is null)
+            {
+                return null;
+            }
+
+            List<string> parts = [];
+            if (Pay is { FollowsPay: true })
+            {
+                parts.Add(PayText.Period(Overview.Start, Overview.End));
+            }
+
+            if (!Overview.IsCurrent)
+            {
+                parts.Add("As it ended");
+            }
+
+            if (parts.Count == 0)
+            {
+                return null;
+            }
+
+            return string.Join(" · ", parts);
         }
     }
 
@@ -114,6 +169,7 @@
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
+        Pay = await LoadOnceAsync(Pay, "Loading your budgets", PayPeriodsService.GetYourPayAsync);
         DateOnly month = CurrentMonth;
         Overview = await LoadOnceAsync(Overview, "Loading your budgets", cancellationToken =>
             BudgetsService.GetMonthAsync(month.Year, month.Month, cancellationToken));
@@ -129,6 +185,8 @@
     /// </summary>
     protected override async Task OnSyncedAsync()
     {
+        // A sync can pick up the pay
+        Pay = await PayPeriodsService.GetYourPayAsync(_cts.Token);
         DateOnly month = Month;
         BudgetMonthOverview overview = await BudgetsService.GetMonthAsync(month.Year, month.Month, _cts.Token);
 
@@ -149,6 +207,76 @@
         catch (Exception)
         {
             Snackbar.Add("Couldn't load that month, try again", Severity.Error);
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
+    private async Task ChooseIncomeAsync()
+    {
+        List<Income> incomes;
+        try
+        {
+            incomes = await PayPeriodsService.GetIncomesAsync(_cts.Token).ToListAsync(_cts.Token);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't load your incomes, try again", Severity.Error);
+            return;
+        }
+
+        DialogParameters<ChooseIncomeDialog> parameters = new()
+        {
+            { x => x.Incomes, incomes },
+            { x => x.Current, Pay?.Pay }
+        };
+
+        IDialogReference dialog = await DialogService.ShowAsync<ChooseIncomeDialog>(null, parameters);
+        DialogResult? result = await dialog.Result;
+        if (result is null || result.Canceled)
+        {
+            return;
+        }
+
+        var income = (ChooseIncome)result.Data!;
+        await ChangePayAsync("Your periods follow that pay now",
+            () => PayPeriodsService.ChooseAsync(income, _cts.Token));
+    }
+
+    private Task UsePayPeriodsAsync(bool payPeriods)
+    {
+        if (payPeriods)
+        {
+            return ChangePayAsync("Your months run from pay to pay",
+                () => PayPeriodsService.TurnOnAsync(_cts.Token));
+        }
+
+        return ChangePayAsync("Your months are calendar months",
+            () => PayPeriodsService.TurnOffAsync(_cts.Token));
+    }
+
+    /// <summary>
+    /// Makes the change, then shows the current month as it now runs, its dates and budgets moved with it.
+    /// </summary>
+    private async Task ChangePayAsync(string done, Func<Task<YourPay>> change)
+    {
+        try
+        {
+            SetLoadingState(true, "Saving…");
+            Pay = await change();
+            DateOnly month = CurrentMonth;
+            Overview = await BudgetsService.GetMonthAsync(month.Year, month.Month, _cts.Token);
+            Snackbar.Add(done, Severity.Success);
+        }
+        catch (InvalidOperationException)
+        {
+            Snackbar.Add("That income isn't coming in like pay any more, try another", Severity.Error);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't save that, try again", Severity.Error);
         }
         finally
         {

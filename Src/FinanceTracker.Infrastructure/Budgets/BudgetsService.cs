@@ -3,8 +3,10 @@ using FinanceTracker.Contracts.Budgets;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Domain.Budgeting;
 using FinanceTracker.Domain.OpenBanking.Transactions;
+using FinanceTracker.Domain.PayPeriods;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
+using FinanceTracker.Infrastructure.PayPeriods;
 using FinanceTracker.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -26,7 +28,17 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
         _timeProvider = timeProvider;
     }
 
-    private BudgetMonth CurrentMonth => BudgetMonth.Of(_timeProvider.Today);
+    /// <summary>
+    /// The month today's period is named after, which can be the next calendar month once the pay is in, e.g.
+    /// November from pay on 30 October.
+    /// </summary>
+    private async Task<BudgetMonth> CurrentMonthAsync(FinanceTrackerContext context,
+        CancellationToken cancellationToken)
+    {
+        DateOnly today = _timeProvider.Today;
+        PayCalendar calendar = await PayCalendars.ForUserAsync(context, UserId, today, cancellationToken);
+        return BudgetCalculator.MonthOf(today, calendar);
+    }
 
     public async Task<BudgetMonthOverview> GetMonthAsync(int year, int month, CancellationToken cancellationToken)
     {
@@ -40,22 +52,27 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
             .Where(x => x.FirstMonth <= target)
             .ToList();
 
-        List<BankTransaction> transactions = await LoadTransactionsAsync(context, running, target, cancellationToken);
         TimeZoneInfo timeZone = _timeProvider.LocalTimeZone;
         DateOnly today = _timeProvider.Today;
+        PayCalendar calendar = await PayCalendars.ForUserAsync(context, UserId, today, cancellationToken);
+        List<BankTransaction> transactions =
+            await LoadTransactionsAsync(context, running, target, calendar, cancellationToken);
 
         List<BudgetStatus> statuses = running
             .Select(budget => BudgetMapper.ToContract(budget,
-                BudgetCalculator.ForMonth(budget, transactions, target, timeZone, today)!))
+                BudgetCalculator.ForMonth(budget, transactions, target, timeZone, today, calendar)!))
             .OrderBy(static x => x.Name, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
 
+        PayPeriod period = calendar.Named(target.Year, target.Month);
         return new BudgetMonthOverview
         {
             Month = target.FirstDay,
-            IsCurrent = target == BudgetMonth.Of(today),
+            Start = period.Start,
+            End = period.End,
+            IsCurrent = target == BudgetCalculator.MonthOf(today, calendar),
             Budgets = statuses,
-            Unbudgeted = BudgetCalculator.Unbudgeted(running, transactions, target, timeZone)
+            Unbudgeted = BudgetCalculator.Unbudgeted(running, transactions, target, timeZone, calendar)
         };
     }
 
@@ -67,7 +84,7 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
         // Names are encrypted, so they're ordered once decrypted
         List<DomainBudget> budgets = await context.Budgets.OwnedBy(UserId).AsNoTracking()
             .ToListAsync(cancellationToken);
-        BudgetMonth currentMonth = CurrentMonth;
+        BudgetMonth currentMonth = await CurrentMonthAsync(context, cancellationToken);
 
         foreach (DomainBudget budget in budgets.OrderBy(static x => x.Name, StringComparer.CurrentCultureIgnoreCase))
         {
@@ -83,7 +100,7 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
         DomainBudget budget = await context.Budgets.OwnedBy(UserId).AsNoTracking()
             .SingleAsync(x => x.Id == id, cancellationToken);
 
-        return BudgetMapper.ToContract(budget, CurrentMonth);
+        return BudgetMapper.ToContract(budget, await CurrentMonthAsync(context, cancellationToken));
     }
 
     public async Task<Budget> AddBudgetAsync(SaveBudget budget, CancellationToken cancellationToken)
@@ -93,7 +110,7 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
 
         await EnsureTagsAreTheUsersAsync(context, budget.TagIds, cancellationToken);
 
-        BudgetMonth currentMonth = CurrentMonth;
+        BudgetMonth currentMonth = await CurrentMonthAsync(context, cancellationToken);
 
         DomainBudget newBudget = new(UserId, budget.Name, budget.TagIds, budget.MonthlyLimit, currentMonth,
             BudgetMapper.ToDomain(budget.RolloverMode));
@@ -113,7 +130,7 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
         await EnsureTagsAreTheUsersAsync(context, budget.TagIds, cancellationToken);
 
         // From this month on, the months before keep the limit they had
-        BudgetMonth currentMonth = CurrentMonth;
+        BudgetMonth currentMonth = await CurrentMonthAsync(context, cancellationToken);
         updated.Rename(budget.Name);
         updated.ReplaceTags(budget.TagIds);
         updated.ChangeRolloverMode(BudgetMapper.ToDomain(budget.RolloverMode));
@@ -135,11 +152,12 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
     }
 
     /// <summary>
-    /// The user's transactions from the earliest running budget's first month to the end of <paramref name="target"/>,
-    /// a day either side for time zones. Dates are encrypted, so this narrows by their day index.
+    /// The user's transactions from the start of the earliest running budget's first period to the end of
+    /// <paramref name="target"/>'s, a day either side for time zones. Dates are encrypted, so this narrows by their
+    /// day index.
     /// </summary>
     private async Task<List<BankTransaction>> LoadTransactionsAsync(FinanceTrackerContext context,
-        List<DomainBudget> running, BudgetMonth target, CancellationToken cancellationToken)
+        List<DomainBudget> running, BudgetMonth target, PayCalendar calendar, CancellationToken cancellationToken)
     {
         BudgetMonth first = target;
         foreach (DomainBudget budget in running)
@@ -150,8 +168,10 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
             }
         }
 
-        DateTime from = first.FirstDay.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc).AddDays(-1);
-        DateTime to = target.Next.FirstDay.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc).AddDays(1);
+        DateOnly start = calendar.Named(first.Year, first.Month).Start;
+        DateOnly end = calendar.Named(target.Year, target.Month).End;
+        DateTime from = start.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc).AddDays(-1);
+        DateTime to = end.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc).AddDays(2);
 
         return await context.BankTransactions.OwnedBy(UserId)
             .WhereEncryptedDayBetween(x => x.OccurredAt, from, to, context)
