@@ -163,15 +163,33 @@ else
         try
         {
             SetLoadingState(true, "Loading the debt");
+            return await FetchDetailAsync();
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
+    /// <summary>
+    /// What's owed, the history and payments after the sync, and new accounts to link to.
+    /// </summary>
+    protected override async Task OnSyncedAsync()
+    {
+        Detail = await FetchDetailAsync();
+        Accounts = await TransactionsService.GetAccountsForTransactionFiltersAsync(_cts.Token)
+            .ToListAsync(_cts.Token);
+    }
+
+    private async Task<DebtDetail?> FetchDetailAsync()
+    {
+        try
+        {
             return await DebtsService.GetDebtAsync(Id, _cts.Token);
         }
         catch (InvalidOperationException)
         {
             return null;
-        }
-        finally
-        {
-            SetLoadingState(false);
         }
     }
 

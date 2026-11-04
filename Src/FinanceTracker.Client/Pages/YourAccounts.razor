@@ -1,7 +1,7 @@
 @page "/Accounts"
-@* Each connected account with its balance and newest transactions (IAccountService). *@
-@using System.Globalization
-@using FinanceTracker.Client.Components.NetWorth
+@* Each connected account with its balance and newest transactions (IAccountService), grouped by bank. A bank's
+   accounts can be closed, and stay closed while the user moves around the app. *@
+@using FinanceTracker.Client.Components.Accounts
 @using FinanceTracker.Contracts.Account
 @using FinanceTracker.Contracts.NetWorth
 @using Microsoft.AspNetCore.Authorization
@@ -30,98 +30,17 @@
 }
 else
 {
-    <MudGrid Spacing="4">
-        @foreach (var account in (Accounts ?? []).OrderByDescending(static x => x.AccountBalance))
+    <div class="ft-stack">
+        @foreach (ProviderGroup group in Groups)
         {
-            <MudItem xs="12" md="6" xl="4">
-                <Section Class="h-100">
-                    <TitleContent>
-                        <div class="ft-account-heading">
-                            <AccountLogo Logo="@account.Logo"/>
-                            <div class="ft-list__main">
-                                <MudText Typo="Typo.subtitle1" Class="text-truncate">@account.AccountName</MudText>
-                                <MudText Typo="Typo.caption" Class="mud-text-secondary">
-                                    @TypeCaption(account)
-                                </MudText>
-                            </div>
-                        </div>
-                    </TitleContent>
-                    <ChildContent>
-                        <div class="ft-balances">
-                            <div>
-                                <div class="ft-label">Balance</div>
-                                <MoneyText Value="@account.AccountBalance" Typo="Typo.h5"/>
-                            </div>
-                            @if (account.AvailableBalance != account.AccountBalance)
-                            {
-                                <div>
-                                    <div class="ft-label">Available</div>
-                                    <MoneyText Value="@account.AvailableBalance" Typo="Typo.h6"
-                                               Class="mud-text-secondary"/>
-                                </div>
-                            }
-                            @if (account.CreditLimit is { } creditLimit)
-                            {
-                                <div>
-                                    <div class="ft-label">Credit limit</div>
-                                    <MoneyText Value="@creditLimit" Typo="Typo.h6" Class="mud-text-secondary"/>
-                                </div>
-                            }
-                        </div>
-
-                        @if (HistoryOf(account) is { Count: > 1 } history)
-                        {
-                            <div class="ft-label mt-4">Last 90 days</div>
-                            <BalanceHistoryChart Points="@history" Name="Balance" Compact="true" Height="80"/>
-                        }
-
-                        <div class="ft-label mt-4">Recent activity</div>
-                        @if (account.Transactions is null || !account.Transactions.Any())
-                        {
-                            <MudText Typo="Typo.body2" Class="mud-text-secondary">Nothing yet.</MudText>
-                        }
-                        else
-                        {
-                            <div class="ft-list">
-                                @foreach (var transaction in account.Transactions.OrderByDescending(static x => x.Time))
-                                {
-                                    <div class="ft-list__row">
-                                        <div class="ft-list__main">
-                                            <MudText Typo="Typo.body2" Class="text-truncate">@transaction.Description</MudText>
-                                            <MudText Typo="Typo.caption" Class="mud-text-secondary">
-                                                @transaction.Time.ToLocalTime().ToString("d MMM", CultureInfo.CurrentCulture)
-                                                · @DisplayText.ToTitle(transaction.Status)
-                                            </MudText>
-                                        </div>
-                                        <div class="ft-list__end">
-                                            <MoneyText Value="@transaction.Amount" Signed="true"/>
-                                        </div>
-                                    </div>
-                                }
-                            </div>
-                        }
-                    </ChildContent>
-                </Section>
-            </MudItem>
+            <ProviderAccounts @key="group.Name" Name="@group.Name" Logo="@group.Logo" Accounts="@group.Accounts"
+                              HistoryOf="@HistoryOf" Expanded="@IsExpanded(group.Name)"
+                              ExpandedChanged="@(expanded => SetExpanded(group.Name, expanded))"/>
         }
-    </MudGrid>
+    </div>
 }
 
 @code {
-
-    /// <summary>
-    /// The account's type, and a card's last digits when the bank gives them, e.g. "Credit Card · ending 1000".
-    /// </summary>
-    internal static string TypeCaption(AccountAndTransactions account)
-    {
-        string type = DisplayText.ToTitle(account.AccountType);
-        if (string.IsNullOrWhiteSpace(account.CardEnding))
-        {
-            return type;
-        }
-
-        return $"{type} · ending {account.CardEnding}";
-    }
 
     /// <summary>
     /// The user's accounts, loaded once, see <see cref="PageComponent.LoadOnceAsync{T}"/>.
@@ -140,26 +59,66 @@ else
     [PersistentState]
     public List<AccountBalanceHistory>? Histories { get; set; }
 
+    [CascadingParameter] private ApplicationState AppState { get; set; } = null!;
+
     private Dictionary<Guid, IReadOnlyList<BalancePoint>> _historyByAccount = [];
+
+    /// <summary>
+    /// The accounts by bank, the banks with the most in them first and each bank's accounts the same way.
+    /// </summary>
+    private List<ProviderGroup> Groups => (Accounts ?? [])
+        .GroupBy(static x => x.ProviderName, StringComparer.Ordinal)
+        .Select(static x => new ProviderGroup(x.Key, x.First().Logo,
+            x.OrderByDescending(static y => y.AccountBalance).ToList()))
+        .OrderByDescending(static x => x.Accounts.Sum(static y => y.AccountBalance))
+        .ToList();
+
+    private bool IsExpanded(string provider) => !AppState.CollapsedProviders.Contains(provider);
+
+    private void SetExpanded(string provider, bool expanded)
+    {
+        if (expanded)
+        {
+            AppState.CollapsedProviders.Remove(provider);
+            return;
+        }
+
+        AppState.CollapsedProviders.Add(provider);
+    }
     private List<AccountBalanceHistory>? _historiesFrom;
 
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
-        Accounts = await LoadOnceAsync(Accounts, "Loading your accounts", cancellationToken =>
-            AccountService.GetAccountsAndMostRecentTransactionsAsync(5, cancellationToken)
-                .ToListAsync(cancellationToken).AsTask());
-
-        Histories = await LoadOnceAsync(Histories, "Loading your accounts", cancellationToken =>
-            NetWorthService.GetBalanceHistoriesAsync(
-                    DateOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime).AddDays(-90), cancellationToken)
-                .ToListAsync(cancellationToken).AsTask());
+        Accounts = await LoadOnceAsync(Accounts, "Loading your accounts", LoadAccountsAsync);
+        Histories = await LoadOnceAsync(Histories, "Loading your accounts", LoadHistoriesAsync);
     }
+
+    /// <summary>
+    /// The balances, latest transactions and charts again, with what the sync brought in.
+    /// </summary>
+    protected override async Task OnSyncedAsync()
+    {
+        Accounts = await LoadAccountsAsync(_cts.Token);
+        Histories = await LoadHistoriesAsync(_cts.Token);
+        IndexHistories();
+    }
+
+    private Task<List<AccountAndTransactions>> LoadAccountsAsync(CancellationToken cancellationToken) =>
+        AccountService.GetAccountsAndMostRecentTransactionsAsync(5, cancellationToken)
+            .ToListAsync(cancellationToken).AsTask();
+
+    private Task<List<AccountBalanceHistory>> LoadHistoriesAsync(CancellationToken cancellationToken) =>
+        NetWorthService.GetBalanceHistoriesAsync(
+                DateOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime).AddDays(-90), cancellationToken)
+            .ToListAsync(cancellationToken).AsTask();
 
     /// <summary>
     /// Looked up by account once per load, and the same lists kept so the charts only redraw when they change.
     /// </summary>
-    protected override void OnParametersSet()
+    protected override void OnParametersSet() => IndexHistories();
+
+    private void IndexHistories()
     {
         if (Histories is null || ReferenceEquals(Histories, _historiesFrom))
         {

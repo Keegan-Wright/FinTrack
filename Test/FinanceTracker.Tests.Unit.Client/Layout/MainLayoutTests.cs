@@ -185,6 +185,25 @@ public class MainLayoutTests : ComponentTestBase
     }
 
     [Test]
+    public async Task SyncCompleted_TellsThePageToRefresh()
+    {
+        // Arrange
+        int refreshes = 0;
+        _applicationState.Synced += () =>
+        {
+            refreshes++;
+            return Task.CompletedTask;
+        };
+        IRenderedComponent<MainLayout> cut = RenderLayout();
+
+        // Act
+        await cut.InvokeAsync(_onSyncComplete!);
+
+        // Assert
+        await Assert.That(refreshes).IsEqualTo(1);
+    }
+
+    [Test]
     public async Task Render_ConnectionsToRenew_ShowsTheBannerAndTheCountOnTheConnectionsLink()
     {
         // Arrange

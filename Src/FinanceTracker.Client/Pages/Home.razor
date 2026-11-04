@@ -1,9 +1,11 @@
 @page "/"
 @* The dashboard in/out KPIs, cash flow, top spending, accounts, upcoming payments, this month's budgets and savings
-   goals, for a chosen date range. *@
+   goals, for a chosen date range. "This month" is the pay period once the user's pay is picked up
+   (IPayPeriodsService), so it starts on pay day rather than the 1st. *@
 @using System.Globalization
 @using FinanceTracker.Client.Components.Dashboard
 @using FinanceTracker.Contracts.Auth
+@using FinanceTracker.Contracts.PayPeriods
 @using FinanceTracker.Contracts.Transactions
 @using Microsoft.AspNetCore.Authorization
 @inherits PageComponent
@@ -16,6 +18,7 @@
 @inject IBudgetsService BudgetsService
 @inject IHouseholdMemberService HouseholdMemberService
 @inject INetWorthService NetWorthService
+@inject IPayPeriodsService PayPeriodsService
 @inject TimeProvider TimeProvider
 
 <PageTitle>FinTrack - Dashboard</PageTitle>
@@ -23,7 +26,7 @@
     <Actions>
         <MudToggleGroup T="DashboardRangePreset" Value="@View.Preset" ValueChanged="@SetRangePresetAsync"
                         Size="Size.Small" Color="Color.Primary">
-            <MudToggleItem Value="DashboardRangePreset.ThisMonth" Text="This month"/>
+            <MudToggleItem Value="DashboardRangePreset.ThisMonth" Text="@ThisMonthText"/>
             <MudToggleItem Value="DashboardRangePreset.Last30Days" Text="Last 30 days"/>
             <MudToggleItem Value="DashboardRangePreset.ThisYear" Text="This year"/>
         </MudToggleGroup>
@@ -74,6 +77,8 @@
 
     private string? _userName;
 
+    private string ThisMonthText => View.FollowsPay ? "This pay period" : "This month";
+
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
@@ -82,6 +87,11 @@
         Data = await LoadOnceAsync(Data, "Loading your dashboard",
             cancellationToken => LoadDashboardAsync(DashboardRangePreset.ThisMonth, cancellationToken));
     }
+
+    /// <summary>
+    /// The same range again, with what the sync brought in.
+    /// </summary>
+    protected override async Task OnSyncedAsync() => Data = await LoadDashboardAsync(View.Preset, _cts.Token);
 
     private async Task SetRangePresetAsync(DashboardRangePreset preset)
     {
@@ -99,16 +109,16 @@
         }
     }
 
-    private (DateTime From, DateTime To) GetPresetRange(DashboardRangePreset preset)
+    /// <param name="currentPeriod">Today's period, where this month starts.</param>
+    private (DateTime From, DateTime To) GetPresetRange(DashboardRangePreset preset, PayPeriod currentPeriod)
     {
         var now = TimeProvider.GetLocalNow().DateTime;
 
         DateTime from = preset switch
         {
-            DashboardRangePreset.ThisMonth => new DateTime(now.Year, now.Month, 1),
             DashboardRangePreset.ThisYear => new DateTime(now.Year, 1, 1),
             DashboardRangePreset.Last30Days => now.AddDays(-30),
-            _ => new DateTime(now.Year, now.Month, 1)
+            _ => currentPeriod.Start.ToDateTime(TimeOnly.MinValue)
         };
 
         return (from, now);
@@ -116,7 +126,8 @@
 
     private async Task<DashboardData> LoadDashboardAsync(DashboardRangePreset preset, CancellationToken cancellationToken)
     {
-        (DateTime fromDate, DateTime toDate) = GetPresetRange(preset);
+        YourPay pay = await PayPeriodsService.GetYourPayAsync(cancellationToken);
+        (DateTime fromDate, DateTime toDate) = GetPresetRange(preset, pay.CurrentPeriod);
 
         var spent = await DashboardService.GetSpentInTimePeriod(fromDate, toDate, cancellationToken);
 
@@ -127,9 +138,9 @@
         var accounts = await AccountService.GetAccountsAndMostRecentTransactionsAsync(1, cancellationToken).ToListAsync(cancellationToken);
         var savingsGoals = await SavingsGoalsService.GetSavingsGoalsAsync(cancellationToken).ToListAsync(cancellationToken);
 
-        // Budgets run by calendar month, so always this month whatever the range
-        var now = TimeProvider.GetLocalNow().DateTime;
-        var budgets = await BudgetsService.GetMonthAsync(now.Year, now.Month, cancellationToken);
+        // Always this month's budgets whatever the range, the pay period's when the months follow pay
+        DateOnly month = pay.CurrentPeriod.Month;
+        var budgets = await BudgetsService.GetMonthAsync(month.Year, month.Month, cancellationToken);
         var netWorth = await NetWorthService.GetNetWorthAsync(DateOnly.FromDateTime(fromDate), cancellationToken);
 
         decimal householdIncome = 0;
@@ -143,6 +154,7 @@
         return new DashboardData
         {
             Preset = preset,
+            FollowsPay = pay.FollowsPay,
             FromDate = fromDate,
             ToDate = toDate,
             Spent = spent,

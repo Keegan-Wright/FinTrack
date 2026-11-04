@@ -22,6 +22,11 @@ public sealed class DashboardData
     public DashboardRangePreset Preset { get; init; } = DashboardRangePreset.ThisMonth;
 
     /// <summary>
+    /// Whether this month is the pay period, from the last pay, rather than the calendar month.
+    /// </summary>
+    public bool FollowsPay { get; init; }
+
+    /// <summary>
     /// The range's start, local (server) time.
     /// </summary>
     public DateTime FromDate { get; init; }

@@ -7,8 +7,10 @@ using FinanceTracker.Contracts.Reports.SpentInTimePeriod;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Transactions;
 using FinanceTracker.Domain.OpenBanking.Transactions;
+using FinanceTracker.Domain.PayPeriods;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
+using FinanceTracker.Infrastructure.PayPeriods;
 using FinanceTracker.Infrastructure.Transactions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -35,6 +37,8 @@ public class ReportService : ServiceBase<ReportService>, IReportService
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
         (List<BankTransaction> openBankingTransactions, Dictionary<Guid, string> customTags) =
             await GetTransactionsForReportAsync(request, context, cancellationToken);
+        PayCalendar calendar =
+            await PayCalendars.ForUserAsync(context, UserId, _timeProvider.Today, cancellationToken);
 
         List<ReportAmount> amounts = openBankingTransactions
             .Select(x => Matching(x, request.Tags, customTags))
@@ -50,37 +54,37 @@ public class ReportService : ServiceBase<ReportService>, IReportService
             TotalIn = TotalIn(amounts), TotalOut = TotalOut(amounts), TotalTransactions = amounts.Count
         };
 
-        foreach (IGrouping<int, ReportAmount> yearlyGrouping in amounts.GroupBy(static x => x.OccurredAt.Year))
+        foreach (ReportYear year in ReportPeriods.Group(amounts, calendar, _timeProvider.LocalTimeZone))
         {
             SpentInTimePeriodReportYearlyBreakdown yearGrp = new()
             {
-                Year = yearlyGrouping.Key,
-                TotalIn = TotalIn(yearlyGrouping),
-                TotalOut = TotalOut(yearlyGrouping),
-                TotalTransactions = yearlyGrouping.Count()
+                Year = year.Year,
+                TotalIn = TotalIn(year.Amounts),
+                TotalOut = TotalOut(year.Amounts),
+                TotalTransactions = year.Amounts.Count
             };
 
-            foreach (IGrouping<int, ReportAmount> monthlyGrouping in yearlyGrouping.GroupBy(static x =>
-                         x.OccurredAt.Month))
+            foreach (ReportMonth month in year.Months)
             {
-                string monthName = DateTimeFormatInfo.CurrentInfo.GetMonthName(monthlyGrouping.Key);
                 SpentInTimePeriodReportMonthlyBreakdown monthGrp = new()
                 {
-                    Month = monthName,
-                    TotalIn = TotalIn(monthlyGrouping),
-                    TotalOut = TotalOut(monthlyGrouping),
-                    TotalTransactions = monthlyGrouping.Count()
+                    Month = DateTimeFormatInfo.CurrentInfo.GetMonthName(month.Month),
+                    Start = month.Period.Start,
+                    End = month.Period.End,
+                    TotalIn = TotalIn(month.Amounts),
+                    TotalOut = TotalOut(month.Amounts),
+                    TotalTransactions = month.Amounts.Count
                 };
 
-                foreach (IGrouping<int, ReportAmount> dayGrouping in monthlyGrouping.GroupBy(static x =>
-                             x.OccurredAt.Day))
+                foreach (ReportDay day in month.Days)
                 {
                     monthGrp.DailyBreakdown.Add(new SpentInTimePeriodReportDailyBreakdown
                     {
-                        Day = dayGrouping.Key,
-                        TotalIn = TotalIn(dayGrouping),
-                        TotalOut = TotalOut(dayGrouping),
-                        TotalTransactions = dayGrouping.Count()
+                        Day = day.Date.Day,
+                        Date = day.Date,
+                        TotalIn = TotalIn(day.Amounts),
+                        TotalOut = TotalOut(day.Amounts),
+                        TotalTransactions = day.Amounts.Count
                     });
                 }
 
@@ -100,6 +104,8 @@ public class ReportService : ServiceBase<ReportService>, IReportService
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
         (List<BankTransaction> openBankingTransactions, Dictionary<Guid, string> customTags) =
             await GetTransactionsForReportAsync(request, context, cancellationToken);
+        PayCalendar calendar =
+            await PayCalendars.ForUserAsync(context, UserId, _timeProvider.Today, cancellationToken);
 
         IEnumerable<string> distinctClassifications = openBankingTransactions
             .SelectMany(x => TransactionCriteria.GetTags(x, customTags)).Distinct();
@@ -119,37 +125,37 @@ public class ReportService : ServiceBase<ReportService>, IReportService
                 Category = classification
             };
 
-            foreach (IGrouping<int, ReportAmount> yearlyGrouping in tagged.GroupBy(static x => x.OccurredAt.Year))
+            foreach (ReportYear year in ReportPeriods.Group(tagged, calendar, _timeProvider.LocalTimeZone))
             {
                 SpentInCategoryReportYearlyBreakdown yearGrp = new()
                 {
-                    Year = yearlyGrouping.Key,
-                    TotalIn = TotalIn(yearlyGrouping),
-                    TotalOut = TotalOut(yearlyGrouping),
-                    TotalTransactions = yearlyGrouping.Count()
+                    Year = year.Year,
+                    TotalIn = TotalIn(year.Amounts),
+                    TotalOut = TotalOut(year.Amounts),
+                    TotalTransactions = year.Amounts.Count
                 };
 
-                foreach (IGrouping<int, ReportAmount> monthlyGrouping in yearlyGrouping.GroupBy(static x =>
-                             x.OccurredAt.Month))
+                foreach (ReportMonth month in year.Months)
                 {
-                    string monthName = DateTimeFormatInfo.CurrentInfo.GetMonthName(monthlyGrouping.Key);
                     SpentInCategoryReportMonthlyBreakdown monthGrp = new()
                     {
-                        Month = monthName,
-                        TotalIn = TotalIn(monthlyGrouping),
-                        TotalOut = TotalOut(monthlyGrouping),
-                        TotalTransactions = monthlyGrouping.Count()
+                        Month = DateTimeFormatInfo.CurrentInfo.GetMonthName(month.Month),
+                        Start = month.Period.Start,
+                        End = month.Period.End,
+                        TotalIn = TotalIn(month.Amounts),
+                        TotalOut = TotalOut(month.Amounts),
+                        TotalTransactions = month.Amounts.Count
                     };
 
-                    foreach (IGrouping<int, ReportAmount> dayGrouping in monthlyGrouping.GroupBy(static x =>
-                                 x.OccurredAt.Day))
+                    foreach (ReportDay day in month.Days)
                     {
                         monthGrp.DailyBreakdown.Add(new SpentInCategoryReportDailyBreakdown
                         {
-                            Day = dayGrouping.Key,
-                            TotalIn = TotalIn(dayGrouping),
-                            TotalOut = TotalOut(dayGrouping),
-                            TotalTransactions = dayGrouping.Count()
+                            Day = day.Date.Day,
+                            Date = day.Date,
+                            TotalIn = TotalIn(day.Amounts),
+                            TotalOut = TotalOut(day.Amounts),
+                            TotalTransactions = day.Amounts.Count
                         });
                     }
 
@@ -170,6 +176,8 @@ public class ReportService : ServiceBase<ReportService>, IReportService
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
         (List<BankTransaction> openBankingTransactions, Dictionary<Guid, string> customTags) =
             await GetTransactionsForReportAsync(request, context, cancellationToken, includeTransfers: true);
+        PayCalendar calendar =
+            await PayCalendars.ForUserAsync(context, UserId, _timeProvider.Today, cancellationToken);
 
         Dictionary<Guid, string> accountNames = await context.BankAccounts.OwnedBy(UserId)
             .ToDictionaryAsync(static x => x.Id, static x => x.DisplayName, cancellationToken);
@@ -190,38 +198,39 @@ public class ReportService : ServiceBase<ReportService>, IReportService
                 AccountName = accountNames[accountGrouping.Key]
             };
 
-            foreach (IGrouping<int, ReportAmount> yearlyGrouping in accountGrouping.GroupBy(static x =>
-                         x.OccurredAt.Year))
+            IReadOnlyList<ReportYear> years =
+                ReportPeriods.Group(accountGrouping, calendar, _timeProvider.LocalTimeZone);
+            foreach (ReportYear year in years)
             {
                 SpentInAccountReportYearlyBreakdown yearGrp = new()
                 {
-                    Year = yearlyGrouping.Key,
-                    TotalIn = TotalIn(yearlyGrouping),
-                    TotalOut = TotalOut(yearlyGrouping),
-                    TotalTransactions = yearlyGrouping.Count()
+                    Year = year.Year,
+                    TotalIn = TotalIn(year.Amounts),
+                    TotalOut = TotalOut(year.Amounts),
+                    TotalTransactions = year.Amounts.Count
                 };
 
-                foreach (IGrouping<int, ReportAmount> monthlyGrouping in yearlyGrouping.GroupBy(static x =>
-                             x.OccurredAt.Month))
+                foreach (ReportMonth month in year.Months)
                 {
-                    string monthName = DateTimeFormatInfo.CurrentInfo.GetMonthName(monthlyGrouping.Key);
                     SpentInAccountReportMonthlyBreakdown monthGrp = new()
                     {
-                        Month = monthName,
-                        TotalIn = TotalIn(monthlyGrouping),
-                        TotalOut = TotalOut(monthlyGrouping),
-                        TotalTransactions = monthlyGrouping.Count()
+                        Month = DateTimeFormatInfo.CurrentInfo.GetMonthName(month.Month),
+                        Start = month.Period.Start,
+                        End = month.Period.End,
+                        TotalIn = TotalIn(month.Amounts),
+                        TotalOut = TotalOut(month.Amounts),
+                        TotalTransactions = month.Amounts.Count
                     };
 
-                    foreach (IGrouping<int, ReportAmount> dayGrouping in monthlyGrouping.GroupBy(static x =>
-                                 x.OccurredAt.Day))
+                    foreach (ReportDay day in month.Days)
                     {
                         monthGrp.DailyBreakdown.Add(new SpentInAccountReportDailyBreakdown
                         {
-                            Day = dayGrouping.Key,
-                            TotalIn = TotalIn(dayGrouping),
-                            TotalOut = TotalOut(dayGrouping),
-                            TotalTransactions = dayGrouping.Count()
+                            Day = day.Date.Day,
+                            Date = day.Date,
+                            TotalIn = TotalIn(day.Amounts),
+                            TotalOut = TotalOut(day.Amounts),
+                            TotalTransactions = day.Amounts.Count
                         });
                     }
 

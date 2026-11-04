@@ -74,6 +74,36 @@ public class CalendarPageTests : ComponentTestBase
         }
     }
 
+    [Test]
+    public async Task Synced_RefreshesTheMonthShown()
+    {
+        // Arrange
+        using CultureScope culture = new();
+        Month();
+        List<CalendarItems> april = [];
+        _calendarService.GetMonthItemsAsync(4, 2026, Arg.Any<CancellationToken>())
+            .Returns(_ => april.ToAsyncEnumerable());
+        IRenderedComponent<CalendarPage> cut = RenderPage();
+        await cut.InvokeAsync(() => cut.Find("button[aria-label='Next month']").Click());
+        cut.WaitForState(() => cut.FindAll("[role='grid'][aria-label='April 2026']").Count == 1);
+        april.Add(new CalendarItems
+        {
+            Date = new DateTime(2026, 4, 1),
+            Events = [CalendarTextTests.Event(target: 100m, goalName: "Gifts", saved: 40m, notes: null)]
+        });
+
+        // Act
+        await cut.InvokeAsync(_applicationState.NotifySyncedAsync);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(cut.FindAll("[role='grid'][aria-label='April 2026']")).Count().IsEqualTo(1);
+            await Assert.That(cut.Markup).Contains("Birthday");
+            _calendarService.Received(1).GetMonthItemsAsync(3, 2026, Arg.Any<CancellationToken>());
+        }
+    }
+
     /// <summary>
     /// March 2026, with <paramref name="days"/> in place of the empty days they're on.
     /// </summary>

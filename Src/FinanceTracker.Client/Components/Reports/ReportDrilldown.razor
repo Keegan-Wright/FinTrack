@@ -106,7 +106,7 @@
                             <div class="ft-list__main">
                                 <MudText Typo="Typo.body2" Class="text-truncate">@child.Title</MudText>
                                 <MudText Typo="Typo.caption" Class="mud-text-secondary">
-                                    @($"{child.TotalTransactions:n0} {(child.TotalTransactions == 1 ? "transaction" : "transactions")}")
+                                    @RowCaption(child)
                                 </MudText>
                             </div>
                             <div class="ft-list__end">
@@ -153,12 +153,57 @@
 
     private ReportNode Current => _path[^1];
 
-    private string Caption => Current.ChildPeriod is not null
-        ? $"Money in and out by {Current.ChildPeriod}, pick a bar or a row to see inside it"
-        : Current.Date is not null ? "Everything in and out on the day" : string.Empty;
+    /// <summary>
+    /// e.g. <c>30 Oct – 29 Nov · 12 transactions</c>, the dates only for a month that runs from pay to pay.
+    /// </summary>
+    private static string RowCaption(ReportNode child)
+    {
+        string count = child.TotalTransactions == 1 ? "1 transaction" : $"{child.TotalTransactions:n0} transactions";
+        if (child.Dates is null)
+        {
+            return count;
+        }
+
+        return $"{child.Dates} · {count}";
+    }
+
+    /// <summary>
+    /// What the section shows, after the month's dates when it runs from pay to pay.
+    /// </summary>
+    private string Caption
+    {
+        get
+        {
+            string caption = string.Empty;
+            if (Current.ChildPeriod is not null)
+            {
+                caption = $"Money in and out by {Current.ChildPeriod}, pick a bar or a row to see inside it";
+            }
+            else if (Current.Date is not null)
+            {
+                caption = "Everything in and out on the day";
+            }
+
+            if (Current.Dates is null)
+            {
+                return caption;
+            }
+
+            return $"{Current.Dates} · {caption}";
+        }
+    }
 
     protected override void OnParametersSet()
     {
+        // The same report refreshed, e.g. after a sync, stays where the user was
+        if (_root is not null && !ReferenceEquals(_root, Root) && _root.IsSameAs(Root))
+        {
+            _root = Root;
+            FollowPathInto(Root);
+            OnPathChanged();
+            return;
+        }
+
         if (!ReferenceEquals(_root, Root))
         {
             _root = Root;
@@ -174,6 +219,28 @@
         }
 
         RebuildOptionsIfNeeded();
+    }
+
+    /// <summary>
+    /// Takes the user down <paramref name="root"/> the way they'd gone into the old report, as far as the same periods
+    /// are still there.
+    /// </summary>
+    private void FollowPathInto(ReportNode root)
+    {
+        List<ReportNode> path = [root];
+        foreach (ReportNode period in _path.Skip(1))
+        {
+            ReportNode? same = path[^1].ChildLike(period);
+            if (same is null)
+            {
+                break;
+            }
+
+            path.Add(same);
+        }
+
+        _path.Clear();
+        _path.AddRange(path);
     }
 
     private void DrillInto(ReportNode node)

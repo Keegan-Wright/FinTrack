@@ -14,6 +14,19 @@ public class BillMonthOverview
     public DateOnly Month { get; init; }
 
     /// <summary>
+    /// The period's first day the pay day when the user's months run from pay to pay, otherwise the month's first
+    /// day. Bills due from here to <see cref="End"/> are the month's.
+    /// </summary>
+    [Description("The period's first day, the pay day or the month's first day")]
+    public DateOnly Start { get; init; }
+
+    /// <summary>
+    /// The period's last day, inclusive the day before the next pay, otherwise the month's last day.
+    /// </summary>
+    [Description("The period's last day, inclusive")]
+    public DateOnly End { get; init; }
+
+    /// <summary>
     /// Whether this is the current month.
     /// </summary>
     [Description("Whether this is the current month")]

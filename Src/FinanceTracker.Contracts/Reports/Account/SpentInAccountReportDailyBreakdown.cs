@@ -23,4 +23,10 @@ public readonly struct SpentInAccountReportDailyBreakdown : IReport
     /// The day of the month, 1 to 31.
     /// </summary>
     public int Day { get; init; }
+
+    /// <summary>
+    /// The day, where the user is. A pay period's days can start in the month before, e.g. 30 October in November.
+    /// </summary>
+    [Description("The day, where the user is")]
+    public DateOnly Date { get; init; }
 }

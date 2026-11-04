@@ -3,6 +3,7 @@ using FinanceTracker.Client;
 using FinanceTracker.Contracts.Bills;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Transactions;
+using FinanceTracker.Tests.Unit.Client.PayPeriods;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using BillsPage = FinanceTracker.Client.Pages.Bills;
@@ -14,6 +15,7 @@ public class BillsPageTests : ComponentTestBase
     private static readonly DateTime Now = new(2026, 10, 30, 12, 0, 0, DateTimeKind.Utc);
 
     private readonly IBillsService _billsService = Substitute.For<IBillsService>();
+    private readonly IPayPeriodsService _payPeriodsService = Substitute.For<IPayPeriodsService>();
     private readonly ApplicationState _applicationState = new();
 
     public BillsPageTests()
@@ -24,6 +26,8 @@ public class BillsPageTests : ComponentTestBase
             .Returns(AsyncEnumerable.Empty<TransactionAccountFilter>());
 
         Services.AddSingleton(_billsService);
+        Services.AddSingleton(_payPeriodsService);
+        _payPeriodsService.GetYourPayAsync(Arg.Any<CancellationToken>()).Returns(YourPays.NoneYet(2026, 10));
         Services.AddSingleton(transactionsService);
         Services.AddSingleton<TimeProvider>(new FixedTimeProvider(Now));
 
@@ -124,6 +128,56 @@ public class BillsPageTests : ComponentTestBase
 
         // Assert
         await Assert.That(cut.Markup).Contains("Your standing orders and direct debits show here after a sync");
+    }
+
+    [Test]
+    public async Task Synced_RefreshesTheMonthShownAndTheBills()
+    {
+        // Arrange
+        using CultureScope culture = new();
+        IRenderedComponent<BillsPage> cut = RenderPage();
+        await cut.InvokeAsync(() => cut.Find("button[aria-label='Previous month']").Click());
+        cut.WaitForState(() => cut.Markup.Contains("September 2026"));
+        _billsService.GetSuggestionCountAsync(Arg.Any<CancellationToken>()).Returns(2);
+
+        // Act
+        await cut.InvokeAsync(_applicationState.NotifySyncedAsync);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(cut.Markup).Contains("September 2026");
+            await Assert.That(cut.Markup).Contains("2 repeat payments look like subscriptions");
+            await _billsService.Received(2).GetMonthAsync(2026, 9, Arg.Any<CancellationToken>());
+            await _billsService.Received(1).GetMonthAsync(2026, 10, Arg.Any<CancellationToken>());
+            _billsService.Received(2).GetBillsAsync(Arg.Any<CancellationToken>());
+        }
+    }
+
+    [Test]
+    public async Task Render_PayPickedUp_OpensOnThePayPeriodWithItsDates()
+    {
+        // Arrange
+        using CultureScope culture = new();
+        _payPeriodsService.GetYourPayAsync(Arg.Any<CancellationToken>()).Returns(YourPays.FromPayToPay());
+        _billsService.GetMonthAsync(2026, 11, Arg.Any<CancellationToken>()).Returns(new BillMonthOverview
+        {
+            Month = new DateOnly(2026, 11, 1),
+            Start = new DateOnly(2026, 10, 30),
+            End = new DateOnly(2026, 11, 29),
+            IsCurrent = true
+        });
+
+        // Act
+        IRenderedComponent<BillsPage> cut = RenderPage();
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(cut.Markup).Contains("November 2026");
+            await Assert.That(cut.Markup).Contains("30 Oct – 29 Nov");
+            await Assert.That(cut.Markup).DoesNotContain("As it ended");
+        }
     }
 
     private IRenderedComponent<BillsPage> RenderPage() =>

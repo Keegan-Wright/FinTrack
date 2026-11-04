@@ -127,6 +127,16 @@
                 .ToListAsync(cancellationToken).AsTask());
     }
 
+    /// <summary>
+    /// What's owed and the forecasts after the payments the sync brought in, and new accounts to link to.
+    /// </summary>
+    protected override async Task OnSyncedAsync()
+    {
+        DebtList = await DebtsService.GetDebtsAsync(_cts.Token).ToListAsync(_cts.Token);
+        Accounts = await TransactionsService.GetAccountsForTransactionFiltersAsync(_cts.Token)
+            .ToListAsync(_cts.Token);
+    }
+
     private async Task AddAsync()
     {
         SaveDebt? debt = await ShowDialogAsync(null);

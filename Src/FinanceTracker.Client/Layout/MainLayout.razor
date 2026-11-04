@@ -131,6 +131,9 @@
         // Matching and suggesting run with the sync, so there may be new ones to review too
         await RefreshSyncDetailsAsync();
         Snackbar.Add("Your accounts have been synced", Severity.Success);
+
+        // Then the page, which refreshes quietly in place
+        await ApplicationState.NotifySyncedAsync();
     }
 
     /// <summary>

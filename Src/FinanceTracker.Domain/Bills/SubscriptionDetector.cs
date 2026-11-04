@@ -1,4 +1,4 @@
-using System.Text;
+using FinanceTracker.Domain.Common;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 
 namespace FinanceTracker.Domain.Bills;
@@ -55,7 +55,7 @@ public static class SubscriptionDetector
 
         IEnumerable<IGrouping<(Guid AccountId, string Payee), BankTransaction>> byPayee = transactions
             .Where(IsCandidate)
-            .GroupBy(static x => (x.AccountId, Payee: Key(PayeeName(x))))
+            .GroupBy(static x => (x.AccountId, Payee: PayeeNames.Key(PayeeNames.Name(x))))
             .Where(static x => x.Key.Payee.Length >= MinimumKeyLength);
 
         List<DetectedSubscription> detected = [];
@@ -152,7 +152,7 @@ public static class SubscriptionDetector
         DateOnly today)
     {
         BankTransaction latest = ordered[^1];
-        DateOnly lastPaidOn = BillCalculator.LocalDay(latest.OccurredAt, timeZone);
+        DateOnly lastPaidOn = latest.OccurredAt.LocalDayIn(timeZone);
 
         foreach (BillFrequency frequency in Frequencies)
         {
@@ -167,9 +167,9 @@ public static class SubscriptionDetector
                 return null;
             }
 
-            string name = PayeeName(latest);
-            return new DetectedSubscription(latest.AccountId, Key(name), name, frequency, -latest.Amount,
-                BillCalculator.LocalDay(run[0].OccurredAt, timeZone), lastPaidOn,
+            string name = PayeeNames.Name(latest);
+            return new DetectedSubscription(latest.AccountId, PayeeNames.Key(name), name, frequency, -latest.Amount,
+                run[0].OccurredAt.LocalDayIn(timeZone), lastPaidOn,
                 run.Select(static x => x.Id).ToList());
         }
 
@@ -191,8 +191,8 @@ public static class SubscriptionDetector
         {
             BankTransaction earlier = ordered[index];
 
-            DateOnly earlierDay = BillCalculator.LocalDay(earlier.OccurredAt, timeZone);
-            DateOnly laterDay = BillCalculator.LocalDay(run[0].OccurredAt, timeZone);
+            DateOnly earlierDay = earlier.OccurredAt.LocalDayIn(timeZone);
+            DateOnly laterDay = run[0].OccurredAt.LocalDayIn(timeZone);
 
             int offBy = Math.Abs(laterDay.DayNumber - Step(earlierDay, frequency).DayNumber);
             if (offBy > Slack(frequency) || !IsSimilar(-earlier.Amount, latestAmount))
@@ -232,45 +232,5 @@ public static class SubscriptionDetector
         }
 
         return 2;
-    }
-
-    /// <summary>
-    /// Who the payment went to the merchant or counterparty the bank named, otherwise the description. Digits are
-    /// dropped as they're usually a reference that changes each time, e.g. <c>NETFLIX.COM 866-579</c>.
-    /// </summary>
-    private static string PayeeName(BankTransaction transaction)
-    {
-        string name = transaction.Metadata.MerchantName
-                      ?? transaction.Metadata.CounterPartyPreferredName
-                      ?? transaction.Description;
-
-        StringBuilder builder = new(name.Length);
-        foreach (char character in name)
-        {
-            if (!char.IsDigit(character))
-            {
-                builder.Append(character);
-            }
-        }
-
-        string[] words = builder.ToString().Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        return string.Join(' ', words).Trim(' ', '-', '*', '#', '/', '.');
-    }
-
-    /// <summary>
-    /// Upper case letters only, so <c>Netflix.com</c> and <c>NETFLIX COM</c> are the same payee.
-    /// </summary>
-    private static string Key(string name)
-    {
-        StringBuilder builder = new(name.Length);
-        foreach (char character in name)
-        {
-            if (char.IsLetter(character))
-            {
-                builder.Append(char.ToUpperInvariant(character));
-            }
-        }
-
-        return builder.ToString();
     }
 }

@@ -34,6 +34,8 @@ public class ReportTreeTests
                         new SpentInTimePeriodReportMonthlyBreakdown
                         {
                             Month = "February",
+                            Start = new DateOnly(2026, 2, 1),
+                            End = new DateOnly(2026, 2, 28),
                             TotalIn = 100m,
                             TotalOut = -40m,
                             TotalTransactions = 3,
@@ -41,7 +43,8 @@ public class ReportTreeTests
                             [
                                 new SpentInTimePeriodReportDailyBreakdown
                                 {
-                                    Day = 14, TotalIn = 100m, TotalOut = -40m, TotalTransactions = 3
+                                    Day = 14, Date = new DateOnly(2026, 2, 14), TotalIn = 100m, TotalOut = -40m,
+                                    TotalTransactions = 3
                                 }
                             ]
                         }
@@ -69,6 +72,60 @@ public class ReportTreeTests
             await Assert.That(day.TotalIn).IsEqualTo(100m);
             await Assert.That(day.CanDrillInto).IsTrue();
             await Assert.That(february.Children[0].CanDrillInto).IsFalse();
+            await Assert.That(february.Dates).IsNull();
+        }
+    }
+
+    [Test]
+    public async Task From_AMonthFromPayToPay_HasThePeriodsDays()
+    {
+        // Arrange: February from pay on Friday 30 January to the day before the next on Friday 27 February
+        using CultureScope culture = new();
+        SpentInTimePeriodReport report = new()
+        {
+            TotalIn = 100m,
+            TotalTransactions = 1,
+            YearlyBreakdown =
+            [
+                new SpentInTimePeriodReportYearlyBreakdown
+                {
+                    Year = 2026,
+                    TotalIn = 100m,
+                    TotalTransactions = 1,
+                    MonthlyBreakdown =
+                    [
+                        new SpentInTimePeriodReportMonthlyBreakdown
+                        {
+                            Month = "February",
+                            Start = new DateOnly(2026, 1, 30),
+                            End = new DateOnly(2026, 2, 26),
+                            TotalIn = 100m,
+                            TotalTransactions = 1,
+                            DailyBreakdown =
+                            [
+                                new SpentInTimePeriodReportDailyBreakdown
+                                {
+                                    Day = 31, Date = new DateOnly(2026, 1, 31), TotalIn = 100m, TotalTransactions = 1
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        };
+
+        // Act
+        ReportNode root = ReportTree.From(report, new FilterTransactions());
+
+        // Assert
+        ReportNode february = root.Children.Single().Children[1];
+        using (Assert.Multiple())
+        {
+            await Assert.That(february.Title).IsEqualTo("February 2026");
+            await Assert.That(february.Dates).IsEqualTo("30 Jan – 26 Feb");
+            await Assert.That(february.Days).IsEqualTo(28);
+            await Assert.That(february.Children[0].Date).IsEqualTo(new DateTime(2026, 1, 30));
+            await Assert.That(february.Children[1].TotalIn).IsEqualTo(100m);
         }
     }
 

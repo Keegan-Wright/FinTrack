@@ -368,6 +368,33 @@ public class BillsServiceTests : InfrastructureTestBase
         }
     }
 
+    [Test]
+    public async Task GetMonthAsync_PaidOnTheLastWorkingDay_CoversFromPayToPay()
+    {
+        // Arrange: paid Friday 30 Oct, so November runs to the day before the next pay on Monday 30 Nov
+        await SeedAsync()
+            .Do(s => s.PayScenario.WithPayOnTheLastWorkingDay(Username, "main", new DateOnly(2026, 8, 28),
+                new DateOnly(2026, 9, 30), new DateOnly(2026, 10, 30)));
+        BillsService subject = BuildSubject(Username);
+        await subject.AddBillAsync(Streaming(new DateOnly(2026, 11, 12)), CancellationToken);
+
+        // Act
+        BillMonthOverview november = await subject.GetMonthAsync(2026, 11, CancellationToken);
+        BillMonthOverview october = await subject.GetMonthAsync(2026, 10, CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(november.Month).IsEqualTo(new DateOnly(2026, 11, 1));
+            await Assert.That(november.Start).IsEqualTo(new DateOnly(2026, 10, 30));
+            await Assert.That(november.End).IsEqualTo(new DateOnly(2026, 11, 29));
+            await Assert.That(november.IsCurrent).IsTrue();
+            await Assert.That(november.Due).IsEqualTo(9.99m);
+            await Assert.That(october.IsCurrent).IsFalse();
+            await Assert.That(october.End).IsEqualTo(new DateOnly(2026, 10, 29));
+        }
+    }
+
     private Task<TestingScenario> SeedAsync() =>
         Scenario.Do(s => s.UserScenario.WithUser(Username))
             .Do(s => s.BankConnectionScenario.WithConnection("bank", Username))

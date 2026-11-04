@@ -173,6 +173,11 @@
         }
     }
 
+    /// <summary>
+    /// A sync finds out when a bank's access has ended or is ending.
+    /// </summary>
+    protected override Task OnSyncedAsync() => ReloadConnectionsAsync();
+
     private async Task ReloadConnectionsAsync()
     {
         Connections = await OpenBankingService.GetConnectionsAsync(_cts.Token).ToListAsync(_cts.Token);

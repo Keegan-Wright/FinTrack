@@ -78,6 +78,15 @@
                 .ToListAsync(cancellationToken).AsTask());
     }
 
+    /// <summary>
+    /// The goals' amounts after the sync, and new accounts that could back one.
+    /// </summary>
+    protected override async Task OnSyncedAsync()
+    {
+        Goals = await SavingsGoalsService.GetSavingsGoalsAsync(_cts.Token).ToListAsync(_cts.Token);
+        Accounts = await SavingsGoalsService.GetSavingsAccountsAsync(_cts.Token).ToListAsync(_cts.Token);
+    }
+
     private async Task AddAsync()
     {
         SaveSavingsGoal? goal = await ShowDialogAsync(null);

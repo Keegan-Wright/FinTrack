@@ -18,6 +18,11 @@ public sealed class ReportNode
     /// </summary>
     public required string Title { get; init; }
 
+    /// <summary>
+    /// The days a month covers when it runs from pay to pay, e.g. <c>30 Oct – 29 Nov</c>, null otherwise.
+    /// </summary>
+    public string? Dates { get; init; }
+
     public int TotalTransactions { get; init; }
 
     /// <summary>
@@ -71,4 +76,19 @@ public sealed class ReportNode
     public bool IncludesTransfers { get; init; }
 
     public bool CanDrillInto => TotalTransactions > 0 && (Children.Count > 0 || Date is not null);
+
+    /// <summary>
+    /// Whether this is the same report or period as <paramref name="other"/>, e.g. from a refreshed report. the same
+    /// account and title.
+    /// </summary>
+    public bool IsSameAs(ReportNode other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+        return AccountId == other.AccountId && string.Equals(Title, other.Title, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The child that's the same period as <paramref name="period"/>, null when this has none.
+    /// </summary>
+    public ReportNode? ChildLike(ReportNode period) => Children.FirstOrDefault(x => x.IsSameAs(period));
 }

@@ -1,16 +1,20 @@
 @page "/Bills"
-@* What the user is committed to paying, month by month. Each bill's state in the month, the
+@* What the user is committed to paying, month by month, each month from pay to pay once the user's pay is picked up
+   (IPayPeriodsService). Each bill's state in the month, the
    committed total, and the bills that have ended. Standing orders and direct debits arrive as bills by themselves,
    subscriptions are suggested on the review page. *@
 @using FinanceTracker.Client.Components.Bills
 @using FinanceTracker.Client.Components.Budgets
+@using FinanceTracker.Client.Components.PayPeriods
 @using FinanceTracker.Contracts.Bills
+@using FinanceTracker.Contracts.PayPeriods
 @using FinanceTracker.Contracts.Transactions
 @using Microsoft.AspNetCore.Authorization
 @inherits PageComponent
 
 @attribute [Authorize]
 @inject IBillsService BillsService
+@inject IPayPeriodsService PayPeriodsService
 @inject ITransactionsService TransactionsService
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
@@ -52,9 +56,9 @@
             <MonthPicker Month="@Month" Latest="@CurrentMonth.AddMonths(1)" MonthChanged="@ShowMonthAsync"/>
         </TitleContent>
         <Actions>
-            @if (IsPast)
+            @if (PeriodCaption is { } caption)
             {
-                <MudText Typo="Typo.caption" Class="mud-text-secondary">As it ended</MudText>
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">@caption</MudText>
             }
         </Actions>
         <ChildContent>
@@ -119,7 +123,20 @@
 
     private DateOnly Today => DateOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime);
 
-    private DateOnly CurrentMonth => new(Today.Year, Today.Month, 1);
+    /// <summary>
+    /// The user's pay, which their months run between.
+    /// </summary>
+    [PersistentState]
+    public YourPay? Pay { get; set; }
+
+    /// <summary>
+    /// The month today's period is named after, which is the next calendar month once a late month pay is in.
+    /// </summary>
+    private DateOnly CurrentMonth => Pay?.CurrentPeriod.Month ?? new DateOnly(Today.Year, Today.Month, 1);
+
+    private string? PeriodCaption => Overview is null
+        ? null
+        : PayText.MonthCaption(Pay, Overview.Start, Overview.End, IsPast);
 
     private DateOnly Month => Overview?.Month ?? CurrentMonth;
 
@@ -141,6 +158,7 @@
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
+        Pay = await LoadOnceAsync(Pay, "Loading your bills", PayPeriodsService.GetYourPayAsync);
         DateOnly month = CurrentMonth;
         Overview = await LoadOnceAsync(Overview, "Loading your bills", cancellationToken =>
             BillsService.GetMonthAsync(month.Year, month.Month, cancellationToken));
@@ -164,6 +182,30 @@
         catch (HttpRequestException)
         {
             // Only the pointer to the review page, the bills still show
+        }
+    }
+
+    /// <summary>
+    /// The same month, with the payments, standing orders and direct debits the sync brought in, and new accounts
+    /// for the bill dialog.
+    /// </summary>
+    protected override async Task OnSyncedAsync()
+    {
+        // A sync can pick up the pay
+        Pay = await PayPeriodsService.GetYourPayAsync(_cts.Token);
+        DateOnly month = Month;
+        BillMonthOverview overview = await BillsService.GetMonthAsync(month.Year, month.Month, _cts.Token);
+        BillList = await BillsService.GetBillsAsync(_cts.Token).ToListAsync(_cts.Token);
+
+        Accounts = await TransactionsService.GetAccountsForTransactionFiltersAsync(_cts.Token)
+            .ToListAsync(_cts.Token);
+
+        await LoadSuggestionCountAsync();
+
+        // The user moved to another month meanwhile, which loads that month itself
+        if (Month == month)
+        {
+            Overview = overview;
         }
     }
 

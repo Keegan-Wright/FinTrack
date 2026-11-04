@@ -1,0 +1,62 @@
+@* What the user's periods run by, their pay or calendar months, with a way to choose another income or switch
+   between the two (IPayPeriodsService). *@
+@using FinanceTracker.Contracts.PayPeriods
+
+<div class="ft-your-pay">
+    <MudIcon Icon="@Icons.Material.Outlined.Payments" Size="Size.Small" Class="mud-text-secondary"/>
+    <MudText Typo="Typo.body2" Class="ft-your-pay__text">@Text</MudText>
+    @if (Pay.Pay is not null)
+    {
+        <div class="ft-your-pay__actions">
+            @if (Pay.FollowsPay)
+            {
+                <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="@OnChooseIncome">
+                    Choose another income
+                </MudButton>
+                <MudButton Variant="Variant.Text" Size="Size.Small"
+                           OnClick="@(() => OnUsePayPeriods.InvokeAsync(false))">
+                    Use calendar months
+                </MudButton>
+            }
+            else
+            {
+                <MudButton Variant="Variant.Text" Size="Size.Small"
+                           OnClick="@(() => OnUsePayPeriods.InvokeAsync(true))">
+                    Use pay periods
+                </MudButton>
+            }
+        </div>
+    }
+</div>
+
+@code {
+
+    [Parameter] [EditorRequired] public required YourPay Pay { get; set; }
+
+    [Parameter] public EventCallback OnChooseIncome { get; set; }
+
+    /// <summary>
+    /// True to run from pay to pay, false for calendar months.
+    /// </summary>
+    [Parameter] public EventCallback<bool> OnUsePayPeriods { get; set; }
+
+    private string Text
+    {
+        get
+        {
+            if (Pay.Pay is not { } income)
+            {
+                return "Calendar months for now. Once your pay has come in three months running, these run from " +
+                       "one pay to the next.";
+            }
+
+            if (Pay.FollowsPay)
+            {
+                return $"From pay to pay: {PayText.Label(income)} on {PayText.When(income)}.";
+            }
+
+            return $"Calendar months. Your pay from {income.Name} comes on {PayText.When(income)}.";
+        }
+    }
+
+}

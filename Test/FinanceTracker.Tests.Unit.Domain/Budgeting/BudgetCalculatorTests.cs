@@ -3,6 +3,7 @@ using FinanceTracker.Domain.Budgeting;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.OpenBanking.Transfers;
+using FinanceTracker.Domain.PayPeriods;
 using FinanceTracker.Domain.Rules;
 
 namespace FinanceTracker.Tests.Unit.Domain.Budgeting;
@@ -162,6 +163,27 @@ public class BudgetCalculatorTests
     }
 
     [Test]
+    public async Task ForMonth_PayPeriods_CountFromPayToPay()
+    {
+        // Arrange: paid Friday 27 Feb, so March runs to Monday 30 March, 32 days, and the 15th is day 17
+        Budget budget = Budget(RolloverMode.None, from: February);
+        PayCalendar calendar = new(PayPattern.LastWorkingDay, [new DateOnly(2026, 2, 27)], MidMarch);
+        BankTransaction afterPay = Tagged(-30m, new DateTime(2026, 2, 28), Shopping);
+        BankTransaction beforePay = Tagged(-20m, new DateTime(2026, 2, 26), Shopping);
+
+        // Act
+        BudgetMonthResult result = BudgetCalculator.ForMonth(budget, [afterPay, beforePay], March, TimeZoneInfo.Utc,
+            MidMarch, calendar)!;
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(result.Spent).IsEqualTo(30m);
+            await Assert.That(result.ExpectedByNow).IsEqualTo(53.12m);
+        }
+    }
+
+    [Test]
     public async Task ForMonth_MidMonth_ExpectsAStraightLine()
     {
         // Arrange, £60 spent by the 15th of 31 days
@@ -186,7 +208,7 @@ public class BudgetCalculatorTests
     [Test]
     public async Task ForMonth_BeforeTheBudgetStarted_IsNull() =>
         await Assert.That(BudgetCalculator.ForMonth(Budget(RolloverMode.None), [], February, TimeZoneInfo.Utc,
-            MidMarch)).IsNull();
+            MidMarch, PayCalendar.CalendarMonths)).IsNull();
 
     [Test]
     public async Task ForMonth_InEveryBudgetItsTagsAreIn()
@@ -218,7 +240,8 @@ public class BudgetCalculatorTests
         ];
 
         // Act
-        decimal unbudgeted = BudgetCalculator.Unbudgeted([budget], transactions, March, TimeZoneInfo.Utc);
+        decimal unbudgeted = BudgetCalculator.Unbudgeted([budget], transactions, March, TimeZoneInfo.Utc,
+            PayCalendar.CalendarMonths);
 
         // Assert, the salary isn't a refund so it doesn't hide the spending
         await Assert.That(unbudgeted).IsEqualTo(30m);
@@ -234,8 +257,10 @@ public class BudgetCalculatorTests
             [Tagged(-5m, new DateTime(2026, 3, 3)), Tagged(40m, new DateTime(2026, 3, 9))];
 
         // Act
-        decimal partly = BudgetCalculator.Unbudgeted([], partlyRefunded, March, TimeZoneInfo.Utc);
-        decimal over = BudgetCalculator.Unbudgeted([], overRefunded, March, TimeZoneInfo.Utc);
+        decimal partly = BudgetCalculator.Unbudgeted([], partlyRefunded, March, TimeZoneInfo.Utc,
+            PayCalendar.CalendarMonths);
+        decimal over = BudgetCalculator.Unbudgeted([], overRefunded, March, TimeZoneInfo.Utc,
+            PayCalendar.CalendarMonths);
 
         // Assert
         using (Assert.Multiple())
@@ -275,7 +300,7 @@ public class BudgetCalculatorTests
         BudgetMonthResult shoppingResult = Calculate(shoppingBudget, [payment], March);
         BudgetMonthResult personalResult = Calculate(personalBudget, [payment], March);
         decimal unbudgeted = BudgetCalculator.Unbudgeted([shoppingBudget, personalBudget], [payment], March,
-            TimeZoneInfo.Utc);
+            TimeZoneInfo.Utc, PayCalendar.CalendarMonths);
 
         // Assert
         using (Assert.Multiple())
@@ -296,7 +321,8 @@ public class BudgetCalculatorTests
         BankTransaction shop = Split(new DateTime(2026, 3, 2), (-60m, groceries), (-30m, household), (-10m, null));
 
         // Act
-        decimal unbudgeted = BudgetCalculator.Unbudgeted([budget], [shop], March, TimeZoneInfo.Utc);
+        decimal unbudgeted = BudgetCalculator.Unbudgeted([budget], [shop], March, TimeZoneInfo.Utc,
+            PayCalendar.CalendarMonths);
 
         // Assert
         await Assert.That(unbudgeted).IsEqualTo(40m);
@@ -313,7 +339,9 @@ public class BudgetCalculatorTests
     }
 
     private static BudgetMonthResult Calculate(Budget budget, IEnumerable<BankTransaction> transactions,
-        BudgetMonth month) => BudgetCalculator.ForMonth(budget, transactions, month, TimeZoneInfo.Utc, MidMarch)!;
+        BudgetMonth month) =>
+        BudgetCalculator.ForMonth(budget, transactions, month, TimeZoneInfo.Utc, MidMarch,
+            PayCalendar.CalendarMonths)!;
 
     private static Budget Budget(RolloverMode mode, BudgetMonth? from = null) =>
         new(UserId, "Shopping", [Shopping], 100m, from ?? March, mode);

@@ -1,3 +1,4 @@
+using FinanceTracker.Domain.Common;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 
@@ -97,7 +98,7 @@ public static class BalanceHistory
                 continue;
             }
 
-            DateOnly day = LocalDay(transaction.OccurredAt, timeZone);
+            DateOnly day = transaction.OccurredAt.LocalDayIn(timeZone);
             movedOn[day] = movedOn.GetValueOrDefault(day) + transaction.Amount;
         }
 
@@ -117,6 +118,4 @@ public static class BalanceHistory
         return new AccountBalance(current + room, current, endOfDay, after.CreditLimit);
     }
 
-    private static DateOnly LocalDay(DateTime utc, TimeZoneInfo timeZone) => DateOnly.FromDateTime(
-        TimeZoneInfo.ConvertTime(DateTime.SpecifyKind(utc, DateTimeKind.Utc), timeZone));
 }

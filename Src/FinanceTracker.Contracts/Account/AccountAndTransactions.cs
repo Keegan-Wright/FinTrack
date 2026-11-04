@@ -20,6 +20,12 @@ public class AccountAndTransactions
     public required string AccountName { get; init; }
 
     /// <summary>
+    /// The bank the account is with, as its connection is named, e.g. <c>Monzo</c>.
+    /// </summary>
+    [Description("The bank the account is with")]
+    public required string ProviderName { get; init; }
+
+    /// <summary>
     /// The bank's logo, an SVG image.
     /// </summary>
     [Description("Account logo in byte array format")]

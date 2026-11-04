@@ -8,6 +8,7 @@ using FinanceTracker.Contracts.Transactions;
 using FinanceTracker.Domain.Classifications;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Transactions;
+using FinanceTracker.Domain.PayPeriods;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Reports;
 using FinanceTracker.Tests.Unit.Shared;
@@ -153,7 +154,7 @@ public class ReportServiceTests : InfrastructureTestBase
         {
             await Assert.That(report.YearlyBreakdown.Select(x => x.Year)).IsEquivalentTo([2025, 2026]);
             await Assert.That(year2025.TotalTransactions).IsEqualTo(4);
-            await Assert.That(year2025.MonthlyBreakdown.Count).IsEqualTo(2);
+            await Assert.That(WithTransactions(year2025.MonthlyBreakdown).Count).IsEqualTo(2);
             await Assert.That(january.TotalIn).IsEqualTo(30m);
             await Assert.That(january.TotalOut).IsEqualTo(-30m);
             await Assert.That(january.DailyBreakdown.Count).IsEqualTo(2);
@@ -254,7 +255,8 @@ public class ReportServiceTests : InfrastructureTestBase
             await Assert.That(food.TotalTransactions).IsEqualTo(3);
             await Assert.That(food.TotalIn).IsEqualTo(5m);
             await Assert.That(food.TotalOut).IsEqualTo(-30m);
-            await Assert.That(food.YearlyBreakdown.Single().MonthlyBreakdown.Count).IsEqualTo(2);
+            await Assert.That(WithTransactions(food.YearlyBreakdown.Single().MonthlyBreakdown).Count)
+                .IsEqualTo(2);
             await Assert.That(holiday.TotalTransactions).IsEqualTo(1);
             await Assert.That(holiday.TotalOut).IsEqualTo(-20m);
         }
@@ -276,7 +278,8 @@ public class ReportServiceTests : InfrastructureTestBase
             .ToListAsync(CancellationToken)).Single();
 
         // Assert
-        IList<SpentInCategoryReportDailyBreakdown> days = report.YearlyBreakdown.Single().MonthlyBreakdown.Single().DailyBreakdown;
+        IList<SpentInCategoryReportDailyBreakdown> days =
+            WithTransactions(report.YearlyBreakdown.Single().MonthlyBreakdown).Single().DailyBreakdown;
         SpentInCategoryReportDailyBreakdown january15 = days.Single(x => x.Day == 15);
 
         using (Assert.Multiple())
@@ -391,7 +394,8 @@ public class ReportServiceTests : InfrastructureTestBase
             await Assert.That(main.AccountName).IsEqualTo("Current");
             await Assert.That(main.TotalIn).IsEqualTo(100m);
             await Assert.That(main.TotalOut).IsEqualTo(-10m);
-            await Assert.That(main.YearlyBreakdown.Single().MonthlyBreakdown.Count).IsEqualTo(2);
+            await Assert.That(WithTransactions(main.YearlyBreakdown.Single().MonthlyBreakdown).Count)
+                .IsEqualTo(2);
             await Assert.That(main.YearlyBreakdown.Single().MonthlyBreakdown.Sum(x => x.DailyBreakdown.Count)).IsEqualTo(2);
             await Assert.That(other.AccountName).IsEqualTo("Current");
             await Assert.That(other.TotalOut).IsEqualTo(-5m);
@@ -435,8 +439,8 @@ public class ReportServiceTests : InfrastructureTestBase
         {
             await Assert.That(reports.Select(static x => (x.Category, x.TotalOut, x.TotalTransactions))).IsEquivalentTo(
                 [("Shopping", -100m, 1), ("Groceries", -60m, 1), ("Household", -30m, 1)]);
-            await Assert.That(reports.Single(static x => x.Category == "Groceries").YearlyBreakdown.Single()
-                .MonthlyBreakdown.Single().DailyBreakdown.Single().TotalOut).IsEqualTo(-60m);
+            await Assert.That(WithTransactions(reports.Single(static x => x.Category == "Groceries").YearlyBreakdown
+                .Single().MonthlyBreakdown).Single().DailyBreakdown.Single().TotalOut).IsEqualTo(-60m);
         }
     }
 
@@ -468,8 +472,8 @@ public class ReportServiceTests : InfrastructureTestBase
         {
             await Assert.That(overTime.TotalOut).IsEqualTo(-50m);
             await Assert.That(overTime.TotalTransactions).IsEqualTo(2);
-            await Assert.That(overTime.YearlyBreakdown.Single().MonthlyBreakdown.Single().DailyBreakdown
-                .Select(static x => x.TotalOut)).IsEquivalentTo([-30m, -20m]);
+            await Assert.That(WithTransactions(overTime.YearlyBreakdown.Single().MonthlyBreakdown).Single()
+                .DailyBreakdown.Select(static x => x.TotalOut)).IsEquivalentTo([-30m, -20m]);
             await Assert.That(byAccount.TotalOut).IsEqualTo(-50m);
         }
     }
@@ -492,6 +496,64 @@ public class ReportServiceTests : InfrastructureTestBase
         await Assert.That(report.TotalOut).IsEqualTo(-100m);
     }
 
+    [Test]
+    public async Task GetSpentInTimePeriodReportAsync_PaidOnTheLastWorkingDay_MonthsRunFromPayToPay()
+    {
+        // Arrange: paid Friday 30 Jan and Friday 27 Feb, so February runs 30 Jan to 26 Feb
+        DateTime now = new(2026, 3, 15, 12, 0, 0, DateTimeKind.Utc);
+        await SeedAccountAsync()
+            .Do(s => s.TransactionScenario.WithTransaction("before-pay", "main",
+                Transaction(-10m, new DateTime(2026, 1, 29, 12, 0, 0, DateTimeKind.Utc))))
+            .Do(s => s.TransactionScenario.WithTransaction("after-pay", "main",
+                Transaction(-20m, new DateTime(2026, 1, 31, 12, 0, 0, DateTimeKind.Utc))))
+            .Do(s => s.TransactionScenario.WithTransaction("end-of-period", "main",
+                Transaction(-30m, new DateTime(2026, 2, 26, 12, 0, 0, DateTimeKind.Utc))));
+        await Scenario.Do(s => s.PayScenario.WithPayOnTheLastWorkingDay(Username, "main",
+            new DateOnly(2026, 1, 30), new DateOnly(2026, 2, 27)));
+
+        // Act
+        SpentInTimePeriodReport report = await BuildSubject(new FixedTimeProvider(now))
+            .GetSpentInTimePeriodReportAsync(Request(), CancellationToken).SingleAsync(CancellationToken);
+
+        // Assert
+        IList<SpentInTimePeriodReportMonthlyBreakdown> months = report.YearlyBreakdown.Single().MonthlyBreakdown;
+        SpentInTimePeriodReportMonthlyBreakdown february = months.Single(x => x.Month == MonthName(2));
+        using (Assert.Multiple())
+        {
+            await Assert.That(months.Count).IsEqualTo(12);
+            await Assert.That(months.Single(x => x.Month == MonthName(1)).TotalOut).IsEqualTo(-10m);
+            await Assert.That(february.Start).IsEqualTo(new DateOnly(2026, 1, 30));
+            await Assert.That(february.End).IsEqualTo(new DateOnly(2026, 2, 26));
+            await Assert.That(february.TotalOut).IsEqualTo(-50m);
+            await Assert.That(february.DailyBreakdown.Select(static x => x.Date))
+                .IsEquivalentTo([new DateOnly(2026, 1, 31), new DateOnly(2026, 2, 26)],
+                    TUnit.Assertions.Enums.CollectionOrdering.Matching);
+        }
+    }
+
+    [Test]
+    public async Task GetSpentInTimePeriodReportAsync_JustAfterMidnightInSummerTime_CountsOnTheLocalDay()
+    {
+        // Arrange: 23:30 UTC on 31 July is 00:30 on 1 August in London
+        TimeZoneInfo london = TimeZoneInfo.FindSystemTimeZoneById("Europe/London");
+        await SeedAccountAsync()
+            .Do(s => s.TransactionScenario.WithTransaction("late", "main",
+                Transaction(-10m, new DateTime(2025, 7, 31, 23, 30, 0, DateTimeKind.Utc))));
+
+        // Act
+        SpentInTimePeriodReport report = await BuildSubject(new FixedTimeProvider(January15, london))
+            .GetSpentInTimePeriodReportAsync(Request(), CancellationToken).SingleAsync(CancellationToken);
+
+        // Assert
+        SpentInTimePeriodReportMonthlyBreakdown august = WithTransactions(report.YearlyBreakdown.Single()
+            .MonthlyBreakdown).Single();
+        using (Assert.Multiple())
+        {
+            await Assert.That(august.Month).IsEqualTo(MonthName(8));
+            await Assert.That(august.DailyBreakdown.Single().Date).IsEqualTo(new DateOnly(2025, 8, 1));
+        }
+    }
+
     private Task<TestingScenario> SeedAccountAsync(string? displayName = null) =>
         Scenario.Do(s => s.UserScenario.WithUser(Username))
             .Do(s => s.BankConnectionScenario.WithConnection("bank", Username))
@@ -510,6 +572,12 @@ public class ReportServiceTests : InfrastructureTestBase
         };
 
     private static FilterTransactions Request() => new();
+
+    /// <summary>
+    /// The months with transactions, every year has all twelve so each has its dates.
+    /// </summary>
+    private static List<T> WithTransactions<T>(IEnumerable<T> months) where T : SharedReport =>
+        months.Where(static x => x.TotalTransactions > 0).ToList();
 
     private static string MonthName(int month) => DateTimeFormatInfo.CurrentInfo.GetMonthName(month);
 
@@ -537,6 +605,7 @@ public class ReportServiceTests : InfrastructureTestBase
         await context.SaveChangesAsync(CancellationToken);
     }
 
-    private ReportService BuildSubject() =>
-        new(CurrentUserFor(Username), DbContextFactory, NullLogger<ReportService>.Instance, TimeProvider.System);
+    private ReportService BuildSubject(TimeProvider? timeProvider = null) =>
+        new(CurrentUserFor(Username), DbContextFactory, NullLogger<ReportService>.Instance,
+            timeProvider ?? TimeProvider.System);
 }

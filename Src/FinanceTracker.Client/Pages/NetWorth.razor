@@ -105,6 +105,15 @@
     protected override void OnParametersSet() => BuildPoints();
 
     /// <summary>
+    /// The same range again, with the sync's new balances.
+    /// </summary>
+    protected override async Task OnSyncedAsync()
+    {
+        History = await NetWorthService.GetNetWorthAsync(From(_months), _cts.Token);
+        BuildPoints();
+    }
+
+    /// <summary>
     /// Built once per history, so the chart only redraws when it changes.
     /// </summary>
     private void BuildPoints()

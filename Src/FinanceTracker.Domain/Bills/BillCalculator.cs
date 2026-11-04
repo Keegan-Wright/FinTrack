@@ -1,3 +1,4 @@
+using FinanceTracker.Domain.Common;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 
 namespace FinanceTracker.Domain.Bills;
@@ -28,7 +29,7 @@ public static class BillCalculator
 
         Dictionary<DateOnly, List<BankTransaction>> byDue = transactions
             .Where(x => x.PaysBill(bill.Id))
-            .GroupBy(x => bill.NearestDue(LocalDay(x.OccurredAt, timeZone)))
+            .GroupBy(x => bill.NearestDue(x.OccurredAt.LocalDayIn(timeZone)))
             .ToDictionary(static x => x.Key, static x => x.ToList());
 
         List<BillPeriod> periods = [];
@@ -75,7 +76,7 @@ public static class BillCalculator
 
         // Money out less refunds, so a payment refunded in full leaves nothing paid
         decimal paid = Math.Max(0, -payments.Sum(static x => x.Amount));
-        DateOnly paidOn = payments.Max(x => LocalDay(x.OccurredAt, timeZone));
+        DateOnly paidOn = payments.Max(x => x.OccurredAt.LocalDayIn(timeZone));
 
         BillState state = BillState.Changed;
         if (bill.IsExpected(paid, due))
@@ -95,10 +96,4 @@ public static class BillCalculator
         BillFrequency.Yearly => 1m / 12,
         _ => 1
     };
-
-    /// <summary>
-    /// The day <paramref name="utc"/> falls on where the user is.
-    /// </summary>
-    public static DateOnly LocalDay(DateTime utc, TimeZoneInfo timeZone) =>
-        DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(DateTime.SpecifyKind(utc, DateTimeKind.Utc), timeZone));
 }

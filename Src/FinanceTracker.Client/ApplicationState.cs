@@ -14,6 +14,11 @@ namespace FinanceTracker.Client;
 public sealed class ApplicationState : INotifyPropertyChanged
 {
     /// <summary>
+    /// The banks whose accounts the user closed on the accounts page, kept while they move around the app.
+    /// </summary>
+    public HashSet<string> CollapsedProviders { get; } = new(StringComparer.Ordinal);
+
+    /// <summary>
     /// Whether the loading overlay covers the page.
     /// </summary>
     public bool Loading
@@ -130,6 +135,28 @@ public sealed class ApplicationState : INotifyPropertyChanged
     /// </summary>
     public void CountConnectionsToRenew(IEnumerable<BankConnectionSummary> connections) =>
         ConnectionsToRenew = connections.Count(static x => x.ConsentState != ConsentState.Active);
+
+    /// <summary>
+    /// Raised once a background sync has finished and the layout has refreshed its own counts, so the page showing
+    /// can refresh what it shows, see <see cref="Pages.PageComponent"/>.
+    /// </summary>
+    public event Func<Task>? Synced;
+
+    /// <summary>
+    /// Raises <see cref="Synced"/>, waiting for each page's refresh in turn.
+    /// </summary>
+    public async Task NotifySyncedAsync()
+    {
+        if (Synced is not { } synced)
+        {
+            return;
+        }
+
+        foreach (Func<Task> handler in synced.GetInvocationList().Cast<Func<Task>>())
+        {
+            await handler();
+        }
+    }
 
     /// <summary>
     /// Raised when a property actually changes.

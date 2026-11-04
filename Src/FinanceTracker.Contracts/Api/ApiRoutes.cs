@@ -72,6 +72,11 @@ public static class ApiRoutes
     public const string NetWorth = "api/net-worth";
 
     /// <summary>
+    /// <see cref="Services.IPayPeriodsService"/>.
+    /// </summary>
+    public const string PayPeriods = "api/pay-periods";
+
+    /// <summary>
     /// <see cref="Services.IOpenBankingService"/>.
     /// </summary>
     public const string OpenBanking = "api/open-banking";

@@ -1,0 +1,17 @@
+.ft-your-pay {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+}
+
+.ft-your-pay__text {
+    flex: 1 1 240px;
+    min-width: 0;
+}
+
+.ft-your-pay__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}

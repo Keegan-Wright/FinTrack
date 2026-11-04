@@ -5,9 +5,11 @@ using FinanceTracker.Domain.Bills;
 using FinanceTracker.Domain.Budgeting;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Transactions;
+using FinanceTracker.Domain.PayPeriods;
 using FinanceTracker.Domain.Rules;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
+using FinanceTracker.Infrastructure.PayPeriods;
 using FinanceTracker.Infrastructure.Transactions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -40,11 +42,17 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
     public async Task<BillMonthOverview> GetMonthAsync(int year, int month, CancellationToken cancellationToken)
     {
         BudgetMonth target = new(year, month);
-        DateOnly first = target.FirstDay;
-        DateOnly last = first.AddDays(target.Days - 1);
 
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+
+        // The period named after the month, from pay to pay once the user's pay is picked up
+        DateOnly today = _timeProvider.Today;
+        PayCalendar calendar = await PayCalendars.ForUserAsync(context, UserId, today, cancellationToken);
+        PayPeriod period = calendar.Named(year, month);
+        PayPeriod current = calendar.Containing(today);
+        DateOnly first = period.Start;
+        DateOnly last = period.End;
 
         List<DomainBill> running = (await context.Bills.OwnedBy(UserId).AsNoTracking()
                 .ToListAsync(cancellationToken))
@@ -54,7 +62,6 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
 
         List<BankTransaction> payments = await LoadPaymentsAsync(context, cancellationToken);
         Dictionary<Guid, string> accountNames = await LoadAccountNamesAsync(context, cancellationToken);
-        DateOnly today = _timeProvider.Today;
         TimeZoneInfo timeZone = _timeProvider.LocalTimeZone;
 
         List<BillStatus> statuses = [];
@@ -73,8 +80,10 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
 
         return new BillMonthOverview
         {
-            Month = first,
-            IsCurrent = target == BudgetMonth.Of(today),
+            Month = target.FirstDay,
+            Start = first,
+            End = last,
+            IsCurrent = current.Year == year && current.Month == month,
             Committed = running.Sum(x => BillCalculator.MonthlyCost(x, first)),
             Due = statuses.SelectMany(static x => x.Periods).Sum(static x => x.Expected),
             Paid = statuses.SelectMany(static x => x.Periods).Sum(static x => x.Paid),

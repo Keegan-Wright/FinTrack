@@ -23,6 +23,7 @@ public class RuleEditorTests : ComponentTestBase
     private static readonly Guid TagId = Guid.NewGuid();
 
     private readonly IRulesService _rulesService = Substitute.For<IRulesService>();
+    private readonly ITransactionsService _transactionsService = Substitute.For<ITransactionsService>();
     private readonly ApplicationState _applicationState = new();
 
     private readonly Rule _groceries = new()
@@ -42,8 +43,7 @@ public class RuleEditorTests : ComponentTestBase
         Services.AddScoped<IValidator<SaveRule>, SaveRuleValidator>();
         Services.AddScoped<IValidator<RuleCondition>, RuleConditionValidator>();
 
-        ITransactionsService transactionsService = Substitute.For<ITransactionsService>();
-        transactionsService.GetAccountsForTransactionFiltersAsync(Arg.Any<CancellationToken>())
+        _transactionsService.GetAccountsForTransactionFiltersAsync(Arg.Any<CancellationToken>())
             .Returns(AsyncEnumerable.Empty<TransactionAccountFilter>());
         IClassificationService classificationService = Substitute.For<IClassificationService>();
         classificationService.GetAllCustomClassificationsAsync(Arg.Any<CancellationToken>())
@@ -51,7 +51,7 @@ public class RuleEditorTests : ComponentTestBase
                 .ToAsyncEnumerable());
 
         Services.AddSingleton(_rulesService);
-        Services.AddSingleton(transactionsService);
+        Services.AddSingleton(_transactionsService);
         Services.AddSingleton(classificationService);
         IBillsService billsService = Substitute.For<IBillsService>();
         billsService.GetBillsAsync(Arg.Any<CancellationToken>()).Returns(AsyncEnumerable.Empty<Bill>());
@@ -213,6 +213,30 @@ public class RuleEditorTests : ComponentTestBase
 
         // Assert
         await Assert.That(cut.FindAll("input").Any(x => x.GetAttribute("value") == "Game Store")).IsTrue();
+    }
+
+    [Test]
+    public async Task Synced_RefreshesTheAccountsButKeepsWhatsBeingEdited()
+    {
+        // Arrange
+        Render<MudPopoverProvider>();
+        IRenderedComponent<RuleEditor> cut = RenderEditor(_groceries.Id);
+        await cut.InvokeAsync(() => cut.FindAll("input").Single(x => x.GetAttribute("value") == "Groceries")
+            .Input("Big shop"));
+        cut.WaitForState(() => cut.FindAll("input").Any(x => x.GetAttribute("value") == "Big shop"));
+
+        // Act
+        await cut.InvokeAsync(_applicationState.NotifySyncedAsync);
+        await Button(cut, "Save").ClickAsync(new MouseEventArgs());
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            _transactionsService.Received(2).GetAccountsForTransactionFiltersAsync(Arg.Any<CancellationToken>());
+            await _rulesService.Received(1).GetRuleAsync(_groceries.Id, Arg.Any<CancellationToken>());
+            await _rulesService.Received(1).UpdateRuleAsync(_groceries.Id, Arg.Is<SaveRule>(x => x.Name == "Big shop"),
+                Arg.Any<CancellationToken>());
+        }
     }
 
     private IRenderedComponent<RuleEditor> RenderEditor(Guid? id) => Render<RuleEditor>(p => p

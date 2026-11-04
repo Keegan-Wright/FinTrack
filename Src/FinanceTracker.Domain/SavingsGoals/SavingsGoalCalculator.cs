@@ -1,3 +1,4 @@
+using FinanceTracker.Domain.Common;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 
 namespace FinanceTracker.Domain.SavingsGoals;
@@ -60,7 +61,7 @@ public static class SavingsGoalCalculator
         }
 
         Dictionary<DateOnly, decimal> savedOn = Counted(goal, transactions, timeZone)
-            .GroupBy(x => LocalDay(x.OccurredAt, timeZone))
+            .GroupBy(x => x.OccurredAt.LocalDayIn(timeZone))
             .ToDictionary(static x => x.Key, x => x.Sum(t => t.AmountUnder(goal.TagIds)));
 
         List<SavedOn> history = [];
@@ -93,8 +94,6 @@ public static class SavingsGoalCalculator
         return tagged.Where(x => !IsOutgoingHalfOfTaggedTransfer(x, taggedIds)).ToList();
     }
 
-    private static DateOnly LocalDay(DateTime utc, TimeZoneInfo timeZone) => DateOnly.FromDateTime(
-        TimeZoneInfo.ConvertTime(DateTime.SpecifyKind(utc, DateTimeKind.Utc), timeZone));
 
     private static bool IsOutgoingHalfOfTaggedTransfer(BankTransaction transaction, HashSet<Guid> taggedIds) =>
         transaction.Amount < 0 && transaction.Transfer?.PartnerTransactionId is { } partnerId &&
