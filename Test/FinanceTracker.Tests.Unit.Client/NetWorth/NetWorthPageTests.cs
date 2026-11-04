@@ -104,6 +104,22 @@ public class NetWorthPageTests : ComponentTestBase
         ]
     };
 
+    [Test]
+    public async Task Synced_RefreshesTheChosenRange()
+    {
+        // Arrange
+        _netWorthService.GetNetWorthAsync(Arg.Any<DateOnly?>(), Arg.Any<CancellationToken>()).Returns(History());
+        IRenderedComponent<NetWorthPage> cut = RenderPage();
+        await cut.FindAll("button").Single(static x => x.TextContent.Trim() == "1 year").ClickAsync(new());
+        _netWorthService.ClearReceivedCalls();
+
+        // Act
+        await cut.InvokeAsync(_applicationState.NotifySyncedAsync);
+
+        // Assert
+        await _netWorthService.Received(1).GetNetWorthAsync(new DateOnly(2025, 11, 2), Arg.Any<CancellationToken>());
+    }
+
     private IRenderedComponent<NetWorthPage> RenderPage()
     {
         SetRendererInfo(new RendererInfo("WebAssembly", isInteractive: true));

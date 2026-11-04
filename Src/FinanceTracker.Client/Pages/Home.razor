@@ -83,6 +83,11 @@
             cancellationToken => LoadDashboardAsync(DashboardRangePreset.ThisMonth, cancellationToken));
     }
 
+    /// <summary>
+    /// The same range again, with what the sync brought in.
+    /// </summary>
+    protected override async Task OnSyncedAsync() => Data = await LoadDashboardAsync(View.Preset, _cts.Token);
+
     private async Task SetRangePresetAsync(DashboardRangePreset preset)
     {
         if (View.Preset == preset)

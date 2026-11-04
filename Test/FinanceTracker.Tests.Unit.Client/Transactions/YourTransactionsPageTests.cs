@@ -168,6 +168,40 @@ public class YourTransactionsPageTests : ComponentTestBase
         cut.WaitForState(() => !cut.Markup.Contains("Split 2 ways"));
     }
 
+    [Test]
+    public async Task Synced_RefreshesWithTheSameFiltersAndTheirOptions()
+    {
+        // Arrange
+        Show(TransactionListTests.Transaction("Supermarket", -100m));
+        IRenderedComponent<YourTransactions> cut = await RenderPageAsync();
+        AngleSharp.Dom.IElement search = cut.Find("input[placeholder='Search descriptions']");
+        search.Input("Super");
+        cut.WaitForState(() => cut.Find("input[placeholder='Search descriptions']").GetAttribute("value") == "Super");
+        await cut.FindAll("button").Single(static x => x.TextContent.Trim() == "Apply").ClickAsync(new());
+        cut.WaitForState(() => cut.Markup.Contains("Actions for Supermarket"));
+        _transactionsService.GetAllTransactionsAsync(Arg.Any<FilterTransactions>(), Arg.Any<CancellationToken>())
+            .Returns(new[]
+            {
+                TransactionListTests.Transaction("Supermarket", -100m),
+                TransactionListTests.Transaction("Supermarket petrol", -40m)
+            }.ToAsyncEnumerable());
+        _transactionsService.ClearReceivedCalls();
+
+        // Act
+        await cut.InvokeAsync(_applicationState.NotifySyncedAsync);
+
+        // Assert
+        cut.WaitForState(() => cut.Markup.Contains("Actions for Supermarket petrol"));
+        using (Assert.Multiple())
+        {
+            _transactionsService.Received(1).GetAllTransactionsAsync(
+                Arg.Is<FilterTransactions>(x => x.SearchTerm == "Super"), Arg.Any<CancellationToken>());
+            _transactionsService.Received(1).GetAccountsForTransactionFiltersAsync(Arg.Any<CancellationToken>());
+            await Assert.That(cut.Find("input[placeholder='Search descriptions']").GetAttribute("value"))
+                .IsEqualTo("Super");
+        }
+    }
+
     private static string Remaining(IRenderedComponent<MudDialogProvider> dialogs) =>
         dialogs.Find(".ft-split__remaining").TextContent.Trim();
 

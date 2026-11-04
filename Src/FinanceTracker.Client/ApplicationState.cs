@@ -132,6 +132,28 @@ public sealed class ApplicationState : INotifyPropertyChanged
         ConnectionsToRenew = connections.Count(static x => x.ConsentState != ConsentState.Active);
 
     /// <summary>
+    /// Raised once a background sync has finished and the layout has refreshed its own counts, so the page showing
+    /// can refresh what it shows, see <see cref="Pages.PageComponent"/>.
+    /// </summary>
+    public event Func<Task>? Synced;
+
+    /// <summary>
+    /// Raises <see cref="Synced"/>, waiting for each page's refresh in turn.
+    /// </summary>
+    public async Task NotifySyncedAsync()
+    {
+        if (Synced is not { } synced)
+        {
+            return;
+        }
+
+        foreach (Func<Task> handler in synced.GetInvocationList().Cast<Func<Task>>())
+        {
+            await handler();
+        }
+    }
+
+    /// <summary>
     /// Raised when a property actually changes.
     /// </summary>
     public event PropertyChangedEventHandler? PropertyChanged;

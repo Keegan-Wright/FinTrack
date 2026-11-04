@@ -146,20 +146,35 @@ else
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
-        Accounts = await LoadOnceAsync(Accounts, "Loading your accounts", cancellationToken =>
-            AccountService.GetAccountsAndMostRecentTransactionsAsync(5, cancellationToken)
-                .ToListAsync(cancellationToken).AsTask());
-
-        Histories = await LoadOnceAsync(Histories, "Loading your accounts", cancellationToken =>
-            NetWorthService.GetBalanceHistoriesAsync(
-                    DateOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime).AddDays(-90), cancellationToken)
-                .ToListAsync(cancellationToken).AsTask());
+        Accounts = await LoadOnceAsync(Accounts, "Loading your accounts", LoadAccountsAsync);
+        Histories = await LoadOnceAsync(Histories, "Loading your accounts", LoadHistoriesAsync);
     }
+
+    /// <summary>
+    /// The balances, latest transactions and charts again, with what the sync brought in.
+    /// </summary>
+    protected override async Task OnSyncedAsync()
+    {
+        Accounts = await LoadAccountsAsync(_cts.Token);
+        Histories = await LoadHistoriesAsync(_cts.Token);
+        IndexHistories();
+    }
+
+    private Task<List<AccountAndTransactions>> LoadAccountsAsync(CancellationToken cancellationToken) =>
+        AccountService.GetAccountsAndMostRecentTransactionsAsync(5, cancellationToken)
+            .ToListAsync(cancellationToken).AsTask();
+
+    private Task<List<AccountBalanceHistory>> LoadHistoriesAsync(CancellationToken cancellationToken) =>
+        NetWorthService.GetBalanceHistoriesAsync(
+                DateOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime).AddDays(-90), cancellationToken)
+            .ToListAsync(cancellationToken).AsTask();
 
     /// <summary>
     /// Looked up by account once per load, and the same lists kept so the charts only redraw when they change.
     /// </summary>
-    protected override void OnParametersSet()
+    protected override void OnParametersSet() => IndexHistories();
+
+    private void IndexHistories()
     {
         if (Histories is null || ReferenceEquals(Histories, _historiesFrom))
         {

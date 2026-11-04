@@ -177,6 +177,11 @@
     public TransactionFilterOptions? FilterOptions { get; set; }
 
     private readonly List<Transaction> _transactions = [];
+
+    /// <summary>
+    /// What the list was last searched with, so a refresh after a sync shows the same.
+    /// </summary>
+    private ActiveTransactionFilters _filters = ActiveTransactionFilters.None;
     private bool _loading = true;
     private bool _loaded;
 
@@ -189,10 +194,30 @@
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
-        FilterOptions = await LoadOnceAsync(FilterOptions, "Loading filters",
-            cancellationToken => TransactionFilterOptions.LoadAsync(TransactionsService, BillsService, DebtsService,
-                SavingsGoalsService, cancellationToken));
+        FilterOptions = await LoadOnceAsync(FilterOptions, "Loading filters", LoadFilterOptionsAsync);
     }
+
+    /// <summary>
+    /// The same filters again, and their options, which a sync can add to, e.g. a new account or category. The filter
+    /// bar keeps what's chosen. Left to a search that's already running, which fetches the latest anyway.
+    /// </summary>
+    protected override async Task OnSyncedAsync()
+    {
+        if (_loading)
+        {
+            return;
+        }
+
+        FilterOptions = await LoadFilterOptionsAsync(_cts.Token);
+        List<Transaction> transactions = await FetchAsync(_filters);
+
+        _transactions.Clear();
+        _transactions.AddRange(transactions);
+    }
+
+    private Task<TransactionFilterOptions> LoadFilterOptionsAsync(CancellationToken cancellationToken) =>
+        TransactionFilterOptions.LoadAsync(TransactionsService, BillsService, DebtsService, SavingsGoalsService,
+            cancellationToken);
 
     protected override async Task OnParametersSetAsync()
     {
@@ -206,6 +231,7 @@
 
     private async Task SearchTransactionsAsync(ActiveTransactionFilters filters)
     {
+        _filters = filters;
         _loading = true;
         StateHasChanged();
         _transactions.Clear();
@@ -217,6 +243,9 @@
 
         _loading = false;
     }
+
+    private Task<List<Transaction>> FetchAsync(ActiveTransactionFilters filters) =>
+        TransactionsService.GetAllTransactionsAsync(filters.ToRequest(), _cts.Token).ToListAsync(_cts.Token).AsTask();
 
     private static object CountsAs(Transaction transaction) => TransferText.CountsAs(transaction);
 

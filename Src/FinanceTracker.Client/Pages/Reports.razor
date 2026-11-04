@@ -140,10 +140,27 @@
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
-        FilterOptions = await LoadOnceAsync(FilterOptions, "Loading filters",
-            cancellationToken => TransactionFilterOptions.LoadAsync(TransactionsService, BillsService, DebtsService,
-                SavingsGoalsService, cancellationToken));
+        FilterOptions = await LoadOnceAsync(FilterOptions, "Loading filters", LoadFilterOptionsAsync);
     }
+
+    /// <summary>
+    /// The same breakdown and filters again, staying on the chosen subject and as far down it as the periods still
+    /// go, see <see cref="ReportDrilldown"/>. Left to a load that's already running.
+    /// </summary>
+    protected override async Task OnSyncedAsync()
+    {
+        if (_loading)
+        {
+            return;
+        }
+
+        FilterOptions = await LoadFilterOptionsAsync(_cts.Token);
+        await LoadAsync(quiet: true);
+    }
+
+    private Task<TransactionFilterOptions> LoadFilterOptionsAsync(CancellationToken cancellationToken) =>
+        TransactionFilterOptions.LoadAsync(TransactionsService, BillsService, DebtsService, SavingsGoalsService,
+            cancellationToken);
 
     protected override async Task OnParametersSetAsync()
     {
@@ -175,7 +192,8 @@
         await LoadAsync();
     }
 
-    private async Task LoadAsync()
+    /// <param name="quiet">Without the spinner, keeping the chosen subject, for a refresh.</param>
+    private async Task LoadAsync(bool quiet = false)
     {
         // A newer request terminates the one still running
         if (_loadCts is not null)
@@ -185,8 +203,13 @@
         var cancellationToken = _loadCts.Token;
         var breakdown = _breakdown;
 
-        _loading = true;
-        StateHasChanged();
+        ReportNode? selected = _selected;
+        if (!quiet)
+        {
+            _loading = true;
+            StateHasChanged();
+        }
+
         try
         {
             var request = _filters.ToRequest();
@@ -208,7 +231,7 @@
                 .OrderBy(static x => x.TotalTransactions == 0)
                 .ThenBy(static x => x.TotalOut)
                 .ToList();
-            _selected = _subjects.FirstOrDefault(static x => x.TotalTransactions > 0);
+            _selected = Reselect(quiet ? selected : null);
             _loadedBreakdown = breakdown;
             _loading = false;
         }
@@ -216,6 +239,19 @@
         {
             // Replaced by a newer load, which clears the spinner
         }
+    }
+
+    /// <summary>
+    /// The subject that's the same as <paramref name="previous"/>, otherwise the first with any transactions.
+    /// </summary>
+    private ReportNode? Reselect(ReportNode? previous)
+    {
+        if (previous is not null && _subjects.FirstOrDefault(x => x.IsSameAs(previous)) is { } same)
+        {
+            return same;
+        }
+
+        return _subjects.FirstOrDefault(static x => x.TotalTransactions > 0);
     }
 
     private void OnSubjectKeyUp(KeyboardEventArgs e, ReportNode subject)

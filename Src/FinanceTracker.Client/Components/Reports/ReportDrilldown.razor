@@ -159,6 +159,15 @@
 
     protected override void OnParametersSet()
     {
+        // The same report refreshed, e.g. after a sync, stays where the user was
+        if (_root is not null && !ReferenceEquals(_root, Root) && _root.IsSameAs(Root))
+        {
+            _root = Root;
+            FollowPathInto(Root);
+            OnPathChanged();
+            return;
+        }
+
         if (!ReferenceEquals(_root, Root))
         {
             _root = Root;
@@ -174,6 +183,28 @@
         }
 
         RebuildOptionsIfNeeded();
+    }
+
+    /// <summary>
+    /// Takes the user down <paramref name="root"/> the way they'd gone into the old report, as far as the same periods
+    /// are still there.
+    /// </summary>
+    private void FollowPathInto(ReportNode root)
+    {
+        List<ReportNode> path = [root];
+        foreach (ReportNode period in _path.Skip(1))
+        {
+            ReportNode? same = path[^1].ChildLike(period);
+            if (same is null)
+            {
+                break;
+            }
+
+            path.Add(same);
+        }
+
+        _path.Clear();
+        _path.AddRange(path);
     }
 
     private void DrillInto(ReportNode node)

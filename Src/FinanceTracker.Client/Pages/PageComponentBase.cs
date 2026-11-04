@@ -1,11 +1,13 @@
 using FinanceTracker.Contracts.OpenBanking;
 using FinanceTracker.Contracts.Services;
 using Microsoft.AspNetCore.Components;
+using MudBlazor;
 
 namespace FinanceTracker.Client.Pages;
 
 /// <summary>
-/// Base for every page. A cancellation token tied to the page's lifetime, and the shared loading overlay.
+/// Base for every page. A cancellation token tied to the page's lifetime, the shared loading overlay, and a quiet
+/// refresh once a background sync finishes, see <see cref="OnSyncedAsync"/>.
 /// </summary>
 public class PageComponent : ComponentBase, IDisposable
 {
@@ -17,11 +19,95 @@ public class PageComponent : ComponentBase, IDisposable
     [CascadingParameter]
     private ApplicationState ApplicationState { get; set; } = null!;
 
+    [Inject]
+    private ISnackbar RefreshSnackbar { get; set; } = null!;
+
+    private bool _listeningForSyncs;
+    private bool _refreshing;
+    private bool _refreshAgain;
+    private bool _disposed;
+
     /// <summary>
-    /// Cancels outstanding work and clears the loading overlay, so it doesn't stay up on the next page.
+    /// Starts listening for syncs once the page has its parameters, the shared state among them.
+    /// </summary>
+    public override async Task SetParametersAsync(ParameterView parameters)
+    {
+        await base.SetParametersAsync(parameters);
+
+        if (!_listeningForSyncs && !_disposed && ApplicationState is { } state)
+        {
+            _listeningForSyncs = true;
+            state.Synced += RefreshAfterSyncAsync;
+        }
+    }
+
+    /// <summary>
+    /// Refreshes what the page shows once a background sync has finished, keeping the user's filters, range and
+    /// place. Quietly, with no loading overlay, so the page changes in place. Pages showing synced data override it,
+    /// the rest show nothing a sync changes. Never runs twice at once, a sync finishing meanwhile refreshes again
+    /// after.
+    /// </summary>
+    protected virtual Task OnSyncedAsync() => Task.CompletedTask;
+
+    private async Task RefreshAfterSyncAsync()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        if (_refreshing)
+        {
+            _refreshAgain = true;
+            return;
+        }
+
+        _refreshing = true;
+        try
+        {
+            do
+            {
+                _refreshAgain = false;
+                await InvokeAsync(RefreshOnceAsync);
+            } while (_refreshAgain && !_disposed);
+        }
+        finally
+        {
+            _refreshing = false;
+        }
+    }
+
+    private async Task RefreshOnceAsync()
+    {
+        try
+        {
+            await OnSyncedAsync();
+            StateHasChanged();
+        }
+        catch (OperationCanceledException) when (_disposed)
+        {
+            // The user left the page
+        }
+        catch (Exception)
+        {
+            // What's shown stays, just not the latest
+            RefreshSnackbar.Add("Couldn't refresh after the sync, reload the page to see the latest",
+                Severity.Warning);
+        }
+    }
+
+    /// <summary>
+    /// Cancels outstanding work, stops listening for syncs and clears the loading overlay, so it doesn't stay up on
+    /// the next page.
     /// </summary>
     public void Dispose()
     {
+        _disposed = true;
+        if (_listeningForSyncs)
+        {
+            ApplicationState.Synced -= RefreshAfterSyncAsync;
+        }
+
         ApplicationState.Loading = false;
         ApplicationState.LoadingMessage = null;
         _cts.Cancel();
