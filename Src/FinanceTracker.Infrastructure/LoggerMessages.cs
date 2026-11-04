@@ -58,6 +58,9 @@ public static partial class LoggerMessages
     [LoggerMessage(LogLevel.Information, "Synced bills for user {userId}, {added} added, {ended} ended, {matched} transactions matched, {pricesChanged} prices changed, {suggested} subscriptions suggested")]
     public static partial void LogSyncedBills(this ILogger logger, Guid userId, int added, int ended, int matched, int pricesChanged, int suggested);
 
+    [LoggerMessage(LogLevel.Information, "Synced pay for user {userId}, {incomes} incomes like pay found, {payDays} pay days known, chosen {chosen}, off {off}")]
+    public static partial void LogSyncedPay(this ILogger logger, Guid userId, int incomes, int payDays, bool chosen, bool off);
+
     [LoggerMessage(LogLevel.Information, "Deleted debt {debtId} for user {userId}, {payments} payments and {rules} rules no longer pay it off")]
     public static partial void LogDeletedDebt(this ILogger logger, Guid userId, Guid debtId, int payments, int rules);
 }

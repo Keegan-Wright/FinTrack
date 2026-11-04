@@ -1,3 +1,4 @@
+using FinanceTracker.Domain.Common;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 
@@ -189,7 +190,7 @@ public static class DebtCalculator
                 continue;
             }
 
-            DateOnly on = LocalDay(payment.OccurredAt, timeZone);
+            DateOnly on = payment.OccurredAt.LocalDayIn(timeZone);
             if (on >= debt.StartedOn && on <= until)
             {
                 paid.Add(new Paid(on, -payment.Amount));
@@ -215,8 +216,6 @@ public static class DebtCalculator
         return forecast.PaidOffOn is { } paidOffOn && paidOffOn <= goal;
     }
 
-    private static DateOnly LocalDay(DateTime utc, TimeZoneInfo timeZone) => DateOnly.FromDateTime(
-        TimeZoneInfo.ConvertTime(DateTime.SpecifyKind(utc, DateTimeKind.Utc), timeZone));
 
     private sealed record Paid(DateOnly On, decimal Amount);
 }

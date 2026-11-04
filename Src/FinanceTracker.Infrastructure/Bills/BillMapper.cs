@@ -1,5 +1,6 @@
 using FinanceTracker.Contracts.Bills;
 using FinanceTracker.Domain.Bills;
+using FinanceTracker.Domain.Common;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using Bill = FinanceTracker.Contracts.Bills.Bill;
 using BillFrequency = FinanceTracker.Contracts.Bills.BillFrequency;
@@ -47,7 +48,7 @@ internal static class BillMapper
             TolerancePercent = bill.TolerancePercent,
             MonthlyCost = MonthlyCost(bill, today),
             LastPaid = latest is null ? null : -latest.Amount,
-            LastPaidOn = latest is null ? null : BillCalculator.LocalDay(latest.OccurredAt, timeZone),
+            LastPaidOn = latest is null ? null : latest.OccurredAt.LocalDayIn(timeZone),
             FollowsTheBank = bill.Source == DomainBillSource.StandingOrder,
             CanDelete = bill.SourceId is null
         };

@@ -139,7 +139,7 @@ public static class BillMatcher
 
             if (bills.TryGetValue(billId, out Bill? bill))
             {
-                paid.Add((billId, bill.NearestDue(BillCalculator.LocalDay(transaction.OccurredAt, timeZone))));
+                paid.Add((billId, bill.NearestDue(transaction.OccurredAt.LocalDayIn(timeZone))));
             }
         }
 
@@ -149,7 +149,7 @@ public static class BillMatcher
     private static IEnumerable<BillCandidate> Candidates(BankTransaction transaction, IReadOnlyCollection<Bill> bills,
         TimeZoneInfo timeZone)
     {
-        DateOnly day = BillCalculator.LocalDay(transaction.OccurredAt, timeZone);
+        DateOnly day = transaction.OccurredAt.LocalDayIn(timeZone);
         decimal amount = -transaction.Amount;
 
         foreach (Bill bill in bills)

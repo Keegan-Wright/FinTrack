@@ -11,6 +11,7 @@ using FinanceTracker.Domain.OpenBanking.Balances;
 using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.OpenBanking.Transfers;
+using FinanceTracker.Domain.PayPeriods;
 using FinanceTracker.Domain.Rules;
 using FinanceTracker.Domain.SavingsGoals;
 using FinanceTracker.Infrastructure.Encryption;
@@ -71,6 +72,7 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
     public DbSet<Budget> Budgets { get; private set; }
     public DbSet<Bill> Bills { get; private set; }
     public DbSet<BillSuggestion> BillSuggestions { get; private set; }
+    public DbSet<PaySchedule> PaySchedules { get; private set; }
     public DbSet<Debt> Debts { get; private set; }
     public DbSet<CalendarEvent> CalendarEvents { get; private set; }
     public DbSet<HouseholdMember> HouseholdMembers { get; private set; }

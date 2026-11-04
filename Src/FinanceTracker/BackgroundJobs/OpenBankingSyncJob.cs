@@ -7,6 +7,7 @@ using FinanceTracker.Infrastructure.Bills;
 using FinanceTracker.Infrastructure.OpenBanking;
 using FinanceTracker.Infrastructure.OpenBanking.Balances;
 using FinanceTracker.Infrastructure.OpenBanking.Transfers;
+using FinanceTracker.Infrastructure.PayPeriods;
 using FinanceTracker.Infrastructure.Rules;
 using Microsoft.EntityFrameworkCore;
 
@@ -96,6 +97,10 @@ public abstract class OpenBankingSyncJob
 
             // Bills after rules, so the matcher sees which bills rules said were paid
             await RunAsOwnerAsync<IBillSyncService>(userId, "Synced bills", performingBackgroundSyncActivity,
+                x => x.SyncAsync(cancellationToken));
+
+            // After transfers, so money moved from the user's own accounts isn't taken as pay
+            await RunAsOwnerAsync<IPaySyncService>(userId, "Synced pay", performingBackgroundSyncActivity,
                 x => x.SyncAsync(cancellationToken));
 
             // After the rules, so net worth counts the debt payments they linked
