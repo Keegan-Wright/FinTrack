@@ -1,4 +1,5 @@
 using System.Globalization;
+using FinanceTracker.Client.Components.PayPeriods;
 using FinanceTracker.Contracts.Reports;
 using FinanceTracker.Contracts.Reports.Account;
 using FinanceTracker.Contracts.Reports.Category;
@@ -14,14 +15,14 @@ public static class ReportTree
 {
     public static ReportNode From(SpentInTimePeriodReport report, FilterTransactions request) =>
         Root("All accounts", report, request, report.YearlyBreakdown.Select(static y => Year(y.Year, y,
-            y.MonthlyBreakdown.Select(m => Month(y.Year, m.Month, m,
-                m.DailyBreakdown.Select(static d => (d.Day, (IReport)d)))))));
+            y.MonthlyBreakdown.Select(m => Month(y.Year, m.Month, m.Start, m.End, m,
+                m.DailyBreakdown.Select(static d => (d.Date, (IReport)d)))))));
 
     public static ReportNode From(SpentInAccountReport report, FilterTransactions request) =>
         Root(report.AccountName, report, Narrow(request, accountIds: [report.AccountId]),
             report.YearlyBreakdown.Select(static y => Year(y.Year, y,
-                y.MonthlyBreakdown.Select(m => Month(y.Year, m.Month, m,
-                    m.DailyBreakdown.Select(static d => (d.Day, (IReport)d)))))), report.AccountId);
+                y.MonthlyBreakdown.Select(m => Month(y.Year, m.Month, m.Start, m.End, m,
+                    m.DailyBreakdown.Select(static d => (d.Date, (IReport)d)))))), report.AccountId);
 
     /// <summary>
     /// An account with no transactions matching the filters.
@@ -38,8 +39,8 @@ public static class ReportTree
     public static ReportNode From(SpentInCategoryReport report, FilterTransactions request) =>
         Root(report.Category, report, Narrow(request, tags: [report.Category]),
             report.YearlyBreakdown.Select(static y => Year(y.Year, y,
-                y.MonthlyBreakdown.Select(m => Month(y.Year, m.Month, m,
-                    m.DailyBreakdown.Select(static d => (d.Day, (IReport)d)))))));
+                y.MonthlyBreakdown.Select(m => Month(y.Year, m.Month, m.Start, m.End, m,
+                    m.DailyBreakdown.Select(static d => (d.Date, (IReport)d)))))));
 
     /// <summary>
     /// The accounts the filters cover with nothing in them. Bank
@@ -114,6 +115,9 @@ public static class ReportTree
             byMonth.TryAdd(month, node);
         }
 
+        List<ReportNode> children = Enumerable.Range(1, 12)
+            .Select(m => byMonth.GetValueOrDefault(m) ?? EmptyMonth(year, m))
+            .ToList();
         string label = year.ToString(CultureInfo.CurrentCulture);
         return (year, new ReportNode
         {
@@ -122,47 +126,70 @@ public static class ReportTree
             TotalTransactions = totals.TotalTransactions,
             TotalIn = totals.TotalIn,
             TotalOut = totals.TotalOut,
-            Days = DateTime.IsLeapYear(year) ? 366 : 365,
-            Children = Enumerable.Range(1, 12)
-                .Select(m => byMonth.GetValueOrDefault(m) ?? EmptyMonth(year, m))
-                .ToList(),
+            Days = children.Sum(static x => x.Days),
+            Children = children,
             ChildPeriod = "month"
         });
     }
 
-    private static (int Month, ReportNode Node) Month(int year, string monthName, IReport totals,
-        IEnumerable<(int Day, IReport Totals)> days)
+    /// <param name="start">The first day of the period the month covers, from pay to pay or the calendar month.
+    /// </param>
+    /// <param name="end">Its last day, inclusive.</param>
+    private static (int Month, ReportNode Node) Month(int year, string monthName, DateOnly start, DateOnly end,
+        IReport totals, IEnumerable<(DateOnly Date, IReport Totals)> days)
     {
         int month = MonthNumber(monthName);
-        Dictionary<int, IReport> byDay = [];
-        foreach ((int day, IReport dayTotals) in days)
+        Dictionary<DateOnly, IReport> byDay = [];
+        foreach ((DateOnly date, IReport dayTotals) in days)
         {
-            byDay.TryAdd(day, dayTotals);
+            byDay.TryAdd(date, dayTotals);
         }
 
-        int daysInMonth = DateTime.DaysInMonth(year, month);
-        return (month, MonthNode(year, month, totals, Enumerable.Range(1, daysInMonth)
-            .Select(d => Day(new DateTime(year, month, d), byDay.GetValueOrDefault(d)))
-            .ToList()));
+        List<ReportNode> dayNodes = [];
+        for (DateOnly date = start; date <= end; date = date.AddDays(1))
+        {
+            dayNodes.Add(Day(date.ToDateTime(TimeOnly.MinValue), byDay.GetValueOrDefault(date)));
+        }
+
+        return (month, MonthNode(year, month, start, end, totals, dayNodes));
     }
 
-    private static ReportNode EmptyMonth(int year, int month) =>
-        MonthNode(year, month, null, []);
-
-    private static ReportNode MonthNode(int year, int month, IReport? totals, IReadOnlyList<ReportNode> days)
+    private static ReportNode EmptyMonth(int year, int month)
     {
-        DateTime start = new(year, month, 1);
+        DateOnly first = new(year, month, 1);
+        return MonthNode(year, month, first, first.AddMonths(1).AddDays(-1), null, []);
+    }
+
+    private static ReportNode MonthNode(int year, int month, DateOnly start, DateOnly end, IReport? totals,
+        IReadOnlyList<ReportNode> days)
+    {
+        DateTime named = new(year, month, 1);
         return new ReportNode
         {
-            Label = start.ToString("MMM", CultureInfo.CurrentCulture),
-            Title = start.ToString("MMMM yyyy", CultureInfo.CurrentCulture),
+            Label = named.ToString("MMM", CultureInfo.CurrentCulture),
+            Title = named.ToString("MMMM yyyy", CultureInfo.CurrentCulture),
+            Dates = PeriodDates(year, month, start, end),
             TotalTransactions = totals?.TotalTransactions ?? 0,
             TotalIn = totals?.TotalIn ?? 0,
             TotalOut = totals?.TotalOut ?? 0,
-            Days = DateTime.DaysInMonth(year, month),
+            Days = end.DayNumber - start.DayNumber + 1,
             Children = days,
             ChildPeriod = "day"
         };
+    }
+
+    /// <summary>
+    /// e.g. <c>30 Oct – 29 Nov</c> for a month that runs from pay to pay, null for a calendar month.
+    /// </summary>
+    private static string? PeriodDates(int year, int month, DateOnly start, DateOnly end)
+    {
+        DateOnly first = new(year, month, 1);
+        if (start == first && end == first.AddMonths(1).AddDays(-1))
+        {
+            return null;
+        }
+
+        return PayText.Period(start, end);
     }
 
     private static ReportNode Day(DateTime date, IReport? totals) => new()

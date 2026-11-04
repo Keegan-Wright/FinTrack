@@ -44,7 +44,7 @@ public class AccountServiceTests : InfrastructureTestBase
     }
 
     [Test]
-    public async Task GetAccountsAndMostRecentTransactionsAsync_MapsAccountBalanceAndLogo()
+    public async Task GetAccountsAndMostRecentTransactionsAsync_MapsAccountBalanceBankAndLogo()
     {
         // Arrange
         byte[] logo = [9, 8, 7];
@@ -69,6 +69,7 @@ public class AccountServiceTests : InfrastructureTestBase
             await Assert.That(account.AccountType).IsEqualTo("TRANSACTION");
             await Assert.That(account.AccountBalance).IsEqualTo(100m);
             await Assert.That(account.AvailableBalance).IsEqualTo(90m);
+            await Assert.That(account.ProviderName).IsEqualTo("Bank");
             await Assert.That(account.Logo).IsEquivalentTo(logo);
             await Assert.That(account.Transactions!.Count).IsEqualTo(0);
         }

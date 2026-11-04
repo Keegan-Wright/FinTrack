@@ -14,6 +14,11 @@ namespace FinanceTracker.Client;
 public sealed class ApplicationState : INotifyPropertyChanged
 {
     /// <summary>
+    /// The banks whose accounts the user closed on the accounts page, kept while they move around the app.
+    /// </summary>
+    public HashSet<string> CollapsedProviders { get; } = new(StringComparer.Ordinal);
+
+    /// <summary>
     /// Whether the loading overlay covers the page.
     /// </summary>
     public bool Loading

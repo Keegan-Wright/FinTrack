@@ -1,0 +1,70 @@
+@* One bank's accounts on the accounts page, under a header with how many there are and their total, which opens and
+   closes them. *@
+@using FinanceTracker.Contracts.Account
+@using FinanceTracker.Contracts.NetWorth
+
+<div class="ft-provider">
+    <button type="button" class="ft-provider__header" aria-expanded="@(Expanded ? "true" : "false")"
+            aria-label="@($"{(Expanded ? "Hide" : "Show")} {Name} accounts")" @onclick="@ToggleAsync">
+        <AccountLogo Logo="@Logo"/>
+        <span class="ft-provider__name">
+            <MudText Typo="Typo.subtitle1" HtmlTag="span" Class="text-truncate">@Name</MudText>
+            <MudText Typo="Typo.caption" HtmlTag="span" Class="mud-text-secondary">@Summary</MudText>
+        </span>
+        <MudIcon Icon="@ToggleIcon" Class="mud-text-secondary"/>
+    </button>
+
+    @if (Expanded)
+    {
+        <MudGrid Spacing="4" Class="ft-provider__accounts">
+            @foreach (AccountAndTransactions account in Accounts)
+            {
+                <MudItem xs="12" md="6" xl="4">
+                    <AccountCard Account="@account" History="@HistoryOf(account)"/>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+</div>
+
+@code {
+
+    /// <summary>
+    /// The bank's name, e.g. <c>Monzo</c>.
+    /// </summary>
+    [Parameter] [EditorRequired] public required string Name { get; set; }
+
+    [Parameter] [EditorRequired] public required byte[] Logo { get; set; }
+
+    /// <summary>
+    /// The bank's accounts, in the order shown.
+    /// </summary>
+    [Parameter] [EditorRequired] public required IReadOnlyList<AccountAndTransactions> Accounts { get; set; }
+
+    /// <summary>
+    /// Each account's closing balances over the last 90 days, null for one without.
+    /// </summary>
+    [Parameter] [EditorRequired]
+    public required Func<AccountAndTransactions, IReadOnlyList<BalancePoint>?> HistoryOf { get; set; }
+
+    [Parameter] public bool Expanded { get; set; } = true;
+
+    [Parameter] public EventCallback<bool> ExpandedChanged { get; set; }
+
+    /// <summary>
+    /// e.g. <c>3 accounts · £1,240.50</c>.
+    /// </summary>
+    private string Summary
+    {
+        get
+        {
+            string count = Accounts.Count == 1 ? "1 account" : $"{Accounts.Count} accounts";
+            return $"{count} · {CurrencyFormatter.Format(Accounts.Sum(static x => x.AccountBalance))}";
+        }
+    }
+
+    private string ToggleIcon => Expanded ? Icons.Material.Outlined.ExpandLess : Icons.Material.Outlined.ExpandMore;
+
+    private Task ToggleAsync() => ExpandedChanged.InvokeAsync(!Expanded);
+
+}

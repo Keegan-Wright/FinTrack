@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using FinanceTracker.Contracts.Account;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Domain.OpenBanking.Accounts;
+using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
@@ -31,8 +32,9 @@ public class AccountService : ServiceBase<AccountService>, IAccountService
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
-        Dictionary<Guid, byte[]> logos = await context.BankConnections.OwnedBy(UserId)
-            .ToDictionaryAsync(static x => x.Id, static x => x.Logo, cancellationToken);
+        Dictionary<Guid, BankConnection> connections = await context.BankConnections.OwnedBy(UserId)
+            .AsNoTracking()
+            .ToDictionaryAsync(static x => x.Id, cancellationToken);
 
         // Encrypted timestamps sort by ciphertext in SQL, so the most recent are picked after decryption
         ILookup<Guid, BankTransaction> transactions = (await context.BankTransactions.OwnedBy(UserId)
@@ -51,7 +53,8 @@ public class AccountService : ServiceBase<AccountService>, IAccountService
                 AvailableBalance = account.Balance?.Available ?? 0,
                 CardEnding = account.Card?.PartialNumber,
                 CreditLimit = account.Balance?.CreditLimit,
-                Logo = logos[account.ConnectionId],
+                ProviderName = connections[account.ConnectionId].Name,
+                Logo = connections[account.ConnectionId].Logo,
                 Transactions = transactions[account.Id]
                     .OrderByDescending(static x => x.OccurredAt)
                     .Take(transactionsToReturn)

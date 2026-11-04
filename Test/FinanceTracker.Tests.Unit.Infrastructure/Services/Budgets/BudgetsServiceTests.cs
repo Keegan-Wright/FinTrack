@@ -124,7 +124,8 @@ public class BudgetsServiceTests : InfrastructureTestBase
             .Do(s => s.TransactionScenario.WithTransaction("before-pay", "main",
                 Spend(-20m, new DateTime(2026, 2, 26, 12, 0, 0))))
             .Do(s => s.TransactionScenario.WithCustomClassification("before-pay", "shopping"));
-        await PaidOnTheLastWorkingDayAsync(new DateOnly(2026, 1, 30), new DateOnly(2026, 2, 27));
+        await Scenario.Do(s => s.PayScenario.WithPayOnTheLastWorkingDay(Username, "main",
+            new DateOnly(2026, 1, 30), new DateOnly(2026, 2, 27)));
 
         // Act
         BudgetMonthOverview overview = await BuildSubject(Username).GetMonthAsync(2026, 3, CancellationToken);
@@ -252,15 +253,6 @@ public class BudgetsServiceTests : InfrastructureTestBase
             IsPending = false,
             LabelledAsTransfer = false
         };
-
-    private async Task PaidOnTheLastWorkingDayAsync(params DateOnly[] payDays)
-    {
-        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
-        Guid userId = (await context.Users.SingleAsync(x => x.UserName == Username, CancellationToken)).Id;
-        context.PaySchedules.Add(new PaySchedule(userId, new DetectedPay(Scenario.AccountMappings["main"], "ACMELTD",
-            "ACME LTD", 2400m, PayPattern.LastWorkingDay, payDays)));
-        await context.SaveChangesAsync(CancellationToken);
-    }
 
     private BudgetsService BuildSubject(string username) =>
         new(CurrentUserFor(username), DbContextFactory, NullLogger<BudgetsService>.Instance,

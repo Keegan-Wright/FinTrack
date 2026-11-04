@@ -125,37 +125,9 @@
         }
     }
 
-    /// <summary>
-    /// e.g. <c>30 Oct – 29 Nov · As it ended</c>, the dates only when months run from pay to pay.
-    /// </summary>
-    private string? PeriodCaption
-    {
-        get
-        {
-            if (Overview is null)
-            {
-                return null;
-            }
-
-            List<string> parts = [];
-            if (Pay is { FollowsPay: true })
-            {
-                parts.Add(PayText.Period(Overview.Start, Overview.End));
-            }
-
-            if (!Overview.IsCurrent)
-            {
-                parts.Add("As it ended");
-            }
-
-            if (parts.Count == 0)
-            {
-                return null;
-            }
-
-            return string.Join(" · ", parts);
-        }
-    }
+    private string? PeriodCaption => Overview is null
+        ? null
+        : PayText.MonthCaption(Pay, Overview.Start, Overview.End, !Overview.IsCurrent);
 
     private DateOnly Month => Overview?.Month ?? CurrentMonth;
 

@@ -18,6 +18,11 @@ public sealed class ReportNode
     /// </summary>
     public required string Title { get; init; }
 
+    /// <summary>
+    /// The days a month covers when it runs from pay to pay, e.g. <c>30 Oct – 29 Nov</c>, null otherwise.
+    /// </summary>
+    public string? Dates { get; init; }
+
     public int TotalTransactions { get; init; }
 
     /// <summary>

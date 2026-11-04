@@ -158,7 +158,8 @@ public class TransactionDataApiTests : IntegrationTestBase
             await Assert.That(report.TotalOut).IsEqualTo(-3.50m);
             // The breakdowns only arrive if the getter only collections deserialise
             await Assert.That(report.YearlyBreakdown.Single().Year).IsEqualTo(2026);
-            await Assert.That(report.YearlyBreakdown.Single().MonthlyBreakdown.Single().DailyBreakdown.Select(x => x.Day))
+            await Assert.That(report.YearlyBreakdown.Single().MonthlyBreakdown
+                    .Single(static x => x.TotalTransactions > 0).DailyBreakdown.Select(x => x.Day))
                 .IsEquivalentTo([10, 25]);
             await Assert.That(byCategory.Select(x => x.Category)).Contains("Groceries");
             await Assert.That(byAccount.Single().TotalTransactions).IsEqualTo(2);

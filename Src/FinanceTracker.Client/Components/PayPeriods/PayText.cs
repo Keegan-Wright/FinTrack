@@ -48,6 +48,32 @@ public static class PayText
     }
 
     /// <summary>
+    /// e.g. <c>30 Oct – 29 Nov · As it ended</c> for a month's section, the dates only while months run from pay to
+    /// pay. Null when there's nothing to say.
+    /// </summary>
+    /// <param name="ended">Whether the month is over, so shown as it ended.</param>
+    public static string? MonthCaption(YourPay? pay, DateOnly start, DateOnly end, bool ended)
+    {
+        List<string> parts = [];
+        if (pay is { FollowsPay: true })
+        {
+            parts.Add(Period(start, end));
+        }
+
+        if (ended)
+        {
+            parts.Add("As it ended");
+        }
+
+        if (parts.Count == 0)
+        {
+            return null;
+        }
+
+        return string.Join(" · ", parts);
+    }
+
+    /// <summary>
     /// e.g. <c>1st</c>, <c>2nd</c>, <c>11th</c>, <c>23rd</c>.
     /// </summary>
     public static string Ordinal(int day)

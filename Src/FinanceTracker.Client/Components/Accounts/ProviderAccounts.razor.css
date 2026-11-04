@@ -1,0 +1,36 @@
+.ft-provider {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.ft-provider__header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--mud-default-borderradius);
+    background: var(--mud-palette-surface);
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.ft-provider__header:hover {
+    background: var(--mud-palette-action-default-hover);
+}
+
+.ft-provider__header:focus-visible {
+    outline: 2px solid var(--mud-palette-primary);
+    outline-offset: 2px;
+}
+
+.ft-provider__name {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-width: 0;
+}

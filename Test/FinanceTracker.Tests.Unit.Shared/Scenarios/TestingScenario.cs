@@ -25,6 +25,7 @@ public sealed class TestingScenario
     public RuleScenario RuleScenario { get; init; }
     public BudgetScenario BudgetScenario { get; init; }
     public BillScenario BillScenario { get; init; }
+    public PayScenario PayScenario { get; init; }
     public CalendarEventScenario CalendarEventScenario { get; init; }
 
     public Dictionary<string, Guid> UserMappings { get; set; } = [];
@@ -61,6 +62,7 @@ public sealed class TestingScenario
         RuleScenario = new RuleScenario(this);
         BudgetScenario = new BudgetScenario(this);
         BillScenario = new BillScenario(this);
+        PayScenario = new PayScenario(this);
         CalendarEventScenario = new CalendarEventScenario(this);
     }
 
