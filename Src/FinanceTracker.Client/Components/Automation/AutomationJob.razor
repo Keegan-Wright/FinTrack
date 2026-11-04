@@ -133,7 +133,7 @@
 
             if (schedule.RetryIntervals is not { Length: > 0 } intervals)
             {
-                return $"{schedule.Retries}, TickerQ's default wait";
+                return $"{schedule.Retries}, 30s apart";
             }
 
             return $"{schedule.Retries}, after {string.Join(", ", intervals.Select(static x => $"{x}s"))}";

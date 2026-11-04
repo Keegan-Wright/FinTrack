@@ -1,3 +1,4 @@
+using FinanceTracker.Contracts.Automation;
 using FinanceTracker.Contracts.Bills;
 using FinanceTracker.Contracts.Dashboard;
 using FinanceTracker.Contracts.Debts;
@@ -16,9 +17,6 @@ using FinanceTracker.Tests.Integration.Http;
 using FinanceTracker.Tests.Unit.Shared.Fakers.TrueLayer;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.EntityFrameworkCore;
-using TickerQ.Utilities;
-using TickerQ.Utilities.Entities;
-using TickerQ.Utilities.Enums;
 using DomainBill = FinanceTracker.Domain.Bills.Bill;
 using DomainBillFrequency = FinanceTracker.Domain.Bills.BillFrequency;
 using DomainBillSource = FinanceTracker.Domain.Bills.BillSource;
@@ -28,7 +26,8 @@ using FinanceTracker.Tests.Unit.Shared;
 namespace FinanceTracker.Tests.Integration.OpenBanking;
 
 /// <summary>
-/// Runs the real background jobs through TickerQ against <see cref="FakeTrueLayer"/>. The scheduled jobs visit every
+/// Runs the real background jobs through Quartz against <see cref="FakeTrueLayer"/>, started as the app starts them:
+/// a scheduled job by an admin's run now, a user's sync by their sync now. The scheduled jobs visit every
 /// connection in the database, so these tests don't run alongside each other.
 /// </summary>
 [NotInParallel(nameof(BackgroundSyncTests))]
@@ -342,12 +341,12 @@ public class BackgroundSyncTests : IntegrationTestBase
     public async Task UserSync_OnlySyncsTheRequestingUsersConnections()
     {
         // Arrange
-        string username = UniqueName();
+        SignedInUser user = await RegisterUserAsync();
+        string username = user.Username;
         string otherUsername = UniqueName();
         string accessToken = UniqueName("token");
         string otherAccessToken = UniqueName("token");
-        await Scenario.Do(s => s.UserScenario.WithUser(username))
-            .Do(s => s.UserScenario.WithUser(otherUsername))
+        await Scenario.Do(s => s.UserScenario.WithUser(otherUsername))
             .Do(s => s.BankConnectionScenario.WithConnection("mine", username))
             .Do(s => s.BankConnectionScenario.WithAccessToken("mine", token: accessToken))
             .Do(s => s.BankConnectionScenario.WithConnection("theirs", otherUsername))
@@ -356,11 +355,8 @@ public class BackgroundSyncTests : IntegrationTestBase
         await App.TrueLayer.StubAccountAsync(accessToken, new ExternalOpenBankingAccountFaker().Generate());
         await App.TrueLayer.StubAccountAsync(otherAccessToken, new ExternalOpenBankingAccountFaker().Generate());
 
-        // Matches the request the resync button queues, SyncUserOpenBankingDetailsRequest
-        byte[] request = TickerHelper.CreateTickerRequest(new { UserId = Scenario.UserMappings[username] });
-
         // Act
-        await RunJobAsync(UserSyncFunction, request);
+        await RunUserSyncAsync(user);
 
         // Assert
         Guid connectionId = Scenario.ConnectionMappings["mine"];
@@ -478,39 +474,60 @@ public class BackgroundSyncTests : IntegrationTestBase
     private Task RunSyncAsync() => RunJobAsync(SyncFunction);
 
     /// <summary>
-    /// Queues <paramref name="function"/> the same way the app does and waits for TickerQ to finish it.
+    /// Runs <paramref name="function"/> now as an admin would and waits for it to finish.
     /// </summary>
-    private async Task RunJobAsync(string function, byte[]? request = null)
+    private async Task RunJobAsync(string function)
     {
-        Guid tickerId = Guid.NewGuid();
-        await using (FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken))
-        {
-            context.TimeTickerEntities.Add(new TimeTickerEntity
-            {
-                Id = tickerId,
-                Function = function,
-                Request = request,
-                ExecutionTime = DateTime.UtcNow
-            });
-            await context.SaveChangesAsync(CancellationToken);
-        }
+        IAutomationService service = ApiFor(await RegisterAdminAsync()).Get<IAutomationService>();
+        HashSet<string> before = await RunIdsAsync(service, function);
 
+        await service.RunNowAsync(function, CancellationToken);
+
+        await WaitForRunAsync(service, function, before);
+    }
+
+    /// <summary>
+    /// Syncs <paramref name="user"/>'s banks as their sync now does and waits for it to finish.
+    /// </summary>
+    private async Task RunUserSyncAsync(SignedInUser user)
+    {
+        IAutomationService admin = ApiFor(await RegisterAdminAsync()).Get<IAutomationService>();
+        HashSet<string> before = await RunIdsAsync(admin, UserSyncFunction);
+
+        await ApiFor(user).Get<IAutomationService>().RequestSyncAsync(CancellationToken);
+
+        await WaitForRunAsync(admin, UserSyncFunction, before);
+    }
+
+    /// <summary>
+    /// The runs of <paramref name="function"/> on the automation page now.
+    /// </summary>
+    private async Task<HashSet<string>> RunIdsAsync(IAutomationService service, string function)
+    {
+        AutomationRunPage page = await service.GetRunsAsync(function, page: 0, pageSize: 25, CancellationToken);
+        return page.Runs.Select(static x => x.Id).ToHashSet(StringComparer.Ordinal);
+    }
+
+    /// <summary>
+    /// Waits for a manual run of <paramref name="function"/> that isn't one of <paramref name="before"/> to finish, as
+    /// the automation page shows it.
+    /// </summary>
+    private async Task WaitForRunAsync(IAutomationService service, string function, HashSet<string> before)
+    {
         using CancellationTokenSource timeout = CancellationTokenSource.CreateLinkedTokenSource(CancellationToken);
         timeout.CancelAfter(TestTimeouts.Job);
 
         while (true)
         {
-            await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(timeout.Token);
-            TimeTickerEntity ticker = await context.TimeTickerEntities.AsNoTracking()
-                .SingleAsync(x => x.Id == tickerId, timeout.Token);
+            AutomationRunPage page = await service.GetRunsAsync(function, page: 0, pageSize: 25, timeout.Token);
+            AutomationRun? run = page.Runs.FirstOrDefault(x => x.IsManual && !before.Contains(x.Id));
 
-            switch (ticker.Status)
+            switch (run?.Status)
             {
-                case TickerStatus.Done or TickerStatus.DueDone:
+                case AutomationRunStatus.Done:
                     return;
-                case TickerStatus.Failed or TickerStatus.Cancelled or TickerStatus.Skipped:
-                    throw new InvalidOperationException(
-                        $"{function} finished as {ticker.Status}: {ticker.ExceptionMessage}");
+                case AutomationRunStatus.Failed or AutomationRunStatus.Cancelled or AutomationRunStatus.Skipped:
+                    throw new InvalidOperationException($"{function} finished as {run.Status}: {run.Error}");
             }
 
             await Task.Delay(TimeSpan.FromMilliseconds(500), timeout.Token);

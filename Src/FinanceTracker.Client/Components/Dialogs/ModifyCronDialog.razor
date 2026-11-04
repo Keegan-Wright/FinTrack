@@ -15,7 +15,8 @@
                                   Immediate="true"></MudTextField>
                 </MudItem>
                 <MudItem xs="12" sm="6">
-                    <MudTextField @bind-Value="_model.Expression" Label="Cron schedule"
+                    <MudTextField @bind-Value="_model.Expression" Label="Cron schedule (UTC)"
+                                  HelperText="Seconds, minutes, hours, day of month, month, day of week, with ? in one day field, e.g. 0 0 */4 * * ?"
                                   For="@(() => _model.Expression)"
                                   Validation="@(Validator.ValidateValue(_model, nameof(UpdateCronJob.Expression)))"
                                   Immediate="true"></MudTextField>
@@ -46,7 +47,10 @@
     private MudForm _form = null!;
     private UpdateCronJob _model = null!;
 
-    [Parameter] public Guid CronId { get; set; }
+    /// <summary>
+    /// The job, see <see cref="AutomationCron.Function"/>.
+    /// </summary>
+    [Parameter] public string Function { get; set; } = null!;
     [Parameter] public string Description { get; set; } = null!;
     [Parameter] public string Expression { get; set; } = null!;
     [Parameter] public int Retries { get; set; }
@@ -57,7 +61,7 @@
     {
         _model = new UpdateCronJob
         {
-            Id = CronId,
+            Function = Function,
             Description = Description,
             Expression = Expression,
             Retries = Retries,

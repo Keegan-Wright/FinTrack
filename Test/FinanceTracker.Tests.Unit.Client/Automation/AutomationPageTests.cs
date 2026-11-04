@@ -61,7 +61,7 @@ public class AutomationPageTests : ComponentTestBase
         {
             await Assert.That(cut.Markup).Contains(SyncName);
             await Assert.That(cut.Markup).Contains("Sync user open banking details");
-            await Assert.That(cut.Markup).Contains("0 */15 * * * *");
+            await Assert.That(cut.Markup).Contains("0 */15 * * * ?");
             await Assert.That(cut.Markup).Contains("3 Nov 14:15");
             await Assert.That(cut.Markup).Contains("3 Nov 14:00, took 4.5s");
             await Assert.That(cut.Markup).Contains("95% of the last 20 runs");
@@ -118,7 +118,7 @@ public class AutomationPageTests : ComponentTestBase
         // Assert
         using (Assert.Multiple())
         {
-            await _automationService.Received(1).RunNowAsync(job.Schedule!.Id, Arg.Any<CancellationToken>());
+            await _automationService.Received(1).RunNowAsync(job.Function, Arg.Any<CancellationToken>());
             await Assert.That(cut.FindAll("button").Any(static x => x.TextContent.Trim() == "Hide runs")).IsTrue();
             await _automationService.Received().GetRunsAsync(AutomationTextTests.SyncFunction, 0, 25,
                 Arg.Any<CancellationToken>());
@@ -138,7 +138,7 @@ public class AutomationPageTests : ComponentTestBase
         await running;
 
         // Assert
-        await _automationService.DidNotReceiveWithAnyArgs().RunNowAsync(default, default);
+        await _automationService.DidNotReceiveWithAnyArgs().RunNowAsync(default!, default);
     }
 
     [Test]

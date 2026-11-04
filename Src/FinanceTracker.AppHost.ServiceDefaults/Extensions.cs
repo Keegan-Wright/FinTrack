@@ -18,6 +18,13 @@ namespace FinanceTracker.AppHost.ServiceDefaults;
 public static class Extensions
 {
     private const string HealthEndpointPath = "/health";
+
+    /// <summary>
+    /// The activity source and meter Quartz 4 publishes through, <c>Quartz.Diagnostics.QuartzInstrumentation</c>'s
+    /// ActivitySourceName and MeterName. Built in, so no instrumentation package: OpenTelemetry.Instrumentation.Quartz
+    /// produces no spans on Quartz 4.
+    /// </summary>
+    private const string QuartzInstrumentationName = "Quartz";
     private const string AlivenessEndpointPath = "/alive";
 
     extension<TBuilder>(TBuilder builder) where TBuilder : IHostApplicationBuilder
@@ -67,10 +74,14 @@ public static class Extensions
                         .AddRuntimeInstrumentation();
 
                     metrics.AddNpgsqlInstrumentation();
+
+                    // Job run times, retries, misfires and the store's operations
+                    metrics.AddMeter(QuartzInstrumentationName);
                 })
                 .WithTracing(tracing =>
                 {
-                    tracing.AddSource("TickerQ");
+                    // A span for each job run and each store write, the jobs' own spans inside them
+                    tracing.AddSource(QuartzInstrumentationName);
 
                     tracing.AddSource(builder.Environment.ApplicationName)
                         .AddAspNetCoreInstrumentation(aspNetCoreTraceInstrumentationOptions =>

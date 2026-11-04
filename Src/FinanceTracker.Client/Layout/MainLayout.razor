@@ -108,6 +108,7 @@
 @code {
 
     private IDisposable? _syncSubscription;
+    private IDisposable? _syncStartSubscription;
 
     internal readonly CancellationTokenSource _cts = new();
 
@@ -120,8 +121,19 @@
         {
             // Only once interactive, a prerender has no circuit to push the update to
             _syncSubscription = await SyncNotifications.SubscribeAsync(() => InvokeAsync(OnSyncCompletedAsync), _cts.Token);
+            _syncStartSubscription = await SyncNotifications.SubscribeToSyncStartsAsync(
+                () => InvokeAsync(OnSyncStarted), _cts.Token);
             await RefreshSyncDetailsAsync();
         }
+    }
+
+    /// <summary>
+    /// A sync of the user's banks has started, on its schedule or asked for from another of their browsers.
+    /// </summary>
+    private void OnSyncStarted()
+    {
+        ApplicationState.Syncing = true;
+        StateHasChanged();
     }
 
     private async Task OnSyncCompletedAsync()
@@ -192,7 +204,20 @@
     {
         // Cleared when the sync notification arrives
         ApplicationState.Syncing = true;
-        await AutomationService.RequestSyncAsync(_cts.Token);
+        try
+        {
+            await AutomationService.RequestSyncAsync(_cts.Token);
+        }
+        catch (OperationCanceledException) when (_cts.IsCancellationRequested)
+        {
+            // The layout went away, nothing left to show it on
+        }
+        catch (Exception)
+        {
+            // No sync was queued, so no notification will clear it
+            ApplicationState.Syncing = false;
+            Snackbar.Add("Couldn't start a sync, try again", Severity.Error);
+        }
     }
 
 
@@ -205,6 +230,7 @@
     {
         ApplicationState.PropertyChanged -= ApplicationStateOnPropertyChanged;
         _syncSubscription?.Dispose();
+        _syncStartSubscription?.Dispose();
         _cts.Cancel();
         _cts.Dispose();
 

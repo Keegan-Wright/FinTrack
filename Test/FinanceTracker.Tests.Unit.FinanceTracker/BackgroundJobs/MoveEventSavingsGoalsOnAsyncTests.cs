@@ -14,17 +14,15 @@ public class MoveEventSavingsGoalsOnAsyncTests : InfrastructureTestBase
     private const string Username = "primary";
     private static readonly DateOnly Birthday = new(2026, 3, 14);
 
-    private readonly ISyncNotifier _syncNotifier = Substitute.For<ISyncNotifier>();
-
     [Test]
-    public async Task ExecuteAsync_TheDayHasPassed_MovesTheGoalOnToNextYear()
+    public async Task Execute_TheDayHasPassed_MovesTheGoalOnToNextYear()
     {
         // Arrange
         await SeedAsync(rollsGoalOn: true);
         MoveEventSavingsGoalsOnAsync subject = BuildSubject(new DateTime(2026, 3, 15, 2, 0, 0, DateTimeKind.Utc));
 
         // Act
-        await subject.ExecuteAsync(TickerFunctionContextFactory.Create(), CancellationToken);
+        await subject.Execute(JobContexts.Scheduled(), CancellationToken);
 
         // Assert
         SavingsGoal goal = await LoadGoalAsync();
@@ -36,14 +34,14 @@ public class MoveEventSavingsGoalsOnAsyncTests : InfrastructureTestBase
     }
 
     [Test]
-    public async Task ExecuteAsync_OnTheDay_LeavesTheGoal()
+    public async Task Execute_OnTheDay_LeavesTheGoal()
     {
         // Arrange
         await SeedAsync(rollsGoalOn: true);
         MoveEventSavingsGoalsOnAsync subject = BuildSubject(new DateTime(2026, 3, 14, 2, 0, 0, DateTimeKind.Utc));
 
         // Act
-        await subject.ExecuteAsync(TickerFunctionContextFactory.Create(), CancellationToken);
+        await subject.Execute(JobContexts.Scheduled(), CancellationToken);
 
         // Assert
         SavingsGoal goal = await LoadGoalAsync();
@@ -51,14 +49,14 @@ public class MoveEventSavingsGoalsOnAsyncTests : InfrastructureTestBase
     }
 
     [Test]
-    public async Task ExecuteAsync_EventNotRollingOn_LeavesTheGoal()
+    public async Task Execute_EventNotRollingOn_LeavesTheGoal()
     {
         // Arrange
         await SeedAsync(rollsGoalOn: false);
         MoveEventSavingsGoalsOnAsync subject = BuildSubject(new DateTime(2026, 6, 1, 2, 0, 0, DateTimeKind.Utc));
 
         // Act
-        await subject.ExecuteAsync(TickerFunctionContextFactory.Create(), CancellationToken);
+        await subject.Execute(JobContexts.Scheduled(), CancellationToken);
 
         // Assert
         SavingsGoal goal = await LoadGoalAsync();
@@ -92,20 +90,6 @@ public class MoveEventSavingsGoalsOnAsyncTests : InfrastructureTestBase
             CancellationToken);
     }
 
-    [Test]
-    public async Task ExecuteAsync_TellsAdminsWhenItStartsAndFinishes()
-    {
-        // Arrange
-        await SeedAsync(rollsGoalOn: true);
-        MoveEventSavingsGoalsOnAsync subject = BuildSubject(new DateTime(2026, 3, 15, 2, 0, 0, DateTimeKind.Utc));
-
-        // Act
-        await subject.ExecuteAsync(TickerFunctionContextFactory.Create(), CancellationToken);
-
-        // Assert
-        await _syncNotifier.Received(2).JobChangedAsync(nameof(MoveEventSavingsGoalsOnAsync));
-    }
-
     private MoveEventSavingsGoalsOnAsync BuildSubject(DateTime now) =>
-        new(DbContextFactory, _syncNotifier, new FixedTimeProvider(now));
+        new(DbContextFactory, new FixedTimeProvider(now));
 }

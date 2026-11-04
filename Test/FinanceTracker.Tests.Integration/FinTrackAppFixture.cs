@@ -24,7 +24,7 @@ public sealed class FinTrackAppFixture : AspireFixture<Projects.FinanceTracker_A
     public static readonly EncryptionConfiguration EncryptionConfiguration = TestEncryptionKeys.Keyring();
 
     /// <summary>
-    /// The test container's connection limit the app's pool of up to 100, the tests' and TickerQ's, with room over.
+    /// The test container's connection limit the app's pool of up to 100, the tests' and the background jobs', with room over.
     /// </summary>
     internal const int MaxConnections = 300;
 

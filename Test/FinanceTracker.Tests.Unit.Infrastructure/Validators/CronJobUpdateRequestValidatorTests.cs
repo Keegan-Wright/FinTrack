@@ -18,8 +18,9 @@ public class CronJobUpdateRequestValidatorTests : UnitTestBase
         // Arrange
         var testModel = new UpdateCronJob
         {
+            Function = "SyncAllOpenBankingDetailsAsync",
             Description = "Description",
-            Expression = "* * * * * *",
+            Expression = "0 0 */4 * * ?",
             RetryIntervals =
             [
                 10,
@@ -46,8 +47,9 @@ public class CronJobUpdateRequestValidatorTests : UnitTestBase
         // Arrange
         var testModel = new UpdateCronJob
         {
+            Function = "SyncAllOpenBankingDetailsAsync",
             Description = "Description",
-            Expression = "* * * * * *",
+            Expression = "0 0 */4 * * ?",
             RetryIntervals = null!,
             IsEnabled = true
         };
@@ -57,6 +59,30 @@ public class CronJobUpdateRequestValidatorTests : UnitTestBase
 
         // Assert
         await Assert.That(result.IsValid).IsTrue();
+    }
+
+    [Test]
+    [Arguments("0 0 */4 * * *", "no ? in either day field")]
+    [Arguments("0 0 */4 ? * ?", "? in both day fields")]
+    [Arguments("0 */4 * * ?", "5 parts")]
+    public async Task ValidateAsync_NotAQuartzCron_IsAnError(string expression, string because)
+    {
+        // Arrange
+        var testModel = new UpdateCronJob
+        {
+            Function = "SyncAllOpenBankingDetailsAsync",
+            Description = "Description",
+            Expression = expression,
+            RetryIntervals = [],
+            IsEnabled = true
+        };
+
+        // Act
+        ValidationResult result = await _subject.ValidateAsync(testModel, CancellationToken);
+
+        // Assert
+        await Assert.That(result.Errors.Any(x => x.PropertyName == nameof(UpdateCronJob.Expression))).IsTrue()
+            .Because(because);
     }
 
     [Test]
@@ -78,7 +104,11 @@ public class CronJobUpdateRequestValidatorTests : UnitTestBase
         using (Assert.Multiple())
         {
             await Assert.That(result.IsValid).IsFalse();
-            await Assert.That(result.Errors).Count().IsEqualTo(3);
+            await Assert.That(result.Errors).Count().IsEqualTo(4);
+
+            await Assert
+                .That(result.Errors.First(x => x.PropertyName == nameof(UpdateCronJob.Function))
+                    .ErrorMessage).IsEqualTo("The job is required");
 
             await Assert
                 .That(result.Errors.First(x => x.PropertyName == nameof(UpdateCronJob.Description))
@@ -86,7 +116,7 @@ public class CronJobUpdateRequestValidatorTests : UnitTestBase
 
             await Assert
                 .That(result.Errors.First(x => x.PropertyName == nameof(UpdateCronJob.Expression))
-                    .ErrorMessage).IsEqualTo("Expression must be a 6-part cron");
+                    .ErrorMessage).StartsWith("Expression must be a Quartz cron");
 
             await Assert
                 .That(result.Errors.First(x => x.PropertyName == nameof(UpdateCronJob.RetryIntervals))

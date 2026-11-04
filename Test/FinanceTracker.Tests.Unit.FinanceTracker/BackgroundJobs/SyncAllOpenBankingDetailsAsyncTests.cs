@@ -9,7 +9,7 @@ namespace FinanceTracker.Tests.Unit.FinanceTracker.BackgroundJobs;
 public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
 {
     [Test]
-    public async Task ExecuteAsync_WhenUsersHaveConnections_SyncsEachConnectionAsItsOwner()
+    public async Task Execute_WhenUsersHaveConnections_SyncsEachConnectionAsItsOwner()
     {
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
@@ -21,7 +21,7 @@ public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
         SyncAllOpenBankingDetailsAsync subject = BuildSubject();
 
         // Act
-        await subject.ExecuteAsync(TickerFunctionContextFactory.Create(), CancellationToken);
+        await subject.Execute(JobContexts.Scheduled(), CancellationToken);
 
         // Assert
         Guid userId = Scenario.UserMappings[Username];
@@ -40,7 +40,7 @@ public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
     }
 
     [Test]
-    public async Task ExecuteAsync_WhenUsersHaveConnections_NotifiesEachSyncedUserOnce()
+    public async Task Execute_WhenUsersHaveConnections_TellsEachOwnerAsItStartsBeforeSyncing()
     {
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
@@ -53,7 +53,40 @@ public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
         SyncAllOpenBankingDetailsAsync subject = BuildSubject();
 
         // Act
-        await subject.ExecuteAsync(TickerFunctionContextFactory.Create(), CancellationToken);
+        await subject.Execute(JobContexts.Scheduled(), CancellationToken);
+
+        // Assert, once each, before the first connection syncs
+        using (Assert.Multiple())
+        {
+            await SyncNotifier.Received(1).NotifyStartedAsync(Scenario.UserMappings[Username]);
+            await SyncNotifier.Received(1).NotifyStartedAsync(Scenario.UserMappings[OtherUsername]);
+            await SyncNotifier.DidNotReceive().NotifyStartedAsync(Scenario.UserMappings["unconnected"]);
+            Received.InOrder(() =>
+            {
+                SyncNotifier.NotifyStartedAsync(Arg.Any<Guid>());
+                SyncNotifier.NotifyStartedAsync(Arg.Any<Guid>());
+                OpenBankingService.SyncConnectionAsync(Arg.Any<Guid>(), SyncTypes.All, Arg.Any<CancellationToken>());
+                OpenBankingService.SyncConnectionAsync(Arg.Any<Guid>(), SyncTypes.All, Arg.Any<CancellationToken>());
+                OpenBankingService.SyncConnectionAsync(Arg.Any<Guid>(), SyncTypes.All, Arg.Any<CancellationToken>());
+            });
+        }
+    }
+
+    [Test]
+    public async Task Execute_WhenUsersHaveConnections_NotifiesEachSyncedUserOnce()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.UserScenario.WithUser(OtherUsername))
+            .Do(s => s.UserScenario.WithUser("unconnected"))
+            .Do(s => s.BankConnectionScenario.WithConnection("first", Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("second", Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("theirs", OtherUsername));
+
+        SyncAllOpenBankingDetailsAsync subject = BuildSubject();
+
+        // Act
+        await subject.Execute(JobContexts.Scheduled(), CancellationToken);
 
         // Assert
         using (Assert.Multiple())
@@ -65,7 +98,7 @@ public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
     }
 
     [Test]
-    public async Task ExecuteAsync_WhenAConnectionFailsToSync_ContinuesWithTheRestAndNotifiesTheUser()
+    public async Task Execute_WhenAConnectionFailsToSync_ContinuesWithTheRestAndNotifiesTheUser()
     {
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
@@ -79,7 +112,7 @@ public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
         SyncAllOpenBankingDetailsAsync subject = BuildSubject();
 
         // Act
-        await subject.ExecuteAsync(TickerFunctionContextFactory.Create(), CancellationToken);
+        await subject.Execute(JobContexts.Scheduled(), CancellationToken);
 
         // Assert
         using (Assert.Multiple())
@@ -91,7 +124,7 @@ public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
     }
 
     [Test]
-    public async Task ExecuteAsync_AfterSyncing_MatchesEachOwnersTransfersOnceAsThem()
+    public async Task Execute_AfterSyncing_MatchesEachOwnersTransfersOnceAsThem()
     {
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
@@ -104,7 +137,7 @@ public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
         SyncAllOpenBankingDetailsAsync subject = BuildSubject();
 
         // Act
-        await subject.ExecuteAsync(TickerFunctionContextFactory.Create(), CancellationToken);
+        await subject.Execute(JobContexts.Scheduled(), CancellationToken);
 
         // Assert
         // Every connection has synced first, so transfers between a user's banks can pair
@@ -115,7 +148,7 @@ public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
     }
 
     [Test]
-    public async Task ExecuteAsync_WhenMatchingFails_ContinuesWithTheRestAndNotifies()
+    public async Task Execute_WhenMatchingFails_ContinuesWithTheRestAndNotifies()
     {
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
@@ -128,7 +161,7 @@ public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
         SyncAllOpenBankingDetailsAsync subject = BuildSubject();
 
         // Act
-        await subject.ExecuteAsync(TickerFunctionContextFactory.Create(), CancellationToken);
+        await subject.Execute(JobContexts.Scheduled(), CancellationToken);
 
         // Assert
         using (Assert.Multiple())
@@ -140,7 +173,7 @@ public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
     }
 
     [Test]
-    public async Task ExecuteAsync_AfterSyncingAndMatching_SnapshotsEachOwnersBalancesForToday()
+    public async Task Execute_AfterSyncingAndMatching_SnapshotsEachOwnersBalancesForToday()
     {
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
@@ -152,7 +185,7 @@ public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
         SyncAllOpenBankingDetailsAsync subject = BuildSubject();
 
         // Act
-        await subject.ExecuteAsync(TickerFunctionContextFactory.Create(), CancellationToken);
+        await subject.Execute(JobContexts.Scheduled(), CancellationToken);
 
         // Assert
         // Every connection has synced first, so net worth covers all of a user's banks, and the rules have run, so it
@@ -164,7 +197,7 @@ public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
     }
 
     [Test]
-    public async Task ExecuteAsync_WhenSnapshotFails_StillMatchesAndNotifies()
+    public async Task Execute_WhenSnapshotFails_StillMatchesAndNotifies()
     {
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
@@ -178,7 +211,7 @@ public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
         SyncAllOpenBankingDetailsAsync subject = BuildSubject();
 
         // Act
-        await subject.ExecuteAsync(TickerFunctionContextFactory.Create(), CancellationToken);
+        await subject.Execute(JobContexts.Scheduled(), CancellationToken);
 
         // Assert
         using (Assert.Multiple())
@@ -191,7 +224,7 @@ public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
     }
 
     [Test]
-    public async Task ExecuteAsync_AfterSnapshotting_BackfillsEachOwnersBalanceHistory()
+    public async Task Execute_AfterSnapshotting_BackfillsEachOwnersBalanceHistory()
     {
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
@@ -208,7 +241,7 @@ public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
         SyncAllOpenBankingDetailsAsync subject = BuildSubject();
 
         // Act
-        await subject.ExecuteAsync(TickerFunctionContextFactory.Create(), CancellationToken);
+        await subject.Execute(JobContexts.Scheduled(), CancellationToken);
 
         // Assert
         await Assert.That(calls).IsEquivalentTo(["snapshot", "backfill", "snapshot", "backfill"],
@@ -216,7 +249,7 @@ public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
     }
 
     [Test]
-    public async Task ExecuteAsync_AfterSyncing_AppliesEachOwnersRulesBeforeMatching()
+    public async Task Execute_AfterSyncing_AppliesEachOwnersRulesBeforeMatching()
     {
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
@@ -227,7 +260,7 @@ public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
         SyncAllOpenBankingDetailsAsync subject = BuildSubject();
 
         // Act
-        await subject.ExecuteAsync(TickerFunctionContextFactory.Create(), CancellationToken);
+        await subject.Execute(JobContexts.Scheduled(), CancellationToken);
 
         // Assert, from when the sync started so a user's first run covers it
         await Assert.That(RulesApplied).IsEquivalentTo([
@@ -237,7 +270,7 @@ public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
     }
 
     [Test]
-    public async Task ExecuteAsync_WhenRulesFail_StillMatchesAndNotifies()
+    public async Task Execute_WhenRulesFail_StillMatchesAndNotifies()
     {
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
@@ -249,7 +282,7 @@ public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
         SyncAllOpenBankingDetailsAsync subject = BuildSubject();
 
         // Act
-        await subject.ExecuteAsync(TickerFunctionContextFactory.Create(), CancellationToken);
+        await subject.Execute(JobContexts.Scheduled(), CancellationToken);
 
         // Assert
         using (Assert.Multiple())
@@ -260,23 +293,7 @@ public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
     }
 
     [Test]
-    public async Task ExecuteAsync_TellsAdminsWhenItStartsAndFinishes()
-    {
-        // Arrange
-        await Scenario.Do(s => s.UserScenario.WithUser(Username))
-            .Do(s => s.BankConnectionScenario.WithConnection("mine", Username));
-
-        SyncAllOpenBankingDetailsAsync subject = BuildSubject();
-
-        // Act
-        await subject.ExecuteAsync(TickerFunctionContextFactory.Create(), CancellationToken);
-
-        // Assert
-        await SyncNotifier.Received(2).JobChangedAsync(nameof(SyncAllOpenBankingDetailsAsync));
-    }
-
-    [Test]
-    public async Task ExecuteAsync_WhenUsersHaveNoConnections_DoesNotSyncOrNotify()
+    public async Task Execute_WhenUsersHaveNoConnections_DoesNotSyncOrNotify()
     {
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
@@ -285,7 +302,7 @@ public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
         SyncAllOpenBankingDetailsAsync subject = BuildSubject();
 
         // Act
-        await subject.ExecuteAsync(TickerFunctionContextFactory.Create(), CancellationToken);
+        await subject.Execute(JobContexts.Scheduled(), CancellationToken);
 
         // Assert
         using (Assert.Multiple())

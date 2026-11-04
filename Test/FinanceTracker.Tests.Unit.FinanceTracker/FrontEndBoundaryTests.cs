@@ -17,7 +17,7 @@ public class FrontEndBoundaryTests
         "Microsoft.EntityFrameworkCore",
         "Microsoft.AspNetCore.Identity",
         "Npgsql",
-        "TickerQ"
+        "Quartz"
     ];
 
     [Test]

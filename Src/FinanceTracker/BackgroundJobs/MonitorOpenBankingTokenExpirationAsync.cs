@@ -2,43 +2,25 @@ using System.Diagnostics;
 using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Infrastructure;
 using Microsoft.EntityFrameworkCore;
-using TickerQ.Utilities.Base;
-using TickerQ.Utilities.Interfaces;
+using Quartz;
 
 namespace FinanceTracker.BackgroundJobs;
 
 
-// ReSharper disable once ClassNeverInstantiated.Global
-// Background job, ignore the warning
-public class MonitorOpenBankingTokenExpirationAsync : ITickerFunction
+public class MonitorOpenBankingTokenExpirationAsync : IJob
 {
     private readonly IDbContextFactory<FinanceTrackerContext> _dbContextFactory;
-    private readonly ISyncNotifier _syncNotifier;
     private readonly TimeProvider _timeProvider;
 
     public MonitorOpenBankingTokenExpirationAsync(IDbContextFactory<FinanceTrackerContext> dbContextFactory,
-        ISyncNotifier syncNotifier, TimeProvider timeProvider)
+        TimeProvider timeProvider)
     {
         _dbContextFactory = dbContextFactory;
-        _syncNotifier = syncNotifier;
         _timeProvider = timeProvider;
     }
 
-    public async Task ExecuteAsync(TickerFunctionContext context,
-        CancellationToken cancellationToken = new CancellationToken())
-    {
-        context.CronOccurrenceOperations.SkipIfAlreadyRunning();
-
-        await _syncNotifier.JobChangedAsync(nameof(MonitorOpenBankingTokenExpirationAsync));
-        try
-        {
-            await RevokeLapsedConnectionsAsync(cancellationToken);
-        }
-        finally
-        {
-            await _syncNotifier.JobChangedAsync(nameof(MonitorOpenBankingTokenExpirationAsync));
-        }
-    }
+    public async ValueTask Execute(IJobExecutionContext context, CancellationToken cancellationToken) =>
+        await RevokeLapsedConnectionsAsync(cancellationToken);
 
     private async Task RevokeLapsedConnectionsAsync(CancellationToken cancellationToken)
     {

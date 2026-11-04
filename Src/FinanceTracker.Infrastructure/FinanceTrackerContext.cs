@@ -22,8 +22,6 @@ using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using TickerQ.EntityFrameworkCore.Configurations;
-using TickerQ.Utilities.Entities;
 
 namespace FinanceTracker.Infrastructure;
 
@@ -96,11 +94,6 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
     public DbSet<DataProtectionKey> DataProtectionKeys { get; private set; }
 
 
-    #region TickerQ
-    public DbSet<CronTickerEntity> CronTickerEntities { get; private set; }
-    public DbSet<CronTickerOccurrenceEntity<CronTickerEntity>> CronTickerOccurrenceEntities { get; private set; }
-    public DbSet<TimeTickerEntity> TimeTickerEntities { get; private set; }
-    #endregion
 
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -112,10 +105,6 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
-
-        builder.ApplyConfiguration(new TimeTickerConfigurations<TimeTickerEntity>("ticker"));
-        builder.ApplyConfiguration(new CronTickerConfigurations<CronTickerEntity>("ticker"));
-        builder.ApplyConfiguration(new CronTickerOccurrenceConfigurations<CronTickerEntity>("ticker"));
 
         builder.ApplyConfigurationsFromAssembly(typeof(FinanceTrackerContext).Assembly);
 
