@@ -1,4 +1,5 @@
-@* The side navigation. *@
+@* The side navigation: money, planning, insights, anything waiting for review, what the user manages, then
+   configuration. *@
 @using FinanceTracker.Contracts.Auth
 @implements IDisposable
 @inject NavigationManager NavigationManager
@@ -9,36 +10,50 @@
 
         <div class="ft-nav__heading">Money</div>
         <MudNavLink Href="Accounts" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.AccountBalance">Accounts</MudNavLink>
-        <MudNavLink Href="NetWorth" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.ShowChart">Net worth</MudNavLink>
         <MudNavLink Href="Transactions" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.ReceiptLong">Transactions</MudNavLink>
         <MudNavLink Href="Calendar" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.CalendarMonth">Calendar</MudNavLink>
+
+        <div class="ft-nav__heading">Planning</div>
         <MudNavLink Href="Budgets" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.AccountBalanceWallet">Budgets</MudNavLink>
         <MudNavLink Href="Bills" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.EventRepeat">Bills</MudNavLink>
         <MudNavLink Href="Debts" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.CreditScore">Debts</MudNavLink>
         <MudNavLink Href="SavingsGoals" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Savings">Savings goals</MudNavLink>
-        <MudNavLink Href="Review" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.FactCheck">
-            <span class="ft-nav__label">
-                Review transfers
-                @if (TransfersToReview > 0)
-                {
-                    <span class="ft-nav__count" aria-label="@($"{TransfersToReview} to review")">@TransfersToReview</span>
-                }
-            </span>
-        </MudNavLink>
-        <MudNavLink Href="Review/Subscriptions" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Subscriptions">
-            <span class="ft-nav__label">
-                Review subscriptions
-                @if (SubscriptionsToReview > 0)
-                {
-                    <span class="ft-nav__count" aria-label="@($"{SubscriptionsToReview} to review")">@SubscriptionsToReview</span>
-                }
-            </span>
-        </MudNavLink>
 
         <div class="ft-nav__heading">Insights</div>
+        <MudNavLink Href="NetWorth" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.ShowChart">Net worth</MudNavLink>
         <MudNavLink Href="Reports" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Insights">Reports</MudNavLink>
 
-        <div class="ft-nav__heading">Settings</div>
+        @* Only while there's something to review, or the user is on the page clearing the last of it *@
+        @if (ShowTransfersReview || ShowSubscriptionsReview)
+        {
+            <div class="ft-nav__heading">To review</div>
+            @if (ShowTransfersReview)
+            {
+                <MudNavLink Href="@TransfersReviewPath" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.FactCheck">
+                    <span class="ft-nav__label">
+                        Transfers
+                        @if (TransfersToReview > 0)
+                        {
+                            <span class="ft-nav__count" aria-label="@($"{TransfersToReview} to review")">@TransfersToReview</span>
+                        }
+                    </span>
+                </MudNavLink>
+            }
+            @if (ShowSubscriptionsReview)
+            {
+                <MudNavLink Href="@SubscriptionsReviewPath" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Subscriptions">
+                    <span class="ft-nav__label">
+                        Subscriptions
+                        @if (SubscriptionsToReview > 0)
+                        {
+                            <span class="ft-nav__count" aria-label="@($"{SubscriptionsToReview} to review")">@SubscriptionsToReview</span>
+                        }
+                    </span>
+                </MudNavLink>
+            }
+        }
+
+        <div class="ft-nav__heading">Manage</div>
         <MudNavLink Href="ProviderSetup" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.AccountTree">
             <span class="ft-nav__label">
                 Bank connections
@@ -51,7 +66,10 @@
         <MudNavLink Href="HouseholdMembers" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.People">Household</MudNavLink>
         <MudNavLink Href="Classifications" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Sell">Tags</MudNavLink>
         <MudNavLink Href="Rules" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Rule">Rules</MudNavLink>
+
+        @* Configuration, only admins have any so far *@
         <AuthorizeView Roles="@FinTrackRoles.Admin">
+            <div class="ft-nav__heading">Settings</div>
             <MudNavLink Href="Automation" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Schedule">Automation</MudNavLink>
         </AuthorizeView>
     </MudNavMenu>
@@ -60,12 +78,13 @@
 @code {
 
     /// <summary>
-    /// Shown beside the review link when there are any, see <see cref="ApplicationState.TransfersToReview"/>.
+    /// Shown beside the transfers review link, which only shows when there are any, see
+    /// <see cref="ApplicationState.TransfersToReview"/>.
     /// </summary>
     [Parameter] public int TransfersToReview { get; set; }
 
     /// <summary>
-    /// Shown beside the subscriptions review link when there are any, see
+    /// Shown beside the subscriptions review link, which only shows when there are any, see
     /// <see cref="ApplicationState.SubscriptionsToReview"/>.
     /// </summary>
     [Parameter] public int SubscriptionsToReview { get; set; }
@@ -75,6 +94,28 @@
     /// <see cref="ApplicationState.ConnectionsToRenew"/>.
     /// </summary>
     [Parameter] public int ConnectionsToRenew { get; set; }
+
+    internal const string TransfersReviewPath = "Review";
+    internal const string SubscriptionsReviewPath = "Review/Subscriptions";
+
+    private bool ShowTransfersReview => TransfersToReview > 0 || IsCurrentPage(TransfersReviewPath);
+
+    private bool ShowSubscriptionsReview => SubscriptionsToReview > 0 || IsCurrentPage(SubscriptionsReviewPath);
+
+    /// <summary>
+    /// Whether the user is on <paramref name="path"/>, ignoring case and any query.
+    /// </summary>
+    private bool IsCurrentPage(string path)
+    {
+        string current = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        int query = current.IndexOfAny(['?', '#']);
+        if (query >= 0)
+        {
+            current = current[..query];
+        }
+
+        return string.Equals(current.TrimEnd('/'), path, StringComparison.OrdinalIgnoreCase);
+    }
 
     protected override async Task OnInitializedAsync()
     {
