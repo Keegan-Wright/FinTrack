@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 
 namespace FinanceTracker.Tests.Unit.Client.Layout;
 
@@ -23,6 +24,7 @@ public class MainLayoutTests : ComponentTestBase
     private readonly ApplicationState _applicationState = new();
 
     private Func<Task>? _onSyncComplete;
+    private Func<Task>? _onSyncStarted;
 
     public MainLayoutTests()
     {
@@ -39,6 +41,9 @@ public class MainLayoutTests : ComponentTestBase
         SetRendererInfo(new RendererInfo("WebAssembly", isInteractive: true));
 
         _syncNotifications.SubscribeAsync(Arg.Do<Func<Task>>(x => _onSyncComplete = x), Arg.Any<CancellationToken>())
+            .Returns(Substitute.For<IDisposable>());
+        _syncNotifications.SubscribeToSyncStartsAsync(Arg.Do<Func<Task>>(x => _onSyncStarted = x),
+                Arg.Any<CancellationToken>())
             .Returns(Substitute.For<IDisposable>());
         GivenConnections();
     }
@@ -104,6 +109,28 @@ public class MainLayoutTests : ComponentTestBase
             await _automationService.Received(1).RequestSyncAsync(Arg.Any<CancellationToken>());
             await Assert.That(_applicationState.Syncing).IsTrue();
             await Assert.That(cut.Find(".ft-sync-status").TextContent).Contains("Syncing your accounts…");
+        }
+    }
+
+    [Test]
+    public async Task SyncNow_WhenItCantBeQueued_StopsShowingItSyncingAndSaysSo()
+    {
+        // Arrange
+        _automationService.GetLastSyncTimeAsync(Arg.Any<CancellationToken>()).Returns(LastSynced);
+        _automationService.RequestSyncAsync(Arg.Any<CancellationToken>())
+            .ThrowsAsync(new HttpRequestException("The server didn't answer"));
+        IRenderedComponent<MainLayout> cut = RenderLayout();
+
+        // Act
+        await cut.Find("[aria-label='Sync now']").ClickAsync(new());
+
+        // Assert
+        cut.WaitForState(() => cut.Markup.Contains("Couldn't start a sync, try again"));
+        using (Assert.Multiple())
+        {
+            await Assert.That(_applicationState.Syncing).IsFalse();
+            await Assert.That(cut.Find(".ft-sync-status").TextContent).Contains("Last synced");
+            await Assert.That(cut.FindAll("[aria-label='Sync now']")).Count().IsEqualTo(1);
         }
     }
 
@@ -182,6 +209,26 @@ public class MainLayoutTests : ComponentTestBase
 
         // Assert
         await Assert.That(cut.Find(".ft-nav__count").TextContent.Trim()).IsEqualTo("2");
+    }
+
+    [Test]
+    public async Task SyncStarted_OnItsScheduleOrElsewhere_ShowsItSyncingUntilItFinishes()
+    {
+        // Arrange
+        IRenderedComponent<MainLayout> cut = RenderLayout();
+        cut.WaitForState(() => _onSyncStarted is not null && _onSyncComplete is not null);
+
+        // Act
+        await cut.InvokeAsync(_onSyncStarted!);
+        bool syncing = cut.Markup.Contains("Syncing your accounts");
+        await cut.InvokeAsync(_onSyncComplete!);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(syncing).IsTrue();
+            await Assert.That(cut.Markup).DoesNotContain("Syncing your accounts");
+        }
     }
 
     [Test]

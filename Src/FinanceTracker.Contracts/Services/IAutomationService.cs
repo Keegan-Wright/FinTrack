@@ -18,7 +18,8 @@ public interface IAutomationService
     IAsyncEnumerable<AutomationCron> GetJobsAsync(CancellationToken cancellationToken);
 
     /// <summary>
-    /// How each background job is doing, every scheduled job, then any job that has only run by hand.
+    /// How each background job is doing, every scheduled job, then the jobs that only run by hand, like a user's sync
+    /// now, whether or not they've run yet.
     /// </summary>
     IAsyncEnumerable<AutomationJobSummary> GetJobSummariesAsync(CancellationToken cancellationToken);
 
@@ -34,18 +35,19 @@ public interface IAutomationService
     /// <summary>
     /// Queues a run of a scheduled job straight away, on top of its schedule. It shows in the job's runs as manual.
     /// </summary>
-    /// <param name="id">The job, see <see cref="AutomationCron.Id"/>.</param>
+    /// <param name="function">The job, see <see cref="AutomationCron.Function"/>.</param>
     /// <param name="cancellationToken">Stops the request.</param>
-    /// <exception cref="InvalidOperationException">No job has the id.</exception>
-    /// <exception cref="JobAlreadyRunningException">A run of the job is going or queued.</exception>
-    Task RunNowAsync(Guid id, CancellationToken cancellationToken);
+    /// <exception cref="InvalidOperationException">No scheduled job has the name.</exception>
+    /// <exception cref="JobAlreadyRunningException">A run of the job is going.</exception>
+    Task RunNowAsync(string function, CancellationToken cancellationToken);
 
     /// <summary>
     /// Changes a scheduled job's schedule, retries and whether it runs. Validate the request with
     /// <see cref="Validation.CronJobUpdateRequestValidator"/> first.
     /// </summary>
     /// <returns><see langword="true"/> once the job is updated.</returns>
-    /// <exception cref="InvalidOperationException">No job has the request's id.</exception>
+    /// <exception cref="InvalidOperationException">No scheduled job has the request's name.</exception>
+    /// <exception cref="ArgumentException">Quartz can't read the request's expression.</exception>
     Task<bool> UpdateJobSettingsAsync(UpdateCronJob request, CancellationToken cancellationToken);
 
     /// <summary>

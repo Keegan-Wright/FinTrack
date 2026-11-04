@@ -43,8 +43,8 @@
     <PackageVersion Include="OpenTelemetry.Resources.Process" Version="1.20.1-rc.1" />
     <PackageVersion Include="OpenTelemetry.Resources.ProcessRuntime" Version="1.20.1-beta.1" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.EntityFrameworkCore" Version="1.20.1-beta.1" />
-    <PackageVersion Include="NCrontab" Version="3.4.0" />
     <PackageVersion Include="NSubstitute" Version="6.2.0" />
+    <PackageVersion Include="Quartz" Version="4.7.1" />
     <PackageVersion Include="Testcontainers.PostgreSql" Version="4.16.0" />
 
     <PackageVersion Include="bunit" Version="2.13.3" />
@@ -59,10 +59,6 @@
     <PackageVersion Include="FluentValidation" Version="12.2.0" />
     <PackageVersion Include="MudBlazor" Version="9.12.0" />
     <PackageVersion Include="Extensions.MudBlazor.StaticInput" Version="4.1.0" />
-    <PackageVersion Include="TickerQ" Version="10.4.0" />
-    <PackageVersion Include="TickerQ.EntityFrameworkCore" Version="10.4.0" />
-    <PackageVersion Include="TickerQ.Instrumentation.OpenTelemetry" Version="10.4.0" />
-    <PackageVersion Include="TickerQ.Utilities" Version="10.4.0" />
 
     <PackageVersion Include="Bogus" Version="35.6.5"/>
 

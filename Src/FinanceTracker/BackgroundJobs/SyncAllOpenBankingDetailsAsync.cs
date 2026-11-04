@@ -1,18 +1,13 @@
 using FinanceTracker.Infrastructure;
 using Microsoft.EntityFrameworkCore;
-using TickerQ.Utilities.Base;
-using TickerQ.Utilities.Interfaces;
+using Quartz;
 
 namespace FinanceTracker.BackgroundJobs;
-
-
-// ReSharper disable once ClassNeverInstantiated.Global
-// Background job, ignore the warning
 
 /// <summary>
 /// Scheduled sync of every user's connections.
 /// </summary>
-public class SyncAllOpenBankingDetailsAsync : OpenBankingSyncJob, ITickerFunction
+public class SyncAllOpenBankingDetailsAsync : OpenBankingSyncJob, IJob
 {
     public SyncAllOpenBankingDetailsAsync(IServiceScopeFactory scopeFactory,
         IDbContextFactory<FinanceTrackerContext> dbContextFactory, ISyncNotifier syncNotifier,
@@ -21,21 +16,10 @@ public class SyncAllOpenBankingDetailsAsync : OpenBankingSyncJob, ITickerFunctio
     {
     }
 
-    public async Task ExecuteAsync(TickerFunctionContext context,
-        CancellationToken cancellationToken = new CancellationToken())
+    public async ValueTask Execute(IJobExecutionContext context, CancellationToken cancellationToken)
     {
-        context.CronOccurrenceOperations.SkipIfAlreadyRunning();
+        IReadOnlySet<Guid> syncedUsers = await SyncConnectionsAsync(static _ => true, cancellationToken);
 
-        await JobChangedAsync();
-        try
-        {
-            IReadOnlySet<Guid> syncedUsers = await SyncConnectionsAsync(static _ => true, cancellationToken);
-
-            await NotifyAsync(syncedUsers);
-        }
-        finally
-        {
-            await JobChangedAsync();
-        }
+        await NotifyAsync(syncedUsers);
     }
 }

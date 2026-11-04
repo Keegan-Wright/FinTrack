@@ -101,7 +101,7 @@
     private bool AnyRunning => Jobs?.Any(static x => x.LastRun?.Status is AutomationRunStatus.Running
         or AutomationRunStatus.Retrying) == true;
 
-    // A job says it's finished just before TickerQ saves how it went, so a running job is checked on until it's done
+    // A running job is checked on until it's done, so a missed message doesn't leave it reading as running
     private async Task CheckWhileRunningAsync()
     {
         using PeriodicTimer timer = new(RunningCheckInterval, TimeProvider);
@@ -177,7 +177,7 @@
 
         try
         {
-            await AutomationService.RunNowAsync(job.Schedule!.Id, _cts.Token);
+            await AutomationService.RunNowAsync(job.Function, _cts.Token);
             Snackbar.Add($"{name} queued", Severity.Success);
             _showingRuns.Add(job.Function);
         }
@@ -197,7 +197,7 @@
     {
         var dialogParameters = new DialogParameters<ModifyCronDialog>
         {
-            { x => x.CronId, job.Id },
+            { x => x.Function, job.Function },
             { x => x.Description, job.Description },
             { x => x.Expression, job.Expression },
             { x => x.Retries, job.Retries },

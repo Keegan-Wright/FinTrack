@@ -121,8 +121,7 @@ public class AutomationTextTests
         AutomationCron? schedule = null;
         if (scheduled)
         {
-            schedule = new AutomationCron(Guid.NewGuid(), function, $"{function} description", "0 */15 * * * *", 2,
-                [30, 60], enabled);
+            schedule = new AutomationCron(function, $"{function} description", "0 */15 * * * ?", 2, [30, 60], enabled);
         }
 
         return new AutomationJobSummary(function, schedule, nextRunAt, lastRun, successRate, recentRuns);
@@ -131,5 +130,5 @@ public class AutomationTextTests
     internal static AutomationRun Run(AutomationRunStatus status, DateTime dueAt, string function = SyncFunction,
         bool isManual = false, DateTime? startedAt = null, TimeSpan? duration = null, int retryCount = 0,
         string? error = null) =>
-        new(Guid.NewGuid(), function, status, isManual, dueAt, startedAt, duration, retryCount, error);
+        new(Guid.NewGuid().ToString(), function, status, isManual, dueAt, startedAt, duration, retryCount, error);
 }

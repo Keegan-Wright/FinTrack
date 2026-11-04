@@ -3,9 +3,10 @@ using FinanceTracker.Contracts.Automation;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Tests.Integration.Http;
+using Microsoft.EntityFrameworkCore;
+using FinanceTracker.Infrastructure;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using FinanceTracker.Tests.Unit.Shared;
-using TickerQ.Utilities.Enums;
 
 namespace FinanceTracker.Tests.Integration.Api;
 
@@ -25,17 +26,17 @@ public class AutomationApiTests : IntegrationTestBase
         // Act
         await service.UpdateJobSettingsAsync(new UpdateCronJob
         {
-            Id = job.Id,
+            Function = job.Function,
             Description = description,
             Expression = job.Expression,
             Retries = job.Retries,
-            RetryIntervals = job.RetryIntervals ?? [],
+            RetryIntervals = job.RetryIntervals,
             IsEnabled = job.IsEnabled
         }, CancellationToken);
 
         // Assert
         List<AutomationCron> jobs = await service.GetJobsAsync(CancellationToken).ToListAsync(CancellationToken);
-        await Assert.That(jobs.Single(x => x.Id == job.Id).Description).IsEqualTo(description);
+        await Assert.That(jobs.Single(x => x.Function == job.Function).Description).IsEqualTo(description);
     }
 
     [Test]
@@ -46,20 +47,20 @@ public class AutomationApiTests : IntegrationTestBase
         IAutomationService service = ApiFor(admin).Get<IAutomationService>();
         AutomationCron job = (await service.GetJobsAsync(CancellationToken).ToListAsync(CancellationToken)).First();
 
-        // Act & Assert, a real job's valid settings under an id no job has
+        // Act & Assert, a real job's valid settings under a name no job has
         await Assert.ThrowsAsync<InvalidOperationException>(() => service.UpdateJobSettingsAsync(new UpdateCronJob
         {
-            Id = Guid.NewGuid(),
+            Function = UniqueName("job"),
             Description = job.Description,
             Expression = job.Expression,
             Retries = job.Retries,
-            RetryIntervals = job.RetryIntervals ?? [],
+            RetryIntervals = job.RetryIntervals,
             IsEnabled = job.IsEnabled
         }, CancellationToken));
     }
 
     [Test]
-    public async Task GetJobSummaries_AsAnAdmin_ListsEveryScheduledJob()
+    public async Task GetJobSummaries_AsAnAdmin_ListsEveryJob()
     {
         // Arrange
         SignedInUser admin = await RegisterAdminAsync();
@@ -71,29 +72,59 @@ public class AutomationApiTests : IntegrationTestBase
 
         // Assert, the app's own jobs, other tests add theirs alongside
         List<string> scheduled = summaries.Where(x => x.Schedule is not null).Select(x => x.Function).ToList();
-        await Assert.That(scheduled).Contains("SyncAllOpenBankingDetailsAsync")
-            .And.Contains("MonitorOpenBankingTokenExpirationAsync")
-            .And.Contains(MoveGoalsFunction);
+        using (Assert.Multiple())
+        {
+            await Assert.That(scheduled).Contains("SyncAllOpenBankingDetailsAsync")
+                .And.Contains("MonitorOpenBankingTokenExpirationAsync")
+                .And.Contains(MoveGoalsFunction);
+
+            // A user's sync now has no schedule, it's listed whether or not anyone has asked for one yet
+            await Assert.That(summaries.Single(x => x.Function == "SyncUserOpenBankingDetailsAsync").Schedule)
+                .IsNull();
+        }
     }
 
     [Test]
-    public async Task GetRuns_AsAnAdmin_GivesAPageOfTheJobsRuns()
+    public async Task GetJobs_EachJobStartsOnItsScheduleInQuartzsCron_AndTickerQsTablesAreGone()
     {
         // Arrange
         SignedInUser admin = await RegisterAdminAsync();
         IAutomationService service = ApiFor(admin).Get<IAutomationService>();
-        string function = UniqueName("job");
-        await Scenario.Do(s => s.AutomationScenario.WithTimeTicker(function, TickerStatus.Done, DateTime.UtcNow));
 
         // Act
-        AutomationRunPage page = await service.GetRunsAsync(function, page: 0, pageSize: 25, CancellationToken);
+        List<AutomationCron> jobs = await service.GetJobsAsync(CancellationToken).ToListAsync(CancellationToken);
+
+        // Assert
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        bool tickerQLeft = await context.Database.SqlQueryRaw<bool>(
+                "SELECT EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'ticker') AS \"Value\"")
+            .SingleAsync(CancellationToken);
+        using (Assert.Multiple())
+        {
+            await Assert.That(jobs.Single(x => x.Function == "SyncAllOpenBankingDetailsAsync").Expression)
+                .IsEqualTo("0 0 */4 * * ?");
+            await Assert.That(jobs.Single(x => x.Function == MoveGoalsFunction).RetryIntervals)
+                .IsEquivalentTo([10], TUnit.Assertions.Enums.CollectionOrdering.Matching);
+            await Assert.That(tickerQLeft).IsFalse();
+        }
+    }
+
+    [Test]
+    public async Task GetRuns_ForAJobThatHasntRun_IsAnEmptyPage()
+    {
+        // Arrange
+        SignedInUser admin = await RegisterAdminAsync();
+        IAutomationService service = ApiFor(admin).Get<IAutomationService>();
+
+        // Act
+        AutomationRunPage page = await service.GetRunsAsync(UniqueName("job"), page: 0, pageSize: 25,
+            CancellationToken);
 
         // Assert
         using (Assert.Multiple())
         {
-            await Assert.That(page.Total).IsEqualTo(1);
-            await Assert.That(page.Runs.Single().IsManual).IsTrue();
-            await Assert.That(page.Runs.Single().Status).IsEqualTo(AutomationRunStatus.Done);
+            await Assert.That(page.Total).IsEqualTo(0);
+            await Assert.That(page.Runs).IsEmpty();
         }
     }
 
@@ -136,28 +167,12 @@ public class AutomationApiTests : IntegrationTestBase
         }, CancellationToken);
 
         // Act
-        await service.RunNowAsync(job.Id, CancellationToken);
+        await service.RunNowAsync(job.Function, CancellationToken);
 
-        // Assert, told as it starts and as it finishes, then TickerQ records the run as done
+        // Assert, told as it starts and as it finishes, with the run saved as done
         await finished.Task.WaitAsync(TestTimeouts.Job, CancellationToken);
         AutomationRun run = await WaitForManualRunAsync(service, MoveGoalsFunction);
         await Assert.That(run.Status).IsEqualTo(AutomationRunStatus.Done);
-    }
-
-    [Test]
-    public async Task RunNow_WhileTheJobRuns_IsAConflict()
-    {
-        // Arrange, a paused job of its own with a run going
-        SignedInUser admin = await RegisterAdminAsync();
-        IAutomationService service = ApiFor(admin).Get<IAutomationService>();
-        string function = UniqueName("Job");
-        await Scenario.Do(s => s.AutomationScenario.WithCronJob(function, function, cron => cron.IsEnabled = false))
-            .Do(s => s.AutomationScenario.WithTimeTicker(function, TickerStatus.InProgress, DateTime.UtcNow));
-
-        // Act & Assert
-        JobAlreadyRunningException? exception = await Assert.ThrowsAsync<JobAlreadyRunningException>(() =>
-            service.RunNowAsync(Scenario.CronTickerMappings[function], CancellationToken));
-        await Assert.That(exception!.Function).IsEqualTo(function);
     }
 
     [Test]
@@ -168,7 +183,7 @@ public class AutomationApiTests : IntegrationTestBase
         IAutomationService service = ApiFor(admin).Get<IAutomationService>();
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => service.RunNowAsync(Guid.NewGuid(), CancellationToken));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.RunNowAsync(UniqueName("job"), CancellationToken));
     }
 
     [Test]
@@ -215,7 +230,48 @@ public class AutomationApiTests : IntegrationTestBase
         await Assert.That(synced.Task.IsCompletedSuccessfully).IsTrue();
     }
 
-    // TickerQ saves how a run went just after the job says it's finished
+    [Test]
+    // A sync of every user's banks would reach this user's too, so not while those tests run
+    [NotInParallel(nameof(OpenBanking.BackgroundSyncTests))]
+    public async Task RequestSync_ForAUserWithABank_TellsTheirBrowserItStartedThenFinished()
+    {
+        // Arrange
+        SignedInUser user = await RegisterUserAsync();
+        await Scenario.Do(s => s.BankConnectionScenario.WithConnection("bank", user.Username));
+        ApiSession api = ApiFor(user);
+        ISyncNotifications notifications = api.Get<ISyncNotifications>();
+        List<string> heard = [];
+        TaskCompletionSource synced = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        using IDisposable started = await notifications.SubscribeToSyncStartsAsync(() =>
+        {
+            lock (heard)
+            {
+                heard.Add("started");
+            }
+
+            return Task.CompletedTask;
+        }, CancellationToken);
+        using IDisposable finished = await notifications.SubscribeAsync(() =>
+        {
+            lock (heard)
+            {
+                heard.Add("finished");
+            }
+
+            synced.TrySetResult();
+            return Task.CompletedTask;
+        }, CancellationToken);
+
+        // Act
+        await api.Get<IAutomationService>().RequestSyncAsync(CancellationToken);
+
+        // Assert
+        await synced.Task.WaitAsync(TestTimeouts.Job, CancellationToken);
+        await Assert.That(heard).IsEquivalentTo(["started", "finished"],
+            TUnit.Assertions.Enums.CollectionOrdering.Matching);
+    }
+
+    // The run is looked for by its status, any earlier run of the job may be on the page too
     private async Task<AutomationRun> WaitForManualRunAsync(IAutomationService service, string function)
     {
         using CancellationTokenSource timeout = CancellationTokenSource.CreateLinkedTokenSource(CancellationToken);

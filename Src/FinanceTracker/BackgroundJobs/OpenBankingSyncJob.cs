@@ -15,7 +15,7 @@ namespace FinanceTracker.BackgroundJobs;
 
 /// <summary>
 /// Syncs a set of connections, each as its owner, updates each owner's balance snapshots for the day, applies their
-/// rules and matches their transfers, then tells those owners the sync has finished.
+/// rules and matches their transfers. Tells those owners as the sync starts and once it has finished.
 /// </summary>
 public abstract class OpenBankingSyncJob
 {
@@ -60,6 +60,13 @@ public abstract class OpenBankingSyncJob
             }
         }
 
+        // Every owner's browsers show it syncing, whoever asked or if it's the schedule
+        HashSet<Guid> owners = toSync.Select(static x => x.UserId).ToHashSet();
+        foreach (Guid owner in owners)
+        {
+            await _syncNotifier.NotifyStartedAsync(owner);
+        }
+
         foreach ((Guid connectionId, Guid userId) in toSync)
         {
             performingBackgroundSyncActivity?.AddEvent(
@@ -83,8 +90,6 @@ public abstract class OpenBankingSyncJob
                 performingBackgroundSyncActivity?.AddException(ex);
             }
         }
-
-        HashSet<Guid> owners = toSync.Select(static x => x.UserId).ToHashSet();
 
         foreach (Guid userId in owners)
         {
@@ -138,11 +143,6 @@ public abstract class OpenBankingSyncJob
             activity?.AddException(ex);
         }
     }
-
-    /// <summary>
-    /// Tells admins browsers this job has started or finished, see <see cref="ISyncNotifier.JobChangedAsync"/>.
-    /// </summary>
-    protected Task JobChangedAsync() => _syncNotifier.JobChangedAsync(GetType().Name);
 
     protected async Task NotifyAsync(IEnumerable<Guid> userIds)
     {

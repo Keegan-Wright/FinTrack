@@ -66,7 +66,7 @@
     public const int PageSize = 25;
 
     private readonly CancellationTokenSource _cts = new();
-    private readonly HashSet<Guid> _open = [];
+    private readonly HashSet<string> _open = new(StringComparer.Ordinal);
     private AutomationRunPage? _page;
     private int _pageIndex;
     private bool _loading;
@@ -148,7 +148,7 @@
         StateHasChanged();
     }
 
-    private void Toggle(Guid runId)
+    private void Toggle(string runId)
     {
         if (!_open.Remove(runId))
         {

@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-using System.Runtime.ExceptionServices;
 using FinanceTracker.Contracts.Automation;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Generated.Attributes;
@@ -7,80 +6,69 @@ using FinanceTracker.Generated.Enums;
 using FinanceTracker.Infrastructure.OpenBanking;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using TickerQ.Utilities.Entities;
-using TickerQ.Utilities.Enums;
-using TickerQ.Utilities.Interfaces.Managers;
-using TickerQ.Utilities.Models;
+using Quartz;
+using Quartz.Extensibility;
 
 namespace FinanceTracker.Infrastructure.Automation;
 
+/// <summary>
+/// The background jobs as Quartz keeps them each job's schedule is its cron trigger, see <see cref="JobSchedules"/>,
+/// and its runs are Quartz's execution history.
+/// </summary>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<IAutomationService>]
-public class AutomationService :  ServiceBase<AutomationService>, IAutomationService
+public class AutomationService : ServiceBase<AutomationService>, IAutomationService
 {
-    // Runs that count towards a job's success rate, and runs that have started
-    private static readonly TickerStatus[] Finished = [TickerStatus.Done, TickerStatus.DueDone, TickerStatus.Failed];
+    // Enough of the newest runs to find the success rate's finished ones among retries
+    private const int SuccessRateLookBack = AutomationJobSummary.SuccessRateRuns * 3;
 
-    private static readonly TickerStatus[] Started =
-    [
-        TickerStatus.InProgress, TickerStatus.Done, TickerStatus.DueDone, TickerStatus.Failed, TickerStatus.Cancelled,
-        TickerStatus.Skipped
-    ];
-
-    // A run started by hand is busy from being asked for until it finishes
-    private static readonly TickerStatus[] ManualBusy = [TickerStatus.Idle, TickerStatus.Queued, TickerStatus.InProgress];
-
-    private readonly ICronTickerManager<CronTickerEntity> _cronTickerManager;
-    private readonly ITimeTickerManager<TimeTickerEntity> _timeTickerManager;
+    private readonly ISchedulerFactory _schedulerFactory;
+    private readonly IExecutionHistoryStore _history;
     private readonly IOpenBankingSyncScheduler _syncScheduler;
     private readonly TimeProvider _timeProvider;
 
     public AutomationService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<AutomationService> logger,
-        ICronTickerManager<CronTickerEntity> cronTickerManager, ITimeTickerManager<TimeTickerEntity> timeTickerManager,
-        IOpenBankingSyncScheduler syncScheduler, TimeProvider timeProvider)
+        ISchedulerFactory schedulerFactory, IExecutionHistoryStore history, IOpenBankingSyncScheduler syncScheduler,
+        TimeProvider timeProvider)
         : base(currentUser, financeTrackerContextFactory, logger)
     {
-        _cronTickerManager = cronTickerManager;
-        _timeTickerManager = timeTickerManager;
+        _schedulerFactory = schedulerFactory;
+        _history = history;
         _syncScheduler = syncScheduler;
         _timeProvider = timeProvider;
     }
 
-    public async IAsyncEnumerable<AutomationCron> GetJobsAsync([EnumeratorCancellation] CancellationToken cancellationToken)
+    public async IAsyncEnumerable<AutomationCron> GetJobsAsync(
+        [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        await using FinanceTrackerContext context = await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
-        await foreach (CronTickerEntity? cron in context.CronTickerEntities.AsAsyncEnumerable().WithCancellation(cancellationToken))
+        IScheduler scheduler = await _schedulerFactory.GetScheduler(cancellationToken);
+        foreach (ICronTrigger schedule in await SchedulesAsync(scheduler, cancellationToken))
         {
-            yield return ToCron(cron);
+            yield return await ToCronAsync(scheduler, schedule, cancellationToken);
         }
     }
 
     public async IAsyncEnumerable<AutomationJobSummary> GetJobSummariesAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        await using FinanceTrackerContext context = await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+        IScheduler scheduler = await _schedulerFactory.GetScheduler(cancellationToken);
+        List<ICronTrigger> schedules = await SchedulesAsync(scheduler, cancellationToken);
 
-        List<CronTickerEntity> crons = await context.CronTickerEntities.AsNoTracking()
-            .OrderBy(x => x.Function)
-            .ToListAsync(cancellationToken);
-
-        foreach (CronTickerEntity cron in crons)
+        foreach (ICronTrigger schedule in schedules)
         {
-            yield return await SummariseAsync(context, cron.Function, cron, cancellationToken);
+            AutomationCron cron = await ToCronAsync(scheduler, schedule, cancellationToken);
+            yield return await SummariseAsync(scheduler, schedule.JobKey, cron, schedule, cancellationToken);
         }
 
-        // Jobs with no schedule, like a user's sync now
-        List<string> manualOnly = await context.TimeTickerEntities.AsNoTracking()
-            .Where(x => !context.CronTickerEntities.Any(cron => cron.Function == x.Function))
-            .Select(x => x.Function)
-            .Distinct()
-            .OrderBy(x => x)
-            .ToListAsync(cancellationToken);
-
-        foreach (string function in manualOnly)
+        // Jobs with no schedule, like a user's sync now, whether or not they've run yet
+        HashSet<JobKey> scheduled = schedules.Select(static x => x.JobKey).ToHashSet();
+        List<JobKey> jobs = await scheduler.GetJobKeys(GroupMatcher<JobKey>.AnyGroup(), cancellationToken);
+        IEnumerable<JobKey> unscheduled = jobs.Where(x => !scheduled.Contains(x))
+            .OrderBy(static x => x.Name, StringComparer.Ordinal);
+        foreach (JobKey job in unscheduled)
         {
-            yield return await SummariseAsync(context, function, cron: null, cancellationToken);
+            yield return await SummariseAsync(scheduler, job, cron: null, schedule: null, cancellationToken);
         }
     }
 
@@ -91,21 +79,28 @@ public class AutomationService :  ServiceBase<AutomationService>, IAutomationSer
         ArgumentOutOfRangeException.ThrowIfLessThan(pageSize, 1);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(pageSize, IAutomationService.MaxRunsPageSize);
 
-        await using FinanceTrackerContext context = await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
-
-        Guid? cronId = await context.CronTickerEntities.AsNoTracking()
-            .Where(x => x.Function == function)
-            .Select(x => (Guid?)x.Id)
-            .FirstOrDefaultAsync(cancellationToken);
-
-        List<AutomationRun> runs = await LatestRunsAsync(context, function, cronId, statuses: null, page * pageSize,
-            pageSize, cancellationToken);
-
-        int total = await context.TimeTickerEntities.CountAsync(x => x.Function == function, cancellationToken);
-        if (cronId is not null)
+        IScheduler scheduler = await _schedulerFactory.GetScheduler(cancellationToken);
+        JobKey job = new(function);
+        PagedResult<ExecutionHistoryEntry> history = await _history.QueryExecutions(new ExecutionHistoryQuery
         {
-            total += await context.CronTickerOccurrenceEntities.CountAsync(x => x.CronTickerId == cronId,
-                cancellationToken);
+            SchedulerName = scheduler.SchedulerName,
+            Job = job,
+            Skip = page * pageSize,
+            Take = pageSize,
+            IncludeTotalCount = true
+        }, cancellationToken);
+
+        List<AutomationRun> runs = history.Items.Select(ToRun).ToList();
+        int total = history.TotalCount ?? runs.Count;
+
+        // A run that's going isn't in the history until it finishes
+        if (await RunningAsync(scheduler, job, cancellationToken) is { } running)
+        {
+            total++;
+            if (page == 0)
+            {
+                runs.Insert(0, running);
+            }
         }
 
         return new AutomationRunPage(runs, total);
@@ -113,54 +108,51 @@ public class AutomationService :  ServiceBase<AutomationService>, IAutomationSer
 
     public async Task<bool> UpdateJobSettingsAsync(UpdateCronJob request, CancellationToken cancellationToken)
     {
-        await using FinanceTrackerContext context = await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
-        CronTickerEntity cron = await context.CronTickerEntities.FirstAsync(x => x.Id == request.Id, cancellationToken);
+        ArgumentNullException.ThrowIfNull(request);
+        if (!JobSchedules.IsReadable(request.Expression))
+        {
+            throw new ArgumentException($"Quartz can't read the cron expression {request.Expression}",
+                nameof(request));
+        }
 
-        cron.Description = request.Description;
-        cron.RetryIntervals = request.RetryIntervals;
-        cron.Retries = request.Retries;
-        cron.Expression = request.Expression;
-        cron.IsEnabled = request.IsEnabled;
-        await _cronTickerManager.UpdateAsync(cron, cancellationToken);
+        IScheduler scheduler = await _schedulerFactory.GetScheduler(cancellationToken);
+        TriggerKey key = JobSchedules.KeyFor(request.Function);
+        if (await scheduler.GetTrigger(key, cancellationToken) is null)
+        {
+            throw new InvalidOperationException($"{request.Function} has no schedule");
+        }
+
+        ITrigger schedule = JobSchedules.Build(request.Function, request.Description, request.Expression,
+            request.Retries, request.RetryIntervals);
+        await scheduler.RescheduleJob(key, schedule, cancellationToken);
+
+        if (request.IsEnabled)
+        {
+            await scheduler.ResumeTrigger(key, cancellationToken);
+        }
+        else
+        {
+            await scheduler.PauseTrigger(key, cancellationToken);
+        }
 
         return true;
     }
 
-    public async Task RunNowAsync(Guid id, CancellationToken cancellationToken)
+    public async Task RunNowAsync(string function, CancellationToken cancellationToken)
     {
-        await using FinanceTrackerContext context = await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
-        CronTickerEntity cron = await context.CronTickerEntities.AsNoTracking()
-            .FirstAsync(x => x.Id == id, cancellationToken);
-
-        // TickerQ lines up and queues the next scheduled run well before it's due, so a queued one only counts
-        // once it's due
-        DateTime now = _timeProvider.UtcNow;
-        bool scheduledRunBusy = await context.CronTickerOccurrenceEntities
-            .AnyAsync(x => x.CronTickerId == id &&
-                           (x.Status == TickerStatus.InProgress ||
-                            (x.Status == TickerStatus.Queued && x.ExecutionTime <= now)), cancellationToken);
-        bool manualRunBusy = await context.TimeTickerEntities
-            .AnyAsync(x => x.Function == cron.Function && ManualBusy.Contains(x.Status), cancellationToken);
-        if (scheduledRunBusy || manualRunBusy)
+        IScheduler scheduler = await _schedulerFactory.GetScheduler(cancellationToken);
+        if (await scheduler.GetTrigger(JobSchedules.KeyFor(function), cancellationToken) is null)
         {
-            throw new JobAlreadyRunningException(cron.Function);
+            throw new InvalidOperationException($"{function} has no schedule");
         }
 
-        // Retried like a scheduled run of the job
-        TickerResult<TimeTickerEntity> queued = await _timeTickerManager.AddAsync(new TimeTickerEntity
+        JobKey job = new(function);
+        if (await RunningAsync(scheduler, job, cancellationToken) is not null)
         {
-            Id = Guid.NewGuid(),
-            Function = cron.Function,
-            Description = "Run now",
-            ExecutionTime = now,
-            Retries = cron.Retries,
-            RetryIntervals = cron.RetryIntervals
-        }, cancellationToken);
-
-        if (queued is { IsSucceeded: false, Exception: { } failure })
-        {
-            ExceptionDispatchInfo.Throw(failure);
+            throw new JobAlreadyRunningException(function);
         }
+
+        await scheduler.TriggerJob(job, null, cancellationToken);
     }
 
     public async Task<DateTime?> GetLastSyncTimeAsync(CancellationToken cancellationToken)
@@ -174,94 +166,125 @@ public class AutomationService :  ServiceBase<AutomationService>, IAutomationSer
         return lastSync?.ToLocalTime();
     }
 
-    private async Task<AutomationJobSummary> SummariseAsync(FinanceTrackerContext context, string function,
-        CronTickerEntity? cron, CancellationToken cancellationToken)
+    private async Task<AutomationJobSummary> SummariseAsync(IScheduler scheduler, JobKey job, AutomationCron? cron,
+        ICronTrigger? schedule, CancellationToken cancellationToken)
     {
-        List<AutomationRun> lastStarted = await LatestRunsAsync(context, function, cron?.Id, Started, skip: 0, take: 1,
-            cancellationToken);
-        List<AutomationRun> finished = await LatestRunsAsync(context, function, cron?.Id, Finished, skip: 0,
-            AutomationJobSummary.SuccessRateRuns, cancellationToken);
+        PagedResult<ExecutionHistoryEntry> latest = await _history.QueryExecutions(new ExecutionHistoryQuery
+        {
+            SchedulerName = scheduler.SchedulerName,
+            Job = job,
+            Take = SuccessRateLookBack
+        }, cancellationToken);
+
+        // A failure that's being retried isn't finished, its retry says how it went
+        List<ExecutionHistoryEntry> finished = latest.Items
+            .Where(static x => !x.RetryScheduled &&
+                               x.EffectiveResult is JobRunResult.Succeeded or JobRunResult.Failed)
+            .Take(AutomationJobSummary.SuccessRateRuns)
+            .ToList();
 
         int? successRate = null;
         if (finished.Count > 0)
         {
-            int succeeded = finished.Count(x => x.Status == AutomationRunStatus.Done);
+            int succeeded = finished.Count(static x => x.Succeeded);
             successRate = (int)Math.Round(100d * succeeded / finished.Count);
         }
 
-        AutomationCron? schedule = cron is null ? null : ToCron(cron);
-        return new AutomationJobSummary(function, schedule, NextRunAt(cron), lastStarted.FirstOrDefault(),
-            successRate, finished.Count);
+        AutomationRun? lastRun = await RunningAsync(scheduler, job, cancellationToken);
+        if (lastRun is null && latest.Items.Count > 0)
+        {
+            lastRun = ToRun(latest.Items[0]);
+        }
+
+        return new AutomationJobSummary(job.Name, cron, NextRunAt(cron, schedule), lastRun, successRate,
+            finished.Count);
     }
 
-    // A paused job, or one TickerQ has paused itself, won't run on its schedule
-    private DateTime? NextRunAt(CronTickerEntity? cron)
+    // A paused job won't run on its schedule
+    private DateTime? NextRunAt(AutomationCron? cron, ICronTrigger? schedule)
     {
-        if (cron is null || !cron.IsEnabled || cron.IsSystemPaused)
+        if (cron is not { IsEnabled: true } || schedule?.NextFireTimeUtc is not { } next)
         {
             return null;
         }
 
-        DateTime? next = CronSchedule.NextAfter(cron.Expression, _timeProvider.UtcNow);
-        if (next is null)
-        {
-            return null;
-        }
-
-        return _timeProvider.ToLocal(next.Value);
+        return _timeProvider.ToLocal(next.UtcDateTime);
     }
 
     /// <summary>
-    /// The newest runs of <paramref name="function"/>, from its schedule's occurrences and the times it was run by
-    /// hand, merged by when each was due.
+    /// The run of <paramref name="job"/> going now, from its schedule or by hand, null when none is.
     /// </summary>
-    /// <param name="statuses">Only runs in one of these, or <see langword="null"/> for any.</param>
-    private async Task<List<AutomationRun>> LatestRunsAsync(FinanceTrackerContext context, string function,
-        Guid? cronId, TickerStatus[]? statuses, int skip, int take, CancellationToken cancellationToken)
+    private async Task<AutomationRun?> RunningAsync(IScheduler scheduler, JobKey job,
+        CancellationToken cancellationToken)
     {
-        // Either source could hold the whole page, so each gives up to everything before and on it
-        int upTo = skip + take;
-        List<AutomationRun> runs = [];
-
-        if (cronId is not null)
+        foreach (ITrigger trigger in await scheduler.GetTriggersOfJob(job, cancellationToken))
         {
-            IQueryable<CronTickerOccurrenceEntity<CronTickerEntity>> occurrences = context.CronTickerOccurrenceEntities
-                .AsNoTracking()
-                .Where(x => x.CronTickerId == cronId);
-            if (statuses is not null)
+            if (await scheduler.GetTriggerState(trigger.Key, cancellationToken) != TriggerState.Executing)
             {
-                occurrences = occurrences.Where(x => statuses.Contains(x.Status));
+                continue;
             }
 
-            List<CronTickerOccurrenceEntity<CronTickerEntity>> scheduled = await occurrences
-                .OrderByDescending(x => x.ExecutionTime)
-                .Take(upTo)
-                .ToListAsync(cancellationToken);
-            runs.AddRange(scheduled.Select(x => x.ToRun(function, _timeProvider)));
+            DateTime startedAt = (trigger.PreviousFireTimeUtc ?? _timeProvider.GetUtcNow()).UtcDateTime;
+            AutomationRunStatus status = AutomationRunStatus.Running;
+            if (trigger.RetryAttempt > 0)
+            {
+                status = AutomationRunStatus.Retrying;
+            }
+
+            bool manual = trigger.Key.Group != JobNames.ScheduleGroup;
+            return new AutomationRun(trigger.Key.ToString(), job.Name, status, manual,
+                _timeProvider.ToLocal(startedAt), _timeProvider.ToLocal(startedAt), null, trigger.RetryAttempt,
+                null);
         }
 
-        IQueryable<TimeTickerEntity> tickers = context.TimeTickerEntities.AsNoTracking()
-            .Where(x => x.Function == function);
-        if (statuses is not null)
-        {
-            tickers = tickers.Where(x => statuses.Contains(x.Status));
-        }
-
-        List<TimeTickerEntity> manual = await tickers
-            .OrderByDescending(x => x.ExecutionTime ?? x.CreatedAt)
-            .Take(upTo)
-            .ToListAsync(cancellationToken);
-        runs.AddRange(manual.Select(x => x.ToRun(_timeProvider)));
-
-        return runs.OrderByDescending(x => x.DueAt)
-            .Skip(skip)
-            .Take(take)
-            .ToList();
+        return null;
     }
 
-    private static AutomationCron ToCron(CronTickerEntity cron) =>
-        new(cron.Id, cron.Function, cron.Description, cron.Expression, cron.Retries, cron.RetryIntervals,
-            cron.IsEnabled);
+    private AutomationRun ToRun(ExecutionHistoryEntry entry)
+    {
+        DateTime firedAt = _timeProvider.ToLocal(entry.FiredAtUtc.UtcDateTime);
+        return new AutomationRun(entry.EntryId ?? entry.FireInstanceId ?? firedAt.ToString("O"), entry.JobName,
+            StatusOf(entry), entry.Manual, firedAt, firedAt, entry.Duration, entry.RetryAttempt,
+            entry.ExceptionMessage);
+    }
+
+    private static AutomationRunStatus StatusOf(ExecutionHistoryEntry entry) => entry.EffectiveResult switch
+    {
+        JobRunResult.Succeeded => AutomationRunStatus.Done,
+        JobRunResult.Skipped => AutomationRunStatus.Skipped,
+        JobRunResult.Cancelled => AutomationRunStatus.Cancelled,
+        _ when entry.RetryScheduled => AutomationRunStatus.Retrying,
+        _ => AutomationRunStatus.Failed
+    };
+
+    private static async Task<List<ICronTrigger>> SchedulesAsync(IScheduler scheduler,
+        CancellationToken cancellationToken)
+    {
+        List<TriggerKey> keys = await scheduler.GetTriggerKeys(
+            GroupMatcher<TriggerKey>.GroupEquals(JobNames.ScheduleGroup), cancellationToken);
+
+        List<ICronTrigger> schedules = [];
+        foreach (TriggerKey key in keys.OrderBy(static x => x.Name, StringComparer.Ordinal))
+        {
+            if (await scheduler.GetTrigger(key, cancellationToken) is ICronTrigger schedule)
+            {
+                schedules.Add(schedule);
+            }
+        }
+
+        return schedules;
+    }
+
+    private static async Task<AutomationCron> ToCronAsync(IScheduler scheduler, ICronTrigger schedule,
+        CancellationToken cancellationToken)
+    {
+        TriggerState state = await scheduler.GetTriggerState(schedule.Key, cancellationToken);
+        int[] retryIntervals = JobSchedules.RetryIntervals(schedule.RetryPolicy);
+
+        return new AutomationCron(schedule.JobKey.Name, schedule.Description ?? schedule.JobKey.Name,
+            schedule.CronExpressionString ?? string.Empty, retryIntervals.Length, retryIntervals,
+            state != TriggerState.Paused);
+    }
 
     // The user comes from the scope, never the page, so nobody can queue a sync of someone else's connections
     public Task RequestSyncAsync(CancellationToken cancellationToken) =>

@@ -3,8 +3,7 @@ using FinanceTracker.Domain.Calendar;
 using FinanceTracker.Domain.SavingsGoals;
 using FinanceTracker.Infrastructure;
 using Microsoft.EntityFrameworkCore;
-using TickerQ.Utilities.Base;
-using TickerQ.Utilities.Interfaces;
+using Quartz;
 
 namespace FinanceTracker.BackgroundJobs;
 
@@ -12,37 +11,20 @@ namespace FinanceTracker.BackgroundJobs;
 /// Moves on the savings goal of each yearly event that rolls its goal on, once the day it was saving for has
 /// passed, see <see cref="CalendarEvent.MoveGoalOn"/>.
 /// </summary>
-// ReSharper disable once ClassNeverInstantiated.Global
-// Background job, ignore the warning
-public class MoveEventSavingsGoalsOnAsync : ITickerFunction
+public class MoveEventSavingsGoalsOnAsync : IJob
 {
     private readonly IDbContextFactory<FinanceTrackerContext> _dbContextFactory;
-    private readonly ISyncNotifier _syncNotifier;
     private readonly TimeProvider _timeProvider;
 
     public MoveEventSavingsGoalsOnAsync(IDbContextFactory<FinanceTrackerContext> dbContextFactory,
-        ISyncNotifier syncNotifier, TimeProvider timeProvider)
+        TimeProvider timeProvider)
     {
         _dbContextFactory = dbContextFactory;
-        _syncNotifier = syncNotifier;
         _timeProvider = timeProvider;
     }
 
-    public async Task ExecuteAsync(TickerFunctionContext context,
-        CancellationToken cancellationToken = new CancellationToken())
-    {
-        context.CronOccurrenceOperations.SkipIfAlreadyRunning();
-
-        await _syncNotifier.JobChangedAsync(nameof(MoveEventSavingsGoalsOnAsync));
-        try
-        {
-            await MoveGoalsOnAsync(cancellationToken);
-        }
-        finally
-        {
-            await _syncNotifier.JobChangedAsync(nameof(MoveEventSavingsGoalsOnAsync));
-        }
-    }
+    public async ValueTask Execute(IJobExecutionContext context, CancellationToken cancellationToken) =>
+        await MoveGoalsOnAsync(cancellationToken);
 
     private async Task MoveGoalsOnAsync(CancellationToken cancellationToken)
     {

@@ -25,28 +25,36 @@ public static class AutomationEndpoints
             jobs.MapGet("summaries", (IAutomationService service, CancellationToken cancellationToken) =>
                 service.GetJobSummariesAsync(cancellationToken));
 
-            jobs.MapPut("{id:guid}", async Task<Results<NoContent, ProblemHttpResult>> (Guid id, UpdateCronJob request,
-                    IAutomationService service, CancellationToken cancellationToken) =>
+            jobs.MapPut("{function}", async Task<Results<NoContent, ProblemHttpResult>> (string function,
+                    UpdateCronJob request, IAutomationService service, CancellationToken cancellationToken) =>
                 {
-                    if (id != request.Id)
+                    if (!string.Equals(function, request.Function, StringComparison.Ordinal))
                     {
-                        return TypedResults.Problem("The route and body job ids differ.",
+                        return TypedResults.Problem("The route and body jobs differ.",
                             statusCode: StatusCodes.Status400BadRequest);
                     }
 
-                    await service.UpdateJobSettingsAsync(request, cancellationToken);
+                    try
+                    {
+                        await service.UpdateJobSettingsAsync(request, cancellationToken);
+                    }
+                    catch (ArgumentException ex)
+                    {
+                        return TypedResults.Problem(ex.Message, statusCode: StatusCodes.Status400BadRequest);
+                    }
+
                     return TypedResults.NoContent();
                 })
                 .Validated<UpdateCronJob>()
                 .NotFoundWhenMissing();
 
-            // Queues a run on top of the schedule, unless one is already going
-            jobs.MapPost("{id:guid}/run", async Task<Results<Accepted, ProblemHttpResult>> (Guid id,
+            // Runs the job now on top of its schedule, unless a run is already going
+            jobs.MapPost("{function}/run", async Task<Results<Accepted, ProblemHttpResult>> (string function,
                     IAutomationService service, CancellationToken cancellationToken) =>
                 {
                     try
                     {
-                        await service.RunNowAsync(id, cancellationToken);
+                        await service.RunNowAsync(function, cancellationToken);
                     }
                     catch (JobAlreadyRunningException ex)
                     {

@@ -6,7 +6,6 @@ using FinanceTracker.Components;
 using FinanceTracker.Components.Account;
 using FinanceTracker.Extensions;
 using MudBlazor.Services;
-using TickerQ.DependencyInjection;
 
 namespace FinanceTracker;
 
@@ -71,7 +70,6 @@ public partial class Program
         app.MapOidcChallenge();
 
         app.UseAntiforgery();
-        app.UseTickerQ();
         app.MapStaticAssets();
         app.MapRazorComponents<App>()
             .AddInteractiveWebAssemblyRenderMode()

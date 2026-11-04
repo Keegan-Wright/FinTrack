@@ -13,10 +13,9 @@ public class MonitorOpenBankingTokenExpirationAsyncTests : InfrastructureTestBas
     private const string Username = "primary";
     private const string OtherUsername = "secondary";
 
-    private readonly ISyncNotifier _syncNotifier = Substitute.For<ISyncNotifier>();
 
     [Test]
-    public async Task ExecuteAsync_ConsentLapsed_RevokesActiveToken()
+    public async Task Execute_ConsentLapsed_RevokesActiveToken()
     {
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
@@ -28,7 +27,7 @@ public class MonitorOpenBankingTokenExpirationAsyncTests : InfrastructureTestBas
         DateTime before = DateTime.UtcNow;
 
         // Act
-        await subject.ExecuteAsync(TickerFunctionContextFactory.Create(), CancellationToken);
+        await subject.Execute(JobContexts.Scheduled(), CancellationToken);
 
         // Assert
         BankConnection connection = await LoadConnectionAsync("bank");
@@ -41,7 +40,7 @@ public class MonitorOpenBankingTokenExpirationAsyncTests : InfrastructureTestBas
     }
 
     [Test]
-    public async Task ExecuteAsync_ConsentStillValid_KeepsActiveToken()
+    public async Task Execute_ConsentStillValid_KeepsActiveToken()
     {
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
@@ -52,7 +51,7 @@ public class MonitorOpenBankingTokenExpirationAsyncTests : InfrastructureTestBas
         MonitorOpenBankingTokenExpirationAsync subject = BuildSubject();
 
         // Act
-        await subject.ExecuteAsync(TickerFunctionContextFactory.Create(), CancellationToken);
+        await subject.Execute(JobContexts.Scheduled(), CancellationToken);
 
         // Assert
         BankConnection connection = await LoadConnectionAsync("bank");
@@ -60,7 +59,7 @@ public class MonitorOpenBankingTokenExpirationAsyncTests : InfrastructureTestBas
     }
 
     [Test]
-    public async Task ExecuteAsync_ConsentLapsedButAlreadyRevoked_LeavesRevocationUnchanged()
+    public async Task Execute_ConsentLapsedButAlreadyRevoked_LeavesRevocationUnchanged()
     {
         // Arrange
         DateTime revokedAt = new(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -74,7 +73,7 @@ public class MonitorOpenBankingTokenExpirationAsyncTests : InfrastructureTestBas
         MonitorOpenBankingTokenExpirationAsync subject = BuildSubject();
 
         // Act
-        await subject.ExecuteAsync(TickerFunctionContextFactory.Create(), CancellationToken);
+        await subject.Execute(JobContexts.Scheduled(), CancellationToken);
 
         // Assert
         BankConnection connection = await LoadConnectionAsync("bank");
@@ -82,7 +81,7 @@ public class MonitorOpenBankingTokenExpirationAsyncTests : InfrastructureTestBas
     }
 
     [Test]
-    public async Task ExecuteAsync_OnlyRevokesLapsedConnectionsAcrossUsers()
+    public async Task Execute_OnlyRevokesLapsedConnectionsAcrossUsers()
     {
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
@@ -99,7 +98,7 @@ public class MonitorOpenBankingTokenExpirationAsyncTests : InfrastructureTestBas
         MonitorOpenBankingTokenExpirationAsync subject = BuildSubject();
 
         // Act
-        await subject.ExecuteAsync(TickerFunctionContextFactory.Create(), CancellationToken);
+        await subject.Execute(JobContexts.Scheduled(), CancellationToken);
 
         // Assert
         using (Assert.Multiple())
@@ -111,7 +110,7 @@ public class MonitorOpenBankingTokenExpirationAsyncTests : InfrastructureTestBas
     }
 
     [Test]
-    public async Task ExecuteAsync_ConsentLapsed_KeepsConnectionAndTokenHistory()
+    public async Task Execute_ConsentLapsed_KeepsConnectionAndTokenHistory()
     {
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
@@ -123,7 +122,7 @@ public class MonitorOpenBankingTokenExpirationAsyncTests : InfrastructureTestBas
         MonitorOpenBankingTokenExpirationAsync subject = BuildSubject();
 
         // Act
-        await subject.ExecuteAsync(TickerFunctionContextFactory.Create(), CancellationToken);
+        await subject.Execute(JobContexts.Scheduled(), CancellationToken);
 
         // Assert
         BankConnection connection = await LoadConnectionAsync("bank");
@@ -145,37 +144,6 @@ public class MonitorOpenBankingTokenExpirationAsyncTests : InfrastructureTestBas
             .SingleAsync(x => x.Id == id, CancellationToken);
     }
 
-    [Test]
-    public async Task ExecuteAsync_TellsAdminsWhenItStartsAndFinishes()
-    {
-        // Arrange
-        await Scenario.Do(s => s.UserScenario.WithUser(Username));
-        MonitorOpenBankingTokenExpirationAsync subject = BuildSubject();
-
-        // Act
-        await subject.ExecuteAsync(TickerFunctionContextFactory.Create(), CancellationToken);
-
-        // Assert
-        await _syncNotifier.Received(2).JobChangedAsync(nameof(MonitorOpenBankingTokenExpirationAsync));
-    }
-
-    [Test]
-    public async Task ExecuteAsync_WhenItFails_StillTellsAdminsItFinished()
-    {
-        // Arrange
-        await Scenario.Do(s => s.UserScenario.WithUser(Username));
-        MonitorOpenBankingTokenExpirationAsync subject = BuildSubject();
-        using CancellationTokenSource cancelled = new();
-        await cancelled.CancelAsync();
-
-        // Act
-        await Assert.ThrowsAsync<OperationCanceledException>(() =>
-            subject.ExecuteAsync(TickerFunctionContextFactory.Create(), cancelled.Token));
-
-        // Assert
-        await _syncNotifier.Received(2).JobChangedAsync(nameof(MonitorOpenBankingTokenExpirationAsync));
-    }
-
     private MonitorOpenBankingTokenExpirationAsync BuildSubject() =>
-        new(DbContextFactory, _syncNotifier, TimeProvider.System);
+        new(DbContextFactory, TimeProvider.System);
 }

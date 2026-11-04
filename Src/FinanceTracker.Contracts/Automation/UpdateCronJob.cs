@@ -6,9 +6,9 @@ namespace FinanceTracker.Contracts.Automation;
 public class UpdateCronJob()
 {
     /// <summary>
-    /// The job to change, see <see cref="AutomationCron.Id"/>.
+    /// The job to change, see <see cref="AutomationCron.Function"/>.
     /// </summary>
-    public Guid Id { get; set; }
+    public string Function { get; set; } = string.Empty;
 
     /// <summary>
     /// What the job does, shown on the automation page.
@@ -16,7 +16,8 @@ public class UpdateCronJob()
     public string Description { get; set; } = string.Empty;
 
     /// <summary>
-    /// When the job runs, a 6 part cron expression starting with seconds (e.g. <c>0 0 */6 * * *</c>).
+    /// When the job runs, a Quartz cron expression in UTC, see <see cref="AutomationCron.Expression"/>, e.g.
+    /// <c>0 0 */6 * * ?</c>.
     /// </summary>
     public required string Expression { get; set; }
 
@@ -34,6 +35,4 @@ public class UpdateCronJob()
     /// Whether the job runs on its schedule.
     /// </summary>
     public required bool IsEnabled { get; set; }
-
-
 }

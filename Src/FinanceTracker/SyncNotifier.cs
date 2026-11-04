@@ -19,6 +19,19 @@ public class SyncNotifier : ISyncNotifier
         _logger = logger;
     }
 
+    public async Task NotifyStartedAsync(Guid userId)
+    {
+        try
+        {
+            await _hubContext.Clients.User(userId.ToString()).SendAsync(SyncHubContract.SyncStarted);
+        }
+        catch (Exception ex)
+        {
+            // The sync carries on, the page only misses saying it's syncing
+            _logger.LogSyncNotificationFailed(ex, userId);
+        }
+    }
+
     public async Task NotifyAsync(Guid userId)
     {
         try

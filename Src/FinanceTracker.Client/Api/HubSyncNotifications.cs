@@ -22,6 +22,10 @@ public sealed class HubSyncNotifications : ISyncNotifications, IDisposable
     public Task<IDisposable> SubscribeAsync(Func<Task> onSyncComplete, CancellationToken cancellationToken) =>
         StartedAsync(_connection.On(SyncHubContract.SyncComplete, onSyncComplete), cancellationToken);
 
+    public Task<IDisposable> SubscribeToSyncStartsAsync(Func<Task> onSyncStarted,
+        CancellationToken cancellationToken) =>
+        StartedAsync(_connection.On(SyncHubContract.SyncStarted, onSyncStarted), cancellationToken);
+
     public Task<IDisposable> SubscribeToJobsAsync(Func<string, Task> onJobChanged,
         CancellationToken cancellationToken) =>
         StartedAsync(_connection.On(SyncHubContract.JobChanged, onJobChanged), cancellationToken);

@@ -1,16 +1,15 @@
 using FinanceTracker.Infrastructure;
 using Microsoft.EntityFrameworkCore;
-using TickerQ.Utilities.Base;
-using TickerQ.Utilities.Interfaces;
+using FinanceTracker.Infrastructure.Automation;
+using Quartz;
 
 namespace FinanceTracker.BackgroundJobs;
 
-// ReSharper disable once ClassNeverInstantiated.Global
-// Background job, ignore the warning
+
 /// <summary>
 /// On demand sync of a single user's connections, queued when they ask for a resync.
 /// </summary>
-public class SyncUserOpenBankingDetailsAsync : OpenBankingSyncJob, ITickerFunction<SyncUserOpenBankingDetailsRequest>
+public class SyncUserOpenBankingDetailsAsync : OpenBankingSyncJob, IJob
 {
     public SyncUserOpenBankingDetailsAsync(IServiceScopeFactory scopeFactory,
         IDbContextFactory<FinanceTrackerContext> dbContextFactory, ISyncNotifier syncNotifier,
@@ -19,22 +18,19 @@ public class SyncUserOpenBankingDetailsAsync : OpenBankingSyncJob, ITickerFuncti
     {
     }
 
-    public async Task ExecuteAsync(TickerFunctionContext<SyncUserOpenBankingDetailsRequest> context,
-        CancellationToken cancellationToken = new CancellationToken())
+    /// <exception cref="InvalidOperationException">The run doesn't say which user, see
+    /// <see cref="JobNames.UserIdKey"/>.</exception>
+    public async ValueTask Execute(IJobExecutionContext context, CancellationToken cancellationToken)
     {
-        Guid userId = context.Request.UserId;
-
-        await JobChangedAsync();
-        try
+        ArgumentNullException.ThrowIfNull(context);
+        if (!Guid.TryParse(context.MergedJobDataMap.GetString(JobNames.UserIdKey), out Guid userId))
         {
-            await SyncConnectionsAsync(x => x.UserId == userId, cancellationToken);
+            throw new InvalidOperationException("A user's sync needs the user");
+        }
 
-            // Always tell the user, even with nothing to sync, so their resync doesn't look stuck
-            await NotifyAsync([userId]);
-        }
-        finally
-        {
-            await JobChangedAsync();
-        }
+        await SyncConnectionsAsync(x => x.UserId == userId, cancellationToken);
+
+        // Always tell the user, even with nothing to sync, so their resync doesn't look stuck
+        await NotifyAsync([userId]);
     }
 }
