@@ -54,5 +54,6 @@ public class ExportsServiceTests : UnitTestBase
     }
 
     private ExportsService BuildSubject() =>
-        new(_transactionsService, new FixedTimeProvider(DateTime.UtcNow));
+        new(_transactionsService, BackupWriterTests.BuildWriter(transactions: _transactionsService),
+            new FixedTimeProvider(DateTime.UtcNow));
 }

@@ -1,0 +1,103 @@
+@page "/YourData"
+@* A copy of everything FinTrack holds for the user, to keep or take elsewhere (IExportsService). The backup is a zip of
+   JSON and a transactions CSV; *@
+@using FinanceTracker.Client.Extensions
+@using FinanceTracker.Contracts.Api
+@using Microsoft.AspNetCore.Authorization
+@inherits PageComponent
+
+@attribute [Authorize]
+@inject IExportsService ExportsService
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
+@inject TimeProvider TimeProvider
+
+<PageTitle>FinTrack - Your data</PageTitle>
+<PageHeader Title="Your data" Subtitle="Take a copy of everything FinTrack holds for you"/>
+
+<div class="ft-stack">
+    <Section Title="Backup" Caption="A zip of everything, to keep or to take to another tool">
+        <ChildContent>
+            <div class="ft-your-data">
+                <MudText Typo="Typo.body2">It holds, each in its own file:</MudText>
+                <ul class="ft-your-data__contents">
+                    @foreach (string item in Contents)
+                    {
+                        <li><MudText Typo="Typo.body2" HtmlTag="span">@item</MudText></li>
+                    }
+                </ul>
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                    Each file is JSON, with your transactions also as a spreadsheet. Your bank connections' access and
+                    your password are never in it.
+                </MudText>
+
+                <MudAlert Severity="Severity.Warning" Variant="Variant.Text" Dense="true">
+                    The backup isn't encrypted. It's your financial data in plain text, so keep it somewhere safe and
+                    don't share it. Password protection is coming.
+                </MudAlert>
+
+                <div>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               StartIcon="@Icons.Material.Outlined.Download" Disabled="@_downloading"
+                               OnClick="@DownloadBackupAsync">
+                        @(_downloading ? "Preparing your backup…" : "Download backup")
+                    </MudButton>
+                </div>
+            </div>
+        </ChildContent>
+    </Section>
+
+    <Section Title="Transactions as a spreadsheet" Caption="Just the transactions you've filtered">
+        <ChildContent>
+            <div class="ft-your-data">
+                <MudText Typo="Typo.body2">
+                    On the transactions page, filter to what you want and use Export CSV.
+                </MudText>
+                <div>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="Transactions"
+                               StartIcon="@Icons.Material.Outlined.ReceiptLong">Go to transactions</MudButton>
+                </div>
+            </div>
+        </ChildContent>
+    </Section>
+</div>
+
+@code {
+
+    private static readonly string[] Contents =
+    [
+        "Your accounts, and their balance and net worth history",
+        "Every transaction, with its tags, splits, transfers, and the bills, debts and goals it goes towards",
+        "Your bills, budgets, debts and savings goals",
+        "Your rules, tags and calendar events",
+        "Your household and your pay"
+    ];
+
+    private bool _downloading;
+
+    private async Task DownloadBackupAsync()
+    {
+        _downloading = true;
+        try
+        {
+            using MemoryStream backup = new();
+            await ExportsService.WriteBackupAsync(backup, _cts.Token);
+            backup.Position = 0;
+            await JS.SaveFileAsync(ExportFileNames.Backup(TimeProvider.GetLocalNow()), "application/zip", backup,
+                _cts.Token);
+        }
+        catch (OperationCanceledException) when (_cts.IsCancellationRequested)
+        {
+            // The user left the page
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't make your backup, try again", Severity.Error);
+        }
+        finally
+        {
+            _downloading = false;
+        }
+    }
+
+}

@@ -14,11 +14,14 @@ namespace FinanceTracker.Infrastructure.Exports;
 public sealed class ExportsService : IExportsService
 {
     private readonly ITransactionsService _transactionsService;
+    private readonly BackupWriter _backupWriter;
     private readonly TimeProvider _timeProvider;
 
-    public ExportsService(ITransactionsService transactionsService, TimeProvider timeProvider)
+    public ExportsService(ITransactionsService transactionsService, BackupWriter backupWriter,
+        TimeProvider timeProvider)
     {
         _transactionsService = transactionsService;
+        _backupWriter = backupWriter;
         _timeProvider = timeProvider;
     }
 
@@ -31,4 +34,7 @@ public sealed class ExportsService : IExportsService
         return TransactionCsv.WriteAsync(_transactionsService.GetAllTransactionsAsync(filter, cancellationToken),
             destination, _timeProvider.LocalTimeZone, cancellationToken);
     }
+
+    public Task WriteBackupAsync(Stream destination, CancellationToken cancellationToken) =>
+        _backupWriter.WriteAsync(destination, cancellationToken);
 }

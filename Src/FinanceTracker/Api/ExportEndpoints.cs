@@ -22,6 +22,12 @@ public static class ExportEndpoints
                     stream => service.WriteTransactionsCsvAsync(request, stream, cancellationToken),
                     "text/csv; charset=utf-8", ExportFileNames.Transactions(timeProvider.GetLocalNow())));
 
+            // A zip of everything the user has, see IExportsService.WriteBackupAsync
+            exports.MapGet("backup", (IExportsService service, TimeProvider timeProvider,
+                    CancellationToken cancellationToken) =>
+                TypedResults.Stream(stream => service.WriteBackupAsync(stream, cancellationToken), "application/zip",
+                    ExportFileNames.Backup(timeProvider.GetLocalNow())));
+
             return api;
         }
     }

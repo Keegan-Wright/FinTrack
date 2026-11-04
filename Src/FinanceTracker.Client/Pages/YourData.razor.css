@@ -1,0 +1,10 @@
+.ft-your-data {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.ft-your-data__contents {
+    margin: 0;
+    padding-left: 20px;
+}

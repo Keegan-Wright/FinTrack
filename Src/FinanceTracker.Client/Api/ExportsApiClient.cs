@@ -29,4 +29,14 @@ public sealed class ExportsApiClient : IExportsService
         response.EnsureSuccessStatusCode();
         await response.Content.CopyToAsync(destination, cancellationToken);
     }
+
+    public async Task WriteBackupAsync(Stream destination, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(destination);
+
+        using HttpResponseMessage response = await _http.GetAsync($"{ApiRoutes.Exports}/backup",
+            HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        await response.Content.CopyToAsync(destination, cancellationToken);
+    }
 }

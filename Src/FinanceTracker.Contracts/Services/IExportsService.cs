@@ -14,4 +14,12 @@ public interface IExportsService
     /// so they read as numbers.
     /// </summary>
     Task WriteTransactionsCsvAsync(FilterTransactions filter, Stream destination, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Writes a backup of everything the user has to <paramref name="destination"/> as a zip. A JSON file for each
+    /// kind of data, in the shapes the API returns, a <c>transactions.csv</c> as
+    /// <see cref="WriteTransactionsCsvAsync"/> writes it, and a <c>manifest.json</c> saying when it was made, which
+    /// format it's in and how many of each there are. Not encrypted.
+    /// </summary>
+    Task WriteBackupAsync(Stream destination, CancellationToken cancellationToken);
 }
