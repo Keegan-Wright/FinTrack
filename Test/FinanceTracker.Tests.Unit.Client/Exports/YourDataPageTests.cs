@@ -1,3 +1,4 @@
+using System.Globalization;
 using AngleSharp.Dom;
 using Bunit;
 using FinanceTracker.Client;
@@ -152,11 +153,16 @@ public class YourDataPageTests : ComponentTestBase
     [Test]
     public async Task StatementPeriod_ShowsTheDaysItCovers()
     {
+        // Arrange: the month's short name differs between ICU versions, e.g. Sep or Sept
+        using CultureScope culture = new();
+        string expected = $"{new DateOnly(2026, 9, 30).ToString("d MMM yyyy", CultureInfo.CurrentCulture)} to " +
+                          $"{new DateOnly(2026, 10, 29).ToString("d MMM yyyy", CultureInfo.CurrentCulture)}";
+
         // Act
         IRenderedComponent<YourDataPage> cut = RenderPage();
 
         // Assert
-        await Assert.That(cut.Find(".ft-your-data__period").TextContent).Contains("30 Sept 2026 to 29 Oct 2026");
+        await Assert.That(cut.Find(".ft-your-data__period").TextContent).Contains(expected);
     }
 
     [Test]
