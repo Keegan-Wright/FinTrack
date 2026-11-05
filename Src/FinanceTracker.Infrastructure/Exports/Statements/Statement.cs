@@ -55,6 +55,12 @@ public sealed class Statement
     /// </summary>
     public required IReadOnlyList<SpentInCategoryReport> Tags { get; init; }
 
+    /// <summary>
+    /// Money out with no tag, as a positive amount, spending with no tags, and the untagged parts of a split. Transfers
+    /// aren't spending, so they're left out, as they are from <see cref="Tags"/>.
+    /// </summary>
+    public decimal Untagged => -Transactions.Where(static x => x.CountsAsIncomeOrSpending).Sum(UntaggedOut);
+
     public required BillMonthOverview Bills { get; init; }
 
     public required BudgetMonthOverview Budgets { get; init; }
@@ -73,4 +79,23 @@ public sealed class Statement
     /// Every transaction in the period, oldest first.
     /// </summary>
     public required IReadOnlyList<Transaction> Transactions { get; init; }
+
+    /// <summary>
+    /// What of <paramref name="transaction"/> went out with no tag. Its untagged parts when it's split, all of it when
+    /// it has no tags, otherwise nothing.
+    /// </summary>
+    private static decimal UntaggedOut(Transaction transaction)
+    {
+        if (transaction.Splits.Count > 0)
+        {
+            return transaction.Splits.Where(static x => x.TagId is null && x.Amount < 0).Sum(static x => x.Amount);
+        }
+
+        if (transaction.Amount >= 0 || transaction.Tags.Any())
+        {
+            return 0;
+        }
+
+        return transaction.Amount;
+    }
 }

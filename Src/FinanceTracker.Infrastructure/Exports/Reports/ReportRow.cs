@@ -33,8 +33,6 @@ public sealed class ReportRow
     /// </summary>
     public decimal TotalOut { get; init; }
 
-    public decimal Net => TotalIn + TotalOut;
-
     /// <summary>
     /// The years in what it's about, or the twelve months in a year, oldest first, empty for a month.
     /// </summary>

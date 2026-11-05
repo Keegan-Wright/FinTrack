@@ -256,6 +256,7 @@ public class TransactionCsvTests : UnitTestBase
         Pending = pending,
         Tags = tags ?? [],
         AccountName = "Main",
+        CountsAsIncomeOrSpending = transfer is not TransferState.Transfer,
         Transfer = transfer is { } state
             ? new TransactionTransfer
             {

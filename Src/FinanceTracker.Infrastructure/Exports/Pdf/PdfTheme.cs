@@ -29,4 +29,17 @@ internal static class PdfTheme
 
     public const float BodySize = 9;
     public const float SmallSize = 7.5f;
+
+    /// <summary>
+    /// What's left after money out, the brand colour, or money out's when below zero.
+    /// </summary>
+    public static string NetColour(decimal net)
+    {
+        if (net < 0)
+        {
+            return MoneyOut;
+        }
+
+        return Primary;
+    }
 }

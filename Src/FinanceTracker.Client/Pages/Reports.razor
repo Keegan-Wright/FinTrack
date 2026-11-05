@@ -22,8 +22,6 @@
 @inject ISavingsGoalsService SavingsGoalsService
 @inject NavigationManager NavigationManager
 @inject IExportsService ExportsService
-@inject IJSRuntime JS
-@inject ISnackbar Snackbar
 @inject TimeProvider TimeProvider
 
 <PageTitle>FinTrack - Reports</PageTitle>
@@ -35,11 +33,13 @@
             <MudToggleItem Value="ReportBreakdown.ByAccount" Text="By account"/>
             <MudToggleItem Value="ReportBreakdown.ByTag" Text="By tag"/>
         </MudToggleGroup>
+    </Actions>
+    <FileActions>
         <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.PictureAsPdf"
                    Disabled="@(_loading || _exporting || !HasTransactions)" OnClick="@ExportAsync">
             @(_exporting ? "Exporting…" : "Export PDF")
         </MudButton>
-    </Actions>
+    </FileActions>
     <ChildContent>
         <TransactionFilters AccountFilterItems="@Filters.Accounts"
                             CategoryFilterItems="@Filters.Categories"
@@ -275,23 +275,13 @@
     private async Task ExportAsync()
     {
         ReportBreakdown breakdown = _breakdown;
+        ExportReport report = new() { Breakdown = breakdown, Filters = _filters.ToRequest() };
         _exporting = true;
         try
         {
-            using MemoryStream pdf = new();
-            ExportReport report = new() { Breakdown = breakdown, Filters = _filters.ToRequest() };
-            await ExportsService.WriteReportAsync(report, pdf, _cts.Token);
-            pdf.Position = 0;
-            await JS.SaveFileAsync(ExportFileNames.Report(breakdown, TimeProvider.GetLocalNow()), "application/pdf",
-                pdf, _cts.Token);
-        }
-        catch (OperationCanceledException) when (_cts.IsCancellationRequested)
-        {
-            // The user left the page
-        }
-        catch (Exception)
-        {
-            Snackbar.Add("Couldn't export your report, try again", Severity.Error);
+            await SaveFileAsync(ExportFileNames.Report(breakdown, TimeProvider.GetLocalNow()), "application/pdf",
+                (file, cancellationToken) => ExportsService.WriteReportAsync(report, file, cancellationToken),
+                "Couldn't export your report, try again");
         }
         finally
         {

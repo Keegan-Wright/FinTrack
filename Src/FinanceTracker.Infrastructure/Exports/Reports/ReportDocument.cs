@@ -67,7 +67,7 @@ public sealed class ReportDocument : FinTrackDocument
 
             if (_report.Filters.Count > 0)
             {
-                column.Item().Element(ComposeFilters);
+                column.Item().Component(new NotesPanel("Showing only", _report.Filters));
             }
 
             if (_report.Subjects.Count == 0)
@@ -86,34 +86,11 @@ public sealed class ReportDocument : FinTrackDocument
         });
     }
 
-    private void ComposeFilters(IContainer container)
-    {
-        container.Background(Background).CornerRadius(CornerRadius).Padding(10).Column(filters =>
-        {
-            filters.Item().Text("Showing only").FontSize(SmallSize).SemiBold().FontColor(TextSecondary);
-            foreach (string filter in _report.Filters)
-            {
-                filters.Item().PaddingTop(2).Text(filter).FontSize(SmallSize);
-            }
-        });
-    }
-
     private static void ComposeOverTime(ColumnDescriptor column, ReportRow everything)
     {
-        column.Item().Column(summary =>
-        {
-            summary.Item().Row(row =>
-            {
-                row.Spacing(10);
-                row.RelativeItem().Component(new SummaryTile("Money in", everything.TotalIn, MoneyIn));
-                row.RelativeItem().Component(new SummaryTile("Money out", -everything.TotalOut, MoneyOut));
-                row.RelativeItem().Component(new SummaryTile("Net", everything.Net, NetColour(everything.Net)));
-            });
-            summary.Item().PaddingTop(6)
-                .Text($"{TransactionCount(everything.TotalTransactions)}. Moves between your own accounts or your " +
-                      "household aren't counted.")
-                .FontSize(SmallSize).FontColor(TextSecondary);
-        });
+        string counted = $"{TransactionCount(everything.TotalTransactions)}. Moves between your own accounts or your " +
+                         "household aren't counted.";
+        column.Item().Component(new InOutSummary(everything.TotalIn, -everything.TotalOut, "Net", [counted]));
 
         foreach (ReportRow year in NewestFirst(everything.Periods))
         {
@@ -140,31 +117,9 @@ public sealed class ReportDocument : FinTrackDocument
 
     private void ComposeSubjectTable(IContainer container)
     {
-        container.Table(table =>
-        {
-            table.ColumnsDefinition(columns =>
-            {
-                columns.RelativeColumn(3);
-                columns.ConstantColumn(70);
-                columns.ConstantColumn(70);
-                columns.ConstantColumn(70);
-                columns.ConstantColumn(70);
-            });
-
-            table.Header(header =>
-            {
-                header.Cell().TableHeaderCell(_report.Breakdown == ReportBreakdown.ByAccount ? "Account" : "Tag");
-                header.Cell().TableHeaderCell("Transactions", alignRight: true);
-                header.Cell().TableHeaderCell("In", alignRight: true);
-                header.Cell().TableHeaderCell("Out", alignRight: true);
-                header.Cell().TableHeaderCell("Net", alignRight: true);
-            });
-
-            foreach (ReportRow subject in _report.Subjects)
-            {
-                TotalsRow(table, subject.Title, null, subject);
-            }
-        });
+        string nameHeader = _report.Breakdown == ReportBreakdown.ByAccount ? "Account" : "Tag";
+        List<TotalsTableRow> rows = _report.Subjects.Select(static x => TableRow(x, detail: null)).ToList();
+        container.Component(new TotalsTable(nameHeader, rows));
     }
 
     private static void ComposeSubject(IContainer container, ReportRow subject)
@@ -192,54 +147,21 @@ public sealed class ReportDocument : FinTrackDocument
         List<InOutChartBar> bars = year.Periods
             .Select(static x => new InOutChartBar(x.Label, x.TotalIn, -x.TotalOut))
             .ToList();
+        List<TotalsTableRow> months = year.Periods
+            .Where(static x => x.TotalTransactions > 0)
+            .Select(static x => TableRow(x, x.Dates))
+            .ToList();
 
         container.Column(column =>
         {
             column.Item().ShowEntire().Component(new InOutChart(bars));
-            column.Item().PaddingTop(10).Table(table =>
-            {
-                table.ColumnsDefinition(columns =>
-                {
-                    columns.RelativeColumn(3);
-                    columns.ConstantColumn(70);
-                    columns.ConstantColumn(70);
-                    columns.ConstantColumn(70);
-                    columns.ConstantColumn(70);
-                });
-
-                table.Header(header =>
-                {
-                    header.Cell().TableHeaderCell("Month");
-                    header.Cell().TableHeaderCell("Transactions", alignRight: true);
-                    header.Cell().TableHeaderCell("In", alignRight: true);
-                    header.Cell().TableHeaderCell("Out", alignRight: true);
-                    header.Cell().TableHeaderCell("Net", alignRight: true);
-                });
-
-                foreach (ReportRow month in year.Periods.Where(static x => x.TotalTransactions > 0))
-                {
-                    TotalsRow(table, month.Title, month.Dates, month);
-                }
-            });
+            column.Item().PaddingTop(10).Component(new TotalsTable("Month", months));
         });
     }
 
     /// <param name="detail">Under the name, e.g. a pay period's dates, none when null.</param>
-    private static void TotalsRow(TableDescriptor table, string name, string? detail, ReportRow totals)
-    {
-        table.Cell().TableCell().Column(cell =>
-        {
-            cell.Item().Text(name);
-            if (detail is not null)
-            {
-                cell.Item().Text(detail).FontSize(SmallSize).FontColor(TextSecondary);
-            }
-        });
-        table.Cell().TableCell().AlignRight().Text(totals.TotalTransactions.ToString("N0", Culture));
-        table.Cell().TableCell().AlignRight().Text(Money(totals.TotalIn));
-        table.Cell().TableCell().AlignRight().Text(Money(-totals.TotalOut));
-        table.Cell().TableCell().AlignRight().Text(Money(totals.Net)).SemiBold().FontColor(NetColour(totals.Net));
-    }
+    private static TotalsTableRow TableRow(ReportRow row, string? detail) =>
+        new(row.Title, detail, row.TotalTransactions, row.TotalIn, -row.TotalOut);
 
     /// <summary>
     /// e.g. £2,450.00 in, £1,984.37 out, 128 transactions.
@@ -249,6 +171,4 @@ public sealed class ReportDocument : FinTrackDocument
 
     private static IEnumerable<ReportRow> NewestFirst(IReadOnlyList<ReportRow> years) =>
         years.Where(static x => x.TotalTransactions > 0).Reverse();
-
-    private static string NetColour(decimal net) => net < 0 ? MoneyOut : Primary;
 }

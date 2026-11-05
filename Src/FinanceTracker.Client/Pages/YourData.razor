@@ -10,8 +10,6 @@
 @attribute [Authorize]
 @inject IExportsService ExportsService
 @inject IPayPeriodsService PayPeriodsService
-@inject IJSRuntime JS
-@inject ISnackbar Snackbar
 @inject TimeProvider TimeProvider
 
 <PageTitle>FinTrack - Your data</PageTitle>
@@ -181,7 +179,7 @@
         _downloadingStatement = true;
         try
         {
-            await SaveAsync(ExportFileNames.Statement(month.Year, month.Month), "application/pdf",
+            await SaveFileAsync(ExportFileNames.Statement(month.Year, month.Month), "application/pdf",
                 (file, cancellationToken) =>
                     ExportsService.WriteStatementAsync(month.Year, month.Month, file, cancellationToken),
                 "Couldn't make your statement, try again");
@@ -197,36 +195,12 @@
         _downloadingBackup = true;
         try
         {
-            await SaveAsync(ExportFileNames.Backup(TimeProvider.GetLocalNow()), "application/zip",
+            await SaveFileAsync(ExportFileNames.Backup(TimeProvider.GetLocalNow()), "application/zip",
                 ExportsService.WriteBackupAsync, "Couldn't make your backup, try again");
         }
         finally
         {
             _downloadingBackup = false;
-        }
-    }
-
-    /// <summary>
-    /// Has <paramref name="write"/> make the file, then saves it in the browser, or says
-    /// <paramref name="failure"/>.
-    /// </summary>
-    private async Task SaveAsync(string fileName, string contentType, Func<Stream, CancellationToken, Task> write,
-        string failure)
-    {
-        try
-        {
-            using MemoryStream file = new();
-            await write(file, _cts.Token);
-            file.Position = 0;
-            await JS.SaveFileAsync(fileName, contentType, file, _cts.Token);
-        }
-        catch (OperationCanceledException) when (_cts.IsCancellationRequested)
-        {
-            // The user left the page
-        }
-        catch (Exception)
-        {
-            Snackbar.Add(failure, Severity.Error);
         }
     }
 

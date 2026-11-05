@@ -43,7 +43,8 @@ public sealed class StatementDocument : FinTrackDocument
 
             column.Item().Element(ComposeSummary);
             column.Item().Component(new PdfSection("Spending by tag",
-                "A transaction with more than one tag counts towards each", ComposeTags));
+                "A transaction with more than one tag counts towards each, and spending with none is Untagged",
+                ComposeTags));
             column.Item().Component(new PdfSection("Bills", BillsCaption(), ComposeBills));
             column.Item().Component(new PdfSection("Budgets",
                 $"Not in a budget: {Money(_statement.Budgets.Unbudgeted)}", ComposeBudgets));
@@ -65,24 +66,7 @@ public sealed class StatementDocument : FinTrackDocument
     {
         decimal moneyIn = _statement.Totals.TotalIn;
         decimal moneyOut = -_statement.Totals.TotalOut;
-        decimal leftOver = moneyIn - moneyOut;
-
-        container.Column(column =>
-        {
-            column.Item().Row(row =>
-            {
-                row.Spacing(10);
-                row.RelativeItem().Component(new SummaryTile("Money in", moneyIn, MoneyIn));
-                row.RelativeItem().Component(new SummaryTile("Money out", moneyOut, MoneyOut));
-                row.RelativeItem().Component(new SummaryTile("Left over", leftOver,
-                    leftOver < 0 ? MoneyOut : Primary));
-            });
-
-            foreach (string note in SummaryNotes())
-            {
-                column.Item().PaddingTop(6).Text(note).FontSize(SmallSize).FontColor(TextSecondary);
-            }
-        });
+        container.Component(new InOutSummary(moneyIn, moneyOut, "Left over", SummaryNotes().ToList()));
     }
 
     private IEnumerable<string> SummaryNotes()
@@ -103,13 +87,14 @@ public sealed class StatementDocument : FinTrackDocument
 
     private void ComposeTags(IContainer container)
     {
-        if (_statement.Tags.Count == 0)
+        decimal untagged = _statement.Untagged;
+        if (_statement.Tags.Count == 0 && untagged == 0)
         {
-            container.EmptyNote("Nothing tagged was spent in this period.");
+            container.EmptyNote("Nothing was spent in this period.");
             return;
         }
 
-        decimal most = -_statement.Tags[0].TotalOut;
+        decimal most = MostSpentOnOneLine(untagged);
         container.Column(column =>
         {
             column.Spacing(5);
@@ -118,7 +103,26 @@ public sealed class StatementDocument : FinTrackDocument
                 decimal spent = -tag.TotalOut;
                 column.Item().Component(new BarRow(tag.Category, spent / most, Money(spent), MoneyOut));
             }
+
+            // Last, as it isn't a tag
+            if (untagged > 0)
+            {
+                column.Item().Component(new BarRow("Untagged", untagged / most, Money(untagged), MoneyOut));
+            }
         });
+    }
+
+    /// <summary>
+    /// The longest bar, the most spent on one tag or with no tag, which the others are drawn against.
+    /// </summary>
+    private decimal MostSpentOnOneLine(decimal untagged)
+    {
+        if (_statement.Tags.Count == 0)
+        {
+            return untagged;
+        }
+
+        return Math.Max(-_statement.Tags[0].TotalOut, untagged);
     }
 
     private void ComposeBills(IContainer container)

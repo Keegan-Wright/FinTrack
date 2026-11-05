@@ -1,4 +1,5 @@
-@* A page's title row, the title, an optional line under it. Page actions on the right. Anything that
+@* A page's title row, the title, an optional line under it. Page actions on the right, then what makes a file of
+   the page's data after a divider, so exporting doesn't read as another way to change what's shown. Anything that
    belongs with it (a filter bar) underneath. Sticks under the app bar from tablet width up. *@
 <div class="ft-page-header">
     <header class="ft-page-header__row">
@@ -9,9 +10,16 @@
                 <MudText Typo="Typo.body2" Class="mud-text-secondary">@Subtitle</MudText>
             }
         </div>
-        @if (Actions is not null)
+        @if (Actions is not null || FileActions is not null)
         {
-            <div class="ft-page-header__actions">@Actions</div>
+            <div class="ft-page-header__actions">
+                @Actions
+                @if (Actions is not null && FileActions is not null)
+                {
+                    <MudDivider Vertical="true" FlexItem="true" Class="ft-page-header__divider"/>
+                }
+                @FileActions
+            </div>
         }
     </header>
     @ChildContent
@@ -23,7 +31,15 @@
 
     [Parameter] public string? Subtitle { get; set; }
 
+    /// <summary>
+    /// What changes what the page shows, e.g. a breakdown or time range toggle, or adds to it.
+    /// </summary>
     [Parameter] public RenderFragment? Actions { get; set; }
+
+    /// <summary>
+    /// What makes a file of the page's data, e.g. Export CSV, after a divider when there are <see cref="Actions"/>.
+    /// </summary>
+    [Parameter] public RenderFragment? FileActions { get; set; }
 
     /// <summary>
     /// Kept in view with the title, e.g. the filter bar.

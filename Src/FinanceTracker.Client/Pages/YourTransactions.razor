@@ -28,17 +28,16 @@
 @inject ISnackbar Snackbar
 @inject NavigationManager NavigationManager
 @inject IExportsService ExportsService
-@inject IJSRuntime JS
 @inject TimeProvider TimeProvider
 
 <PageTitle>FinTrack - Transactions</PageTitle>
 <PageHeader Title="Transactions" Subtitle="@Subtitle">
-    <Actions>
+    <FileActions>
         <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Download"
                    Disabled="@(_loading || _exporting)" OnClick="@ExportAsync">
             @(_exporting ? "Exporting…" : "Export CSV")
         </MudButton>
-    </Actions>
+    </FileActions>
     <ChildContent>
         <TransactionFilters TransactionTagFilterItems="@Filters.Tags"
                             AccountFilterItems="@Filters.Accounts"
@@ -263,22 +262,13 @@
     /// </summary>
     private async Task ExportAsync()
     {
+        FilterTransactions filter = _filters.ToRequest();
         _exporting = true;
         try
         {
-            using MemoryStream csv = new();
-            await ExportsService.WriteTransactionsCsvAsync(_filters.ToRequest(), csv, _cts.Token);
-            csv.Position = 0;
-            await JS.SaveFileAsync(ExportFileNames.Transactions(TimeProvider.GetLocalNow()), "text/csv", csv,
-                _cts.Token);
-        }
-        catch (OperationCanceledException) when (_cts.IsCancellationRequested)
-        {
-            // The user left the page
-        }
-        catch (Exception)
-        {
-            Snackbar.Add("Couldn't export your transactions, try again", Severity.Error);
+            await SaveFileAsync(ExportFileNames.Transactions(TimeProvider.GetLocalNow()), "text/csv",
+                (file, cancellationToken) => ExportsService.WriteTransactionsCsvAsync(filter, file, cancellationToken),
+                "Couldn't export your transactions, try again");
         }
         finally
         {

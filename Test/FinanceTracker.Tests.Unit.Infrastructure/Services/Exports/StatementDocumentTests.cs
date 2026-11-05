@@ -50,6 +50,19 @@ public class StatementDocumentTests
     }
 
     [Test]
+    public async Task GeneratePdf_WithUntaggedSpending_StillLaysOut()
+    {
+        // Arrange
+        Statement statement = Sample([TransactionCsvTests.Transaction("CORNER SHOP", -12.50m)]);
+
+        // Act
+        int pages = PageCount(new StatementDocument(statement, TimeZoneInfo.Utc));
+
+        // Assert
+        await Assert.That(pages).IsEqualTo(2);
+    }
+
+    [Test]
     public async Task GeneratePdf_NothingInThePeriod_StillLaysOut()
     {
         // Arrange
