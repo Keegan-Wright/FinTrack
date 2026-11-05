@@ -1,3 +1,4 @@
+using System.Globalization;
 using FinanceTracker.Contracts.Bills;
 using FinanceTracker.Contracts.Debts;
 using FinanceTracker.Contracts.Exports;
@@ -33,7 +34,9 @@ public class ReportDocumentBuilderTests : UnitTestBase
     [Test]
     public async Task BuildAsync_OverTime_HasEveryYearOldestFirstWithAllTwelveMonths()
     {
-        // Arrange
+        // Arrange: in the app's culture, the month's short name differing between ICU versions, e.g. Sep or Sept
+        using CultureScope culture = new();
+        string septemberThe30th = new DateOnly(2026, 9, 30).ToString("d MMM", CultureInfo.CurrentCulture);
         _reportService.GetSpentInTimePeriodReportAsync(Arg.Any<FilterTransactions>(), Arg.Any<CancellationToken>())
             .Returns(new[]
             {
@@ -63,7 +66,7 @@ public class ReportDocumentBuilderTests : UnitTestBase
             await Assert.That(october.Title).IsEqualTo("October 2026");
             await Assert.That(october.Label).IsEqualTo("Oct");
             await Assert.That(october.TotalIn).IsEqualTo(200m);
-            await Assert.That(october.Dates).IsEqualTo("30 Sept to 29 Oct 2026");
+            await Assert.That(october.Dates).IsEqualTo($"{septemberThe30th} to 29 Oct 2026");
             await Assert.That(everything.Periods[0].Periods[11].Dates).IsNull();
             await Assert.That(everything.Periods[1].Periods[0].TotalTransactions).IsEqualTo(0);
         }
