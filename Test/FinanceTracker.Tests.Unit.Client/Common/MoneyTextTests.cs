@@ -20,10 +20,9 @@ public class MoneyTextTests : ComponentTestBase
     }
 
     [Test]
-    [Arguments(-1, Color.Error)]
-    [Arguments(1, Color.Success)]
-    [Arguments(0, Color.Default)]
-    public async Task Render_Signed_ColoursByTheSign(decimal value, Color expected)
+    [Arguments(-1, "ft-money--out")]
+    [Arguments(1, "ft-money--in")]
+    public async Task Render_Signed_ColoursByTheSignInTheMoneyColours(decimal value, string expected)
     {
         // Act
         IRenderedComponent<MoneyText> cut = Render<MoneyText>(p => p
@@ -31,7 +30,23 @@ public class MoneyTextTests : ComponentTestBase
             .Add(x => x.Signed, true));
 
         // Assert
-        await Assert.That(cut.FindComponent<MudText>().Instance.Color).IsEqualTo(expected);
+        await Assert.That(cut.Find(".ft-money").ClassList).Contains(expected);
+    }
+
+    [Test]
+    public async Task Render_SignedZero_IsUncoloured()
+    {
+        // Act
+        IRenderedComponent<MoneyText> cut = Render<MoneyText>(p => p
+            .Add(x => x.Value, 0m)
+            .Add(x => x.Signed, true));
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(cut.Find(".ft-money").ClassList).DoesNotContain("ft-money--in");
+            await Assert.That(cut.Find(".ft-money").ClassList).DoesNotContain("ft-money--out");
+        }
     }
 
     [Test]
@@ -41,7 +56,7 @@ public class MoneyTextTests : ComponentTestBase
         IRenderedComponent<MoneyText> cut = Render<MoneyText>(p => p.Add(x => x.Value, -1m));
 
         // Assert
-        await Assert.That(cut.FindComponent<MudText>().Instance.Color).IsEqualTo(Color.Default);
+        await Assert.That(cut.Find(".ft-money").ClassList).DoesNotContain("ft-money--out");
     }
 
     [Test]
@@ -54,6 +69,10 @@ public class MoneyTextTests : ComponentTestBase
             .Add(x => x.Color, Color.Primary));
 
         // Assert
-        await Assert.That(cut.FindComponent<MudText>().Instance.Color).IsEqualTo(Color.Primary);
+        using (Assert.Multiple())
+        {
+            await Assert.That(cut.FindComponent<MudText>().Instance.Color).IsEqualTo(Color.Primary);
+            await Assert.That(cut.Find(".ft-money").ClassList).DoesNotContain("ft-money--out");
+        }
     }
 }

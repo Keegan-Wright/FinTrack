@@ -1,13 +1,16 @@
+using FinanceTracker.Client.Extensions;
 using FinanceTracker.Contracts.OpenBanking;
 using FinanceTracker.Contracts.Services;
 using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
 using MudBlazor;
 
 namespace FinanceTracker.Client.Pages;
 
 /// <summary>
-/// Base for every page. A cancellation token tied to the page's lifetime, the shared loading overlay, and a quiet
-/// refresh once a background sync finishes, see <see cref="OnSyncedAsync"/>.
+/// Base for every page. A cancellation token tied to the page's lifetime, the shared loading overlay, a quiet
+/// refresh once a background sync finishes, see <see cref="OnSyncedAsync"/>, and saving a file the user exports, see
+/// <see cref="SaveFileAsync"/>.
 /// </summary>
 public class PageComponent : ComponentBase, IDisposable
 {
@@ -20,7 +23,10 @@ public class PageComponent : ComponentBase, IDisposable
     private ApplicationState ApplicationState { get; set; } = null!;
 
     [Inject]
-    private ISnackbar RefreshSnackbar { get; set; } = null!;
+    private ISnackbar PageSnackbar { get; set; } = null!;
+
+    [Inject]
+    private IJSRuntime PageJS { get; set; } = null!;
 
     private bool _listeningForSyncs;
     private bool _refreshing;
@@ -91,8 +97,32 @@ public class PageComponent : ComponentBase, IDisposable
         catch (Exception)
         {
             // What's shown stays, just not the latest
-            RefreshSnackbar.Add("Couldn't refresh after the sync, reload the page to see the latest",
+            PageSnackbar.Add("Couldn't refresh after the sync, reload the page to see the latest",
                 Severity.Warning);
+        }
+    }
+
+    /// <summary>
+    /// Has <paramref name="write"/> make the file, then saves it in the browser as <paramref name="fileName"/>, or
+    /// says <paramref name="failure"/>. Nothing more once the user leaves the page.
+    /// </summary>
+    internal async Task SaveFileAsync(string fileName, string contentType, Func<Stream, CancellationToken, Task> write,
+        string failure)
+    {
+        try
+        {
+            using MemoryStream file = new();
+            await write(file, _cts.Token);
+            file.Position = 0;
+            await PageJS.SaveFileAsync(fileName, contentType, file, _cts.Token);
+        }
+        catch (OperationCanceledException) when (_cts.IsCancellationRequested)
+        {
+            // The user left the page
+        }
+        catch (Exception)
+        {
+            PageSnackbar.Add(failure, Severity.Error);
         }
     }
 

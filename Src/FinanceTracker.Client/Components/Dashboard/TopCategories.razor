@@ -59,7 +59,7 @@
     private ApexChartOptions<TagSpend> CreateOptions()
     {
         var options = ChartDefaults.Create<TagSpend>(IsDarkMode);
-        options.Colors = [ChartDefaults.NeutralColor];
+        options.Colors = [MoneyColours.Neutral];
         options.Legend = new Legend { Show = false };
         options.PlotOptions = new PlotOptions
         {
@@ -75,7 +75,7 @@
         };
         options.Grid = new Grid
         {
-            BorderColor = IsDarkMode ? "#2A2A2A" : "#EEEEEE",
+            BorderColor = ChartDefaults.GridColour(IsDarkMode),
             StrokeDashArray = 4,
             Xaxis = new GridXAxis { Lines = new Lines { Show = true } },
             Yaxis = new GridYAxis { Lines = new Lines { Show = false } }

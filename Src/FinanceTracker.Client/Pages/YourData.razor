@@ -1,0 +1,207 @@
+@page "/YourData"
+@* A copy of everything FinTrack holds for the user, to keep or take elsewhere (IExportsService). The statement is a PDF
+   of one pay period. The backup is a zip of JSON and a transactions CSV; *@
+@using FinanceTracker.Client.Extensions
+@using FinanceTracker.Contracts.Api
+@using FinanceTracker.Contracts.PayPeriods
+@using Microsoft.AspNetCore.Authorization
+@inherits PageComponent
+
+@attribute [Authorize]
+@inject IExportsService ExportsService
+@inject IPayPeriodsService PayPeriodsService
+@inject TimeProvider TimeProvider
+
+<PageTitle>FinTrack - Your data</PageTitle>
+<PageHeader Title="Your data" Subtitle="Take a copy of everything FinTrack holds for you"/>
+
+<div class="ft-stack">
+    <Section Title="Statement" Caption="@StatementCaption">
+        <ChildContent>
+            <div class="ft-your-data">
+                <MudText Typo="Typo.body2">
+                    A PDF of one pay period across all your accounts: money in and out, spending by tag, bills,
+                    budgets, savings goals and debts, then every transaction.
+                </MudText>
+
+                @if (Pay is not null && Periods is not null)
+                {
+                    <div class="ft-your-data__statement">
+                        <MudSelect T="DateOnly" Label="Pay period" @bind-Value="@_statementMonth" Dense="true"
+                                   Variant="Variant.Outlined" Class="ft-your-data__period"
+                                   HelperText="@PeriodDates(_statementMonth)">
+                            @foreach (PayPeriod period in Periods)
+                            {
+                                <MudSelectItem T="DateOnly" Value="@period.Month">@PeriodName(period.Month)</MudSelectItem>
+                            }
+                        </MudSelect>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Outlined.PictureAsPdf"
+                                   Disabled="@_downloadingStatement" OnClick="@DownloadStatementAsync">
+                            @(_downloadingStatement ? "Preparing your statement…" : "Download statement")
+                        </MudButton>
+                    </div>
+                }
+            </div>
+        </ChildContent>
+    </Section>
+
+    <Section Title="Backup" Caption="A zip of everything, to keep or to take to another tool">
+        <ChildContent>
+            <div class="ft-your-data">
+                <MudText Typo="Typo.body2">It holds, each in its own file:</MudText>
+                <ul class="ft-your-data__contents">
+                    @foreach (string item in Contents)
+                    {
+                        <li><MudText Typo="Typo.body2" HtmlTag="span">@item</MudText></li>
+                    }
+                </ul>
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                    Each file is JSON, with your transactions also as a spreadsheet. Your bank connections' access and
+                    your password are never in it.
+                </MudText>
+
+                <MudAlert Severity="Severity.Warning" Variant="Variant.Text" Dense="true">
+                    The backup isn't encrypted. It's your financial data in plain text, so keep it somewhere safe and
+                    don't share it. Password protection is coming.
+                </MudAlert>
+
+                <div>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               StartIcon="@Icons.Material.Outlined.Download" Disabled="@_downloadingBackup"
+                               OnClick="@DownloadBackupAsync">
+                        @(_downloadingBackup ? "Preparing your backup…" : "Download backup")
+                    </MudButton>
+                </div>
+            </div>
+        </ChildContent>
+    </Section>
+
+    <Section Title="Transactions as a spreadsheet" Caption="Just the transactions you've filtered">
+        <ChildContent>
+            <div class="ft-your-data">
+                <MudText Typo="Typo.body2">
+                    On the transactions page, filter to what you want and use Export CSV.
+                </MudText>
+                <div>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="Transactions"
+                               StartIcon="@Icons.Material.Outlined.ReceiptLong">Go to transactions</MudButton>
+                </div>
+            </div>
+        </ChildContent>
+    </Section>
+</div>
+
+@code {
+
+    private static readonly string[] Contents =
+    [
+        "Your accounts, and their balance and net worth history",
+        "Every transaction, with its tags, splits, transfers, and the bills, debts and goals it goes towards",
+        "Your bills, budgets, debts and savings goals",
+        "Your rules, tags and calendar events",
+        "Your household and your pay"
+    ];
+
+    /// <summary>
+    /// The user's pay, for today's period and whether periods run from pay day, loaded once, see
+    /// <see cref="PageComponent.LoadOnceAsync{T}"/>.
+    /// </summary>
+    [PersistentState]
+    public YourPay? Pay { get; set; }
+
+    /// <summary>
+    /// The periods there's a statement for, newest first, back to the user's oldest transaction.
+    /// </summary>
+    [PersistentState]
+    public List<PayPeriod>? Periods { get; set; }
+
+    private DateOnly _statementMonth;
+    private bool _downloadingStatement;
+    private bool _downloadingBackup;
+
+    private string StatementCaption => Pay is { FollowsPay: true }
+        ? "Each pay period runs from your pay day to the day before the next"
+        : "Calendar months until your pay is picked up, then from pay day to pay day";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        Pay = await LoadOnceAsync(Pay, "Loading your data", PayPeriodsService.GetYourPayAsync);
+        Periods = await LoadOnceAsync(Periods, "Loading your data", ExportsService.GetStatementPeriodsAsync);
+        _statementMonth = FirstChoice(Periods);
+    }
+
+    /// <summary>
+    /// The last whole period, as today's is still running, or today's when it's the only one.
+    /// </summary>
+    private static DateOnly FirstChoice(List<PayPeriod> periods)
+    {
+        if (periods.Count > 1)
+        {
+            return periods[1].Month;
+        }
+
+        return periods[0].Month;
+    }
+
+    /// <summary>
+    /// e.g. 30 Oct 2026 to 27 Nov 2026, the days the chosen period covers.
+    /// </summary>
+    private string? PeriodDates(DateOnly month)
+    {
+        PayPeriod? period = Periods?.FirstOrDefault(x => x.Month == month);
+        if (period is null)
+        {
+            return null;
+        }
+
+        return $"{period.Start:d MMM yyyy} to {period.End:d MMM yyyy}";
+    }
+
+    /// <summary>
+    /// e.g. November 2026, with "so far" for today's period.
+    /// </summary>
+    private string PeriodName(DateOnly month)
+    {
+        string name = month.ToString("MMMM yyyy");
+        if (Pay is not null && month == Pay.CurrentPeriod.Month)
+        {
+            return $"{name}, so far";
+        }
+
+        return name;
+    }
+
+    private async Task DownloadStatementAsync()
+    {
+        DateOnly month = _statementMonth;
+        _downloadingStatement = true;
+        try
+        {
+            await SaveFileAsync(ExportFileNames.Statement(month.Year, month.Month), "application/pdf",
+                (file, cancellationToken) =>
+                    ExportsService.WriteStatementAsync(month.Year, month.Month, file, cancellationToken),
+                "Couldn't make your statement, try again");
+        }
+        finally
+        {
+            _downloadingStatement = false;
+        }
+    }
+
+    private async Task DownloadBackupAsync()
+    {
+        _downloadingBackup = true;
+        try
+        {
+            await SaveFileAsync(ExportFileNames.Backup(TimeProvider.GetLocalNow()), "application/zip",
+                ExportsService.WriteBackupAsync, "Couldn't make your backup, try again");
+        }
+        finally
+        {
+            _downloadingBackup = false;
+        }
+    }
+
+}

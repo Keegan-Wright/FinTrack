@@ -31,7 +31,7 @@ public class NavMenuTests : ComponentTestBase
             await Assert.That(LinksUnder(cut, "Insights")).IsEquivalentTo(["NetWorth", "Reports"],
                 TUnit.Assertions.Enums.CollectionOrdering.Matching);
             await Assert.That(LinksUnder(cut, "Manage"))
-                .IsEquivalentTo(["ProviderSetup", "HouseholdMembers", "Classifications", "Rules"],
+                .IsEquivalentTo(["ProviderSetup", "HouseholdMembers", "Classifications", "Rules", "YourData"],
                     TUnit.Assertions.Enums.CollectionOrdering.Matching);
         }
     }

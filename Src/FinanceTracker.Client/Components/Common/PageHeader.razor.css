@@ -20,6 +20,12 @@
     gap: 8px;
 }
 
+/* Between the page's actions and its file actions, as tall as the buttons */
+.ft-page-header__actions ::deep .ft-page-header__divider {
+    align-self: stretch;
+    margin: 4px 4px;
+}
+
 /* MudBlazor's small toggle items sit too tight */
 .ft-page-header__actions ::deep .mud-toggle-item {
     padding: 4px 14px;
@@ -54,5 +60,10 @@
 @media (max-width: 599.98px) {
     .ft-page-header {
         margin-bottom: 16px;
+    }
+
+    /* The actions wrap on a phone, where a divider would start or end a line */
+    .ft-page-header__actions ::deep .ft-page-header__divider {
+        display: none;
     }
 }

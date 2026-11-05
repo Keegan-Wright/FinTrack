@@ -5,6 +5,10 @@
    from all time down to a day. *@
 
 @using FinanceTracker.Client.Components.Reports
+@using FinanceTracker.Client.Extensions
+@using FinanceTracker.Contracts.Api
+@using FinanceTracker.Contracts.Exports
+@using FinanceTracker.Contracts.Reports
 @using FinanceTracker.Client.Components.Transactions
 @using Microsoft.AspNetCore.Authorization
 
@@ -17,6 +21,8 @@
 @inject IDebtsService DebtsService
 @inject ISavingsGoalsService SavingsGoalsService
 @inject NavigationManager NavigationManager
+@inject IExportsService ExportsService
+@inject TimeProvider TimeProvider
 
 <PageTitle>FinTrack - Reports</PageTitle>
 <PageHeader Title="Reports" Subtitle="Where your money came from and where it went">
@@ -28,6 +34,12 @@
             <MudToggleItem Value="ReportBreakdown.ByTag" Text="By tag"/>
         </MudToggleGroup>
     </Actions>
+    <FileActions>
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.PictureAsPdf"
+                   Disabled="@(_loading || _exporting || !HasTransactions)" OnClick="@ExportAsync">
+            @(_exporting ? "Exporting…" : "Export PDF")
+        </MudButton>
+    </FileActions>
     <ChildContent>
         <TransactionFilters AccountFilterItems="@Filters.Accounts"
                             CategoryFilterItems="@Filters.Categories"
@@ -128,6 +140,7 @@
     private List<ReportNode> _subjects = [];
     private ReportNode? _selected;
     private bool _loading = true;
+    private bool _exporting;
     private CancellationTokenSource? _loadCts;
 
     private string LoadingMessage => _breakdown switch
@@ -252,6 +265,28 @@
         }
 
         return _subjects.FirstOrDefault(static x => x.TotalTransactions > 0);
+    }
+
+    private bool HasTransactions => _subjects.Any(static x => x.TotalTransactions > 0);
+
+    /// <summary>
+    /// Saves a PDF of the breakdown shown, for the filters applied.
+    /// </summary>
+    private async Task ExportAsync()
+    {
+        ReportBreakdown breakdown = _breakdown;
+        ExportReport report = new() { Breakdown = breakdown, Filters = _filters.ToRequest() };
+        _exporting = true;
+        try
+        {
+            await SaveFileAsync(ExportFileNames.Report(breakdown, TimeProvider.GetLocalNow()), "application/pdf",
+                (file, cancellationToken) => ExportsService.WriteReportAsync(report, file, cancellationToken),
+                "Couldn't export your report, try again");
+        }
+        finally
+        {
+            _exporting = false;
+        }
     }
 
     private void OnSubjectKeyUp(KeyboardEventArgs e, ReportNode subject)

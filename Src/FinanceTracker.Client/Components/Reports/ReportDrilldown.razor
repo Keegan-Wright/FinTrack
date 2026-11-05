@@ -337,7 +337,7 @@
     {
         var points = Current.Children.Count;
         var options = ChartDefaults.Create<ReportNode>(IsDarkMode);
-        options.Colors = [ChartDefaults.MoneyInColor, ChartDefaults.MoneyOutColor, ChartDefaults.NeutralColor];
+        options.Colors = [MoneyColours.MoneyIn, MoneyColours.MoneyOut, MoneyColours.Neutral];
         options.PlotOptions = new PlotOptions { Bar = new PlotOptionsBar { ColumnWidth = "70%", BorderRadius = 2 } };
         options.Stroke = new Stroke { Width = new List<double> { 0, 0, 2 }, Curve = Curve.Smooth };
         options.States = new States { Active = new StatesActive { Filter = new StatesFilter { Type = StatesFilterType.none } } };

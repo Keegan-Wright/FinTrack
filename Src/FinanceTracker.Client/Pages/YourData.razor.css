@@ -1,0 +1,29 @@
+.ft-your-data {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.ft-your-data__contents {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.ft-your-data__statement {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+}
+
+/* Wide enough for "September 2026, so far", the full width on a phone */
+::deep .ft-your-data__period {
+    flex: 1 1 220px;
+    max-width: 280px;
+}
+
+@media (max-width: 600px) {
+    ::deep .ft-your-data__period {
+        max-width: none;
+    }
+}

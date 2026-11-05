@@ -4,8 +4,10 @@ namespace FinanceTracker.Infrastructure.Automation;
 
 /// <summary>
 /// The Quartz trigger that runs a job on its schedule, built the same way when it's first added and each time it's
-/// changed. Cron is in UTC, a run that's still going when the next is due skips that one, and a missed run while the
-/// app was down isn't caught up.
+/// changed. Cron is in UTC and a run that's still going when the next is due skips that one. Runs missed while the app
+/// was down are caught up with one run as soon as it's back, then the schedule carries on from its next cron time, so
+/// it stays on the hour it's set to. One run is enough, as a sync picks up everything since the last, and moving goals
+/// on moves every event that's passed.
 /// </summary>
 public static class JobSchedules
 {
@@ -13,6 +15,11 @@ public static class JobSchedules
     /// The wait before a retry when none is set.
     /// </summary>
     public static readonly TimeSpan DefaultRetryWait = TimeSpan.FromSeconds(30);
+
+    /// <summary>
+    /// Runs missed while the app was down run once when it's back, Quartz's FireOnceNow.
+    /// </summary>
+    public const CronTriggerMisfireInstruction MissedRuns = CronTriggerMisfireInstruction.FireAndProceed;
 
     public static TriggerKey KeyFor(string function) => new(function, JobNames.ScheduleGroup);
 
@@ -42,7 +49,7 @@ public static class JobSchedules
             .WithDescription(description)
             .WithCronSchedule(expression, static cron => cron
                 .InTimeZone(TimeZoneInfo.Utc)
-                .WithMisfireInstruction(CronTriggerMisfireInstruction.DoNothing))
+                .WithMisfireInstruction(MissedRuns))
             .WithOverlapPolicy(OverlapPolicy.Skip)
             .WithRetryPolicy(RetryPolicyFor(retries, retryIntervals));
     }

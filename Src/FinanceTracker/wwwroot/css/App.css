@@ -23,6 +23,15 @@ html {
     white-space: nowrap;
 }
 
+/* Money in and out, in the colours MoneyColourStyles sets from FinanceTracker.Design */
+.ft-money--in {
+    color: var(--ft-money-in);
+}
+
+.ft-money--out {
+    color: var(--ft-money-out);
+}
+
 /* Data grids sitting on the page as their own surface */
 .ft-grid .ft-grid__amount {
     text-align: right;

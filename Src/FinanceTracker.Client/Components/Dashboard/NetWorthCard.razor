@@ -20,7 +20,7 @@
                     <MoneyText Value="@History.Points[^1].NetWorth" Typo="Typo.h5"/>
                     @if (NetWorthText.ChangeAcross(History.Points) is { } change)
                     {
-                        <MudText Typo="Typo.caption" Color="@ChangeColor">@change</MudText>
+                        <MudText Typo="Typo.caption" Class="@ChangeClass">@change</MudText>
                     }
                 </div>
                 <div class="ft-net-worth-card__chart">
@@ -46,16 +46,16 @@
 
     private string Caption => $"Since {From.ToString("d MMM yyyy", CultureInfo.CurrentCulture)}";
 
-    private Color ChangeColor
+    private string? ChangeClass
     {
         get
         {
             if (History is not { Points.Count: > 1 } history)
             {
-                return Color.Default;
+                return null;
             }
 
-            return NetWorthText.ChangeColor(history.Points[^1].NetWorth - history.Points[0].NetWorth);
+            return NetWorthText.ChangeClass(history.Points[^1].NetWorth - history.Points[0].NetWorth);
         }
     }
 

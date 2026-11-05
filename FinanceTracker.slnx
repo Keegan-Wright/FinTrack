@@ -38,6 +38,7 @@
   </Folder>
   <Project Path="Src/FinanceTracker.Client/FinanceTracker.Client.csproj" />
   <Project Path="Src/FinanceTracker.Contracts/FinanceTracker.Contracts.csproj" />
+  <Project Path="Src/FinanceTracker.Design/FinanceTracker.Design.csproj" />
   <Project Path="Src/FinanceTracker.Domain/FinanceTracker.Domain.csproj" />
   <Project Path="Src/FinanceTracker/FinanceTracker.csproj" />
 </Solution>
