@@ -1,0 +1,9 @@
+@* The money colours from FinanceTracker.Design as CSS variables, so stylesheets and components colour money as
+   the charts and PDFs do without the values being written twice. Rendered once in the page's head. *@
+<style>
+    :root {
+        --ft-money-in: @MoneyColours.MoneyIn;
+        --ft-money-out: @MoneyColours.MoneyOut;
+        --ft-money-neutral: @MoneyColours.Neutral;
+    }
+</style>

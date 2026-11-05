@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace FinanceTracker.Tests.Unit.Client;
+namespace FinanceTracker.Tests.Unit.Shared;
 
 /// <summary>
 /// Runs the rest of a test in <paramref name="name"/>'s culture, the app's being the server's. Restored on dispose.

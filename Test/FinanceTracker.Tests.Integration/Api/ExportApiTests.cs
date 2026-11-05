@@ -1,6 +1,9 @@
 using System.IO.Compression;
 using System.Text;
 using System.Text.Json;
+using FinanceTracker.Contracts.Exports;
+using FinanceTracker.Contracts.PayPeriods;
+using FinanceTracker.Contracts.Reports;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Transactions;
 using FinanceTracker.Tests.Integration.Http;
@@ -82,6 +85,96 @@ public class ExportApiTests : IntegrationTestBase
             await Assert.That(manifest.RootElement.GetProperty("files").GetProperty("transactions.json").GetInt32())
                 .IsEqualTo(1);
         }
+    }
+
+    [Test]
+    public async Task StatementPeriods_WithNoTransactions_IsJustTodays()
+    {
+        // Arrange
+        SignedInUser user = await RegisterUserAsync();
+        IExportsService service = ApiFor(user).Get<IExportsService>();
+        DateOnly today = DateOnly.FromDateTime(DateTime.Now);
+
+        // Act
+        List<PayPeriod> periods = await service.GetStatementPeriodsAsync(CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(periods).Count().IsEqualTo(1);
+            await Assert.That(periods[0].Start).IsLessThanOrEqualTo(today);
+            await Assert.That(periods[0].End).IsGreaterThanOrEqualTo(today);
+        }
+    }
+
+    [Test]
+    public async Task StatementPeriods_GoBackToTheOldestTransactionNewestFirst()
+    {
+        // Arrange
+        SignedInUser user = await RegisterUserAsync();
+        DateTime oldest = DateTime.UtcNow.AddMonths(-3);
+        await Scenario.Do(s => s.BankConnectionScenario.WithConnection("mine", user.Username))
+            .Do(s => s.BankAccountScenario.WithAccount("main", "mine"))
+            .Do(s => s.TransactionScenario.WithTransaction("old", "main",
+                new TransactionDetailsFaker().Generate() with { OccurredAt = oldest }))
+            .Do(s => s.TransactionScenario.WithTransaction("recent", "main",
+                new TransactionDetailsFaker().Generate() with { OccurredAt = DateTime.UtcNow.AddDays(-1) }));
+        IExportsService service = ApiFor(user).Get<IExportsService>();
+        DateOnly oldestDay = DateOnly.FromDateTime(oldest.ToLocalTime());
+
+        // Act
+        List<PayPeriod> periods = await service.GetStatementPeriodsAsync(CancellationToken);
+
+        // Assert: four calendar months, as the user has no pay, the last holding the oldest transaction
+        using (Assert.Multiple())
+        {
+            await Assert.That(periods.Select(static x => x.Month)).IsOrderedByDescending(static x => x);
+            await Assert.That(periods[^1].Start).IsLessThanOrEqualTo(oldestDay);
+            await Assert.That(periods[^1].End).IsGreaterThanOrEqualTo(oldestDay);
+            await Assert.That(periods.Count).IsBetween(4, 5);
+        }
+    }
+
+    [Test]
+    public async Task Statement_IsAPdf()
+    {
+        // Arrange
+        SignedInUser user = await RegisterUserAsync();
+        await Scenario.Do(s => s.BankConnectionScenario.WithConnection("mine", user.Username))
+            .Do(s => s.BankAccountScenario.WithAccount("main", "mine"))
+            .Do(s => s.TransactionScenario.WithTransaction("coffee", "main",
+                new TransactionDetailsFaker().Generate() with { Description = "COFFEE SHOP" }));
+        IExportsService service = ApiFor(user).Get<IExportsService>();
+        DateTime now = DateTime.UtcNow;
+        using MemoryStream pdf = new();
+
+        // Act
+        await service.WriteStatementAsync(now.Year, now.Month, pdf, CancellationToken);
+
+        // Assert
+        await Assert.That(Encoding.ASCII.GetString(pdf.ToArray(), 0, 5)).IsEqualTo("%PDF-");
+    }
+
+    [Test]
+    [Arguments(ReportBreakdown.OverTime)]
+    [Arguments(ReportBreakdown.ByAccount)]
+    [Arguments(ReportBreakdown.ByTag)]
+    public async Task Report_IsAPdf(ReportBreakdown breakdown)
+    {
+        // Arrange
+        SignedInUser user = await RegisterUserAsync();
+        await Scenario.Do(s => s.BankConnectionScenario.WithConnection("mine", user.Username))
+            .Do(s => s.BankAccountScenario.WithAccount("main", "mine"))
+            .Do(s => s.TransactionScenario.WithTransaction("coffee", "main",
+                new TransactionDetailsFaker().Generate() with { Description = "COFFEE SHOP" }));
+        IExportsService service = ApiFor(user).Get<IExportsService>();
+        using MemoryStream pdf = new();
+
+        // Act
+        await service.WriteReportAsync(new ExportReport { Breakdown = breakdown }, pdf, CancellationToken);
+
+        // Assert
+        await Assert.That(Encoding.ASCII.GetString(pdf.ToArray(), 0, 5)).IsEqualTo("%PDF-");
     }
 
     private static string Read(ZipArchive zip, string name)

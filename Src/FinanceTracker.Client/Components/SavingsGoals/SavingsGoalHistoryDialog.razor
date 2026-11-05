@@ -14,7 +14,7 @@
             }
             else if (_history is not null)
             {
-                <BalanceHistoryChart Points="@_history" Name="Saved" Color="@ChartDefaults.MoneyInColor"
+                <BalanceHistoryChart Points="@_history" Name="Saved" Color="@MoneyColours.MoneyIn"
                                      EmptyText="Not enough history yet, it builds up day by day."/>
                 @if (NetWorthText.DerivedNote(_history) is { } note)
                 {

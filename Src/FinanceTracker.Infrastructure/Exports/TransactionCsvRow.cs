@@ -11,11 +11,11 @@ namespace FinanceTracker.Infrastructure.Exports;
 public sealed partial record TransactionCsvRow
 {
     /// <summary>
-    /// The day it was where the user is.
+    /// The day it was where the user is, as the app's culture writes a short date, e.g. 04/10/2026 in en-GB, so a
+    /// spreadsheet in the same culture reads it as a date. Text, as the numbers stay invariant.
     /// </summary>
     [CsvColumn("Date", Index = 0)]
-    [CsvFormat("dd/MM/yyyy")]
-    public DateOnly Date { get; init; }
+    public string Date { get; init; } = string.Empty;
 
     [CsvColumn("Account", Index = 1)]
     public string Account { get; init; } = string.Empty;
@@ -98,7 +98,7 @@ public sealed partial record TransactionCsvRow
 
         return new TransactionCsvRow
         {
-            Date = DateOnly.FromDateTime(local),
+            Date = DateOnly.FromDateTime(local).ToString("d", CultureInfo.CurrentCulture),
             Account = transaction.AccountName,
             Description = transaction.Description,
             Amount = ToPence(transaction.Amount),

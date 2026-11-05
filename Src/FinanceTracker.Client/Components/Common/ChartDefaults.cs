@@ -1,5 +1,6 @@
 using System.Globalization;
 using ApexCharts;
+using FinanceTracker.Design;
 
 namespace FinanceTracker.Client.Components.Common;
 
@@ -9,12 +10,6 @@ namespace FinanceTracker.Client.Components.Common;
 /// </summary>
 public static class ChartDefaults
 {
-    public const string MoneyInColor = "#4CAF50";
-
-    public const string MoneyOutColor = "#EF5350";
-
-    public const string NeutralColor = "#42A5F5";
-
     /// <summary>
     /// The width in pixels below which a chart's responsive options apply, MudBlazor's small breakpoint.
     /// </summary>
@@ -28,13 +23,13 @@ public static class ChartDefaults
         Chart = new Chart
         {
             Background = "transparent",
-            FontFamily = "Inter, Roboto, Helvetica, Arial, sans-serif",
-            ForeColor = isDarkMode ? "#B0B0B0" : "#757575",
+            FontFamily = AppTypeface.CssFontStack,
+            ForeColor = isDarkMode ? DarkPalette.TextSecondary : LightPalette.TextSecondary,
             Toolbar = new Toolbar { Show = false },
             Zoom = new Zoom { Enabled = false }
         },
         Theme = new Theme { Mode = isDarkMode ? Mode.Dark : Mode.Light },
-        Grid = new Grid { BorderColor = isDarkMode ? "#2A2A2A" : "#EEEEEE", StrokeDashArray = 4 },
+        Grid = new Grid { BorderColor = GridColour(isDarkMode), StrokeDashArray = 4 },
         DataLabels = new DataLabels { Enabled = false },
         Legend = new Legend { Position = LegendPosition.Top, HorizontalAlign = Align.Right },
         Tooltip = new Tooltip
@@ -45,6 +40,12 @@ public static class ChartDefaults
         },
         Yaxis = [new YAxis { Labels = new YAxisLabels { Formatter = MoneyFormatter(0) } }]
     };
+
+    /// <summary>
+    /// The colour of a chart's grid lines, the theme's default line colour.
+    /// </summary>
+    public static string GridColour(bool isDarkMode) =>
+        isDarkMode ? DarkPalette.LinesDefault : LightPalette.LinesDefault;
 
     /// <summary>
     /// A JavaScript formatter writing a value as money in the app's culture, so it runs in the browser without a

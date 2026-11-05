@@ -92,14 +92,17 @@ public static class NetWorthText
         return $"{direction} {CurrencyFormatter.Format(Math.Abs(amount))} this {period}";
     }
 
-    public static Color ChangeColor(decimal? change)
+    /// <summary>
+    /// Up as money in, down as money out, nothing when there's no change, see <see cref="MoneyColourClass"/>.
+    /// </summary>
+    public static string? ChangeClass(decimal? change)
     {
-        if (change is not { } amount || amount == 0)
+        if (change is not { } amount)
         {
-            return Color.Default;
+            return null;
         }
 
-        return amount > 0 ? Color.Success : Color.Error;
+        return MoneyColourClass.BySign(amount);
     }
 
     public static string KindIcon(NetWorthItemKind kind) => kind switch

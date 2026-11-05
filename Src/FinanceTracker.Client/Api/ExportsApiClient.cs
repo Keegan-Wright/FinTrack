@@ -1,5 +1,7 @@
 using System.Net.Http.Json;
 using FinanceTracker.Contracts.Api;
+using FinanceTracker.Contracts.Exports;
+using FinanceTracker.Contracts.PayPeriods;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Transactions;
 using FinanceTracker.Generated.Attributes;
@@ -36,6 +38,35 @@ public sealed class ExportsApiClient : IExportsService
 
         using HttpResponseMessage response = await _http.GetAsync($"{ApiRoutes.Exports}/backup",
             HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        await response.Content.CopyToAsync(destination, cancellationToken);
+    }
+
+    public async Task<List<PayPeriod>> GetStatementPeriodsAsync(CancellationToken cancellationToken)
+    {
+        using HttpResponseMessage response =
+            await _http.GetAsync($"{ApiRoutes.Exports}/statement/periods", cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return await response.ReadRequiredJsonAsync<List<PayPeriod>>(cancellationToken);
+    }
+
+    public async Task WriteStatementAsync(int year, int month, Stream destination,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(destination);
+
+        using HttpResponseMessage response = await _http.GetAsync($"{ApiRoutes.Exports}/statement/{year}/{month}",
+            HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        await response.Content.CopyToAsync(destination, cancellationToken);
+    }
+
+    public async Task WriteReportAsync(ExportReport report, Stream destination, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(destination);
+
+        using HttpResponseMessage response = await _http.PostAsJsonAsync($"{ApiRoutes.Exports}/report", report,
+            cancellationToken);
         response.EnsureSuccessStatusCode();
         await response.Content.CopyToAsync(destination, cancellationToken);
     }

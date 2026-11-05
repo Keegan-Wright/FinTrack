@@ -9,6 +9,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\FinanceTracker.Contracts\FinanceTracker.Contracts.csproj" />
+      <ProjectReference Include="..\FinanceTracker.Design\FinanceTracker.Design.csproj"/>
       <ProjectReference Include="..\FinanceTracker.Domain\FinanceTracker.Domain.csproj" />
     </ItemGroup>
 
@@ -20,7 +21,13 @@
       <PackageReference Include="Microsoft.EntityFrameworkCore"/>
       <PackageReference Include="Microsoft.Extensions.Http"/>
       <PackageReference Include="Quartz"/>
+      <PackageReference Include="QuestPDF"/>
       <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    </ItemGroup>
+
+    <!-- For the PDFs, see QuestPdfSetup -->
+    <ItemGroup>
+      <EmbeddedResource Include="Exports\Pdf\Fonts\*.ttf" LogicalName="Fonts.%(Filename)%(Extension)"/>
     </ItemGroup>
 
   <ItemGroup>

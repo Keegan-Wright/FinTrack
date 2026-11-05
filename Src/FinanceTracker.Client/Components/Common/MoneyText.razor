@@ -1,6 +1,6 @@
 @* An amount of money in tabular figures, so amounts line up. With Signed set money in shows green and money out
-   red. *@
-<MudText Typo="Typo" Color="@ResolvedColor" Inline="Inline" Class="@($"ft-money {Class}")">@CurrencyFormatter.Format(Value)</MudText>
+   red, in the MoneyColours the charts and PDFs use. *@
+<MudText Typo="Typo" Color="@ResolvedColor" Inline="Inline" Class="@CssClass">@CurrencyFormatter.Format(Value)</MudText>
 
 @code {
 
@@ -19,13 +19,31 @@
 
     [Parameter] public string? Class { get; set; }
 
-    private Color ResolvedColor => Color ?? (Signed
-        ? Value switch
+    private Color ResolvedColor => Color ?? MudBlazor.Color.Default;
+
+    /// <summary>
+    /// The sign's colour when <see cref="Signed"/> and no <see cref="Color"/> is set.
+    /// </summary>
+    private string? SignClass
+    {
+        get
         {
-            < 0 => MudBlazor.Color.Error,
-            > 0 => MudBlazor.Color.Success,
-            _ => MudBlazor.Color.Default
+            if (!Signed || Color is not null)
+            {
+                return null;
+            }
+
+            return MoneyColourClass.BySign(Value);
         }
-        : MudBlazor.Color.Default);
+    }
+
+    private string CssClass
+    {
+        get
+        {
+            string?[] classes = ["ft-money", SignClass, Class];
+            return string.Join(" ", classes.Where(static x => x is not null));
+        }
+    }
 
 }

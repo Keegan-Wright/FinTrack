@@ -55,6 +55,19 @@ public class TransactionCsvTests : UnitTestBase
     }
 
     [Test]
+    public async Task Row_WritesTheDateAsTheAppsCultureDoes()
+    {
+        // Arrange
+        Transaction transaction = Transaction("COFFEE SHOP", -3.5m);
+
+        // Act
+        string[] lines = Lines(await WriteAsync(TimeZoneInfo.Utc, "en-US", transaction));
+
+        // Assert: the amount stays invariant
+        await Assert.That(lines[1]).StartsWith("10/4/2026,Main,COFFEE SHOP,-3.50,");
+    }
+
+    [Test]
     [Arguments("ACME, LTD", "\"ACME, LTD\"")]
     [Arguments("The \"big\" shop", "\"The \"\"big\"\" shop\"")]
     [Arguments("Line one\nline two", "\"Line one\nline two\"")]
@@ -193,8 +206,15 @@ public class TransactionCsvTests : UnitTestBase
     /// <summary>
     /// The CSV of <paramref name="transactions"/>, as written.
     /// </summary>
-    private async Task<byte[]> WriteAsync(TimeZoneInfo timeZone, params Transaction[] transactions)
+    private async Task<byte[]> WriteAsync(TimeZoneInfo timeZone, params Transaction[] transactions) =>
+        await WriteAsync(timeZone, "en-GB", transactions);
+
+    /// <summary>
+    /// Written in <paramref name="culture"/>, the app's culture on the server.
+    /// </summary>
+    private async Task<byte[]> WriteAsync(TimeZoneInfo timeZone, string culture, params Transaction[] transactions)
     {
+        using CultureScope scope = new(culture);
         using MemoryStream destination = new();
         await TransactionCsv.WriteAsync(transactions.ToAsyncEnumerable(), destination, timeZone, CancellationToken);
         return destination.ToArray();

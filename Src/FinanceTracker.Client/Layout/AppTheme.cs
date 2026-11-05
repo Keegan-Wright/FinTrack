@@ -1,9 +1,11 @@
+using FinanceTracker.Design;
 using MudBlazor;
 
 namespace FinanceTracker.Client.Layout;
 
 /// <summary>
-/// The app's palettes, shape and type, shared by <see cref="MainLayout"/> and the server's auth pages.
+/// The app's palettes, shape and type from <see cref="LightPalette"/>, <see cref="DarkPalette"/>,
+/// <see cref="AppShape"/> and <see cref="AppTypeface"/>, shared by <see cref="MainLayout"/> and the server's auth pages.
 /// </summary>
 public static class AppTheme
 {
@@ -12,66 +14,64 @@ public static class AppTheme
         PaletteLight =
             new PaletteLight
             {
-                Primary = "#2E7D32",
-                Secondary = "#1976D2",
-                Tertiary = "#FFB300",
-                AppbarBackground = "#FFFFFF",
-                AppbarText = "#212121",
-                Background = "#F8F9FA",
-                Surface = "#FFFFFF",
-                DrawerBackground = "#FFFFFF",
-                DrawerText = "#424242",
-                DrawerIcon = "#616161",
-                TextPrimary = "#212121",
-                TextSecondary = "#757575",
-                ActionDefault = "#546E7A",
-                ActionDisabled = "#BDBDBD",
+                Primary = LightPalette.Primary,
+                Secondary = LightPalette.Secondary,
+                Tertiary = LightPalette.Tertiary,
+                AppbarBackground = LightPalette.AppbarBackground,
+                AppbarText = LightPalette.AppbarText,
+                Background = LightPalette.Background,
+                Surface = LightPalette.Surface,
+                DrawerBackground = LightPalette.DrawerBackground,
+                DrawerText = LightPalette.DrawerText,
+                DrawerIcon = LightPalette.DrawerIcon,
+                TextPrimary = LightPalette.TextPrimary,
+                TextSecondary = LightPalette.TextSecondary,
+                ActionDefault = LightPalette.ActionDefault,
+                ActionDisabled = LightPalette.ActionDisabled,
                 // Every *-hover colour is its colour at this opacity, MudBlazor's 6% barely shows
                 HoverOpacity = 0.1,
-                // Tables have their own hover, matched to ActionDefault's
-                TableHover = "rgba(84,110,122,0.1)",
-                Divider = "#E0E0E0",
-                TableLines = "#F5F5F5",
-                LinesDefault = "#EEEEEE",
-                Success = "#43A047",
-                Error = "#E53935",
-                Warning = "#FB8C00",
-                Info = "#1E88E5"
+                TableHover = LightPalette.TableHover,
+                Divider = LightPalette.Divider,
+                TableLines = LightPalette.TableLines,
+                LinesDefault = LightPalette.LinesDefault,
+                Success = LightPalette.Success,
+                Error = LightPalette.Error,
+                Warning = LightPalette.Warning,
+                Info = LightPalette.Info
             },
         PaletteDark =
             new PaletteDark
             {
-                Primary = "#4CAF50",
-                Secondary = "#42A5F5",
-                Tertiary = "#FFCA28",
-                AppbarBackground = "#121212",
-                Background = "#0A0A0A",
-                Surface = "#161616",
-                DrawerBackground = "#121212",
-                DrawerText = "#E0E0E0",
-                DrawerIcon = "#B0B0B0",
-                TextPrimary = "#F5F5F5",
-                TextSecondary = "#B0B0B0",
-                ActionDefault = "#90A4AE",
-                ActionDisabled = "#424242",
+                Primary = DarkPalette.Primary,
+                Secondary = DarkPalette.Secondary,
+                Tertiary = DarkPalette.Tertiary,
+                AppbarBackground = DarkPalette.AppbarBackground,
+                Background = DarkPalette.Background,
+                Surface = DarkPalette.Surface,
+                DrawerBackground = DarkPalette.DrawerBackground,
+                DrawerText = DarkPalette.DrawerText,
+                DrawerIcon = DarkPalette.DrawerIcon,
+                TextPrimary = DarkPalette.TextPrimary,
+                TextSecondary = DarkPalette.TextSecondary,
+                ActionDefault = DarkPalette.ActionDefault,
+                ActionDisabled = DarkPalette.ActionDisabled,
                 HoverOpacity = 0.1,
-                // MudBlazor's default darkens the row, which doesn't show on a dark surface
-                TableHover = "rgba(144,164,174,0.1)",
-                Divider = "#2A2A2A",
-                TableLines = "#1A1A1A",
-                LinesDefault = "#2A2A2A",
-                Success = "#66BB6A",
-                Error = "#EF5350",
-                Warning = "#FFA726",
-                Info = "#42A5F5"
+                TableHover = DarkPalette.TableHover,
+                Divider = DarkPalette.Divider,
+                TableLines = DarkPalette.TableLines,
+                LinesDefault = DarkPalette.LinesDefault,
+                Success = DarkPalette.Success,
+                Error = DarkPalette.Error,
+                Warning = DarkPalette.Warning,
+                Info = DarkPalette.Info
             },
-        LayoutProperties = new LayoutProperties { DefaultBorderRadius = "8px" },
+        LayoutProperties = new LayoutProperties { DefaultBorderRadius = $"{AppShape.CornerRadiusPixels}px" },
         Typography = new Typography
         {
             Default =
                 new DefaultTypography
                 {
-                    FontFamily = ["Inter", "Roboto", "Helvetica", "Arial", "sans-serif"],
+                    FontFamily = [.. AppTypeface.FontStack],
                     FontSize = ".875rem",
                     FontWeight = "400",
                     LineHeight = "1.43",

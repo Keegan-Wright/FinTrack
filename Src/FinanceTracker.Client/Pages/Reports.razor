@@ -5,6 +5,10 @@
    from all time down to a day. *@
 
 @using FinanceTracker.Client.Components.Reports
+@using FinanceTracker.Client.Extensions
+@using FinanceTracker.Contracts.Api
+@using FinanceTracker.Contracts.Exports
+@using FinanceTracker.Contracts.Reports
 @using FinanceTracker.Client.Components.Transactions
 @using Microsoft.AspNetCore.Authorization
 
@@ -17,6 +21,10 @@
 @inject IDebtsService DebtsService
 @inject ISavingsGoalsService SavingsGoalsService
 @inject NavigationManager NavigationManager
+@inject IExportsService ExportsService
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
+@inject TimeProvider TimeProvider
 
 <PageTitle>FinTrack - Reports</PageTitle>
 <PageHeader Title="Reports" Subtitle="Where your money came from and where it went">
@@ -27,6 +35,10 @@
             <MudToggleItem Value="ReportBreakdown.ByAccount" Text="By account"/>
             <MudToggleItem Value="ReportBreakdown.ByTag" Text="By tag"/>
         </MudToggleGroup>
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.PictureAsPdf"
+                   Disabled="@(_loading || _exporting || !HasTransactions)" OnClick="@ExportAsync">
+            @(_exporting ? "Exporting…" : "Export PDF")
+        </MudButton>
     </Actions>
     <ChildContent>
         <TransactionFilters AccountFilterItems="@Filters.Accounts"
@@ -128,6 +140,7 @@
     private List<ReportNode> _subjects = [];
     private ReportNode? _selected;
     private bool _loading = true;
+    private bool _exporting;
     private CancellationTokenSource? _loadCts;
 
     private string LoadingMessage => _breakdown switch
@@ -252,6 +265,38 @@
         }
 
         return _subjects.FirstOrDefault(static x => x.TotalTransactions > 0);
+    }
+
+    private bool HasTransactions => _subjects.Any(static x => x.TotalTransactions > 0);
+
+    /// <summary>
+    /// Saves a PDF of the breakdown shown, for the filters applied.
+    /// </summary>
+    private async Task ExportAsync()
+    {
+        ReportBreakdown breakdown = _breakdown;
+        _exporting = true;
+        try
+        {
+            using MemoryStream pdf = new();
+            ExportReport report = new() { Breakdown = breakdown, Filters = _filters.ToRequest() };
+            await ExportsService.WriteReportAsync(report, pdf, _cts.Token);
+            pdf.Position = 0;
+            await JS.SaveFileAsync(ExportFileNames.Report(breakdown, TimeProvider.GetLocalNow()), "application/pdf",
+                pdf, _cts.Token);
+        }
+        catch (OperationCanceledException) when (_cts.IsCancellationRequested)
+        {
+            // The user left the page
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't export your report, try again", Severity.Error);
+        }
+        finally
+        {
+            _exporting = false;
+        }
     }
 
     private void OnSubjectKeyUp(KeyboardEventArgs e, ReportNode subject)

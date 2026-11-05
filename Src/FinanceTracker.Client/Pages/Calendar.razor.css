@@ -85,11 +85,11 @@
 }
 
 .ft-calendar__dot--in {
-    background-color: var(--mud-palette-success);
+    background-color: var(--ft-money-in);
 }
 
 .ft-calendar__dot--out {
-    background-color: var(--mud-palette-error);
+    background-color: var(--ft-money-out);
 }
 
 .ft-calendar ::deep .ft-calendar__icon {

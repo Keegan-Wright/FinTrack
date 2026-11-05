@@ -1,13 +1,15 @@
 @page "/YourData"
-@* A copy of everything FinTrack holds for the user, to keep or take elsewhere (IExportsService). The backup is a zip of
-   JSON and a transactions CSV; *@
+@* A copy of everything FinTrack holds for the user, to keep or take elsewhere (IExportsService). The statement is a PDF
+   of one pay period. The backup is a zip of JSON and a transactions CSV; *@
 @using FinanceTracker.Client.Extensions
 @using FinanceTracker.Contracts.Api
+@using FinanceTracker.Contracts.PayPeriods
 @using Microsoft.AspNetCore.Authorization
 @inherits PageComponent
 
 @attribute [Authorize]
 @inject IExportsService ExportsService
+@inject IPayPeriodsService PayPeriodsService
 @inject IJSRuntime JS
 @inject ISnackbar Snackbar
 @inject TimeProvider TimeProvider
@@ -16,6 +18,36 @@
 <PageHeader Title="Your data" Subtitle="Take a copy of everything FinTrack holds for you"/>
 
 <div class="ft-stack">
+    <Section Title="Statement" Caption="@StatementCaption">
+        <ChildContent>
+            <div class="ft-your-data">
+                <MudText Typo="Typo.body2">
+                    A PDF of one pay period across all your accounts: money in and out, spending by tag, bills,
+                    budgets, savings goals and debts, then every transaction.
+                </MudText>
+
+                @if (Pay is not null && Periods is not null)
+                {
+                    <div class="ft-your-data__statement">
+                        <MudSelect T="DateOnly" Label="Pay period" @bind-Value="@_statementMonth" Dense="true"
+                                   Variant="Variant.Outlined" Class="ft-your-data__period"
+                                   HelperText="@PeriodDates(_statementMonth)">
+                            @foreach (PayPeriod period in Periods)
+                            {
+                                <MudSelectItem T="DateOnly" Value="@period.Month">@PeriodName(period.Month)</MudSelectItem>
+                            }
+                        </MudSelect>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Outlined.PictureAsPdf"
+                                   Disabled="@_downloadingStatement" OnClick="@DownloadStatementAsync">
+                            @(_downloadingStatement ? "Preparing your statement…" : "Download statement")
+                        </MudButton>
+                    </div>
+                }
+            </div>
+        </ChildContent>
+    </Section>
+
     <Section Title="Backup" Caption="A zip of everything, to keep or to take to another tool">
         <ChildContent>
             <div class="ft-your-data">
@@ -38,9 +70,9 @@
 
                 <div>
                     <MudButton Variant="Variant.Filled" Color="Color.Primary"
-                               StartIcon="@Icons.Material.Outlined.Download" Disabled="@_downloading"
+                               StartIcon="@Icons.Material.Outlined.Download" Disabled="@_downloadingBackup"
                                OnClick="@DownloadBackupAsync">
-                        @(_downloading ? "Preparing your backup…" : "Download backup")
+                        @(_downloadingBackup ? "Preparing your backup…" : "Download backup")
                     </MudButton>
                 </div>
             </div>
@@ -73,18 +105,120 @@
         "Your household and your pay"
     ];
 
-    private bool _downloading;
+    /// <summary>
+    /// The user's pay, for today's period and whether periods run from pay day, loaded once, see
+    /// <see cref="PageComponent.LoadOnceAsync{T}"/>.
+    /// </summary>
+    [PersistentState]
+    public YourPay? Pay { get; set; }
+
+    /// <summary>
+    /// The periods there's a statement for, newest first, back to the user's oldest transaction.
+    /// </summary>
+    [PersistentState]
+    public List<PayPeriod>? Periods { get; set; }
+
+    private DateOnly _statementMonth;
+    private bool _downloadingStatement;
+    private bool _downloadingBackup;
+
+    private string StatementCaption => Pay is { FollowsPay: true }
+        ? "Each pay period runs from your pay day to the day before the next"
+        : "Calendar months until your pay is picked up, then from pay day to pay day";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        Pay = await LoadOnceAsync(Pay, "Loading your data", PayPeriodsService.GetYourPayAsync);
+        Periods = await LoadOnceAsync(Periods, "Loading your data", ExportsService.GetStatementPeriodsAsync);
+        _statementMonth = FirstChoice(Periods);
+    }
+
+    /// <summary>
+    /// The last whole period, as today's is still running, or today's when it's the only one.
+    /// </summary>
+    private static DateOnly FirstChoice(List<PayPeriod> periods)
+    {
+        if (periods.Count > 1)
+        {
+            return periods[1].Month;
+        }
+
+        return periods[0].Month;
+    }
+
+    /// <summary>
+    /// e.g. 30 Oct 2026 to 27 Nov 2026, the days the chosen period covers.
+    /// </summary>
+    private string? PeriodDates(DateOnly month)
+    {
+        PayPeriod? period = Periods?.FirstOrDefault(x => x.Month == month);
+        if (period is null)
+        {
+            return null;
+        }
+
+        return $"{period.Start:d MMM yyyy} to {period.End:d MMM yyyy}";
+    }
+
+    /// <summary>
+    /// e.g. November 2026, with "so far" for today's period.
+    /// </summary>
+    private string PeriodName(DateOnly month)
+    {
+        string name = month.ToString("MMMM yyyy");
+        if (Pay is not null && month == Pay.CurrentPeriod.Month)
+        {
+            return $"{name}, so far";
+        }
+
+        return name;
+    }
+
+    private async Task DownloadStatementAsync()
+    {
+        DateOnly month = _statementMonth;
+        _downloadingStatement = true;
+        try
+        {
+            await SaveAsync(ExportFileNames.Statement(month.Year, month.Month), "application/pdf",
+                (file, cancellationToken) =>
+                    ExportsService.WriteStatementAsync(month.Year, month.Month, file, cancellationToken),
+                "Couldn't make your statement, try again");
+        }
+        finally
+        {
+            _downloadingStatement = false;
+        }
+    }
 
     private async Task DownloadBackupAsync()
     {
-        _downloading = true;
+        _downloadingBackup = true;
         try
         {
-            using MemoryStream backup = new();
-            await ExportsService.WriteBackupAsync(backup, _cts.Token);
-            backup.Position = 0;
-            await JS.SaveFileAsync(ExportFileNames.Backup(TimeProvider.GetLocalNow()), "application/zip", backup,
-                _cts.Token);
+            await SaveAsync(ExportFileNames.Backup(TimeProvider.GetLocalNow()), "application/zip",
+                ExportsService.WriteBackupAsync, "Couldn't make your backup, try again");
+        }
+        finally
+        {
+            _downloadingBackup = false;
+        }
+    }
+
+    /// <summary>
+    /// Has <paramref name="write"/> make the file, then saves it in the browser, or says
+    /// <paramref name="failure"/>.
+    /// </summary>
+    private async Task SaveAsync(string fileName, string contentType, Func<Stream, CancellationToken, Task> write,
+        string failure)
+    {
+        try
+        {
+            using MemoryStream file = new();
+            await write(file, _cts.Token);
+            file.Position = 0;
+            await JS.SaveFileAsync(fileName, contentType, file, _cts.Token);
         }
         catch (OperationCanceledException) when (_cts.IsCancellationRequested)
         {
@@ -92,11 +226,7 @@
         }
         catch (Exception)
         {
-            Snackbar.Add("Couldn't make your backup, try again", Severity.Error);
-        }
-        finally
-        {
-            _downloading = false;
+            Snackbar.Add(failure, Severity.Error);
         }
     }
 

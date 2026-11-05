@@ -1,8 +1,12 @@
 using System.Text;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Transactions;
+using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Exports;
+using FinanceTracker.Infrastructure.Exports.Statements;
 using FinanceTracker.Tests.Unit.Shared;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
 namespace FinanceTracker.Tests.Unit.Infrastructure.Services.Exports;
@@ -55,5 +59,10 @@ public class ExportsServiceTests : UnitTestBase
 
     private ExportsService BuildSubject() =>
         new(_transactionsService, BackupWriterTests.BuildWriter(transactions: _transactionsService),
+            StatementBuilderTests.BuildBuilder(),
+            new StatementPeriods(Substitute.For<ICurrentUser>(),
+                Substitute.For<IDbContextFactory<FinanceTrackerContext>>(), NullLogger<StatementPeriods>.Instance,
+                TimeProvider.System),
+            ReportDocumentBuilderTests.BuildBuilder(),
             new FixedTimeProvider(DateTime.UtcNow));
 }
