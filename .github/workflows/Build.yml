@@ -59,6 +59,11 @@ jobs:
           dotnet dev-certs https --trust || true
           echo "SSL_CERT_DIR=$HOME/.aspnet/dev-certs/trust:/usr/lib/ssl/certs" >> "$GITHUB_ENV"
 
+      # Chromium and the system libraries it needs for the UI tests, which use the app in a browser with Playwright.
+      # The tests install Chromium themselves when it's missing, but not its libraries
+      - name: Install Playwright's Chromium
+        run: pwsh Test/FinanceTracker.Tests.Integration/bin/release/net10.0/playwright.ps1 install --with-deps chromium
+
       - name: Integration Tests
         run: dotnet test --project Test/FinanceTracker.Tests.Integration -c=release
 
@@ -68,3 +73,12 @@ jobs:
         with:
           name: TestReport
           path: '**/*-report.html'
+
+      # What a failed UI test saw, step by step, open with https://trace.playwright.dev
+      - name: Upload Playwright Traces
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: PlaywrightTraces
+          path: '**/playwright-traces/*.zip'
+          if-no-files-found: ignore

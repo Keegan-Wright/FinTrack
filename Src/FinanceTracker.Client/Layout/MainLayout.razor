@@ -18,7 +18,7 @@
 <MudDialogProvider FullWidth="true" MaxWidth="MaxWidth.Small" CloseButton="true"/>
 <MudSnackbarProvider/>
 
-<MudLayout>
+<MudLayout data-interactive="@(RendererInfo.IsInteractive ? "true" : null)">
     <MudAppBar Elevation="@(_isDarkMode ? 0 : 1)">
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start"
                        OnClick="@ToggleDrawer" aria-label="Toggle navigation"/>
