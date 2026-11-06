@@ -156,10 +156,7 @@
         }
     }
 
-    public void Dispose()
-    {
-        _cts.Cancel();
-        _cts.Dispose();
-    }
+    // Cancelled, not disposed, see PageComponent.Dispose: a page of runs still loading reads the token once it resumes
+    public void Dispose() => _cts.Cancel();
 
 }

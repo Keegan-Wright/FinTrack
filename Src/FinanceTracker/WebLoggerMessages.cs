@@ -36,6 +36,9 @@ public static partial class WebLoggerMessages
     [LoggerMessage(LogLevel.Warning, "OIDC sign in failed at the provider")]
     public static partial void LogOidcRemoteFailure(this ILogger logger, Exception? exception);
 
+    [LoggerMessage(LogLevel.Warning, "OIDC sign in couldn't start, the provider refused or couldn't be reached")]
+    public static partial void LogOidcChallengeFailed(this ILogger logger, Exception exception);
+
     [LoggerMessage(LogLevel.Information, "Linked user {userId} to their OIDC subject")]
     public static partial void LogOidcUserLinked(this ILogger logger, Guid userId);
 

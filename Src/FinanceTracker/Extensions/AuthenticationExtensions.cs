@@ -105,11 +105,7 @@ public static class AuthenticationExtensions
                 return app;
             }
 
-            app.MapGet("/auth/oidc", (HttpContext context, string? returnUrl) =>
-                TypedResults.Challenge(new AuthenticationProperties
-                {
-                    RedirectUri = $"/auth/oidc/complete?returnUrl={Uri.EscapeDataString(LocalPath(context.Request, returnUrl))}"
-                }, [OpenIdConnectDefaults.AuthenticationScheme]));
+            app.MapGet("/auth/oidc", ChallengeOidcAsync);
 
             // The handler has signed the provider's identity into the external cookie, swap it for the local user's
             app.MapGet("/auth/oidc/complete", async Task<RedirectHttpResult> (HttpContext context, string? returnUrl,
@@ -187,6 +183,36 @@ public static class AuthenticationExtensions
             }
         };
     }
+
+    /// <summary>
+    /// Sends the user to the OIDC provider to sign in, coming back to <paramref name="returnUrl"/>. When the provider
+    /// refuses before that, e.g. this site's address isn't one it knows, can't be reached, or its settings can't be
+    /// read, the user lands on the sign in page saying single sign on failed, as when it fails at the provider, rather
+    /// than on the error page.
+    /// </summary>
+    public static async Task<IResult> ChallengeOidcAsync(HttpContext context, string? returnUrl)
+    {
+        AuthenticationProperties properties = new()
+        {
+            RedirectUri = $"/auth/oidc/complete?returnUrl={Uri.EscapeDataString(LocalPath(context.Request, returnUrl))}"
+        };
+
+        try
+        {
+            await context.ChallengeAsync(OpenIdConnectDefaults.AuthenticationScheme, properties);
+            return TypedResults.Empty;
+        }
+        catch (Exception exception) when (IsProviderFailure(exception))
+        {
+            context.RequestServices.GetRequiredService<ILogger<OidcUserLinker>>().LogOidcChallengeFailed(exception);
+            return TypedResults.Redirect(OidcFailedPath);
+        }
+    }
+
+    // Refused by the provider (OpenIdConnectProtocolException), its settings unreadable (InvalidOperationException
+    // from the configuration manager) or it can't be reached (HttpRequestException)
+    private static bool IsProviderFailure(Exception exception) =>
+        exception is OpenIdConnectProtocolException or InvalidOperationException or HttpRequestException;
 
     /// <summary>
     /// <paramref name="returnUrl"/> when it's on this site, as a path, otherwise the home page. The login page is
