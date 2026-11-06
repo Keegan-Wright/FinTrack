@@ -174,6 +174,52 @@ public class YourTransactionsPageTests : ComponentTestBase
     }
 
     [Test]
+    public async Task RemoveSplit_WhenItFails_SaysSoAndKeepsTheSplit()
+    {
+        // Arrange
+        Transaction transaction = TransactionListTests.Transaction("Supermarket", -100m, splits:
+        [
+            new TransactionSplitPart { Amount = -60m },
+            new TransactionSplitPart { Amount = -40m }
+        ]);
+        Show(transaction);
+        _transactionsService.UnsplitAsync(transaction.TransactionId, Arg.Any<CancellationToken>())
+            .ThrowsAsync(new HttpRequestException("The server didn't answer"));
+        IRenderedComponent<MudPopoverProvider> popovers = Render<MudPopoverProvider>();
+        IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
+        IRenderedComponent<MudSnackbarProvider> snackbars = Render<MudSnackbarProvider>();
+        IRenderedComponent<YourTransactions> cut = await RenderPageAsync();
+        Task removing = await RowMenu.StartAsync(cut, popovers, "Supermarket", "Remove split");
+
+        // Act
+        await RowMenu.ConfirmAsync(dialogs, "Remove split");
+        await removing.WaitAsync(TestTimeouts.Wait);
+
+        // Assert
+        snackbars.WaitForState(() => snackbars.Markup.Contains("Couldn't remove the split, try again"));
+        await Assert.That(cut.Markup).Contains("Split 2 ways");
+    }
+
+    [Test]
+    public async Task AddTags_BeforeAnyAreMade_SaysToMakeSomeFirst()
+    {
+        // Arrange, no tags yet
+        Show(TransactionListTests.Transaction("Supermarket", -100m));
+        IRenderedComponent<MudPopoverProvider> popovers = Render<MudPopoverProvider>();
+        IRenderedComponent<MudSnackbarProvider> snackbars = Render<MudSnackbarProvider>();
+        IRenderedComponent<YourTransactions> cut = await RenderPageAsync();
+
+        // Act
+        await RowMenu.ChooseAsync(cut, popovers, "Supermarket", "Add tags");
+
+        // Assert
+        snackbars.WaitForState(() =>
+            snackbars.Markup.Contains("You haven't made any tags yet, add some on the Tags page first"));
+        await _classificationService.DidNotReceive().AddCustomClassificationsToTransactionAsync(
+            Arg.Any<AddCustomClassificationsToTransaction>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task ExportCsv_SavesWhatTheFiltersShowAsAFile()
     {
         // Arrange

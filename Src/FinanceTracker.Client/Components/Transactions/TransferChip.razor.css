@@ -25,6 +25,18 @@
     min-width: 0;
 }
 
+/* MudBlazor's activator is display contents, which a browser never focuses, so the menu couldn't be reached from
+   the keyboard. Given a box of its own it can be tabbed to and opened with Enter or Space. */
+.ft-transfer-anchor ::deep .mud-menu-activator {
+    display: inline-flex;
+    border-radius: 16px;
+}
+
+.ft-transfer-anchor ::deep .mud-menu-activator:focus-visible {
+    outline: 2px solid var(--mud-palette-primary);
+    outline-offset: 2px;
+}
+
 .ft-transfer-anchor ::deep .mud-chip {
     max-width: 100%;
 }
@@ -33,4 +45,11 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+/* The chip isn't a button itself, the menu's activator around it is, so it shows it's clickable here */
+.ft-transfer-chip {
+    display: inline-flex;
+    max-width: 100%;
+    cursor: pointer;
 }

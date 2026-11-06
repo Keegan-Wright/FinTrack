@@ -30,6 +30,8 @@ public partial class Program
         builder.Services.AddSignalR();
         builder.Services.AddCascadingValue(_ => new ApplicationState());
 
+        builder.Services.AddSingleton<AppUpdate>();
+
         builder.AddFinTrackAuthentication()
             .AddFinTrackPersistence()
             .AddFinTrackDataProtection()
@@ -39,7 +41,7 @@ public partial class Program
         // Only for data that isn't sensitive, fields running encryption should NOT enter the cache.
         builder.Services.AddHybridCache();
 
-        builder.Services.AddSingleton(TimeProvider.System);
+        builder.AddFinTrackClock();
 
         // Source generated from the [Scoped]/[Singleton]/[Transient] attributes
         AddFinanceTrackerServices(builder.Services);
@@ -65,6 +67,7 @@ public partial class Program
         await app.MigrateDatabaseAsync();
         await app.EnsureAdminAsync();
 
+        app.UseAppVersionHeader();
         app.MapDefaultEndpoints();
         app.UseCurrentUser();
         app.MapOidcChallenge();

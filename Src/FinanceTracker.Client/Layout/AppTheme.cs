@@ -17,6 +17,7 @@ public static class AppTheme
                 Primary = LightPalette.Primary,
                 Secondary = LightPalette.Secondary,
                 Tertiary = LightPalette.Tertiary,
+                TertiaryContrastText = LightPalette.DarkContrastText,
                 AppbarBackground = LightPalette.AppbarBackground,
                 AppbarText = LightPalette.AppbarText,
                 Background = LightPalette.Background,
@@ -35,16 +36,23 @@ public static class AppTheme
                 TableLines = LightPalette.TableLines,
                 LinesDefault = LightPalette.LinesDefault,
                 Success = LightPalette.Success,
+                SuccessDarken = LightPalette.SuccessDarken,
                 Error = LightPalette.Error,
+                ErrorDarken = LightPalette.ErrorDarken,
                 Warning = LightPalette.Warning,
-                Info = LightPalette.Info
+                WarningDarken = LightPalette.WarningDarken,
+                Info = LightPalette.Info,
+                InfoDarken = LightPalette.InfoDarken
             },
         PaletteDark =
             new PaletteDark
             {
                 Primary = DarkPalette.Primary,
+                PrimaryContrastText = DarkPalette.ContrastText,
                 Secondary = DarkPalette.Secondary,
+                SecondaryContrastText = DarkPalette.ContrastText,
                 Tertiary = DarkPalette.Tertiary,
+                TertiaryContrastText = DarkPalette.ContrastText,
                 AppbarBackground = DarkPalette.AppbarBackground,
                 Background = DarkPalette.Background,
                 Surface = DarkPalette.Surface,
@@ -61,9 +69,13 @@ public static class AppTheme
                 TableLines = DarkPalette.TableLines,
                 LinesDefault = DarkPalette.LinesDefault,
                 Success = DarkPalette.Success,
+                SuccessContrastText = DarkPalette.ContrastText,
                 Error = DarkPalette.Error,
+                ErrorContrastText = DarkPalette.ContrastText,
                 Warning = DarkPalette.Warning,
-                Info = DarkPalette.Info
+                WarningContrastText = DarkPalette.ContrastText,
+                Info = DarkPalette.Info,
+                InfoContrastText = DarkPalette.ContrastText
             },
         LayoutProperties = new LayoutProperties { DefaultBorderRadius = $"{AppShape.CornerRadiusPixels}px" },
         Typography = new Typography

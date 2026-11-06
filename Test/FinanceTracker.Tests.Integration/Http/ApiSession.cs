@@ -17,6 +17,7 @@ public sealed class ApiSession : IAsyncDisposable
     {
         ServiceCollection services = new();
 
+        services.AddSingleton(TimeProvider.System);
         Client.Program.AddFinanceTrackerServices(services);
         services.AddFinTrackServerConnections(client.BaseAddress, hub =>
             {

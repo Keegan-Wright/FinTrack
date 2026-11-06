@@ -5,6 +5,11 @@
     gap: 4px;
 }
 
+/* A week, for screen readers, its cells laid out by the calendar's grid */
+.ft-calendar__row {
+    display: contents;
+}
+
 .ft-calendar__weekday {
     padding: 4px 0 8px;
     text-align: center;

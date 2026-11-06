@@ -12,7 +12,7 @@ namespace FinanceTracker.Tests.Integration.Api;
 
 public class AutomationApiTests : IntegrationTestBase
 {
-    private const string MoveGoalsFunction = "MoveEventSavingsGoalsOnAsync";
+    internal const string MoveGoalsFunction = "MoveEventSavingsGoalsOnAsync";
 
     [Test]
     public async Task UpdateJobSettings_AsAnAdmin_IsSaved()
@@ -145,6 +145,7 @@ public class AutomationApiTests : IntegrationTestBase
     }
 
     [Test]
+    [NotInParallel(MoveGoalsFunction)]
     public async Task RunNow_AsAnAdmin_RunsTheJobAndTellsTheirBrowserAsItStartsAndFinishes()
     {
         // Arrange

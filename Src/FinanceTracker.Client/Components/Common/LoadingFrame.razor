@@ -6,7 +6,8 @@
     {
         <div class="@($"ft-loading-frame__overlay {(Cover ? "ft-loading-frame__overlay--cover" : string.Empty)}")"
              role="status">
-            <MudProgressCircular Indeterminate="true" Size="Size.Small" Color="Color.Primary"/>
+
+            <MudProgressCircular Indeterminate="true" Size="Size.Small" Color="Color.Primary" aria-label="@Message"/>
             <MudText Typo="Typo.caption" Class="mud-text-secondary">@Message</MudText>
         </div>
     }

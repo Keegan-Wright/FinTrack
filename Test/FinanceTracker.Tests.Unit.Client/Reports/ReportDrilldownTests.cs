@@ -8,7 +8,11 @@ namespace FinanceTracker.Tests.Unit.Client.Reports;
 
 public class ReportDrilldownTests : ComponentTestBase
 {
-    public ReportDrilldownTests() => Services.AddSingleton(Substitute.For<ITransactionsService>());
+    public ReportDrilldownTests()
+    {
+        Services.AddSingleton(Substitute.For<ITransactionsService>());
+        Services.AddSingleton(TimeProvider.System);
+    }
 
     [Test]
     public async Task Refreshed_TheSameReport_StaysWhereTheUserWas()

@@ -17,6 +17,17 @@ public sealed class PrerenderSyncNotifications : ISyncNotifications
     public Task<IDisposable> SubscribeToJobsAsync(Func<string, Task> onJobChanged,
         CancellationToken cancellationToken) => Refused();
 
+    /// <summary>
+    /// Never, nothing is heard while prerendering.
+    /// </summary>
+    public bool Paused => false;
+
+    public event EventHandler? PausedChanged
+    {
+        add { }
+        remove { }
+    }
+
     private static Task<IDisposable> Refused() =>
         throw new NotSupportedException(
             "Sync and job notifications reach the browser through the sync hub, subscribe after the first render.");

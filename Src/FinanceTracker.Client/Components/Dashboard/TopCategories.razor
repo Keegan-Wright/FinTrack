@@ -59,7 +59,7 @@
     private ApexChartOptions<TagSpend> CreateOptions()
     {
         var options = ChartDefaults.Create<TagSpend>(IsDarkMode);
-        options.Colors = [MoneyColours.Neutral];
+        options.Colors = [ChartDefaults.MoneyColour(MoneyFlow.Neutral, IsDarkMode)];
         options.Legend = new Legend { Show = false };
         options.PlotOptions = new PlotOptions
         {

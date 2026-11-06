@@ -10,7 +10,6 @@
         rel="stylesheet"/>
     <link href=@Assets["_content/MudBlazor/MudBlazor.min.css"] rel="stylesheet"/>
     <link href="css/App.css" rel="stylesheet"/>
-    <FinanceTracker.Client.Components.Common.MoneyColourStyles/>
     <link href=@Assets["FinanceTracker.styles.css"] rel="stylesheet"/>
     <ImportMap/>
     <link rel="icon" type="image/svg+xml" href="favicon.svg"/>
@@ -21,6 +20,17 @@
 
 <body>
 <Routes @rendermode="PageRenderMode"/>
+
+@* The last resort when something breaks outside a page, which shows its own error in its place. Blazor shows it,
+   and wires up its reload and dismiss buttons. Static, so it's here even when the app can't render anything *@
+<div id="blazor-error-ui" class="ft-error-bar" role="alert" data-nosnippet>
+    <div class="ft-error-bar__content">
+        <span class="ft-error-bar__message">Something went wrong. Reload the page to carry on.</span>
+        <button type="button" class="reload ft-error-bar__reload">Reload</button>
+        <button type="button" class="dismiss ft-error-bar__dismiss" aria-label="Dismiss">&#x2715;</button>
+    </div>
+</div>
+
 <script src="_framework/blazor.web.js" autostart="false"></script>
 <script>
     const runtime = @((MarkupString)BrowserRuntime.SettingsJson());

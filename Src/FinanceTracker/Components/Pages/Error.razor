@@ -1,26 +1,31 @@
 ﻿@page "/Error"
 @using System.Diagnostics
-@using FinanceTracker.Client.Components.Common
-@using FinanceTracker.Client.Pages
-@inherits PageComponent
+@using FinanceTracker.Components.Account.Shared
+@using FinanceTracker.Components.Layout
+
+@* Rendered on the server only, it reads the request's HttpContext and the browser's app doesn't have this page, so
+   handing it to the browser's router would lose its title. Never interactive, so it has the signed out pages'
+   layout, where everything is a link, rather than the app's, whose menu and buttons need the app running *@
+@attribute [ExcludeFromInteractiveRouting]
+@layout AccountLayout
 
 <PageTitle>FinTrack - Something went wrong</PageTitle>
 
-<PageHeader Title="Something went wrong" Subtitle="FinTrack hit an error handling that request"/>
+<AuthMessage Icon="@Icons.Material.Outlined.ErrorOutline" IconColor="Color.Error" Title="Something went wrong"
+             ActionHref="@MainHref" ActionText="@MainText" SecondaryHref="@HomeAsWell" SecondaryText="Back to FinTrack">
+    FinTrack hit an error handling that request. Your data is safe.
+</AuthMessage>
 
-<Section Title="Details for whoever runs FinTrack">
-    <div class="ft-stack">
-        @if (ShowRequestId)
-        {
-            <MudText Typo="Typo.body2">Request ID: <code>@RequestId</code></MudText>
-        }
-        <MudText Typo="Typo.body2" Class="mud-text-secondary">
-            Running in the <strong>Development</strong> environment shows the full error. Set
-            <code>ASPNETCORE_ENVIRONMENT</code> to <code>Development</code> and restart to see it, on a local machine
-            only, as it can show sensitive details.
-        </MudText>
-    </div>
-</Section>
+<div class="ft-error-details">
+    @if (ShowRequestId)
+    {
+        <MudText Typo="Typo.caption" Class="d-block">Request ID: <code>@RequestId</code></MudText>
+    }
+    <MudText Typo="Typo.caption" Class="d-block mud-text-secondary">
+        Whoever runs FinTrack can see the full error by running it in the <strong>Development</strong> environment
+        (<code>ASPNETCORE_ENVIRONMENT</code>), on a local machine only, as it can show sensitive details.
+    </MudText>
+</div>
 
 @code {
     [CascadingParameter] private HttpContext? HttpContext { get; set; }
@@ -28,10 +33,29 @@
     private string? RequestId { get; set; }
     private bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
 
+    /// <summary>
+    /// The app's home, the dashboard, at the base address. Not empty, a button given an empty link isn't a link.
+    /// </summary>
+    private const string Home = "./";
+
+    private string? _retryPath;
+
+    // Trying the failed page again when that's safe, otherwise home
+    private string MainHref => _retryPath ?? Home;
+
+    private string MainText => _retryPath is null ? "Back to FinTrack" : "Try again";
+
+    // Home is the main way on when there's nothing to try again
+    private string? HomeAsWell => _retryPath is null ? null : Home;
+
     protected override void OnInitialized()
     {
         base.OnInitialized();
         RequestId = Activity.Current?.Id ?? HttpContext?.TraceIdentifier;
+        if (HttpContext is not null)
+        {
+            _retryPath = ErrorRetry.PathFor(HttpContext);
+        }
     }
 
 }

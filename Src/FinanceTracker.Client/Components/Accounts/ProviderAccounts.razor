@@ -4,8 +4,9 @@
 @using FinanceTracker.Contracts.NetWorth
 
 <div class="ft-provider">
+    @* Named by what it shows, the bank and its summary, aria-expanded says whether it's open *@
     <button type="button" class="ft-provider__header" aria-expanded="@(Expanded ? "true" : "false")"
-            aria-label="@($"{(Expanded ? "Hide" : "Show")} {Name} accounts")" @onclick="@ToggleAsync">
+            @onclick="@ToggleAsync">
         <AccountLogo Logo="@Logo"/>
         <span class="ft-provider__name">
             <MudText Typo="Typo.subtitle1" HtmlTag="span" Class="text-truncate">@Name</MudText>

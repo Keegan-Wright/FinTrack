@@ -201,14 +201,33 @@ public class ReportTreeTests
         };
 
         // Act
-        FilterTransactions request = ReportTree.ForDay(scope, new DateTime(2026, 8, 14, 15, 30, 0));
+        FilterTransactions request = ReportTree.ForDay(scope, new DateTime(2026, 8, 14, 15, 30, 0), TimeZoneInfo.Utc);
 
         // Assert
         using (Assert.Multiple())
         {
-            await Assert.That(request.FromDate).IsEqualTo(new DateTime(2026, 8, 14));
-            await Assert.That(request.ToDate).IsEqualTo(new DateTime(2026, 8, 15).AddTicks(-1));
+            await Assert.That(request.FromDate).IsEqualTo(new DateTime(2026, 8, 14, 0, 0, 0, DateTimeKind.Utc));
+            await Assert.That(request.ToDate)
+                .IsEqualTo(new DateTime(2026, 8, 15, 0, 0, 0, DateTimeKind.Utc).AddTicks(-1));
             await Assert.That(request.AccountIds!).IsEquivalentTo([AccountId]);
+        }
+    }
+
+    [Test]
+    public async Task ForDay_InSummerTime_RunsFromMidnightWhereTheUserIs()
+    {
+        // Arrange, the UK on BST, an hour ahead of UTC
+        TimeZoneInfo london = TimeZoneInfo.FindSystemTimeZoneById("Europe/London");
+
+        // Act
+        FilterTransactions request = ReportTree.ForDay(new FilterTransactions(), new DateTime(2026, 6, 30), london);
+
+        // Assert, so a payment at 00:30 on the 30th is that day's, not the 29th's
+        using (Assert.Multiple())
+        {
+            await Assert.That(request.FromDate).IsEqualTo(new DateTime(2026, 6, 29, 23, 0, 0, DateTimeKind.Utc));
+            await Assert.That(request.ToDate)
+                .IsEqualTo(new DateTime(2026, 6, 30, 23, 0, 0, DateTimeKind.Utc).AddTicks(-1));
         }
     }
 
@@ -222,7 +241,7 @@ public class ReportTreeTests
         FilterTransactions scope = new() { BillIds = [billId], DebtIds = [debtId], SavingsGoalIds = [goalId] };
 
         // Act
-        FilterTransactions request = ReportTree.ForDay(scope, new DateTime(2026, 8, 14));
+        FilterTransactions request = ReportTree.ForDay(scope, new DateTime(2026, 8, 14), TimeZoneInfo.Utc);
 
         // Assert
         using (Assert.Multiple())

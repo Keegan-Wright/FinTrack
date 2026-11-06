@@ -28,7 +28,15 @@ public sealed class BrowserFixture : IAsyncInitializer, IAsyncDisposable
         {
             Headless = Environment.GetEnvironmentVariable("FINTRACK_UI_HEADED") is null
         });
+
+        // Playwright's 5 seconds for an expectation is short with several browsers loading from the one app at once
+        Assertions.SetDefaultExpectTimeout(ExpectTimeout);
     }
+
+    /// <summary>
+    /// How long an expectation, e.g. <c>ToBeVisibleAsync</c>, waits for the page to get there.
+    /// </summary>
+    public const float ExpectTimeout = 15_000;
 
     public async ValueTask DisposeAsync()
     {

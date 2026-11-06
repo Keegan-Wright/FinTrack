@@ -1,9 +1,19 @@
-@* The money colours from FinanceTracker.Design as CSS variables, so stylesheets and components colour money as
-   the charts and PDFs do without the values being written twice. Rendered once in the page's head. *@
+@* The money colours from FinanceTracker.Design as CSS variables for the mode the app is in, so stylesheets and
+   components colour money as the charts do without the values being written twice. Rendered by the layout, which
+   knows the mode, as MudBlazor's theme provider renders its palette. *@
 <style>
     :root {
-        --ft-money-in: @MoneyColours.MoneyIn;
-        --ft-money-out: @MoneyColours.MoneyOut;
-        --ft-money-neutral: @MoneyColours.Neutral;
+        --ft-money-in: @(Dark ? MoneyColours.DarkMoneyIn : MoneyColours.LightMoneyIn);
+        --ft-money-out: @(Dark ? MoneyColours.DarkMoneyOut : MoneyColours.LightMoneyOut);
+        --ft-money-neutral: @(Dark ? MoneyColours.DarkNeutral : MoneyColours.LightNeutral);
     }
 </style>
+
+@code {
+
+    /// <summary>
+    /// Whether the app is in dark mode.
+    /// </summary>
+    [Parameter] public bool Dark { get; set; }
+
+}

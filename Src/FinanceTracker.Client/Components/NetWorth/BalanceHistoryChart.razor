@@ -40,7 +40,10 @@ else
     /// </summary>
     [Parameter] public string Name { get; set; } = "Balance";
 
-    [Parameter] public string Color { get; set; } = MoneyColours.Neutral;
+    /// <summary>
+    /// Which way the money goes, for the line's colour, e.g. in for what's saved towards a goal.
+    /// </summary>
+    [Parameter] public MoneyFlow Flow { get; set; } = MoneyFlow.Neutral;
 
     [Parameter] public int Height { get; set; } = 280;
 
@@ -74,7 +77,8 @@ else
     private ApexChartOptions<HistoryChartPoint> CreateOptions()
     {
         var options = ChartDefaults.Create<HistoryChartPoint>(IsDarkMode);
-        options.Colors = [Color, Color];
+        string colour = ChartDefaults.MoneyColour(Flow, IsDarkMode);
+        options.Colors = [colour, colour];
         options.Legend = new Legend { Show = false };
         options.Stroke = new Stroke
         {

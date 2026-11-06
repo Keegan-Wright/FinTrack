@@ -4,6 +4,7 @@ using Microsoft.Playwright;
 
 namespace FinanceTracker.Tests.Integration.Ui;
 
+[ParallelLimiter<UiParallelLimit>]
 public partial class SignInTests : UiTestBase
 {
     [Test]

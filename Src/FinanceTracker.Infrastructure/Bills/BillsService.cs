@@ -65,11 +65,19 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
         TimeZoneInfo timeZone = _timeProvider.LocalTimeZone;
 
         List<BillStatus> statuses = [];
+        List<DomainBill> shown = [];
         foreach (DomainBill bill in running)
         {
             IReadOnlyList<DomainBillPeriod> periods =
                 BillCalculator.Periods(bill, payments, first, last, timeZone, today);
 
+            // One that ended before it was next due isn't part of the month, the ended bills list it
+            if (bill.HasEnded && periods.Count == 0)
+            {
+                continue;
+            }
+
+            shown.Add(bill);
             statuses.Add(new BillStatus
             {
                 Bill = BillMapper.ToContract(bill, AccountName(accountNames, bill.AccountId), payments, timeZone,
@@ -84,7 +92,7 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
             Start = first,
             End = last,
             IsCurrent = current.Year == year && current.Month == month,
-            Committed = running.Sum(x => BillCalculator.MonthlyCost(x, first)),
+            Committed = shown.Sum(x => BillCalculator.MonthlyCost(x, first)),
             Due = statuses.SelectMany(static x => x.Periods).Sum(static x => x.Expected),
             Paid = statuses.SelectMany(static x => x.Periods).Sum(static x => x.Paid),
             Bills = statuses

@@ -6,6 +6,7 @@ using FinanceTracker.Contracts.Services;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using SavingsGoalsPage = FinanceTracker.Client.Pages.SavingsGoals;
 
 namespace FinanceTracker.Tests.Unit.Client.SavingsGoals;
@@ -117,6 +118,31 @@ public class SavingsGoalsPageTests : ComponentTestBase
 
         // Assert
         await Assert.That(cut.Markup).Contains("£1,450.00 of £10,000.00");
+    }
+
+    [Test]
+    public async Task Delete_WhenItFails_SaysSoAndKeepsTheGoal()
+    {
+        // Arrange
+        _goalsService.GetSavingsGoalsAsync(Arg.Any<CancellationToken>()).Returns(_ => new[]
+        {
+            new SavingsGoal { Id = Guid.NewGuid(), Name = "Car", Target = 10000m, Source = SavingsGoalSource.Manual }
+        }.ToAsyncEnumerable());
+        _goalsService.DeleteSavingsGoalAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new HttpRequestException("The server didn't answer"));
+        IRenderedComponent<MudPopoverProvider> popovers = Render<MudPopoverProvider>();
+        IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
+        IRenderedComponent<MudSnackbarProvider> snackbars = Render<MudSnackbarProvider>();
+        IRenderedComponent<SavingsGoalsPage> cut = RenderPage();
+        Task deleting = await RowMenu.StartAsync(cut, popovers, "Car", "Delete");
+
+        // Act
+        await RowMenu.ConfirmAsync(dialogs, "Delete");
+        await deleting.WaitAsync(TestTimeouts.Wait);
+
+        // Assert
+        snackbars.WaitForState(() => snackbars.Markup.Contains("Couldn't save that, try again"));
+        await Assert.That(cut.FindAll("[aria-label='Actions for Car']")).Count().IsEqualTo(1);
     }
 
     private IRenderedComponent<SavingsGoalsPage> RenderPage() =>

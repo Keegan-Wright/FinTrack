@@ -16,13 +16,36 @@ public class ActiveTransactionFiltersTests
         };
 
         // Act
-        FilterTransactions request = filters.ToRequest();
+        FilterTransactions request = filters.ToRequest(TimeZoneInfo.Utc);
 
         // Assert
         using (Assert.Multiple())
         {
-            await Assert.That(request.FromDate).IsEqualTo(new DateTime(2026, 8, 1));
-            await Assert.That(request.ToDate).IsEqualTo(new DateTime(2026, 9, 1).AddTicks(-1));
+            await Assert.That(request.FromDate).IsEqualTo(new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc));
+            await Assert.That(request.ToDate)
+                .IsEqualTo(new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc).AddTicks(-1));
+        }
+    }
+
+    [Test]
+    public async Task ToRequest_InSummerTime_RunsBetweenMidnightsWhereTheUserIs()
+    {
+        // Arrange, August in the UK is on BST, an hour ahead of UTC
+        TimeZoneInfo london = TimeZoneInfo.FindSystemTimeZoneById("Europe/London");
+        ActiveTransactionFilters filters = ActiveTransactionFilters.None with
+        {
+            DateRange = new DateRange(new DateTime(2026, 8, 1), new DateTime(2026, 8, 31))
+        };
+
+        // Act
+        FilterTransactions request = filters.ToRequest(london);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(request.FromDate).IsEqualTo(new DateTime(2026, 7, 31, 23, 0, 0, DateTimeKind.Utc));
+            await Assert.That(request.ToDate)
+                .IsEqualTo(new DateTime(2026, 8, 31, 23, 0, 0, DateTimeKind.Utc).AddTicks(-1));
         }
     }
 
@@ -30,7 +53,7 @@ public class ActiveTransactionFiltersTests
     public async Task ToRequest_WithNoDates_LeavesThemOpen()
     {
         // Act
-        FilterTransactions request = ActiveTransactionFilters.None.ToRequest();
+        FilterTransactions request = ActiveTransactionFilters.None.ToRequest(TimeZoneInfo.Utc);
 
         // Assert
         using (Assert.Multiple())
@@ -53,7 +76,7 @@ public class ActiveTransactionFiltersTests
             new DateRange(null, new DateTime(2026, 8, 31)), "coffee", [billId], [debtId], [goalId]);
 
         // Act
-        FilterTransactions request = filters.ToRequest();
+        FilterTransactions request = filters.ToRequest(TimeZoneInfo.Utc);
 
         // Assert
         using (Assert.Multiple())
@@ -65,7 +88,8 @@ public class ActiveTransactionFiltersTests
             await Assert.That(request.Tags!).IsEquivalentTo(["Food"]);
             await Assert.That(request.SearchTerm).IsEqualTo("coffee");
             await Assert.That(request.FromDate).IsNull();
-            await Assert.That(request.ToDate).IsEqualTo(new DateTime(2026, 9, 1).AddTicks(-1));
+            await Assert.That(request.ToDate)
+                .IsEqualTo(new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc).AddTicks(-1));
             await Assert.That(request.BillIds!).IsEquivalentTo([billId]);
             await Assert.That(request.DebtIds!).IsEquivalentTo([debtId]);
             await Assert.That(request.SavingsGoalIds!).IsEquivalentTo([goalId]);

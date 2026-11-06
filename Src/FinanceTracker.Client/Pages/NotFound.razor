@@ -1,0 +1,17 @@
+@page "/not-found"
+@* What any address that isn't a page shows, in the app with its menu, whether followed in the app or typed in or
+   linked to, see UnknownAddress. The router's NotFoundPage. Signed in only like every page, so a signed out visitor
+   signs in first. *@
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+
+<PageTitle>FinTrack - Page not found</PageTitle>
+<PageHeader Title="Page not found" Subtitle="There's nothing at this address"/>
+<Section>
+    <div class="ft-list__line">
+        <MudText Typo="Typo.body2">It may have moved, or the link may be wrong.</MudText>
+        @* A link, it works before the app has started in the browser too *@
+        <MudButton Href="./" Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Outlined.Dashboard">Go to your dashboard</MudButton>
+    </div>
+</Section>

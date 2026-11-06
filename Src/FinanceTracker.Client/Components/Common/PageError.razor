@@ -1,0 +1,40 @@
+@* What a page shows in place of itself when it failed to load or broke, e.g. the server couldn't be reached, so
+   the rest of the app still works. The layout's error boundary shows it, and clears it on the next page. Once
+   FinTrack has been updated under this tab, the likely cause is the change, so it asks to reload rather than try
+   again, which would only fail the same way. *@
+@inject AppUpdate AppUpdate
+@inject NavigationManager NavigationManager
+
+<PageTitle>FinTrack - Something went wrong</PageTitle>
+<PageHeader Title="Something went wrong" Subtitle="@Subtitle"/>
+<Section>
+    <div class="ft-list__line">
+        @if (AppUpdate.Available)
+        {
+            <MudText Typo="Typo.body2">FinTrack has been updated, reload to get the latest. Your data is safe.</MudText>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Refresh"
+                       OnClick="@Reload">Reload</MudButton>
+        }
+        else
+        {
+            <MudText Typo="Typo.body2">Check your connection and try again. Your data is safe.</MudText>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Refresh"
+                       OnClick="@OnRetry">Try again</MudButton>
+        }
+    </div>
+</Section>
+
+@code {
+
+    /// <summary>
+    /// Loads the page again.
+    /// </summary>
+    [Parameter] public EventCallback OnRetry { get; set; }
+
+    private string Subtitle => AppUpdate.Available
+        ? "This page needs the latest FinTrack"
+        : "This page couldn't load";
+
+    private void Reload() => NavigationManager.Refresh(forceReload: true);
+
+}

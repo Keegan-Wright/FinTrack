@@ -34,6 +34,19 @@
     border-top: 1px solid var(--mud-palette-lines-default);
 }
 
+/* Live updates paused, in the app bar beside its buttons. Only the icon on a phone, its words still read out */
+.ft-live-status {
+    display: inline-flex;
+}
+
+.ft-live-status__paused {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-right: 8px;
+    font-size: .875rem;
+}
+
 /* Which build is running, the drawer's last line */
 .ft-version {
     padding: 0 20px 12px;
@@ -49,6 +62,15 @@
 }
 
 @media (max-width: 599.98px) {
+    .ft-live-status__text {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+
     .ft-page {
         padding-top: 16px;
         padding-bottom: 24px;

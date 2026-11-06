@@ -66,7 +66,7 @@ public class BillRowTests : ComponentTestBase
             .Add(x => x.Editable, true));
 
         // Act
-        await cut.Find("[aria-label='Actions for Energy'] button").ClickAsync(new());
+        await cut.Find("button[aria-label='Actions for Energy']").ClickAsync(new());
 
         // Assert
         IReadOnlyList<string> items = popovers.WaitForElements(".mud-popover-open .mud-menu-item")
@@ -85,7 +85,7 @@ public class BillRowTests : ComponentTestBase
             .Add(x => x.Today, Today)
             .Add(x => x.Editable, true)
             .Add(x => x.OnReopen, () => reopened = true));
-        await cut.Find("[aria-label='Actions for Gym'] button").ClickAsync(new());
+        await cut.Find("button[aria-label='Actions for Gym']").ClickAsync(new());
         IReadOnlyList<IElement> items = popovers.WaitForElements(".mud-popover-open .mud-menu-item");
         List<string> labels = items.Select(static x => x.TextContent.Trim()).ToList();
 

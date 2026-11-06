@@ -176,6 +176,99 @@ public class BillsServiceTests : InfrastructureTestBase
     }
 
     [Test]
+    public async Task GetMonthAsync_EndedAfterItWasDue_StillShowsInThatMonthOnly()
+    {
+        // Arrange, due on the 12th and ended on 30 Oct
+        await SeedAsync().Do(s => s.BillScenario.WithBill("streaming", Username, "main", static (userId, accountId) =>
+            new DomainBill(userId, accountId, "Streaming", "Streamco", DomainBillFrequency.Monthly, 9.99m,
+                new DateOnly(2026, 9, 12), DomainBillSource.Manual)));
+        BillsService subject = BuildSubject(Username);
+        await subject.EndBillAsync(Scenario.BillMappings["streaming"], CancellationToken);
+
+        // Act
+        BillMonthOverview october = await subject.GetMonthAsync(2026, 10, CancellationToken);
+        BillMonthOverview november = await subject.GetMonthAsync(2026, 11, CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(october.Bills.Single().Periods.Single().Due).IsEqualTo(new DateOnly(2026, 10, 12));
+            await Assert.That(october.Due).IsEqualTo(9.99m);
+            await Assert.That(november.Bills).IsEmpty();
+        }
+    }
+
+    [Test]
+    public async Task GetMonthAsync_EndedBeforeItWasDue_LeavesItOutOfTheMonth()
+    {
+        // Arrange, first due on 31 Oct and ended on 30 Oct, so it was never due
+        await SeedAsync().Do(s => s.BillScenario.WithBill("streaming", Username, "main", static (userId, accountId) =>
+            new DomainBill(userId, accountId, "Streaming", "Streamco", DomainBillFrequency.Monthly, 9.99m,
+                new DateOnly(2026, 10, 31), DomainBillSource.Manual)));
+        BillsService subject = BuildSubject(Username);
+        await subject.EndBillAsync(Scenario.BillMappings["streaming"], CancellationToken);
+
+        // Act
+        BillMonthOverview october = await subject.GetMonthAsync(2026, 10, CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(october.Bills).IsEmpty();
+            await Assert.That(october.Committed).IsEqualTo(0m);
+        }
+    }
+
+    [Test]
+    public async Task GetMonthAsync_Quarterly_IsDueOnlyInItsMonthsButListedInEach()
+    {
+        // Arrange, due 12 Sep, 12 Dec, ...
+        await SeedAsync().Do(s => s.BillScenario.WithBill("insurance", Username, "main", static (userId, accountId) =>
+            new DomainBill(userId, accountId, "Insurance", "Insurer", DomainBillFrequency.Quarterly, 90m,
+                new DateOnly(2026, 9, 12), DomainBillSource.Manual)));
+        BillsService subject = BuildSubject(Username);
+
+        // Act
+        BillMonthOverview october = await subject.GetMonthAsync(2026, 10, CancellationToken);
+        BillMonthOverview december = await subject.GetMonthAsync(2026, 12, CancellationToken);
+
+        // Assert, still running in October so listed, not due, a third of it committed a month
+        using (Assert.Multiple())
+        {
+            await Assert.That(october.Bills.Single().Periods).IsEmpty();
+            await Assert.That(october.Due).IsEqualTo(0m);
+            await Assert.That(october.Committed).IsEqualTo(30m);
+            await Assert.That(december.Bills.Single().Periods.Single().Due).IsEqualTo(new DateOnly(2026, 12, 12));
+            await Assert.That(december.Due).IsEqualTo(90m);
+        }
+    }
+
+    [Test]
+    public async Task GetMonthAsync_EndedOnItsDueDay_IsStillDueThatDay()
+    {
+        // Arrange, its last day is the day it's due
+        await SeedAsync().Do(s => s.BillScenario.WithBill("streaming", Username, "main", static (userId, accountId) =>
+        {
+            DomainBill bill = new(userId, accountId, "Streaming", "Streamco", DomainBillFrequency.Monthly, 9.99m,
+                new DateOnly(2026, 9, 12), DomainBillSource.Manual);
+            bill.End(new DateOnly(2026, 10, 12));
+            return bill;
+        }));
+        BillsService subject = BuildSubject(Username);
+
+        // Act
+        BillMonthOverview october = await subject.GetMonthAsync(2026, 10, CancellationToken);
+        BillMonthOverview november = await subject.GetMonthAsync(2026, 11, CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(october.Bills.Single().Periods.Single().Due).IsEqualTo(new DateOnly(2026, 10, 12));
+            await Assert.That(november.Bills).IsEmpty();
+        }
+    }
+
+    [Test]
     public async Task DeleteBillAsync_ItsPaymentsAndRulesNoLongerPayIt()
     {
         // Arrange

@@ -7,6 +7,7 @@ namespace FinanceTracker.Tests.Integration.Ui;
 /// Getting around with the side menu, docked beside the page on a desktop and opened over it from the app bar on a
 /// phone or tablet.
 /// </summary>
+[ParallelLimiter<UiParallelLimit>]
 public class NavigationTests : UiTestBase
 {
     [Test]

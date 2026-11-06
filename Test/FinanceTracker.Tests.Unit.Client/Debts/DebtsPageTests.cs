@@ -4,7 +4,9 @@ using FinanceTracker.Contracts.Debts;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Transactions;
 using Microsoft.Extensions.DependencyInjection;
+using MudBlazor;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using DebtsPage = FinanceTracker.Client.Pages.Debts;
 
 namespace FinanceTracker.Tests.Unit.Client.Debts;
@@ -117,6 +119,28 @@ public class DebtsPageTests : ComponentTestBase
             await Assert.That(cut.Markup).Contains("£650.00");
             await Assert.That(cut.Markup).Contains("Debt free by Feb 2027");
         }
+    }
+
+    [Test]
+    public async Task Delete_WhenItFails_SaysSoAndKeepsTheDebt()
+    {
+        // Arrange
+        Debts(DebtTextTests.Debt("Car loan", owed: 900m));
+        _debtsService.DeleteDebtAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new HttpRequestException("The server didn't answer"));
+        IRenderedComponent<MudPopoverProvider> popovers = Render<MudPopoverProvider>();
+        IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
+        IRenderedComponent<MudSnackbarProvider> snackbars = Render<MudSnackbarProvider>();
+        IRenderedComponent<DebtsPage> cut = RenderPage();
+        Task deleting = await RowMenu.StartAsync(cut, popovers, "Car loan", "Delete");
+
+        // Act
+        await RowMenu.ConfirmAsync(dialogs, "Delete");
+        await deleting.WaitAsync(TestTimeouts.Wait);
+
+        // Assert
+        snackbars.WaitForState(() => snackbars.Markup.Contains("Couldn't save that, try again"));
+        await Assert.That(cut.FindAll("[aria-label='Actions for Car loan']")).Count().IsEqualTo(1);
     }
 
     private void Debts(params Debt[] debts) =>

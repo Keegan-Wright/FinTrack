@@ -1,3 +1,45 @@
+/* The description's button covers the whole row, so the row is the target, see TransactionList */
+.ft-transaction {
+    position: relative;
+}
+
+/* Static, as MudBlazor makes every button relative, which would keep the stretch below inside the button */
+.ft-transaction__open {
+    position: static;
+    min-width: 0;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+}
+
+.ft-transaction__open::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+}
+
+/* The row shows the focus, the button's own outline would only ring the description */
+.ft-transaction__open:focus-visible {
+    outline: none;
+}
+
+.ft-transaction:has(.ft-transaction__open:focus-visible) {
+    outline: 2px solid var(--mud-palette-primary);
+    outline-offset: -2px;
+}
+
+/* The chips' links sit above the stretched button, so they still go where they link */
+.ft-transaction ::deep .mud-chip {
+    position: relative;
+    z-index: 1;
+}
+
 /* The amount over how it counts, both kept to the right */
 .ft-transaction__end {
     display: flex;
