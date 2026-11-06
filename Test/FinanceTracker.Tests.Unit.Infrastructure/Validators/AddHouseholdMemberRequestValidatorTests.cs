@@ -20,7 +20,7 @@ public class AddHouseholdMemberRequestValidatorTests : UnitTestBase
         {
             FirstName = "Test",
             LastName = "User",
-            Income = 100M
+            YearlyIncome = 100M
         };
 
         // Act
@@ -42,7 +42,7 @@ public class AddHouseholdMemberRequestValidatorTests : UnitTestBase
         {
             FirstName = "Test",
             LastName = "User",
-            Income = 0M
+            YearlyIncome = 0M
         };
 
         // Act
@@ -64,7 +64,7 @@ public class AddHouseholdMemberRequestValidatorTests : UnitTestBase
         {
             FirstName = string.Empty,
             LastName = string.Empty,
-            Income = -1M
+            YearlyIncome = -1M
         };
 
         // Act
@@ -85,8 +85,8 @@ public class AddHouseholdMemberRequestValidatorTests : UnitTestBase
                     .ErrorMessage).IsEqualTo("Last Name is required");
 
             await Assert
-                .That(result.Errors.First(x => x.PropertyName == nameof(AddHouseholdMember.Income))
-                    .ErrorMessage).IsEqualTo("Income must be 0 or greater");
+                .That(result.Errors.First(x => x.PropertyName == nameof(AddHouseholdMember.YearlyIncome))
+                    .ErrorMessage).IsEqualTo("Yearly income must be 0 or more");
         }
     }
 }

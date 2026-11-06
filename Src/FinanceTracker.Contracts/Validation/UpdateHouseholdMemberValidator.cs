@@ -23,7 +23,7 @@ public class UpdateHouseholdMemberValidator : AbstractValidator<UpdateHouseholdM
         RuleFor(x => x.LastName)
             .NotEmpty().WithMessage("Last Name is required");
 
-        RuleFor(x => x.Income)
-            .GreaterThanOrEqualTo(0).WithMessage("Income must be 0 or greater");
+        RuleFor(x => x.YearlyIncome)
+            .GreaterThanOrEqualTo(0).WithMessage("Yearly income must be 0 or more");
     }
 }

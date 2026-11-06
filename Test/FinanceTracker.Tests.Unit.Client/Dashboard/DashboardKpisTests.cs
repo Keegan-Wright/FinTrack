@@ -53,4 +53,36 @@ public class DashboardKpisTests : ComponentTestBase
         // Assert
         await Assert.That(cut.Markup).Contains(expected);
     }
+
+    [Test]
+    public async Task Render_HouseholdIncome_SetsTheRangesShareAgainstItsMoneyOut()
+    {
+        // Arrange, 36,000 a year is 3,000 for this month
+        using CultureScope culture = new();
+        HouseholdIncomeInRange? income =
+            HouseholdIncomeInRange.For(36_000m, DashboardRangePreset.ThisMonth, new DateOnly(2026, 11, 6));
+
+        // Act
+        IRenderedComponent<DashboardKpis> cut = Render<DashboardKpis>(p => p
+            .Add(x => x.Spent, new SpentInTimePeriod { TotalIn = 2_800m, TotalOut = -1_250.5m })
+            .Add(x => x.HouseholdIncome, income));
+
+        // Assert
+        await Assert.That(cut.Markup).Contains("Household income £3,000.00 a month · £1,749.50 after money out");
+    }
+
+    [Test]
+    public async Task Render_NoHouseholdIncome_SaysWhatTheBalanceCovers()
+    {
+        // Act
+        IRenderedComponent<DashboardKpis> cut = Render<DashboardKpis>(p => p
+            .Add(x => x.Spent, new SpentInTimePeriod { TotalOut = -50m }));
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(cut.Markup).Contains("Across all connected accounts");
+            await Assert.That(cut.Markup).DoesNotContain("Household income");
+        }
+    }
 }

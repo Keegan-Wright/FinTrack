@@ -1,5 +1,6 @@
 @page "/HouseholdMembers"
 @* Adds the people in the user's household and their incomes, and how to recognise money moved to or from them.*@
+@using FinanceTracker.Client.Components.Dashboard
 @using FinanceTracker.Client.Components.Dialogs
 @using FinanceTracker.Contracts
 @using FinanceTracker.Contracts.HouseholdMember
@@ -42,9 +43,10 @@
                         </MudText>
                     </div>
                     <div class="ft-list__end">
-                        @if (member.Income is { } income)
+                        @if (member.YearlyIncome is { } yearly)
                         {
-                            <MoneyText Value="@income" Typo="Typo.body1"/>
+                            <MoneyText Value="@yearly" Typo="Typo.body1"/>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary d-block">@MonthlyText(yearly)</MudText>
                         }
                         else
                         {
@@ -75,10 +77,39 @@
     [PersistentState]
     public List<HouseholdMember>? Members { get; set; }
 
-    private string Subtitle => Members is null or { Count: 0 }
-        ? "The people you share money with"
-        : $"{Members.Count} {(Members.Count == 1 ? "person" : "people")} · " +
-          $"{CurrencyFormatter.Format(Members.Sum(static x => x.Income ?? 0))} combined income";
+    private string Subtitle
+    {
+        get
+        {
+            if (Members is null or { Count: 0 })
+            {
+                return "The people you share money with";
+            }
+
+            return $"{PeopleText(Members.Count)} · {CombinedIncomeText}";
+        }
+    }
+
+    private static string PeopleText(int count) => count == 1 ? "1 person" : $"{count} people";
+
+    /// <summary>
+    /// What the household earns together, a year and a month.
+    /// </summary>
+    private string CombinedIncomeText
+    {
+        get
+        {
+            decimal yearly = Members?.Sum(static x => x.YearlyIncome ?? 0) ?? 0;
+            return $"{CurrencyFormatter.Format(yearly)} a year combined, " +
+                   $"{CurrencyFormatter.Format(HouseholdIncomeInRange.Monthly(yearly))} a month";
+        }
+    }
+
+    /// <summary>
+    /// A yearly income, as shown beside it, with what it is a month.
+    /// </summary>
+    internal static string MonthlyText(decimal yearly) =>
+        $"a year · {CurrencyFormatter.Format(HouseholdIncomeInRange.Monthly(yearly))} a month";
 
     /// <summary>
     /// Whether money to or from <paramref name="member"/> is recognised, labelling the income shown beside it.
@@ -156,7 +187,7 @@
         {
             FirstName = entered.FirstName,
             LastName = entered.LastName,
-            Income = entered.Income
+            YearlyIncome = entered.YearlyIncome
         };
 
         try

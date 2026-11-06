@@ -1,5 +1,5 @@
-@* The dashboard's headline figures: money in, money out, net and total balance (against household income when
-   known). *@
+@* The dashboard's headline figures: money in, money out, net and total balance, and the household's income for the
+   range against its money out when anyone's income is given. *@
 @using FinanceTracker.Contracts.Dashboard
 <StatStrip>
     <Stat Label="Money in" Value="@(Spent?.TotalIn ?? 0)">
@@ -49,7 +49,10 @@
 
     [Parameter] public decimal TotalBalance { get; set; }
 
-    [Parameter] public decimal? HouseholdIncome { get; set; }
+    /// <summary>
+    /// The household's income for the selected range, null when no one's income is given.
+    /// </summary>
+    [Parameter] public HouseholdIncomeInRange? HouseholdIncome { get; set; }
 
     /// <summary>
     /// What money in and out leave out as transfers, null when nothing was.
@@ -67,13 +70,20 @@
                "moved between your accounts or household";
     }
 
-    private string GetBalanceMeta()
+    /// <summary>
+    /// What the total balance covers, or the household's income for the range and what's left of it after the same
+    /// range's money out.
+    /// </summary>
+    internal string GetBalanceMeta()
     {
-        if (HouseholdIncome is null or 0)
+        if (HouseholdIncome is null)
+        {
             return "Across all connected accounts";
+        }
 
-        var netAfterOut = HouseholdIncome.Value - Math.Abs(Spent?.TotalOut ?? 0);
-        return $"Household income {CurrencyFormatter.Format(HouseholdIncome.Value)} · {CurrencyFormatter.Format(netAfterOut)} after money out";
+        decimal leftAfterOut = HouseholdIncome.Amount - Math.Abs(Spent?.TotalOut ?? 0);
+        return $"Household income {CurrencyFormatter.Format(HouseholdIncome.Amount)} {HouseholdIncome.Period} · " +
+               $"{CurrencyFormatter.Format(leftAfterOut)} after money out";
     }
 
 }

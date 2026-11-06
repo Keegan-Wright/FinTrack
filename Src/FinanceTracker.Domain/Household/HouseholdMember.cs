@@ -20,17 +20,20 @@ public sealed class HouseholdMember : AggregateRoot
     }
 #pragma warning restore CS8618
 
-    public HouseholdMember(Guid userId, string firstName, string lastName, decimal? income) : base(userId)
+    public HouseholdMember(Guid userId, string firstName, string lastName, decimal? yearlyIncome) : base(userId)
     {
         Rename(firstName, lastName);
-        ChangeIncome(income);
+        ChangeYearlyIncome(yearlyIncome);
     }
 
     public string FirstName { get; private set; }
 
     public string LastName { get; private set; }
 
-    public decimal? Income { get; private set; }
+    /// <summary>
+    /// What the member earns a year, null when not given.
+    /// </summary>
+    public decimal? YearlyIncome { get; private set; }
 
     /// <summary>
     /// The member's own accounts, which aren't connected to the app. Money to or from them is a household transfer.
@@ -52,14 +55,14 @@ public sealed class HouseholdMember : AggregateRoot
         LastName = lastName;
     }
 
-    public void ChangeIncome(decimal? income)
+    public void ChangeYearlyIncome(decimal? yearlyIncome)
     {
-        if (income.HasValue)
+        if (yearlyIncome.HasValue)
         {
-            ArgumentOutOfRangeException.ThrowIfNegative(income.Value, nameof(income));
+            ArgumentOutOfRangeException.ThrowIfNegative(yearlyIncome.Value, nameof(yearlyIncome));
         }
 
-        Income = income;
+        YearlyIncome = yearlyIncome;
     }
 
     /// <summary>

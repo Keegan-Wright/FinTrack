@@ -12,7 +12,7 @@ public class FluentValidationExtensionsTests
     public async Task ValidateValue_InvalidProperty_ReturnsItsErrors()
     {
         // Arrange
-        var model = new AddHouseholdMember { FirstName = "", LastName = "Doe", Income = 0 };
+        var model = new AddHouseholdMember { FirstName = "", LastName = "Doe", YearlyIncome = 0 };
 
         // Act
         IEnumerable<string> errors = await _validator.ValidateValue(model, nameof(AddHouseholdMember.FirstName))
@@ -26,7 +26,7 @@ public class FluentValidationExtensionsTests
     public async Task ValidateValue_ValidProperty_ReturnsNoErrors()
     {
         // Arrange
-        var model = new AddHouseholdMember { FirstName = "Jane", LastName = "Doe", Income = 0 };
+        var model = new AddHouseholdMember { FirstName = "Jane", LastName = "Doe", YearlyIncome = 0 };
 
         // Act
         IEnumerable<string> errors = await _validator.ValidateValue(model, nameof(AddHouseholdMember.FirstName))
@@ -40,7 +40,7 @@ public class FluentValidationExtensionsTests
     public async Task ValidateValue_OnlyValidatesTheRequestedProperty()
     {
         // Arrange
-        var model = new AddHouseholdMember { FirstName = "Jane", LastName = "", Income = -1 };
+        var model = new AddHouseholdMember { FirstName = "Jane", LastName = "", YearlyIncome = -1 };
 
         // Act
         IEnumerable<string> errors = await _validator.ValidateValue(model, nameof(AddHouseholdMember.FirstName))
@@ -54,12 +54,12 @@ public class FluentValidationExtensionsTests
     public async Task ValidateValue_ValidatesModelCapturedWhenCreated()
     {
         // Arrange
-        var model = new AddHouseholdMember { FirstName = "Jane", LastName = "Doe", Income = -1 };
-        Func<object, string, Task<IEnumerable<string>>> validate = _validator.ValidateValue(model, nameof(AddHouseholdMember.Income));
+        var model = new AddHouseholdMember { FirstName = "Jane", LastName = "Doe", YearlyIncome = -1 };
+        Func<object, string, Task<IEnumerable<string>>> validate = _validator.ValidateValue(model, nameof(AddHouseholdMember.YearlyIncome));
 
         // Act
-        model.Income = 10;
-        IEnumerable<string> errors = await validate(new object(), nameof(AddHouseholdMember.Income));
+        model.YearlyIncome = 10;
+        IEnumerable<string> errors = await validate(new object(), nameof(AddHouseholdMember.YearlyIncome));
 
         // Assert
         await Assert.That(errors).IsEmpty();
