@@ -14,21 +14,14 @@ permissions:
   contents: read
 
 jobs:
+  # The one compile check, the whole solution, so a warning anywhere fails it (TreatWarningsAsErrors in
+  # Directory.Build.props). The tests start once it passes, each building only what it needs
   build:
     name: Build
-
-    strategy:
-      matrix:
-        configuration: [ Release ]
-
-    runs-on:
-      - ubuntu-latest
-
-    env:
-      Solution_Name: FinanceTracker.slnx
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Latest
+      - name: Checkout repository
         uses: actions/checkout@v4.1.7
 
       - name: Install .NET Core
@@ -43,13 +36,75 @@ jobs:
         run: dotnet restore
 
       - name: Build Solution
-        run: dotnet build -c Release
+        run: dotnet build -c Release --no-restore
+
+  unit-tests:
+    name: Unit tests
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4.1.7
+
+      - name: Install .NET Core
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore workloads
+        run: dotnet workload restore
 
       - name: Unit Tests
         run: |
           for project in Client Domain FinanceTracker Infrastructure; do
             dotnet test --project Test/FinanceTracker.Tests.Unit.$project -c Release || exit 1
           done
+
+      - name: Upload HTML Test Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: TestReport-Unit
+          path: '**/*-report.html'
+
+  # The integration tests split across three runners, the UI tests in two as they're the time-consuming ones.
+  integration-tests:
+    name: Integration tests (${{ matrix.suite }})
+    needs: build
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # A look at each page
+          - suite: UI pages
+            filter: '/*/FinanceTracker.Tests.Integration.Ui/(SeededPageTests|PageRenderTests|AccountPageTests|LoadFailureTests)/*'
+            browser: true
+          # Everything else in a browser, flows, dialogs and failures, a new UI test class lands here
+          - suite: UI flows
+            filter: '/*/FinanceTracker.Tests.Integration.Ui/(!(SeededPageTests|PageRenderTests|AccountPageTests|LoadFailureTests))/*'
+            browser: true
+          - suite: API and services
+            filter: '/*/(!FinanceTracker.Tests.Integration.Ui)/*/*'
+            browser: false
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4.1.7
+
+      - name: Install .NET Core
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore workloads
+        run: dotnet workload restore
+
+      # Built first, its output holds Playwright's install script
+      - name: Build Integration Tests
+        run: dotnet build Test/FinanceTracker.Tests.Integration -c Release
 
       # Trusted, so Aspire's health check of the app's https endpoint can connect. On Linux trusting writes the
       # certificate to ~/.aspnet/dev-certs/trust, which OpenSSL only reads once it's on SSL_CERT_DIR. The runner has
@@ -62,23 +117,26 @@ jobs:
       # Chromium and the system libraries it needs for the UI tests, which use the app in a browser with Playwright.
       # The tests install Chromium themselves when it's missing, but not its libraries
       - name: Install Playwright's Chromium
+        if: matrix.browser
         run: pwsh Test/FinanceTracker.Tests.Integration/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
 
       - name: Integration Tests
-        run: dotnet test --project Test/FinanceTracker.Tests.Integration -c Release
+        run: >-
+          dotnet test --project Test/FinanceTracker.Tests.Integration -c Release --no-build
+          -- --treenode-filter "${{ matrix.filter }}"
 
       - name: Upload HTML Test Report
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: TestReport
+          name: TestReport-${{ matrix.suite }}
           path: '**/*-report.html'
 
       # What a failed UI test saw, step by step, open with https://trace.playwright.dev
       - name: Upload Playwright Traces
         uses: actions/upload-artifact@v4
-        if: failure()
+        if: failure() && matrix.browser
         with:
-          name: PlaywrightTraces
+          name: PlaywrightTraces-${{ matrix.suite }}
           path: '**/playwright-traces/*.zip'
           if-no-files-found: ignore
