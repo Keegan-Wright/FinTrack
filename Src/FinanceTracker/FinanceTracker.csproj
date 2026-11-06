@@ -11,6 +11,10 @@
 
     <!-- The [InjectionCategory] destination the source generators register in Program -->
     <FinTrackServiceDestination>Server</FinTrackServiceDestination>
+
+    <!-- Brings in Blazor's own scripts (_framework/blazor.web.js). The SDK otherwise decides from whether .razor files
+         are present when restoring, and the Dockerfile restores from the project files alone -->
+    <RequiresAspNetWebAssets>true</RequiresAspNetWebAssets>
   </PropertyGroup>
 
 

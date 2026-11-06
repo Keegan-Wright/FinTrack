@@ -542,6 +542,42 @@ public class MainLayoutTests : ComponentTestBase
         await Assert.That(cut.Markup).DoesNotContain("Something went wrong");
     }
 
+    [Test]
+    public async Task Page_LeftWhileStillLoading_DoesNotFailTheNextPage()
+    {
+        // Arrange, a page loading when the user goes to another
+        TaskCompletionSource gate = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        RenderFragment slowPage = builder =>
+        {
+            builder.OpenComponent<SlowPage>(0);
+            builder.AddAttribute(1, nameof(SlowPage.Gate), gate);
+            builder.CloseComponent();
+        };
+        RenderFragment nextPage = builder =>
+        {
+            builder.OpenComponent<FailingPage>(0);
+            builder.AddAttribute(1, nameof(FailingPage.Fail), (Func<bool>)(static () => false));
+            builder.CloseComponent();
+        };
+        IRenderedComponent<MainLayout> cut = Render<MainLayout>(p => p
+            .AddCascadingValue(_applicationState)
+            .Add(x => x.Body, slowPage));
+        cut.WaitForState(() => cut.Markup.Contains("Still loading"));
+
+        // Act, on to the next page, then the first page's load carries on
+        cut.Render(p => p.Add(x => x.Body, nextPage));
+        cut.WaitForState(() => cut.Markup.Contains(FailingPage.Loaded));
+        gate.SetResult();
+        await Task.Delay(100);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(cut.Markup).Contains(FailingPage.Loaded);
+            await Assert.That(cut.Markup).DoesNotContain("Something went wrong");
+        }
+    }
+
     /// <summary>
     /// The sync hub's connection lost, or back, as the browser's sync notifications say.
     /// </summary>

@@ -86,8 +86,9 @@ jobs:
           - suite: UI flows
             filter: '/*/FinanceTracker.Tests.Integration.Ui/(!(SeededPageTests|PageRenderTests|AccountPageTests|LoadFailureTests))/*'
             browser: true
+          # Everything not in a browser, the published image has its own job below
           - suite: API and services
-            filter: '/*/(!FinanceTracker.Tests.Integration.Ui)/*/*'
+            filter: '/*/(!(FinanceTracker.Tests.Integration.Ui|FinanceTracker.Tests.Integration.Image))/*/*'
             browser: false
 
     steps:
@@ -140,3 +141,69 @@ jobs:
           name: PlaywrightTraces-${{ matrix.suite }}
           path: '**/playwright-traces/*.zip'
           if-no-files-found: ignore
+
+  # The Docker image as it ships, run with a Postgres and used in a browser. The other UI tests run the app built for
+  # testing, so something only a publish gets wrong, e.g. Blazor's own script missing from the image, passes them all
+  published-image:
+    name: Published image
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4.1.7
+
+      - name: Install .NET Core
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore workloads
+        run: dotnet workload restore
+
+      # Built first, its output holds Playwright's install script
+      - name: Build Integration Tests
+        run: dotnet build Test/FinanceTracker.Tests.Integration -c Release
+
+      - name: Install Playwright's Chromium
+        run: pwsh Test/FinanceTracker.Tests.Integration/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+
+      # For this runner's platform, the published images are built for both in the release workflow
+      - name: Build the image
+        run: docker build -f Src/Dockerfile -t fintrack:ci .
+
+      # A throwaway Postgres and placeholder settings, the image as a self-hoster runs it, until it answers
+      - name: Start the image
+        run: |
+          docker network create fintrack-ci
+          docker run -d --name fintrack-ci-db --network fintrack-ci -e POSTGRES_PASSWORD=ci postgres:17.6
+          until docker exec fintrack-ci-db pg_isready -U postgres; do sleep 1; done
+          docker run -d --name fintrack-ci-web --network fintrack-ci -p 8080:8080 \
+            -e HTTP_PORTS=8080 \
+            -e ENCRYPTION_KEYS="1:$(head -c 32 /dev/urandom | base64)" -e ENCRYPTION_CURRENT_KEY_ID=1 \
+            -e OPEN_BANKING_TRUELAYER_BASE_AUTH_URL=https://auth.example.test \
+            -e OPEN_BANKING_TRUELAYER_BASE_DATA_URL=https://api.example.test \
+            -e OPEN_BANKING_TRUELAYER_AUTH_REDIRECT_URL=http://localhost:8080/callback \
+            -e OPEN_BANKING_TRUELAYER_CLIENT_ID=ci -e OPEN_BANKING_TRUELAYER_CLIENT_SECRET=ci \
+            -e OPEN_BANKING_PUBLIC_IP_ADDRESS=127.0.0.1 -e APP_CULTURE=en-GB -e TZ=Europe/London \
+            -e "ConnectionStrings__FinTrackDb=Host=fintrack-ci-db;Port=5432;Username=postgres;Password=ci;Database=FinTrackDb" \
+            fintrack:ci
+          timeout 120 bash -c 'until curl -sf -o /dev/null http://localhost:8080/Account/Login; do sleep 2; done'
+
+      - name: Published Image Tests
+        env:
+          FINTRACK_IMAGE_URL: http://localhost:8080
+        run: >-
+          dotnet test --project Test/FinanceTracker.Tests.Integration -c Release --no-build
+          -- --treenode-filter "/*/FinanceTracker.Tests.Integration.Image/*/*"
+
+      - name: Image logs
+        if: failure()
+        run: docker logs fintrack-ci-web
+
+      - name: Upload HTML Test Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: TestReport-Published image
+          path: '**/*-report.html'

@@ -16,7 +16,7 @@ public static class PersistenceExtensions
         {
             builder.Services.AddDbContextFactory<FinanceTrackerContext>((_, options) =>
             {
-                options.UseNpgsql(builder.Configuration.GetConnectionString(FinTrackResources.Database), npgsqlDbContextOptionsBuilder =>
+                options.UseNpgsql(builder.Configuration.GetFinTrackDatabaseConnectionString(), npgsqlDbContextOptionsBuilder =>
                 {
                     npgsqlDbContextOptionsBuilder.MigrationsAssembly("FinanceTracker.Infrastructure.Migrations");
                     npgsqlDbContextOptionsBuilder.EnableRetryOnFailure();

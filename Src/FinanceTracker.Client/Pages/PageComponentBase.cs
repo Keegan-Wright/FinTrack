@@ -140,8 +140,9 @@ public class PageComponent : ComponentBase, IDisposable
 
         ApplicationState.Loading = false;
         ApplicationState.LoadingMessage = null;
+        // Cancelled, not disposed a load still running when the user moves on reads the token once it resumes, and a
+        // disposed source throws there, which the layout shows as the next page failing. A cancelled load is ignored
         _cts.Cancel();
-        _cts.Dispose();
         GC.SuppressFinalize(this);
     }
 

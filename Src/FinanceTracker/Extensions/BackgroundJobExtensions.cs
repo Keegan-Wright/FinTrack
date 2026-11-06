@@ -21,8 +21,7 @@ public static class BackgroundJobExtensions
         /// </summary>
         public WebApplicationBuilder AddBackgroundJobs()
         {
-            string connectionString = builder.Configuration.GetConnectionString(FinTrackResources.Database)
-                ?? throw new InvalidOperationException("The database connection string is missing");
+            string connectionString = builder.Configuration.GetFinTrackDatabaseConnectionString();
 
             builder.Services.AddQuartzExecutionHistory(static options =>
             {
