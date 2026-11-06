@@ -43,12 +43,12 @@ jobs:
         run: dotnet restore
 
       - name: Build Solution
-        run: dotnet build -c=release
+        run: dotnet build -c Release
 
       - name: Unit Tests
         run: |
           for project in Client Domain FinanceTracker Infrastructure; do
-            dotnet test --project Test/FinanceTracker.Tests.Unit.$project -c=release || exit 1
+            dotnet test --project Test/FinanceTracker.Tests.Unit.$project -c Release || exit 1
           done
 
       # Trusted, so Aspire's health check of the app's https endpoint can connect. On Linux trusting writes the
@@ -62,10 +62,10 @@ jobs:
       # Chromium and the system libraries it needs for the UI tests, which use the app in a browser with Playwright.
       # The tests install Chromium themselves when it's missing, but not its libraries
       - name: Install Playwright's Chromium
-        run: pwsh Test/FinanceTracker.Tests.Integration/bin/release/net10.0/playwright.ps1 install --with-deps chromium
+        run: pwsh Test/FinanceTracker.Tests.Integration/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
 
       - name: Integration Tests
-        run: dotnet test --project Test/FinanceTracker.Tests.Integration -c=release
+        run: dotnet test --project Test/FinanceTracker.Tests.Integration -c Release
 
       - name: Upload HTML Test Report
         uses: actions/upload-artifact@v4
