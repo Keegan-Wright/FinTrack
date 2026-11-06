@@ -1,7 +1,7 @@
 namespace FinanceTracker.Contracts.Api;
 
 /// <summary>
-/// Headers the API requires.
+/// Headers the API requires, and those it answers with.
 /// </summary>
 public static class ApiHeaders
 {
@@ -14,4 +14,10 @@ public static class ApiHeaders
     /// carrying it came from the app's own pages.
     /// </remarks>
     public const string Request = "X-FinTrack-Request";
+
+    /// <summary>
+    /// Every API answer carries the build of the app the server runs, e.g. <c>0.1.1+3e871e2…</c>, so a browser tab
+    /// still running the app from before an update can tell.
+    /// </summary>
+    public const string Version = "X-FinTrack-Version";
 }

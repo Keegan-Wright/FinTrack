@@ -1,4 +1,6 @@
+using System.Globalization;
 using System.Net;
+using FinanceTracker.AppHost.ServiceDefaults;
 using FinanceTracker.Contracts.Auth;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Tests.Integration.Http;
@@ -47,6 +49,37 @@ public abstract class IntegrationTestBase
     }
 
     /// <summary>
+    /// When a user registered without a day of their own is, null for now, see <see cref="RegisterUserAsync"/>.
+    /// </summary>
+    protected virtual DateTimeOffset? DefaultClock => null;
+
+    /// <summary>
+    /// Moves the app's clock <paramref name="offset"/> from the real one for what <paramref name="client"/> does, none
+    /// for no offset, see <see cref="TestClock"/>.
+    /// </summary>
+    private void SetClock(FinTrackClient client, TimeSpan offset)
+    {
+        if (offset == TimeSpan.Zero)
+        {
+            return;
+        }
+
+        client.Cookies.Add(new Cookie(TestClock.Cookie, offset.TotalSeconds.ToString(CultureInfo.InvariantCulture),
+            "/", App.WebBaseAddress.Host));
+    }
+
+    /// <summary>
+    /// Now for <paramref name="user"/>, in UTC, as the app reads it for them, for dating what's seeded for them.
+    /// </summary>
+    protected static DateTime NowFor(SignedInUser user) => DateTime.UtcNow + user.ClockOffset;
+
+    /// <summary>
+    /// Today for <paramref name="user"/> where the app runs, as it reads it.
+    /// </summary>
+    protected static DateOnly TodayFor(SignedInUser user) =>
+        DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(NowFor(user), TimeZoneInfo.Local));
+
+    /// <summary>
     /// A unique name so data from one test never collides with another in the shared database.
     /// </summary>
     protected static string UniqueName(string prefix = "user") => $"{prefix}-{Guid.NewGuid():N}";
@@ -78,6 +111,7 @@ public abstract class IntegrationTestBase
         await Scenario.Do(s => s.UserScenario.WithRole(user.Username, FinTrackRoles.Admin));
 
         FinTrackClient client = CreateClient();
+        SetClock(client, user.ClockOffset);
         HttpResponseMessage response = await client.LoginAsync(user.Username, SignedInUser.DefaultPassword, CancellationToken);
         if (response.StatusCode != HttpStatusCode.Redirect)
         {
@@ -89,12 +123,21 @@ public abstract class IntegrationTestBase
 
     /// <summary>
     /// Registers a new user through the register page and returns a client signed in as them. The user is
-    /// added to <see cref="Scenario"/> under its username so scenarios can build data for it.
+    /// added to <see cref="Scenario"/> under its username so scenarios can build data for it. Given
+    /// <paramref name="at"/>, the app's clock reads that for everything the user does from registering on, time
+    /// passing from there, see <see cref="TestClock"/>.
     /// </summary>
-    protected async Task<SignedInUser> RegisterUserAsync(string? username = null)
+    protected async Task<SignedInUser> RegisterUserAsync(string? username = null, DateTimeOffset? at = null)
     {
         username ??= UniqueName();
+        at ??= DefaultClock;
         FinTrackClient client = CreateClient();
+        TimeSpan offset = TimeSpan.Zero;
+        if (at is { } moment)
+        {
+            offset = TimeSpan.FromSeconds(Math.Round((moment - DateTimeOffset.UtcNow).TotalSeconds));
+            SetClock(client, offset);
+        }
 
         HttpResponseMessage response = await client.RegisterAsync(username, SignedInUser.DefaultPassword, CancellationToken);
         if (response.StatusCode != HttpStatusCode.Redirect)
@@ -108,6 +151,6 @@ public abstract class IntegrationTestBase
 
         Scenario.UserMappings[username] = userId;
 
-        return new SignedInUser(username, userId, client);
+        return new SignedInUser(username, userId, client) { ClockOffset = offset };
     }
 }

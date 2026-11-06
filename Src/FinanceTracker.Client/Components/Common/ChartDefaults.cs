@@ -42,6 +42,40 @@ public static class ChartDefaults
     };
 
     /// <summary>
+    /// The colour money going <paramref name="flow"/> is drawn in, in the mode the app is in, see
+    /// <see cref="MoneyColours"/>.
+    /// </summary>
+    public static string MoneyColour(MoneyFlow flow, bool isDarkMode)
+    {
+        if (isDarkMode)
+        {
+            return flow switch
+            {
+                MoneyFlow.In => MoneyColours.DarkMoneyIn,
+                MoneyFlow.Out => MoneyColours.DarkMoneyOut,
+                _ => MoneyColours.DarkNeutral
+            };
+        }
+
+        return flow switch
+        {
+            MoneyFlow.In => MoneyColours.LightMoneyIn,
+            MoneyFlow.Out => MoneyColours.LightMoneyOut,
+            _ => MoneyColours.LightNeutral
+        };
+    }
+
+    /// <summary>
+    /// In, out and neutral, the series order the cash flow and report charts use.
+    /// </summary>
+    public static List<string> InOutAndNeutral(bool isDarkMode) =>
+    [
+        MoneyColour(MoneyFlow.In, isDarkMode),
+        MoneyColour(MoneyFlow.Out, isDarkMode),
+        MoneyColour(MoneyFlow.Neutral, isDarkMode)
+    ];
+
+    /// <summary>
     /// The colour of a chart's grid lines, the theme's default line colour.
     /// </summary>
     public static string GridColour(bool isDarkMode) =>

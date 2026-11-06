@@ -1,0 +1,17 @@
+@* Above every page once FinTrack has been updated under this tab, see AppUpdate. The tab carries on as it is, the
+   user reloads when it suits them, e.g. after finishing what they're typing. *@
+@inject NavigationManager NavigationManager
+
+<div class="ft-update-banner">
+    <MudAlert Severity="Severity.Info" Variant="Variant.Text" Dense="true">
+        FinTrack has been updated.
+        <MudLink Color="Color.Inherit" Underline="Underline.Always" Class="ft-update-banner__reload"
+                 OnClick="@Reload">Reload to get the latest</MudLink>
+    </MudAlert>
+</div>
+
+@code {
+
+    private void Reload() => NavigationManager.Refresh(forceReload: true);
+
+}

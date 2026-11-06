@@ -6,16 +6,18 @@
 {
     @* An element of this component's own, so its styles reach the chip MudBlazor renders inside *@
     <span class="ft-transfer-anchor">
-        <MudMenu Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft"
-                 aria-label="@($"{TransferText.Label(Transfer)}, show why")">
+        <MudMenu Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
 
-            @* Activator opens the menu when clicked *@
+            @* MudBlazor's activator is the button, named by the chip's text and opened from the keyboard, so the chip
+               isn't a button of its own (one inside the other is WCAG 4.1.2's nested-interactive). A click still has to
+               open the menu itself, see ToggleAsync. *@
             <ActivatorContent Context="menu">
-                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@ChipColor"
-                         Icon="@Icons.Material.Outlined.SwapHoriz" Class="ft-transfer-chip"
-                         OnClick="@(args => menu.ToggleAsync(args))">
-                    @TransferText.Label(Transfer)
-                </MudChip>
+                <span class="ft-transfer-chip" @onclick="@(args => menu.ToggleAsync(args))">
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@ChipColor"
+                             Icon="@Icons.Material.Outlined.SwapHoriz">
+                        @TransferText.Label(Transfer)
+                    </MudChip>
+                </span>
             </ActivatorContent>
             <ChildContent>
                 <div class="ft-transfer">

@@ -39,70 +39,82 @@
     <MudItem xs="12" lg="8">
         <Section>
             <div class="ft-calendar" role="grid" aria-label="@MonthStart.ToString("MMMM yyyy", CultureInfo.CurrentCulture)">
-                @foreach (var dayName in WeekdayNames)
+                @* Rows for screen readers, laid out by the calendar's own grid, see .ft-calendar__row *@
+                <div class="ft-calendar__row" role="row">
+                    @foreach (var dayName in WeekdayNames)
+                    {
+                        <div class="ft-calendar__weekday" role="columnheader">@dayName</div>
+                    }
+                </div>
+                @foreach (IReadOnlyList<CalendarItems?> week in Weeks)
                 {
-                    <div class="ft-calendar__weekday" role="columnheader">@dayName</div>
-                }
-                @for (var i = 0; i < LeadingBlanks; i++)
-                {
-                    <div class="ft-calendar__blank"></div>
-                }
-                @foreach (var day in Days ?? [])
-                {
-                    var date = day.Date.Date;
-                    var net = day.Transactions.Sum(static x => x.Amount);
-                    var hasTransactions = day.Transactions.Any();
-                    var selected = date == _selectedDate;
-                    <button type="button" role="gridcell" aria-selected="@(selected ? "true" : "false")"
-                            class="@DayClass(date, selected)" @onclick="@(() => _selectedDate = date)">
-                        <span class="ft-calendar__number">@date.Day</span>
-                        @if (hasTransactions)
+                    <div class="ft-calendar__row" role="row">
+                        @foreach (CalendarItems? day in week)
                         {
-                            var moneyIn = day.Transactions.Where(static x => x.Amount > 0).Sum(static x => x.Amount);
-                            var moneyOut = day.Transactions.Where(static x => x.Amount < 0).Sum(static x => x.Amount);
-                            <span class="ft-calendar__net">
-                                <MoneyText Value="@net" Signed="true" Typo="Typo.caption" Inline="true"/>
-                            </span>
-                            <span class="ft-calendar__flow ft-money">
-                                @if (moneyIn > 0)
+                            if (day is null)
+                            {
+                                <div class="ft-calendar__blank" role="gridcell"></div>
+                                continue;
+                            }
+
+                            var date = day.Date.Date;
+                            var net = day.Transactions.Sum(static x => x.Amount);
+                            var hasTransactions = day.Transactions.Any();
+                            var selected = date == _selectedDate;
+                            <button type="button" role="gridcell" aria-selected="@(selected ? "true" : "false")"
+                                    class="@DayClass(date, selected)" @onclick="@(() => _selectedDate = date)">
+                                <span class="ft-calendar__number">@date.Day</span>
+                                @if (hasTransactions)
                                 {
-                                    <span>@CurrencyFormatter.Format(moneyIn) in</span>
+                                    var moneyIn = day.Transactions.Where(static x => x.Amount > 0)
+                                        .Sum(static x => x.Amount);
+                                    var moneyOut = day.Transactions.Where(static x => x.Amount < 0)
+                                        .Sum(static x => x.Amount);
+                                    <span class="ft-calendar__net">
+                                        <MoneyText Value="@net" Signed="true" Typo="Typo.caption" Inline="true"/>
+                                    </span>
+                                    <span class="ft-calendar__flow ft-money">
+                                        @if (moneyIn > 0)
+                                        {
+                                            <span>@CurrencyFormatter.Format(moneyIn) in</span>
+                                        }
+                                        @if (moneyOut < 0)
+                                        {
+                                            <span>@CurrencyFormatter.Format(Math.Abs(moneyOut)) out</span>
+                                        }
+                                    </span>
                                 }
-                                @if (moneyOut < 0)
-                                {
-                                    <span>@CurrencyFormatter.Format(Math.Abs(moneyOut)) out</span>
-                                }
-                            </span>
+                                <span class="ft-calendar__markers">
+                                    @if (hasTransactions)
+                                    {
+                                        <span class="@DotClass(net)"></span>
+                                    }
+                                    @if (day.Bills.Any())
+                                    {
+                                        <MudIcon Icon="@Icons.Material.Outlined.EventRepeat" Size="Size.Small"
+                                                 Color="@BillColor(day.Bills)" Class="ft-calendar__icon"
+                                                 aria-label="@BillsLabel(day.Bills)"/>
+                                    }
+                                    @if (day.Goals.Any())
+                                    {
+                                        <MudIcon Icon="@Icons.Material.Filled.Flag" Size="Size.Small"
+                                                 Color="Color.Warning" Class="ft-calendar__icon"/>
+                                    }
+                                    @if (day.Events.Any())
+                                    {
+                                        <MudIcon Icon="@Icons.Material.Outlined.Celebration" Size="Size.Small"
+                                                 Color="Color.Primary" Class="ft-calendar__icon"
+                                                 aria-label="@CalendarText.EventsLabel(day.Events.Count())"/>
+                                    }
+                                    @if (day.Debts.Any())
+                                    {
+                                        <MudIcon Icon="@Icons.Material.Outlined.CreditScore" Size="Size.Small"
+                                                 Color="Color.Success" Class="ft-calendar__icon"/>
+                                    }
+                                </span>
+                            </button>
                         }
-                        <span class="ft-calendar__markers">
-                            @if (hasTransactions)
-                            {
-                                <span class="@($"ft-calendar__dot {(net < 0 ? "ft-calendar__dot--out" : "ft-calendar__dot--in")}")"></span>
-                            }
-                            @if (day.Bills.Any())
-                            {
-                                <MudIcon Icon="@Icons.Material.Outlined.EventRepeat" Size="Size.Small"
-                                         Color="@BillColor(day.Bills)" Class="ft-calendar__icon"
-                                         aria-label="@BillsLabel(day.Bills)"/>
-                            }
-                            @if (day.Goals.Any())
-                            {
-                                <MudIcon Icon="@Icons.Material.Filled.Flag" Size="Size.Small" Color="Color.Warning"
-                                         Class="ft-calendar__icon"/>
-                            }
-                            @if (day.Events.Any())
-                            {
-                                <MudIcon Icon="@Icons.Material.Outlined.Celebration" Size="Size.Small"
-                                         Color="Color.Primary" Class="ft-calendar__icon"
-                                         aria-label="@CalendarText.EventsLabel(day.Events.Count())"/>
-                            }
-                            @if (day.Debts.Any())
-                            {
-                                <MudIcon Icon="@Icons.Material.Outlined.CreditScore" Size="Size.Small"
-                                         Color="Color.Success" Class="ft-calendar__icon"/>
-                            }
-                        </span>
-                    </button>
+                    </div>
                 }
             </div>
         </Section>
@@ -140,7 +152,7 @@
                                 <div class="ft-list__end">
                                     <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true"
                                              AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
-                                             aria-label="@($"Actions for {calendarEvent.Title}")">
+                                             AriaLabel="@($"Actions for {calendarEvent.Title}")">
                                         <MudMenuItem Icon="@Icons.Material.Outlined.Edit"
                                                      OnClick="@(() => EditEventAsync(calendarEvent))">Edit</MudMenuItem>
                                         <MudMenuItem Icon="@Icons.Material.Outlined.Delete"
@@ -234,6 +246,28 @@
 
     // The week starts on the culture's first day.
     private static IReadOnlyList<string> WeekdayNames => CalendarGrid.WeekdayNames(CultureInfo.CurrentCulture.DateTimeFormat);
+
+    /// <summary>
+    /// The month's days a week at a time, starting on the culture's first day of the week, null for the days before
+    /// the 1st in its first week.
+    /// </summary>
+    private IEnumerable<IReadOnlyList<CalendarItems?>> Weeks =>
+        Enumerable.Repeat<CalendarItems?>(null, LeadingBlanks)
+            .Concat(Days ?? [])
+            .Chunk(7);
+
+    /// <summary>
+    /// The day's dot, money in's colour when it came out ahead or even, money out's when behind.
+    /// </summary>
+    private static string DotClass(decimal net)
+    {
+        if (net < 0)
+        {
+            return "ft-calendar__dot ft-calendar__dot--out";
+        }
+
+        return "ft-calendar__dot ft-calendar__dot--in";
+    }
 
     private int LeadingBlanks =>
         CalendarGrid.LeadingBlanks(MonthStart, CultureInfo.CurrentCulture.DateTimeFormat.FirstDayOfWeek);

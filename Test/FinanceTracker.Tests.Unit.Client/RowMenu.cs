@@ -27,7 +27,7 @@ public static class RowMenu
         IRenderedComponent<MudPopoverProvider> popovers, string name, string item)
         where TComponent : IComponent
     {
-        await cut.Find($"[aria-label='Actions for {name}'] button").ClickAsync(new());
+        await cut.Find($"button[aria-label='Actions for {name}']").ClickAsync(new());
         IElement menuItem = popovers.WaitForElements(".mud-popover-open .mud-menu-item")
             .Single(x => x.TextContent.Trim() == item);
         return menuItem.ClickAsync(new());
@@ -40,7 +40,7 @@ public static class RowMenu
         IRenderedComponent<TComponent> cut, IRenderedComponent<MudPopoverProvider> popovers, string name)
         where TComponent : IComponent
     {
-        await cut.Find($"[aria-label='Actions for {name}'] button").ClickAsync(new());
+        await cut.Find($"button[aria-label='Actions for {name}']").ClickAsync(new());
         return popovers.WaitForElements(".mud-popover-open .mud-menu-item")
             .Select(static x => (x.TextContent.Trim(), IsDisabled(x)))
             .ToList();

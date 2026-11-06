@@ -1,8 +1,9 @@
 @using FinanceTracker.Client.Layout
 
 @* Routes the client's pages, in the browser and while the server prerenders them. The Identity pages live in the
-   server and only ever render statically there, interactive navigation to them falls back to a full page load. *@
-<Router AppAssembly="typeof(Program).Assembly">
+   server and only ever render statically there, interactive navigation to them falls back to a full page load. An
+   address that isn't a page shows NotFound. *@
+<Router AppAssembly="typeof(Program).Assembly" NotFoundPage="typeof(NotFound)">
     <Found Context="routeData">
         <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(MainLayout)">
             <NotAuthorized>

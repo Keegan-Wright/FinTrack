@@ -59,10 +59,11 @@ public static class Extensions
             });
 
 
+            // The service's name and instance come from OTEL_SERVICE_NAME and OTEL_RESOURCE_ATTRIBUTES, which Aspire
+            // sets so the dashboard files the telemetry under the app's resource. Naming it here would override them
             builder.Services.AddOpenTelemetry()
                 .ConfigureResource(x =>
-                    x.AddService("FinanceTracker")
-                        .AddProcessDetector()
+                    x.AddProcessDetector()
                         .AddProcessRuntimeDetector()
                         .AddOperatingSystemDetector()
                         .AddHostDetector()

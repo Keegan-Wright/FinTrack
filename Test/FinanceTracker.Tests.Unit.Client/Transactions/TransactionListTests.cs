@@ -60,7 +60,7 @@ public class TransactionListTests : ComponentTestBase
             .Add(x => x.OnSelect, (Transaction x) => selected = x));
 
         // Act
-        cut.Find(".ft-transaction").Click();
+        cut.Find(".ft-transaction__open").Click();
 
         // Assert
         await Assert.That(selected).IsSameReferenceAs(coffee);

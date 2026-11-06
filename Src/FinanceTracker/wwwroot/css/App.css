@@ -135,3 +135,17 @@ html {
     flex: 0 0 auto;
     text-align: right;
 }
+
+/* A link in a sentence is underlined, so it doesn't rely on colour to stand out from the text around it (WCAG 1.4.1) */
+.mud-typography .mud-link {
+    text-decoration: underline;
+}
+
+/* Every ApexChart it sizes itself to its container when drawn, and again when the container resizes. A chart drawn
+   while the layout was still settling, e.g. before the menu docked, mustn't widen the page until it redraws, so it's
+   held to its container and clipped sideways only, its tooltips still show above and below. */
+.apexcharts-canvas {
+    max-width: 100%;
+    overflow-x: clip;
+    overflow-clip-margin: 4px;
+}

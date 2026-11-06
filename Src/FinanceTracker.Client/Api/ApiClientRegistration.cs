@@ -26,10 +26,10 @@ public static class ApiClientRegistration
         public IHttpClientBuilder AddFinTrackServerConnections(Uri baseAddress,
             Action<HttpConnectionOptions>? configureSyncHub = null)
         {
-            // One connection shared by every subscriber, the container disposes it
+            // One connection shared by every subscriber, the container disposes it. It keeps trying to reconnect
             services.AddSingleton(_ => new HubConnectionBuilder()
                 .WithUrl(new Uri(baseAddress, SyncHubContract.Path), options => configureSyncHub?.Invoke(options))
-                .WithAutomaticReconnect()
+                .WithAutomaticReconnect(new KeepTryingRetryPolicy())
                 .Build());
 
             return services.AddHttpClient(HttpClientName, client =>

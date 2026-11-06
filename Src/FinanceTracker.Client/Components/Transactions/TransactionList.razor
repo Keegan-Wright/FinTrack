@@ -13,12 +13,16 @@ else
     <div class="ft-list">
         @foreach (var transaction in Transactions.Take(_shown))
         {
-            <div class="ft-list__row ft-list__row--link ft-transaction" role="button" tabindex="0"
-                 aria-label="@($"{transaction.Description}, show details")"
-                 @onclick="@(() => OnSelect.InvokeAsync(transaction))"
-                 @onkeyup="@(e => OnKeyUpAsync(e, transaction))">
+            @* The description is the row's one button, stretched over the whole row so a tap anywhere opens it. The row
+               itself isn't a button, as the chips' links inside it would be nested in it (WCAG 4.1.2). *@
+            <div class="ft-list__row ft-list__row--link ft-transaction">
                 <div class="ft-list__main">
-                    <MudText Typo="Typo.body2" Class="text-truncate">@transaction.Description</MudText>
+                    <button type="button" class="ft-transaction__open"
+                            @onclick="@(() => OnSelect.InvokeAsync(transaction))">
+                        <MudText Typo="Typo.body2" HtmlTag="span" Class="text-truncate d-block">
+                            @transaction.Description
+                        </MudText>
+                    </button>
                     <MudText Typo="Typo.caption" Class="mud-text-secondary text-truncate">@Where(transaction)</MudText>
                     <TransactionChipList Transaction="@transaction" LinksOnly="true"/>
                 </div>
@@ -67,13 +71,5 @@ else
     }
 
     private void ShowMore() => _shown += PageSize;
-
-    private async Task OnKeyUpAsync(KeyboardEventArgs args, Transaction transaction)
-    {
-        if (args.Key is "Enter" or " ")
-        {
-            await OnSelect.InvokeAsync(transaction);
-        }
-    }
 
 }

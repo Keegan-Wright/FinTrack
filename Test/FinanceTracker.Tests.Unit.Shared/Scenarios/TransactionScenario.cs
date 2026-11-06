@@ -1,3 +1,4 @@
+using FinanceTracker.Domain.Bills;
 using FinanceTracker.Domain.Classifications;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Transactions;
@@ -34,11 +35,32 @@ public sealed class TransactionScenario : ScenarioBuilder
     /// Imports <paramref name="count"/> generated transactions onto the account.
     /// </summary>
     public Task<TestingScenario> WithTransactions(string accountName, int count) =>
+        WithTransactions(accountName, new TransactionDetailsFaker().Generate(count));
+
+    /// <summary>
+    /// Imports each of <paramref name="details"/> into the account, unnamed, e.g. made-up ones given dates of the
+    /// test's choosing.
+    /// </summary>
+    public Task<TestingScenario> WithTransactions(string accountName, IEnumerable<TransactionDetails> details) =>
         PersistAsync(async context =>
         {
             BankAccount account = await LoadAccountAsync(context, accountName);
-            context.BankTransactions.AddRange(new TransactionDetailsFaker().Generate(count)
-                .Select(x => BankTransaction.Import(account, x)));
+            context.BankTransactions.AddRange(details.Select(x => BankTransaction.Import(account, x)));
+        });
+
+    /// <summary>
+    /// Records the transaction as a payment of the bill, as the user choosing it does.
+    /// </summary>
+    public Task<TestingScenario> WithBillPayment(string transactionName, string billName) =>
+        PersistAsync(async context =>
+        {
+            Guid transactionId = Scenario.TransactionMappings[transactionName];
+            Guid billId = Scenario.BillMappings[billName];
+
+            BankTransaction transaction = await context.BankTransactions
+                .SingleAsync(x => x.Id == transactionId, Scenario.CancellationToken);
+            Bill bill = await context.Bills.SingleAsync(x => x.Id == billId, Scenario.CancellationToken);
+            transaction.PayBill(bill, DateTime.UtcNow);
         });
 
     public Task<TestingScenario> WithCustomClassification(string transactionName, string classificationName) =>

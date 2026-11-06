@@ -35,7 +35,13 @@ public static partial class Program
         AddFinanceTrackerValidators(builder.Services);
         AddFinanceTrackerExternalServices(builder.Services);
 
-        builder.Services.AddFinTrackServerConnections(new Uri(builder.HostEnvironment.BaseAddress));
+
+        builder.Services.AddSingleton<AppUpdate>();
+        builder.Services.AddTransient<SignedOutHandler>();
+        builder.Services.AddTransient<ServerVersionHandler>();
+        builder.Services.AddFinTrackServerConnections(new Uri(builder.HostEnvironment.BaseAddress))
+            .AddHttpMessageHandler<SignedOutHandler>()
+            .AddHttpMessageHandler<ServerVersionHandler>();
 
         await builder.Build().RunAsync();
     }

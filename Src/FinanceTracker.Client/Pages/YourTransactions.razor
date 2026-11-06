@@ -133,7 +133,7 @@
                             @* One menu, so what rules add later joins it rather than another button per row *@
                             <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true"
                                      AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
-                                     aria-label="@($"Actions for {context.Item.Description}")">
+                                     AriaLabel="@($"Actions for {context.Item.Description}")">
                                 @* A split transaction's tags are its parts' *@
                                 @if (context.Item.Splits.Count == 0)
                                 {
@@ -249,7 +249,7 @@
         StateHasChanged();
         _transactions.Clear();
 
-        await foreach (var transaction in TransactionsService.GetAllTransactionsAsync(filters.ToRequest(), _cts.Token))
+        await foreach (var transaction in TransactionsService.GetAllTransactionsAsync(filters.ToRequest(TimeProvider.LocalTimeZone), _cts.Token))
         {
             _transactions.Add(transaction);
         }
@@ -262,7 +262,7 @@
     /// </summary>
     private async Task ExportAsync()
     {
-        FilterTransactions filter = _filters.ToRequest();
+        FilterTransactions filter = _filters.ToRequest(TimeProvider.LocalTimeZone);
         _exporting = true;
         try
         {
@@ -277,7 +277,7 @@
     }
 
     private Task<List<Transaction>> FetchAsync(ActiveTransactionFilters filters) =>
-        TransactionsService.GetAllTransactionsAsync(filters.ToRequest(), _cts.Token).ToListAsync(_cts.Token).AsTask();
+        TransactionsService.GetAllTransactionsAsync(filters.ToRequest(TimeProvider.LocalTimeZone), _cts.Token).ToListAsync(_cts.Token).AsTask();
 
     private static object CountsAs(Transaction transaction) => TransferText.CountsAs(transaction);
 

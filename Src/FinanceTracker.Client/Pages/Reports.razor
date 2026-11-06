@@ -225,7 +225,7 @@
 
         try
         {
-            var request = _filters.ToRequest();
+            var request = _filters.ToRequest(TimeProvider.LocalTimeZone);
             var subjects = breakdown switch
             {
                 ReportBreakdown.ByAccount => await ReportService.GetAccountBreakdownReportAsync(request, cancellationToken)
@@ -275,7 +275,7 @@
     private async Task ExportAsync()
     {
         ReportBreakdown breakdown = _breakdown;
-        ExportReport report = new() { Breakdown = breakdown, Filters = _filters.ToRequest() };
+        ExportReport report = new() { Breakdown = breakdown, Filters = _filters.ToRequest(TimeProvider.LocalTimeZone) };
         _exporting = true;
         try
         {

@@ -19,8 +19,9 @@ internal static class PdfTheme
     public const string Warning = LightPalette.Warning;
     public const string Info = LightPalette.Info;
 
-    public const string MoneyIn = MoneyColours.MoneyIn;
-    public const string MoneyOut = MoneyColours.MoneyOut;
+    // The light shades, as the PDFs are white paper
+    public const string MoneyIn = MoneyColours.LightMoneyIn;
+    public const string MoneyOut = MoneyColours.LightMoneyOut;
 
     /// <summary>
     /// The app's corners in points, 6 being the app's 8px at 72 points to 96 pixels an inch.

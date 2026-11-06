@@ -116,6 +116,27 @@ public class BillsPageTests : ComponentTestBase
     }
 
     [Test]
+    public async Task EndedThisMonth_ListedOnlyInTheMonthItWasDue()
+    {
+        // Arrange, ended after it was due in October, so October still lists it
+        Bill ended = BillTextTests.Bill(endedOn: new DateOnly(2026, 10, 20));
+        _billsService.GetBillsAsync(Arg.Any<CancellationToken>()).Returns(new[] { ended }.ToAsyncEnumerable());
+        BillMonthOverview october = Overview(10);
+        october.Bills[0] = new BillStatus { Bill = ended, Periods = october.Bills[0].Periods };
+        _billsService.GetMonthAsync(2026, 10, Arg.Any<CancellationToken>()).Returns(october);
+
+        // Act
+        IRenderedComponent<BillsPage> cut = RenderPage();
+
+        // Assert, once, where it can still be reopened
+        using (Assert.Multiple())
+        {
+            await Assert.That(cut.FindAll("[aria-label='Actions for Energy']")).Count().IsEqualTo(1);
+            await Assert.That(cut.Markup).DoesNotContain("Nothing more is due on these");
+        }
+    }
+
+    [Test]
     public async Task NoBills_SaysWhereTheyComeFrom()
     {
         // Arrange

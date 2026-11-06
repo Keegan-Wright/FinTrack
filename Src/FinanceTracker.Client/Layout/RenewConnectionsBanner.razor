@@ -2,10 +2,11 @@
 
 <div class="ft-renew-banner">
     @* A soft tint rather than a solid bar, it's a reminder on every page rather than an error. Styled like the
-       navigation's count, with the link in the theme's primary colour so it stands out *@
+       navigation's count. The link is the text's colour, underlined and bold to stand out, as the primary colour
+       is too light on the tint to read *@
     <MudAlert Severity="Severity.Warning" Variant="Variant.Text" Dense="true">
         @Message
-        <MudLink Href="ProviderSetup" Color="Color.Primary" Underline="Underline.Always"
+        <MudLink Href="ProviderSetup" Color="Color.Inherit" Underline="Underline.Always"
                  Class="ft-renew-banner__link">Renew access</MudLink>
     </MudAlert>
 </div>

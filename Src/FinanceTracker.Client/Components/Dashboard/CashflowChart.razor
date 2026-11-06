@@ -89,7 +89,7 @@
     private ApexChartOptions<CashflowPoint> CreateOptions()
     {
         var options = ChartDefaults.Create<CashflowPoint>(IsDarkMode);
-        options.Colors = [MoneyColours.MoneyIn, MoneyColours.MoneyOut, MoneyColours.Neutral];
+        options.Colors = ChartDefaults.InOutAndNeutral(IsDarkMode);
         options.PlotOptions = new PlotOptions
         {
             Bar = new PlotOptionsBar { ColumnWidth = "70%", BorderRadius = 2 }

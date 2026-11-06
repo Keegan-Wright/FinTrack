@@ -71,4 +71,10 @@ public static class DarkPalette
 
     /// <summary>Something to know.</summary>
     public const string Info = "#42A5F5";
+
+    /// <summary>
+    /// The text on every filled colour, e.g. a primary button, dark as white is under 4.5:1 (WCAG AA) on each of this
+    /// palette's colours.
+    /// </summary>
+    public const string ContrastText = "#121212";
 }

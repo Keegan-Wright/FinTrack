@@ -12,6 +12,12 @@
             @ActionText
         </MudButton>
     }
+    @if (SecondaryHref is not null)
+    {
+        <MudButton Href="@SecondaryHref" Variant="Variant.Text" Color="Color.Primary" FullWidth="true">
+            @SecondaryText
+        </MudButton>
+    }
 </div>
 
 @code {
@@ -30,5 +36,12 @@
     [Parameter] public string? ActionHref { get; set; } = "Account/Login";
 
     [Parameter] public string ActionText { get; set; } = "Back to sign in";
+
+    /// <summary>
+    /// Another way on, under the main one, e.g. home. Null, the default, hides it.
+    /// </summary>
+    [Parameter] public string? SecondaryHref { get; set; }
+
+    [Parameter] public string SecondaryText { get; set; } = string.Empty;
 
 }

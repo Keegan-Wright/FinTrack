@@ -1,3 +1,4 @@
+using FinanceTracker.Client.Components.Common;
 using FinanceTracker.Contracts.Transactions;
 using MudBlazor;
 
@@ -24,9 +25,10 @@ public sealed record ActiveTransactionFilters(
     public static ActiveTransactionFilters None { get; } = new([], [], [], [], [], null, string.Empty, [], [], []);
 
     /// <summary>
-    /// The filters as the request the transaction and report services take.
+    /// The filters as the request the transaction and report services take, the dates as whole days where the user
+    /// is (<paramref name="timeZone"/>).
     /// </summary>
-    public FilterTransactions ToRequest() => new()
+    public FilterTransactions ToRequest(TimeZoneInfo timeZone) => new()
     {
         AccountIds = AccountIds.ToList(),
         ProviderIds = ProviderIds.ToList(),
@@ -37,8 +39,28 @@ public sealed record ActiveTransactionFilters(
         DebtIds = DebtIds.ToList(),
         SavingsGoalIds = SavingsGoalIds.ToList(),
         SearchTerm = SearchTerm,
-        FromDate = DateRange?.Start?.Date,
+        FromDate = StartOf(DateRange?.Start, timeZone),
         // The end date is a whole day, through to its last tick.
-        ToDate = DateRange?.End?.Date.AddDays(1).AddTicks(-1)
+        ToDate = EndOf(DateRange?.End, timeZone)
     };
+
+    private static DateTime? StartOf(DateTime? day, TimeZoneInfo timeZone)
+    {
+        if (day is not { } date)
+        {
+            return null;
+        }
+
+        return LocalDays.StartUtc(date, timeZone);
+    }
+
+    private static DateTime? EndOf(DateTime? day, TimeZoneInfo timeZone)
+    {
+        if (day is not { } date)
+        {
+            return null;
+        }
+
+        return LocalDays.EndUtc(date, timeZone);
+    }
 }

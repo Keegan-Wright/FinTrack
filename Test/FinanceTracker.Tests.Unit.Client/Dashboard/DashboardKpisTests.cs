@@ -35,4 +35,22 @@ public class DashboardKpisTests : ComponentTestBase
         // Assert
         await Assert.That(cut.FindAll(".ft-kpis__transfers")).IsEmpty();
     }
+
+    [Test]
+    [Arguments(1, "1 transaction in range")]
+    [Arguments(0, "0 transactions in range")]
+    [Arguments(1234, "1,234 transactions in range")]
+    public async Task Render_TransactionCount_ReadsRightForHowMany(int count, string expected)
+    {
+        // Arrange
+        using CultureScope culture = new();
+
+        // Act
+        IRenderedComponent<DashboardKpis> cut = Render<DashboardKpis>(p => p
+            .Add(x => x.Spent, new SpentInTimePeriod())
+            .Add(x => x.TransactionCount, count));
+
+        // Assert
+        await Assert.That(cut.Markup).Contains(expected);
+    }
 }

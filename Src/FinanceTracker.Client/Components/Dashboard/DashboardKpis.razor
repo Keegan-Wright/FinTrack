@@ -9,7 +9,7 @@
         <TrendText Value="@TrendOut" HigherIsBetter="false"/>
     </Stat>
     <Stat Label="Net" Value="@Net" Signed="true">
-        @($"{TransactionCount:n0} transactions in range")
+        @TransactionCountText
     </Stat>
     <Stat Label="Total balance" Value="@TotalBalance">
         @GetBalanceMeta()
@@ -42,6 +42,10 @@
     [Parameter] public decimal Net { get; set; }
 
     [Parameter] public int TransactionCount { get; set; }
+
+    private string TransactionCountText => TransactionCount == 1
+        ? "1 transaction in range"
+        : $"{TransactionCount:n0} transactions in range";
 
     [Parameter] public decimal TotalBalance { get; set; }
 

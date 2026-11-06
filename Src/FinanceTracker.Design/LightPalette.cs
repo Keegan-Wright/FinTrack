@@ -6,8 +6,11 @@ namespace FinanceTracker.Design;
 /// </summary>
 public static class LightPalette
 {
-    /// <summary>The brand green, for primary buttons, links and progress.</summary>
-    public const string Primary = "#2E7D32";
+    /// <summary>
+    /// The brand green, for primary buttons, links and progress. Dark enough for 4.5:1 (WCAG AA) on its own 10% tint,
+    /// as the current page's menu item is.
+    /// </summary>
+    public const string Primary = "#2A742E";
 
     /// <summary>The second accent, a blue.</summary>
     public const string Secondary = "#1976D2";
@@ -39,8 +42,11 @@ public static class LightPalette
     /// <summary>Body text.</summary>
     public const string TextPrimary = "#212121";
 
-    /// <summary>Captions and other quieter text, and chart labels.</summary>
-    public const string TextSecondary = "#757575";
+    /// <summary>
+    /// Captions and other quieter text, and chart labels. Dark enough for 4.5:1 (WCAG AA) on every light surface,
+    /// a chip's grey the lightest.
+    /// </summary>
+    public const string TextSecondary = "#696969";
 
     /// <summary>Icon buttons and other actions.</summary>
     public const string ActionDefault = "#546E7A";
@@ -61,16 +67,56 @@ public static class LightPalette
     public const string LinesDefault = "#EEEEEE";
 
     /// <summary>
-    /// Something that went well, e.g. a bill that's paid. Money in uses <see cref="MoneyColours.MoneyIn"/>.
+    /// Something that went well, e.g. a bill that's paid, the same green as money in. Dark enough for 4.5:1 (WCAG AA)
+    /// as text on white, as an outlined chip's is, and for white text on it.
     /// </summary>
-    public const string Success = "#43A047";
+    public const string Success = MoneyColours.LightMoneyIn;
 
-    /// <summary>Something that went wrong. Money out uses <see cref="MoneyColours.MoneyOut"/>.</summary>
-    public const string Error = "#E53935";
+    /// <summary>
+    /// <see cref="Success"/> darkened enough for 4.5:1 (WCAG AA) on its own 10% tint, as a text alert's message is.
+    /// MudBlazor's own darkening isn't enough.
+    /// </summary>
+    public const string SuccessDarken = "#317534";
 
-    /// <summary>Something to look at, e.g. a budget off pace.</summary>
-    public const string Warning = "#FB8C00";
+    /// <summary>
+    /// Something that went wrong, the same red as money out. Dark enough for 4.5:1 (WCAG AA) as text on white and
+    /// for white text on it.
+    /// </summary>
+    public const string Error = MoneyColours.LightMoneyOut;
 
-    /// <summary>Something to know, e.g. a debt's progress.</summary>
-    public const string Info = "#1E88E5";
+    /// <summary>
+    /// <see cref="Error"/> darkened enough for 4.5:1 (WCAG AA) on its own 10% tint, as a text alert's message is.
+    /// MudBlazor's own darkening isn't enough.
+    /// </summary>
+    public const string ErrorDarken = "#BC2F2B";
+
+    /// <summary>
+    /// Something to look at, e.g. a budget off pace. A deep amber, dark enough for 4.5:1 (WCAG AA) as text on white
+    /// and for white text on it, which no brighter orange is.
+    /// </summary>
+    public const string Warning = "#A65C00";
+
+    /// <summary>
+    /// <see cref="Warning"/> darkened enough for 4.5:1 (WCAG AA) on its own 10% tint, as a text alert's message is.
+    /// MudBlazor's own darkening isn't enough.
+    /// </summary>
+    public const string WarningDarken = "#9C5700";
+
+    /// <summary>
+    /// Something to know, e.g. a debt's progress. Dark enough for 4.5:1 (WCAG AA) as text on white and for white
+    /// text on it.
+    /// </summary>
+    public const string Info = MoneyColours.LightNeutral;
+
+    /// <summary>
+    /// A text alert's message colour, on <see cref="Info"/>'s own 10% tint. Info is dark enough for 4.5:1 (WCAG AA)
+    /// there already, MudBlazor's own darkening would only make it darker.
+    /// </summary>
+    public const string InfoDarken = Info;
+
+    /// <summary>
+    /// The text on the light filled colour white is under 4.5:1 (WCAG AA) on: tertiary. The others keep MudBlazor's
+    /// white.
+    /// </summary>
+    public const string DarkContrastText = TextPrimary;
 }

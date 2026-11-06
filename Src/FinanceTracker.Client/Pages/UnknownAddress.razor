@@ -1,0 +1,18 @@
+@page "/{*path:nonfile}"
+@* Any address that isn't a page or a file, the least specific route so every other wins. Says it isn't found, which
+   shows NotFound and, rendering on the server, answers 404. A normal page rather than the server re-executing its
+   404s, which would leave out the signed in state the app in the browser starts from. *@
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject NavigationManager NavigationManager
+
+@code {
+
+    /// <summary>
+    /// The address asked for, unused, the route needs somewhere to put it.
+    /// </summary>
+    [Parameter] public string? Path { get; set; }
+
+    protected override void OnInitialized() => NavigationManager.NotFound();
+
+}

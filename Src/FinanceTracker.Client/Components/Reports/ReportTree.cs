@@ -1,4 +1,5 @@
 using System.Globalization;
+using FinanceTracker.Client.Components.Common;
 using FinanceTracker.Client.Components.PayPeriods;
 using FinanceTracker.Contracts.Reports;
 using FinanceTracker.Contracts.Reports.Account;
@@ -63,10 +64,11 @@ public static class ReportTree
     }
 
     /// <summary>
-    /// The request listing the transactions behind one day of a report.
+    /// The request listing the transactions behind one day of a report, the day where the user is
+    /// (<paramref name="timeZone"/>) as the report counts it.
     /// </summary>
-    public static FilterTransactions ForDay(FilterTransactions scope, DateTime day) =>
-        Narrow(scope, from: day.Date, to: day.Date.AddDays(1).AddTicks(-1));
+    public static FilterTransactions ForDay(FilterTransactions scope, DateTime day, TimeZoneInfo timeZone) =>
+        Narrow(scope, from: LocalDays.StartUtc(day, timeZone), to: LocalDays.EndUtc(day, timeZone));
 
     // The report's own filters still apply, a narrower account, tag or date replaces the chosen ones
     private static FilterTransactions Narrow(FilterTransactions request, IReadOnlyList<Guid>? accountIds = null,

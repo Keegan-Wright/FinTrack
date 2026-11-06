@@ -143,9 +143,14 @@
     private bool IsPast => Month < CurrentMonth;
 
     /// <summary>
-    /// Bills that have ended by today, which the months from now on leave out.
+    /// Bills that have ended by today, which the months from now on leave out. One still in the month shown, as it
+    /// was due in it, is only listed there.
     /// </summary>
-    private List<Bill> Ended => (BillList ?? []).Where(x => x.EndedOn <= Today).ToList();
+    private List<Bill> Ended => (BillList ?? [])
+        .Where(x => x.EndedOn <= Today && !IsInMonth(x))
+        .ToList();
+
+    private bool IsInMonth(Bill bill) => Overview is not null && Overview.Bills.Any(x => x.Bill.Id == bill.Id);
 
     private string EmptyText => BillList is null or { Count: 0 }
         ? "No bills yet. Your standing orders and direct debits show here after a sync, or add one yourself."

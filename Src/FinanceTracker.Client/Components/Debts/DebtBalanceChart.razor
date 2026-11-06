@@ -62,7 +62,7 @@ else
     private ApexChartOptions<DebtBalancePoint> CreateOptions()
     {
         var options = ChartDefaults.Create<DebtBalancePoint>(IsDarkMode);
-        options.Colors = [MoneyColours.MoneyOut];
+        options.Colors = [ChartDefaults.MoneyColour(MoneyFlow.Out, IsDarkMode)];
         options.Legend = new Legend { Show = false };
         options.Stroke = new Stroke { Width = 2, Curve = Curve.Straight };
         options.Fill = new Fill { Type = new List<FillType> { FillType.Gradient } };

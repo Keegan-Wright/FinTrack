@@ -80,7 +80,7 @@ public class YourAccountsTests : ComponentTestBase
         cut.WaitForState(() => cut.FindAll(".ft-provider").Count == 2);
 
         // Act
-        await cut.InvokeAsync(() => cut.Find("button[aria-label='Hide Bank one accounts']").Click());
+        await cut.InvokeAsync(() => HeaderOf(cut, "Bank one").Click());
         await DisposeComponentsAsync();
         IRenderedComponent<YourAccounts> again = RenderPage();
         again.WaitForState(() => again.FindAll(".ft-provider").Count == 2);
@@ -88,7 +88,7 @@ public class YourAccountsTests : ComponentTestBase
         // Assert
         using (Assert.Multiple())
         {
-            await Assert.That(again.Find("button[aria-label='Show Bank one accounts']").GetAttribute("aria-expanded"))
+            await Assert.That(HeaderOf(again, "Bank one").GetAttribute("aria-expanded"))
                 .IsEqualTo("false");
             await Assert.That(AccountsUnder(again, 1)).IsEmpty();
             await Assert.That(AccountsUnder(again, 0)).IsEquivalentTo(["Joint"]);
@@ -108,6 +108,10 @@ public class YourAccountsTests : ComponentTestBase
     /// <summary>
     /// The account names shown under the <paramref name="index"/>th bank.
     /// </summary>
+    // The header that opens and closes a bank's accounts, named by the bank it shows
+    private static AngleSharp.Dom.IElement HeaderOf(IRenderedComponent<YourAccounts> cut, string bank) =>
+        cut.FindAll(".ft-provider__header").Single(x => x.TextContent.Contains(bank, StringComparison.Ordinal));
+
     private static List<string> AccountsUnder(IRenderedComponent<YourAccounts> cut, int index) =>
         cut.FindAll(".ft-provider")[index].QuerySelectorAll(".ft-account-heading .mud-typography-subtitle1")
             .Select(static x => x.TextContent.Trim()).ToList();

@@ -24,6 +24,13 @@ public static class FinTrackEnvironment
     public const string TrueLayerClientSecret = "OPEN_BANKING_TRUELAYER_CLIENT_SECRET";
     public const string PublicIpAddress = "OPEN_BANKING_PUBLIC_IP_ADDRESS";
 
+    /// <summary>
+    /// <c>true</c> to let a request move the app's clock with the <see cref="TestClock.Cookie"/> cookie, so the
+    /// integration tests can see what a day like the 1st of a month or a pay day looks like. Only the integration
+    /// tests set it, never the AppHost.
+    /// </summary>
+    public const string TestClock = "FINTRACK_TEST_CLOCK";
+
     public const string OidcAuthority = "OIDC_Authority";
     public const string OidcClientId = "OIDC_ClientId";
     public const string OidcClientSecret = "OIDC_ClientSecret";

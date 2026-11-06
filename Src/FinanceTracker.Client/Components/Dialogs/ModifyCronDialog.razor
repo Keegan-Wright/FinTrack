@@ -1,4 +1,5 @@
 @* Edits a scheduled job's description, cron expression, retries and whether it runs. *@
+@using System.Globalization
 @using FinanceTracker.Contracts.Automation
 @using FinanceTracker.Client.Extensions
 @using FluentValidation
@@ -28,10 +29,10 @@
                                   Immediate="true"></MudTextField>
                 </MudItem>
                 <MudItem xs="12" sm="6">
-                    <MudTextField T="string" @bind-Value="RetryIntervalsString" Label="Retry after (seconds)"
-                                  Placeholder="e.g. 10, 20, 30"
-                                  For="@(() => RetryIntervalsString)"
-                                  Validation="@(Validator.ValidateValue(_model, nameof(UpdateCronJob.RetryIntervals)))"
+                    <MudTextField T="string" Value="@_retryIntervalsText" ValueChanged="@SetRetryIntervals"
+                                  Label="Retry after (seconds)" Placeholder="e.g. 10, 20, 30"
+                                  For="@(() => _retryIntervalsText)"
+                                  Validation="@(new Func<string, string?>(RetryIntervalsError))"
                                   Immediate="true"></MudTextField>
                 </MudItem>
                 <MudItem xs="12" sm="6">
@@ -68,27 +69,60 @@
             RetryIntervals = RetryIntervals,
             IsEnabled = IsEnabled
         };
+        _retryIntervalsText = string.Join(", ", RetryIntervals ?? []);
     }
 
-    private string RetryIntervalsString
+    /// <summary>
+    /// What the user typed for the retry intervals, kept as typed so a mistake stays on screen to fix rather than
+    /// being dropped.
+    /// </summary>
+    private string _retryIntervalsText = string.Empty;
+
+    private const string RetryIntervalsMessage = "Whole seconds, separated by commas, e.g. 10, 20, 30";
+
+    private void SetRetryIntervals(string text)
     {
-        get => string.Join(", ", _model.RetryIntervals ?? []);
-        set
+        _retryIntervalsText = text;
+        if (TryParseIntervals(text, out int[] intervals))
         {
-            if (string.IsNullOrWhiteSpace(value))
-            {
-                _model.RetryIntervals = [];
-                return;
-            }
-
-            var intervals = value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Select(s => int.TryParse(s, out var i) ? i : (int?)null)
-                .Where(i => i.HasValue)
-                .Select(i => i!.Value)
-                .ToArray();
-
             _model.RetryIntervals = intervals;
         }
+    }
+
+    private static string? RetryIntervalsError(string text)
+    {
+        if (TryParseIntervals(text, out _))
+        {
+            return null;
+        }
+
+        return RetryIntervalsMessage;
+    }
+
+    /// <summary>
+    /// Each comma separated part as a whole number of seconds, none when it's empty. False when any part isn't one.
+    /// </summary>
+    private static bool TryParseIntervals(string? text, out int[] intervals)
+    {
+        intervals = [];
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return true;
+        }
+
+        List<int> parsed = [];
+        foreach (string part in text.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (!int.TryParse(part, NumberStyles.None, CultureInfo.CurrentCulture, out int seconds))
+            {
+                return false;
+            }
+
+            parsed.Add(seconds);
+        }
+
+        intervals = [.. parsed];
+        return true;
     }
 
     private async Task<UpdateCronJob?> BuildResponseModel()

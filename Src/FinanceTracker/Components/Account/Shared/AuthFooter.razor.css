@@ -5,3 +5,9 @@
     color: var(--mud-palette-text-secondary);
     text-align: center;
 }
+
+/* The footer is a sentence, so its link is underlined to stand out without relying on colour (WCAG 1.4.1), as the
+   app's are, see App.css */
+.ft-auth-footer ::deep .mud-link {
+    text-decoration: underline;
+}

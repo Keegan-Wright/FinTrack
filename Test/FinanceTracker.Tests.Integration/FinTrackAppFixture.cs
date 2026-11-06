@@ -81,7 +81,9 @@ public sealed class FinTrackAppFixture : AspireFixture<Projects.FinanceTracker_A
 
         // The app only reports healthy once it has migrated and is serving requests
         ProjectResource web = builder.Resources.OfType<ProjectResource>().Single(x => x.Name == FinTrackResources.Web);
-        builder.CreateResourceBuilder(web).WithHttpHealthCheck("/health");
+        builder.CreateResourceBuilder(web).WithHttpHealthCheck("/health")
+            // Lets each test's requests move the clock, see TestClock
+            .WithEnvironment(FinTrackEnvironment.TestClock, "true");
     }
 
     public override async Task InitializeAsync()

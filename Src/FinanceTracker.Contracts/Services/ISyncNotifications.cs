@@ -12,7 +12,8 @@ public interface ISyncNotifications
     /// subscription is disposed.
     /// </summary>
     /// <remarks>
-    /// In the browser this connects to the sync hub first, so it can fail like any request.
+    /// In the browser this connects to the sync hub first. One that can't be reached doesn't fail the subscription,
+    /// it's heard once the hub is back, see <see cref="Paused"/>.
     /// </remarks>
     Task<IDisposable> SubscribeAsync(Func<Task> onSyncComplete, CancellationToken cancellationToken);
 
@@ -21,7 +22,8 @@ public interface ISyncNotifications
     /// for from any of their browsers, until the returned subscription is disposed.
     /// </summary>
     /// <remarks>
-    /// In the browser this connects to the sync hub first, so it can fail like any request.
+    /// In the browser this connects to the sync hub first. One that can't be reached doesn't fail the subscription,
+    /// it's heard once the hub is back, see <see cref="Paused"/>.
     /// </remarks>
     Task<IDisposable> SubscribeToSyncStartsAsync(Func<Task> onSyncStarted, CancellationToken cancellationToken);
 
@@ -33,4 +35,15 @@ public interface ISyncNotifications
     /// A job says it has started or finished once its run is saved, so the run reads as it is.
     /// </remarks>
     Task<IDisposable> SubscribeToJobsAsync(Func<string, Task> onJobChanged, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Whether live updates are paused, the connection to the sync hub was lost, or couldn't be made, and is being
+    /// tried again. Syncs and jobs that finish meanwhile aren't heard about.
+    /// </summary>
+    bool Paused { get; }
+
+    /// <summary>
+    /// Raised when <see cref="Paused"/> changes.
+    /// </summary>
+    event EventHandler? PausedChanged;
 }

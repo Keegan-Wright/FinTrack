@@ -1,0 +1,16 @@
+.ft-update-banner {
+    margin-bottom: 16px;
+}
+
+/* A soft tint like the renew banner's, it's news rather than an error. The link is the text's colour, underlined
+   and bold, as the info colour is too light on the tint to read */
+.ft-update-banner ::deep .mud-alert-text-info {
+    background-color: rgba(var(--mud-palette-info-rgb), .16);
+    color: var(--mud-palette-text-primary);
+}
+
+.ft-update-banner ::deep .ft-update-banner__reload {
+    margin-left: 4px;
+    font-weight: 600;
+    white-space: nowrap;
+}

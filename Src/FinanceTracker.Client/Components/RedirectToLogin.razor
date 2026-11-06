@@ -1,11 +1,12 @@
 @* Sends a signed out visitor to the server's login page, which brings them back here afterwards. *@
+@using FinanceTracker.Client.Extensions
 @inject NavigationManager NavigationManager
 
 @code {
 
     protected override void OnInitialized()
     {
-        NavigationManager.NavigateTo($"Account/Login?returnUrl={Uri.EscapeDataString(NavigationManager.Uri)}", true);
+        NavigationManager.NavigateToSignIn();
     }
 
 }
