@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization.Infrastructure;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace FinanceTracker.Tests.Unit.FinanceTracker.Api;
 
@@ -79,6 +80,14 @@ public class ApiEndpointSecurityTests
     private static List<RouteEndpoint> MapApi()
     {
         WebApplicationBuilder builder = WebApplication.CreateSlimBuilder();
+
+        // Only enough is registered for the endpoints to map, so the services aren't checked as they would be in
+        // Development, e.g. a test run from the IDE, where every one would have to be buildable
+        builder.Host.UseDefaultServiceProvider(static options =>
+        {
+            options.ValidateOnBuild = false;
+            options.ValidateScopes = false;
+        });
         Program.AddFinanceTrackerServices(builder.Services);
         Program.AddFinanceTrackerValidators(builder.Services);
         Program.AddFinanceTrackerExternalServices(builder.Services);
