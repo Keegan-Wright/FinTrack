@@ -14,7 +14,7 @@ public class UpdateHouseholdMemberValidatorTests : UnitTestBase
     {
         // Act
         ValidationResult result = await _subject.ValidateAsync(
-            new UpdateHouseholdMember { FirstName = "Jane", LastName = "Smith", Income = 0 }, CancellationToken);
+            new UpdateHouseholdMember { FirstName = "Jane", LastName = "Smith", YearlyIncome = 0 }, CancellationToken);
 
         // Assert
         await Assert.That(result.IsValid).IsTrue();
@@ -25,10 +25,10 @@ public class UpdateHouseholdMemberValidatorTests : UnitTestBase
     {
         // Act
         ValidationResult result = await _subject.ValidateAsync(
-            new UpdateHouseholdMember { FirstName = "", LastName = "", Income = -1 }, CancellationToken);
+            new UpdateHouseholdMember { FirstName = "", LastName = "", YearlyIncome = -1 }, CancellationToken);
 
         // Assert
         await Assert.That(result.Errors.Select(static x => x.ErrorMessage)).IsEquivalentTo(
-            ["First Name is required", "Last Name is required", "Income must be 0 or greater"]);
+            ["First Name is required", "Last Name is required", "Yearly income must be 0 or more"]);
     }
 }

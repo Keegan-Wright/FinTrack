@@ -48,7 +48,10 @@ public sealed class DashboardData
 
     public decimal TotalBalance { get; init; }
 
-    public decimal? HouseholdIncome { get; init; }
+    /// <summary>
+    /// The household's income for the range, null when no one's income is given.
+    /// </summary>
+    public HouseholdIncomeInRange? HouseholdIncome { get; init; }
 
     /// <summary>
     /// The range's transactions, for the charts, capped at <see cref="ChartNote"/>'s limit.

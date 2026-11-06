@@ -30,7 +30,7 @@ public class HouseholdMemberServiceTests : InfrastructureTestBase
         {
             FirstName = "Jane",
             LastName = "Doe",
-            Income = 1200
+            YearlyIncome = 1200
         }, CancellationToken);
 
         // Assert
@@ -41,7 +41,7 @@ public class HouseholdMemberServiceTests : InfrastructureTestBase
         {
             await Assert.That(added.FirstName).IsEqualTo("Jane");
             await Assert.That(added.LastName).IsEqualTo("Doe");
-            await Assert.That(added.Income).IsEqualTo(1200m);
+            await Assert.That(added.YearlyIncome).IsEqualTo(1200m);
             await Assert.That(persisted.UserId).IsEqualTo(Scenario.UserMappings[Username]);
         }
     }
@@ -55,7 +55,7 @@ public class HouseholdMemberServiceTests : InfrastructureTestBase
 
         // Act
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => subject.AddHouseholdMemberAsync(
-            new AddHouseholdMember { FirstName = "Jane", LastName = "Doe", Income = -1 }, CancellationToken));
+            new AddHouseholdMember { FirstName = "Jane", LastName = "Doe", YearlyIncome = -1 }, CancellationToken));
 
         // Assert
         await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
@@ -86,7 +86,7 @@ public class HouseholdMemberServiceTests : InfrastructureTestBase
         {
             await Assert.That(member.FirstName).IsEqualTo("Jane");
             await Assert.That(member.LastName).IsEqualTo("Doe");
-            await Assert.That(member.Income).IsNull();
+            await Assert.That(member.YearlyIncome).IsNull();
         }
     }
 
@@ -118,7 +118,7 @@ public class HouseholdMemberServiceTests : InfrastructureTestBase
 
         // Act
         HouseholdMember updated = await subject.UpdateHouseholdMemberAsync(id,
-            new UpdateHouseholdMember { FirstName = "Janet", LastName = "Smith", Income = 1500 }, CancellationToken);
+            new UpdateHouseholdMember { FirstName = "Janet", LastName = "Smith", YearlyIncome = 1500 }, CancellationToken);
 
         // Assert
         HouseholdMember stored = (await subject.GetHouseholdMembersAsync(CancellationToken)
@@ -127,7 +127,7 @@ public class HouseholdMemberServiceTests : InfrastructureTestBase
         {
             await Assert.That(updated.FirstName).IsEqualTo("Janet");
             await Assert.That(stored.LastName).IsEqualTo("Smith");
-            await Assert.That(stored.Income).IsEqualTo(1500m);
+            await Assert.That(stored.YearlyIncome).IsEqualTo(1500m);
         }
     }
 
@@ -143,7 +143,7 @@ public class HouseholdMemberServiceTests : InfrastructureTestBase
 
         // Act
         NameTakenException? exception = await Assert.ThrowsAsync<NameTakenException>(() =>
-            subject.AddHouseholdMemberAsync(new AddHouseholdMember { FirstName = "jane ", LastName = "DOE", Income = 0 },
+            subject.AddHouseholdMemberAsync(new AddHouseholdMember { FirstName = "jane ", LastName = "DOE", YearlyIncome = 0 },
                 CancellationToken));
 
         // Assert
@@ -167,7 +167,7 @@ public class HouseholdMemberServiceTests : InfrastructureTestBase
 
         // Act
         HouseholdMember added = await subject.AddHouseholdMemberAsync(
-            new AddHouseholdMember { FirstName = "Jane", LastName = "Smith", Income = 0 }, CancellationToken);
+            new AddHouseholdMember { FirstName = "Jane", LastName = "Smith", YearlyIncome = 0 }, CancellationToken);
 
         // Assert
         await Assert.That(added.LastName).IsEqualTo("Smith");
@@ -188,7 +188,7 @@ public class HouseholdMemberServiceTests : InfrastructureTestBase
         // Act & Assert
         await Assert.ThrowsAsync<NameTakenException>(() => subject.UpdateHouseholdMemberAsync(
             Scenario.HouseholdMemberMappings["child"],
-            new UpdateHouseholdMember { FirstName = "Jane", LastName = "Doe", Income = 0 }, CancellationToken));
+            new UpdateHouseholdMember { FirstName = "Jane", LastName = "Doe", YearlyIncome = 0 }, CancellationToken));
     }
 
     [Test]
@@ -203,10 +203,10 @@ public class HouseholdMemberServiceTests : InfrastructureTestBase
 
         // Act
         HouseholdMember updated = await subject.UpdateHouseholdMemberAsync(Scenario.HouseholdMemberMappings["partner"],
-            new UpdateHouseholdMember { FirstName = "Jane", LastName = "Doe", Income = 900 }, CancellationToken);
+            new UpdateHouseholdMember { FirstName = "Jane", LastName = "Doe", YearlyIncome = 900 }, CancellationToken);
 
         // Assert
-        await Assert.That(updated.Income).IsEqualTo(900m);
+        await Assert.That(updated.YearlyIncome).IsEqualTo(900m);
     }
 
     [Test]
@@ -222,7 +222,7 @@ public class HouseholdMemberServiceTests : InfrastructureTestBase
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             subject.UpdateHouseholdMemberAsync(Scenario.HouseholdMemberMappings["theirs"],
-                new UpdateHouseholdMember { FirstName = "A", LastName = "B", Income = 0 }, CancellationToken));
+                new UpdateHouseholdMember { FirstName = "A", LastName = "B", YearlyIncome = 0 }, CancellationToken));
     }
 
     [Test]

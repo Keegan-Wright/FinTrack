@@ -49,24 +49,24 @@ public class HouseholdMemberTests
 
 
     [Test]
-    public void HouseholdMember_ChangeIncome_InvalidDecimal_Throws_ArgumentException()
+    public void HouseholdMember_ChangeYearlyIncome_InvalidDecimal_Throws_ArgumentException()
     {
         var householdMember = new HouseholdMember(Guid.NewGuid(),"Test", "User", 100m);
 
         Assert.Throws<ArgumentException>(() =>
-            householdMember.ChangeIncome(-1m));
+            householdMember.ChangeYearlyIncome(-1m));
     }
 
     [Test]
-    public async Task HouseholdMember_ChnageIncome_ValidDecimal_DoesNotThrow()
+    public async Task HouseholdMember_ChangeYearlyIncome_ValidDecimal_DoesNotThrow()
     {
         var householdMember = new HouseholdMember(Guid.NewGuid(), "Test", "User", 100m);
 
         decimal newIncome = 500m;
 
-        householdMember.ChangeIncome(newIncome);
+        householdMember.ChangeYearlyIncome(newIncome);
 
-        await Assert.That(householdMember.Income).IsEqualTo(newIncome);
+        await Assert.That(householdMember.YearlyIncome).IsEqualTo(newIncome);
 
     }
 
@@ -82,7 +82,7 @@ public class HouseholdMemberTests
             await Assert.That(householdMember.UserId).IsEqualTo(userId);
             await Assert.That(householdMember.FirstName).IsEqualTo("Jane");
             await Assert.That(householdMember.LastName).IsEqualTo("Doe");
-            await Assert.That(householdMember.Income).IsEqualTo(1500m);
+            await Assert.That(householdMember.YearlyIncome).IsEqualTo(1500m);
         }
     }
 
@@ -91,27 +91,27 @@ public class HouseholdMemberTests
     {
         var householdMember = new HouseholdMember(Guid.NewGuid(), "Test", "User", null);
 
-        await Assert.That(householdMember.Income).IsNull();
+        await Assert.That(householdMember.YearlyIncome).IsNull();
     }
 
     [Test]
-    public async Task HouseholdMember_ChangeIncome_Null_ClearsIncome()
+    public async Task HouseholdMember_ChangeYearlyIncome_Null_ClearsIncome()
     {
         var householdMember = new HouseholdMember(Guid.NewGuid(), "Test", "User", 100m);
 
-        householdMember.ChangeIncome(null);
+        householdMember.ChangeYearlyIncome(null);
 
-        await Assert.That(householdMember.Income).IsNull();
+        await Assert.That(householdMember.YearlyIncome).IsNull();
     }
 
     [Test]
-    public async Task HouseholdMember_ChangeIncome_Zero_IsValid()
+    public async Task HouseholdMember_ChangeYearlyIncome_Zero_IsValid()
     {
         var householdMember = new HouseholdMember(Guid.NewGuid(), "Test", "User", 100m);
 
-        householdMember.ChangeIncome(0m);
+        householdMember.ChangeYearlyIncome(0m);
 
-        await Assert.That(householdMember.Income).IsEqualTo(0m);
+        await Assert.That(householdMember.YearlyIncome).IsEqualTo(0m);
     }
 
     [Test]

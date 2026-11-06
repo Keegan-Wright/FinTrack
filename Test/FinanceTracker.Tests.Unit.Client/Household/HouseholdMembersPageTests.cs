@@ -23,7 +23,7 @@ public class HouseholdMembersPageTests : ComponentTestBase
         Id = Guid.NewGuid(),
         FirstName = "Jane",
         LastName = "Smith",
-        Income = 2000m
+        YearlyIncome = 24_000m
     };
 
     private readonly ApplicationState _applicationState = new();
@@ -59,14 +59,14 @@ public class HouseholdMembersPageTests : ComponentTestBase
         using CultureScope culture = new();
         _householdMemberService.UpdateHouseholdMemberAsync(_partner.Id, Arg.Any<UpdateHouseholdMember>(),
                 Arg.Any<CancellationToken>())
-            .Returns(new HouseholdMember { Id = _partner.Id, FirstName = "Jane", LastName = "Smith", Income = 2500m });
+            .Returns(new HouseholdMember { Id = _partner.Id, FirstName = "Jane", LastName = "Smith", YearlyIncome = 2500m });
         IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
         IRenderedComponent<MudPopoverProvider> popovers = Render<MudPopoverProvider>();
         IRenderedComponent<HouseholdMembers> cut = Render<HouseholdMembers>(p => p.AddCascadingValue(_applicationState));
 
         // Act
         Task choosing = await RowMenu.StartAsync(cut, popovers, "Jane Smith", "Edit");
-        Field(dialogs, "Income").Input("2500");
+        Field(dialogs, "Yearly income").Input("2500");
         await RowMenu.ConfirmAsync(dialogs, "OK");
         await choosing;
         cut.WaitForState(() => cut.Markup.Contains("£2,500.00"));
@@ -76,9 +76,28 @@ public class HouseholdMembersPageTests : ComponentTestBase
         {
             await _householdMemberService.Received(1).UpdateHouseholdMemberAsync(_partner.Id,
                 Arg.Is<UpdateHouseholdMember>(x => x.FirstName == "Jane" && x.LastName == "Smith" &&
-                                                   x.Income == 2500m),
+                                                   x.YearlyIncome == 2500m),
                 Arg.Any<CancellationToken>());
             await Assert.That(cut.Markup).Contains("£2,500.00");
+        }
+    }
+
+    [Test]
+    public async Task Render_TheirYearlyIncome_ShowsWhatItIsAMonthAndTheHouseholdsTogether()
+    {
+        // Arrange
+        using CultureScope culture = new();
+
+        // Act
+        IRenderedComponent<HouseholdMembers> cut = Render<HouseholdMembers>(p => p.AddCascadingValue(_applicationState));
+
+        // Assert
+        cut.WaitForState(() => cut.Markup.Contains("Jane Smith", StringComparison.Ordinal));
+        using (Assert.Multiple())
+        {
+            await Assert.That(cut.Markup).Contains("£24,000.00");
+            await Assert.That(cut.Markup).Contains("a year · £2,000.00 a month");
+            await Assert.That(cut.Markup).Contains("1 person · £24,000.00 a year combined, £2,000.00 a month");
         }
     }
 

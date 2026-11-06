@@ -47,7 +47,7 @@ public class HouseholdMemberService : ServiceBase<HouseholdMemberService>, IHous
         await EnsureNameIsFreeAsync(context, categoryToAdd.FirstName, categoryToAdd.LastName, null,
             cancellationToken);
         Domain.Household.HouseholdMember householdMember = new(UserId, categoryToAdd.FirstName,
-            categoryToAdd.LastName, categoryToAdd.Income);
+            categoryToAdd.LastName, categoryToAdd.YearlyIncome);
 
         context.HouseholdMembers.Add(householdMember);
         await NameCheck.SaveKeepingNamesApartAsync(context, NameTakenException.Person,
@@ -68,7 +68,7 @@ public class HouseholdMemberService : ServiceBase<HouseholdMemberService>, IHous
 
         await EnsureNameIsFreeAsync(context, request.FirstName, request.LastName, id, cancellationToken);
         householdMember.Rename(request.FirstName, request.LastName);
-        householdMember.ChangeIncome(request.Income);
+        householdMember.ChangeYearlyIncome(request.YearlyIncome);
         await NameCheck.SaveKeepingNamesApartAsync(context, NameTakenException.Person,
             FullName(request.FirstName, request.LastName), cancellationToken);
 
@@ -145,7 +145,7 @@ public class HouseholdMemberService : ServiceBase<HouseholdMemberService>, IHous
         Id = householdMember.Id,
         FirstName = householdMember.FirstName,
         LastName = householdMember.LastName,
-        Income = householdMember.Income,
+        YearlyIncome = householdMember.YearlyIncome,
         PayeeNames = householdMember.PayeeNames.ToList(),
         LinkedAccounts = householdMember.LinkedAccounts
             .Select(static x => new LinkedAccount

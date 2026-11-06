@@ -143,10 +143,10 @@
         var budgets = await BudgetsService.GetMonthAsync(month.Year, month.Month, cancellationToken);
         var netWorth = await NetWorthService.GetNetWorthAsync(DateOnly.FromDateTime(fromDate), cancellationToken);
 
-        decimal householdIncome = 0;
+        decimal yearlyHouseholdIncome = 0;
         await foreach (var member in HouseholdMemberService.GetHouseholdMembersAsync(cancellationToken))
         {
-            householdIncome += member.Income ?? 0m;
+            yearlyHouseholdIncome += member.YearlyIncome ?? 0m;
         }
 
         (List<Transaction> transactions, string? chartNote) = await LoadChartTransactionsAsync(fromDate, toDate, cancellationToken);
@@ -161,7 +161,7 @@
             TrendIn = CalculateTrendPercentage(spent.TotalIn, previous.TotalIn),
             TrendOut = CalculateTrendPercentage(Math.Abs(spent.TotalOut), Math.Abs(previous.TotalOut)),
             TotalBalance = accounts.Sum(x => x.AccountBalance),
-            HouseholdIncome = householdIncome,
+            HouseholdIncome = HouseholdIncomeInRange.For(yearlyHouseholdIncome, preset, DateOnly.FromDateTime(toDate)),
             Transactions = transactions,
             ChartNote = chartNote,
             UpcomingPayments = upcomingPayments,

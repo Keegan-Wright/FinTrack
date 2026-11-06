@@ -20,8 +20,8 @@ public class AddHouseholdMember
     public required string LastName { get; set; }
 
     /// <summary>
-    /// The member's monthly income, 0 or more.
+    /// What the member earns a year, 0 or more. The dashboard works out its share for the range it shows.
     /// </summary>
-    [Description("Monthly income of the household member")]
-    public required decimal Income { get; set; }
+    [Description("Yearly income of the household member")]
+    public required decimal YearlyIncome { get; set; }
 }

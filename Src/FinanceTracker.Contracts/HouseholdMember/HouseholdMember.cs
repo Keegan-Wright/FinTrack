@@ -21,9 +21,9 @@ public class HouseholdMember
     public required string LastName { get; init; }
 
     /// <summary>
-    /// The member's monthly income.
+    /// What the member earns a year, null when not given.
     /// </summary>
-    public decimal? Income { get; init; }
+    public decimal? YearlyIncome { get; init; }
 
     /// <summary>
     /// How the member appears in transaction descriptions.
