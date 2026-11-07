@@ -27,4 +27,9 @@ public static class SyncHubContract
     /// finishes.
     /// </summary>
     public const string JobChanged = "JobChanged";
+
+    /// <summary>
+    /// The method the hub calls, with no arguments, when the connected user has a new notification.
+    /// </summary>
+    public const string NotificationAdded = "NotificationAdded";
 }

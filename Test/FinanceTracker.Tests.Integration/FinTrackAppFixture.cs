@@ -40,6 +40,11 @@ public sealed class FinTrackAppFixture : AspireFixture<Projects.FinanceTracker_A
     public Uri WebBaseAddress { get; private set; } = null!;
 
     /// <summary>
+    /// The mail catcher the app sends notification emails to, see <see cref="MailCatcher"/>.
+    /// </summary>
+    public MailCatcher Mail { get; private set; } = null!;
+
+    /// <summary>
     /// The session's first registered user, so its admin. Registered before any test runs, which leaves every user a
     /// test registers a non-admin.
     /// </summary>
@@ -92,6 +97,7 @@ public sealed class FinTrackAppFixture : AspireFixture<Projects.FinanceTracker_A
 
         // The app redirects plain http to https, so tests talk to it over https directly
         WebBaseAddress = App.GetEndpoint(FinTrackResources.Web, "https");
+        Mail = new MailCatcher(App.GetEndpoint(FinTrackResources.Mail, "http"));
 
         string? connectionString = await GetConnectionStringAsync(FinTrackResources.Database);
 
@@ -127,5 +133,6 @@ public sealed class FinTrackAppFixture : AspireFixture<Projects.FinanceTracker_A
     {
         await base.DisposeAsync();
         TrueLayer.Dispose();
+        Mail.Dispose();
     }
 }

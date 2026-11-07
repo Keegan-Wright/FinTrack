@@ -1,0 +1,17 @@
+/* An unread one's title stands out, besides saying it's unread, so it isn't told by weight alone */
+.ft-notification--unread ::deep .ft-notification__title {
+    font-weight: 600;
+}
+
+.ft-list__row ::deep .ft-notification__title {
+    display: block;
+}
+
+/* One switch a row, close together. MudBlazor pads a switch's track by 12px, pulled back so the tracks line up with
+   the text above */
+.ft-notification-settings {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    margin-inline-start: -12px;
+}

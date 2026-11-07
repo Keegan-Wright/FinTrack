@@ -1,0 +1,31 @@
+@* The app bar's bell. How many notifications are unread, going to them all on the notifications page. A link rather
+   than a dropdown, so it works the same by keyboard, touch and screen reader at every width. *@
+
+<MudTooltip Text="@Label">
+    <MudBadge Content="@Unread" Visible="@(Unread > 0)" Color="Color.Error" Overlap="true" Max="99" Class="ft-bell">
+        <MudIconButton Href="Notifications" Icon="@Icon" Color="Color.Inherit" aria-label="@Label"/>
+    </MudBadge>
+</MudTooltip>
+
+@code {
+
+    /// <summary>
+    /// How many are unread, see <see cref="ApplicationState.UnreadNotifications"/>.
+    /// </summary>
+    [Parameter] public int Unread { get; set; }
+
+    internal string Label => LabelFor(Unread);
+
+    private string Icon => Unread > 0 ? Icons.Material.Outlined.NotificationsActive : Icons.Material.Outlined.Notifications;
+
+    internal static string LabelFor(int unread)
+    {
+        if (unread == 0)
+        {
+            return "Notifications";
+        }
+
+        return $"Notifications, {unread} unread";
+    }
+
+}

@@ -69,6 +69,21 @@ IResourceBuilder<ProjectResource> finTrack = builder.AddProject<Projects.Finance
     .WithContainerRegistry(registry)
     .WithRemoteImageTag("v0.0.1");
 
+// Emails go to a mail catcher while developing, see its page from the dashboard. Only when running, a published
+// FinTrack is given its own mail server through the SMTP_* settings, or sends none
+if (builder.ExecutionContext.IsRunMode)
+{
+    IResourceBuilder<MailPitContainerResource> mail = builder.AddMailPit(FinTrackResources.Mail);
+    finTrack
+        .WithEnvironment(FinTrackEnvironment.SmtpHost, mail.Resource.Host)
+        .WithEnvironment(FinTrackEnvironment.SmtpPort, mail.Resource.Port)
+        // Plain SMTP, the catcher runs on this machine
+        .WithEnvironment(FinTrackEnvironment.SmtpSecurity, "None")
+        .WithEnvironment(FinTrackEnvironment.SmtpFrom, "FinTrack <fintrack@localhost>")
+        .WithEnvironment(FinTrackEnvironment.PublicUrl, finTrack.GetEndpoint("https"))
+        .WaitFor(mail);
+}
+
 // OIDC sign in is optional, it's only wired up when an authority is configured
 if (!string.IsNullOrEmpty(builder.Configuration["OIDC:Authority"]))
 {

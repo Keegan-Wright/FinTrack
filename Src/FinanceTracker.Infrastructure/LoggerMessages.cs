@@ -63,4 +63,7 @@ public static partial class LoggerMessages
 
     [LoggerMessage(LogLevel.Information, "Deleted debt {debtId} for user {userId}, {payments} payments and {rules} rules no longer pay it off")]
     public static partial void LogDeletedDebt(this ILogger logger, Guid userId, Guid debtId, int payments, int rules);
+
+    [LoggerMessage(LogLevel.Warning, "Couldn't email notification {notificationId} to user {userId}, it still shows in the app")]
+    public static partial void LogNotificationEmailFailed(this ILogger logger, Exception exception, Guid notificationId, Guid userId);
 }

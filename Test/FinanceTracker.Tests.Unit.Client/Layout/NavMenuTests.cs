@@ -31,7 +31,7 @@ public class NavMenuTests : ComponentTestBase
             await Assert.That(LinksUnder(cut, "Insights")).IsEquivalentTo(["NetWorth", "Reports"],
                 TUnit.Assertions.Enums.CollectionOrdering.Matching);
             await Assert.That(LinksUnder(cut, "Manage"))
-                .IsEquivalentTo(["ProviderSetup", "HouseholdMembers", "Classifications", "Rules", "YourData"],
+                .IsEquivalentTo(["ProviderSetup", "Notifications", "HouseholdMembers", "Classifications", "Rules", "YourData"],
                     TUnit.Assertions.Enums.CollectionOrdering.Matching);
         }
     }
@@ -63,6 +63,23 @@ public class NavMenuTests : ComponentTestBase
             await Assert.That(LinksUnder(cut, "To review")).IsEquivalentTo([NavMenu.SubscriptionsReviewPath]);
             await Assert.That(cut.Find($"a[href='{NavMenu.SubscriptionsReviewPath}'] .ft-nav__count").TextContent.Trim())
                 .IsEqualTo("4");
+        }
+    }
+
+    [Test]
+    [Arguments(0, 0)]
+    [Arguments(2, 1)]
+    public async Task Render_UnreadNotifications_CountedBesideTheirLinkWhenThereAreAny(int unread, int counts)
+    {
+        // Act
+        IRenderedComponent<NavMenu> cut = Render<NavMenu>(p => p.Add(x => x.UnreadNotifications, unread));
+
+        // Assert
+        IReadOnlyList<AngleSharp.Dom.IElement> count = cut.FindAll("a[href='Notifications'] .ft-nav__count");
+        using (Assert.Multiple())
+        {
+            await Assert.That(count.Count).IsEqualTo(counts);
+            await Assert.That(count.All(x => x.GetAttribute("aria-label") == $"{unread} unread")).IsTrue();
         }
     }
 

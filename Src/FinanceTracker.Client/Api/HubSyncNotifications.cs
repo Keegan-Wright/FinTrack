@@ -49,6 +49,10 @@ public sealed class HubSyncNotifications : ISyncNotifications, IDisposable
         CancellationToken cancellationToken) =>
         StartedAsync(_connection.On(SyncHubContract.JobChanged, onJobChanged), cancellationToken);
 
+    public Task<IDisposable> SubscribeToNotificationsAsync(Func<Task> onNotificationAdded,
+        CancellationToken cancellationToken) =>
+        StartedAsync(_connection.On(SyncHubContract.NotificationAdded, onNotificationAdded), cancellationToken);
+
     public void Dispose()
     {
         _disposed.Cancel();
