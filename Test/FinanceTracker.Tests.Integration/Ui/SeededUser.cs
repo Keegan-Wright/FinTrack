@@ -1,3 +1,4 @@
+using FinanceTracker.Domain.Notifications;
 using FinanceTracker.Domain.Bills;
 using FinanceTracker.Domain.Budgeting;
 using FinanceTracker.Domain.Calendar;
@@ -17,8 +18,8 @@ namespace FinanceTracker.Tests.Integration.Ui;
 /// Something of everything the app shows for one user, so every page and dialog is seen with data in it rather
 /// than only empty: two accounts with balances, this month's transactions (pay, spending, a tagged one, a pending
 /// one, one paying the bill, a matched transfer, one to review, a repeat payment suggested as a subscription), and a
-/// tag, budget, bill, debt, a savings goal typed in and one on the savings account, rule, household member and
-/// calendar event. The names are what the tests look for.
+/// tag, budget, bill, debt, a savings goal typed in and one on the savings account, rule, household member,
+/// calendar event and an unread notification. The names are what the tests look for.
 /// </summary>
 public static class SeededUser
 {
@@ -42,6 +43,11 @@ public static class SeededUser
     public const string AccountGoal = "House deposit";
     public const string Rule = "Coffee is not a transfer";
     public const string MemberFirstName = "Sam";
+
+    /// <summary>
+    /// The unread notification's title.
+    /// </summary>
+    public const string Notice = "Everyday bank access ends in 5 days";
     public const string MemberLastName = "Example";
     public const string Event = "Car service";
 
@@ -121,7 +127,11 @@ public static class SeededUser
             .Do(s => s.HouseholdMemberScenario.WithHouseholdMember(MemberFirstName, username, userId =>
                 new HouseholdMember(userId, MemberFirstName, MemberLastName, 1200m)))
             .Do(s => s.CalendarEventScenario.WithEvent(Event, username, userId =>
-                new CalendarEvent(userId, Event, today, EventRecurrence.None)));
+                new CalendarEvent(userId, Event, today, EventRecurrence.None)))
+            // Unread, so the bell counts it
+            .Do(s => s.NotificationScenario.WithNotification(Notice, username, userId =>
+                new Notification(userId, NotificationKind.ConsentEndingSoon, $"seeded:{userId:N}", Notice,
+                    "Renew access to keep it syncing.", "ProviderSetup")));
     }
 
     // Saved as the savings account's balance, which a goal has a history of

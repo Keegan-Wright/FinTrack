@@ -40,6 +40,7 @@ public class SeededPageTests : UiTestBase
         ($"/Rules/{RuleId}", null),
         ("/HouseholdMembers", $"{SeededUser.MemberFirstName} {SeededUser.MemberLastName}"),
         ("/ProviderSetup", null),
+        ("/Notifications", SeededUser.Notice),
         ("/YourData", null)
     ];
 

@@ -12,7 +12,7 @@ namespace FinanceTracker.Tests.Integration.Api;
 
 /// <summary>
 /// Someone signed in can't reach another user's data through the API by its id: each call by id to another user's
-/// transactions, bills, debts, goals, rules, tags, people, events and bank connections is refused, and leaves what
+/// transactions, bills, debts, goals, rules, tags, people, events, bank connections and notifications is refused, and leaves what
 /// that user has as it was. The owner has something of everything, <see cref="SeededUser"/>.
 /// </summary>
 public class CrossUserApiTests : IntegrationTestBase
@@ -95,7 +95,9 @@ public class CrossUserApiTests : IntegrationTestBase
             ["Delete an event"] = static (api, ids, ct) => api.Get<ICalendarService>()
                 .DeleteEventAsync(ids.CalendarEventMappings[SeededUser.Event], ct),
             ["Renew a bank connection"] = static (api, ids, ct) => api.Get<IOpenBankingService>()
-                .GetRenewalUrlAsync(ids.ConnectionMappings["bank"], ct)
+                .GetRenewalUrlAsync(ids.ConnectionMappings["bank"], ct),
+            ["Mark a notification read"] = static async (api, ids, ct) => RefusedUnlessDone(
+                await api.Get<INotificationsService>().MarkReadAsync(ids.NotificationMappings[SeededUser.Notice], ct))
         };
 
     public static IEnumerable<string> AttemptNames() => Attempts.Keys;
@@ -146,7 +148,8 @@ public class CrossUserApiTests : IntegrationTestBase
     private static readonly string[] OwnersNames =
     [
         SeededUser.Groceries, SeededUser.Current, SeededUser.Bill, SeededUser.Debt, SeededUser.Goal, SeededUser.Rule,
-        SeededUser.Tag, SeededUser.Budget, SeededUser.MemberFirstName, SeededUser.Event, SeededUser.Phone
+        SeededUser.Tag, SeededUser.Budget, SeededUser.MemberFirstName, SeededUser.Event, SeededUser.Phone,
+        SeededUser.Notice
     ];
 
     private static Guid Groceries(TestingScenario ids) => ids.TransactionMappings[SeededUser.Groceries];
@@ -210,7 +213,9 @@ public class CrossUserApiTests : IntegrationTestBase
             ["events"] = await api.Get<ICalendarService>()
                 .GetEventsAsync(CancellationToken).ToListAsync(CancellationToken),
             ["connections"] = await api.Get<IOpenBankingService>()
-                .GetConnectionsAsync(CancellationToken).ToListAsync(CancellationToken)
+                .GetConnectionsAsync(CancellationToken).ToListAsync(CancellationToken),
+            ["notifications"] = await api.Get<INotificationsService>()
+                .GetNotificationsAsync(50, CancellationToken).ToListAsync(CancellationToken)
         };
 
         return JsonSerializer.Serialize(lists);

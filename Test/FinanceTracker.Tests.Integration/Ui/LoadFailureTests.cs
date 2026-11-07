@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using FinanceTracker.Tests.Integration.Http;
 using Microsoft.Playwright;
 
@@ -19,7 +20,7 @@ public class LoadFailureTests : UiTestBase
     public static IEnumerable<string> Links() =>
     [
         "Accounts", "Transactions", "Calendar", "Budgets", "Bills", "Debts", "Savings goals", "Net worth", "Reports",
-        "Household", "Tags", "Rules", "Your data"
+        "Notifications", "Household", "Tags", "Rules", "Your data"
     ];
 
     [Test]
@@ -85,8 +86,12 @@ public class LoadFailureTests : UiTestBase
         await Assertions.Expect(page.GetByText(SeededUser.Debt).First).ToBeVisibleAsync();
     }
 
+    // By the page's name, then perhaps a count, e.g. "Notifications 1 unread"
     private static ILocator MenuLink(IPage page, string link) =>
-        page.Locator("#nav-drawer").GetByRole(AriaRole.Link, new LocatorGetByRoleOptions { Name = link, Exact = true });
+        page.Locator("#nav-drawer").GetByRole(AriaRole.Link, new LocatorGetByRoleOptions
+        {
+            NameRegex = new Regex($"^{Regex.Escape(link)}( |$)")
+        });
 
     /// <summary>
     /// What went wrong in the browser besides the 500s asked for, and the error boundary logging what it caught.

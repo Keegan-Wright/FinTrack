@@ -1,9 +1,11 @@
 using FinanceTracker.BackgroundJobs;
 using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Infrastructure;
+using FinanceTracker.Infrastructure.Notifications;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 
 namespace FinanceTracker.Tests.Unit.FinanceTracker.BackgroundJobs;
@@ -144,6 +146,46 @@ public class MonitorOpenBankingTokenExpirationAsyncTests : InfrastructureTestBas
             .SingleAsync(x => x.Id == id, CancellationToken);
     }
 
-    private MonitorOpenBankingTokenExpirationAsync BuildSubject() =>
-        new(DbContextFactory, TimeProvider.System);
+    [Test]
+    public async Task Execute_ConsentEndingWithinAWeek_RaisesTheOwnersNoticesOnly()
+    {
+        // Arrange, one owner's ends in 3 days, another's in a month
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.UserScenario.WithUser(OtherUsername))
+            .Do(s => s.BankConnectionScenario.WithConnection("bank", Username))
+            .Do(s => s.BankConnectionScenario.WithConsentExpiresAt("bank", DateTime.UtcNow.AddDays(3)))
+            .Do(s => s.BankConnectionScenario.WithConnection("other", OtherUsername))
+            .Do(s => s.BankConnectionScenario.WithConsentExpiresAt("other", DateTime.UtcNow.AddDays(30)));
+        List<Guid> notified = [];
+        MonitorOpenBankingTokenExpirationAsync subject = BuildSubject(notified);
+
+        // Act
+        await subject.Execute(JobContexts.Scheduled(), CancellationToken);
+
+        // Assert, acting as that owner
+        await Assert.That(notified).IsEquivalentTo([Scenario.UserMappings[Username]]);
+    }
+
+    private MonitorOpenBankingTokenExpirationAsync BuildSubject() => BuildSubject([]);
+
+    /// <param name="notified">Who the consent notices were raised as, in turn.</param>
+    private MonitorOpenBankingTokenExpirationAsync BuildSubject(List<Guid> notified)
+    {
+        ServiceCollection services = new();
+        services.AddCurrentUser();
+        services.AddScoped<IConsentNotices>(provider =>
+        {
+            IConsentNotices notices = Substitute.For<IConsentNotices>();
+            ICurrentUser user = provider.GetRequiredService<ICurrentUser>();
+            notices.NotifyAsync(Arg.Any<CancellationToken>()).Returns(_ =>
+            {
+                notified.Add(user.UserId);
+                return Task.CompletedTask;
+            });
+            return notices;
+        });
+
+        return new MonitorOpenBankingTokenExpirationAsync(DbContextFactory,
+            services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(), TimeProvider.System);
+    }
 }
