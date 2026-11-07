@@ -123,4 +123,29 @@ public sealed class BankConnection : AggregateRoot
     /// Ends the current consent, e.g. when the banking provider's consent window has elapsed.
     /// </summary>
     public void RevokeActiveToken(DateTime revokedAt) => ActiveToken?.Revoke(revokedAt);
+
+    /// <summary>
+    /// Since when its syncs have been failing, null while they succeed.
+    /// </summary>
+    public DateTime? SyncFailingSince { get; private set; }
+
+    /// <summary>
+    /// A sync failed.
+    /// </summary>
+    /// <returns>Whether it has just started failing, so the user is told once rather than on every failed run.</returns>
+    public bool RecordSyncFailed(DateTime failedAt)
+    {
+        if (SyncFailingSince is not null)
+        {
+            return false;
+        }
+
+        SyncFailingSince = failedAt;
+        return true;
+    }
+
+    /// <summary>
+    /// A sync succeeded, so a failure after it is news again.
+    /// </summary>
+    public void RecordSyncSucceeded() => SyncFailingSince = null;
 }

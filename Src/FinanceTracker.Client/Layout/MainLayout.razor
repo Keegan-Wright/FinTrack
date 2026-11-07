@@ -11,6 +11,7 @@
 @inject ITransfersService TransfersService
 @inject IBillsService BillsService
 @inject IOpenBankingService OpenBankingService
+@inject INotificationsService NotificationsService
 @inject ISnackbar Snackbar
 @inject AppUpdate AppUpdate
 
@@ -42,6 +43,7 @@
             }
         </span>
 
+        <NotificationBell Unread="@ApplicationState.UnreadNotifications"/>
         <MudTooltip Text="@(_isDarkMode ? "Switch to light mode" : "Switch to dark mode")">
             <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Outlined.LightMode : Icons.Material.Outlined.DarkMode)"
                            Color="Color.Inherit" OnClick="@DarkModeToggle" aria-label="Toggle dark mode"/>
@@ -69,7 +71,8 @@
                ClipMode="DrawerClipMode.Always" Elevation="0" data-mud-static-monitored="true">
         <NavMenu TransfersToReview="@ApplicationState.TransfersToReview"
                  SubscriptionsToReview="@ApplicationState.SubscriptionsToReview"
-                 ConnectionsToRenew="@ApplicationState.ConnectionsToRenew"/>
+                 ConnectionsToRenew="@ApplicationState.ConnectionsToRenew"
+                 UnreadNotifications="@ApplicationState.UnreadNotifications"/>
         <MudSpacer/>
         @if (BackgroundSyncTime != null || ApplicationState.Syncing)
         {
@@ -141,6 +144,7 @@
 
     private IDisposable? _syncSubscription;
     private IDisposable? _syncStartSubscription;
+    private IDisposable? _notificationSubscription;
 
     internal readonly CancellationTokenSource _cts = new();
 
@@ -187,6 +191,8 @@
                 _cts.Token);
             _syncStartSubscription = await SyncNotifications.SubscribeToSyncStartsAsync(
                 () => InvokeAsync(OnSyncStarted), _cts.Token);
+            _notificationSubscription = await SyncNotifications.SubscribeToNotificationsAsync(
+                () => InvokeAsync(GetUnreadNotificationsAsync), _cts.Token);
         }
         catch (Exception) when (!_cts.IsCancellationRequested)
         {
@@ -244,12 +250,12 @@
     }
 
     /// <summary>
-    /// When the accounts last synced, how many transfers and subscriptions wait for review and how many connections
-    /// need renewing, fetched together as none needs the others.
+    /// When the accounts last synced, how many transfers and subscriptions wait for review, how many connections
+    /// need renewing and how many notifications are unread, fetched together as none needs the others.
     /// </summary>
     private Task RefreshSyncDetailsAsync() =>
         Task.WhenAll(GetLatestSyncTimeAsync(), GetTransfersToReviewAsync(), GetSubscriptionsToReviewAsync(),
-            GetConnectionsToRenewAsync());
+            GetConnectionsToRenewAsync(), GetUnreadNotificationsAsync());
 
     private async Task GetLatestSyncTimeAsync()
     {
@@ -302,6 +308,21 @@
         }
     }
 
+    /// <summary>
+    /// How many notifications are unread, for the bell, as the app starts and each time one arrives.
+    /// </summary>
+    private async Task GetUnreadNotificationsAsync()
+    {
+        try
+        {
+            ApplicationState.UnreadNotifications = await NotificationsService.GetUnreadCountAsync(_cts.Token);
+        }
+        catch (HttpRequestException)
+        {
+            // Only the bell's count, the notifications page still loads them
+        }
+    }
+
     public async Task RequestResync()
     {
         // Cleared when the sync notification arrives
@@ -335,6 +356,7 @@
         AppUpdate.AvailableChanged -= OnUpdateAvailable;
         _syncSubscription?.Dispose();
         _syncStartSubscription?.Dispose();
+        _notificationSubscription?.Dispose();
         _cts.Cancel();
         _cts.Dispose();
 

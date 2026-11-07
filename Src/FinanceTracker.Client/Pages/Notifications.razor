@@ -1,0 +1,274 @@
+@page "/Notifications"
+@* What FinTrack has told the user about, newest first, and which kinds they also have emailed. Every notification
+   shows here and under the app bar's bell whatever the email settings say. *@
+@using System.Globalization
+@using FinanceTracker.Client.Components.Notifications
+@using FinanceTracker.Contracts.Notifications
+@using Microsoft.AspNetCore.Authorization
+@inherits PageComponent
+
+@attribute [Authorize]
+@inject INotificationsService NotificationsService
+@inject TimeProvider TimeProvider
+@inject ISnackbar Snackbar
+
+<PageTitle>FinTrack - Notifications</PageTitle>
+<PageHeader Title="Notifications" Subtitle="@Subtitle">
+    <Actions>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.DoneAll"
+                   Disabled="@(UnreadCount == 0)" OnClick="@MarkAllReadAsync">Mark all as read</MudButton>
+    </Actions>
+</PageHeader>
+
+<div class="ft-stack">
+    <Section Title="Recent" Caption="The latest 50, newest first">
+        @if (Items is null or { Count: 0 })
+        {
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                Nothing yet. FinTrack tells you here when a bank's access is about to end or a sync fails.
+            </MudText>
+        }
+        else
+        {
+            <div class="ft-list">
+                @foreach (Notification notification in Items)
+                {
+                    <div class="@RowClass(notification)">
+                        <MudIcon Icon="@NotificationKindText.Icon(notification.Kind)" aria-hidden="true"
+                                 Color="@(notification.IsRead ? Color.Default : Color.Primary)"/>
+                        <div class="ft-list__main">
+                            @if (notification.Link is { } link)
+                            {
+                                @* A plain link, MudLink with a click handler announces itself as a button *@
+                                <a href="@link" class="mud-typography mud-typography-body2 mud-link mud-primary-text mud-link-underline-hover ft-notification__title"
+                                   @onclick="@(() => MarkReadOnTheWayAsync(notification))">@notification.Title</a>
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.body2" Class="ft-notification__title">@notification.Title</MudText>
+                            }
+                            <MudText Typo="Typo.body2" Class="mud-text-secondary">@notification.Message</MudText>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                @RaisedText(notification)@if (!notification.IsRead)
+                                {
+                                    <span> · Unread</span>
+                                }
+                            </MudText>
+                        </div>
+                        @if (!notification.IsRead)
+                        {
+                            <MudTooltip Text="Mark as read">
+                                <MudIconButton Icon="@Icons.Material.Outlined.Done" Size="Size.Small"
+                                               aria-label="@($"Mark {notification.Title} as read")"
+                                               OnClick="@(() => MarkReadAsync(notification))"/>
+                            </MudTooltip>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </Section>
+
+    <Section Title="Email me about" Caption="@EmailCaption">
+        @if (Settings is null)
+        {
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">Your email settings couldn't be loaded.</MudText>
+        }
+        else if (!Settings.EmailAvailable)
+        {
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                Email isn't set up on this FinTrack, so notifications only show here. Whoever runs it can add a mail
+                server to send them.
+            </MudText>
+        }
+        else if (Settings.EmailAddress is null)
+        {
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                Your account has no email address, so notifications only show here.
+            </MudText>
+        }
+        else
+        {
+            <div class="ft-notification-settings">
+                @foreach (NotificationKind kind in NotificationKindText.All)
+                {
+                    <MudSwitch T="bool" Value="@Settings.Emailed.Contains(kind)" Color="Color.Primary"
+                               Label="@NotificationKindText.EmailLabel(kind)"
+                               ValueChanged="@(emailed => ChangeEmailedAsync(kind, emailed))"/>
+                }
+            </div>
+        }
+    </Section>
+</div>
+
+@code {
+
+    /// <summary>
+    /// How many the page shows.
+    /// </summary>
+    internal const int Shown = 50;
+
+    /// <summary>
+    /// The notifications, loaded once, see <see cref="PageComponent.LoadOnceAsync{T}"/>.
+    /// </summary>
+    [PersistentState]
+    public List<Notification>? Items { get; set; }
+
+    [PersistentState]
+    public NotificationSettings? Settings { get; set; }
+
+    private int UnreadCount => Items?.Count(static x => !x.IsRead) ?? 0;
+
+    private string Subtitle
+    {
+        get
+        {
+            if (UnreadCount == 0)
+            {
+                return "All read";
+            }
+
+            return $"{UnreadCount} unread";
+        }
+    }
+
+    private string EmailCaption
+    {
+        get
+        {
+            if (Settings?.EmailAddress is { } address && Settings.EmailAvailable)
+            {
+                return $"Sent to {address}, everything shows here too";
+            }
+
+            return "Everything shows here too";
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        Items = await LoadOnceAsync(Items, "Loading your notifications", cancellationToken =>
+            NotificationsService.GetNotificationsAsync(Shown, cancellationToken).ToListAsync(cancellationToken)
+                .AsTask());
+        Settings = await LoadOnceAsync(Settings, "Loading your notifications",
+            cancellationToken => NotificationsService.GetSettingsAsync(cancellationToken));
+    }
+
+    /// <summary>
+    /// A sync may have failed to sync a bank, which raises one, so the list loads again quietly.
+    /// </summary>
+    protected override async Task OnSyncedAsync()
+    {
+        Items = await NotificationsService.GetNotificationsAsync(Shown, _cts.Token).ToListAsync(_cts.Token);
+        SetUnreadNotifications(UnreadCount);
+    }
+
+    private static string RowClass(Notification notification) =>
+        notification.IsRead ? "ft-list__row" : "ft-list__row ft-notification--unread";
+
+    private string RaisedText(Notification notification) =>
+        TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(notification.RaisedAt, DateTimeKind.Utc),
+                TimeProvider.LocalTimeZone)
+            .ToString("d MMM, HH:mm", CultureInfo.CurrentCulture);
+
+    /// <summary>
+    /// Marks it read as its link goes to where it's dealt with. Not with the page's token: the link leaves the page,
+    /// which cancels that, and this should finish all the same. A failure only leaves it unread.
+    /// </summary>
+    internal async Task MarkReadOnTheWayAsync(Notification notification)
+    {
+        if (notification.IsRead)
+        {
+            return;
+        }
+
+        try
+        {
+            await NotificationsService.MarkReadAsync(notification.Id, CancellationToken.None);
+            Replace(notification, Read(notification));
+            SetUnreadNotifications(UnreadCount);
+        }
+        catch (HttpRequestException)
+        {
+            // Still unread, the user can mark it here
+        }
+    }
+
+    internal async Task MarkReadAsync(Notification notification)
+    {
+        if (notification.IsRead)
+        {
+            return;
+        }
+
+        try
+        {
+            await NotificationsService.MarkReadAsync(notification.Id, _cts.Token);
+            Replace(notification, Read(notification));
+            SetUnreadNotifications(UnreadCount);
+        }
+        catch (Exception) when (!_cts.IsCancellationRequested)
+        {
+            Snackbar.Add("Couldn't mark it as read, try again", Severity.Error);
+        }
+    }
+
+    internal async Task MarkAllReadAsync()
+    {
+        try
+        {
+            await NotificationsService.MarkAllReadAsync(_cts.Token);
+            Items = Items?.Select(Read).ToList();
+            SetUnreadNotifications(0);
+        }
+        catch (Exception) when (!_cts.IsCancellationRequested)
+        {
+            Snackbar.Add("Couldn't mark them as read, try again", Severity.Error);
+        }
+    }
+
+    internal async Task ChangeEmailedAsync(NotificationKind kind, bool emailed)
+    {
+        if (Settings is null)
+        {
+            return;
+        }
+
+        List<NotificationKind> kinds = Settings.Emailed.Where(x => x != kind).ToList();
+        if (emailed)
+        {
+            kinds.Add(kind);
+        }
+
+        try
+        {
+            Settings = await NotificationsService.ChangeSettingsAsync(
+                new ChangeNotificationSettings { Emailed = kinds }, _cts.Token);
+        }
+        catch (Exception) when (!_cts.IsCancellationRequested)
+        {
+            Snackbar.Add("Couldn't save that, try again", Severity.Error);
+        }
+    }
+
+    private void Replace(Notification old, Notification updated)
+    {
+        if (Items?.IndexOf(old) is { } index and >= 0)
+        {
+            Items[index] = updated;
+        }
+    }
+
+    private static Notification Read(Notification notification) => new()
+    {
+        Id = notification.Id,
+        Kind = notification.Kind,
+        Title = notification.Title,
+        Message = notification.Message,
+        Link = notification.Link,
+        RaisedAt = notification.RaisedAt,
+        IsRead = true
+    };
+
+}

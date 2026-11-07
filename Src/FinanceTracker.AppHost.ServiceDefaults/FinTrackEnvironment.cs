@@ -31,6 +31,40 @@ public static class FinTrackEnvironment
     /// </summary>
     public const string TestClock = "FINTRACK_TEST_CLOCK";
 
+    /// <summary>
+    /// The app's address as people reach it, e.g. <c>https://fintrack.example.com</c>, for links in emails. Emails
+    /// say to open FinTrack instead of linking when it isn't set.
+    /// </summary>
+    public const string PublicUrl = "FINTRACK_PUBLIC_URL";
+
+    /// <summary>
+    /// The mail server notification (and later account) emails go through. Email is off when it isn't set.
+    /// </summary>
+    public const string SmtpHost = "SMTP_HOST";
+
+    /// <summary>
+    /// The mail server's port, 587 when not set.
+    /// </summary>
+    public const string SmtpPort = "SMTP_PORT";
+
+    /// <summary>
+    /// How the connection to the mail server is secured: <c>StartTls</c>, <c>SslOnConnect</c>, <c>Auto</c> (the
+    /// default, chosen from the port) or <c>None</c>.
+    /// </summary>
+    public const string SmtpSecurity = "SMTP_SECURITY";
+
+    /// <summary>
+    /// Who to sign in to the mail server as, none when not set.
+    /// </summary>
+    public const string SmtpUsername = "SMTP_USERNAME";
+
+    public const string SmtpPassword = "SMTP_PASSWORD";
+
+    /// <summary>
+    /// Who emails come from, e.g. <c>fintrack@example.com</c>.
+    /// </summary>
+    public const string SmtpFrom = "SMTP_FROM";
+
     public const string OidcAuthority = "OIDC_Authority";
     public const string OidcClientId = "OIDC_ClientId";
     public const string OidcClientSecret = "OIDC_ClientSecret";

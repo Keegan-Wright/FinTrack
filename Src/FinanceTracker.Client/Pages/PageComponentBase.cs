@@ -196,6 +196,11 @@ public class PageComponent : ComponentBase, IDisposable
     }
 
     /// <summary>
+    /// Updates the bell's and the navigation's count of unread notifications, after the user reads some.
+    /// </summary>
+    internal void SetUnreadNotifications(int count) => ApplicationState.UnreadNotifications = count;
+
+    /// <summary>
     /// Updates the count of connections to renew in the navigation and banner.
     /// </summary>
     internal void RefreshConnectionsToRenew(IEnumerable<BankConnectionSummary> connections) =>

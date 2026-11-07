@@ -41,4 +41,7 @@ public static partial class WebLoggerMessages
 
     [LoggerMessage(LogLevel.Information, "User {userId} created from an OIDC sign in")]
     public static partial void LogOidcUserRegistered(this ILogger logger, Guid userId);
+
+    [LoggerMessage(LogLevel.Warning, "Failed to tell the browsers of user {userId} about a new notification")]
+    public static partial void LogNotificationPushFailed(this ILogger logger, Exception exception, Guid userId);
 }

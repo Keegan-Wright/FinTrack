@@ -37,6 +37,17 @@ public interface ISyncNotifications
     Task<IDisposable> SubscribeToJobsAsync(Func<string, Task> onJobChanged, CancellationToken cancellationToken);
 
     /// <summary>
+    /// Calls <paramref name="onNotificationAdded"/> each time the user has a new notification, until the returned
+    /// subscription is disposed.
+    /// </summary>
+    /// <remarks>
+    /// In the browser this connects to the sync hub first. One that can't be reached doesn't fail the subscription,
+    /// it's heard once the hub is back, see <see cref="Paused"/>.
+    /// </remarks>
+    Task<IDisposable> SubscribeToNotificationsAsync(Func<Task> onNotificationAdded,
+        CancellationToken cancellationToken);
+
+    /// <summary>
     /// Whether live updates are paused, the connection to the sync hub was lost, or couldn't be made, and is being
     /// tried again. Syncs and jobs that finish meanwhile aren't heard about.
     /// </summary>
