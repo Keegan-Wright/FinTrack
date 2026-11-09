@@ -1,7 +1,7 @@
 using System.Globalization;
 using FinanceTracker.Design;
 
-namespace FinanceTracker.Infrastructure.Notifications.Email.Templates;
+namespace FinanceTracker.Emails.Templates;
 
 /// <summary>
 /// The inline styles the email templates share, inline because email apps drop stylesheets. Colours, font and

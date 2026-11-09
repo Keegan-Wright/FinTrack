@@ -1,5 +1,6 @@
 using FinanceTracker.Design;
 using FinanceTracker.Domain.Notifications;
+using FinanceTracker.Emails;
 using FinanceTracker.Infrastructure.Notifications.Email;
 
 namespace FinanceTracker.Tests.Unit.Infrastructure.Services.Notifications;

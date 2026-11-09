@@ -60,6 +60,7 @@ IResourceBuilder<ProjectResource> finTrack = builder.AddProject<Projects.Finance
     .WithEnvironment(FinTrackEnvironment.TrueLayerClientSecret, openBankingClientSecret)
     .WithEnvironment(FinTrackEnvironment.PublicIpAddress, openBankingPublicIpAddress)
     .WithEnvironment(FinTrackEnvironment.Culture, "en-GB")
+    .WithEnvironment(FinTrackEnvironment.WebhookAllowPrivate, true.ToString())
     .WithReference(postgresDb)
     .WaitFor(postgresDb)
     .PublishAsDockerComposeService((resource, service) =>

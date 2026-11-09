@@ -1,7 +1,8 @@
 using FinanceTracker.Domain.Notifications;
+using FinanceTracker.Emails;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
-using FinanceTracker.Infrastructure.Notifications.Email.Templates;
+using FinanceTracker.Emails.Templates;
 
 namespace FinanceTracker.Infrastructure.Notifications.Email;
 
@@ -14,7 +15,7 @@ public sealed class NotificationEmails : INotificationEmails
     /// </summary>
     public const string SettingsPath = "Notifications";
 
-    public const string TestSubject = "FinTrack test email";
+    public const string TestSubject = TestEmailBody.Subject;
 
     private readonly IEmailRenderer _renderer;
     private readonly PublicAddress _publicAddress;

@@ -1,5 +1,5 @@
 @* The email the Notifications page sends to show email works and how notifications will look. *@
-<EmailLayout Title="@NotificationEmails.TestSubject" Preheader="Email from FinTrack works.">
+<EmailLayout Title="@Subject" Preheader="Email from FinTrack works.">
     <ChildContent>
         <p style="@EmailStyles.Eyebrow color: @LightPalette.Primary;">Test</p>
         <h1 style="@EmailStyles.Heading">Email works</h1>
@@ -17,6 +17,11 @@
 </EmailLayout>
 
 @code {
+
+    /// <summary>
+    /// The test email's subject, also its title.
+    /// </summary>
+    public const string Subject = "FinTrack test email";
 
     /// <inheritdoc cref="EmailFooter.Settings"/>
     [Parameter]

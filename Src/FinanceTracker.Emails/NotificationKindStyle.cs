@@ -1,7 +1,7 @@
 using FinanceTracker.Design;
 using FinanceTracker.Domain.Notifications;
 
-namespace FinanceTracker.Infrastructure.Notifications.Email;
+namespace FinanceTracker.Emails;
 
 /// <summary>
 /// How each kind of notification looks in an email. What it's about, in a colour that says how much it matters.

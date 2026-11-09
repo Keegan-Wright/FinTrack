@@ -1,4 +1,4 @@
-namespace FinanceTracker.Infrastructure.Notifications.Email;
+namespace FinanceTracker.Emails;
 
 /// <summary>
 /// An image carried inside an email and shown in its HTML as <c>cid:{ContentId}</c>, e.g. the logo, so it shows

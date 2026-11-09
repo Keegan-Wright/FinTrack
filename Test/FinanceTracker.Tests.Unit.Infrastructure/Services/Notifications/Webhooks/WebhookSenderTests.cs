@@ -45,6 +45,20 @@ public class WebhookSenderTests
     }
 
     [Test]
+    public async Task Send_Any_PostsWhenItWasRaisedAsUtc()
+    {
+        // Arrange
+        RecordingWebhookHandler handler = new();
+
+        // Act
+        await Send(handler, WebhookPayload.Test(Now, PublicAddress.Unknown));
+
+        // Assert
+        using JsonDocument body = JsonDocument.Parse(handler.Body);
+        await Assert.That(body.RootElement.GetProperty("raisedAt").GetString()).IsEqualTo("2026-11-07T09:00:00Z");
+    }
+
+    [Test]
     public async Task Send_Any_SignsTheTimestampAndBodyWithTheSecret()
     {
         // Arrange

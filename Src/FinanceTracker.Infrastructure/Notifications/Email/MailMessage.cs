@@ -1,3 +1,5 @@
+using FinanceTracker.Emails;
+
 namespace FinanceTracker.Infrastructure.Notifications.Email;
 
 /// <summary>

@@ -1,4 +1,4 @@
-namespace FinanceTracker.Infrastructure.Notifications.Email;
+namespace FinanceTracker.Emails;
 
 /// <summary>
 /// What makes an email FinTrack's the logo, carried inside each email so it shows without loading anything.
@@ -13,7 +13,7 @@ public static class EmailBrand
     private static readonly Lazy<MailImage> LazyLogo = new(LoadLogo);
 
     /// <summary>
-    /// The logo, the favicon as a PNG, see the Infrastructure project file.
+    /// The logo, the favicon as a PNG, see the Emails project file.
     /// </summary>
     public static MailImage Logo => LazyLogo.Value;
 

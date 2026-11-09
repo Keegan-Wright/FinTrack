@@ -1,3 +1,4 @@
+using FinanceTracker.Emails;
 using FinanceTracker.Infrastructure.Notifications;
 using FinanceTracker.Infrastructure.Notifications.Email;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,6 +12,7 @@ namespace FinanceTracker.Tests.Unit.Infrastructure.Services.Notifications;
 internal static class TestEmails
 {
     public static NotificationEmails Create(Uri? publicUrl = null) =>
-        new(new EmailRenderer(new ServiceCollection().BuildServiceProvider(), NullLoggerFactory.Instance),
+        new(new EmailRenderer(new ServiceCollection().BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
+            NullLoggerFactory.Instance),
             new PublicAddress(publicUrl));
 }
