@@ -136,13 +136,10 @@ public class WebhookSectionTests : ComponentTestBase
     public async Task TestPost_Failed_SaysWhy()
     {
         // Arrange
-        NotificationSettings failed = Settings(Url);
-        failed = new NotificationSettings
+        NotificationSettings failed = Settings(Url, lastWebhook: new DeliveryStatus
         {
-            Emailed = failed.Emailed, Webhooked = failed.Webhooked, EmailAvailable = false,
-            WebhookUrl = Url, WebhookSecret = "secret",
-            LastWebhook = new DeliveryStatus { At = DateTime.UtcNow, Failure = "The webhook answered 404, not success." }
-        };
+            At = DateTime.UtcNow, Failure = "The webhook answered 404, not success."
+        });
         _service.SendTestWebhookAsync(Arg.Any<CancellationToken>()).Returns(failed);
         IRenderedComponent<MudSnackbarProvider> snackbars = Render<MudSnackbarProvider>();
         IRenderedComponent<WebhookSection> cut = RenderSection(With);
@@ -163,9 +160,12 @@ public class WebhookSectionTests : ComponentTestBase
     private static AngleSharp.Dom.IElement Button(IRenderedComponent<WebhookSection> cut, string text) =>
         cut.FindAll("button").Single(x => x.TextContent.Trim() == text);
 
-    private static NotificationSettings Settings(string? url, string secret = "secret") => new()
+    private static NotificationSettings Settings(string? url, string secret = "secret",
+        DeliveryStatus? lastWebhook = null) => new()
     {
-        Emailed = Enum.GetValues<NotificationKind>(), Webhooked = Enum.GetValues<NotificationKind>(),
-        EmailAvailable = false, WebhookUrl = url, WebhookSecret = url is null ? null : secret
+        InApp = Enum.GetValues<NotificationKind>(), Emailed = Enum.GetValues<NotificationKind>(),
+        Webhooked = Enum.GetValues<NotificationKind>(), EmailAvailable = false, WebhookUrl = url,
+        WebhookSecret = url is null ? null : secret, LastWebhook = lastWebhook, BudgetWarningPercent = 80,
+        BillReminderDays = 3, LowBalance = []
     };
 }

@@ -69,6 +69,15 @@ public sealed class NotificationsApiClient : INotificationsService
         return await response.ReadRequiredJsonAsync<NotificationSettings>(cancellationToken);
     }
 
+    public async Task<NotificationSettings> ChangeAlertsAsync(ChangeAlertSettings alerts,
+        CancellationToken cancellationToken)
+    {
+        using HttpResponseMessage response =
+            await _http.PutAsJsonAsync($"{Settings}/alerts", alerts, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return await response.ReadRequiredJsonAsync<NotificationSettings>(cancellationToken);
+    }
+
     public Task<NotificationSettings?> SendTestEmailAsync(CancellationToken cancellationToken) =>
         PostUnlessConflictAsync($"{Settings}/test-email", cancellationToken);
 

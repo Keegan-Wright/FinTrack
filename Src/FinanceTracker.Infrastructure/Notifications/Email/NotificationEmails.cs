@@ -13,7 +13,7 @@ public sealed class NotificationEmails : INotificationEmails
     /// <summary>
     /// Where the user changes which emails they get, relative to the app.
     /// </summary>
-    public const string SettingsPath = "Notifications";
+    public const string SettingsPath = "Notifications/Settings";
 
     public const string TestSubject = TestEmailBody.Subject;
 

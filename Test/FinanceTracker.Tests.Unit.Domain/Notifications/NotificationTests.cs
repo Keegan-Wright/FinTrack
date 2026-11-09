@@ -25,6 +25,23 @@ public class NotificationTests
     }
 
     [Test]
+    public async Task Notification_Raised_ShowsInTheAppUnlessSaid()
+    {
+        // Act
+        Notification shown = new(Guid.NewGuid(), NotificationKind.BillDueSoon, "key", "Rent is due tomorrow",
+            "£800.00 goes out on 10 November.", "Bills");
+        Notification hidden = new(Guid.NewGuid(), NotificationKind.BillDueSoon, "key", "Rent is due tomorrow",
+            "£800.00 goes out on 10 November.", "Bills", inApp: false);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(shown.InApp).IsTrue();
+            await Assert.That(hidden.InApp).IsFalse();
+        }
+    }
+
+    [Test]
     [Arguments(null)]
     [Arguments("")]
     [Arguments("  ")]

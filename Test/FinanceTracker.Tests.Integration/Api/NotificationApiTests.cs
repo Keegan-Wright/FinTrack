@@ -77,8 +77,10 @@ public class NotificationApiTests : IntegrationTestBase
 
         // Act
         NotificationSettings atFirst = await service.GetSettingsAsync(CancellationToken);
-        await service.ChangeSettingsAsync(new ChangeNotificationSettings { Emailed = [NotificationKind.SyncFailed], Webhooked = [] },
-            CancellationToken);
+        await service.ChangeSettingsAsync(new ChangeNotificationSettings
+        {
+            InApp = Enum.GetValues<NotificationKind>(), Emailed = [NotificationKind.SyncFailed], Webhooked = []
+        }, CancellationToken);
         NotificationSettings after = await ApiFor(user).Get<INotificationsService>().GetSettingsAsync(CancellationToken);
 
         // Assert, the AppHost's mail catcher means email is available
@@ -138,6 +140,50 @@ public class NotificationApiTests : IntegrationTestBase
             await Assert.That(body.RootElement.GetProperty("event").GetString()).IsEqualTo("test");
             await Assert.That(settings!.LastWebhook!.Sent).IsTrue();
         }
+    }
+
+    [Test]
+    public async Task Alerts_ChangedThroughTheApi_AreKept()
+    {
+        // Arrange
+        SignedInUser user = await RegisterUserAsync();
+        INotificationsService service = ApiFor(user).Get<INotificationsService>();
+
+        // Act
+        NotificationSettings atFirst = await service.GetSettingsAsync(CancellationToken);
+        await service.ChangeAlertsAsync(new ChangeAlertSettings
+        {
+            BudgetWarningPercent = 90, BillReminderDays = 7, LargeTransactionOver = 250m
+        }, CancellationToken);
+        NotificationSettings after = await ApiFor(user).Get<INotificationsService>().GetSettingsAsync(CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(atFirst.BudgetWarningPercent).IsEqualTo(80);
+            await Assert.That(atFirst.BillReminderDays).IsEqualTo(3);
+            await Assert.That(atFirst.LargeTransactionOver).IsNull();
+            await Assert.That(after.BudgetWarningPercent).IsEqualTo(90);
+            await Assert.That(after.BillReminderDays).IsEqualTo(7);
+            await Assert.That(after.LargeTransactionOver).IsEqualTo(250m);
+        }
+    }
+
+    [Test]
+    public async Task Alerts_NoDaysBeforeABill_IsRefused()
+    {
+        // Arrange
+        SignedInUser user = await RegisterUserAsync();
+
+        // Act
+        HttpRequestException? exception = await Assert.ThrowsAsync<HttpRequestException>(() =>
+            ApiFor(user).Get<INotificationsService>().ChangeAlertsAsync(new ChangeAlertSettings
+            {
+                BudgetWarningPercent = 80, BillReminderDays = 0
+            }, CancellationToken));
+
+        // Assert
+        await Assert.That(exception!.StatusCode).IsEqualTo(System.Net.HttpStatusCode.BadRequest);
     }
 
     [Test]

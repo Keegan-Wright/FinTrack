@@ -7,14 +7,20 @@ using FinanceTracker.Generated.Enums;
 namespace FinanceTracker.Infrastructure.Notifications.Webhooks;
 
 /// <summary>
-/// <see cref="IWebhookSender"/> over one long lived client on <see cref="WebhookHttp"/>'s handler. Not one from
-/// the app's client factory. Those retry, which would keep a test from the page waiting, and the receiver may not
-/// expect a repeat.
+/// <see cref="IWebhookSender"/> over the app's client factory, a fresh client each post from the
+/// <see cref="ClientName"/> client. That client goes through <see cref="WebhookHttp"/>'s handler and doesn't retry, as
+/// a retry would keep a test from the page waiting and the receiver may not expect a repeat, see
+/// <c>AddWebhookClient</c>.
 /// </summary>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Singleton<IWebhookSender>]
-public sealed class WebhookSender : IWebhookSender, IDisposable
+public sealed class WebhookSender : IWebhookSender
 {
+    /// <summary>
+    /// The factory's client for webhooks.
+    /// </summary>
+    public const string ClientName = "webhooks";
+
     public const string EventHeader = "X-FinTrack-Event";
     public const string DeliveryHeader = "X-FinTrack-Delivery";
     public const string TimestampHeader = "X-FinTrack-Timestamp";
@@ -25,18 +31,12 @@ public sealed class WebhookSender : IWebhookSender, IDisposable
     /// </summary>
     public static readonly TimeSpan Timeout = TimeSpan.FromSeconds(10);
 
-    private readonly HttpClient _client;
+    private readonly IHttpClientFactory _clientFactory;
     private readonly TimeProvider _timeProvider;
 
-    public WebhookSender(WebhookSettings settings, TimeProvider timeProvider)
-        : this(WebhookHttp.CreateHandler(settings), timeProvider)
+    public WebhookSender(IHttpClientFactory clientFactory, TimeProvider timeProvider)
     {
-    }
-
-    /// <param name="handler">What posts go through, the sender disposes of it.</param>
-    internal WebhookSender(HttpMessageHandler handler, TimeProvider timeProvider)
-    {
-        _client = new HttpClient(handler) { Timeout = Timeout };
+        _clientFactory = clientFactory;
         _timeProvider = timeProvider;
     }
 
@@ -57,12 +57,11 @@ public sealed class WebhookSender : IWebhookSender, IDisposable
         request.Headers.Add(TimestampHeader, timestamp.ToString(CultureInfo.InvariantCulture));
         request.Headers.Add(SignatureHeader, WebhookSignature.Sign(secret, timestamp, body));
 
-        using HttpResponseMessage response = await _client.SendAsync(request, cancellationToken);
+        using HttpClient client = _clientFactory.CreateClient(ClientName);
+        using HttpResponseMessage response = await client.SendAsync(request, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
             throw new WebhookRejectedException(response.StatusCode);
         }
     }
-
-    public void Dispose() => _client.Dispose();
 }

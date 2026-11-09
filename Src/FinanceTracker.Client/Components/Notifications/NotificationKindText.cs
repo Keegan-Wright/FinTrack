@@ -21,6 +21,13 @@ public static class NotificationKindText
         NotificationKind.ConsentEndingSoon => "A bank's access ending soon",
         NotificationKind.ConsentEnded => "A bank's access having ended",
         NotificationKind.SyncFailed => "A bank failing to sync",
+        NotificationKind.BillLate => "A bill going unpaid",
+        NotificationKind.BillChanged => "A bill costing a different amount",
+        NotificationKind.BillDueSoon => "A bill coming up",
+        NotificationKind.BudgetNearLimit => "A budget nearing its limit",
+        NotificationKind.BudgetOverLimit => "A budget going over",
+        NotificationKind.LargeTransaction => "A large payment",
+        NotificationKind.LowBalance => "An account running low",
         _ => kind.ToString()
     };
 
@@ -29,6 +36,13 @@ public static class NotificationKindText
         NotificationKind.ConsentEndingSoon => Icons.Material.Outlined.HourglassBottom,
         NotificationKind.ConsentEnded => Icons.Material.Outlined.LinkOff,
         NotificationKind.SyncFailed => Icons.Material.Outlined.SyncProblem,
+        NotificationKind.BillLate => Icons.Material.Outlined.EventBusy,
+        NotificationKind.BillChanged => Icons.Material.Outlined.PriceChange,
+        NotificationKind.BillDueSoon => Icons.Material.Outlined.Event,
+        NotificationKind.BudgetNearLimit => Icons.Material.Outlined.DataUsage,
+        NotificationKind.BudgetOverLimit => Icons.Material.Outlined.MoneyOff,
+        NotificationKind.LargeTransaction => Icons.Material.Outlined.Payments,
+        NotificationKind.LowBalance => Icons.Material.Outlined.AccountBalanceWallet,
         _ => Icons.Material.Outlined.Notifications
     };
 }

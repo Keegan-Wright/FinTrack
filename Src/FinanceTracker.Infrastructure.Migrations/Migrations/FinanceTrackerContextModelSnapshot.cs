@@ -587,6 +587,9 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.Property<DateTime>("Created")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<bool>("InApp")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Key")
                         .IsRequired()
                         .HasColumnType("text");
@@ -639,8 +642,18 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
 
+                    b.Property<int>("BillReminderDays")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("BudgetWarningPercent")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime>("Created")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LargeTransactionOver")
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
 
                     b.Property<DateTime?>("LastEmailAt")
                         .HasColumnType("timestamp with time zone");
@@ -657,6 +670,10 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                         .HasColumnType("character varying(200)");
 
                     b.PrimitiveCollection<int[]>("NotEmailed")
+                        .IsRequired()
+                        .HasColumnType("integer[]");
+
+                    b.PrimitiveCollection<int[]>("NotInApp")
                         .IsRequired()
                         .HasColumnType("integer[]");
 
@@ -1749,6 +1766,35 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.OwnsMany("FinanceTracker.Domain.Notifications.LowBalanceAlert", "LowBalanceAlerts", b1 =>
+                        {
+                            b1.Property<Guid>("NotificationSettingsId");
+
+                            b1.Property<int>("__synthesizedOrdinal")
+                                .ValueGeneratedOnAdd();
+
+                            b1.Property<Guid>("AccountId");
+
+                            b1.Property<string>("Below")
+                                .IsRequired()
+                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                            b1.Property<DateTime?>("LowSince");
+
+                            b1.HasKey("NotificationSettingsId", "__synthesizedOrdinal");
+
+                            b1.ToTable("NotificationSettings");
+
+                            b1
+                                .ToJson("LowBalanceAlerts")
+                                .HasColumnType("jsonb");
+
+                            b1.WithOwner()
+                                .HasForeignKey("NotificationSettingsId");
+                        });
+
+                    b.Navigation("LowBalanceAlerts");
                 });
 
             modelBuilder.Entity("FinanceTracker.Domain.OpenBanking.Accounts.BankAccount", b =>

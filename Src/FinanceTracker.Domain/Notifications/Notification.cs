@@ -19,8 +19,11 @@ public sealed class Notification : AggregateRoot
 
     /// <param name="key">Which event this is, e.g. a connection and the date its consent ends.</param>
     /// <param name="link">Where in the app to deal with it, relative to the app, null for nowhere.</param>
+    /// <param name="inApp">Whether it shows under the bell, false when the user only wants that kind sent
+    /// elsewhere.</param>
     /// <exception cref="ArgumentException">The key, title or message is blank.</exception>
-    public Notification(Guid userId, NotificationKind kind, string key, string title, string message, string? link)
+    public Notification(Guid userId, NotificationKind kind, string key, string title, string message, string? link,
+        bool inApp = true)
         : base(userId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
@@ -28,6 +31,7 @@ public sealed class Notification : AggregateRoot
         Key = key;
         Reword(title, message);
         Link = string.IsNullOrWhiteSpace(link) ? null : link.Trim();
+        InApp = inApp;
     }
 
     public NotificationKind Kind { get; private set; }
@@ -52,6 +56,12 @@ public sealed class Notification : AggregateRoot
     public DateTime? ReadAt { get; private set; }
 
     public bool IsRead => ReadAt is not null;
+
+    /// <summary>
+    /// Whether it shows under the bell and on the Notifications page. One that doesn't is kept only so its event
+    /// isn't raised again, see <see cref="Key"/>, after it was sent to the user's other channels.
+    /// </summary>
+    public bool InApp { get; private set; }
 
     /// <summary>
     /// Marks it read, keeping when it was first read.

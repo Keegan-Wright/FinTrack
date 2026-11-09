@@ -1,6 +1,6 @@
 @page "/Notifications"
-@* What FinTrack has told the user about, newest first, and where else each kind goes: email and their webhook.
-   Every notification shows here and under the app bar's bell whatever those settings say. *@
+@* What FinTrack has notified the user of, newest first, as under the app bar's bell. Where they go and when is on
+   the settings page. *@
 @using System.Globalization
 @using FinanceTracker.Client.Components.Notifications
 @using FinanceTracker.Contracts.Notifications
@@ -15,6 +15,8 @@
 <PageTitle>FinTrack - Notifications</PageTitle>
 <PageHeader Title="Notifications" Subtitle="@Subtitle">
     <Actions>
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Settings"
+                   Href="Notifications/Settings">Settings</MudButton>
         <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.DoneAll"
                    Disabled="@(UnreadCount == 0)" OnClick="@MarkAllReadAsync">Mark all as read</MudButton>
     </Actions>
@@ -25,7 +27,8 @@
         @if (Items is null or { Count: 0 })
         {
             <MudText Typo="Typo.body2" Class="mud-text-secondary">
-                Nothing yet. FinTrack tells you here when a bank's access is about to end or a sync fails.
+                Nothing yet. You're notified here when a bank's access is about to end, a sync fails, a bill or
+                budget needs a look, or money runs low.
             </MudText>
         }
         else
@@ -68,96 +71,6 @@
             </div>
         }
     </Section>
-
-    <Section Title="Send them to" Caption="Everything shows here too">
-        @if (Settings is null)
-        {
-            <MudText Typo="Typo.body2" Class="mud-text-secondary">Your settings couldn't be loaded.</MudText>
-        }
-        else if (!CanEmail && Settings.WebhookUrl is null)
-        {
-            <MudText Typo="Typo.body2" Class="mud-text-secondary">
-                Nowhere else yet. Set up a webhook below to have them posted there too.
-            </MudText>
-        }
-        else
-        {
-            <table class="ft-channels">
-                <thead>
-                <tr>
-                    <th scope="col">Notification</th>
-                    @if (CanEmail)
-                    {
-                        <th scope="col">Email</th>
-                    }
-                    @if (Settings.WebhookUrl is not null)
-                    {
-                        <th scope="col">Webhook</th>
-                    }
-                </tr>
-                </thead>
-                <tbody>
-                @foreach (NotificationKind kind in NotificationKindText.All)
-                {
-                    <tr>
-                        <th scope="row">@NotificationKindText.Label(kind)</th>
-                        @if (CanEmail)
-                        {
-                            <td>
-                                <MudCheckBox T="bool" Value="@Settings.Emailed.Contains(kind)" Color="Color.Primary"
-                                             AriaLabel="@($"Email: {NotificationKindText.Label(kind)}")"
-                                             ValueChanged="@(on => ChangeSentAsync(kind, on, Settings.Webhooked.Contains(kind)))"/>
-                            </td>
-                        }
-                        @if (Settings.WebhookUrl is not null)
-                        {
-                            <td>
-                                <MudCheckBox T="bool" Value="@Settings.Webhooked.Contains(kind)" Color="Color.Primary"
-                                             AriaLabel="@($"Webhook: {NotificationKindText.Label(kind)}")"
-                                             ValueChanged="@(on => ChangeSentAsync(kind, Settings.Emailed.Contains(kind), on))"/>
-                            </td>
-                        }
-                    </tr>
-                }
-                </tbody>
-            </table>
-        }
-    </Section>
-
-    <Section Title="Email" Caption="@EmailCaption">
-        @if (Settings is null)
-        {
-            <MudText Typo="Typo.body2" Class="mud-text-secondary">Your settings couldn't be loaded.</MudText>
-        }
-        else if (!Settings.EmailAvailable)
-        {
-            <MudText Typo="Typo.body2" Class="mud-text-secondary">
-                Email isn't set up on this FinTrack. Whoever runs it can add a mail server to send them.
-            </MudText>
-        }
-        else if (Settings.EmailAddress is null)
-        {
-            <MudText Typo="Typo.body2" Class="mud-text-secondary">
-                Your account has no email address, so they can't be emailed.
-            </MudText>
-        }
-        else
-        {
-            <div class="ft-notification-test">
-                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Send"
-                           Disabled="@_sendingTest" OnClick="@SendTestEmailAsync">Send a test email</MudButton>
-                @if (Settings.LastEmail is { } last)
-                {
-                    <DeliveryStatusText Status="@last" What="email"/>
-                }
-            </div>
-        }
-    </Section>
-
-    @if (Settings is not null)
-    {
-        <WebhookSection Settings="@Settings" SettingsChanged="@(changed => Settings = changed)"/>
-    }
 </div>
 
 @code {
@@ -172,11 +85,6 @@
     /// </summary>
     [PersistentState]
     public List<Notification>? Items { get; set; }
-
-    [PersistentState]
-    public NotificationSettings? Settings { get; set; }
-
-    private bool _sendingTest;
 
     private int UnreadCount => Items?.Count(static x => !x.IsRead) ?? 0;
 
@@ -193,29 +101,12 @@
         }
     }
 
-    private bool CanEmail => Settings is { EmailAvailable: true, EmailAddress: not null };
-
-    private string? EmailCaption
-    {
-        get
-        {
-            if (CanEmail)
-            {
-                return $"Sent to {Settings!.EmailAddress}";
-            }
-
-            return null;
-        }
-    }
-
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
         Items = await LoadOnceAsync(Items, "Loading your notifications", cancellationToken =>
             NotificationsService.GetNotificationsAsync(Shown, cancellationToken).ToListAsync(cancellationToken)
                 .AsTask());
-        Settings = await LoadOnceAsync(Settings, "Loading your notifications",
-            cancellationToken => NotificationsService.GetSettingsAsync(cancellationToken));
     }
 
     /// <summary>
@@ -288,75 +179,6 @@
         catch (Exception) when (!_cts.IsCancellationRequested)
         {
             Snackbar.Add("Couldn't mark them as read, try again", Severity.Error);
-        }
-    }
-
-    /// <summary>
-    /// Sends <paramref name="kind"/> by email and to the webhook as asked, the other kinds as they were.
-    /// </summary>
-    internal async Task ChangeSentAsync(NotificationKind kind, bool emailed, bool webhooked)
-    {
-        if (Settings is null)
-        {
-            return;
-        }
-
-        try
-        {
-            Settings = await NotificationsService.ChangeSettingsAsync(new ChangeNotificationSettings
-            {
-                Emailed = WithOrWithout(Settings.Emailed, kind, emailed),
-                Webhooked = WithOrWithout(Settings.Webhooked, kind, webhooked)
-            }, _cts.Token);
-        }
-        catch (Exception) when (!_cts.IsCancellationRequested)
-        {
-            Snackbar.Add("Couldn't save that, try again", Severity.Error);
-        }
-    }
-
-    private static List<NotificationKind> WithOrWithout(IEnumerable<NotificationKind> kinds, NotificationKind kind,
-        bool with)
-    {
-        List<NotificationKind> changed = kinds.Where(x => x != kind).ToList();
-        if (with)
-        {
-            changed.Add(kind);
-        }
-
-        return changed;
-    }
-
-    internal async Task SendTestEmailAsync()
-    {
-        _sendingTest = true;
-        try
-        {
-            NotificationSettings? settings = await NotificationsService.SendTestEmailAsync(_cts.Token);
-            if (settings is null)
-            {
-                // Email stopped being possible since the page loaded, the section says why once reloaded
-                Settings = await NotificationsService.GetSettingsAsync(_cts.Token);
-                return;
-            }
-
-            Settings = settings;
-            if (settings.LastEmail is { Sent: true })
-            {
-                Snackbar.Add($"Test email sent to {settings.EmailAddress}", Severity.Success);
-            }
-            else
-            {
-                Snackbar.Add("Couldn't send the test email", Severity.Error);
-            }
-        }
-        catch (Exception) when (!_cts.IsCancellationRequested)
-        {
-            Snackbar.Add("Couldn't send the test email, try again", Severity.Error);
-        }
-        finally
-        {
-            _sendingTest = false;
         }
     }
 

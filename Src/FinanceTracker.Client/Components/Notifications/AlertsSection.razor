@@ -1,0 +1,265 @@
+@* When budgets, bills, large payments and low balances are notified. Whether each kind is notified at all, and
+   where, is chosen in the What and where tab. *@
+@using System.Globalization
+@using FinanceTracker.Client.Extensions
+@using FinanceTracker.Contracts.Notifications
+@using FluentValidation
+@using Severity = MudBlazor.Severity
+@implements IDisposable
+@inject INotificationsService NotificationsService
+@inject IValidator<ChangeAlertSettings> Validator
+@inject ISnackbar Snackbar
+
+<Section>
+    <MudForm @ref="_form" Model="@_model">
+        <div class="ft-alerts">
+            <div class="ft-alerts__row">
+                <div>
+                    <MudText Typo="Typo.subtitle2" HtmlTag="h3">Budgets</MudText>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        Get notified when a budget's spending this month reaches this share of what it has. You're
+                        always notified when one goes over.
+                    </MudText>
+                </div>
+                <MudTextField T="int" @bind-Value="_model.BudgetWarningPercent" Label="Notify at"
+                              For="@(() => _model.BudgetWarningPercent)" InputMode="InputMode.numeric"
+                              Adornment="Adornment.End" AdornmentText="%" Immediate="true"
+                              Validation="@(Validator.ValidateValue(_model, nameof(ChangeAlertSettings.BudgetWarningPercent)))"/>
+            </div>
+
+            <div class="ft-alerts__row">
+                <div>
+                    <MudText Typo="Typo.subtitle2" HtmlTag="h3">Bill reminders</MudText>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        Get reminded before a bill is due, and warned when its account won't cover it.
+                    </MudText>
+                </div>
+                <MudTextField T="int" @bind-Value="_model.BillReminderDays" Label="Remind me"
+                              For="@(() => _model.BillReminderDays)" InputMode="InputMode.numeric"
+                              Adornment="Adornment.End" AdornmentText="days before" Immediate="true"
+                              Validation="@(Validator.ValidateValue(_model, nameof(ChangeAlertSettings.BillReminderDays)))"/>
+            </div>
+
+            <div class="ft-alerts__row">
+                <div>
+                    <MudText Typo="Typo.subtitle2" HtmlTag="h3">Large payments</MudText>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        Get notified of any payment out of this amount or more. Moving money between your own accounts
+                        doesn't count.
+                    </MudText>
+                </div>
+                <div class="ft-alerts__large">
+                    <MudSwitch T="bool" Value="@_largeOn" ValueChanged="@OnLargeChanged" Color="Color.Primary"
+                               Label="Notify me"/>
+                    @if (_largeOn)
+                    {
+                        <MudTextField T="decimal?" @bind-Value="_model.LargeTransactionOver" Label="Payments of"
+                                      For="@(() => _model.LargeTransactionOver)" InputMode="@(InputMode.@decimal)"
+                                      Adornment="Adornment.Start" AdornmentText="@CurrencySymbol" Immediate="true"
+                                      Required="true" RequiredError="Enter an amount"
+                                      Validation="@(Validator.ValidateValue(_model, nameof(ChangeAlertSettings.LargeTransactionOver)))"/>
+                    }
+                </div>
+            </div>
+
+            <div class="ft-alerts__low">
+                <MudText Typo="Typo.subtitle2" HtmlTag="h3">Low balance</MudText>
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                    Get notified when an account's available balance drops below an amount. For a card, that's the
+                    credit left.
+                </MudText>
+
+                @if (Settings.LowBalance.Count == 0)
+                {
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        Connect a bank to add alerts for its accounts.
+                    </MudText>
+                }
+                else
+                {
+                    @foreach (LowBalanceThreshold threshold in _model.LowBalance)
+                    {
+                        <div class="ft-alerts__account">
+                            <MudText Typo="Typo.body2" Class="ft-alerts__account-name">
+                                @AccountName(threshold.AccountId)
+                            </MudText>
+                            <MudTextField T="decimal" @bind-Value="threshold.Below" Label="Below"
+                                          For="@(() => threshold.Below)" InputMode="@(InputMode.@decimal)"
+                                          Adornment="Adornment.Start" AdornmentText="@CurrencySymbol"
+                                          Immediate="true" Class="ft-alerts__amount"/>
+                            <MudTooltip Text="Remove">
+                                <MudIconButton Icon="@Icons.Material.Outlined.Delete" Size="Size.Small"
+                                               aria-label="@($"Remove the alert for {AccountName(threshold.AccountId)}")"
+                                               OnClick="@(() => _model.LowBalance.Remove(threshold))"/>
+                            </MudTooltip>
+                        </div>
+                    }
+
+                    @if (Unwatched.Count > 0)
+                    {
+                        <div>
+                            <MudMenu Label="Add an alert" StartIcon="@Icons.Material.Outlined.Add"
+                                     Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small">
+                                @foreach (AccountLowBalance account in Unwatched)
+                                {
+                                    <MudMenuItem OnClick="@(() => Watch(account.AccountId))">@account.AccountName</MudMenuItem>
+                                }
+                            </MudMenu>
+                        </div>
+                    }
+                }
+            </div>
+
+            <div>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(_busy || !Changed)"
+                           OnClick="@SaveAsync">Save alerts</MudButton>
+            </div>
+        </div>
+    </MudForm>
+</Section>
+
+@code {
+
+    [Parameter, EditorRequired]
+    public required NotificationSettings Settings { get; set; }
+
+    /// <summary>
+    /// The settings after saving here, for the page to show.
+    /// </summary>
+    [Parameter]
+    public EventCallback<NotificationSettings> SettingsChanged { get; set; }
+
+    private readonly CancellationTokenSource _cts = new();
+    private ChangeAlertSettings _model = new();
+    private NotificationSettings? _shown;
+    private MudForm _form = null!;
+    private bool _largeOn;
+    private decimal? _largeWhenOff;
+    private bool _busy;
+
+    private static string CurrencySymbol => CultureInfo.CurrentCulture.NumberFormat.CurrencySymbol;
+
+    /// <summary>
+    /// Whether anything differs from what's saved.
+    /// </summary>
+    private bool Changed => _largeOn != (Settings.LargeTransactionOver is not null)
+                            || !SameAs(_model, FromSettings(Settings));
+
+    /// <summary>
+    /// The user's accounts without an alert, which can have one added.
+    /// </summary>
+    private List<AccountLowBalance> Unwatched => Settings.LowBalance
+        .Where(account => !_model.LowBalance.Exists(x => x.AccountId == account.AccountId))
+        .ToList();
+
+    protected override void OnParametersSet()
+    {
+        // The fields follow the saved settings when they change, leaving what the user is typing otherwise
+        if (!ReferenceEquals(_shown, Settings))
+        {
+            _shown = Settings;
+            _model = FromSettings(Settings);
+            _largeOn = Settings.LargeTransactionOver is not null;
+        }
+    }
+
+    /// <summary>
+    /// Shows the amount when turned on, with what it was before it was turned off.
+    /// </summary>
+    private void OnLargeChanged(bool on)
+    {
+        _largeOn = on;
+        if (on)
+        {
+            _model.LargeTransactionOver ??= _largeWhenOff;
+            return;
+        }
+
+        _largeWhenOff = _model.LargeTransactionOver;
+        _model.LargeTransactionOver = null;
+    }
+
+    private void Watch(Guid accountId) =>
+        _model.LowBalance.Add(new LowBalanceThreshold { AccountId = accountId, Below = 0m });
+
+    internal async Task SaveAsync()
+    {
+        await _form.ValidateAsync();
+        if (!_form.IsValid)
+        {
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            NotificationSettings settings = await NotificationsService.ChangeAlertsAsync(_model, _cts.Token);
+            Settings = settings;
+            await SettingsChanged.InvokeAsync(settings);
+            Snackbar.Add("Alerts saved", Severity.Success);
+        }
+        catch (Exception) when (!_cts.IsCancellationRequested)
+        {
+            Snackbar.Add("Couldn't save the alerts, try again", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private string AccountName(Guid accountId) =>
+        Settings.LowBalance.FirstOrDefault(x => x.AccountId == accountId)?.AccountName ?? "Account";
+
+    /// <summary>
+    /// The settings as the form edits them, only the accounts with an alert.
+    /// </summary>
+    private static ChangeAlertSettings FromSettings(NotificationSettings settings)
+    {
+        List<LowBalanceThreshold> watched = [];
+        foreach (AccountLowBalance account in settings.LowBalance)
+        {
+            if (account.Below is { } below)
+            {
+                watched.Add(new LowBalanceThreshold { AccountId = account.AccountId, Below = below });
+            }
+        }
+
+        return new ChangeAlertSettings
+        {
+            BudgetWarningPercent = settings.BudgetWarningPercent,
+            BillReminderDays = settings.BillReminderDays,
+            LargeTransactionOver = settings.LargeTransactionOver,
+            LowBalance = watched
+        };
+    }
+
+    private static bool SameAs(ChangeAlertSettings left, ChangeAlertSettings right)
+    {
+        if (left.BudgetWarningPercent != right.BudgetWarningPercent
+            || left.BillReminderDays != right.BillReminderDays
+            || left.LargeTransactionOver != right.LargeTransactionOver
+            || left.LowBalance.Count != right.LowBalance.Count)
+        {
+            return false;
+        }
+
+        for (int index = 0; index < left.LowBalance.Count; index++)
+        {
+            if (left.LowBalance[index].AccountId != right.LowBalance[index].AccountId
+                || left.LowBalance[index].Below != right.LowBalance[index].Below)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public void Dispose()
+    {
+        _cts.Cancel();
+        _cts.Dispose();
+    }
+
+}

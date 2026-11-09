@@ -60,19 +60,20 @@ public class NotificationFlowTests : UiTestBase
         // Arrange
         SignedInUser user = await RegisterSeededUserAsync();
         IPage page = await OpenAsync(ScreenSize.Phone, user);
-        await GoToAsync(page, "/Notifications");
+        await GoToAsync(page, "/Notifications/Settings");
         await WaitUntilLoadedAsync(page);
         ILocator syncFailures = page.GetByRole(AriaRole.Checkbox, new PageGetByRoleOptions
         {
             Name = "Email: A bank failing to sync", Exact = true
         });
         await Assertions.Expect(syncFailures.First).ToBeCheckedAsync();
-        await Assertions.Expect(page.GetByText($"Sent to {user.Username}@fintrack.test")).ToBeVisibleAsync();
 
-        // Act
-        await syncFailures.First.ClickAsync();
+        // Act, waiting for it to be saved, as the box unticks before that
+        await page.RunAndWaitForResponseAsync(() => syncFailures.First.ClickAsync(),
+            static response => response.Url.EndsWith("/notifications/settings", StringComparison.OrdinalIgnoreCase)
+                               && response.Request.Method == "PUT");
         await Assertions.Expect(syncFailures.First).Not.ToBeCheckedAsync();
-        await GoToAsync(page, "/Notifications");
+        await GoToAsync(page, "/Notifications/Settings");
         await WaitUntilLoadedAsync(page);
 
         // Assert

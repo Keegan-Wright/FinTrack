@@ -29,16 +29,23 @@ public interface INotificationsService
     Task MarkAllReadAsync(CancellationToken cancellationToken);
 
     /// <summary>
-    /// Which kinds the user has emailed, where to, and whether email can be sent at all.
+    /// Where each kind goes, whether email can be sent at all, and when alerts are said.
     /// </summary>
     Task<NotificationSettings> GetSettingsAsync(CancellationToken cancellationToken);
 
     /// <summary>
-    /// Emails the kinds in <paramref name="settings"/> from now on and no others.
+    /// Shows, emails and posts the kinds in <paramref name="settings"/> from now on and no others.
     /// </summary>
     /// <returns>The settings as they are now.</returns>
     Task<NotificationSettings> ChangeSettingsAsync(ChangeNotificationSettings settings,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Says budgets, bills, large transactions and low balances as <paramref name="alerts"/> asks from now on.
+    /// Accounts that aren't the user's are passed over.
+    /// </summary>
+    /// <returns>The settings as they are now.</returns>
+    Task<NotificationSettings> ChangeAlertsAsync(ChangeAlertSettings alerts, CancellationToken cancellationToken);
 
     /// <summary>
     /// Emails the user a test, so they see email works and how it looks. Recorded as their last email whether it

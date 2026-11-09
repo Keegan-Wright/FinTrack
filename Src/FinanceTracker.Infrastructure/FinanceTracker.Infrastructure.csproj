@@ -32,7 +32,7 @@
       <EmbeddedResource Include="Exports\Pdf\Fonts\*.ttf" LogicalName="Fonts.%(Filename)%(Extension)"/>
     </ItemGroup>
 
-    <!-- For the webhook sender over a test handler -->
+    <!-- For its unit tests, e.g. the internal helpers of reports and rules -->
     <ItemGroup>
       <InternalsVisibleTo Include="FinanceTracker.Tests.Unit.Infrastructure"/>
     </ItemGroup>

@@ -44,7 +44,20 @@ public sealed class Notifier : ServiceBase<Notifier>, INotifier
             return false;
         }
 
-        Notification notification = new(UserId, kind, key, title, message, link);
+        NotificationSettings? settings = await context.NotificationSettings.OwnedBy(UserId)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        bool inApp = NotificationSettings.IsInAppFor(settings, kind);
+        string? address = await AddressIfEmailedAsync(context, settings, kind, cancellationToken);
+        bool webhooked = settings is not null && settings.IsWebhooked(kind);
+
+        // Turned off everywhere, so it isn't raised.
+        if (!inApp && address is null && !webhooked)
+        {
+            return false;
+        }
+
+        Notification notification = new(UserId, kind, key, title, message, link, inApp);
         context.Notifications.Add(notification);
         try
         {
@@ -56,22 +69,24 @@ public sealed class Notifier : ServiceBase<Notifier>, INotifier
             return false;
         }
 
-        await _publisher.NotificationAddedAsync(UserId);
-        await SendOnAsync(context, notification, cancellationToken);
+        if (inApp)
+        {
+            await _publisher.NotificationAddedAsync(UserId);
+        }
+
+        await SendOnAsync(context, settings, notification, address, webhooked, cancellationToken);
         return true;
     }
 
     /// <summary>
     /// Emails it and posts it to their webhook, each when they want that kind sent there. A failure is logged, the
-    /// notification stands under the bell, and how each went is recorded for the Notifications page.
+    /// notification stands, and how each went is recorded for the Notifications page.
     /// </summary>
-    private async Task SendOnAsync(FinanceTrackerContext context, Notification notification,
-        CancellationToken cancellationToken)
+    /// <param name="address">Where to email it, null when it isn't emailed.</param>
+    /// <param name="webhooked">Whether to post it to their webhook.</param>
+    private async Task SendOnAsync(FinanceTrackerContext context, NotificationSettings? settings,
+        Notification notification, string? address, bool webhooked, CancellationToken cancellationToken)
     {
-        NotificationSettings? settings = await context.NotificationSettings.OwnedBy(UserId)
-            .SingleOrDefaultAsync(cancellationToken);
-
-        string? address = await AddressIfEmailedAsync(context, settings, notification.Kind, cancellationToken);
         if (address is not null)
         {
             string? emailFailure = await EmailAsync(notification, address, cancellationToken);
@@ -79,7 +94,8 @@ public sealed class Notifier : ServiceBase<Notifier>, INotifier
             settings.RecordEmail(_timeProvider.UtcNow, emailFailure);
         }
 
-        if (settings is not null && settings.IsWebhooked(notification.Kind))
+        // Only settings with a webhook post, see NotifyAsync
+        if (webhooked && settings is not null)
         {
             string? webhookFailure = await PostAsync(settings, notification, cancellationToken);
             settings.RecordWebhook(_timeProvider.UtcNow, webhookFailure);

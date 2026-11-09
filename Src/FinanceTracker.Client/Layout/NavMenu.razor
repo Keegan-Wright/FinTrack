@@ -63,15 +63,23 @@
                 }
             </span>
         </MudNavLink>
-        <MudNavLink Href="Notifications" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Notifications">
-            <span class="ft-nav__label">
-                Notifications
-                @if (UnreadNotifications > 0)
-                {
-                    <span class="ft-nav__count" aria-label="@($"{UnreadNotifications} unread")">@UnreadNotifications</span>
-                }
-            </span>
-        </MudNavLink>
+        @* Title as well as TitleContent: MudBlazor names the toggle button from it, so its name holds what it shows *@
+        <MudNavGroup Icon="@Icons.Material.Outlined.Notifications" Title="@NotificationsTitle"
+                     @bind-Expanded="_notificationsOpen">
+            <TitleContent>
+                <span class="ft-nav__label">
+                    Notifications
+                    @if (UnreadNotifications > 0)
+                    {
+                        <span class="ft-nav__count" aria-label="@($"{UnreadNotifications} unread")">@UnreadNotifications</span>
+                    }
+                </span>
+            </TitleContent>
+            <ChildContent>
+                <MudNavLink Href="@NotificationsPath" Match="NavLinkMatch.All">Recent</MudNavLink>
+                <MudNavLink Href="@NotificationSettingsPath" Match="NavLinkMatch.All">Settings</MudNavLink>
+            </ChildContent>
+        </MudNavGroup>
         <MudNavLink Href="HouseholdMembers" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.People">Household</MudNavLink>
         <MudNavLink Href="Classifications" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Sell">Tags</MudNavLink>
         <MudNavLink Href="Rules" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Rule">Rules</MudNavLink>
@@ -112,6 +120,29 @@
 
     internal const string TransfersReviewPath = "Review";
     internal const string SubscriptionsReviewPath = "Review/Subscriptions";
+    internal const string NotificationsPath = "Notifications";
+    internal const string NotificationSettingsPath = "Notifications/Settings";
+
+    /// <summary>
+    /// Whether the notifications group shows its pages, opened while on one of them.
+    /// </summary>
+    private bool _notificationsOpen;
+
+    /// <summary>
+    /// The notifications group's name, with the unread count it shows.
+    /// </summary>
+    private string NotificationsTitle
+    {
+        get
+        {
+            if (UnreadNotifications > 0)
+            {
+                return $"Notifications {UnreadNotifications} unread";
+            }
+
+            return "Notifications";
+        }
+    }
 
     private bool ShowTransfersReview => TransfersToReview > 0 || IsCurrentPage(TransfersReviewPath);
 
@@ -135,12 +166,26 @@
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
+        OpenNotificationsWhenOnThem();
         NavigationManager.LocationChanged += OnLocationChanged;
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
+        OpenNotificationsWhenOnThem();
         StateHasChanged();
+    }
+
+    /// <summary>
+    /// Opens the notifications group on one of its pages, so where the user is shows. Leaves it as they left it
+    /// elsewhere.
+    /// </summary>
+    private void OpenNotificationsWhenOnThem()
+    {
+        if (IsCurrentPage(NotificationsPath) || IsCurrentPage(NotificationSettingsPath))
+        {
+            _notificationsOpen = true;
+        }
     }
 
     public void Dispose()

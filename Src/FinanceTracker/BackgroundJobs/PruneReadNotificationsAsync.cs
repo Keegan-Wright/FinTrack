@@ -8,7 +8,8 @@ namespace FinanceTracker.BackgroundJobs;
 
 /// <summary>
 /// Deletes every user's notifications they read longer ago than <see cref="NotificationRetention.ReadKeptFor"/>, so
-/// the list under the bell doesn't grow forever. Unread ones are kept however old they are.
+/// the list under the bell doesn't grow forever. Unread ones are kept however old they are. Ones that only went to
+/// email or a webhook are never read, so they go that long after they were raised.
 /// </summary>
 public class PruneReadNotificationsAsync : IJob
 {
@@ -31,9 +32,9 @@ public class PruneReadNotificationsAsync : IJob
 
         await using FinanceTrackerContext dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
 
-        DateTime readBefore = _timeProvider.UtcNow - NotificationRetention.ReadKeptFor;
+        DateTime before = _timeProvider.UtcNow - NotificationRetention.ReadKeptFor;
         int pruned = await dbContext.Notifications
-            .Where(x => x.ReadAt != null && x.ReadAt < readBefore)
+            .Where(x => (x.ReadAt != null && x.ReadAt < before) || (!x.InApp && x.Created < before))
             .ExecuteDeleteAsync(cancellationToken);
 
         activity?.AddEvent(new ActivityEvent($"Pruned {pruned} read notifications"));

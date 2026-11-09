@@ -21,7 +21,31 @@ public static class NotificationExtensions
             builder.Services.AddSingleton<INotificationPublisher, HubNotificationPublisher>();
 
             builder.Services.AddSingleton(builder.Configuration.GetWebhookSettings());
+            builder.Services.AddWebhookClient();
             return builder;
+        }
+    }
+
+    extension(IServiceCollection services)
+    {
+        /// <summary>
+        /// The client factory's <see cref="WebhookSender.ClientName"/> client: posts go through
+        /// <see cref="WebhookHttp"/>'s handler, which only connects where <see cref="WebhookSettings"/> allows, and
+        /// give up after <see cref="WebhookSender.Timeout"/>. Without the service defaults' retries, which would keep
+        /// a test from the page waiting and post again to a receiver that may not expect a repeat.
+        /// </summary>
+        public IHttpClientBuilder AddWebhookClient()
+        {
+            IHttpClientBuilder client = services.AddHttpClient(WebhookSender.ClientName,
+                    static http => http.Timeout = WebhookSender.Timeout)
+                .ConfigurePrimaryHttpMessageHandler(static provider =>
+                    WebhookHttp.CreateHandler(provider.GetRequiredService<WebhookSettings>()));
+
+#pragma warning disable EXTEXP0001 // Experimental, but the supported way to take the defaults' handler off one client
+            client.RemoveAllResilienceHandlers();
+#pragma warning restore EXTEXP0001
+
+            return client;
         }
     }
 

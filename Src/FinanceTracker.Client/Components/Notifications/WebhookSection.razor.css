@@ -23,3 +23,12 @@ code {
     font-size: 0.875em;
     overflow-wrap: anywhere;
 }
+
+/* The steps to check a signature, numbered, in the body text's size */
+.ft-webhook__check ol {
+    margin: 4px 0 0;
+    padding-inline-start: 24px;
+    color: var(--mud-palette-text-secondary);
+    font-size: .875rem;
+    line-height: 1.6;
+}

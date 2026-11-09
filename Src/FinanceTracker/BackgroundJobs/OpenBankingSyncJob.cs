@@ -119,6 +119,9 @@ public abstract class OpenBankingSyncJob
             // After today's snapshot, so newly connected accounts are worked back from it
             await RunAsOwnerAsync<IBalanceSnapshotService>(userId, "Backfilled balance history",
                 performingBackgroundSyncActivity, x => x.BackfillAsync(cancellationToken));
+
+            // Last, so they're told about bills, budgets, payments and balances as everything above left them
+            await NotifyOwnerAsync(userId, performingBackgroundSyncActivity, cancellationToken);
         }
 
         performingBackgroundSyncActivity?.AddEvent(new ActivityEvent("Background sync completed"));
@@ -143,6 +146,27 @@ public abstract class OpenBankingSyncJob
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
             activity?.AddException(ex);
+        }
+    }
+
+    /// <summary>
+    /// Runs every <see cref="ISyncNotices"/> as <paramref name="userId"/>. One failing is recorded on
+    /// <paramref name="activity"/> and the rest still run.
+    /// </summary>
+    private async Task NotifyOwnerAsync(Guid userId, Activity? activity, CancellationToken cancellationToken)
+    {
+        await using AsyncServiceScope scope = _scopeFactory.CreateUserScope(userId);
+        foreach (ISyncNotices notices in scope.ServiceProvider.GetServices<ISyncNotices>())
+        {
+            try
+            {
+                    await notices.NotifyAsync(cancellationToken);
+                activity?.AddEvent(new ActivityEvent($"Ran {notices.GetType().Name} for User {userId}"));
+            }
+            catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                activity?.AddException(ex);
+            }
         }
     }
 

@@ -1,5 +1,6 @@
 using FinanceTracker.Contracts;
 using FinanceTracker.Infrastructure;
+using FinanceTracker.Infrastructure.Notifications;
 using FinanceTracker.Infrastructure.OpenBanking;
 using FinanceTracker.Infrastructure.OpenBanking.Balances;
 using FinanceTracker.Infrastructure.OpenBanking.Transfers;
@@ -44,11 +45,20 @@ public abstract class OpenBankingSyncJobTestBase : InfrastructureTestBase
     /// </summary>
     private ICurrentUser? _rulesFor;
 
+    /// <summary>
+    /// The user of the scope a notices service was last resolved from.
+    /// </summary>
+    private ICurrentUser? _noticesFor;
+
     protected IOpenBankingSyncService OpenBankingService { get; } = Substitute.For<IOpenBankingSyncService>();
     protected ISyncNotifier SyncNotifier { get; } = Substitute.For<ISyncNotifier>();
     protected ITransferMatchingService TransferMatchingService { get; } = Substitute.For<ITransferMatchingService>();
     protected IBalanceSnapshotService BalanceSnapshotService { get; } = Substitute.For<IBalanceSnapshotService>();
     protected IRuleApplicationService RuleApplicationService { get; } = Substitute.For<IRuleApplicationService>();
+    protected ISyncNotices BillNotices { get; } = Substitute.For<ISyncNotices>();
+    protected ISyncNotices BudgetNotices { get; } = Substitute.For<ISyncNotices>();
+    protected ISyncNotices TransactionNotices { get; } = Substitute.For<ISyncNotices>();
+    protected ISyncNotices BalanceNotices { get; } = Substitute.For<ISyncNotices>();
     protected TimeProvider Clock { get; } = new FixedTimeProvider(Now);
 
     /// <summary>
@@ -81,6 +91,11 @@ public abstract class OpenBankingSyncJobTestBase : InfrastructureTestBase
     /// </summary>
     protected List<(Guid UserId, DateTime SyncedFrom, bool AlreadyMatched)> RulesApplied { get; } = [];
 
+    /// <summary>
+    /// Each user told of something, which notices told them, and whether their balances had been snapshot by then.
+    /// </summary>
+    protected List<(Guid UserId, string Notices, bool AfterSnapshot)> Told { get; } = [];
+
     [Before(Test)]
     public void SetupOpenBankingService()
     {
@@ -106,7 +121,16 @@ public abstract class OpenBankingSyncJobTestBase : InfrastructureTestBase
                 _rulesFor = sp.GetRequiredService<ICurrentUser>();
                 return RuleApplicationService;
             })
+            .AddScoped(sp => Resolved(sp, BillNotices))
+            .AddScoped(sp => Resolved(sp, BudgetNotices))
+            .AddScoped(sp => Resolved(sp, TransactionNotices))
+            .AddScoped(sp => Resolved(sp, BalanceNotices))
             .BuildServiceProvider();
+
+        BillNotices.When(x => x.NotifyAsync(Arg.Any<CancellationToken>())).Do(_ => RecordTold("bills"));
+        BudgetNotices.When(x => x.NotifyAsync(Arg.Any<CancellationToken>())).Do(_ => RecordTold("budgets"));
+        TransactionNotices.When(x => x.NotifyAsync(Arg.Any<CancellationToken>())).Do(_ => RecordTold("payments"));
+        BalanceNotices.When(x => x.NotifyAsync(Arg.Any<CancellationToken>())).Do(_ => RecordTold("balances"));
 
         BalanceSnapshotService
             .When(x => x.SnapshotAsync(Arg.Any<DateOnly>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>()))
@@ -152,6 +176,25 @@ public abstract class OpenBankingSyncJobTestBase : InfrastructureTestBase
                     Synced.Add((_resolvedFor.UserId, callInfo.Arg<Guid>()));
                 }
             });
+    }
+
+    /// <summary>
+    /// <paramref name="notices"/>, noting who the scope it's resolved from acts as.
+    /// </summary>
+    private T Resolved<T>(IServiceProvider services, T notices)
+    {
+        _noticesFor = services.GetRequiredService<ICurrentUser>();
+        return notices;
+    }
+
+    private void RecordTold(string notices)
+    {
+        // Arranging a substitute's behaviour calls it too, only record calls the job makes through a scope
+        if (_noticesFor is not null)
+        {
+            Guid userId = _noticesFor.UserId;
+            Told.Add((userId, notices, Snapshots.Any(x => x.UserId == userId)));
+        }
     }
 
     [After(Test)]

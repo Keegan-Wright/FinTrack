@@ -5,6 +5,8 @@ namespace FinanceTracker.Tests.Unit.Domain.Notifications;
 [Category("Domain")]
 public class NotificationSettingsTests
 {
+    private static readonly DateTime Now = new(2026, 11, 9, 12, 0, 0, DateTimeKind.Utc);
+
     [Test]
     public async Task NotificationSettings_New_EmailsEveryKind()
     {
@@ -85,7 +87,7 @@ public class NotificationSettingsTests
 
         // Assert, kept as turned off, so a kind added later is emailed until they turn it off too
         await Assert.That(settings.NotEmailed).IsEquivalentTo(
-            [NotificationKind.ConsentEndingSoon, NotificationKind.ConsentEnded]);
+            Enum.GetValues<NotificationKind>().Where(static x => x != NotificationKind.SyncFailed));
     }
 
     [Test]
@@ -204,6 +206,162 @@ public class NotificationSettingsTests
             await Assert.That(without.WebhookSecret).IsNull();
             await Assert.That(replacedWith).IsTrue();
             await Assert.That(with.WebhookSecret).IsEqualTo("secret-two");
+        }
+    }
+
+    [Test]
+    public async Task NotificationSettings_New_ShowsEveryKindAndStartsAlertsAtTheDefaults()
+    {
+        // Act
+        NotificationSettings settings = new(Guid.NewGuid());
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(settings.InApp).IsEquivalentTo(Enum.GetValues<NotificationKind>());
+            await Assert.That(settings.BudgetWarningPercent).IsEqualTo(80);
+            await Assert.That(settings.BillReminderDays).IsEqualTo(3);
+            await Assert.That(settings.LargeTransactionOver).IsNull();
+            await Assert.That(settings.LowBalanceAlerts).IsEmpty();
+        }
+    }
+
+    [Test]
+    public async Task ShowInAppOnly_SomeKinds_KeepsTheOthersAsTurnedOff()
+    {
+        // Arrange
+        NotificationSettings settings = new(Guid.NewGuid());
+
+        // Act
+        settings.ShowInAppOnly([NotificationKind.SyncFailed, NotificationKind.BillLate]);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(settings.InApp).IsEquivalentTo([NotificationKind.SyncFailed, NotificationKind.BillLate]);
+            await Assert.That(settings.IsInApp(NotificationKind.BillDueSoon)).IsFalse();
+            await Assert.That(NotificationSettings.IsInAppFor(null, NotificationKind.BillDueSoon)).IsTrue();
+        }
+    }
+
+    [Test]
+    public async Task ChangeAlerts_InRange_KeepsThem()
+    {
+        // Arrange
+        NotificationSettings settings = new(Guid.NewGuid());
+
+        // Act
+        settings.ChangeAlerts(95, 1, 500m);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(settings.BudgetWarningPercent).IsEqualTo(95);
+            await Assert.That(settings.BillReminderDays).IsEqualTo(1);
+            await Assert.That(settings.LargeTransactionOver).IsEqualTo(500m);
+        }
+    }
+
+    [Test]
+    [Arguments(0, 3, null)]
+    [Arguments(101, 3, null)]
+    [Arguments(80, 0, null)]
+    [Arguments(80, NotificationSettings.MostBillReminderDays + 1, null)]
+    [Arguments(80, 3, 0)]
+    public async Task ChangeAlerts_OutOfRange_IsRefused(int percent, int days, int? over)
+    {
+        // Arrange
+        NotificationSettings settings = new(Guid.NewGuid());
+
+        // Act, Assert
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+        {
+            settings.ChangeAlerts(percent, days, over);
+            return Task.CompletedTask;
+        });
+    }
+
+    [Test]
+    public async Task RecordBalance_GoesBelowThenStaysBelow_SaysSoOnce()
+    {
+        // Arrange
+        Guid account = Guid.NewGuid();
+        NotificationSettings settings = new(Guid.NewGuid());
+        settings.WatchBalances(new Dictionary<Guid, decimal> { [account] = 100m });
+
+        // Act
+        bool above = settings.RecordBalance(account, 150m, Now);
+        bool wentBelow = settings.RecordBalance(account, 80m, Now);
+        bool stillBelow = settings.RecordBalance(account, 50m, Now.AddHours(4));
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(above).IsFalse();
+            await Assert.That(wentBelow).IsTrue();
+            await Assert.That(stillBelow).IsFalse();
+            await Assert.That(settings.LowBalanceAlerts.Single().LowSince).IsEqualTo(Now);
+        }
+    }
+
+    [Test]
+    public async Task RecordBalance_BackAboveThenBelowAgain_SaysSoAgain()
+    {
+        // Arrange
+        Guid account = Guid.NewGuid();
+        NotificationSettings settings = new(Guid.NewGuid());
+        settings.WatchBalances(new Dictionary<Guid, decimal> { [account] = 100m });
+        settings.RecordBalance(account, 80m, Now);
+
+        // Act
+        bool backAbove = settings.RecordBalance(account, 100m, Now.AddDays(1));
+        bool belowAgain = settings.RecordBalance(account, 90m, Now.AddDays(2));
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(backAbove).IsFalse();
+            await Assert.That(belowAgain).IsTrue();
+            await Assert.That(settings.LowBalanceAlerts.Single().LowSince).IsEqualTo(Now.AddDays(2));
+        }
+    }
+
+    [Test]
+    public async Task RecordBalance_AccountNotWatched_SaysNothing()
+    {
+        // Arrange
+        NotificationSettings settings = new(Guid.NewGuid());
+
+        // Act
+        bool told = settings.RecordBalance(Guid.NewGuid(), -500m, Now);
+
+        // Assert
+        await Assert.That(told).IsFalse();
+    }
+
+    [Test]
+    public async Task WatchBalances_AmountChanged_ChecksAfreshButKeepsOneUnchanged()
+    {
+        // Arrange
+        Guid changed = Guid.NewGuid();
+        Guid unchanged = Guid.NewGuid();
+        Guid dropped = Guid.NewGuid();
+        NotificationSettings settings = new(Guid.NewGuid());
+        settings.WatchBalances(new Dictionary<Guid, decimal> { [changed] = 100m, [unchanged] = 50m, [dropped] = 10m });
+        settings.RecordBalance(changed, 80m, Now);
+        settings.RecordBalance(unchanged, 20m, Now);
+
+        // Act
+        settings.WatchBalances(new Dictionary<Guid, decimal> { [changed] = 70m, [unchanged] = 50m });
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(settings.LowBalanceAlerts.Select(static x => x.AccountId))
+                .IsEquivalentTo([changed, unchanged]);
+            await Assert.That(settings.LowBalanceAlerts.Single(x => x.AccountId == changed).LowSince).IsNull();
+            await Assert.That(settings.LowBalanceAlerts.Single(x => x.AccountId == unchanged).LowSince)
+                .IsEqualTo(Now);
         }
     }
 }

@@ -19,7 +19,6 @@ public static class WebhookHttp
             UseProxy = false,
             UseCookies = false,
             ConnectTimeout = TimeSpan.FromSeconds(5),
-            PooledConnectionLifetime = TimeSpan.FromMinutes(5),
             ConnectCallback = (context, cancellationToken) => ConnectAsync(context, settings, cancellationToken)
         };
     }

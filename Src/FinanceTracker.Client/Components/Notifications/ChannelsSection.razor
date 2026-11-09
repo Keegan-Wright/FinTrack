@@ -1,0 +1,132 @@
+@* Which kinds of notification go where, in the app, by email and to their webhook. A column only for a channel
+   that's set up, and a kind turned off in all of them isn't raised at all. *@
+@using FinanceTracker.Contracts.Notifications
+@implements IDisposable
+@inject INotificationsService NotificationsService
+@inject ISnackbar Snackbar
+
+<Section>
+    <div class="ft-stack">
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+            Choose where you're notified of each kind. Turn one off everywhere and you won't be notified of it at
+            all.
+        </MudText>
+        <table class="ft-channels">
+            <thead>
+            <tr>
+                <th scope="col">Notification</th>
+                <th scope="col">In app</th>
+                @if (CanEmail)
+                {
+                    <th scope="col">Email</th>
+                }
+                @if (HasWebhook)
+                {
+                    <th scope="col">Webhook</th>
+                }
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (NotificationKind kind in NotificationKindText.All)
+            {
+                <tr>
+                    <th scope="row">@NotificationKindText.Label(kind)</th>
+                    <td>
+                        <MudCheckBox T="bool" Value="@InApp(kind)" Color="Color.Primary"
+                                     AriaLabel="@($"In app: {NotificationKindText.Label(kind)}")"
+                                     ValueChanged="@(on => ChangeSentAsync(kind, on, Emailed(kind), Webhooked(kind)))"/>
+                    </td>
+                    @if (CanEmail)
+                    {
+                        <td>
+                            <MudCheckBox T="bool" Value="@Emailed(kind)" Color="Color.Primary"
+                                         AriaLabel="@($"Email: {NotificationKindText.Label(kind)}")"
+                                         ValueChanged="@(on => ChangeSentAsync(kind, InApp(kind), on, Webhooked(kind)))"/>
+                        </td>
+                    }
+                    @if (HasWebhook)
+                    {
+                        <td>
+                            <MudCheckBox T="bool" Value="@Webhooked(kind)" Color="Color.Primary"
+                                         AriaLabel="@($"Webhook: {NotificationKindText.Label(kind)}")"
+                                         ValueChanged="@(on => ChangeSentAsync(kind, InApp(kind), Emailed(kind), on))"/>
+                        </td>
+                    }
+                </tr>
+            }
+            </tbody>
+        </table>
+        @if (!CanEmail || !HasWebhook)
+        {
+            <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                Set up email or a webhook in their tabs to be notified there too.
+            </MudText>
+        }
+    </div>
+</Section>
+
+@code {
+
+    [Parameter, EditorRequired]
+    public required NotificationSettings Settings { get; set; }
+
+    /// <summary>
+    /// The settings after a change here, for the page to show.
+    /// </summary>
+    [Parameter]
+    public EventCallback<NotificationSettings> SettingsChanged { get; set; }
+
+    private readonly CancellationTokenSource _cts = new();
+
+    private bool CanEmail => Settings is { EmailAvailable: true, EmailAddress: not null };
+
+    private bool HasWebhook => Settings.WebhookUrl is not null;
+
+    private bool InApp(NotificationKind kind) => Settings.InApp.Contains(kind);
+
+    private bool Emailed(NotificationKind kind) => Settings.Emailed.Contains(kind);
+
+    private bool Webhooked(NotificationKind kind) => Settings.Webhooked.Contains(kind);
+
+    /// <summary>
+    /// Sends <paramref name="kind"/> where asked, the other kinds as they were.
+    /// </summary>
+    internal async Task ChangeSentAsync(NotificationKind kind, bool inApp, bool emailed, bool webhooked)
+    {
+        try
+        {
+            NotificationSettings settings = await NotificationsService.ChangeSettingsAsync(
+                new ChangeNotificationSettings
+                {
+                    InApp = WithOrWithout(Settings.InApp, kind, inApp),
+                    Emailed = WithOrWithout(Settings.Emailed, kind, emailed),
+                    Webhooked = WithOrWithout(Settings.Webhooked, kind, webhooked)
+                }, _cts.Token);
+            Settings = settings;
+            await SettingsChanged.InvokeAsync(settings);
+        }
+        catch (Exception) when (!_cts.IsCancellationRequested)
+        {
+            Snackbar.Add("Couldn't save that, try again", Severity.Error);
+        }
+    }
+
+    private static List<NotificationKind> WithOrWithout(IEnumerable<NotificationKind> kinds, NotificationKind kind,
+        bool with)
+    {
+        List<NotificationKind> changed = kinds.Where(x => x != kind).ToList();
+        if (with)
+        {
+            changed.Add(kind);
+        }
+
+        return changed;
+    }
+
+    public void Dispose()
+    {
+        _cts.Cancel();
+        _cts.Dispose();
+    }
+
+}

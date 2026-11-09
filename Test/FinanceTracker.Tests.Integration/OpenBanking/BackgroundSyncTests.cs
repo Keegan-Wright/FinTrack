@@ -2,6 +2,7 @@ using FinanceTracker.Contracts.Automation;
 using FinanceTracker.Contracts.Bills;
 using FinanceTracker.Contracts.Dashboard;
 using FinanceTracker.Contracts.Debts;
+using FinanceTracker.Contracts.Notifications;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Domain.Calendar;
 using FinanceTracker.Domain.Common;
@@ -469,6 +470,54 @@ public class BackgroundSyncTests : IntegrationTestBase
             .ToListAsync(CancellationToken);
 
         return transactions.Single(x => x.ExternalId == externalId);
+    }
+
+    [Test]
+    public async Task Sync_AfterTheirAlertsAreSet_TellsThemOfALowBalanceAndALargePayment()
+    {
+        // Arrange, £40 available and a £900 payment yesterday
+        SignedInUser user = await RegisterUserAsync();
+        string accessToken = UniqueName("token");
+        await Scenario.Do(s => s.BankConnectionScenario.WithConnection("bank", user.Username))
+            .Do(s => s.BankConnectionScenario.WithAccessToken("bank", token: accessToken));
+
+        ExternalOpenBankingAccountBalance balance = new ExternalOpenBankingAccountBalanceFaker().Generate();
+        balance.Current = 50m;
+        balance.Available = 40m;
+        ExternalOpenBankingAccountTransaction sofa = new ExternalOpenBankingAccountTransactionFaker().Generate();
+        sofa.TransactionType = "DEBIT";
+        sofa.TransactionCategory = "PURCHASE";
+        sofa.Description = "SOFA SHOP";
+        sofa.Amount = -900m;
+        sofa.Timestamp = DateTime.UtcNow.AddDays(-1);
+        await App.TrueLayer.StubAccountAsync(accessToken, new ExternalOpenBankingAccountFaker().Generate(), [balance],
+            [sofa]);
+
+        // The account arrives with the first sync, then they say what to be told about
+        await RunUserSyncAsync(user);
+        INotificationsService notifications = ApiFor(user).Get<INotificationsService>();
+        NotificationSettings settings = await notifications.GetSettingsAsync(CancellationToken);
+        await notifications.ChangeAlertsAsync(new ChangeAlertSettings
+        {
+            BudgetWarningPercent = settings.BudgetWarningPercent,
+            BillReminderDays = settings.BillReminderDays,
+            LargeTransactionOver = 500m,
+            LowBalance = [new LowBalanceThreshold { AccountId = settings.LowBalance.Single().AccountId, Below = 100m }]
+        }, CancellationToken);
+
+        // Act
+        await RunUserSyncAsync(user);
+
+        // Assert
+        List<Notification> told = await notifications.GetNotificationsAsync(50, CancellationToken)
+            .ToListAsync(CancellationToken);
+        using (Assert.Multiple())
+        {
+            await Assert.That(told.Select(static x => x.Kind))
+                .IsEquivalentTo([NotificationKind.LowBalance, NotificationKind.LargeTransaction]);
+            await Assert.That(told.Single(x => x.Kind == NotificationKind.LargeTransaction).Title)
+                .EndsWith("paid to SOFA SHOP");
+        }
     }
 
     private Task RunSyncAsync() => RunJobAsync(SyncFunction);

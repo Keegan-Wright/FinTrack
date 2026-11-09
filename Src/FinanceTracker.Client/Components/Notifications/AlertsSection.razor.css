@@ -1,0 +1,58 @@
+/* Each setting a row, what it does beside its field, divided like a list */
+.ft-alerts {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.ft-alerts__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 240px);
+    gap: 8px 24px;
+    align-items: center;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--mud-palette-lines-default);
+}
+
+/* The switch with the amount under it once it's on */
+.ft-alerts__large {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.ft-alerts__low {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* An account's alert: its name, the amount and a remove button on one line */
+.ft-alerts__account {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.ft-alerts__account ::deep .ft-alerts__account-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ft-alerts__account ::deep .ft-alerts__amount {
+    flex: 0 0 160px;
+}
+
+/* A phone stacks each setting's field under what it does */
+@media (max-width: 599.98px) {
+    .ft-alerts__row {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .ft-alerts__account ::deep .ft-alerts__amount {
+        flex-basis: 120px;
+    }
+}

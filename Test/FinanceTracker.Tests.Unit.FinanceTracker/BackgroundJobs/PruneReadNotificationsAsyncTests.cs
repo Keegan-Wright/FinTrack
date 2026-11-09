@@ -74,11 +74,38 @@ public class PruneReadNotificationsAsyncTests : InfrastructureTestBase
         await Assert.That(await RemainingAsync()).IsEquivalentTo(["mine-unread", "theirs-recent"]);
     }
 
-    private Task<TestingScenario> WithNotificationAsync(string key, string username, DateTime? readAt) =>
+    [Test]
+    public async Task Execute_NotShownInTheAppRaisedMoreThan90DaysAgo_DeletesIt()
+    {
+        // Arrange, never read as it's not in the app. Raised now, as it's saved
+        await WithNotificationAsync("emailed only", Username, readAt: null, inApp: false);
+
+        // Act
+        await PruneAsync(DateTime.UtcNow.AddDays(91));
+
+        // Assert
+        await Assert.That(await RemainingAsync()).IsEmpty();
+    }
+
+    [Test]
+    public async Task Execute_NotShownInTheAppRaisedWithin90Days_KeepsIt()
+    {
+        // Arrange
+        await WithNotificationAsync("emailed only", Username, readAt: null, inApp: false);
+
+        // Act
+        await PruneAsync(DateTime.UtcNow.AddDays(89));
+
+        // Assert, its key still stops the event being raised again
+        await Assert.That(await RemainingAsync()).IsEquivalentTo(["emailed only"]);
+    }
+
+    private Task<TestingScenario> WithNotificationAsync(string key, string username, DateTime? readAt,
+        bool inApp = true) =>
         Scenario.Do(s => s.NotificationScenario.WithNotification(key, username, userId =>
         {
             Notification notification = new(userId, NotificationKind.SyncFailed, key, "Bank couldn't sync",
-                "FinTrack couldn't sync Bank.", null);
+                "FinTrack couldn't sync Bank.", null, inApp);
             if (readAt is not null)
             {
                 notification.MarkRead(readAt.Value);
@@ -87,8 +114,10 @@ public class PruneReadNotificationsAsyncTests : InfrastructureTestBase
             return notification;
         }));
 
-    private async Task PruneAsync() =>
-        await new PruneReadNotificationsAsync(DbContextFactory, new FixedTimeProvider(Now))
+    private Task PruneAsync() => PruneAsync(Now);
+
+    private async Task PruneAsync(DateTime now) =>
+        await new PruneReadNotificationsAsync(DbContextFactory, new FixedTimeProvider(now))
             .Execute(JobContexts.Scheduled(), CancellationToken);
 
     private async Task<List<string>> RemainingAsync()

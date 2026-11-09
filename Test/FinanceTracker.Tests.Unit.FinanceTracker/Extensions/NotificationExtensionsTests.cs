@@ -3,7 +3,9 @@ using FinanceTracker.Extensions;
 using FinanceTracker.Infrastructure.Notifications;
 using FinanceTracker.Infrastructure.Notifications.Email;
 using FinanceTracker.Infrastructure.Notifications.Webhooks;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace FinanceTracker.Tests.Unit.FinanceTracker.Extensions;
 
@@ -110,6 +112,32 @@ public class NotificationExtensionsTests
     public async Task GetWebhookSettings_AllowedAsComposePassesIt_AllowsPrivateAddresses() =>
         await Assert.That(Configuration(new() { [FinTrackEnvironment.WebhookAllowPrivate] = "true" })
             .GetWebhookSettings().AllowPrivateAddresses).IsTrue();
+
+    [Test]
+    public async Task AddFinTrackNotifications_WebhookClient_PostsOnceWithoutTheDefaultsRetries()
+    {
+        // Arrange, the app's clients as it registers them, a webhook that always fails
+        StubTrueLayerHandler webhook = new(_ =>
+            Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.InternalServerError)));
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        builder.AddServiceDefaults();
+        builder.AddFinTrackNotifications();
+        builder.Services.AddHttpClient(WebhookSender.ClientName).ConfigurePrimaryHttpMessageHandler(() => webhook);
+        await using ServiceProvider services = builder.Services.BuildServiceProvider();
+        using HttpClient client = services.GetRequiredService<IHttpClientFactory>()
+            .CreateClient(WebhookSender.ClientName);
+
+        // Act
+        using HttpResponseMessage response = await client.PostAsync("https://hooks.example.test/fintrack", null);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(response.StatusCode).IsEqualTo(System.Net.HttpStatusCode.InternalServerError);
+            await Assert.That(webhook.Calls).IsEqualTo(1);
+            await Assert.That(client.Timeout).IsEqualTo(WebhookSender.Timeout);
+        }
+    }
 
     private static IConfiguration Configuration(Dictionary<string, string?> values) =>
         new ConfigurationBuilder().AddInMemoryCollection(values).Build();

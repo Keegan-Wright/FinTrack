@@ -92,7 +92,7 @@ public class WebhookSenderTests
 
     private static async Task Send(RecordingWebhookHandler handler, WebhookPayload payload)
     {
-        using WebhookSender sender = new(handler, new FixedTimeProvider(Now));
+        WebhookSender sender = new(new HandlerClientFactory(handler), new FixedTimeProvider(Now));
         await sender.SendAsync("https://hooks.example.test/fintrack", Secret, payload, CancellationToken.None);
     }
 

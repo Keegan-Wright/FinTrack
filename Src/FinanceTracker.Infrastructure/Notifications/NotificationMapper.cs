@@ -30,6 +30,13 @@ public static class NotificationMapper
         DomainKind.ConsentEndingSoon => ContractKind.ConsentEndingSoon,
         DomainKind.ConsentEnded => ContractKind.ConsentEnded,
         DomainKind.SyncFailed => ContractKind.SyncFailed,
+        DomainKind.BillLate => ContractKind.BillLate,
+        DomainKind.BillChanged => ContractKind.BillChanged,
+        DomainKind.BillDueSoon => ContractKind.BillDueSoon,
+        DomainKind.BudgetNearLimit => ContractKind.BudgetNearLimit,
+        DomainKind.BudgetOverLimit => ContractKind.BudgetOverLimit,
+        DomainKind.LargeTransaction => ContractKind.LargeTransaction,
+        DomainKind.LowBalance => ContractKind.LowBalance,
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
     };
 
@@ -38,6 +45,13 @@ public static class NotificationMapper
         ContractKind.ConsentEndingSoon => DomainKind.ConsentEndingSoon,
         ContractKind.ConsentEnded => DomainKind.ConsentEnded,
         ContractKind.SyncFailed => DomainKind.SyncFailed,
+        ContractKind.BillLate => DomainKind.BillLate,
+        ContractKind.BillChanged => DomainKind.BillChanged,
+        ContractKind.BillDueSoon => DomainKind.BillDueSoon,
+        ContractKind.BudgetNearLimit => DomainKind.BudgetNearLimit,
+        ContractKind.BudgetOverLimit => DomainKind.BudgetOverLimit,
+        ContractKind.LargeTransaction => DomainKind.LargeTransaction,
+        ContractKind.LowBalance => DomainKind.LowBalance,
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
     };
 }

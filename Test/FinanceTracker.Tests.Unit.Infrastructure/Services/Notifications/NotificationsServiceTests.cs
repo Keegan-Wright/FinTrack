@@ -11,6 +11,7 @@ using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using DomainKind = FinanceTracker.Domain.Notifications.NotificationKind;
 using DomainNotification = FinanceTracker.Domain.Notifications.Notification;
+using DomainSettings = FinanceTracker.Domain.Notifications.NotificationSettings;
 
 namespace FinanceTracker.Tests.Unit.Infrastructure.Services.Notifications;
 
@@ -45,6 +46,67 @@ public class NotificationsServiceTests : InfrastructureTestBase
         // Assert
         await Assert.That(notifications.Select(static x => x.Title)).IsEquivalentTo(["second", "first"],
             TUnit.Assertions.Enums.CollectionOrdering.Matching);
+    }
+
+    [Test]
+    public async Task GetNotifications_OneNotShownInTheApp_LeavesItOutOfTheListAndCount()
+    {
+        // Arrange
+        await AddAsync(Username, "shown");
+        await AddAsync(Username, "emailed only", inApp: false);
+
+        // Act
+        List<Notification> notifications =
+            await Subject(Username).GetNotificationsAsync(50, CancellationToken).ToListAsync(CancellationToken);
+        int unread = await Subject(Username).GetUnreadCountAsync(CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(notifications.Select(static x => x.Title)).IsEquivalentTo(["shown"]);
+            await Assert.That(unread).IsEqualTo(1);
+        }
+    }
+
+    [Test]
+    public async Task ChangeAlerts_ThenRead_KeepsThemForTheirOwnAccounts()
+    {
+        // Arrange
+        await Scenario.Do(s => s.BankConnectionScenario.WithConnection("bank", Username))
+            .Do(s => s.BankAccountScenario.WithAccount("everyday", "bank"))
+            .Do(s => s.BankAccountScenario.WithAccount("savings", "bank"))
+            .Do(s => s.BankConnectionScenario.WithConnection("theirs", OtherUsername))
+            .Do(s => s.BankAccountScenario.WithAccount("someone else's", "theirs"));
+        Guid everyday = Scenario.AccountMappings["everyday"];
+        Guid savings = Scenario.AccountMappings["savings"];
+
+        // Act
+        await Subject(Username).ChangeAlertsAsync(new ChangeAlertSettings
+        {
+            BudgetWarningPercent = 90,
+            BillReminderDays = 5,
+            LargeTransactionOver = 300m,
+            LowBalance =
+            [
+                new LowBalanceThreshold { AccountId = everyday, Below = 100m },
+                new LowBalanceThreshold { AccountId = Scenario.AccountMappings["someone else's"], Below = 50m }
+            ]
+        }, CancellationToken);
+        NotificationSettings read = await Subject(Username).GetSettingsAsync(CancellationToken);
+
+        // Assert, every account of theirs is listed, the one left out isn't watched
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        DomainSettings stored = await context.NotificationSettings.SingleAsync(CancellationToken);
+        using (Assert.Multiple())
+        {
+            await Assert.That(read.BudgetWarningPercent).IsEqualTo(90);
+            await Assert.That(read.BillReminderDays).IsEqualTo(5);
+            await Assert.That(read.LargeTransactionOver).IsEqualTo(300m);
+            await Assert.That(read.LowBalance.Select(static x => x.AccountId)).IsEquivalentTo([everyday, savings]);
+            await Assert.That(read.LowBalance.Single(x => x.AccountId == everyday).Below).IsEqualTo(100m);
+            await Assert.That(read.LowBalance.Single(x => x.AccountId == savings).Below).IsNull();
+            await Assert.That(stored.LowBalanceAlerts.Select(static x => x.AccountId)).IsEquivalentTo([everyday]);
+        }
     }
 
     [Test]
@@ -116,11 +178,12 @@ public class NotificationsServiceTests : InfrastructureTestBase
         // Act
         await Subject(Username).ChangeSettingsAsync(new ChangeNotificationSettings
         {
-            Emailed = [NotificationKind.SyncFailed], Webhooked = []
+            InApp = [NotificationKind.SyncFailed], Emailed = [NotificationKind.SyncFailed], Webhooked = []
         }, CancellationToken);
         NotificationSettings changedAgain = await Subject(Username).ChangeSettingsAsync(
             new ChangeNotificationSettings
             {
+                InApp = [NotificationKind.ConsentEnded],
                 Emailed = [NotificationKind.ConsentEnded, NotificationKind.SyncFailed],
                 Webhooked = [NotificationKind.ConsentEnded]
             },
@@ -138,6 +201,7 @@ public class NotificationsServiceTests : InfrastructureTestBase
             await Assert.That(await context.NotificationSettings.CountAsync(CancellationToken)).IsEqualTo(1);
             await Assert.That(read.EmailAvailable).IsFalse();
             await Assert.That(read.Webhooked).IsEquivalentTo([NotificationKind.ConsentEnded]);
+            await Assert.That(read.InApp).IsEquivalentTo([NotificationKind.ConsentEnded]);
         }
     }
 
@@ -358,11 +422,11 @@ public class NotificationsServiceTests : InfrastructureTestBase
             new FixedTimeProvider(Now), _mail, TestEmails.Create(), _webhooks, webhookSettings ?? new WebhookSettings(),
             PublicAddress.Unknown);
 
-    private async Task<Guid> AddAsync(string username, string title)
+    private async Task<Guid> AddAsync(string username, string title, bool inApp = true)
     {
         await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
         DomainNotification notification = new(Scenario.UserMappings[username], DomainKind.SyncFailed,
-            Guid.NewGuid().ToString(), title, "A message", null);
+            Guid.NewGuid().ToString(), title, "A message", null, inApp);
         context.Notifications.Add(notification);
         await context.SaveChangesAsync(CancellationToken);
 

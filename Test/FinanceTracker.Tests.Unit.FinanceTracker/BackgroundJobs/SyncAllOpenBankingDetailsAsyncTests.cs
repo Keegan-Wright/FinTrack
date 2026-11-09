@@ -224,6 +224,47 @@ public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
     }
 
     [Test]
+    public async Task Execute_Synced_TellsEachOwnerOfBillsBudgetsPaymentsAndBalancesLast()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.UserScenario.WithUser(OtherUsername))
+            .Do(s => s.BankConnectionScenario.WithConnection("mine", Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("theirs", OtherUsername));
+
+        SyncAllOpenBankingDetailsAsync subject = BuildSubject();
+
+        // Act
+        await subject.Execute(JobContexts.Scheduled(), CancellationToken);
+
+        // Assert, as each owner, once their balances are snapshot
+        Guid mine = Scenario.UserMappings[Username];
+        Guid theirs = Scenario.UserMappings[OtherUsername];
+        await Assert.That(Told).IsEquivalentTo([
+            (mine, "bills", true), (mine, "budgets", true), (mine, "payments", true), (mine, "balances", true),
+            (theirs, "bills", true), (theirs, "budgets", true), (theirs, "payments", true), (theirs, "balances", true)
+        ], TUnit.Assertions.Enums.CollectionOrdering.Matching);
+    }
+
+    [Test]
+    public async Task Execute_BillNoticesFail_StillTellsOfTheRest()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("mine", Username));
+        BillNotices.NotifyAsync(CancellationToken).ThrowsAsync(new InvalidOperationException("boom"));
+
+        SyncAllOpenBankingDetailsAsync subject = BuildSubject();
+
+        // Act
+        await subject.Execute(JobContexts.Scheduled(), CancellationToken);
+
+        // Assert, bills were tried and threw, the rest still ran after
+        await Assert.That(Told.Select(static x => x.Notices)).IsEquivalentTo(
+            ["bills", "budgets", "payments", "balances"], TUnit.Assertions.Enums.CollectionOrdering.Matching);
+    }
+
+    [Test]
     public async Task Execute_AfterSnapshotting_BackfillsEachOwnersBalanceHistory()
     {
         // Arrange

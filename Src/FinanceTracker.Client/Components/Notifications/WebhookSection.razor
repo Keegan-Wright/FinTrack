@@ -1,5 +1,5 @@
 @* The user's webhook, where their notifications are posted, the secret posts are signed with, and a test. Which
-   kinds are posted is chosen with email's, on the page. *@
+   kinds are posted is chosen in the What and where tab. *@
 @using FinanceTracker.Client.Extensions
 @using FinanceTracker.Contracts.Notifications
 @using FluentValidation
@@ -10,8 +10,11 @@
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 
-<Section Title="Webhook" Caption="Posts each notification as JSON to an address you choose, e.g. Home Assistant">
+<Section>
     <div class="ft-stack">
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+            Each notification is posted as JSON to an address you choose, e.g. Home Assistant.
+        </MudText>
         <MudForm @ref="_form" Model="@_model">
             <div class="ft-webhook__address">
                 <MudTextField T="string" @bind-Value="_model.Url" Label="Webhook address"
@@ -43,12 +46,18 @@
                 <MudButton Variant="Variant.Text" Color="Color.Primary" Disabled="@_busy"
                            OnClick="@ReplaceSecretAsync">New secret</MudButton>
             </div>
-            <MudText Typo="Typo.body2" Class="mud-text-secondary">
-                Each post carries <code>X-FinTrack-Timestamp</code>, in Unix seconds, and
-                <code>X-FinTrack-Signature</code>: <code>sha256=</code> and the HMAC-SHA256, in lowercase hex, of the
-                timestamp, a full stop and the body, keyed with this secret. Check it to know a post came from
-                FinTrack.
-            </MudText>
+            <div class="ft-webhook__check">
+                <MudText Typo="Typo.subtitle2" HtmlTag="h3">Checking a post came from FinTrack</MudText>
+                <ol>
+                    <li>Read the <code>X-FinTrack-Timestamp</code> header, when it was sent in Unix seconds.</li>
+                    <li>Join the timestamp, a full stop and the post's body, e.g. <code>1762678800.{"id":…}</code>.</li>
+                    <li>Work out the HMAC-SHA256 of that, keyed with this secret, in lowercase hex.</li>
+                    <li>
+                        The post is FinTrack's if <code>X-FinTrack-Signature</code> is <code>sha256=</code> followed by
+                        that.
+                    </li>
+                </ol>
+            </div>
             <div class="ft-notification-test">
                 <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Send"
                            Disabled="@_busy" OnClick="@SendTestAsync">Send a test post</MudButton>

@@ -244,6 +244,69 @@ public class NotifierTests : InfrastructureTestBase
             Arg.Any<CancellationToken>());
     }
 
+    [Test]
+    public async Task Notify_NotShownInTheApp_EmailsItWithoutTellingTheirBrowsers()
+    {
+        // Arrange
+        await GivenSettingsAsync(x => x.ShowInAppOnly([NotificationKind.SyncFailed]));
+
+        // Act
+        bool raised = await Notify("consent-ended:a");
+
+        // Assert, kept so it isn't raised again, but out of the app
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        Notification saved = await context.Notifications.SingleAsync(CancellationToken);
+        using (Assert.Multiple())
+        {
+            await Assert.That(raised).IsTrue();
+            await Assert.That(saved.InApp).IsFalse();
+            await _publisher.DidNotReceive().NotificationAddedAsync(Arg.Any<Guid>());
+            await _mail.Received(1).SendAsync(Arg.Any<MailMessage>(), Arg.Any<CancellationToken>());
+        }
+    }
+
+    [Test]
+    public async Task Notify_TurnedOffEverywhere_IsNotRaised()
+    {
+        // Arrange
+        await GivenSettingsAsync(x =>
+        {
+            x.SetWebhook("https://hooks.example.test/fintrack", "secret");
+            x.ShowInAppOnly([]);
+            x.EmailOnly([]);
+            x.WebhookOnly([]);
+        });
+
+        // Act
+        bool raised = await Notify("consent-ended:a");
+
+        // Assert
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        using (Assert.Multiple())
+        {
+            await Assert.That(raised).IsFalse();
+            await Assert.That(await context.Notifications.CountAsync(CancellationToken)).IsEqualTo(0);
+            await _publisher.DidNotReceive().NotificationAddedAsync(Arg.Any<Guid>());
+            await _mail.DidNotReceive().SendAsync(Arg.Any<MailMessage>(), Arg.Any<CancellationToken>());
+            await _webhooks.DidNotReceive().SendAsync(Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<WebhookPayload>(), Arg.Any<CancellationToken>());
+        }
+    }
+
+    [Test]
+    public async Task Notify_NotInTheAppAndNoMailServer_IsNotRaised()
+    {
+        // Arrange, emailed by their settings, but there's nothing to send it with
+        _mail.IsAvailable.Returns(false);
+        await GivenSettingsAsync(x => x.ShowInAppOnly([]));
+
+        // Act
+        bool raised = await Notify("consent-ended:a");
+
+        // Assert
+        await Assert.That(raised).IsFalse();
+    }
+
     private async Task GivenSettingsAsync(Action<NotificationSettings> change)
     {
         await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);

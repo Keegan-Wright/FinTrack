@@ -58,6 +58,12 @@ public static class NotificationEndpoints
                     CancellationToken cancellationToken) =>
                 TypedResults.Ok(await service.ChangeSettingsAsync(request, cancellationToken)));
 
+            notifications.MapPut("settings/alerts", async Task<Ok<NotificationSettings>> (
+                    ChangeAlertSettings request, INotificationsService service,
+                    CancellationToken cancellationToken) =>
+                TypedResults.Ok(await service.ChangeAlertsAsync(request, cancellationToken)))
+                .Validated<ChangeAlertSettings>();
+
             notifications.MapPost("settings/test-email", async Task<Results<Ok<NotificationSettings>, Conflict>> (
                 INotificationsService service, CancellationToken cancellationToken) =>
             {

@@ -1,10 +1,16 @@
 namespace FinanceTracker.Contracts.Notifications;
 
 /// <summary>
-/// Where the user's notifications go besides the bell, every one shows there: by email, and to their webhook.
+/// Where the user's notifications go: in the app, by email, and to their webhook. Also when budgets, bills, large
+/// transactions and low balances are said.
 /// </summary>
 public sealed class NotificationSettings
 {
+    /// <summary>
+    /// The kinds shown under the bell and on the Notifications page.
+    /// </summary>
+    public required IReadOnlyList<NotificationKind> InApp { get; init; }
+
     /// <summary>
     /// The kinds emailed.
     /// </summary>
@@ -44,4 +50,24 @@ public sealed class NotificationSettings
     /// How the last post to their webhook went, null when FinTrack hasn't posted to this one.
     /// </summary>
     public DeliveryStatus? LastWebhook { get; init; }
+
+    /// <summary>
+    /// How far through a budget's money this month to warn, as a percentage. Going over is always said.
+    /// </summary>
+    public required int BudgetWarningPercent { get; init; }
+
+    /// <summary>
+    /// How many days before a bill is due to remind them.
+    /// </summary>
+    public required int BillReminderDays { get; init; }
+
+    /// <summary>
+    /// Money going out over this is said, null when it never is.
+    /// </summary>
+    public decimal? LargeTransactionOver { get; init; }
+
+    /// <summary>
+    /// Each of the user's accounts and how low it can go before they're told.
+    /// </summary>
+    public required IReadOnlyList<AccountLowBalance> LowBalance { get; init; }
 }
