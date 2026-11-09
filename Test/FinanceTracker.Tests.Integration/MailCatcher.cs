@@ -47,6 +47,13 @@ public sealed class MailCatcher : IDisposable
         }
     }
 
+    /// <summary>
+    /// Whether anything has been sent to <paramref name="to"/> yet, without waiting. Mailpit has an email by the time
+    /// the app's send returns, so once a page that sends has answered, none here means none was sent.
+    /// </summary>
+    public async Task<bool> HasAnyAsync(string to, CancellationToken cancellationToken) =>
+        (await FindAsync(to, cancellationToken)).Count > 0;
+
     public void Dispose() => _http.Dispose();
 
     private async Task<List<string>> FindAsync(string to, CancellationToken cancellationToken)

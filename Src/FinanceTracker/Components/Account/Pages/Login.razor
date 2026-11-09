@@ -3,6 +3,7 @@
 @using FinanceTracker.Contracts.Auth
 @using FinanceTracker.Domain.Identity
 @using FinanceTracker.Extensions
+@using FinanceTracker.Infrastructure.Notifications.Email
 @using FluentValidation
 @using Microsoft.AspNetCore.Identity
 
@@ -11,6 +12,7 @@
 @inject NavigationManager NavigationManager
 @inject IdentityRedirectManager RedirectManager
 @inject IConfiguration Configuration
+@inject IMailSender MailSender
 
 <PageTitle>FinTrack - Sign in</PageTitle>
 
@@ -48,7 +50,10 @@
         <div class="ft-login-options">
             <MudStaticCheckBox For="@(() => LoginRequest.RememberMe)" @bind-Value="LoginRequest.RememberMe"
                                Color="Color.Primary">Remember me</MudStaticCheckBox>
-            <MudLink Href="Account/ForgotPassword" Typo="Typo.body2">Forgot password?</MudLink>
+            @if (MailSender.IsAvailable)
+            {
+                <MudLink Href="Account/ForgotPassword" Typo="Typo.body2">Forgot password?</MudLink>
+            }
         </div>
 
         <MudStaticButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Size="Size.Large"

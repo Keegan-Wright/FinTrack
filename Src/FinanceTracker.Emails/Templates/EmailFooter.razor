@@ -1,12 +1,13 @@
-@* Why the email came and where to change that, and which FinTrack sent it when its address is known. *@
+@* Why the email came, where to change that for a notification, and which FinTrack sent it when its address is
+   known. *@
 @* Razor drops the whitespace between an expression and the text after it, so the space after the reason is written
    out *@
 <p style="@EmailStyles.Quiet">
-    @($"{Reason} ")@if (Settings is null)
+    @($"{Reason} ")@if (IsNotification && Settings is null)
     {
         <text>You can change which emails you get in FinTrack, under Notifications.</text>
     }
-    else
+    else if (IsNotification)
     {
         <text>You can </text><a href="@Settings" style="@EmailStyles.Link">change which emails you get</a><text>.</text>
     }
@@ -23,6 +24,13 @@
     /// </summary>
     [Parameter, EditorRequired]
     public required string Reason { get; set; }
+
+    /// <summary>
+    /// Whether it's a notification, which the user can turn off, so it says where to change that. An account's own
+    /// emails, such as a password reset, aren't.
+    /// </summary>
+    [Parameter]
+    public bool IsNotification { get; set; } = true;
 
     /// <summary>
     /// The Notifications page, null when the app's address isn't known.

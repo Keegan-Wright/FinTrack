@@ -55,7 +55,7 @@ public static class AuthenticationExtensions
                 .AddSignInManager()
                 .AddDefaultTokenProviders();
 
-            builder.Services.AddSingleton<IEmailSender<FinanceTrackerUser>, IdentityNoOpEmailSender>();
+            builder.Services.AddSingleton<IEmailSender<FinanceTrackerUser>, IdentityEmailSender>();
             builder.Services.AddScoped<AdminProvisioner>();
             builder.Services.AddScoped<OidcUserLinker>();
 
