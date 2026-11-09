@@ -11,11 +11,13 @@
       <ProjectReference Include="..\FinanceTracker.Contracts\FinanceTracker.Contracts.csproj" />
       <ProjectReference Include="..\FinanceTracker.Design\FinanceTracker.Design.csproj"/>
       <ProjectReference Include="..\FinanceTracker.Domain\FinanceTracker.Domain.csproj" />
+      <ProjectReference Include="..\FinanceTracker.Emails\FinanceTracker.Emails.csproj"/>
     </ItemGroup>
 
     <ItemGroup>
       <PackageReference Include="CsvHelper"/>
       <PackageReference Include="FluentValidation"/>
+      <PackageReference Include="MailKit"/>
       <PackageReference Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore"/>
       <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore"/>
       <PackageReference Include="Microsoft.EntityFrameworkCore"/>
@@ -28,6 +30,11 @@
     <!-- For the PDFs, see QuestPdfSetup -->
     <ItemGroup>
       <EmbeddedResource Include="Exports\Pdf\Fonts\*.ttf" LogicalName="Fonts.%(Filename)%(Extension)"/>
+    </ItemGroup>
+
+    <!-- For its unit tests, e.g. the internal helpers of reports and rules -->
+    <ItemGroup>
+      <InternalsVisibleTo Include="FinanceTracker.Tests.Unit.Infrastructure"/>
     </ItemGroup>
 
   <ItemGroup>

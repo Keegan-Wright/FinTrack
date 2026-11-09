@@ -119,4 +119,10 @@ public static class LightPalette
     /// white.
     /// </summary>
     public const string DarkContrastText = TextPrimary;
+
+    /// <summary>
+    /// The text on every filled colour, For places MudBlazor
+    /// doesn't style, e.g. an email's button.
+    /// </summary>
+    public const string LightContrastText = "#FFFFFF";
 }

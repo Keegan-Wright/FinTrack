@@ -1,0 +1,57 @@
+@* A notification as an email, what it's about in its colour, its title and message, and a button to where it's dealt
+   with when the app's address is known. *@
+<EmailLayout Title="@Title" Preheader="@Message" Accent="@Accent">
+    <ChildContent>
+        <p style="@EmailStyles.Eyebrow color: @Accent;">@Label</p>
+        <h1 style="@EmailStyles.Heading">@Title</h1>
+        <p style="@EmailStyles.Body">@Message</p>
+        @if (Link is null)
+        {
+            <p style="@EmailStyles.Body margin-bottom: 0;">Open FinTrack to see it.</p>
+        }
+        else
+        {
+            <EmailButton Text="Open in FinTrack" Href="@Link"/>
+        }
+    </ChildContent>
+    <Footer>
+        <EmailFooter Reason="You get emails like this for FinTrack notifications."
+                     Settings="@Settings" PublicUrl="@PublicUrl"/>
+    </Footer>
+</EmailLayout>
+
+@code {
+
+    /// <summary>
+    /// What it's about, e.g. <c>Bank access</c>, see <see cref="NotificationKindStyle"/>.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public required string Label { get; set; }
+
+    /// <summary>
+    /// Its colour, see <see cref="NotificationKindStyle"/>.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public required string Accent { get; set; }
+
+    [Parameter, EditorRequired]
+    public required string Title { get; set; }
+
+    [Parameter, EditorRequired]
+    public required string Message { get; set; }
+
+    /// <summary>
+    /// Where it's dealt with, null when the app's address isn't known or it has nowhere.
+    /// </summary>
+    [Parameter]
+    public Uri? Link { get; set; }
+
+    /// <inheritdoc cref="EmailFooter.Settings"/>
+    [Parameter]
+    public Uri? Settings { get; set; }
+
+    /// <inheritdoc cref="EmailFooter.PublicUrl"/>
+    [Parameter]
+    public Uri? PublicUrl { get; set; }
+
+}

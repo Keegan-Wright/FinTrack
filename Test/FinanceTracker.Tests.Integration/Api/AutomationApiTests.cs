@@ -76,7 +76,8 @@ public class AutomationApiTests : IntegrationTestBase
         {
             await Assert.That(scheduled).Contains("SyncAllOpenBankingDetailsAsync")
                 .And.Contains("MonitorOpenBankingTokenExpirationAsync")
-                .And.Contains(MoveGoalsFunction);
+                .And.Contains(MoveGoalsFunction)
+                .And.Contains("PruneReadNotificationsAsync");
 
             // A user's sync now has no schedule, it's listed whether or not anyone has asked for one yet
             await Assert.That(summaries.Single(x => x.Function == "SyncUserOpenBankingDetailsAsync").Schedule)

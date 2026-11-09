@@ -1,0 +1,25 @@
+/* Each kind a row, a column per place they can go. Checkboxes centred under their heading, the kind's name taking
+   what's left so it wraps on a narrow screen */
+.ft-channels {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.ft-channels th,
+.ft-channels td {
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--mud-palette-table-lines);
+    text-align: center;
+    font-weight: normal;
+}
+
+.ft-channels thead th {
+    font-weight: 600;
+}
+
+.ft-channels th[scope="row"],
+.ft-channels thead th:first-child {
+    width: 100%;
+    padding-inline-start: 0;
+    text-align: start;
+}

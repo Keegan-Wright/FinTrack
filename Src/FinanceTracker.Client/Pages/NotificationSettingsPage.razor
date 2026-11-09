@@ -1,0 +1,60 @@
+@page "/Notifications/Settings"
+@* What the user is notified about and where: each kind's channels, when alerts are raised, email and their
+   webhook, a tab each. *@
+@using FinanceTracker.Client.Components.Notifications
+@using FinanceTracker.Contracts.Notifications
+@using Microsoft.AspNetCore.Authorization
+@inherits PageComponent
+
+@attribute [Authorize]
+@inject INotificationsService NotificationsService
+
+<PageTitle>FinTrack - Notification settings</PageTitle>
+<PageHeader Title="Notification settings" Subtitle="What you're notified about, and where">
+    <Actions>
+        <MudButton Variant="Variant.Text" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.ArrowBack"
+                   Href="Notifications">Notifications</MudButton>
+    </Actions>
+</PageHeader>
+
+@if (Settings is null)
+{
+    <Section>
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">Your settings couldn't be loaded.</MudText>
+    </Section>
+}
+else
+{
+    <MudTabs Elevation="0" Rounded="true" TabPanelsClass="pt-4" Color="Color.Transparent"
+             SliderColor="Color.Primary" ActiveTabClass="mud-primary-text">
+        <MudTabPanel Text="What and where">
+            <ChannelsSection Settings="@Settings" SettingsChanged="@(changed => Settings = changed)"/>
+        </MudTabPanel>
+        <MudTabPanel Text="Alerts">
+            <AlertsSection Settings="@Settings" SettingsChanged="@(changed => Settings = changed)"/>
+        </MudTabPanel>
+        <MudTabPanel Text="Email">
+            <EmailSection Settings="@Settings" SettingsChanged="@(changed => Settings = changed)"/>
+        </MudTabPanel>
+        <MudTabPanel Text="Webhook">
+            <WebhookSection Settings="@Settings" SettingsChanged="@(changed => Settings = changed)"/>
+        </MudTabPanel>
+    </MudTabs>
+}
+
+@code {
+
+    /// <summary>
+    /// The settings, loaded once, see <see cref="PageComponent.LoadOnceAsync{T}"/>.
+    /// </summary>
+    [PersistentState]
+    public NotificationSettings? Settings { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        Settings = await LoadOnceAsync(Settings, "Loading your notification settings",
+            cancellationToken => NotificationsService.GetSettingsAsync(cancellationToken));
+    }
+
+}

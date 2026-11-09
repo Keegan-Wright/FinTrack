@@ -31,7 +31,8 @@ public class NavMenuTests : ComponentTestBase
             await Assert.That(LinksUnder(cut, "Insights")).IsEquivalentTo(["NetWorth", "Reports"],
                 TUnit.Assertions.Enums.CollectionOrdering.Matching);
             await Assert.That(LinksUnder(cut, "Manage"))
-                .IsEquivalentTo(["ProviderSetup", "HouseholdMembers", "Classifications", "Rules", "YourData"],
+                .IsEquivalentTo(["ProviderSetup", NavMenu.NotificationsPath, NavMenu.NotificationSettingsPath,
+                        "HouseholdMembers", "Classifications", "Rules", "YourData"],
                     TUnit.Assertions.Enums.CollectionOrdering.Matching);
         }
     }
@@ -64,6 +65,40 @@ public class NavMenuTests : ComponentTestBase
             await Assert.That(cut.Find($"a[href='{NavMenu.SubscriptionsReviewPath}'] .ft-nav__count").TextContent.Trim())
                 .IsEqualTo("4");
         }
+    }
+
+    [Test]
+    [Arguments(0, 0)]
+    [Arguments(2, 1)]
+    public async Task Render_UnreadNotifications_CountedBesideTheirLinkWhenThereAreAny(int unread, int counts)
+    {
+        // Act
+        IRenderedComponent<NavMenu> cut = Render<NavMenu>(p => p.Add(x => x.UnreadNotifications, unread));
+
+        // Assert
+        IReadOnlyList<AngleSharp.Dom.IElement> count = cut.FindAll(".mud-nav-group .ft-nav__count");
+        using (Assert.Multiple())
+        {
+            await Assert.That(count.Count).IsEqualTo(counts);
+            await Assert.That(count.All(x => x.GetAttribute("aria-label") == $"{unread} unread")).IsTrue();
+        }
+    }
+
+    [Test]
+    [Arguments("Notifications", true)]
+    [Arguments("Notifications/Settings", true)]
+    [Arguments("Budgets", false)]
+    public async Task Render_OnANotificationsPage_OpensTheirGroup(string path, bool open)
+    {
+        // Arrange
+        Services.GetRequiredService<NavigationManager>().NavigateTo(path);
+
+        // Act
+        IRenderedComponent<NavMenu> cut = RenderMenu(transfers: 0, subscriptions: 0);
+
+        // Assert
+        await Assert.That(cut.Find(".mud-nav-group [aria-expanded]").GetAttribute("aria-expanded"))
+            .IsEqualTo(open.ToString().ToLowerInvariant());
     }
 
     [Test]

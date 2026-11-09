@@ -21,6 +21,7 @@
     <PackageReference Include="Aspire.Hosting.AppHost"/>
     <PackageReference Include="Aspire.Hosting.Docker"/>
     <PackageReference Include="Aspire.Hosting.PostgreSQL"/>
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.MailPit"/>
   </ItemGroup>
 
 </Project>

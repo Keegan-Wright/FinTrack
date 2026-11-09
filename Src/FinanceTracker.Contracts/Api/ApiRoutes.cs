@@ -72,6 +72,11 @@ public static class ApiRoutes
     public const string HouseholdMembers = "api/household-members";
 
     /// <summary>
+    /// <see cref="Services.INotificationsService"/>.
+    /// </summary>
+    public const string Notifications = "api/notifications";
+
+    /// <summary>
     /// <see cref="Services.INetWorthService"/>.
     /// </summary>
     public const string NetWorth = "api/net-worth";

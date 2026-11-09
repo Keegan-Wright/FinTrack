@@ -36,6 +36,8 @@ public class PageRenderTests : UiTestBase
         ("/Rules/new", null),
         ("/HouseholdMembers", "Household"),
         ("/ProviderSetup", "Bank connections"),
+        ("/Notifications", "Notifications"),
+        ("/Notifications/Settings", "Notification settings"),
         ("/YourData", "Your data")
     ];
 

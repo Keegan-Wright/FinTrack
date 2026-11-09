@@ -48,9 +48,13 @@ internal sealed class RegistrationProgram
     /// </summary>
     public SourceText Write(string methodName, IEnumerable<InjectableType> types)
     {
-        string registrations = string.Join("\n            ", types
+        List<InjectableType> all = types.ToList();
+        HashSet<string> shared = SharedServiceTypes(all);
+
+        string registrations = string.Join("\n            ", all
             .OrderBy(static x => x.ServiceType)
-            .Select(static x => $"services.TryAdd{x.Lifetime}<{x.ServiceType}, {x.ImplementationType}>();"));
+            .ThenBy(static x => x.ImplementationType)
+            .Select(x => Registration(x, shared)));
 
         string modifiers = _program.IsStatic ? "public static partial" : "public partial";
 
@@ -72,5 +76,29 @@ internal sealed class RegistrationProgram
                         """;
 
         return SourceText.From(code, Encoding.UTF8);
+    }
+
+    /// <summary>
+    /// The service types more than one class is registered as, e.g. each check a sync runs.
+    /// </summary>
+    private static HashSet<string> SharedServiceTypes(IEnumerable<InjectableType> types) =>
+        new(types
+            .GroupBy(static x => x.ServiceType)
+            .Where(static x => x.Select(static type => type.ImplementationType).Distinct().Count() > 1)
+            .Select(static x => x.Key));
+
+    /// <summary>
+    /// One registration, unless one's already there. A service type several classes share gets each of them,
+    /// resolved together as an <c>IEnumerable</c>, the rest only the first, so one registered before wins.
+    /// </summary>
+    private static string Registration(InjectableType type, HashSet<string> shared)
+    {
+        if (shared.Contains(type.ServiceType))
+        {
+            return $"services.TryAddEnumerable(ServiceDescriptor.{type.Lifetime}<{type.ServiceType}, " +
+                   $"{type.ImplementationType}>());";
+        }
+
+        return $"services.TryAdd{type.Lifetime}<{type.ServiceType}, {type.ImplementationType}>();";
     }
 }

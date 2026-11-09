@@ -21,12 +21,14 @@ public class MainLayoutTests : ComponentTestBase
     private readonly ITransfersService _transfersService = Substitute.For<ITransfersService>();
     private readonly IBillsService _billsService = Substitute.For<IBillsService>();
     private readonly IOpenBankingService _openBankingService = Substitute.For<IOpenBankingService>();
+    private readonly INotificationsService _notificationsService = Substitute.For<INotificationsService>();
     private readonly IBrowserViewportService _viewport = Substitute.For<IBrowserViewportService>();
     private readonly ApplicationState _applicationState = new();
     private readonly AppUpdate _update = new("0.1.1+3e871e2");
 
     private Func<Task>? _onSyncComplete;
     private Func<Task>? _onSyncStarted;
+    private Func<Task>? _onNotificationAdded;
 
     public MainLayoutTests()
     {
@@ -37,6 +39,7 @@ public class MainLayoutTests : ComponentTestBase
         Services.AddSingleton(_transfersService);
         Services.AddSingleton(_billsService);
         Services.AddSingleton(_openBankingService);
+        Services.AddSingleton(_notificationsService);
         Services.AddSingleton(_viewport);
         Services.AddSingleton(_update);
 
@@ -46,6 +49,9 @@ public class MainLayoutTests : ComponentTestBase
         _syncNotifications.SubscribeAsync(Arg.Do<Func<Task>>(x => _onSyncComplete = x), Arg.Any<CancellationToken>())
             .Returns(Substitute.For<IDisposable>());
         _syncNotifications.SubscribeToSyncStartsAsync(Arg.Do<Func<Task>>(x => _onSyncStarted = x),
+                Arg.Any<CancellationToken>())
+            .Returns(Substitute.For<IDisposable>());
+        _syncNotifications.SubscribeToNotificationsAsync(Arg.Do<Func<Task>>(x => _onNotificationAdded = x),
                 Arg.Any<CancellationToken>())
             .Returns(Substitute.For<IDisposable>());
         GivenConnections();
@@ -429,6 +435,38 @@ public class MainLayoutTests : ComponentTestBase
             await Assert.That(buttons).Contains("Reload");
             await Assert.That(buttons).DoesNotContain("Try again");
         }
+    }
+
+    [Test]
+    public async Task Render_UnreadNotifications_TheBellSaysHowMany()
+    {
+        // Arrange
+        _notificationsService.GetUnreadCountAsync(Arg.Any<CancellationToken>()).Returns(3);
+
+        // Act
+        IRenderedComponent<MainLayout> cut = RenderLayout();
+
+        // Assert
+        cut.WaitForState(() => cut.FindAll("[aria-label='Notifications, 3 unread']").Count == 1);
+        await Assert.That(cut.Find("[aria-label='Notifications, 3 unread']").GetAttribute("href"))
+            .IsEqualTo("Notifications");
+    }
+
+    [Test]
+    public async Task NotificationAdded_WhileOpen_TheBellCountsItWithoutAReload()
+    {
+        // Arrange
+        _notificationsService.GetUnreadCountAsync(Arg.Any<CancellationToken>()).Returns(0, 1);
+        IRenderedComponent<MainLayout> cut = RenderLayout();
+        cut.WaitForState(() => _onNotificationAdded is not null);
+        cut.WaitForState(() => cut.FindAll("a[aria-label='Notifications']").Count == 1);
+
+        // Act
+        await cut.InvokeAsync(_onNotificationAdded!);
+
+        // Assert
+        cut.WaitForState(() => cut.FindAll("a[aria-label='Notifications, 1 unread']").Count == 1);
+        await Assert.That(_applicationState.UnreadNotifications).IsEqualTo(1);
     }
 
     [Test]

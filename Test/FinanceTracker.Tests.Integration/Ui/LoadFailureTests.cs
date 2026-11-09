@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using FinanceTracker.Tests.Integration.Http;
 using Microsoft.Playwright;
 
@@ -19,7 +20,7 @@ public class LoadFailureTests : UiTestBase
     public static IEnumerable<string> Links() =>
     [
         "Accounts", "Transactions", "Calendar", "Budgets", "Bills", "Debts", "Savings goals", "Net worth", "Reports",
-        "Household", "Tags", "Rules", "Your data"
+        "Recent", "Settings", "Household", "Tags", "Rules", "Your data"
     ];
 
     [Test]
@@ -37,6 +38,7 @@ public class LoadFailureTests : UiTestBase
         }));
 
         // Act
+        await OpenNotificationsWhenTheirsAsync(page, link);
         await MenuLink(page, link).ClickAsync();
 
         // Assert, said in the page's place, nothing left loading
@@ -85,8 +87,30 @@ public class LoadFailureTests : UiTestBase
         await Assertions.Expect(page.GetByText(SeededUser.Debt).First).ToBeVisibleAsync();
     }
 
+    /// <summary>
+    /// Opens the menu's notifications group when <paramref name="link"/> is one of its pages, as it's closed away
+    /// from them.
+    /// </summary>
+    private static async Task OpenNotificationsWhenTheirsAsync(IPage page, string link)
+    {
+        if (link is not ("Recent" or "Settings"))
+        {
+            return;
+        }
+
+        await page.Locator("#nav-drawer").GetByRole(AriaRole.Button, new LocatorGetByRoleOptions
+        {
+            // MudBlazor names it "Toggle", then its title with the unread count
+            NameRegex = new Regex("^Toggle Notifications( |$)")
+        }).ClickAsync();
+    }
+
+    // By the page's name, then perhaps a count, e.g. "Bank connections 1 to renew"
     private static ILocator MenuLink(IPage page, string link) =>
-        page.Locator("#nav-drawer").GetByRole(AriaRole.Link, new LocatorGetByRoleOptions { Name = link, Exact = true });
+        page.Locator("#nav-drawer").GetByRole(AriaRole.Link, new LocatorGetByRoleOptions
+        {
+            NameRegex = new Regex($"^{Regex.Escape(link)}( |$)")
+        });
 
     /// <summary>
     /// What went wrong in the browser besides the 500s asked for, and the error boundary logging what it caught.

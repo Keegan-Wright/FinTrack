@@ -36,7 +36,8 @@ public partial class Program
             .AddFinTrackPersistence()
             .AddFinTrackDataProtection()
             .AddOpenBanking()
-            .AddBackgroundJobs();
+            .AddBackgroundJobs()
+            .AddFinTrackNotifications();
 
         // Only for data that isn't sensitive, fields running encryption should NOT enter the cache.
         builder.Services.AddHybridCache();

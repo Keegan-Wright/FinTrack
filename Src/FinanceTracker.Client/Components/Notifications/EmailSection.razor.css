@@ -1,0 +1,7 @@
+/* The test button with how the last email went beside it, below it on a narrow screen */
+.ft-email-test {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 16px;
+}

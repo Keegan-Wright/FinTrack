@@ -1,3 +1,4 @@
+using FinanceTracker.Domain.Notifications;
 using FinanceTracker.Domain.Bills;
 using FinanceTracker.Domain.Budgeting;
 using FinanceTracker.Domain.Calendar;
@@ -79,6 +80,8 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
     public DbSet<NetWorthSnapshot> NetWorthSnapshots { get; private set; }
     public DbSet<Rule> Rules { get; private set; }
     public DbSet<RuleCheckpoint> RuleCheckpoints { get; private set; }
+    public DbSet<Notification> Notifications { get; private set; }
+    public DbSet<NotificationSettings> NotificationSettings { get; private set; }
     #endregion
 
     /// <summary>

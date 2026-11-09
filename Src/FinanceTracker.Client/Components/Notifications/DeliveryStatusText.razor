@@ -1,0 +1,38 @@
+@* How the last send to a channel went, e.g. "Last email sent 7 Nov, 20:05", or in the error colour why it failed. *@
+@using System.Globalization
+@using FinanceTracker.Contracts.Notifications
+@inject TimeProvider TimeProvider
+
+<MudText Typo="Typo.body2" Class="@ColourClass">@Text</MudText>
+
+@code {
+
+    [Parameter, EditorRequired]
+    public required DeliveryStatus Status { get; set; }
+
+    /// <summary>
+    /// What a send to this channel is called, e.g. <c>email</c> or <c>post</c>.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public required string What { get; set; }
+
+    private string ColourClass => Status.Sent ? "mud-text-secondary" : "mud-error-text";
+
+    private string Text
+    {
+        get
+        {
+            string at = TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(Status.At, DateTimeKind.Utc),
+                    TimeProvider.LocalTimeZone)
+                .ToString("d MMM, HH:mm", CultureInfo.CurrentCulture);
+
+            if (Status.Sent)
+            {
+                return $"Last {What} sent {at}";
+            }
+
+            return $"Last {What} failed {at}: {Status.Failure}";
+        }
+    }
+
+}

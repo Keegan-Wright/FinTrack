@@ -1,0 +1,19 @@
+@* A link that looks like the app's primary button. A table cell around it, as some email apps drop an inline link's
+   padding and background. *@
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin: 20px 0 4px;">
+    <tr>
+        <td style="background-color: @LightPalette.Primary; @EmailStyles.Corners">
+            <a href="@Href" style="@EmailStyles.Button">@Text</a>
+        </td>
+    </tr>
+</table>
+
+@code {
+
+    [Parameter, EditorRequired]
+    public required string Text { get; set; }
+
+    [Parameter, EditorRequired]
+    public required Uri Href { get; set; }
+
+}

@@ -9,4 +9,9 @@ public static class FinTrackResources
     public const string Web = "FinTrackWeb";
     public const string Postgres = "FinTrack-Postgres";
     public const string Database = "FinTrackDb";
+
+    /// <summary>
+    /// The mail catcher notification emails go to while developing and in the tests.
+    /// </summary>
+    public const string Mail = "FinTrack-Mail";
 }

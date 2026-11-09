@@ -26,6 +26,11 @@ public static class JobNames
     public const string MoveGoalsOn = "MoveEventSavingsGoalsOnAsync";
 
     /// <summary>
+    /// Deletes notifications read long enough ago, on a schedule.
+    /// </summary>
+    public const string PruneNotifications = "PruneReadNotificationsAsync";
+
+    /// <summary>
     /// The trigger group a job's schedule is kept in, under the job's name.
     /// </summary>
     public const string ScheduleGroup = "schedules";

@@ -2,6 +2,7 @@ using FinanceTracker.Contracts.Automation;
 using FinanceTracker.Contracts.Bills;
 using FinanceTracker.Contracts.Dashboard;
 using FinanceTracker.Contracts.Debts;
+using FinanceTracker.Contracts.Notifications;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Domain.Calendar;
 using FinanceTracker.Domain.Common;
@@ -28,7 +29,8 @@ namespace FinanceTracker.Tests.Integration.OpenBanking;
 /// <summary>
 /// Runs the real background jobs through Quartz against <see cref="FakeTrueLayer"/>, started as the app starts them:
 /// a scheduled job by an admin's run now, a user's sync by their sync now. The scheduled jobs visit every
-/// connection in the database, so these tests don't run alongside each other.
+/// connection in the database, so these tests don't run alongside each other, and the sync tests use the user's
+/// sync but for <see cref="ScheduledSync_SyncsEveryUsersConnections"/>.
 /// </summary>
 [NotInParallel(nameof(BackgroundSyncTests))]
 public class BackgroundSyncTests : IntegrationTestBase
@@ -42,10 +44,9 @@ public class BackgroundSyncTests : IntegrationTestBase
     public async Task Sync_ImportsAccountsAndTheirData()
     {
         // Arrange
-        string username = UniqueName();
+        SignedInUser user = await RegisterUserAsync();
         string accessToken = UniqueName("token");
-        await Scenario.Do(s => s.UserScenario.WithUser(username))
-            .Do(s => s.BankConnectionScenario.WithConnection("bank", username))
+        await Scenario.Do(s => s.BankConnectionScenario.WithConnection("bank", user.Username))
             .Do(s => s.BankConnectionScenario.WithAccessToken("bank", token: accessToken));
 
         ExternalOpenBankingAccount account = new ExternalOpenBankingAccountFaker().Generate();
@@ -59,7 +60,7 @@ public class BackgroundSyncTests : IntegrationTestBase
             [standingOrder], [directDebit]);
 
         // Act
-        await RunSyncAsync();
+        await RunUserSyncAsync(user);
 
         // Assert
         Guid connectionId = Scenario.ConnectionMappings["bank"];
@@ -113,7 +114,7 @@ public class BackgroundSyncTests : IntegrationTestBase
             standingOrders: [standingOrder]);
 
         // Act
-        await RunSyncAsync();
+        await RunUserSyncAsync(user);
         List<UpcomingPayment> upcoming = await ApiFor(user).Get<IDashboardService>()
             .GetUpcomingPaymentsAsync(5, CancellationToken).ToListAsync(CancellationToken);
 
@@ -146,7 +147,7 @@ public class BackgroundSyncTests : IntegrationTestBase
             transactions: [payment], standingOrders: [standingOrder]);
 
         // Act
-        await RunSyncAsync();
+        await RunUserSyncAsync(user);
         List<UpcomingPayment> upcoming = await ApiFor(user).Get<IDashboardService>()
             .GetUpcomingPaymentsAsync(5, CancellationToken).ToListAsync(CancellationToken);
 
@@ -188,7 +189,7 @@ public class BackgroundSyncTests : IntegrationTestBase
         await App.TrueLayer.StubAccountAsync(accessToken, account, transactions: [rulesPayment, landlordPayment]);
 
         // Act
-        await RunSyncAsync();
+        await RunUserSyncAsync(user);
 
         // Assert
         Guid connectionId = Scenario.ConnectionMappings["bank"];
@@ -231,7 +232,7 @@ public class BackgroundSyncTests : IntegrationTestBase
             transactions: [payment]);
 
         // Act
-        await RunSyncAsync();
+        await RunUserSyncAsync(user);
         Debt debt = (await ApiFor(user).Get<IDebtsService>().GetDebtsAsync(CancellationToken)
             .ToListAsync(CancellationToken)).Single();
 
@@ -277,7 +278,7 @@ public class BackgroundSyncTests : IntegrationTestBase
         await App.TrueLayer.StubAccountAsync(accessToken, new ExternalOpenBankingAccountFaker().Generate(),
             transactions: [payment], standingOrders: [standingOrder]);
 
-        await RunSyncAsync();
+        await RunUserSyncAsync(user);
 
         Guid connectionId = Scenario.ConnectionMappings["bank"];
         BankTransaction matched = await SyncedTransactionAsync(connectionId, payment.TransactionId);
@@ -285,7 +286,7 @@ public class BackgroundSyncTests : IntegrationTestBase
             .PayBillAsync(matched.Id, new PayBill { BillId = null }, CancellationToken);
 
         // Act
-        await RunSyncAsync();
+        await RunUserSyncAsync(user);
 
         // Assert
         BankTransaction resynced = await SyncedTransactionAsync(connectionId, payment.TransactionId);
@@ -301,11 +302,10 @@ public class BackgroundSyncTests : IntegrationTestBase
     public async Task Sync_WithAnExpiredToken_RefreshesItFirst()
     {
         // Arrange
-        string username = UniqueName();
+        SignedInUser user = await RegisterUserAsync();
         string expiredToken = UniqueName("expired");
         string refreshToken = UniqueName("refresh");
-        await Scenario.Do(s => s.UserScenario.WithUser(username))
-            .Do(s => s.BankConnectionScenario.WithConnection("bank", username))
+        await Scenario.Do(s => s.BankConnectionScenario.WithConnection("bank", user.Username))
             .Do(s => s.BankConnectionScenario.WithAccessToken("bank", DateTime.UtcNow.AddHours(-2),
                 expiresInSeconds: 3600, token: expiredToken, refreshToken: refreshToken));
 
@@ -316,7 +316,7 @@ public class BackgroundSyncTests : IntegrationTestBase
         await App.TrueLayer.StubAccountAsync(refreshed.AccessToken, account);
 
         // Act
-        await RunSyncAsync();
+        await RunUserSyncAsync(user);
 
         // Assert
         Guid connectionId = Scenario.ConnectionMappings["bank"];
@@ -334,6 +334,43 @@ public class BackgroundSyncTests : IntegrationTestBase
             await Assert.That(connection.ActiveToken!.Token).IsEqualTo(refreshed.AccessToken);
             await Assert.That(connection.ActiveToken!.RefreshToken).IsEqualTo(refreshed.RefreshToken);
             await Assert.That(await context.BankAccounts.AnyAsync(x => x.ConnectionId == connectionId, CancellationToken)).IsTrue();
+        }
+    }
+
+    /// <summary>
+    /// The one test of the scheduled sync, which visits every connection in the database. The rest use the user's
+    /// sync, the same job for only their connections, so they don't wait on what the other tests have connected.
+    /// </summary>
+    [Test]
+    public async Task ScheduledSync_SyncsEveryUsersConnections()
+    {
+        // Arrange
+        string username = UniqueName();
+        string otherUsername = UniqueName();
+        string accessToken = UniqueName("token");
+        string otherAccessToken = UniqueName("token");
+        await Scenario.Do(s => s.UserScenario.WithUser(username))
+            .Do(s => s.UserScenario.WithUser(otherUsername))
+            .Do(s => s.BankConnectionScenario.WithConnection("first", username))
+            .Do(s => s.BankConnectionScenario.WithAccessToken("first", token: accessToken))
+            .Do(s => s.BankConnectionScenario.WithConnection("second", otherUsername))
+            .Do(s => s.BankConnectionScenario.WithAccessToken("second", token: otherAccessToken));
+
+        await App.TrueLayer.StubAccountAsync(accessToken, new ExternalOpenBankingAccountFaker().Generate());
+        await App.TrueLayer.StubAccountAsync(otherAccessToken, new ExternalOpenBankingAccountFaker().Generate());
+
+        // Act
+        await RunJobAsync(SyncFunction);
+
+        // Assert
+        Guid connectionId = Scenario.ConnectionMappings["first"];
+        Guid otherConnectionId = Scenario.ConnectionMappings["second"];
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(await context.BankAccounts.AnyAsync(x => x.ConnectionId == connectionId, CancellationToken)).IsTrue();
+            await Assert.That(await context.BankAccounts.AnyAsync(x => x.ConnectionId == otherConnectionId, CancellationToken)).IsTrue();
         }
     }
 
@@ -471,7 +508,53 @@ public class BackgroundSyncTests : IntegrationTestBase
         return transactions.Single(x => x.ExternalId == externalId);
     }
 
-    private Task RunSyncAsync() => RunJobAsync(SyncFunction);
+    [Test]
+    public async Task Sync_AfterTheirAlertsAreSet_TellsThemOfALowBalanceAndALargePayment()
+    {
+        // Arrange, £40 available and a £900 payment yesterday
+        SignedInUser user = await RegisterUserAsync();
+        string accessToken = UniqueName("token");
+        await Scenario.Do(s => s.BankConnectionScenario.WithConnection("bank", user.Username))
+            .Do(s => s.BankConnectionScenario.WithAccessToken("bank", token: accessToken));
+
+        ExternalOpenBankingAccountBalance balance = new ExternalOpenBankingAccountBalanceFaker().Generate();
+        balance.Current = 50m;
+        balance.Available = 40m;
+        ExternalOpenBankingAccountTransaction sofa = new ExternalOpenBankingAccountTransactionFaker().Generate();
+        sofa.TransactionType = "DEBIT";
+        sofa.TransactionCategory = "PURCHASE";
+        sofa.Description = "SOFA SHOP";
+        sofa.Amount = -900m;
+        sofa.Timestamp = DateTime.UtcNow.AddDays(-1);
+        await App.TrueLayer.StubAccountAsync(accessToken, new ExternalOpenBankingAccountFaker().Generate(), [balance],
+            [sofa]);
+
+        // The account arrives with the first sync, then they say what to be told about
+        await RunUserSyncAsync(user);
+        INotificationsService notifications = ApiFor(user).Get<INotificationsService>();
+        NotificationSettings settings = await notifications.GetSettingsAsync(CancellationToken);
+        await notifications.ChangeAlertsAsync(new ChangeAlertSettings
+        {
+            BudgetWarningPercent = settings.BudgetWarningPercent,
+            BillReminderDays = settings.BillReminderDays,
+            LargeTransactionOver = 500m,
+            LowBalance = [new LowBalanceThreshold { AccountId = settings.LowBalance.Single().AccountId, Below = 100m }]
+        }, CancellationToken);
+
+        // Act
+        await RunUserSyncAsync(user);
+
+        // Assert
+        List<Notification> told = await notifications.GetNotificationsAsync(50, CancellationToken)
+            .ToListAsync(CancellationToken);
+        using (Assert.Multiple())
+        {
+            await Assert.That(told.Select(static x => x.Kind))
+                .IsEquivalentTo([NotificationKind.LowBalance, NotificationKind.LargeTransaction]);
+            await Assert.That(told.Single(x => x.Kind == NotificationKind.LargeTransaction).Title)
+                .EndsWith("paid to SOFA SHOP");
+        }
+    }
 
     /// <summary>
     /// Runs <paramref name="function"/> now as an admin would and waits for it to finish.

@@ -1,0 +1,221 @@
+@* The user's webhook, where their notifications are posted, the secret posts are signed with, and a test. Which
+   kinds are posted is chosen in the What and where tab. *@
+@using FinanceTracker.Client.Extensions
+@using FinanceTracker.Contracts.Notifications
+@using FluentValidation
+@using Severity = MudBlazor.Severity
+@implements IDisposable
+@inject INotificationsService NotificationsService
+@inject IValidator<SetWebhook> Validator
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<Section>
+    <div class="ft-stack">
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+            Each notification is posted as JSON to an address you choose, e.g. Home Assistant.
+        </MudText>
+        <MudForm @ref="_form" Model="@_model">
+            <div class="ft-webhook__address">
+                <MudTextField T="string" @bind-Value="_model.Url" Label="Webhook address"
+                              Placeholder="https://example.com/hooks/fintrack" Variant="Variant.Outlined"
+                              Margin="Margin.Dense" InputType="InputType.Url" Immediate="true"
+                              For="@(() => _model.Url)"
+                              Validation="@(Validator.ValidateValue(_model, nameof(SetWebhook.Url)))"
+                              Error="@(_refusal is not null)" ErrorText="@_refusal" Class="ft-webhook__url"/>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(_busy || !Changed)"
+                           OnClick="@SaveAsync">@(HasWebhook ? "Change" : "Save")</MudButton>
+                @if (HasWebhook)
+                {
+                    <MudButton Variant="Variant.Text" Color="Color.Error" Disabled="@_busy"
+                               OnClick="@RemoveAsync">Remove</MudButton>
+                }
+            </div>
+        </MudForm>
+
+        @if (HasWebhook)
+        {
+            <div class="ft-webhook__address">
+                <MudTextField T="string" Value="@Settings.WebhookSecret" Label="Signing secret" ReadOnly="true"
+                              Variant="Variant.Outlined" Margin="Margin.Dense"
+                              InputType="@(_showSecret ? InputType.Text : InputType.Password)"
+                              Adornment="Adornment.End"
+                              AdornmentIcon="@(_showSecret ? Icons.Material.Outlined.VisibilityOff : Icons.Material.Outlined.Visibility)"
+                              AdornmentAriaLabel="@(_showSecret ? "Hide the secret" : "Show the secret")"
+                              OnAdornmentClick="@(() => _showSecret = !_showSecret)" Class="ft-webhook__url"/>
+                <MudButton Variant="Variant.Text" Color="Color.Primary" Disabled="@_busy"
+                           OnClick="@ReplaceSecretAsync">New secret</MudButton>
+            </div>
+            <div class="ft-webhook__check">
+                <MudText Typo="Typo.subtitle2" HtmlTag="h3">Checking a post came from FinTrack</MudText>
+                <ol>
+                    <li>Read the <code>X-FinTrack-Timestamp</code> header, when it was sent in Unix seconds.</li>
+                    <li>Join the timestamp, a full stop and the post's body, e.g. <code>1762678800.{"id":…}</code>.</li>
+                    <li>Work out the HMAC-SHA256 of that, keyed with this secret, in lowercase hex.</li>
+                    <li>
+                        The post is FinTrack's if <code>X-FinTrack-Signature</code> is <code>sha256=</code> followed by
+                        that.
+                    </li>
+                </ol>
+            </div>
+            <div class="ft-notification-test">
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Send"
+                           Disabled="@_busy" OnClick="@SendTestAsync">Send a test post</MudButton>
+                @if (Settings.LastWebhook is { } last)
+                {
+                    <DeliveryStatusText Status="@last" What="post"/>
+                }
+            </div>
+        }
+    </div>
+</Section>
+
+@code {
+
+    [Parameter, EditorRequired]
+    public required NotificationSettings Settings { get; set; }
+
+    /// <summary>
+    /// The settings after a change here, for the page to show.
+    /// </summary>
+    [Parameter]
+    public EventCallback<NotificationSettings> SettingsChanged { get; set; }
+
+    private readonly CancellationTokenSource _cts = new();
+    private readonly SetWebhook _model = new();
+    private MudForm _form = null!;
+    private string? _shownUrl;
+    private string? _refusal;
+    private bool _showSecret;
+    private bool _busy;
+
+    private bool HasWebhook => Settings.WebhookUrl is not null;
+
+    private bool Changed => !string.Equals(_model.Url.Trim(), Settings.WebhookUrl ?? "", StringComparison.Ordinal);
+
+    protected override void OnParametersSet()
+    {
+        // The field follows the saved address when it changes, leaving what the user is typing otherwise
+        if (_shownUrl != Settings.WebhookUrl)
+        {
+            _shownUrl = Settings.WebhookUrl;
+            _model.Url = Settings.WebhookUrl ?? "";
+        }
+    }
+
+    internal async Task SaveAsync()
+    {
+        _refusal = null;
+        await _form.ValidateAsync();
+        if (!_form.IsValid)
+        {
+            return;
+        }
+
+        await RunAsync("Couldn't save the webhook, try again", async () =>
+        {
+            WebhookChange change = await NotificationsService.SetWebhookAsync(_model, _cts.Token);
+            if (change.Settings is null)
+            {
+                _refusal = change.Refusal;
+                return;
+            }
+
+            await ChangeSettingsAsync(change.Settings);
+            Snackbar.Add("Webhook saved", Severity.Success);
+        });
+    }
+
+    internal async Task RemoveAsync()
+    {
+        bool? confirmed = await DialogService.ShowMessageBoxAsync("Remove the webhook?",
+            "Notifications stop being posted to it, and its secret is forgotten.", yesText: "Remove",
+            cancelText: "Cancel");
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        await RunAsync("Couldn't remove the webhook, try again", async () =>
+        {
+            await ChangeSettingsAsync(await NotificationsService.RemoveWebhookAsync(_cts.Token));
+            Snackbar.Add("Webhook removed", Severity.Success);
+        });
+    }
+
+    internal async Task ReplaceSecretAsync()
+    {
+        bool? confirmed = await DialogService.ShowMessageBoxAsync("Make a new secret?",
+            "Posts are signed with the new one straight away, so whatever receives them needs it too.",
+            yesText: "Make a new secret", cancelText: "Cancel");
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        await RunAsync("Couldn't make a new secret, try again", async () =>
+        {
+            if (await NotificationsService.ReplaceWebhookSecretAsync(_cts.Token) is { } settings)
+            {
+                _showSecret = true;
+                await ChangeSettingsAsync(settings);
+                Snackbar.Add("New secret made", Severity.Success);
+            }
+        });
+    }
+
+    internal async Task SendTestAsync()
+    {
+        await RunAsync("Couldn't send the test post, try again", async () =>
+        {
+            NotificationSettings? settings = await NotificationsService.SendTestWebhookAsync(_cts.Token);
+            if (settings is null)
+            {
+                return;
+            }
+
+            await ChangeSettingsAsync(settings);
+            if (settings.LastWebhook is { Sent: true })
+            {
+                Snackbar.Add("Test post delivered", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("The test post failed", Severity.Error);
+            }
+        });
+    }
+
+    private async Task ChangeSettingsAsync(NotificationSettings settings)
+    {
+        Settings = settings;
+        await SettingsChanged.InvokeAsync(settings);
+    }
+
+    /// <summary>
+    /// Runs <paramref name="change"/> with the buttons off, saying <paramref name="failed"/> if the server fails.
+    /// </summary>
+    private async Task RunAsync(string failed, Func<Task> change)
+    {
+        _busy = true;
+        try
+        {
+            await change();
+        }
+        catch (Exception) when (!_cts.IsCancellationRequested)
+        {
+            Snackbar.Add(failed, Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        _cts.Cancel();
+        _cts.Dispose();
+    }
+
+}

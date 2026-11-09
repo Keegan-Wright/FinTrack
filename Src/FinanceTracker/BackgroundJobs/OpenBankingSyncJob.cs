@@ -4,6 +4,7 @@ using FinanceTracker.Contracts;
 using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Bills;
+using FinanceTracker.Infrastructure.Notifications;
 using FinanceTracker.Infrastructure.OpenBanking;
 using FinanceTracker.Infrastructure.OpenBanking.Balances;
 using FinanceTracker.Infrastructure.OpenBanking.Transfers;
@@ -81,13 +82,16 @@ public abstract class OpenBankingSyncJob
                     scope.ServiceProvider.GetRequiredService<IOpenBankingSyncService>();
 
                 await openBankingSyncService.SyncConnectionAsync(connectionId, SyncTypes.All, cancellationToken);
+                await scope.ServiceProvider.GetRequiredService<ISyncHealth>()
+                    .RecordSucceededAsync(connectionId, cancellationToken);
 
                 performingBackgroundSyncActivity?.AddEvent(
                     new ActivityEvent($"Finished Processing Connection {connectionId} for User {userId}"));
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
                 performingBackgroundSyncActivity?.AddException(ex);
+                await RecordFailedAsync(connectionId, userId, performingBackgroundSyncActivity, cancellationToken);
             }
         }
 
@@ -115,11 +119,55 @@ public abstract class OpenBankingSyncJob
             // After today's snapshot, so newly connected accounts are worked back from it
             await RunAsOwnerAsync<IBalanceSnapshotService>(userId, "Backfilled balance history",
                 performingBackgroundSyncActivity, x => x.BackfillAsync(cancellationToken));
+
+            // Last, so they're told about bills, budgets, payments and balances as everything above left them
+            await NotifyOwnerAsync(userId, performingBackgroundSyncActivity, cancellationToken);
         }
 
         performingBackgroundSyncActivity?.AddEvent(new ActivityEvent("Background sync completed"));
 
         return owners;
+    }
+
+    /// <summary>
+    /// Tells the owner a connection has started failing to sync, once until it syncs again, see
+    /// <see cref="ISyncHealth"/>. A failure to say so is recorded on <paramref name="activity"/>, the other
+    /// connections still sync.
+    /// </summary>
+    private async Task RecordFailedAsync(Guid connectionId, Guid userId, Activity? activity,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using AsyncServiceScope scope = _scopeFactory.CreateUserScope(userId);
+            await scope.ServiceProvider.GetRequiredService<ISyncHealth>()
+                .RecordFailedAsync(connectionId, cancellationToken);
+        }
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            activity?.AddException(ex);
+        }
+    }
+
+    /// <summary>
+    /// Runs every <see cref="ISyncNotices"/> as <paramref name="userId"/>. One failing is recorded on
+    /// <paramref name="activity"/> and the rest still run.
+    /// </summary>
+    private async Task NotifyOwnerAsync(Guid userId, Activity? activity, CancellationToken cancellationToken)
+    {
+        await using AsyncServiceScope scope = _scopeFactory.CreateUserScope(userId);
+        foreach (ISyncNotices notices in scope.ServiceProvider.GetServices<ISyncNotices>())
+        {
+            try
+            {
+                    await notices.NotifyAsync(cancellationToken);
+                activity?.AddEvent(new ActivityEvent($"Ran {notices.GetType().Name} for User {userId}"));
+            }
+            catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                activity?.AddException(ex);
+            }
+        }
     }
 
     /// <summary>

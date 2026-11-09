@@ -63,4 +63,19 @@ public static partial class LoggerMessages
 
     [LoggerMessage(LogLevel.Information, "Deleted debt {debtId} for user {userId}, {payments} payments and {rules} rules no longer pay it off")]
     public static partial void LogDeletedDebt(this ILogger logger, Guid userId, Guid debtId, int payments, int rules);
+
+    [LoggerMessage(LogLevel.Warning, "Couldn't email notification {notificationId} to user {userId}, it still shows in the app")]
+    public static partial void LogNotificationEmailFailed(this ILogger logger, Exception exception, Guid notificationId, Guid userId);
+
+    [LoggerMessage(LogLevel.Warning, "Couldn't post notification {notificationId} to user {userId}'s webhook, it still shows in the app")]
+    public static partial void LogNotificationWebhookFailed(this ILogger logger, Exception exception, Guid notificationId, Guid userId);
+
+    [LoggerMessage(LogLevel.Warning, "Couldn't post user {userId} their test webhook")]
+    public static partial void LogTestWebhookFailed(this ILogger logger, Exception exception, Guid userId);
+
+    [LoggerMessage(LogLevel.Warning, "Couldn't send user {userId} their test email")]
+    public static partial void LogTestEmailFailed(this ILogger logger, Exception exception, Guid userId);
+
+    [LoggerMessage(LogLevel.Warning, "Couldn't record how notification {notificationId} was sent for user {userId}, their settings were saved by something else at the same moment")]
+    public static partial void LogNotificationDeliveryNotRecorded(this ILogger logger, Exception exception, Guid notificationId, Guid userId);
 }

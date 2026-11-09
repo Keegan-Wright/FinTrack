@@ -1,0 +1,39 @@
+@* Why the email came and where to change that, and which FinTrack sent it when its address is known. *@
+@* Razor drops the whitespace between an expression and the text after it, so the space after the reason is written
+   out *@
+<p style="@EmailStyles.Quiet">
+    @($"{Reason} ")@if (Settings is null)
+    {
+        <text>You can change which emails you get in FinTrack, under Notifications.</text>
+    }
+    else
+    {
+        <text>You can </text><a href="@Settings" style="@EmailStyles.Link">change which emails you get</a><text>.</text>
+    }
+</p>
+@if (PublicUrl is not null)
+{
+    <p style="@EmailStyles.Quiet margin-top: 8px;">Sent by FinTrack at @PublicUrl.Authority</p>
+}
+
+@code {
+
+    /// <summary>
+    /// Why the email came, a sentence, e.g. <c>You asked for this test from FinTrack.</c>
+    /// </summary>
+    [Parameter, EditorRequired]
+    public required string Reason { get; set; }
+
+    /// <summary>
+    /// The Notifications page, null when the app's address isn't known.
+    /// </summary>
+    [Parameter]
+    public Uri? Settings { get; set; }
+
+    /// <summary>
+    /// The app's address, null when it isn't known.
+    /// </summary>
+    [Parameter]
+    public Uri? PublicUrl { get; set; }
+
+}

@@ -26,6 +26,7 @@ public sealed class TestingScenario
     public BillScenario BillScenario { get; init; }
     public PayScenario PayScenario { get; init; }
     public CalendarEventScenario CalendarEventScenario { get; init; }
+    public NotificationScenario NotificationScenario { get; init; }
 
     public Dictionary<string, Guid> UserMappings { get; set; } = [];
     public Dictionary<string, Guid> ConnectionMappings { get; set; } = [];
@@ -41,6 +42,7 @@ public sealed class TestingScenario
     public Dictionary<string, Guid> BillMappings { get; set; } = [];
     public Dictionary<string, Guid> BillSuggestionMappings { get; set; } = [];
     public Dictionary<string, Guid> CalendarEventMappings { get; set; } = [];
+    public Dictionary<string, Guid> NotificationMappings { get; set; } = [];
 
     public TestingScenario(IDbContextFactory<FinanceTrackerContext> dbContextFactory,
         CancellationToken cancellationToken)
@@ -62,6 +64,7 @@ public sealed class TestingScenario
         BillScenario = new BillScenario(this);
         PayScenario = new PayScenario(this);
         CalendarEventScenario = new CalendarEventScenario(this);
+        NotificationScenario = new NotificationScenario(this);
     }
 
 }

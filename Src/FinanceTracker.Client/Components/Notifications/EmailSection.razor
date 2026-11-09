@@ -1,0 +1,96 @@
+@* Where notifications are emailed, and a test to see email works, with how the last email went. Says why when they
+   can't be emailed. *@
+@using FinanceTracker.Contracts.Notifications
+@implements IDisposable
+@inject INotificationsService NotificationsService
+@inject ISnackbar Snackbar
+
+<Section>
+    <div class="ft-stack">
+        @if (!Settings.EmailAvailable)
+        {
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                Email isn't set up on this FinTrack. Whoever runs it can add a mail server to send them.
+            </MudText>
+        }
+        else if (Settings.EmailAddress is null)
+        {
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                Your account has no email address, so you can't be notified by email.
+            </MudText>
+        }
+        else
+        {
+            <MudText Typo="Typo.body2">Notifications are emailed to <strong>@Settings.EmailAddress</strong>.</MudText>
+            <div class="ft-email-test">
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Send"
+                           Disabled="@_sendingTest" OnClick="@SendTestAsync">Send a test email</MudButton>
+                @if (Settings.LastEmail is { } last)
+                {
+                    <DeliveryStatusText Status="@last" What="email"/>
+                }
+            </div>
+        }
+    </div>
+</Section>
+
+@code {
+
+    [Parameter, EditorRequired]
+    public required NotificationSettings Settings { get; set; }
+
+    /// <summary>
+    /// The settings after a test here, for the page to show.
+    /// </summary>
+    [Parameter]
+    public EventCallback<NotificationSettings> SettingsChanged { get; set; }
+
+    private readonly CancellationTokenSource _cts = new();
+    private bool _sendingTest;
+
+    internal async Task SendTestAsync()
+    {
+        _sendingTest = true;
+        try
+        {
+            NotificationSettings? settings = await NotificationsService.SendTestEmailAsync(_cts.Token);
+            if (settings is null)
+            {
+                // Email stopped being possible since the page loaded, the settings again say why
+                await ChangeSettingsAsync(await NotificationsService.GetSettingsAsync(_cts.Token));
+                return;
+            }
+
+            await ChangeSettingsAsync(settings);
+            if (settings.LastEmail is { Sent: true })
+            {
+                Snackbar.Add($"Test email sent to {settings.EmailAddress}", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("Couldn't send the test email", Severity.Error);
+            }
+        }
+        catch (Exception) when (!_cts.IsCancellationRequested)
+        {
+            Snackbar.Add("Couldn't send the test email, try again", Severity.Error);
+        }
+        finally
+        {
+            _sendingTest = false;
+        }
+    }
+
+    private async Task ChangeSettingsAsync(NotificationSettings settings)
+    {
+        Settings = settings;
+        await SettingsChanged.InvokeAsync(settings);
+    }
+
+    public void Dispose()
+    {
+        _cts.Cancel();
+        _cts.Dispose();
+    }
+
+}

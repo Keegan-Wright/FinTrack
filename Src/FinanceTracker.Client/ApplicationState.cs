@@ -131,6 +131,25 @@ public sealed class ApplicationState : INotifyPropertyChanged
     }
 
     /// <summary>
+    /// How many notifications the user hasn't read, shown on the app bar's bell and in the navigation. Refreshed as
+    /// the app starts, when one arrives and when they're read.
+    /// </summary>
+    public int UnreadNotifications
+    {
+        get;
+        set
+        {
+            if (value == field)
+            {
+                return;
+            }
+
+            field = value;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>
     /// Sets <see cref="ConnectionsToRenew"/> from the user's connections: those not <see cref="ConsentState.Active"/>.
     /// </summary>
     public void CountConnectionsToRenew(IEnumerable<BankConnectionSummary> connections) =>

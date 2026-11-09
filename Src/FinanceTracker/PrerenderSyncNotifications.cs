@@ -17,6 +17,9 @@ public sealed class PrerenderSyncNotifications : ISyncNotifications
     public Task<IDisposable> SubscribeToJobsAsync(Func<string, Task> onJobChanged,
         CancellationToken cancellationToken) => Refused();
 
+    public Task<IDisposable> SubscribeToNotificationsAsync(Func<Task> onNotificationAdded,
+        CancellationToken cancellationToken) => Refused();
+
     /// <summary>
     /// Never, nothing is heard while prerendering.
     /// </summary>

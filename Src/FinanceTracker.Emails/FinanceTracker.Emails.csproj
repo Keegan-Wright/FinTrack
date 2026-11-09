@@ -1,0 +1,32 @@
+<!-- FinTrack's emails as Razor components, rendered to HTML on the server, see Templates and EmailRenderer. Kept out
+     of Infrastructure so only this project needs the Razor SDK and Blazor -->
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <AnalysisMode>Recommended</AnalysisMode>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\FinanceTracker.Design\FinanceTracker.Design.csproj"/>
+      <ProjectReference Include="..\FinanceTracker.Domain\FinanceTracker.Domain.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Microsoft.AspNetCore.Components.Web"/>
+    </ItemGroup>
+
+    <!-- The logo in emails, a PNG as email apps don't show SVG. Made from the favicon:
+         rsvg-convert -w 96 -h 96 ../FinanceTracker/wwwroot/favicon.svg -o Templates/logo.png -->
+    <ItemGroup>
+      <EmbeddedResource Include="Templates\logo.png" LogicalName="Email.logo.png"/>
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Generators\FinanceTracker.Generated.Attributes\FinanceTracker.Generated.Attributes\FinanceTracker.Generated.Attributes.csproj" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false"/>
+      <ProjectReference Include="..\Generators\FinanceTracker.Generated.Enums\FinanceTracker.Generated.Enums\FinanceTracker.Generated.Enums.csproj" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false"/>
+    </ItemGroup>
+
+</Project>
