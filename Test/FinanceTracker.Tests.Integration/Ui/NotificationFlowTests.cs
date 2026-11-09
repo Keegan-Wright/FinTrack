@@ -62,10 +62,10 @@ public class NotificationFlowTests : UiTestBase
         IPage page = await OpenAsync(ScreenSize.Phone, user);
         await GoToAsync(page, "/Notifications");
         await WaitUntilLoadedAsync(page);
-        ILocator syncFailures = page.GetByRole(AriaRole.Switch, new PageGetByRoleOptions
+        ILocator syncFailures = page.GetByRole(AriaRole.Checkbox, new PageGetByRoleOptions
         {
-            Name = "A bank failing to sync"
-        }).Or(page.GetByLabel("A bank failing to sync"));
+            Name = "Email: A bank failing to sync", Exact = true
+        });
         await Assertions.Expect(syncFailures.First).ToBeCheckedAsync();
         await Assertions.Expect(page.GetByText($"Sent to {user.Username}@fintrack.test")).ToBeVisibleAsync();
 

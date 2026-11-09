@@ -2,6 +2,7 @@ using FinanceTracker.Domain.Notifications;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Notifications;
 using FinanceTracker.Infrastructure.Notifications.Email;
+using FinanceTracker.Infrastructure.Notifications.Webhooks;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.EntityFrameworkCore;
@@ -16,8 +17,11 @@ public class NotifierTests : InfrastructureTestBase
     private const string Username = "primary";
     private const string Address = "sam@example.test";
 
+    private static readonly DateTime Now = new(2026, 11, 7, 9, 0, 0, DateTimeKind.Utc);
+
     private readonly INotificationPublisher _publisher = Substitute.For<INotificationPublisher>();
     private readonly IMailSender _mail = Substitute.For<IMailSender>();
+    private readonly IWebhookSender _webhooks = Substitute.For<IWebhookSender>();
 
     [Before(Test)]
     public async Task SetUpAsync()
@@ -122,16 +126,136 @@ public class NotifierTests : InfrastructureTestBase
 
         // Assert
         await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        NotificationSettings settings = await context.NotificationSettings.SingleAsync(CancellationToken);
         using (Assert.Multiple())
         {
             await Assert.That(raised).IsTrue();
             await Assert.That(await context.Notifications.CountAsync(CancellationToken)).IsEqualTo(1);
+            await Assert.That(settings.LastEmailAt).IsEqualTo(Now);
+            await Assert.That(settings.LastEmailFailure).IsEqualTo("FinTrack couldn't reach the mail server.");
         }
+    }
+
+    [Test]
+    public async Task Notify_Emailed_RecordsItWasSentWithoutChangingWhatTheyHaveEmailed()
+    {
+        // Act
+        await Notify("consent-ended:a");
+
+        // Assert
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        NotificationSettings settings = await context.NotificationSettings.SingleAsync(CancellationToken);
+        using (Assert.Multiple())
+        {
+            await Assert.That(settings.LastEmailAt).IsEqualTo(Now);
+            await Assert.That(settings.LastEmailFailure).IsNull();
+            await Assert.That(settings.Emailed).IsEquivalentTo(Enum.GetValues<NotificationKind>());
+        }
+    }
+
+    [Test]
+    public async Task Notify_Emailed_SendsTheBrandedEmail()
+    {
+        // Act
+        await Notify("consent-ended:a");
+
+        // Assert
+        await _mail.Received(1).SendAsync(
+            Arg.Is<MailMessage>(x => x.Images.Count == 1 && x.Html.Contains("FinTrack can no longer sync Bank.")),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Notify_WebhookSet_PostsItSignedAndRecordsIt()
+    {
+        // Arrange
+        await GivenSettingsAsync(x => x.SetWebhook("https://hooks.example.test/fintrack", "secret"));
+
+        // Act
+        await Notify("consent-ended:a");
+
+        // Assert
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        NotificationSettings settings = await context.NotificationSettings.SingleAsync(CancellationToken);
+        using (Assert.Multiple())
+        {
+            await _webhooks.Received(1).SendAsync("https://hooks.example.test/fintrack", "secret",
+                Arg.Is<WebhookPayload>(x => x.Kind == NotificationKind.ConsentEnded && x.Title == "Bank access has ended"),
+                Arg.Any<CancellationToken>());
+            await Assert.That(settings.LastWebhookAt).IsEqualTo(Now);
+            await Assert.That(settings.LastWebhookFailure).IsNull();
+        }
+    }
+
+    [Test]
+    public async Task Notify_KindNotPosted_OnlyEmailsIt()
+    {
+        // Arrange
+        await GivenSettingsAsync(x =>
+        {
+            x.SetWebhook("https://hooks.example.test/fintrack", "secret");
+            x.WebhookOnly([NotificationKind.SyncFailed]);
+        });
+
+        // Act
+        await Notify("consent-ended:a");
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await _webhooks.DidNotReceive().SendAsync(Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<WebhookPayload>(), Arg.Any<CancellationToken>());
+            await _mail.Received(1).SendAsync(Arg.Any<MailMessage>(), Arg.Any<CancellationToken>());
+        }
+    }
+
+    [Test]
+    public async Task Notify_WebhookFails_RecordsWhyAndStillEmailsAndShowsIt()
+    {
+        // Arrange
+        await GivenSettingsAsync(x => x.SetWebhook("https://hooks.example.test/fintrack", "secret"));
+        _webhooks.SendAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<WebhookPayload>(),
+                Arg.Any<CancellationToken>())
+            .ThrowsAsync(new WebhookRejectedException(System.Net.HttpStatusCode.InternalServerError));
+
+        // Act
+        bool raised = await Notify("consent-ended:a");
+
+        // Assert
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        NotificationSettings settings = await context.NotificationSettings.SingleAsync(CancellationToken);
+        using (Assert.Multiple())
+        {
+            await Assert.That(raised).IsTrue();
+            await Assert.That(settings.LastWebhookFailure).IsEqualTo("The webhook answered 500, not success.");
+            await Assert.That(settings.LastEmailFailure).IsNull();
+            await _mail.Received(1).SendAsync(Arg.Any<MailMessage>(), Arg.Any<CancellationToken>());
+        }
+    }
+
+    [Test]
+    public async Task Notify_NoWebhook_PostsNothing()
+    {
+        // Act
+        await Notify("consent-ended:a");
+
+        // Assert
+        await _webhooks.DidNotReceive().SendAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<WebhookPayload>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    private async Task GivenSettingsAsync(Action<NotificationSettings> change)
+    {
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        NotificationSettings settings = new(Scenario.UserMappings[Username]);
+        change(settings);
+        context.NotificationSettings.Add(settings);
+        await context.SaveChangesAsync(CancellationToken);
     }
 
     private Task<bool> Notify(string key) =>
         new Notifier(CurrentUserFor(Username), DbContextFactory, NullLogger<Notifier>.Instance, _publisher, _mail,
-                MailSettings.None)
+                TestEmails.Create(), _webhooks, PublicAddress.Unknown, new FixedTimeProvider(Now))
             .NotifyAsync(NotificationKind.ConsentEnded, key, "Bank access has ended",
                 "FinTrack can no longer sync Bank.", "ProviderSetup", CancellationToken);
 }

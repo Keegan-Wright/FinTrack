@@ -3,7 +3,7 @@ using FinanceTracker.Contracts.Notifications;
 namespace FinanceTracker.Contracts.Services;
 
 /// <summary>
-/// The signed in user's notifications, as the bell and the notifications page show them, and which they have emailed.
+/// The signed in user's notifications, as the bell and the notifications page show them, and where they're sent.
 /// </summary>
 public interface INotificationsService
 {
@@ -39,4 +39,37 @@ public interface INotificationsService
     /// <returns>The settings as they are now.</returns>
     Task<NotificationSettings> ChangeSettingsAsync(ChangeNotificationSettings settings,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Emails the user a test, so they see email works and how it looks. Recorded as their last email whether it
+    /// sent or not, see <see cref="NotificationSettings.LastEmail"/>.
+    /// </summary>
+    /// <returns>The settings with how it went, null when it can't be sent: no mail server or no address.</returns>
+    Task<NotificationSettings?> SendTestEmailAsync(CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Posts the user's notifications to <paramref name="webhook"/> from now on, the kinds in
+    /// <see cref="NotificationSettings.Webhooked"/>. A first webhook gets a new signing secret, changing the address
+    /// keeps it.
+    /// </summary>
+    /// <returns>The settings, or why this FinTrack won't post there.</returns>
+    Task<WebhookChange> SetWebhookAsync(SetWebhook webhook, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Stops posting to the user's webhook, forgetting its address and secret.
+    /// </summary>
+    /// <returns>The settings as they are now.</returns>
+    Task<NotificationSettings> RemoveWebhookAsync(CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Signs posts to the user's webhook with a new secret from now on.
+    /// </summary>
+    /// <returns>The settings with it, null when they have no webhook.</returns>
+    Task<NotificationSettings?> ReplaceWebhookSecretAsync(CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Posts a test to the user's webhook, recorded as its last post whether it was delivered or not.
+    /// </summary>
+    /// <returns>The settings with how it went, null when they have no webhook.</returns>
+    Task<NotificationSettings?> SendTestWebhookAsync(CancellationToken cancellationToken);
 }

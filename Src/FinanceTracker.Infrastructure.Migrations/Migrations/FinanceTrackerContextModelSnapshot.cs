@@ -642,7 +642,25 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.Property<DateTime>("Created")
                         .HasColumnType("timestamp with time zone");
 
-                    b.PrimitiveCollection<int[]>("Emailed")
+                    b.Property<DateTime?>("LastEmailAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LastEmailFailure")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime?>("LastWebhookAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LastWebhookFailure")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.PrimitiveCollection<int[]>("NotEmailed")
+                        .IsRequired()
+                        .HasColumnType("integer[]");
+
+                    b.PrimitiveCollection<int[]>("NotWebhooked")
                         .IsRequired()
                         .HasColumnType("integer[]");
 
@@ -657,6 +675,14 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("WebhookSecret")
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                    b.Property<string>("WebhookUrl")
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
 
                     b.HasKey("Id");
 

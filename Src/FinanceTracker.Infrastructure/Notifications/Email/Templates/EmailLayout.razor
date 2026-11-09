@@ -1,0 +1,73 @@
+@* The branded shell every FinTrack email sits in, the logo and name, a card for the content with a band of colour
+   along its top, and a footer. Tables and inline styles, as email apps ignore most CSS layout and every stylesheet.
+   Light only, the palette's contrast is checked against light surfaces. *@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light only">
+    <meta name="supported-color-schemes" content="light only">
+    <title>@Title</title>
+</head>
+<body style="@EmailStyles.Page">
+@* The line inboxes show after the subject, hidden in the email itself *@
+<div style="display: none; max-height: 0; overflow: hidden; opacity: 0;">@Preheader</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="@EmailStyles.Page">
+    <tr>
+        <td align="center" style="padding: 24px 16px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                   style="max-width: @(EmailStyles.MaxWidthPixels)px;">
+                <tr>
+                    <td style="padding: 0 4px 16px;">
+                        <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                            <tr>
+                                <td style="padding-right: 10px; vertical-align: middle;">
+                                    <img src="cid:@EmailBrand.LogoContentId" width="32" height="32" alt=""
+                                         style="display: block; border: 0;">
+                                </td>
+                                <td style="@EmailStyles.Wordmark vertical-align: middle;">FinTrack</td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="@EmailStyles.Card(Accent)">@ChildContent</td>
+                </tr>
+                <tr>
+                    <td style="padding: 16px 4px 0;">@Footer</td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+</body>
+</html>
+
+@code {
+
+    /// <summary>
+    /// The email's subject, as the page title.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public required string Title { get; set; }
+
+    /// <summary>
+    /// The line inboxes show after the subject.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public required string Preheader { get; set; }
+
+    /// <summary>
+    /// The band along the card's top, the brand green unless the email is a warning.
+    /// </summary>
+    [Parameter]
+    public string Accent { get; set; } = LightPalette.Primary;
+
+    [Parameter, EditorRequired]
+    public required RenderFragment ChildContent { get; set; }
+
+    [Parameter, EditorRequired]
+    public required RenderFragment Footer { get; set; }
+
+}

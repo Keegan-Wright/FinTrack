@@ -66,7 +66,10 @@ public sealed class MailCatcher : IDisposable
             cancellationToken) ?? throw new InvalidOperationException("Mailpit gave no answer");
 
         JsonElement root = message.RootElement;
+        List<string> inline = root.GetProperty("Inline").EnumerateArray()
+            .Select(static x => x.GetProperty("ContentID").GetString()!)
+            .ToList();
         return new CaughtMail(root.GetProperty("Subject").GetString()!, root.GetProperty("Text").GetString()!,
-            root.GetProperty("HTML").GetString()!);
+            root.GetProperty("HTML").GetString()!, inline);
     }
 }

@@ -16,7 +16,8 @@ public static class NotificationEndpoints
     {
         /// <summary>
         /// <see cref="INotificationsService"/> at <see cref="ApiRoutes.Notifications"/>. Marking one that doesn't
-        /// exist or isn't the user's answers 404.
+        /// exist or isn't the user's answers 404. a test email when there's no mail server or address, or a webhook
+        /// test or new secret without a webhook, 409.
         /// </summary>
         public RouteGroupBuilder MapNotificationEndpoints()
         {
@@ -56,6 +57,49 @@ public static class NotificationEndpoints
                     ChangeNotificationSettings request, INotificationsService service,
                     CancellationToken cancellationToken) =>
                 TypedResults.Ok(await service.ChangeSettingsAsync(request, cancellationToken)));
+
+            notifications.MapPost("settings/test-email", async Task<Results<Ok<NotificationSettings>, Conflict>> (
+                INotificationsService service, CancellationToken cancellationToken) =>
+            {
+                if (await service.SendTestEmailAsync(cancellationToken) is not { } settings)
+                {
+                    return TypedResults.Conflict();
+                }
+
+                return TypedResults.Ok(settings);
+            });
+
+            // Setting answers 200 with the refusal when this FinTrack won't post there, see WebhookChange
+            notifications.MapPut("settings/webhook", async Task<Ok<WebhookChange>> (SetWebhook request,
+                    INotificationsService service, CancellationToken cancellationToken) =>
+                    TypedResults.Ok(await service.SetWebhookAsync(request, cancellationToken)))
+                .Validated<SetWebhook>();
+
+            notifications.MapDelete("settings/webhook", async Task<Ok<NotificationSettings>> (
+                    INotificationsService service, CancellationToken cancellationToken) =>
+                TypedResults.Ok(await service.RemoveWebhookAsync(cancellationToken)));
+
+            notifications.MapPost("settings/webhook/secret", async Task<Results<Ok<NotificationSettings>, Conflict>> (
+                INotificationsService service, CancellationToken cancellationToken) =>
+            {
+                if (await service.ReplaceWebhookSecretAsync(cancellationToken) is not { } settings)
+                {
+                    return TypedResults.Conflict();
+                }
+
+                return TypedResults.Ok(settings);
+            });
+
+            notifications.MapPost("settings/webhook/test", async Task<Results<Ok<NotificationSettings>, Conflict>> (
+                INotificationsService service, CancellationToken cancellationToken) =>
+            {
+                if (await service.SendTestWebhookAsync(cancellationToken) is not { } settings)
+                {
+                    return TypedResults.Conflict();
+                }
+
+                return TypedResults.Ok(settings);
+            });
 
             return api;
         }

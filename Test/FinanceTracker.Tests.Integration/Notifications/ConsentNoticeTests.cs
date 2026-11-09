@@ -45,7 +45,9 @@ public class ConsentNoticeTests : IntegrationTestBase
             await Assert.That(email.Subject).IsEqualTo(notification.Title);
             await Assert.That(email.Text).Contains(notification.Message);
             await Assert.That(email.Text).Contains("/ProviderSetup");
-            await Assert.That(email.Html).Contains("Open it in FinTrack");
+            await Assert.That(email.Html).Contains("Open in FinTrack");
+            await Assert.That(email.Html).Contains("/ProviderSetup\"");
+            await Assert.That(email.InlineContentIds).IsEquivalentTo(["fintrack-logo"]);
         }
     }
 

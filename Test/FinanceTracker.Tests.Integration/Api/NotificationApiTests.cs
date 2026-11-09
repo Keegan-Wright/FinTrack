@@ -1,5 +1,8 @@
+using System.Globalization;
+using System.Text.Json;
 using FinanceTracker.Contracts.Notifications;
 using FinanceTracker.Contracts.Services;
+using FinanceTracker.Infrastructure.Notifications.Webhooks;
 using FinanceTracker.Tests.Integration.Http;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using DomainKind = FinanceTracker.Domain.Notifications.NotificationKind;
@@ -74,7 +77,7 @@ public class NotificationApiTests : IntegrationTestBase
 
         // Act
         NotificationSettings atFirst = await service.GetSettingsAsync(CancellationToken);
-        await service.ChangeSettingsAsync(new ChangeNotificationSettings { Emailed = [NotificationKind.SyncFailed] },
+        await service.ChangeSettingsAsync(new ChangeNotificationSettings { Emailed = [NotificationKind.SyncFailed], Webhooked = [] },
             CancellationToken);
         NotificationSettings after = await ApiFor(user).Get<INotificationsService>().GetSettingsAsync(CancellationToken);
 
@@ -86,6 +89,70 @@ public class NotificationApiTests : IntegrationTestBase
             await Assert.That(atFirst.EmailAddress).IsEqualTo($"{user.Username}@fintrack.test");
             await Assert.That(after.Emailed).IsEquivalentTo([NotificationKind.SyncFailed]);
         }
+    }
+
+    [Test]
+    public async Task TestEmail_ThroughTheApi_ArrivesBrandedAndIsRecorded()
+    {
+        // Arrange
+        SignedInUser user = await RegisterUserAsync();
+
+        // Act
+        NotificationSettings? settings = await ApiFor(user).Get<INotificationsService>()
+            .SendTestEmailAsync(CancellationToken);
+
+        // Assert
+        IReadOnlyList<CaughtMail> mail = await App.Mail.WaitForAsync($"{user.Username}@fintrack.test", CancellationToken);
+        CaughtMail email = mail.Single();
+        using (Assert.Multiple())
+        {
+            await Assert.That(settings!.LastEmail!.Sent).IsTrue();
+            await Assert.That(email.Subject).IsEqualTo("FinTrack test email");
+            await Assert.That(email.Html).Contains("Email works");
+            await Assert.That(email.Html).Contains("src=\"cid:fintrack-logo\"");
+            await Assert.That(email.InlineContentIds).IsEquivalentTo(["fintrack-logo"]);
+        }
+    }
+
+    [Test]
+    public async Task TestWebhook_ThroughTheApi_ArrivesSignedWithTheirSecret()
+    {
+        // Arrange
+        using WebhookCatcher catcher = new();
+        SignedInUser user = await RegisterUserAsync();
+        INotificationsService service = ApiFor(user).Get<INotificationsService>();
+        WebhookChange set = await service.SetWebhookAsync(new SetWebhook { Url = catcher.Url.ToString() },
+            CancellationToken);
+
+        // Act
+        NotificationSettings? settings = await service.SendTestWebhookAsync(CancellationToken);
+
+        // Assert, checked as a receiver would check it
+        CaughtPost post = await catcher.NextAsync(CancellationToken);
+        long timestamp = long.Parse(post.Headers[WebhookSender.TimestampHeader], CultureInfo.InvariantCulture);
+        using JsonDocument body = JsonDocument.Parse(post.Body);
+        using (Assert.Multiple())
+        {
+            await Assert.That(post.Headers[WebhookSender.SignatureHeader])
+                .IsEqualTo(WebhookSignature.Sign(set.Settings!.WebhookSecret!, timestamp, post.Body));
+            await Assert.That(body.RootElement.GetProperty("event").GetString()).IsEqualTo("test");
+            await Assert.That(settings!.LastWebhook!.Sent).IsTrue();
+        }
+    }
+
+    [Test]
+    public async Task SetWebhook_NotAnAddress_IsRefused()
+    {
+        // Arrange
+        SignedInUser user = await RegisterUserAsync();
+
+        // Act
+        HttpRequestException? exception = await Assert.ThrowsAsync<HttpRequestException>(() =>
+            ApiFor(user).Get<INotificationsService>().SetWebhookAsync(new SetWebhook { Url = "not an address" },
+                CancellationToken));
+
+        // Assert
+        await Assert.That(exception!.StatusCode).IsEqualTo(System.Net.HttpStatusCode.BadRequest);
     }
 
     private async Task<Guid> AddAsync(SignedInUser user, string title)

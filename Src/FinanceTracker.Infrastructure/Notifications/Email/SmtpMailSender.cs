@@ -9,6 +9,11 @@ namespace FinanceTracker.Infrastructure.Notifications.Email;
 /// </summary>
 public sealed class SmtpMailSender : IMailSender
 {
+    /// <summary>
+    /// How long to wait on the mail server, short enough that a test email from the Notifications page doesn't hang.
+    /// </summary>
+    public static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);
+
     private readonly MailSettings _settings;
 
     public SmtpMailSender(MailSettings settings) => _settings = settings;
@@ -24,7 +29,8 @@ public sealed class SmtpMailSender : IMailSender
         }
 
         using MimeMessage mime = ToMime(message);
-        using SmtpClient client = new();
+        using SmtpClient client = new() { Timeout = (int)Timeout.TotalMilliseconds };
+
         await client.ConnectAsync(host, _settings.Port, SocketOptions(_settings.Security), cancellationToken);
         if (!string.IsNullOrEmpty(_settings.Username))
         {
@@ -38,10 +44,22 @@ public sealed class SmtpMailSender : IMailSender
     private MimeMessage ToMime(MailMessage message)
     {
         MimeMessage mime = new();
+
         mime.From.Add(MailboxAddress.Parse(_settings.From));
         mime.To.Add(MailboxAddress.Parse(message.To));
         mime.Subject = message.Subject;
-        mime.Body = new BodyBuilder { TextBody = message.Text, HtmlBody = message.Html }.ToMessageBody();
+
+        BodyBuilder body = new() { TextBody = message.Text, HtmlBody = message.Html };
+
+        foreach (MailImage image in message.Images)
+        {
+            MimeEntity resource = body.LinkedResources.Add(image.FileName, image.Content.ToArray(),
+                ContentType.Parse(image.ContentType));
+
+            resource.ContentId = image.ContentId;
+        }
+
+        mime.Body = body.ToMessageBody();
         return mime;
     }
 

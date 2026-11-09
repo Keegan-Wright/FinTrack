@@ -65,6 +65,11 @@ public static class FinTrackEnvironment
     /// </summary>
     public const string SmtpFrom = "SMTP_FROM";
 
+    /// <summary>
+    /// Whether users' webhooks may go to private network addresses, e.g. Home Assistant at home. When off, a webhook can only reach the public internet, as any user can type one in.
+    /// </summary>
+    public const string WebhookAllowPrivate = "WEBHOOK_ALLOW_PRIVATE";
+
     public const string OidcAuthority = "OIDC_Authority";
     public const string OidcClientId = "OIDC_ClientId";
     public const string OidcClientSecret = "OIDC_ClientSecret";

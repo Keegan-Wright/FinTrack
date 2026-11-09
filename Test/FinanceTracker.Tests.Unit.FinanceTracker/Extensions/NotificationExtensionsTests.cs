@@ -1,6 +1,8 @@
 using FinanceTracker.AppHost.ServiceDefaults;
 using FinanceTracker.Extensions;
+using FinanceTracker.Infrastructure.Notifications;
 using FinanceTracker.Infrastructure.Notifications.Email;
+using FinanceTracker.Infrastructure.Notifications.Webhooks;
 using Microsoft.Extensions.Configuration;
 
 namespace FinanceTracker.Tests.Unit.FinanceTracker.Extensions;
@@ -40,8 +42,7 @@ public class NotificationExtensionsTests
             [FinTrackEnvironment.SmtpSecurity] = "SslOnConnect",
             [FinTrackEnvironment.SmtpUsername] = "fintrack",
             [FinTrackEnvironment.SmtpPassword] = "placeholder",
-            [FinTrackEnvironment.SmtpFrom] = "FinTrack <fintrack@example.test>",
-            [FinTrackEnvironment.PublicUrl] = "https://fintrack.example.test"
+            [FinTrackEnvironment.SmtpFrom] = "FinTrack <fintrack@example.test>"
         });
 
         // Act
@@ -55,45 +56,60 @@ public class NotificationExtensionsTests
             await Assert.That(settings.Security).IsEqualTo(MailSecurity.SslOnConnect);
             await Assert.That(settings.Username).IsEqualTo("fintrack");
             await Assert.That(settings.From).IsEqualTo("FinTrack <fintrack@example.test>");
-            await Assert.That(settings.PublicUrl).IsEqualTo(new Uri("https://fintrack.example.test/"));
         }
     }
 
     [Test]
-    public async Task GetMailSettings_PublicUrlEmptyAsComposePassesIt_LinksToNothing()
+    public async Task GetMailSettings_PortAndSecurityNotSet_UsesTheDefaults()
     {
         // Act
         MailSettings settings = Configuration(new()
         {
             [FinTrackEnvironment.SmtpHost] = "mail.example.test",
-            [FinTrackEnvironment.SmtpFrom] = "fintrack@example.test",
-            [FinTrackEnvironment.PublicUrl] = ""
+            [FinTrackEnvironment.SmtpFrom] = "fintrack@example.test"
         }).GetMailSettings();
 
         // Assert
         using (Assert.Multiple())
         {
-            await Assert.That(settings.PublicUrl).IsNull();
             await Assert.That(settings.Port).IsEqualTo(587);
             await Assert.That(settings.Security).IsEqualTo(MailSecurity.Auto);
         }
     }
 
     [Test]
-    public async Task GetMailSettings_PublicUrlWithASubPath_KeepsItForLinks()
+    public async Task GetPublicAddress_Set_EndsInASlash() =>
+        await Assert.That(Configuration(new() { [FinTrackEnvironment.PublicUrl] = "https://fintrack.example.test" })
+                .GetPublicAddress().Url)
+            .IsEqualTo(new Uri("https://fintrack.example.test/"));
+
+    [Test]
+    public async Task GetPublicAddress_EmptyAsComposePassesIt_LinksToNothing() =>
+        await Assert.That(Configuration(new() { [FinTrackEnvironment.PublicUrl] = "" }).GetPublicAddress()
+            .LinkTo("Notifications")).IsNull();
+
+    [Test]
+    public async Task GetPublicAddress_WithASubPath_KeepsItForLinks()
     {
         // Act
-        MailSettings settings = Configuration(new()
+        PublicAddress address = Configuration(new()
         {
-            [FinTrackEnvironment.SmtpHost] = "mail.example.test",
-            [FinTrackEnvironment.SmtpFrom] = "fintrack@example.test",
             [FinTrackEnvironment.PublicUrl] = "https://example.test/fintrack"
-        }).GetMailSettings();
+        }).GetPublicAddress();
 
         // Assert
-        await Assert.That(new Uri(settings.PublicUrl!, "Notifications").ToString())
+        await Assert.That(address.LinkTo("Notifications")!.ToString())
             .IsEqualTo("https://example.test/fintrack/Notifications");
     }
+
+    [Test]
+    public async Task GetWebhookSettings_NotSet_RefusesPrivateAddresses() =>
+        await Assert.That(Configuration([]).GetWebhookSettings().AllowPrivateAddresses).IsFalse();
+
+    [Test]
+    public async Task GetWebhookSettings_AllowedAsComposePassesIt_AllowsPrivateAddresses() =>
+        await Assert.That(Configuration(new() { [FinTrackEnvironment.WebhookAllowPrivate] = "true" })
+            .GetWebhookSettings().AllowPrivateAddresses).IsTrue();
 
     private static IConfiguration Configuration(Dictionary<string, string?> values) =>
         new ConfigurationBuilder().AddInMemoryCollection(values).Build();

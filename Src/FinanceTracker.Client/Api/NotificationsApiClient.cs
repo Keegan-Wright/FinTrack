@@ -16,6 +16,7 @@ namespace FinanceTracker.Client.Api;
 public sealed class NotificationsApiClient : INotificationsService
 {
     private const string Settings = $"{ApiRoutes.Notifications}/settings";
+    private const string Webhook = $"{Settings}/webhook";
 
     private readonly HttpClient _http;
 
@@ -64,6 +65,43 @@ public sealed class NotificationsApiClient : INotificationsService
         CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.PutAsJsonAsync(Settings, settings, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return await response.ReadRequiredJsonAsync<NotificationSettings>(cancellationToken);
+    }
+
+    public Task<NotificationSettings?> SendTestEmailAsync(CancellationToken cancellationToken) =>
+        PostUnlessConflictAsync($"{Settings}/test-email", cancellationToken);
+
+    public async Task<WebhookChange> SetWebhookAsync(SetWebhook webhook, CancellationToken cancellationToken)
+    {
+        using HttpResponseMessage response = await _http.PutAsJsonAsync(Webhook, webhook, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return await response.ReadRequiredJsonAsync<WebhookChange>(cancellationToken);
+    }
+
+    public async Task<NotificationSettings> RemoveWebhookAsync(CancellationToken cancellationToken)
+    {
+        using HttpResponseMessage response = await _http.DeleteAsync(Webhook, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return await response.ReadRequiredJsonAsync<NotificationSettings>(cancellationToken);
+    }
+
+    public Task<NotificationSettings?> ReplaceWebhookSecretAsync(CancellationToken cancellationToken) =>
+        PostUnlessConflictAsync($"{Webhook}/secret", cancellationToken);
+
+    public Task<NotificationSettings?> SendTestWebhookAsync(CancellationToken cancellationToken) =>
+        PostUnlessConflictAsync($"{Webhook}/test", cancellationToken);
+
+    /// <returns>The settings, null when the server answers 409, there's nothing to do it to.</returns>
+    private async Task<NotificationSettings?> PostUnlessConflictAsync(string route,
+        CancellationToken cancellationToken)
+    {
+        using HttpResponseMessage response = await _http.PostAsync(route, null, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.Conflict)
+        {
+            return null;
+        }
+
         response.EnsureSuccessStatusCode();
         return await response.ReadRequiredJsonAsync<NotificationSettings>(cancellationToken);
     }

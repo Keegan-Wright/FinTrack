@@ -7,11 +7,36 @@
     display: block;
 }
 
-/* One switch a row, close together. MudBlazor pads a switch's track by 12px, pulled back so the tracks line up with
-   the text above */
-.ft-notification-settings {
+/* Each kind a row, a column per place they can go. Checkboxes centred under their heading, the kind's name taking
+   what's left so it wraps on a narrow screen */
+.ft-channels {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.ft-channels th,
+.ft-channels td {
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--mud-palette-table-lines);
+    text-align: center;
+    font-weight: normal;
+}
+
+.ft-channels thead th {
+    font-weight: 600;
+}
+
+.ft-channels th[scope="row"],
+.ft-channels thead th:first-child {
+    width: 100%;
+    padding-inline-start: 0;
+    text-align: start;
+}
+
+/* The test button with how the last email went beside it, below it on a narrow screen */
+.ft-notification-test {
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    margin-inline-start: -12px;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 16px;
 }

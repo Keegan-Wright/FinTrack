@@ -1,6 +1,7 @@
 using FinanceTracker.AppHost.ServiceDefaults;
 using FinanceTracker.Infrastructure.Notifications;
 using FinanceTracker.Infrastructure.Notifications.Email;
+using FinanceTracker.Infrastructure.Notifications.Webhooks;
 
 namespace FinanceTracker.Extensions;
 
@@ -9,14 +10,17 @@ public static class NotificationExtensions
     extension(WebApplicationBuilder builder)
     {
         /// <summary>
-        /// Notifications pushed to user' browsers over the sync hub, and email through the mail server in the
-        /// <c>SMTP_*</c> settings when there is one.
+        /// Notifications pushed to users' browsers over the sync hub, email through the mail server in the
+        /// <c>SMTP_*</c> settings when there is one, and users' webhooks.
         /// </summary>
         public WebApplicationBuilder AddFinTrackNotifications()
         {
+            builder.Services.AddSingleton(builder.Configuration.GetPublicAddress());
             builder.Services.AddSingleton(builder.Configuration.GetMailSettings());
             builder.Services.AddSingleton<IMailSender, SmtpMailSender>();
             builder.Services.AddSingleton<INotificationPublisher, HubNotificationPublisher>();
+
+            builder.Services.AddSingleton(builder.Configuration.GetWebhookSettings());
             return builder;
         }
     }
@@ -48,12 +52,27 @@ public static class NotificationExtensions
                 Security = configuration.GetValue(FinTrackEnvironment.SmtpSecurity, MailSecurity.Auto),
                 Username = configuration[FinTrackEnvironment.SmtpUsername],
                 Password = configuration[FinTrackEnvironment.SmtpPassword],
-                From = from,
-                PublicUrl = PublicUrlFrom(configuration[FinTrackEnvironment.PublicUrl])
+                From = from
             };
         }
 
-        // Unset or empty, as Docker Compose passes an unset variable, means no links in emails
+        /// <summary>
+        /// The app's address from <see cref="FinTrackEnvironment.PublicUrl"/>, for links in emails and webhook posts.
+        /// </summary>
+        /// <exception cref="InvalidOperationException">It's set but isn't an address.</exception>
+        public PublicAddress GetPublicAddress() =>
+            new(PublicUrlFrom(configuration[FinTrackEnvironment.PublicUrl]));
+
+        /// <summary>
+        /// Where webhooks may go, from <see cref="FinTrackEnvironment.WebhookAllowPrivate"/>, private addresses
+        /// refused when it isn't set.
+        /// </summary>
+        public WebhookSettings GetWebhookSettings() => new()
+        {
+            AllowPrivateAddresses = configuration.GetValue(FinTrackEnvironment.WebhookAllowPrivate, false)
+        };
+
+        // Unset or empty, as Docker Compose passes an unset variable, means no links
         private static Uri? PublicUrlFrom(string? value)
         {
             if (string.IsNullOrWhiteSpace(value))

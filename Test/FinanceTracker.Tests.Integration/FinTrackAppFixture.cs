@@ -88,7 +88,9 @@ public sealed class FinTrackAppFixture : AspireFixture<Projects.FinanceTracker_A
         ProjectResource web = builder.Resources.OfType<ProjectResource>().Single(x => x.Name == FinTrackResources.Web);
         builder.CreateResourceBuilder(web).WithHttpHealthCheck("/health")
             // Lets each test's requests move the clock, see TestClock
-            .WithEnvironment(FinTrackEnvironment.TestClock, "true");
+            .WithEnvironment(FinTrackEnvironment.TestClock, "true")
+            // Webhooks go to a catcher on this machine, see WebhookCatcher
+            .WithEnvironment(FinTrackEnvironment.WebhookAllowPrivate, "true");
     }
 
     public override async Task InitializeAsync()

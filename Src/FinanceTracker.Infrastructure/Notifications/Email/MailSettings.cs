@@ -25,10 +25,5 @@ public sealed class MailSettings
     /// </summary>
     public required string From { get; init; }
 
-    /// <summary>
-    /// The app's address as people reach it, for links in emails, null to say to open FinTrack instead.
-    /// </summary>
-    public Uri? PublicUrl { get; init; }
-
     public bool IsConfigured => !string.IsNullOrWhiteSpace(Host);
 }

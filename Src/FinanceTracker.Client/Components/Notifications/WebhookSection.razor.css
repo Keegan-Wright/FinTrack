@@ -1,0 +1,25 @@
+/* The address field with its buttons beside it, the buttons below on a narrow screen */
+.ft-webhook__address {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+}
+
+.ft-webhook__address ::deep .ft-webhook__url {
+    flex: 1 1 280px;
+    min-width: 0;
+}
+
+/* The test button with how the last post went beside it, below it on a narrow screen */
+.ft-notification-test {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 16px;
+}
+
+code {
+    font-size: 0.875em;
+    overflow-wrap: anywhere;
+}

@@ -9,14 +9,14 @@ namespace FinanceTracker.Client.Components.Notifications;
 public static class NotificationKindText
 {
     /// <summary>
-    /// Every kind, in the order the email settings list them.
+    /// Every kind, in the order the settings list them.
     /// </summary>
     public static IReadOnlyList<NotificationKind> All { get; } = Enum.GetValues<NotificationKind>();
 
     /// <summary>
-    /// What the kind is about, as the email settings put it, e.g. <c>A bank's access ending soon</c>.
+    /// What the kind is about, as the settings put it, e.g. <c>A bank's access ending soon</c>.
     /// </summary>
-    public static string EmailLabel(NotificationKind kind) => kind switch
+    public static string Label(NotificationKind kind) => kind switch
     {
         NotificationKind.ConsentEndingSoon => "A bank's access ending soon",
         NotificationKind.ConsentEnded => "A bank's access having ended",

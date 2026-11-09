@@ -2,11 +2,13 @@ using FinanceTracker.Contracts.Notifications;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Notifications;
 using FinanceTracker.Infrastructure.Notifications.Email;
+using FinanceTracker.Infrastructure.Notifications.Webhooks;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using DomainKind = FinanceTracker.Domain.Notifications.NotificationKind;
 using DomainNotification = FinanceTracker.Domain.Notifications.Notification;
 
@@ -20,6 +22,7 @@ public class NotificationsServiceTests : InfrastructureTestBase
     private static readonly DateTime Now = new(2026, 11, 6, 12, 0, 0, DateTimeKind.Utc);
 
     private readonly IMailSender _mail = Substitute.For<IMailSender>();
+    private readonly IWebhookSender _webhooks = Substitute.For<IWebhookSender>();
 
     [Before(Test)]
     public async Task SetUpAsync() =>
@@ -113,10 +116,14 @@ public class NotificationsServiceTests : InfrastructureTestBase
         // Act
         await Subject(Username).ChangeSettingsAsync(new ChangeNotificationSettings
         {
-            Emailed = [NotificationKind.SyncFailed]
+            Emailed = [NotificationKind.SyncFailed], Webhooked = []
         }, CancellationToken);
         NotificationSettings changedAgain = await Subject(Username).ChangeSettingsAsync(
-            new ChangeNotificationSettings { Emailed = [NotificationKind.ConsentEnded, NotificationKind.SyncFailed] },
+            new ChangeNotificationSettings
+            {
+                Emailed = [NotificationKind.ConsentEnded, NotificationKind.SyncFailed],
+                Webhooked = [NotificationKind.ConsentEnded]
+            },
             CancellationToken);
         NotificationSettings read = await Subject(Username).GetSettingsAsync(CancellationToken);
 
@@ -130,12 +137,226 @@ public class NotificationsServiceTests : InfrastructureTestBase
                 [NotificationKind.ConsentEnded, NotificationKind.SyncFailed]);
             await Assert.That(await context.NotificationSettings.CountAsync(CancellationToken)).IsEqualTo(1);
             await Assert.That(read.EmailAvailable).IsFalse();
+            await Assert.That(read.Webhooked).IsEquivalentTo([NotificationKind.ConsentEnded]);
         }
     }
 
-    private NotificationsService Subject(string username) =>
+    [Test]
+    public async Task SetWebhook_PublicAddress_SetsItWithANewSecret()
+    {
+        // Act
+        WebhookChange change = await Subject(Username).SetWebhookAsync(
+            new SetWebhook { Url = " https://hooks.example.test/fintrack " }, CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(change.Refusal).IsNull();
+            await Assert.That(change.Settings!.WebhookUrl).IsEqualTo("https://hooks.example.test/fintrack");
+            await Assert.That(change.Settings.WebhookSecret!.Length).IsEqualTo(43);
+            await Assert.That(change.Settings.Webhooked).IsEquivalentTo(Enum.GetValues<NotificationKind>());
+        }
+    }
+
+    [Test]
+    public async Task SetWebhook_ChangedAddress_KeepsTheSecret()
+    {
+        // Arrange
+        WebhookChange first = await Subject(Username).SetWebhookAsync(
+            new SetWebhook { Url = "https://hooks.example.test/one" }, CancellationToken);
+
+        // Act
+        WebhookChange second = await Subject(Username).SetWebhookAsync(
+            new SetWebhook { Url = "https://hooks.example.test/two" }, CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(second.Settings!.WebhookUrl).IsEqualTo("https://hooks.example.test/two");
+            await Assert.That(second.Settings.WebhookSecret).IsEqualTo(first.Settings!.WebhookSecret);
+        }
+    }
+
+    [Test]
+    public async Task SetWebhook_PrivateAddressWhenRefused_SaysWhyAndKeepsNothing()
+    {
+        // Act
+        WebhookChange change = await Subject(Username).SetWebhookAsync(
+            new SetWebhook { Url = "http://192.168.1.10:8123/api/webhook/fintrack" }, CancellationToken);
+
+        // Assert
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        using (Assert.Multiple())
+        {
+            await Assert.That(change.Settings).IsNull();
+            await Assert.That(change.Refusal).IsEqualTo(WebhookAddresses.PrivateRefusal);
+            await Assert.That(await context.NotificationSettings.CountAsync(CancellationToken)).IsEqualTo(0);
+        }
+    }
+
+    [Test]
+    public async Task SetWebhook_PrivateAddressWhenAllowed_SetsIt()
+    {
+        // Act
+        WebhookChange change = await Subject(Username, new WebhookSettings { AllowPrivateAddresses = true }).SetWebhookAsync(
+            new SetWebhook { Url = "http://192.168.1.10:8123/api/webhook/fintrack" }, CancellationToken);
+
+        // Assert
+        await Assert.That(change.Settings!.WebhookUrl).IsEqualTo("http://192.168.1.10:8123/api/webhook/fintrack");
+    }
+
+    [Test]
+    public async Task ReplaceWebhookSecret_WithAWebhook_SignsWithANewOne()
+    {
+        // Arrange
+        WebhookChange set = await Subject(Username).SetWebhookAsync(
+            new SetWebhook { Url = "https://hooks.example.test/fintrack" }, CancellationToken);
+
+        // Act
+        NotificationSettings? replaced = await Subject(Username).ReplaceWebhookSecretAsync(CancellationToken);
+        NotificationSettings? without = await Subject(OtherUsername).ReplaceWebhookSecretAsync(CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(replaced!.WebhookSecret).IsNotEqualTo(set.Settings!.WebhookSecret);
+            await Assert.That(without).IsNull();
+        }
+    }
+
+    [Test]
+    public async Task RemoveWebhook_ThenRead_HasNone()
+    {
+        // Arrange
+        await Subject(Username).SetWebhookAsync(new SetWebhook { Url = "https://hooks.example.test/fintrack" },
+            CancellationToken);
+
+        // Act
+        await Subject(Username).RemoveWebhookAsync(CancellationToken);
+        NotificationSettings read = await Subject(Username).GetSettingsAsync(CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(read.WebhookUrl).IsNull();
+            await Assert.That(read.WebhookSecret).IsNull();
+        }
+    }
+
+    [Test]
+    public async Task SendTestWebhook_WithAWebhook_PostsATestAndRecordsHowItWent()
+    {
+        // Arrange
+        WebhookChange set = await Subject(Username).SetWebhookAsync(
+            new SetWebhook { Url = "https://hooks.example.test/fintrack" }, CancellationToken);
+        _webhooks.SendAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<WebhookPayload>(),
+                Arg.Any<CancellationToken>())
+            .ThrowsAsync(new HttpRequestException("No such host"));
+
+        // Act
+        NotificationSettings? settings = await Subject(Username).SendTestWebhookAsync(CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await _webhooks.Received(1).SendAsync("https://hooks.example.test/fintrack", set.Settings!.WebhookSecret!,
+                Arg.Is<WebhookPayload>(x => x.Event == WebhookPayload.TestEvent), Arg.Any<CancellationToken>());
+            await Assert.That(settings!.LastWebhook!.At).IsEqualTo(Now);
+            await Assert.That(settings.LastWebhook.Failure).IsEqualTo("FinTrack couldn't reach the webhook.");
+        }
+    }
+
+    [Test]
+    public async Task SendTestWebhook_NoWebhook_PostsNothing()
+    {
+        // Act
+        NotificationSettings? settings = await Subject(Username).SendTestWebhookAsync(CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(settings).IsNull();
+            await _webhooks.DidNotReceive().SendAsync(Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<WebhookPayload>(), Arg.Any<CancellationToken>());
+        }
+    }
+
+    [Test]
+    public async Task SendTestEmail_MailServerSetUp_EmailsThemAndRecordsItWasSent()
+    {
+        // Arrange
+        _mail.IsAvailable.Returns(true);
+
+        // Act
+        NotificationSettings? settings = await Subject(Username).SendTestEmailAsync(CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await _mail.Received(1).SendAsync(
+                Arg.Is<MailMessage>(x => x.To == "sam@example.test" && x.Subject == NotificationEmails.TestSubject),
+                Arg.Any<CancellationToken>());
+            await Assert.That(settings!.LastEmail!.At).IsEqualTo(Now);
+            await Assert.That(settings.LastEmail.Sent).IsTrue();
+            await Assert.That((await Subject(Username).GetSettingsAsync(CancellationToken)).LastEmail!.Sent).IsTrue();
+        }
+    }
+
+    [Test]
+    public async Task SendTestEmail_Fails_RecordsWhyInWords()
+    {
+        // Arrange
+        _mail.IsAvailable.Returns(true);
+        _mail.SendAsync(Arg.Any<MailMessage>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new MailKit.Security.AuthenticationException("535 bad credentials"));
+
+        // Act
+        NotificationSettings? settings = await Subject(Username).SendTestEmailAsync(CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(settings!.LastEmail!.Sent).IsFalse();
+            await Assert.That(settings.LastEmail.Failure).IsEqualTo("The mail server didn't accept FinTrack's sign in.");
+        }
+    }
+
+    [Test]
+    public async Task SendTestEmail_NoMailServer_SendsNothing()
+    {
+        // Act
+        NotificationSettings? settings = await Subject(Username).SendTestEmailAsync(CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(settings).IsNull();
+            await _mail.DidNotReceive().SendAsync(Arg.Any<MailMessage>(), Arg.Any<CancellationToken>());
+        }
+    }
+
+    [Test]
+    public async Task SendTestEmail_NoAddress_SendsNothing()
+    {
+        // Arrange
+        _mail.IsAvailable.Returns(true);
+        await Scenario.Do(s => s.UserScenario.WithEmail(OtherUsername, ""));
+
+        // Act
+        NotificationSettings? settings = await Subject(OtherUsername).SendTestEmailAsync(CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(settings).IsNull();
+            await _mail.DidNotReceive().SendAsync(Arg.Any<MailMessage>(), Arg.Any<CancellationToken>());
+        }
+    }
+
+    private NotificationsService Subject(string username, WebhookSettings? webhookSettings = null) =>
         new(CurrentUserFor(username), DbContextFactory, NullLogger<NotificationsService>.Instance,
-            new FixedTimeProvider(Now), _mail);
+            new FixedTimeProvider(Now), _mail, TestEmails.Create(), _webhooks, webhookSettings ?? new WebhookSettings(),
+            PublicAddress.Unknown);
 
     private async Task<Guid> AddAsync(string username, string title)
     {
