@@ -17,6 +17,9 @@ public static class ScheduledJobs
 
         new(JobNames.MoveGoalsOn,
             "Moves the savings goals of your yearly events on to their next date once each passes", "0 0 2 * * ?",
+            1, [10, 20, 30]),
+
+        new(JobNames.PruneNotifications, "Deletes notifications you read more than 90 days ago", "0 30 2 * * ?",
             1, [10, 20, 30])
     ];
 }

@@ -65,9 +65,12 @@ public class MonitorOpenBankingTokenExpirationAsync : IJob
         List<Guid> owners;
         await using (FinanceTrackerContext dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken))
         {
-            DateTime warnFrom = _timeProvider.UtcNow + ConsentNotices.WeekOut;
+            DateTime now = _timeProvider.UtcNow;
+            DateTime warnFrom = now + ConsentNotices.WeekOut;
+            DateTime endedSince = ConsentNotices.EndedSince(now);
+
             owners = await dbContext.BankConnections
-                .Where(x => x.ConsentExpiresAt <= warnFrom)
+                .Where(x => x.ConsentExpiresAt <= warnFrom && x.ConsentExpiresAt > endedSince)
                 .Select(static x => x.UserId)
                 .Distinct()
                 .ToListAsync(cancellationToken);

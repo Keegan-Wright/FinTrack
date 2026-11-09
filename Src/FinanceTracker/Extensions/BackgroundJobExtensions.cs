@@ -59,6 +59,10 @@ public static class BackgroundJobExtensions
                     job.WithIdentity(JobNames.MoveGoalsOn)
                         .StoreDurably());
 
+                quartz.AddJob<PruneReadNotificationsAsync>(static job =>
+                    job.WithIdentity(JobNames.PruneNotifications)
+                        .StoreDurably());
+
                 // The schedules each job starts with, stored the first time the app starts and passed over after,
                 // so changes made on the automation page are kept, see the IgnoreDuplicates below
                 foreach (ScheduledJob job in ScheduledJobs.All)

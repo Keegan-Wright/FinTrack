@@ -90,6 +90,20 @@ public class ConsentNoticesTests : InfrastructureTestBase
     }
 
     [Test]
+    public async Task Notify_EndedLongerAgoThanReadNoticesAreKept_SaysNothing()
+    {
+        // Arrange, its notice could have been read and pruned already, so telling them again would repeat it
+        await EndsAtAsync(Now - NotificationRetention.ReadKeptFor - TimeSpan.FromDays(1));
+
+        // Act
+        await NotifyAsync(Username);
+
+        // Assert
+        await _notifier.DidNotReceiveWithAnyArgs().NotifyAsync(default, default!, default!, default!, default,
+            default);
+    }
+
+    [Test]
     public async Task Notify_RenewedSoItEndsLater_IsANewEvent()
     {
         // Arrange, warned for one consent, then renewed to one that ends later but is still in its last week

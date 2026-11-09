@@ -42,13 +42,14 @@ public sealed class ConsentNotices : ServiceBase<ConsentNotices>, IConsentNotice
     {
         DateTime now = _timeProvider.UtcNow;
         DateTime warnFrom = now + WeekOut;
+        DateTime endedSince = EndedSince(now);
 
         List<(Guid Id, string Name, DateTime EndsAt)> connections;
         await using (FinanceTrackerContext context =
                      await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken))
         {
             connections = (await context.BankConnections.OwnedBy(UserId)
-                    .Where(x => x.ConsentExpiresAt <= warnFrom)
+                    .Where(x => x.ConsentExpiresAt <= warnFrom && x.ConsentExpiresAt > endedSince)
                     .Select(static x => new { x.Id, x.Name, x.ConsentExpiresAt })
                     .ToListAsync(cancellationToken))
                 .Select(static x => (x.Id, x.Name, x.ConsentExpiresAt))
@@ -60,6 +61,13 @@ public sealed class ConsentNotices : ServiceBase<ConsentNotices>, IConsentNotice
             await NotifyForAsync(id, name, endsAt, now, cancellationToken);
         }
     }
+
+    /// <summary>
+    /// The earliest a consent can have ended and still be told about. One that ended longer ago than read
+    /// notifications are kept is passed over, so pruning its notice doesn't raise it again, see
+    /// <see cref="NotificationRetention"/>.
+    /// </summary>
+    public static DateTime EndedSince(DateTime now) => now - NotificationRetention.ReadKeptFor;
 
     private Task<bool> NotifyForAsync(Guid connectionId, string name, DateTime endsAt, DateTime now,
         CancellationToken cancellationToken)
