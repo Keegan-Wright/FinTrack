@@ -459,13 +459,13 @@ public class MainLayoutTests : ComponentTestBase
         _notificationsService.GetUnreadCountAsync(Arg.Any<CancellationToken>()).Returns(0, 1);
         IRenderedComponent<MainLayout> cut = RenderLayout();
         cut.WaitForState(() => _onNotificationAdded is not null);
-        cut.WaitForState(() => cut.FindAll("[aria-label='Notifications']").Count == 1);
+        cut.WaitForState(() => cut.FindAll("a[aria-label='Notifications']").Count == 1);
 
         // Act
         await cut.InvokeAsync(_onNotificationAdded!);
 
         // Assert
-        cut.WaitForState(() => cut.FindAll("[aria-label='Notifications, 1 unread']").Count == 1);
+        cut.WaitForState(() => cut.FindAll("a[aria-label='Notifications, 1 unread']").Count == 1);
         await Assert.That(_applicationState.UnreadNotifications).IsEqualTo(1);
     }
 
