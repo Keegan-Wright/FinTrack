@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using FinanceTracker.Infrastructure.Telemetry;
 
 namespace FinanceTracker;
 
@@ -8,7 +9,7 @@ internal static class Telemetry
     /// The span and log attribute naming the user the work is for, OpenTelemetry's <c>user.id</c>, so Tempo and Loki
     /// can be searched by it.
     /// </summary>
-    public const string UserIdTag = "user.id";
+    public const string UserIdTag = InfrastructureTelemetry.UserIdTag;
 
     /// <summary>
     /// Shared for the app's lifetime, as sources are meant to be. The name matches the application name that
@@ -24,14 +25,5 @@ internal static class Telemetry
         Activity? activity = ActivitySource.StartActivity(name);
         activity?.SetTag(UserIdTag, userId.ToString());
         return activity;
-    }
-
-    /// <summary>
-    /// Marks the span failed, so the trace shows it in red with the exception on it.
-    /// </summary>
-    public static void RecordError(Activity? activity, Exception exception)
-    {
-        activity?.AddException(exception);
-        activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
     }
 }

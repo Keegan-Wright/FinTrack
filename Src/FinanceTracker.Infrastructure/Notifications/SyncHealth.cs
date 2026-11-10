@@ -33,8 +33,10 @@ public sealed class SyncHealth : ServiceBase<SyncHealth>, ISyncHealth
             return;
         }
 
+        DateTime failingSince = connection.SyncFailingSince.Value;
         connection.RecordSyncSucceeded();
         await context.SaveChangesAsync(cancellationToken);
+        Logger.LogConnectionSyncRecovered(connection.Id, UserId, failingSince);
     }
 
     public async Task RecordFailedAsync(Guid connectionId, CancellationToken cancellationToken)
@@ -49,6 +51,7 @@ public sealed class SyncHealth : ServiceBase<SyncHealth>, ISyncHealth
         }
 
         await context.SaveChangesAsync(cancellationToken);
+        Logger.LogConnectionSyncFailing(connection.Id, UserId);
 
         // Keyed by when this run of failures started, so a later one is told too
         await _notifier.NotifyAsync(NotificationKind.SyncFailed,

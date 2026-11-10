@@ -56,6 +56,33 @@ public class RuleEvaluatorTests
     }
 
     [Test]
+    public async Task Evaluate_MatchingRules_ListsThemInTheOrderTheyRan()
+    {
+        CustomClassification shopping = Tag("Shopping");
+        Rule first = Rule("First", 0, DescriptionContains("GROCER"), RuleAction.AddTag(shopping));
+        Rule missed = Rule("Missed", 1, DescriptionContains("CINEMA"), RuleAction.AddTag(shopping));
+        Rule third = Rule("Third", 2, DescriptionContains("STORE"), RuleAction.AddTag(shopping));
+
+        RuleOutcome outcome = RuleEvaluator.Evaluate([third, missed, first], Transaction("GROCER STORE 123"));
+
+        // The third adds nothing new, it still matched
+        await Assert.That(outcome.MatchedRuleIds).IsEquivalentTo([first.Id, third.Id]);
+    }
+
+    [Test]
+    public async Task Evaluate_StopProcessing_ListsOnlyTheRulesThatRan()
+    {
+        CustomClassification shopping = Tag("Shopping");
+        Rule stopping = Rule("Stop", 0, DescriptionContains("GROCER"), RuleAction.AddTag(shopping));
+        stopping.StopProcessingAfterMatch(true);
+        Rule skipped = Rule("Skipped", 1, DescriptionContains("GROCER"), RuleAction.AddTag(shopping));
+
+        RuleOutcome outcome = RuleEvaluator.Evaluate([stopping, skipped], Transaction("GROCER STORE 123"));
+
+        await Assert.That(outcome.MatchedRuleIds).IsEquivalentTo([stopping.Id]);
+    }
+
+    [Test]
     public async Task Evaluate_StopProcessing_SkipsLaterRules()
     {
         CustomClassification shopping = Tag("Shopping");

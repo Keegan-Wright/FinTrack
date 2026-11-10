@@ -100,6 +100,9 @@ public static class Extensions
                     // Each hub method call the browser makes, ASP.NET Core's own source
                     tracing.AddSource(SignalRServerActivitySource);
 
+                    // The app's own spans, the services' under its name too, e.g. FinanceTracker.Infrastructure
+                    tracing.AddSource($"{builder.Environment.ApplicationName}.*");
+
                     tracing.AddSource(builder.Environment.ApplicationName)
                         .AddAspNetCoreInstrumentation(options =>
                         {

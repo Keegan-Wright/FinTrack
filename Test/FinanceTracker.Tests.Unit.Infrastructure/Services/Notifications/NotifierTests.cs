@@ -7,6 +7,7 @@ using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 
@@ -50,6 +51,29 @@ public class NotifierTests : InfrastructureTestBase
             await _mail.Received(1).SendAsync(
                 Arg.Is<MailMessage>(x => x.To == Address && x.Subject == "Bank access has ended"),
                 Arg.Any<CancellationToken>());
+        }
+    }
+
+    [Test]
+    public async Task Notify_NewEvent_LogsItAndMarksTheSpanThatRaisedIt()
+    {
+        // Arrange
+        CapturingLogger<Notifier> logger = new();
+        using SpanRecorder spans = new();
+
+        // Act
+        using (spans.StartRoot())
+        {
+            await Notify("consent-ended:a", logger);
+        }
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(logger.Entries.Single().Message)
+                .StartsWith($"Notified user {Scenario.UserMappings[Username]} of ConsentEnded")
+                .And.EndsWith("in app True, emailed True, webhook False");
+            await Assert.That(spans.Root.Events.Select(x => x.Name)).IsEquivalentTo(["Notified"]);
         }
     }
 
@@ -334,8 +358,8 @@ public class NotifierTests : InfrastructureTestBase
         await context.SaveChangesAsync(CancellationToken);
     }
 
-    private Task<bool> Notify(string key) =>
-        new Notifier(CurrentUserFor(Username), DbContextFactory, NullLogger<Notifier>.Instance, _publisher, _mail,
+    private Task<bool> Notify(string key, ILogger<Notifier>? logger = null) =>
+        new Notifier(CurrentUserFor(Username), DbContextFactory, logger ?? NullLogger<Notifier>.Instance, _publisher, _mail,
                 TestEmails.Create(), _webhooks, PublicAddress.Unknown, new FixedTimeProvider(Now))
             .NotifyAsync(NotificationKind.ConsentEnded, key, "Bank access has ended",
                 "FinTrack can no longer sync Bank.", "ProviderSetup", CancellationToken);

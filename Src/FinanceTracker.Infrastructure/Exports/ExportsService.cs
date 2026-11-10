@@ -6,6 +6,7 @@ using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using FinanceTracker.Infrastructure.Exports.Reports;
 using FinanceTracker.Infrastructure.Exports.Statements;
+using Microsoft.Extensions.Logging;
 using QuestPDF.Fluent;
 
 namespace FinanceTracker.Infrastructure.Exports;
@@ -24,11 +25,16 @@ public sealed class ExportsService : IExportsService
     private readonly StatementPeriods _statementPeriods;
     private readonly ReportDocumentBuilder _reportDocumentBuilder;
     private readonly TimeProvider _timeProvider;
+    private readonly ICurrentUser _currentUser;
+    private readonly ILogger<ExportsService> _logger;
 
     public ExportsService(ITransactionsService transactionsService, BackupWriter backupWriter,
         StatementBuilder statementBuilder, StatementPeriods statementPeriods,
-        ReportDocumentBuilder reportDocumentBuilder, TimeProvider timeProvider)
+        ReportDocumentBuilder reportDocumentBuilder, TimeProvider timeProvider, ICurrentUser currentUser,
+        ILogger<ExportsService> logger)
     {
+        _currentUser = currentUser;
+        _logger = logger;
         _transactionsService = transactionsService;
         _backupWriter = backupWriter;
         _statementBuilder = statementBuilder;
@@ -37,18 +43,22 @@ public sealed class ExportsService : IExportsService
         _timeProvider = timeProvider;
     }
 
-    public Task WriteTransactionsCsvAsync(FilterTransactions filter, Stream destination,
+    public async Task WriteTransactionsCsvAsync(FilterTransactions filter, Stream destination,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(filter);
         ArgumentNullException.ThrowIfNull(destination);
 
-        return TransactionCsv.WriteAsync(_transactionsService.GetAllTransactionsAsync(filter, cancellationToken),
+        await TransactionCsv.WriteAsync(_transactionsService.GetAllTransactionsAsync(filter, cancellationToken),
             destination, _timeProvider.LocalTimeZone, cancellationToken);
+        _logger.LogExported(_currentUser.UserId, "transactions as CSV");
     }
 
-    public Task WriteBackupAsync(Stream destination, CancellationToken cancellationToken) =>
-        _backupWriter.WriteAsync(destination, cancellationToken);
+    public async Task WriteBackupAsync(Stream destination, CancellationToken cancellationToken)
+    {
+        await _backupWriter.WriteAsync(destination, cancellationToken);
+        _logger.LogExported(_currentUser.UserId, "a backup");
+    }
 
     public Task<List<PayPeriod>> GetStatementPeriodsAsync(CancellationToken cancellationToken) =>
         _statementPeriods.GetAsync(cancellationToken);
@@ -63,6 +73,7 @@ public sealed class ExportsService : IExportsService
         // QuestPDF writes synchronously, which an HTTP response refuses, so it's made whole then written
         byte[] pdf = new StatementDocument(statement, _timeProvider.LocalTimeZone).GeneratePdf();
         await destination.WriteAsync(pdf, cancellationToken);
+        _logger.LogExported(_currentUser.UserId, "a statement");
     }
 
     public async Task WriteReportAsync(ExportReport report, Stream destination, CancellationToken cancellationToken)
@@ -74,5 +85,6 @@ public sealed class ExportsService : IExportsService
         // Made whole then written, as for the statement
         byte[] pdf = new ReportDocument(content).GeneratePdf();
         await destination.WriteAsync(pdf, cancellationToken);
+        _logger.LogExported(_currentUser.UserId, "a report");
     }
 }

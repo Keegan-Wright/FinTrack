@@ -4,6 +4,7 @@ using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Extensions;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Notifications;
+using FinanceTracker.Infrastructure.Telemetry;
 using Microsoft.EntityFrameworkCore;
 using Quartz;
 
@@ -96,7 +97,7 @@ public class MonitorOpenBankingTokenExpirationAsync : IJob
             }
             catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
-                Telemetry.RecordError(ownerActivity, ex);
+                ownerActivity.RecordError(ex);
             }
         }
     }

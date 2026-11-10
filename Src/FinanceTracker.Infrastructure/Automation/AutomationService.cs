@@ -135,6 +135,7 @@ public class AutomationService : ServiceBase<AutomationService>, IAutomationServ
             await scheduler.PauseTrigger(key, cancellationToken);
         }
 
+        Logger.LogJobSettingsChanged(UserId, request.Function, request.IsEnabled, request.Expression);
         return true;
     }
 
@@ -153,6 +154,7 @@ public class AutomationService : ServiceBase<AutomationService>, IAutomationServ
         }
 
         await scheduler.TriggerJob(job, null, cancellationToken);
+        Logger.LogJobRunNow(UserId, function);
     }
 
     public async Task<DateTime?> GetLastSyncTimeAsync(CancellationToken cancellationToken)

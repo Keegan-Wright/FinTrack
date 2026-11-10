@@ -129,6 +129,7 @@ public class SavingsGoalsService : ServiceBase<SavingsGoalsService>, ISavingsGoa
         context.SavingsGoals.Add(added);
         await NameCheck.SaveKeepingNamesApartAsync(context, NameTakenException.SavingsGoal, goal.Name,
             cancellationToken);
+        Logger.LogChanged(UserId, "created", "savings goal", added.Id);
 
         return (await ToContractsAsync(context, [added], cancellationToken)).Single();
     }
@@ -151,6 +152,7 @@ public class SavingsGoalsService : ServiceBase<SavingsGoalsService>, ISavingsGoa
 
         await NameCheck.SaveKeepingNamesApartAsync(context, NameTakenException.SavingsGoal, goal.Name,
             cancellationToken);
+        Logger.LogChanged(UserId, "updated", "savings goal", id);
 
         return (await ToContractsAsync(context, [updated], cancellationToken)).Single();
     }
@@ -169,6 +171,7 @@ public class SavingsGoalsService : ServiceBase<SavingsGoalsService>, ISavingsGoa
 
         context.SavingsGoals.Remove(savingsGoal);
         await context.SaveChangesAsync(cancellationToken);
+        Logger.LogChanged(UserId, "deleted", "savings goal", id);
         return true;
     }
 

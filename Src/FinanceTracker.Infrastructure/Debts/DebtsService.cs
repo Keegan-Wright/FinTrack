@@ -90,6 +90,7 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
 
         context.Debts.Add(added);
         await NameCheck.SaveKeepingNamesApartAsync(context, NameTakenException.Debt, debt.Name, cancellationToken);
+        Logger.LogChanged(UserId, "created", "debt", added.Id);
 
         return await ToContractAsync(context, added, cancellationToken);
     }
@@ -112,6 +113,7 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
         await LinkAsync(context, updated, debt.AccountId, cancellationToken);
 
         await NameCheck.SaveKeepingNamesApartAsync(context, NameTakenException.Debt, debt.Name, cancellationToken);
+        Logger.LogChanged(UserId, "updated", "debt", id);
 
         return await ToContractAsync(context, updated, cancellationToken);
     }
@@ -199,6 +201,7 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
         }
 
         await context.SaveChangesAsync(cancellationToken);
+        Logger.LogChanged(UserId, "set the debt paid by", "transaction", transactionId);
 
         Dictionary<Guid, string> customTags = await context.CustomClassifications.OwnedBy(UserId)
             .ToDictionaryAsync(static x => x.Id, static x => x.Tag, cancellationToken);

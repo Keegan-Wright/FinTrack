@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using FinanceTracker.Domain.Notifications;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
@@ -68,6 +69,13 @@ public sealed class Notifier : ServiceBase<Notifier>, INotifier
             // Raised at the same moment by something else noticing the same event, the unique key kept it to one
             return false;
         }
+
+        Logger.LogNotified(UserId, kind, notification.Id, inApp, address is not null, webhooked);
+        Activity.Current?.AddEvent(new ActivityEvent("Notified", tags: new ActivityTagsCollection
+        {
+            ["fintrack.notification.kind"] = kind.ToString(),
+            ["fintrack.notification.id"] = notification.Id.ToString()
+        }));
 
         if (inApp)
         {

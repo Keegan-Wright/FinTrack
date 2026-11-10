@@ -1,6 +1,7 @@
 using FinanceTracker.Domain.PayPeriods;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
+using FinanceTracker.Infrastructure.Telemetry;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -46,6 +47,11 @@ public class PaySyncService : ServiceBase<PaySyncService>, IPaySyncService
 
         await context.SaveChangesAsync(cancellationToken);
         Logger.LogSyncedPay(UserId, detected.Count, schedule.PayDays.Count, schedule.IsChosen, schedule.IsOff);
+        InfrastructureTelemetry.TagCurrent(
+            ("fintrack.pay.incomes", detected.Count),
+            ("fintrack.pay.days", schedule.PayDays.Count),
+            ("fintrack.pay.chosen", schedule.IsChosen),
+            ("fintrack.pay.off", schedule.IsOff));
         return true;
     }
 }

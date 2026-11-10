@@ -10,6 +10,7 @@ using FinanceTracker.Tests.Unit.Shared.Fakers;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Tests.Unit.Infrastructure.Services.Rules;
 
@@ -39,6 +40,38 @@ public class RuleApplicationServiceTests : InfrastructureTestBase
             await Assert.That(stored[Scenario.TransactionMappings["synced"]].CustomClassificationIds)
                 .IsEquivalentTo([Scenario.ClassificationMappings["mine"]]);
             await Assert.That(stored[Scenario.TransactionMappings["history"]].CustomClassificationIds).IsEmpty();
+        }
+    }
+
+    [Test]
+    public async Task ApplyChangesAsync_TagsItsSpanAndLogsHowManyEachRuleMatched()
+    {
+        // Arrange
+        await SeedAsync(Username, "mine")
+            .Do(s => s.RuleScenario.WithRule("groceries", Username, TagsGroceries))
+            .Do(s => s.TransactionScenario.WithTransaction("first", "mine", Details("GROCER STORE 1")))
+            .Do(s => s.TransactionScenario.WithTransaction("second", "mine", Details("GROCER STORE 2")))
+            .Do(s => s.TransactionScenario.WithTransaction("other", "mine", Details("CINEMA")));
+        CapturingLogger<RuleApplicationService> logger = new();
+        RuleApplicationService subject = BuildSubject(Username, logger);
+        using SpanRecorder spans = new();
+
+        // Act
+        using (spans.StartRoot())
+        {
+            await subject.ApplyChangesAsync(DateTime.MinValue, CancellationToken);
+        }
+
+        // Assert
+        Guid ruleId = Scenario.RuleMappings["groceries"];
+        using (Assert.Multiple())
+        {
+            await Assert.That(spans.Root.GetTagItem("fintrack.rules")).IsEqualTo(1);
+            await Assert.That(spans.Root.GetTagItem("fintrack.rules.matched")).IsEqualTo(1);
+            await Assert.That(spans.Root.GetTagItem("fintrack.transactions.considered")).IsEqualTo(3);
+            await Assert.That(spans.Root.GetTagItem("fintrack.transactions.changed")).IsEqualTo(2);
+            await Assert.That(logger.Entries).Contains(x =>
+                x.Level == LogLevel.Debug && x.Message == $"Rule {ruleId} matched 2 transactions for user {Scenario.UserMappings[Username]}");
         }
     }
 
@@ -253,8 +286,8 @@ public class RuleApplicationServiceTests : InfrastructureTestBase
         return await context.BankTransactions.ToDictionaryAsync(static x => x.Id, CancellationToken);
     }
 
-    private RuleApplicationService BuildSubject(string username) =>
-        new(CurrentUserFor(username), DbContextFactory, NullLogger<RuleApplicationService>.Instance,
+    private RuleApplicationService BuildSubject(string username, ILogger<RuleApplicationService>? logger = null) =>
+        new(CurrentUserFor(username), DbContextFactory, logger ?? NullLogger<RuleApplicationService>.Instance,
             new TransferMatchingService(CurrentUserFor(username), DbContextFactory,
                 NullLogger<TransferMatchingService>.Instance, TimeProvider.System),
             TimeProvider.System);

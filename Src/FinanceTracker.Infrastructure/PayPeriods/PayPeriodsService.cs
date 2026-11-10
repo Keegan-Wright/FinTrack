@@ -73,6 +73,7 @@ public class PayPeriodsService : ServiceBase<PayPeriodsService>, IPayPeriodsServ
 
         schedule.Choose(chosen);
         await context.SaveChangesAsync(cancellationToken);
+        Logger.LogChangedTheir(UserId, "chose", "pay");
         return await ToYourPayAsync(context, schedule, cancellationToken);
     }
 
@@ -86,6 +87,7 @@ public class PayPeriodsService : ServiceBase<PayPeriodsService>, IPayPeriodsServ
         {
             schedule.TurnOff();
             await context.SaveChangesAsync(cancellationToken);
+            Logger.LogChangedTheir(UserId, "turned off", "pay periods");
         }
 
         return await ToYourPayAsync(context, schedule, cancellationToken);
@@ -101,6 +103,7 @@ public class PayPeriodsService : ServiceBase<PayPeriodsService>, IPayPeriodsServ
 
         schedule.TurnOn();
         await context.SaveChangesAsync(cancellationToken);
+        Logger.LogChangedTheir(UserId, "turned on", "pay periods");
         return await ToYourPayAsync(context, schedule, cancellationToken);
     }
 

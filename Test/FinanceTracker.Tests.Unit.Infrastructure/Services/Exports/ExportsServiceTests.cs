@@ -64,5 +64,6 @@ public class ExportsServiceTests : UnitTestBase
                 Substitute.For<IDbContextFactory<FinanceTrackerContext>>(), NullLogger<StatementPeriods>.Instance,
                 TimeProvider.System),
             ReportDocumentBuilderTests.BuildBuilder(),
-            new FixedTimeProvider(DateTime.UtcNow));
+            new FixedTimeProvider(DateTime.UtcNow), Substitute.For<ICurrentUser>(),
+            NullLogger<ExportsService>.Instance);
 }

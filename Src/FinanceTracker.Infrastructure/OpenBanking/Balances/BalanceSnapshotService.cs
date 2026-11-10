@@ -5,6 +5,7 @@ using FinanceTracker.Domain.OpenBanking.Balances;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
+using FinanceTracker.Infrastructure.Telemetry;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -85,7 +86,11 @@ public class BalanceSnapshotService : ServiceBase<BalanceSnapshotService>, IBala
 
         await context.SaveChangesAsync(cancellationToken);
 
-        Logger.LogSnapshotBalances(UserId, day, refreshed.Count, balances.Count(static x => x.IsStale));
+        int stale = balances.Count(static x => x.IsStale);
+        Logger.LogSnapshotBalances(UserId, day, refreshed.Count, stale);
+        InfrastructureTelemetry.TagCurrent(
+            ("fintrack.snapshots.refreshed", refreshed.Count),
+            ("fintrack.snapshots.stale", stale));
 
         return netWorth;
     }
@@ -134,6 +139,7 @@ public class BalanceSnapshotService : ServiceBase<BalanceSnapshotService>, IBala
         await RetotalAsync(context, days, cancellationToken);
 
         Logger.LogBackfilledBalanceHistory(UserId, accounts.Count, days.Count);
+        InfrastructureTelemetry.TagCurrent(("fintrack.accounts", accounts.Count), ("fintrack.days", days.Count));
         return days.Count;
     }
 

@@ -7,6 +7,7 @@ using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Bills;
 using FinanceTracker.Infrastructure.Notifications;
+using FinanceTracker.Infrastructure.Telemetry;
 using FinanceTracker.Infrastructure.OpenBanking;
 using FinanceTracker.Infrastructure.OpenBanking.Balances;
 using FinanceTracker.Infrastructure.OpenBanking.Transfers;
@@ -23,7 +24,6 @@ namespace FinanceTracker.BackgroundJobs;
 /// </summary>
 public abstract class OpenBankingSyncJob
 {
-    private const string ConnectionIdTag = "fintrack.connection.id";
     private const string ConnectionCountTag = "fintrack.connection.count";
 
     private readonly IDbContextFactory<FinanceTrackerContext> _dbContextFactory;
@@ -86,7 +86,7 @@ public abstract class OpenBankingSyncJob
             // A span for each connection, so its bank calls and queries sit under it in the trace
             using Activity? connectionActivity = Telemetry.StartUserActivity("Sync connection", userId);
             using IDisposable? logScope = _logger.BeginUserScope(userId);
-            connectionActivity?.SetTag(ConnectionIdTag, connectionId.ToString());
+            connectionActivity?.SetTag(InfrastructureTelemetry.ConnectionIdTag, connectionId.ToString());
 
             try
             {
@@ -102,7 +102,7 @@ public abstract class OpenBankingSyncJob
             }
             catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
-                Telemetry.RecordError(connectionActivity, ex);
+                connectionActivity.RecordError(ex);
                 await RecordFailedAsync(connectionId, userId, connectionActivity, cancellationToken);
             }
         }
@@ -179,7 +179,7 @@ public abstract class OpenBankingSyncJob
             }
             catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
-                Telemetry.RecordError(noticesActivity, ex);
+                noticesActivity.RecordError(ex);
             }
         }
     }
@@ -201,7 +201,7 @@ public abstract class OpenBankingSyncJob
         }
         catch (Exception ex)
         {
-            Telemetry.RecordError(activity, ex);
+            activity.RecordError(ex);
         }
     }
 

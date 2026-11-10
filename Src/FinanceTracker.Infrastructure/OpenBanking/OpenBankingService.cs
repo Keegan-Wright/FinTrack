@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.OpenBanking;
@@ -10,6 +11,7 @@ using FinanceTracker.Generated.Enums;
 using FinanceTracker.Infrastructure.OpenBanking.TrueLayer;
 using FinanceTracker.Infrastructure.OpenBanking.TrueLayer.Contracts;
 using FinanceTracker.Infrastructure.Persistence;
+using FinanceTracker.Infrastructure.Telemetry;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
@@ -96,6 +98,8 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
             ExternalOpenBankingAccountConnectionResponse providerInformation =
             await _openBankingApiService.GetProviderInformation(providerAccessToken.AccessToken, cancellationToken);
 
+        // What happened to each, logged once saved
+        List<(Guid Id, string Action)> connected = [];
         await using (FinanceTrackerContext context =
                      await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken))
         {
@@ -122,11 +126,13 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
                         await _openBankingApiService.GetProviderLogoAsync(provider.LogoUri, cancellationToken),
                         _timeProvider.UtcNow, consentExpiresAt);
                     context.BankConnections.Add(connection);
+                    connected.Add((connection.Id, "connected"));
                 }
                 else
                 {
                     // Adding a provider that is already connected re-authenticates it, as does renewing it
                     connection.Reauthenticate(addVendor.AccessCode, scopes, _timeProvider.UtcNow, consentExpiresAt);
+                    connected.Add((connection.Id, "reconnected"));
                 }
 
                 connection.IssueToken(providerAccessToken.AccessToken, providerAccessToken.RefreshToken,
@@ -134,6 +140,11 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
             }
 
             await context.SaveChangesAsync(cancellationToken);
+        }
+
+        foreach ((Guid id, string action) in connected)
+        {
+            Logger.LogChanged(UserId, action, "bank connection", id);
         }
 
         // Synced by the background job like any other sync, so transfers are matched and the user is told when it's done
@@ -230,6 +241,9 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
 
     public async Task SyncConnectionAsync(Guid connectionId, SyncTypes syncFlags, CancellationToken cancellationToken)
     {
+        long startedAt = Stopwatch.GetTimestamp();
+        ConnectionSyncTally tally = new();
+
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
@@ -281,6 +295,10 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
                 accounts.Add(externalAccount.AccountId, account);
             }
 
+            // A span for each account, its fetches from the bank inside it
+            using Activity? accountActivity = StartAccountActivity("Sync account", account);
+            tally.Accounts++;
+
             account.UpdateIdentifier(AccountIdentifier.Create(externalAccount.AccountNumber?.SortCode,
                 externalAccount.AccountNumber?.Number, externalAccount.AccountNumber?.Iban));
             context.SyncLog.Add(account.RecordSync(SyncType.Account, now));
@@ -290,18 +308,44 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
                 : null;
 
             AccountSnapshot snapshot = await FetchAccountSnapshotAsync(connection, account, authToken, syncFlags,
-                transactionsFrom, cancellationToken);
+                transactionsFrom, tally, cancellationToken);
 
-            await ApplySnapshotAsync(context, account, snapshot, now, cancellationToken);
+            await ApplySnapshotAsync(context, account, snapshot, now, tally, cancellationToken);
         }
 
         if (connection.Scopes.Contains(CardsScope))
         {
-            await SyncCardsAsync(context, connection, accounts, lastTransactionSync, authToken, syncFlags, now,
+            await SyncCardsAsync(context, connection, accounts, lastTransactionSync, authToken, syncFlags, now, tally,
                 cancellationToken);
         }
 
         await context.SaveChangesAsync(cancellationToken);
+        Summarise(connection, tally, Stopwatch.GetElapsedTime(startedAt));
+    }
+
+    /// <summary>
+    /// Logs what the connection's sync did and tags its span with the same, the job's <c>Sync connection</c>.
+    /// </summary>
+    private void Summarise(BankConnection connection, ConnectionSyncTally tally, TimeSpan took)
+    {
+        Logger.LogSyncedConnection(connection.Id, UserId, tally.Accounts, tally.Cards, tally.TransactionsAdded,
+            tally.TransactionsUpdated, tally.PendingRemoved, tally.FailedFetches, (long)took.TotalMilliseconds);
+
+        Activity? connectionActivity = Activity.Current;
+        connectionActivity?.SetTag("fintrack.accounts", tally.Accounts);
+        connectionActivity?.SetTag("fintrack.cards", tally.Cards);
+        connectionActivity?.SetTag("fintrack.transactions.added", tally.TransactionsAdded);
+        connectionActivity?.SetTag("fintrack.transactions.updated", tally.TransactionsUpdated);
+        connectionActivity?.SetTag("fintrack.pending.removed", tally.PendingRemoved);
+        connectionActivity?.SetTag("fintrack.fetches.failed", tally.FailedFetches);
+    }
+
+    // A span for one account or card's sync
+    private static Activity? StartAccountActivity(string name, BankAccount account)
+    {
+        Activity? activity = InfrastructureTelemetry.ActivitySource.StartActivity(name);
+        activity?.SetTag(InfrastructureTelemetry.AccountIdTag, account.Id.ToString());
+        return activity;
     }
 
     /// <summary>
@@ -310,7 +354,7 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
     /// </summary>
     private async Task SyncCardsAsync(FinanceTrackerContext context, BankConnection connection,
         Dictionary<string, BankAccount> accounts, Dictionary<Guid, DateTime> lastTransactionSync, string authToken,
-        SyncTypes syncFlags, DateTime now, CancellationToken cancellationToken)
+        SyncTypes syncFlags, DateTime now, ConnectionSyncTally tally, CancellationToken cancellationToken)
     {
         ExternalOpenBankingListAllCardsResponse cardsResponse =
             await _openBankingApiService.GetAllCardsAsync(authToken, cancellationToken);
@@ -334,6 +378,9 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
                 accounts.Add(externalCard.AccountId, card);
             }
 
+            using Activity? cardActivity = StartAccountActivity("Sync card", card);
+            tally.Cards++;
+
             card.UpdateCard(externalCard.ToDetails());
             context.SyncLog.Add(card.RecordSync(SyncType.Account, now));
 
@@ -342,9 +389,9 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
                 : null;
 
             AccountSnapshot snapshot = await FetchCardSnapshotAsync(connection, card, authToken, syncFlags,
-                transactionsFrom, cancellationToken);
+                transactionsFrom, tally, cancellationToken);
 
-            await ApplySnapshotAsync(context, card, snapshot, now, cancellationToken);
+            await ApplySnapshotAsync(context, card, snapshot, now, tally, cancellationToken);
         }
     }
 
@@ -366,6 +413,7 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
             return activeToken.Token;
         }
 
+        using Activity? refreshActivity = InfrastructureTelemetry.ActivitySource.StartActivity("Refresh access token");
         ExternalOpenBankingAccessResponse refreshed =
             await _openBankingApiService.GetAccessTokenByRefreshTokenAsync(activeToken.RefreshToken,
                 cancellationToken);
@@ -380,41 +428,42 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
     }
 
     private async Task<AccountSnapshot> FetchAccountSnapshotAsync(BankConnection connection, BankAccount account,
-        string authToken, SyncTypes syncFlags, DateTime? transactionsFrom, CancellationToken cancellationToken)
+        string authToken, SyncTypes syncFlags, DateTime? transactionsFrom, ConnectionSyncTally tally,
+        CancellationToken cancellationToken)
     {
         string externalId = account.ExternalId;
         string accountId = account.Id.ToString();
 
-        Task<List<ExternalOpenBankingAccountBalance>?> balances = FetchAsync(syncFlags, SyncTypes.Balance,
+        Task<List<ExternalOpenBankingAccountBalance>?> balances = FetchAsync("Fetch balance", syncFlags, SyncTypes.Balance,
             () => _openBankingApiService.GetAccountBalanceAsync(externalId, authToken, cancellationToken),
             static x => x.Results,
-            ex => Logger.LogErrorSyncingAccountBalance(ex, connection.Id, accountId, UserId), cancellationToken);
+            ex => Logger.LogErrorSyncingAccountBalance(ex, connection.Id, accountId, UserId), tally, cancellationToken);
 
-        Task<List<ExternalOpenBankingAccountStandingOrder>?> standingOrders = FetchAsync(syncFlags,
+        Task<List<ExternalOpenBankingAccountStandingOrder>?> standingOrders = FetchAsync("Fetch standing orders", syncFlags,
             SyncTypes.StandingOrders,
             () => _openBankingApiService.GetAccountStandingOrdersAsync(externalId, authToken, cancellationToken),
             static x => x.Results,
-            ex => Logger.LogErrorSyncingStandingOrders(ex, connection.Id, accountId, UserId), cancellationToken);
+            ex => Logger.LogErrorSyncingStandingOrders(ex, connection.Id, accountId, UserId), tally, cancellationToken);
 
-        Task<List<ExternalOpenBankingDirectDebit>?> directDebits = FetchAsync(syncFlags, SyncTypes.DirectDebits,
+        Task<List<ExternalOpenBankingDirectDebit>?> directDebits = FetchAsync("Fetch direct debits", syncFlags, SyncTypes.DirectDebits,
             () => _openBankingApiService.GetAccountDirectDebitsAsync(externalId, authToken, cancellationToken),
             static x => x.Results,
-            ex => Logger.LogErrorSyncingDirectDebits(ex, connection.Id, accountId, UserId), cancellationToken);
+            ex => Logger.LogErrorSyncingDirectDebits(ex, connection.Id, accountId, UserId), tally, cancellationToken);
 
-        Task<List<ExternalOpenBankingAccountTransaction>?> transactions = FetchAsync(syncFlags,
+        Task<List<ExternalOpenBankingAccountTransaction>?> transactions = FetchAsync("Fetch transactions", syncFlags,
             SyncTypes.Transactions,
             () => _openBankingApiService.GetAccountTransactionsAsync(externalId, authToken, transactionsFrom,
                 cancellationToken),
             static x => x.Results,
-            ex => Logger.LogErrorSyncingTransactions(ex, connection.Id, accountId, UserId), cancellationToken);
+            ex => Logger.LogErrorSyncingTransactions(ex, connection.Id, accountId, UserId), tally, cancellationToken);
 
         // Always the full pending list, stored pending rows missing from it are removed as stale
-        Task<List<ExternalOpenBankingAccountTransaction>?> pendingTransactions = FetchAsync(syncFlags,
+        Task<List<ExternalOpenBankingAccountTransaction>?> pendingTransactions = FetchAsync("Fetch pending transactions", syncFlags,
             SyncTypes.Transactions,
             () => _openBankingApiService.GetAccountPendingTransactionsAsync(externalId, authToken, null,
                 cancellationToken),
             static x => x.Results,
-            ex => Logger.LogErrorSyncingPendingTransactions(ex, connection.Id, accountId, UserId), cancellationToken);
+            ex => Logger.LogErrorSyncingPendingTransactions(ex, connection.Id, accountId, UserId), tally, cancellationToken);
 
         await Task.WhenAll(balances, standingOrders, directDebits, transactions, pendingTransactions);
 
@@ -423,30 +472,31 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
     }
 
     private async Task<AccountSnapshot> FetchCardSnapshotAsync(BankConnection connection, BankAccount card,
-        string authToken, SyncTypes syncFlags, DateTime? transactionsFrom, CancellationToken cancellationToken)
+        string authToken, SyncTypes syncFlags, DateTime? transactionsFrom, ConnectionSyncTally tally,
+        CancellationToken cancellationToken)
     {
         string externalId = card.ExternalId;
         string cardId = card.Id.ToString();
 
-        Task<List<ExternalOpenBankingAccountBalance>?> balances = FetchAsync(syncFlags, SyncTypes.Balance,
+        Task<List<ExternalOpenBankingAccountBalance>?> balances = FetchAsync("Fetch balance", syncFlags, SyncTypes.Balance,
             () => _openBankingApiService.GetCardBalanceAsync(externalId, authToken, cancellationToken),
             static x => x.Results,
-            ex => Logger.LogErrorSyncingAccountBalance(ex, connection.Id, cardId, UserId), cancellationToken);
+            ex => Logger.LogErrorSyncingAccountBalance(ex, connection.Id, cardId, UserId), tally, cancellationToken);
 
-        Task<List<ExternalOpenBankingAccountTransaction>?> transactions = FetchAsync(syncFlags,
+        Task<List<ExternalOpenBankingAccountTransaction>?> transactions = FetchAsync("Fetch transactions", syncFlags,
             SyncTypes.Transactions,
             () => _openBankingApiService.GetCardTransactionsAsync(externalId, authToken, transactionsFrom,
                 cancellationToken),
             static x => x.Results,
-            ex => Logger.LogErrorSyncingTransactions(ex, connection.Id, cardId, UserId), cancellationToken);
+            ex => Logger.LogErrorSyncingTransactions(ex, connection.Id, cardId, UserId), tally, cancellationToken);
 
         // Always the full pending list, stored pending rows missing from it are removed as stale
-        Task<List<ExternalOpenBankingAccountTransaction>?> pendingTransactions = FetchAsync(syncFlags,
+        Task<List<ExternalOpenBankingAccountTransaction>?> pendingTransactions = FetchAsync("Fetch pending transactions", syncFlags,
             SyncTypes.Transactions,
             () => _openBankingApiService.GetCardPendingTransactionsAsync(externalId, authToken, null,
                 cancellationToken),
             static x => x.Results,
-            ex => Logger.LogErrorSyncingPendingTransactions(ex, connection.Id, cardId, UserId), cancellationToken);
+            ex => Logger.LogErrorSyncingPendingTransactions(ex, connection.Id, cardId, UserId), tally, cancellationToken);
 
         await Task.WhenAll(balances, transactions, pendingTransactions);
 
@@ -454,31 +504,37 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
     }
 
     /// <summary>
-    /// Fetches one kind of account data. Returns null when it was not requested or the provider call failed.
+    /// Fetches one kind of account data in a span named <paramref name="name"/>, tagged with how many items came
+    /// back. Returns null when it was not requested or the provider call failed.
     /// </summary>
-    private static async Task<List<T>?> FetchAsync<TResponse, T>(SyncTypes syncFlags, SyncTypes syncType,
-        Func<Task<TResponse>> fetch, Func<TResponse, IAsyncEnumerable<T>?> results, Action<Exception> onError,
-        CancellationToken cancellationToken)
+    private static async Task<List<T>?> FetchAsync<TResponse, T>(string name, SyncTypes syncFlags,
+        SyncTypes syncType, Func<Task<TResponse>> fetch, Func<TResponse, IAsyncEnumerable<T>?> results,
+        Action<Exception> onError, ConnectionSyncTally tally, CancellationToken cancellationToken)
     {
         if (!ShouldSynchronise(syncFlags, syncType))
         {
             return null;
         }
 
+        using Activity? activity = InfrastructureTelemetry.ActivitySource.StartActivity(name);
         try
         {
             IAsyncEnumerable<T>? items = results(await fetch());
-            return items is null ? [] : await items.ToListAsync(cancellationToken);
+            List<T> fetched = items is null ? [] : await items.ToListAsync(cancellationToken);
+            activity?.SetTag(InfrastructureTelemetry.ItemCountTag, fetched.Count);
+            return fetched;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
+            activity.RecordError(ex);
+            tally.RecordFetchFailed();
             onError(ex);
             return null;
         }
     }
 
     private async Task ApplySnapshotAsync(FinanceTrackerContext context, BankAccount account,
-        AccountSnapshot snapshot, DateTime syncedAt, CancellationToken cancellationToken)
+        AccountSnapshot snapshot, DateTime syncedAt, ConnectionSyncTally tally, CancellationToken cancellationToken)
     {
         if (snapshot.Balances is not null)
         {
@@ -531,17 +587,20 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
             if (existing.TryGetValue(details.ExternalId, out BankTransaction? transaction))
             {
                 transaction.UpdateFromSync(details);
+                tally.TransactionsUpdated++;
             }
             else
             {
                 context.BankTransactions.Add(BankTransaction.Import(account, details));
+                tally.TransactionsAdded++;
             }
         }
 
         // A failed pending fetch is null, so stored pending rows are only removed against a list we actually got
         if (snapshot.PendingTransactions is not null)
         {
-            await RemoveStalePendingTransactionsAsync(context, account, incoming.Keys, cancellationToken);
+            tally.PendingRemoved +=
+                await RemoveStalePendingTransactionsAsync(context, account, incoming.Keys, cancellationToken);
         }
 
         // Only once booked transactions are in, the log marks where the next sync fetches from
@@ -582,7 +641,8 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
     /// Removes pending transactions the provider no longer reports. A bank can settle a pending transaction under a
     /// different id, which would otherwise leave the pending copy counted alongside the booked one.
     /// </summary>
-    private async Task RemoveStalePendingTransactionsAsync(FinanceTrackerContext context, BankAccount account,
+    /// <returns>How many were removed.</returns>
+    private async Task<int> RemoveStalePendingTransactionsAsync(FinanceTrackerContext context, BankAccount account,
         IReadOnlyCollection<string> reportedExternalIds, CancellationToken cancellationToken)
     {
         // ExternalId is encrypted, so the account's pending rows are loaded and compared in memory
@@ -594,11 +654,12 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
 
         if (stale.Count == 0)
         {
-            return;
+            return 0;
         }
 
         context.BankTransactions.RemoveRange(stale);
         Logger.LogRemovedStalePendingTransactions(stale.Count, account.Id, UserId);
+        return stale.Count;
     }
 
     private static bool ShouldSynchronise(SyncTypes syncFlags, SyncTypes typeToCheck) =>

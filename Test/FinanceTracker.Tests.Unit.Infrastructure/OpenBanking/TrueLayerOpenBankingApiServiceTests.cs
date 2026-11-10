@@ -581,6 +581,20 @@ public class TrueLayerOpenBankingApiServiceTests : UnitTestBase
     }
 
     [Test]
+    public async Task GetAllAccountsAsync_RefusedRequest_TagsTheSpanThatAskedWithTheTraceId()
+    {
+        TrueLayerOpenBankingApiService subject = BuildSubject(_ => Task.FromResult(TooManyRequests()));
+        using SpanRecorder spans = new();
+
+        using (spans.StartRoot())
+        {
+            await subject.GetAllAccountsAsync("token", CancellationToken);
+        }
+
+        await Assert.That(spans.Root.GetTagItem("truelayer.trace_id")).IsEqualTo("trace-123");
+    }
+
+    [Test]
     public async Task GetAllAccountsAsync_RefusedRequest_LogsItWithTheTraceId()
     {
         var logger = new CapturingLogger<TrueLayerOpenBankingApiService>();

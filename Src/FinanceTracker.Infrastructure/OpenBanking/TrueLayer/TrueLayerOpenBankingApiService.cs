@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -6,6 +7,7 @@ using System.Text;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using FinanceTracker.Infrastructure.OpenBanking.TrueLayer.Contracts;
+using FinanceTracker.Infrastructure.Telemetry;
 using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Infrastructure.OpenBanking.TrueLayer;
@@ -361,8 +363,11 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
             return true;
         }
 
-        _logger.LogTrueLayerRequestRefused(requested, (int)response.StatusCode, response.ReasonPhrase,
-            TraceId(response));
+        string traceId = TraceId(response);
+        _logger.LogTrueLayerRequestRefused(requested, (int)response.StatusCode, response.ReasonPhrase, traceId);
+
+        // On the span that asked, such as a sync's fetch, so the trace leads to what TrueLayer's support can look up
+        Activity.Current?.SetTag(InfrastructureTelemetry.TrueLayerTraceIdTag, traceId);
         return false;
     }
 

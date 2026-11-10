@@ -117,6 +117,7 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
 
         context.Budgets.Add(newBudget);
         await context.SaveChangesAsync(cancellationToken);
+        Logger.LogChanged(UserId, "created", "budget", newBudget.Id);
 
         return BudgetMapper.ToContract(newBudget, currentMonth);
     }
@@ -137,6 +138,7 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
         updated.ChangeLimit(budget.MonthlyLimit, currentMonth);
 
         await context.SaveChangesAsync(cancellationToken);
+        Logger.LogChanged(UserId, "updated", "budget", id);
 
         return BudgetMapper.ToContract(updated, currentMonth);
     }
@@ -149,6 +151,7 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
         DomainBudget budget = await context.Budgets.OwnedBy(UserId).SingleAsync(x => x.Id == id, cancellationToken);
         context.Budgets.Remove(budget);
         await context.SaveChangesAsync(cancellationToken);
+        Logger.LogChanged(UserId, "deleted", "budget", id);
     }
 
     /// <summary>

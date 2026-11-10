@@ -1,3 +1,4 @@
+using FinanceTracker.Domain.Notifications;
 using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Infrastructure;
@@ -18,6 +19,9 @@ public static partial class LoggerMessages
 
     [LoggerMessage(LogLevel.Error, "Error occured syncing pending transactions for provider {providerId} with account {accountId} for user {userId}")]
     public static partial void LogErrorSyncingPendingTransactions(this ILogger logger, Exception exception, Guid providerId, string accountId, Guid userId);
+
+    [LoggerMessage(LogLevel.Information, "Synced connection {connectionId} for user {userId} in {elapsedMs}ms: {accounts} accounts, {cards} cards, {added} transactions added, {updated} updated, {pendingRemoved} stale pending removed, {failedFetches} fetches failed")]
+    public static partial void LogSyncedConnection(this ILogger logger, Guid connectionId, Guid userId, int accounts, int cards, int added, int updated, int pendingRemoved, int failedFetches, long elapsedMs);
 
     [LoggerMessage(LogLevel.Information, "Removed {count} stale pending transactions from account {accountId} for user {userId}")]
     public static partial void LogRemovedStalePendingTransactions(this ILogger logger, int count, Guid accountId, Guid userId);
@@ -46,8 +50,11 @@ public static partial class LoggerMessages
     [LoggerMessage(LogLevel.Information, "Re-encrypted {count} {entityType} rows with encryption key {keyId}")]
     public static partial void LogReencrypted(this ILogger logger, int count, string entityType, int keyId);
 
-    [LoggerMessage(LogLevel.Information, "Applied {rules} rules for user {userId}, {changed} transactions changed")]
-    public static partial void LogAppliedRules(this ILogger logger, Guid userId, int rules, int changed);
+    [LoggerMessage(LogLevel.Information, "Applied {rules} rules for user {userId} to {considered} transactions, {changed} changed")]
+    public static partial void LogAppliedRules(this ILogger logger, Guid userId, int rules, int considered, int changed);
+
+    [LoggerMessage(LogLevel.Debug, "Rule {ruleId} matched {matched} transactions for user {userId}")]
+    public static partial void LogRuleMatched(this ILogger logger, Guid userId, Guid ruleId, int matched);
 
     [LoggerMessage(LogLevel.Information, "Re-applied rules to the {considered} transactions rule {ruleId} reached for user {userId}, {changed} changed")]
     public static partial void LogReappliedRules(this ILogger logger, Guid userId, Guid ruleId, int considered, int changed);
@@ -63,6 +70,15 @@ public static partial class LoggerMessages
 
     [LoggerMessage(LogLevel.Information, "Deleted debt {debtId} for user {userId}, {payments} payments and {rules} rules no longer pay it off")]
     public static partial void LogDeletedDebt(this ILogger logger, Guid userId, Guid debtId, int payments, int rules);
+
+    [LoggerMessage(LogLevel.Information, "Notified user {userId} of {kind} with notification {notificationId}: in app {inApp}, emailed {emailed}, webhook {webhook}")]
+    public static partial void LogNotified(this ILogger logger, Guid userId, NotificationKind kind, Guid notificationId, bool inApp, bool emailed, bool webhook);
+
+    [LoggerMessage(LogLevel.Warning, "Connection {connectionId} for user {userId} has started failing to sync, they've been told")]
+    public static partial void LogConnectionSyncFailing(this ILogger logger, Guid connectionId, Guid userId);
+
+    [LoggerMessage(LogLevel.Information, "Connection {connectionId} for user {userId} syncs again, it had been failing since {failingSince}")]
+    public static partial void LogConnectionSyncRecovered(this ILogger logger, Guid connectionId, Guid userId, DateTime failingSince);
 
     [LoggerMessage(LogLevel.Warning, "Couldn't email notification {notificationId} to user {userId}, it still shows in the app")]
     public static partial void LogNotificationEmailFailed(this ILogger logger, Exception exception, Guid notificationId, Guid userId);

@@ -4,6 +4,7 @@ using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using FinanceTracker.Infrastructure.Persistence;
+using FinanceTracker.Infrastructure.Telemetry;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -74,6 +75,12 @@ public class BillSyncService : ServiceBase<BillSyncService>, IBillSyncService
 
         Logger.LogSyncedBills(UserId, summary.Added, summary.Ended, summary.Matched, summary.PricesChanged,
             summary.Suggested);
+        InfrastructureTelemetry.TagCurrent(
+            ("fintrack.bills.added", summary.Added),
+            ("fintrack.bills.ended", summary.Ended),
+            ("fintrack.bills.matched", summary.Matched),
+            ("fintrack.bills.prices_changed", summary.PricesChanged),
+            ("fintrack.subscriptions.suggested", summary.Suggested));
 
         return summary;
     }

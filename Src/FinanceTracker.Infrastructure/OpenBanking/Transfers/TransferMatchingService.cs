@@ -5,6 +5,7 @@ using FinanceTracker.Domain.OpenBanking.Transfers;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using FinanceTracker.Infrastructure.Persistence;
+using FinanceTracker.Infrastructure.Telemetry;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -157,6 +158,11 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
 
         await context.SaveChangesAsync(cancellationToken);
         Logger.LogMatchedTransfers(UserId, transactions.Count, summary.Transfers, summary.ToReview, summary.Cleared);
+        InfrastructureTelemetry.TagCurrent(
+            ("fintrack.transactions.considered", transactions.Count),
+            ("fintrack.transfers", summary.Transfers),
+            ("fintrack.transfers.to_review", summary.ToReview),
+            ("fintrack.transfers.cleared", summary.Cleared));
 
         return summary;
     }

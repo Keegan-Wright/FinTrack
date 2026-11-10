@@ -67,7 +67,7 @@ services:
 
       OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_OTLP_ENDPOINT}"
       OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
-      OTEL_SERVICE_NAME: "FinTrackWeb"
+      OTEL_SERVICE_NAME: "FinTrack"
     expose:
       - 8080
     depends_on:
