@@ -56,4 +56,10 @@ public static partial class WebLoggerMessages
 
     [LoggerMessage(LogLevel.Error, "Failed to send an email confirmation link to user {userId}")]
     public static partial void LogConfirmationEmailFailed(this ILogger logger, Exception exception, Guid userId);
+
+    [LoggerMessage(LogLevel.Information, "User {userId} changed their password")]
+    public static partial void LogPasswordChanged(this ILogger logger, Guid userId);
+
+    [LoggerMessage(LogLevel.Information, "User {userId} changed their email")]
+    public static partial void LogEmailChanged(this ILogger logger, Guid userId);
 }

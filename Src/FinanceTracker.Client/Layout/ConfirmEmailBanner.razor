@@ -9,7 +9,7 @@
     <MudAlert Severity="Severity.Info" Variant="Variant.Text" Dense="true">
         @if (_sent)
         {
-            <text>A link is on its way to @Status.Email. Open it to confirm your email.</text>
+            <text>A link is on its way to @Profile.Email. Open it to confirm your email.</text>
         }
         else
         {
@@ -23,10 +23,10 @@
 @code {
 
     /// <summary>
-    /// The user's email, see <see cref="EmailStatus.NeedsConfirming"/>.
+    /// The user's profile, see <see cref="ProfileDetails.NeedsConfirming"/>.
     /// </summary>
     [Parameter, EditorRequired]
-    public required EmailStatus Status { get; set; }
+    public required ProfileDetails Profile { get; set; }
 
     /// <summary>
     /// There was nothing to send, it's confirmed already or email has gone, so the banner can go.

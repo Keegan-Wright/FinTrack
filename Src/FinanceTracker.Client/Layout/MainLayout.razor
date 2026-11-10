@@ -53,6 +53,7 @@
         <MudMenu Icon="@Icons.Material.Outlined.AccountCircle" Color="Color.Inherit" AnchorOrigin="Origin.BottomRight"
                  TransformOrigin="Origin.TopRight" AriaLabel="Account">
 
+            <MudMenuItem Href="YourProfile" Icon="@Icons.Material.Outlined.Person">Your profile</MudMenuItem>
             <MudMenuItem AutoClose="false">
                 @* ReSharper disable once Html.PathError *@
                 <form action="Account/Logout" method="post">
@@ -126,9 +127,9 @@
                     {
                         <RenewConnectionsBanner Count="@ApplicationState.ConnectionsToRenew"/>
                     }
-                    @if (_emailStatus is { NeedsConfirming: true })
+                    @if (_profile is { NeedsConfirming: true })
                     {
-                        <ConfirmEmailBanner Status="@_emailStatus" NothingToConfirm="@(() => _emailStatus = null)"/>
+                        <ConfirmEmailBanner Profile="@_profile" NothingToConfirm="@(() => _profile = null)"/>
                     }
                     <CascadingValue Value="@_isDarkMode" Name="IsDarkMode">
                         <ErrorBoundary @ref="@_errorBoundary">
@@ -159,10 +160,10 @@
     private bool _livePaused;
 
     /// <summary>
-    /// The user's email, for the banner asking them to confirm it. Loaded once, as it only changes by them opening
-    /// the link, which loads the app again.
+    /// The user's profile, for the banner asking them to confirm their email. Loaded once, as that only changes by
+    /// them opening the link, which loads the app again.
     /// </summary>
-    private EmailStatus? _emailStatus;
+    private ProfileDetails? _profile;
 
     /// <summary>
     /// A new page each navigation, so one that failed doesn't keep showing its error on the next.
@@ -184,7 +185,7 @@
         if (firstRender)
         {
             await SubscribeToSyncsAsync();
-            await Task.WhenAll(RefreshSyncDetailsAsync(), GetEmailStatusAsync());
+            await Task.WhenAll(RefreshSyncDetailsAsync(), GetProfileAsync());
         }
     }
 
@@ -335,11 +336,11 @@
         }
     }
 
-    private async Task GetEmailStatusAsync()
+    private async Task GetProfileAsync()
     {
         try
         {
-            _emailStatus = await ProfileService.GetEmailStatusAsync(_cts.Token);
+            _profile = await ProfileService.GetProfileAsync(_cts.Token);
             await InvokeAsync(StateHasChanged);
         }
         catch (HttpRequestException)

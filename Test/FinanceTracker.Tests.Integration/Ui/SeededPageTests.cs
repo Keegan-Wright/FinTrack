@@ -42,7 +42,8 @@ public class SeededPageTests : UiTestBase
         ("/ProviderSetup", null),
         ("/Notifications", SeededUser.Notice),
         ("/Notifications/Settings", "What and where"),
-        ("/YourData", null)
+        ("/YourData", null),
+        ("/YourProfile", "Change email")
     ];
 
     public static IEnumerable<(string Path, string? Shows, ScreenSize Screen, bool Dark)> PagesOnEachScreen()

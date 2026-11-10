@@ -700,10 +700,13 @@ public class MainLayoutTests : ComponentTestBase
     }
 
     private void GivenEmail(bool confirmed, bool mailAvailable = true) =>
-        _profileService.GetEmailStatusAsync(Arg.Any<CancellationToken>()).Returns(new EmailStatus
+        _profileService.GetProfileAsync(Arg.Any<CancellationToken>()).Returns(new ProfileDetails
         {
+            Username = "sam",
             Email = "sam@example.test",
-            IsConfirmed = confirmed,
+            EmailConfirmed = confirmed,
+            HasPassword = true,
+            UsesIdentityProvider = false,
             MailAvailable = mailAvailable
         });
 

@@ -239,6 +239,7 @@ public static class AuthenticationExtensions
             services.AddHttpContextAccessor();
             services.AddScoped<AccountUrls>();
             services.AddScoped<EmailConfirmation>();
+            services.AddScoped<EmailChange>();
             services.AddScoped<IProfileService, ProfileService>();
             return services;
         }

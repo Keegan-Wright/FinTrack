@@ -64,7 +64,6 @@ public partial class ForgotPasswordTests : UiTestBase
         string link = ResetLink().Match(mail.Text).Groups["link"].Value;
 
         await page.GotoAsync(link);
-        await page.GetByLabel("Email").FillAsync(email);
         await page.GetByLabel("New password", new PageGetByLabelOptions { Exact = true }).FillAsync(newPassword);
         await page.GetByLabel("Confirm new password").FillAsync(newPassword);
         await Button(page, "Reset password").ClickAsync();

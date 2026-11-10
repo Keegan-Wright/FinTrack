@@ -1,0 +1,163 @@
+@* The user's email, whether it's confirmed, and changing it. With a mail server the new one is confirmed by a link
+   first, the account keeping the old one until it's opened. without one it changes straight away. *@
+@using FinanceTracker.Client.Extensions
+@using FinanceTracker.Contracts.Profile
+@using FluentValidation
+@using Severity = MudBlazor.Severity
+@implements IDisposable
+@inject IProfileService ProfileService
+@inject IValidator<ChangeEmail> Validator
+@inject ISnackbar Snackbar
+
+<Section>
+    <div class="ft-stack">
+        @if (Profile.Email is null)
+        {
+            <MudText Typo="Typo.body2">Your account has no email yet.</MudText>
+        }
+        else
+        {
+            <div>
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">Your email</MudText>
+                <div class="ft-profile__email">
+                    <MudText Typo="Typo.body1" Class="ft-profile__address">@Profile.Email</MudText>
+                    @if (Profile.EmailConfirmed)
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Success"
+                                 Icon="@Icons.Material.Outlined.Verified">Confirmed</MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Warning"
+                                 Icon="@Icons.Material.Outlined.ErrorOutline">Not confirmed</MudChip>
+                    }
+                </div>
+                @if (!Profile.EmailConfirmed)
+                {
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        Notifications and password reset links aren't emailed to it until you confirm it's yours.
+                    </MudText>
+                }
+            </div>
+        }
+
+        @if (_sentTo is not null)
+        {
+            <MudText Typo="Typo.body2" role="status">
+                A link is on its way to <strong>@_sentTo</strong>. Open it to change your email.
+            </MudText>
+        }
+
+        <MudForm @ref="_form" Model="@_model">
+            <div class="ft-profile__fields">
+                <MudTextField T="string" @bind-Value="_model.NewEmail" Label="New email" Variant="Variant.Outlined"
+                              Margin="Margin.Dense" InputType="InputType.Email" Immediate="true"
+                              For="@(() => _model.NewEmail)"
+                              UserAttributes="@(new Dictionary<string, object?> { ["autocomplete"] = "email" })"
+                              Validation="@(Validator.ValidateValue(_model, nameof(ChangeEmail.NewEmail)))"
+                              Error="@(_error is not null)" ErrorText="@_error"
+                              HelperText="@HelperText"/>
+            </div>
+        </MudForm>
+        <div>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@_busy"
+                       OnClick="@ChangeAsync">Change email</MudButton>
+        </div>
+    </div>
+</Section>
+
+@code {
+
+    [Parameter, EditorRequired]
+    public required ProfileDetails Profile { get; set; }
+
+    /// <summary>
+    /// The email changed straight away, without a link, for the page to load it again.
+    /// </summary>
+    [Parameter]
+    public EventCallback ProfileChanged { get; set; }
+
+    private readonly CancellationTokenSource _cts = new();
+    private readonly ChangeEmail _model = new();
+    private MudForm _form = null!;
+    private string? _error;
+    private string? _sentTo;
+    private bool _busy;
+
+    private string HelperText
+    {
+        get
+        {
+            if (Profile.MailAvailable)
+            {
+                return "We'll email a link to the new one. Your account keeps this one until you open it.";
+            }
+
+            return "Your account uses it straight away. Email isn't set up here, so it can't be confirmed yet.";
+        }
+    }
+
+    internal async Task ChangeAsync()
+    {
+        _error = null;
+        await _form.ValidateAsync();
+        if (!_form.IsValid)
+        {
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            // A copy, as the field clears once it's changed
+            string newEmail = _model.NewEmail.Trim();
+            ProfileChange? change =
+                await ProfileService.ChangeEmailAsync(new ChangeEmail { NewEmail = newEmail }, _cts.Token);
+            await ShowAsync(change, newEmail);
+        }
+        catch (Exception) when (!_cts.IsCancellationRequested)
+        {
+            Snackbar.Add("Couldn't change your email, try again", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task ShowAsync(ProfileChange? change, string newEmail)
+    {
+        if (change is null)
+        {
+            // Its email became the identity provider's meanwhile, the page loads again to say so
+            await ProfileChanged.InvokeAsync();
+            return;
+        }
+
+        if (!change.Succeeded)
+        {
+            _error = string.Join(". ", change.Errors);
+            return;
+        }
+
+        if (change.LinkSent)
+        {
+            _sentTo = newEmail;
+        }
+        else
+        {
+            Snackbar.Add("Email changed", Severity.Success);
+            await ProfileChanged.InvokeAsync();
+        }
+
+        _model.NewEmail = string.Empty;
+        await _form.ResetValidationAsync();
+    }
+
+    public void Dispose()
+    {
+        _cts.Cancel();
+        _cts.Dispose();
+    }
+
+}
