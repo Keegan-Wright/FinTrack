@@ -1,12 +1,15 @@
-using Microsoft.Extensions.Logging.Abstractions;
 using FinanceTracker.BackgroundJobs;
+using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Notifications;
+using FinanceTracker.Telemetry;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.Metrics.Testing;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
 namespace FinanceTracker.Tests.Unit.FinanceTracker.BackgroundJobs;
@@ -137,6 +140,51 @@ public class MonitorOpenBankingTokenExpirationAsyncTests : InfrastructureTestBas
         }
     }
 
+    [Test]
+    public async Task Execute_RecordsConnectionsByStateAndHowLongAgoTheOldestSynced()
+    {
+        // Arrange
+        DateTime now = DateTime.UtcNow;
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("ok", Username))
+            .Do(s => s.BankConnectionScenario.WithConsentExpiresAt("ok", now.AddDays(60)))
+            .Do(s => s.BankConnectionScenario.WithConnection("due", Username))
+            .Do(s => s.BankConnectionScenario.WithConsentExpiresAt("due", now.AddDays(7)))
+            .Do(s => s.BankConnectionScenario.WithConnection("lapsed", Username))
+            .Do(s => s.BankConnectionScenario.WithConsentExpiresAt("lapsed", Lapsed()))
+            .Do(s => s.BankConnectionScenario.WithConnection("failing", Username))
+            .Do(s => s.BankConnectionScenario.WithConsentExpiresAt("failing", now.AddDays(60)))
+            .Do(s => s.BankConnectionScenario.WithSyncFailing("failing", now.AddDays(-2)))
+            .Do(s => s.BankAccountScenario.WithAccount("ok-account", "ok"))
+            .Do(s => s.BankAccountScenario.WithSyncLog("ok-account", SyncType.Account, now.AddHours(-3)))
+            .Do(s => s.BankAccountScenario.WithAccount("failing-account", "failing"))
+            .Do(s => s.BankAccountScenario.WithSyncLog("failing-account", SyncType.Account, now.AddDays(-2)))
+            .Do(s => s.BankAccountScenario.WithAccount("lapsed-account", "lapsed"))
+            .Do(s => s.BankAccountScenario.WithSyncLog("lapsed-account", SyncType.Account, now.AddDays(-30)));
+
+        using TestMetrics metrics = new(new FixedTimeProvider(now));
+        using MetricCollector<long> connections = metrics.Collect<long>(FinTrackMetrics.ConnectionsName);
+        using MetricCollector<double> oldestAge = metrics.Collect<double>(FinTrackMetrics.OldestSyncAgeName);
+
+        // Act
+        await BuildSubject([], metrics.Metrics).Execute(JobContexts.Scheduled(), CancellationToken);
+
+        // Assert
+        Dictionary<string, long> byState = connections.GetMeasurementSnapshot()
+            .ToDictionary(static x => x.Tags[TelemetryTags.ConnectionState]!.ToString()!, static x => x.Value);
+        oldestAge.RecordObservableInstruments();
+        using (Assert.Multiple())
+        {
+            await Assert.That(byState).IsEquivalentTo(new Dictionary<string, long>
+            {
+                ["ok"] = 1, ["renewal_due"] = 1, ["lapsed"] = 1, ["failing"] = 1
+            });
+
+            // The failing connection's, the lapsed one can't sync so isn't waiting
+            await Assert.That(oldestAge.LastMeasurement!.Value).IsEqualTo(TimeSpan.FromDays(2).TotalSeconds);
+        }
+    }
+
     private static DateTime Lapsed() => DateTime.UtcNow.AddHours(-1);
 
     private async Task<BankConnection> LoadConnectionAsync(string connectionName)
@@ -170,7 +218,8 @@ public class MonitorOpenBankingTokenExpirationAsyncTests : InfrastructureTestBas
     private MonitorOpenBankingTokenExpirationAsync BuildSubject() => BuildSubject([]);
 
     /// <param name="notified">Who the consent notices were raised as, in turn.</param>
-    private MonitorOpenBankingTokenExpirationAsync BuildSubject(List<Guid> notified)
+    /// <param name="metrics">Where the connections' states go, nowhere watched unless given.</param>
+    private MonitorOpenBankingTokenExpirationAsync BuildSubject(List<Guid> notified, FinTrackMetrics? metrics = null)
     {
         ServiceCollection services = new();
         services.AddCurrentUser();
@@ -188,6 +237,6 @@ public class MonitorOpenBankingTokenExpirationAsyncTests : InfrastructureTestBas
 
         return new MonitorOpenBankingTokenExpirationAsync(DbContextFactory,
             services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(), TimeProvider.System,
-            NullLogger<MonitorOpenBankingTokenExpirationAsync>.Instance);
+            NullLogger<MonitorOpenBankingTokenExpirationAsync>.Instance, metrics ?? TestMetrics.Unobserved);
     }
 }

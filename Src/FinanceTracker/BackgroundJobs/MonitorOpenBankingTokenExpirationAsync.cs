@@ -3,6 +3,7 @@ using FinanceTracker.Domain.Identity;
 using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Notifications;
+using FinanceTracker.Infrastructure.OpenBanking;
 using FinanceTracker.Telemetry;
 using Microsoft.EntityFrameworkCore;
 using Quartz;
@@ -19,11 +20,13 @@ public class MonitorOpenBankingTokenExpirationAsync : IJob
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<MonitorOpenBankingTokenExpirationAsync> _logger;
+    private readonly FinTrackMetrics _metrics;
 
     public MonitorOpenBankingTokenExpirationAsync(IDbContextFactory<FinanceTrackerContext> dbContextFactory,
         IServiceScopeFactory scopeFactory, TimeProvider timeProvider,
-        ILogger<MonitorOpenBankingTokenExpirationAsync> logger)
+        ILogger<MonitorOpenBankingTokenExpirationAsync> logger, FinTrackMetrics metrics)
     {
+        _metrics = metrics;
         _logger = logger;
         _dbContextFactory = dbContextFactory;
         _scopeFactory = scopeFactory;
@@ -37,6 +40,12 @@ public class MonitorOpenBankingTokenExpirationAsync : IJob
 
         await RevokeLapsedConnectionsAsync(performingMonitoringActivity, cancellationToken);
         await NotifyOwnersAsync(performingMonitoringActivity, cancellationToken);
+
+        // Consent may have lapsed since the last sync, so the states are counted again
+        await using (FinanceTrackerContext dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken))
+        {
+            await ConnectionHealthReport.RecordAsync(dbContext, _metrics, _timeProvider.UtcNow, cancellationToken);
+        }
 
         performingMonitoringActivity?.AddEvent(new ActivityEvent("Monitor OpenBanking Token Expiration completed"));
     }

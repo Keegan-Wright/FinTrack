@@ -1,4 +1,5 @@
 using FinanceTracker.Infrastructure;
+using FinanceTracker.Telemetry;
 using Microsoft.EntityFrameworkCore;
 using FinanceTracker.Infrastructure.Automation;
 using Quartz;
@@ -13,8 +14,8 @@ public class SyncUserOpenBankingDetailsAsync : OpenBankingSyncJob, IJob
 {
     public SyncUserOpenBankingDetailsAsync(IServiceScopeFactory scopeFactory,
         IDbContextFactory<FinanceTrackerContext> dbContextFactory, ISyncNotifier syncNotifier,
-        TimeProvider timeProvider, ILogger<OpenBankingSyncJob> logger)
-        : base(scopeFactory, dbContextFactory, syncNotifier, timeProvider, logger)
+        TimeProvider timeProvider, ILogger<OpenBankingSyncJob> logger, FinTrackMetrics metrics)
+        : base(scopeFactory, dbContextFactory, syncNotifier, timeProvider, logger, metrics)
     {
     }
 

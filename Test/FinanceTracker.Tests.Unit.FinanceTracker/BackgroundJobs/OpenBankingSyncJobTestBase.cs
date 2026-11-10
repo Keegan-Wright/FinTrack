@@ -96,6 +96,11 @@ public abstract class OpenBankingSyncJobTestBase : InfrastructureTestBase
     /// </summary>
     protected List<(Guid UserId, string Notices, bool AfterSnapshot)> Told { get; } = [];
 
+    /// <summary>
+    /// Told after each connection syncs or fails, as the app's own does.
+    /// </summary>
+    protected ISyncHealth SyncHealth { get; } = Substitute.For<ISyncHealth>();
+
     [Before(Test)]
     public void SetupOpenBankingService()
     {
@@ -125,6 +130,7 @@ public abstract class OpenBankingSyncJobTestBase : InfrastructureTestBase
             .AddScoped(sp => Resolved(sp, BudgetNotices))
             .AddScoped(sp => Resolved(sp, TransactionNotices))
             .AddScoped(sp => Resolved(sp, BalanceNotices))
+            .AddScoped(_ => SyncHealth)
             .BuildServiceProvider();
 
         BillNotices.When(x => x.NotifyAsync(Arg.Any<CancellationToken>())).Do(_ => RecordTold("bills"));

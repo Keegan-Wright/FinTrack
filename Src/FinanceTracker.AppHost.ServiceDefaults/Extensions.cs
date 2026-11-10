@@ -33,6 +33,18 @@ public static class Extensions
     private const string EntityFrameworkCoreMeterName = "Microsoft.EntityFrameworkCore";
 
     /// <summary>
+    /// The meter ASP.NET Core Identity publishes through since .NET 10: sign ins and their results, password checks,
+    /// sign outs, users created and changed.
+    /// </summary>
+    private const string IdentityMeterName = "Microsoft.AspNetCore.Identity";
+
+    /// <summary>
+    /// The meter Polly, under the HTTP clients' resilience handlers, publishes through: retries, such as TrueLayer's
+    /// 429s, and how long each attempt took, by pipeline.
+    /// </summary>
+    private const string PollyMeterName = "Polly";
+
+    /// <summary>
     /// The activity source ASP.NET Core's SignalR server publishes hub method calls through.
     /// </summary>
     private const string SignalRServerActivitySource = "Microsoft.AspNetCore.SignalR.Server";
@@ -90,6 +102,13 @@ public static class Extensions
                     // misses, optimistic concurrency failures and execution strategy retries
                     metrics.AddMeter(EntityFrameworkCoreMeterName);
 
+                    // FinTrack's own, see FinTrackMetrics
+                    metrics.AddMeter(FinTrackMetrics.MeterName);
+
+                    // Sign ins, and retries of outgoing calls
+                    metrics.AddMeter(IdentityMeterName);
+                    metrics.AddMeter(PollyMeterName);
+
                     // Job run times, retries, misfires and the store's operations
                     metrics.AddMeter(QuartzInstrumentationName);
                 })
@@ -115,6 +134,7 @@ public static class Extensions
                         .AddHttpClientInstrumentation(options => options.RecordException = true)
                         .AddNpgsql();
                 });
+            builder.Services.AddSingleton<FinTrackMetrics>();
             builder.AddOpenTelemetryExporters();
         }
 

@@ -20,13 +20,15 @@ public sealed class Notifier : ServiceBase<Notifier>, INotifier
     private readonly IWebhookSender _webhookSender;
     private readonly PublicAddress _publicAddress;
     private readonly TimeProvider _timeProvider;
+    private readonly FinTrackMetrics _metrics;
 
     public Notifier(ICurrentUser currentUser, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
         ILogger<Notifier> logger, INotificationPublisher publisher, IMailSender mailSender,
         INotificationEmails emails, IWebhookSender webhookSender, PublicAddress publicAddress,
-        TimeProvider timeProvider)
+        TimeProvider timeProvider, FinTrackMetrics metrics)
         : base(currentUser, financeTrackerContextFactory, logger)
     {
+        _metrics = metrics;
         _publisher = publisher;
         _mailSender = mailSender;
         _emails = emails;
@@ -73,6 +75,7 @@ public sealed class Notifier : ServiceBase<Notifier>, INotifier
 
         Logger.LogNotified(UserId, kind, notification.Id, inApp, address is not null, webhooked);
         CurrentActivity.Increment(TelemetryTags.NotificationsRaised);
+        _metrics.NotificationRaised(kind.ToString());
         Activity.Current?.AddEvent(new ActivityEvent("Notified", tags: new ActivityTagsCollection
         {
             [TelemetryTags.NotificationKind] = kind.ToString(),
@@ -100,6 +103,7 @@ public sealed class Notifier : ServiceBase<Notifier>, INotifier
         if (address is not null)
         {
             string? emailFailure = await EmailAsync(notification, address, cancellationToken);
+            _metrics.NotificationEmailed(succeeded: emailFailure is null);
             settings ??= AddSettings(context);
             settings.RecordEmail(_timeProvider.UtcNow, emailFailure);
         }
@@ -108,6 +112,7 @@ public sealed class Notifier : ServiceBase<Notifier>, INotifier
         if (webhooked && settings is not null)
         {
             string? webhookFailure = await PostAsync(settings, notification, cancellationToken);
+            _metrics.NotificationPostedToWebhook(succeeded: webhookFailure is null);
             settings.RecordWebhook(_timeProvider.UtcNow, webhookFailure);
         }
 

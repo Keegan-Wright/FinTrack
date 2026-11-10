@@ -1,6 +1,9 @@
 using FinanceTracker.BackgroundJobs;
 using FinanceTracker.Contracts;
+using FinanceTracker.Telemetry;
+using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
+using Microsoft.Extensions.Diagnostics.Metrics.Testing;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
@@ -110,7 +113,9 @@ public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
         OpenBankingService.SyncConnectionAsync(Scenario.ConnectionMappings["broken"], SyncTypes.All, CancellationToken)
             .ThrowsAsync(new InvalidOperationException("boom"));
 
-        SyncAllOpenBankingDetailsAsync subject = BuildSubject();
+        using TestMetrics metrics = new();
+        using MetricCollector<double> durations = metrics.Collect<double>(FinTrackMetrics.ConnectionSyncDurationName);
+        SyncAllOpenBankingDetailsAsync subject = BuildSubject(metrics.Metrics);
 
         // Act
         await subject.Execute(JobContexts.Scheduled(), CancellationToken);
@@ -121,6 +126,9 @@ public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
             await OpenBankingService.Received(3)
                 .SyncConnectionAsync(Arg.Any<Guid>(), SyncTypes.All, CancellationToken);
             await SyncNotifier.Received(1).NotifyAsync(Scenario.UserMappings[Username]);
+            await Assert.That(durations.GetMeasurementSnapshot()
+                    .Select(static x => x.Tags[TelemetryTags.Outcome]!.ToString()!))
+                .IsEquivalentTo(["succeeded", "failed", "succeeded"]);
         }
     }
 
@@ -354,6 +362,7 @@ public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
         }
     }
 
-    private SyncAllOpenBankingDetailsAsync BuildSubject() =>
-        new(ScopeFactory, DbContextFactory, SyncNotifier, Clock, NullLogger<OpenBankingSyncJob>.Instance);
+    private SyncAllOpenBankingDetailsAsync BuildSubject(FinTrackMetrics? metrics = null) =>
+        new(ScopeFactory, DbContextFactory, SyncNotifier, Clock, NullLogger<OpenBankingSyncJob>.Instance,
+            metrics ?? TestMetrics.Unobserved);
 }

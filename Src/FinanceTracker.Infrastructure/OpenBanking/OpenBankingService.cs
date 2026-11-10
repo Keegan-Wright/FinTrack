@@ -49,13 +49,16 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
     private readonly IOpenBankingApiService _openBankingApiService;
     private readonly HybridCache _cache;
     private readonly IOpenBankingSyncScheduler _syncScheduler;
+    private readonly FinTrackMetrics _metrics;
 
     public OpenBankingService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
         IOpenBankingApiService openBankingApiService, ILogger<OpenBankingService> logger,
-        TimeProvider timeProvider, HybridCache cache, IOpenBankingSyncScheduler syncScheduler)
+        TimeProvider timeProvider, HybridCache cache, IOpenBankingSyncScheduler syncScheduler,
+        FinTrackMetrics metrics)
         : base(currentUser, financeTrackerContextFactory, logger)
     {
+        _metrics = metrics;
         _openBankingApiService = openBankingApiService;
         _timeProvider = timeProvider;
         _cache = cache;
@@ -330,6 +333,8 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
     {
         Logger.LogSyncedConnection(connection.Id, UserId, tally.Accounts, tally.Cards, tally.TransactionsAdded,
             tally.TransactionsUpdated, tally.PendingRemoved, tally.FailedFetches, (long)took.TotalMilliseconds);
+        _metrics.TransactionsSynced(tally.TransactionsAdded, tally.TransactionsUpdated);
+        _metrics.FetchesFailed(tally.FailedFetches);
 
         Activity? connectionActivity = Activity.Current;
         connectionActivity?.SetTag(TelemetryTags.Accounts, tally.Accounts);

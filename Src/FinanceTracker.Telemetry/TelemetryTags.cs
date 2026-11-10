@@ -168,6 +168,26 @@ public static class TelemetryTags
     public const string NotificationsRaised = "fintrack.notifications.raised";
 
     /// <summary>
+    /// Whether the work succeeded or failed, on metrics.
+    /// </summary>
+    public const string Outcome = "fintrack.outcome";
+
+    /// <summary>
+    /// Whether a synced transaction was added or updated, on metrics.
+    /// </summary>
+    public const string Change = "fintrack.transactions.change";
+
+    /// <summary>
+    /// A bank connection's state, ok, renewal due, lapsed or failing, on metrics.
+    /// </summary>
+    public const string ConnectionState = "fintrack.connection.state";
+
+    /// <summary>
+    /// Where a notification was sent on to, email or webhook, on metrics.
+    /// </summary>
+    public const string NotificationChannel = "fintrack.notification.channel";
+
+    /// <summary>
     /// The kind of notification raised.
     /// </summary>
     public const string NotificationKind = "fintrack.notification.kind";

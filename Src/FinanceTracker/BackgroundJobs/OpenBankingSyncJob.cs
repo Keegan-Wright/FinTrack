@@ -28,12 +28,14 @@ public abstract class OpenBankingSyncJob
     private readonly ISyncNotifier _syncNotifier;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<OpenBankingSyncJob> _logger;
+    private readonly FinTrackMetrics _metrics;
 
     protected OpenBankingSyncJob(IServiceScopeFactory scopeFactory,
         IDbContextFactory<FinanceTrackerContext> dbContextFactory, ISyncNotifier syncNotifier,
-        TimeProvider timeProvider, ILogger<OpenBankingSyncJob> logger)
+        TimeProvider timeProvider, ILogger<OpenBankingSyncJob> logger, FinTrackMetrics metrics)
     {
         _logger = logger;
+        _metrics = metrics;
         _scopeFactory = scopeFactory;
         _dbContextFactory = dbContextFactory;
         _syncNotifier = syncNotifier;
@@ -81,9 +83,11 @@ public abstract class OpenBankingSyncJob
         foreach ((Guid connectionId, Guid userId) in toSync)
         {
             // A span for each connection, so its bank calls and queries sit under it in the trace
-            using Activity? connectionActivity = FinTrackActivitySources.App.StartUserActivity("Sync connection", userId);
+            using Activity? connectionActivity =
+                FinTrackActivitySources.App.StartUserActivity("Sync connection", userId);
             using IDisposable? logScope = _logger.BeginUserScope(userId);
             connectionActivity?.SetTag(TelemetryTags.ConnectionId, connectionId.ToString());
+            long connectionStartedAt = Stopwatch.GetTimestamp();
 
             try
             {
@@ -96,9 +100,11 @@ public abstract class OpenBankingSyncJob
                 await openBankingSyncService.SyncConnectionAsync(connectionId, SyncTypes.All, cancellationToken);
                 await scope.ServiceProvider.GetRequiredService<ISyncHealth>()
                     .RecordSucceededAsync(connectionId, cancellationToken);
+                _metrics.ConnectionSynced(Stopwatch.GetElapsedTime(connectionStartedAt), succeeded: true);
             }
             catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
+                _metrics.ConnectionSynced(Stopwatch.GetElapsedTime(connectionStartedAt), succeeded: false);
                 connectionActivity.RecordError(ex);
                 await RecordFailedAsync(connectionId, userId, connectionActivity, cancellationToken);
             }
@@ -135,7 +141,26 @@ public abstract class OpenBankingSyncJob
             await NotifyOwnerAsync(userId, cancellationToken);
         }
 
+        await RecordConnectionHealthAsync(performingBackgroundSyncActivity, cancellationToken);
         return owners;
+    }
+
+    /// <summary>
+    /// Every connection's state and the oldest sync as metrics, now this run has changed them. A failure is recorded
+    /// on <paramref name="activity"/>, the sync itself has done its work.
+    /// </summary>
+    private async Task RecordConnectionHealthAsync(Activity? activity, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using FinanceTrackerContext dbContext =
+                await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+            await ConnectionHealthReport.RecordAsync(dbContext, _metrics, _timeProvider.UtcNow, cancellationToken);
+        }
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            activity.RecordError(ex);
+        }
     }
 
     /// <summary>
