@@ -53,4 +53,7 @@ public static partial class WebLoggerMessages
 
     [LoggerMessage(LogLevel.Error, "Failed to send a password reset email to user {userId}")]
     public static partial void LogPasswordResetEmailFailed(this ILogger logger, Exception exception, Guid userId);
+
+    [LoggerMessage(LogLevel.Error, "Failed to send an email confirmation link to user {userId}")]
+    public static partial void LogConfirmationEmailFailed(this ILogger logger, Exception exception, Guid userId);
 }

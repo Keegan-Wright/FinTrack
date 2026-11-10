@@ -51,7 +51,9 @@ public interface INotificationsService
     /// Emails the user a test, so they see email works and how it looks. Recorded as their last email whether it
     /// sent or not, see <see cref="NotificationSettings.LastEmail"/>.
     /// </summary>
-    /// <returns>The settings with how it went, null when it can't be sent: no mail server or no address.</returns>
+    /// <returns>
+    /// The settings with how it went, null when it can't be sent no mail server, or no confirmed address.
+    /// </returns>
     Task<NotificationSettings?> SendTestEmailAsync(CancellationToken cancellationToken);
 
     /// <summary>

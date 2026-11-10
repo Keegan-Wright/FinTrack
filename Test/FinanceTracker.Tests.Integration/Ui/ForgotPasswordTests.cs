@@ -52,7 +52,6 @@ public partial class ForgotPasswordTests : UiTestBase
         const string newPassword = "Brand-New-Password-2!";
         SignedInUser user = await RegisterUserAsync();
         string email = $"{user.Username}@fintrack.test";
-        await ConfirmEmailAsync(user);
 
         IPage page = await OpenAsync(ScreenSize.Phone);
         await page.GotoAsync("/Account/ForgotPassword");
@@ -60,8 +59,8 @@ public partial class ForgotPasswordTests : UiTestBase
         await Button(page, "Send reset link").ClickAsync();
 
         // Act
-        CaughtMail mail = (await App.Mail.WaitForAsync(email, CancellationToken))
-            .Single(static x => x.Subject == AccountEmails.ResetPasswordSubject);
+        CaughtMail mail = (await App.Mail.WaitForAsync(email, AccountEmails.ResetPasswordSubject, CancellationToken))
+            .Single();
         string link = ResetLink().Match(mail.Text).Groups["link"].Value;
 
         await page.GotoAsync(link);
@@ -93,7 +92,6 @@ public partial class ForgotPasswordTests : UiTestBase
         // Arrange, as one made by signing in through the identity provider, whose password is the provider's
         SignedInUser user = await RegisterUserAsync();
         string email = $"{user.Username}@fintrack.test";
-        await ConfirmEmailAsync(user);
         await using (FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken))
         {
             await context.Users.Where(x => x.Id == user.UserId)
@@ -110,14 +108,7 @@ public partial class ForgotPasswordTests : UiTestBase
             .ToHaveTextAsync("Check your email");
 
         // Assert, the same page as when one's sent, so it doesn't say which accounts have a password
-        await Assert.That(await App.Mail.HasAnyAsync(email, CancellationToken)).IsFalse();
-    }
-
-    private async Task ConfirmEmailAsync(SignedInUser user)
-    {
-        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
-        await context.Users.Where(x => x.Id == user.UserId)
-            .ExecuteUpdateAsync(x => x.SetProperty(u => u.EmailConfirmed, true), CancellationToken);
+        await Assert.That(await App.Mail.HasAnyAsync(email, AccountEmails.ResetPasswordSubject, CancellationToken)).IsFalse();
     }
 
     [GeneratedRegex(@"Choose a new password: (?<link>\S+)")]

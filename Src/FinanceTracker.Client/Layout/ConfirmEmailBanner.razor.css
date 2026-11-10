@@ -1,0 +1,14 @@
+.ft-confirm-banner {
+    margin-bottom: 16px;
+}
+
+.ft-confirm-banner ::deep .mud-alert-text-info {
+    background-color: rgba(var(--mud-palette-info-rgb), .16);
+    color: var(--mud-palette-text-primary);
+}
+
+.ft-confirm-banner ::deep .ft-confirm-banner__send {
+    margin-left: 4px;
+    font-weight: 600;
+    white-space: nowrap;
+}

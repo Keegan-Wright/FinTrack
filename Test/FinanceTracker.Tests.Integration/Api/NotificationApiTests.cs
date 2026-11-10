@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using FinanceTracker.Contracts.Notifications;
 using FinanceTracker.Contracts.Services;
+using FinanceTracker.Infrastructure.Notifications.Email;
 using FinanceTracker.Infrastructure.Notifications.Webhooks;
 using FinanceTracker.Tests.Integration.Http;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
@@ -104,7 +105,8 @@ public class NotificationApiTests : IntegrationTestBase
             .SendTestEmailAsync(CancellationToken);
 
         // Assert
-        IReadOnlyList<CaughtMail> mail = await App.Mail.WaitForAsync($"{user.Username}@fintrack.test", CancellationToken);
+        IReadOnlyList<CaughtMail> mail = await App.Mail.WaitForAsync($"{user.Username}@fintrack.test",
+            NotificationEmails.TestSubject, CancellationToken);
         CaughtMail email = mail.Single();
         using (Assert.Multiple())
         {

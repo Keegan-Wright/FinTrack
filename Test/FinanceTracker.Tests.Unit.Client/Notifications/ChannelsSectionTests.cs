@@ -48,6 +48,17 @@ public class ChannelsSectionTests : ComponentTestBase
     }
 
     [Test]
+    public async Task Render_EmailNotConfirmed_HasNoEmailColumn()
+    {
+        // Act
+        IRenderedComponent<ChannelsSection> cut = RenderSection(Create(emailConfirmed: false));
+
+        // Assert, notifications only go to a confirmed address
+        await Assert.That(cut.FindAll(".ft-channels thead th").Select(static x => x.TextContent.Trim()))
+            .IsEquivalentTo(["Notification", "In app"], TUnit.Assertions.Enums.CollectionOrdering.Matching);
+    }
+
+    [Test]
     public async Task Change_OneEmailTurnedOff_EmailsTheRestAndKeepsWhatsElsewhere()
     {
         // Arrange

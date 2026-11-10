@@ -63,6 +63,7 @@ public class OidcUserLinkerTests : InfrastructureTestBase
             await Assert.That(user.Email).IsEqualTo(Email);
             await Assert.That(user.FirstName).IsEqualTo("Jane");
             await Assert.That(user.LastName).IsEqualTo("Doe");
+            await Assert.That(user.EmailConfirmed).IsTrue();
             await Assert.That(claims.Any(x => x is { Type: CustomClaims.FirstName, Value: "Jane" })).IsTrue();
             await Assert.That(await UserManager.IsInRoleAsync(user, FinTrackRoles.Admin)).IsTrue();
         }
@@ -108,10 +109,11 @@ public class OidcUserLinkerTests : InfrastructureTestBase
     {
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser("jdoe"))
-            .Do(s => s.UserScenario.WithEmail("jdoe", Email));
+            .Do(s => s.UserScenario.WithEmail("jdoe", Email))
+            .Do(s => s.UserScenario.WithUnconfirmedEmail("jdoe"));
         Guid localId = Scenario.UserMappings["jdoe"];
 
-        // Act
+        // Act, the provider checked the email is theirs
         FinanceTrackerUser? user = await Subject.FindOrCreateAsync(Principal());
 
         // Assert
@@ -120,6 +122,7 @@ public class OidcUserLinkerTests : InfrastructureTestBase
         {
             await Assert.That(user!.Id).IsEqualTo(localId);
             await Assert.That(stored!.OpenIdConnectSubject).IsEqualTo(OidcSubject);
+            await Assert.That(stored.EmailConfirmed).IsTrue();
         }
     }
 

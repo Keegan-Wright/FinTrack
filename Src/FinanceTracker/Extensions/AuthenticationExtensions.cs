@@ -1,5 +1,6 @@
 using FinanceTracker.AppHost.ServiceDefaults;
 using FinanceTracker.Components.Account;
+using FinanceTracker.Contracts.Services;
 using FinanceTracker.Domain.Identity;
 using FinanceTracker.Infrastructure;
 using Microsoft.AspNetCore.Authentication;
@@ -55,7 +56,7 @@ public static class AuthenticationExtensions
                 .AddSignInManager()
                 .AddDefaultTokenProviders();
 
-            builder.Services.AddSingleton<IEmailSender<FinanceTrackerUser>, IdentityEmailSender>();
+            builder.Services.AddFinTrackAccountServices();
             builder.Services.AddScoped<AdminProvisioner>();
             builder.Services.AddScoped<OidcUserLinker>();
 
@@ -224,5 +225,22 @@ public static class AuthenticationExtensions
         return Uri.TryCreate(site, returnUrl, out Uri? target) && target.Authority == site.Authority
             ? target.PathAndQuery
             : "/";
+    }
+
+    extension(IServiceCollection services)
+    {
+        /// <summary>
+        /// What the account pages and <see cref="IProfileService"/> use: Identity's emails, the links they carry,
+        /// and confirming an email.
+        /// </summary>
+        public IServiceCollection AddFinTrackAccountServices()
+        {
+            services.AddSingleton<IEmailSender<FinanceTrackerUser>, IdentityEmailSender>();
+            services.AddHttpContextAccessor();
+            services.AddScoped<AccountUrls>();
+            services.AddScoped<EmailConfirmation>();
+            services.AddScoped<IProfileService, ProfileService>();
+            return services;
+        }
     }
 }

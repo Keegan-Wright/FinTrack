@@ -6,12 +6,14 @@
 
 @using System.Globalization
 @using FinanceTracker.Contracts.OpenBanking
+@using FinanceTracker.Contracts.Profile
 @inject IAutomationService AutomationService
 @inject ISyncNotifications SyncNotifications
 @inject ITransfersService TransfersService
 @inject IBillsService BillsService
 @inject IOpenBankingService OpenBankingService
 @inject INotificationsService NotificationsService
+@inject IProfileService ProfileService
 @inject ISnackbar Snackbar
 @inject AppUpdate AppUpdate
 
@@ -124,6 +126,10 @@
                     {
                         <RenewConnectionsBanner Count="@ApplicationState.ConnectionsToRenew"/>
                     }
+                    @if (_emailStatus is { NeedsConfirming: true })
+                    {
+                        <ConfirmEmailBanner Status="@_emailStatus" NothingToConfirm="@(() => _emailStatus = null)"/>
+                    }
                     <CascadingValue Value="@_isDarkMode" Name="IsDarkMode">
                         <ErrorBoundary @ref="@_errorBoundary">
                             <ChildContent>@Body</ChildContent>
@@ -153,6 +159,12 @@
     private bool _livePaused;
 
     /// <summary>
+    /// The user's email, for the banner asking them to confirm it. Loaded once, as it only changes by them opening
+    /// the link, which loads the app again.
+    /// </summary>
+    private EmailStatus? _emailStatus;
+
+    /// <summary>
     /// A new page each navigation, so one that failed doesn't keep showing its error on the next.
     /// </summary>
     protected override void OnParametersSet()
@@ -172,7 +184,7 @@
         if (firstRender)
         {
             await SubscribeToSyncsAsync();
-            await RefreshSyncDetailsAsync();
+            await Task.WhenAll(RefreshSyncDetailsAsync(), GetEmailStatusAsync());
         }
     }
 
@@ -320,6 +332,19 @@
         catch (HttpRequestException)
         {
             // Only the bell's count, the notifications page still loads them
+        }
+    }
+
+    private async Task GetEmailStatusAsync()
+    {
+        try
+        {
+            _emailStatus = await ProfileService.GetEmailStatusAsync(_cts.Token);
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (HttpRequestException)
+        {
+            // Only the banner, confirming can wait until the app next loads
         }
     }
 

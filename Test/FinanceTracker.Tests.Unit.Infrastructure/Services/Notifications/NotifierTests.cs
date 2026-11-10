@@ -166,6 +166,24 @@ public class NotifierTests : InfrastructureTestBase
     }
 
     [Test]
+    public async Task Notify_EmailNotConfirmed_ShowsItInTheAppWithoutEmailingIt()
+    {
+        // Arrange, a mistyped address at registration doesn't get them
+        await Scenario.Do(s => s.UserScenario.WithUnconfirmedEmail(Username));
+
+        // Act
+        await Notify("consent-ended:a");
+
+        // Assert
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        using (Assert.Multiple())
+        {
+            await _mail.DidNotReceive().SendAsync(Arg.Any<MailMessage>(), Arg.Any<CancellationToken>());
+            await Assert.That(await context.Notifications.CountAsync(CancellationToken)).IsEqualTo(1);
+        }
+    }
+
+    [Test]
     public async Task Notify_WebhookSet_PostsItSignedAndRecordsIt()
     {
         // Arrange

@@ -75,7 +75,9 @@ public sealed class OidcUserLinker
             return null;
         }
 
+        // The provider checked this email is theirs, which is how they matched
         user.SetOidcSubject(subject);
+        user.EmailConfirmed = true;
         if (!Succeeded(await _userManager.UpdateAsync(user)))
         {
             return null;
@@ -97,7 +99,8 @@ public sealed class OidcUserLinker
             ? preferredUsername
             : email;
 
-        FinanceTrackerUser user = new(firstName, lastName, email, userName, subject);
+        // Confirmed, as the provider checked the email is theirs
+        FinanceTrackerUser user = new(firstName, lastName, email, userName, subject) { EmailConfirmed = true };
         if (!Succeeded(await _userManager.CreateAsync(user)))
         {
             return null;

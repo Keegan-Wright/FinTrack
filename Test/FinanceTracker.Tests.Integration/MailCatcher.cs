@@ -15,10 +15,12 @@ public sealed class MailCatcher : IDisposable
     public MailCatcher(Uri baseAddress) => _http = new HttpClient { BaseAddress = baseAddress };
 
     /// <summary>
-    /// The emails sent to <paramref name="to"/> once there's at least one, newest first.
+    /// The emails sent to <paramref name="to"/> with <paramref name="subject"/> once there's at least one, newest
+    /// first. By subject too, as registering sends a confirmation email to every new user.
     /// </summary>
     /// <exception cref="TimeoutException">None arrived within <see cref="TestTimeouts.Job"/>.</exception>
-    public async Task<IReadOnlyList<CaughtMail>> WaitForAsync(string to, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<CaughtMail>> WaitForAsync(string to, string subject,
+        CancellationToken cancellationToken)
     {
         using CancellationTokenSource timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(TestTimeouts.Job);
@@ -26,7 +28,7 @@ public sealed class MailCatcher : IDisposable
         {
             while (true)
             {
-                List<string> ids = await FindAsync(to, timeout.Token);
+                List<string> ids = await FindAsync(to, subject, timeout.Token);
                 if (ids.Count > 0)
                 {
                     List<CaughtMail> mail = [];
@@ -43,26 +45,29 @@ public sealed class MailCatcher : IDisposable
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            throw new TimeoutException($"No email to {to} arrived");
+            throw new TimeoutException($"No email to {to} about {subject} arrived");
         }
     }
 
     /// <summary>
-    /// Whether anything has been sent to <paramref name="to"/> yet, without waiting. Mailpit has an email by the time
-    /// the app's send returns, so once a page that sends has answered, none here means none was sent.
+    /// Whether an email with <paramref name="subject"/> has been sent to <paramref name="to"/> yet, without waiting.
+    /// Mailpit has an email by the time the app's send returns, so once a page that sends has answered, none here
+    /// means none was sent.
     /// </summary>
-    public async Task<bool> HasAnyAsync(string to, CancellationToken cancellationToken) =>
-        (await FindAsync(to, cancellationToken)).Count > 0;
+    public async Task<bool> HasAnyAsync(string to, string subject, CancellationToken cancellationToken) =>
+        (await FindAsync(to, subject, cancellationToken)).Count > 0;
 
     public void Dispose() => _http.Dispose();
 
-    private async Task<List<string>> FindAsync(string to, CancellationToken cancellationToken)
+    private async Task<List<string>> FindAsync(string to, string subject, CancellationToken cancellationToken)
     {
         using JsonDocument found = await _http.GetFromJsonAsync<JsonDocument>(
             $"api/v1/search?query={Uri.EscapeDataString($"to:\"{to}\"")}", cancellationToken)
             ?? throw new InvalidOperationException("Mailpit gave no answer");
 
+        // Matched here rather than by Mailpit's search, which matches part of a subject
         return found.RootElement.GetProperty("messages").EnumerateArray()
+            .Where(x => x.GetProperty("Subject").GetString() == subject)
             .Select(static x => x.GetProperty("ID").GetString()!)
             .ToList();
     }

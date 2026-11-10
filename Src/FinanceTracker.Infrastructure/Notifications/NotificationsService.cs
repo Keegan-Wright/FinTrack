@@ -152,8 +152,8 @@ public sealed class NotificationsService : ServiceBase<NotificationsService>, IN
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        string? address = await AddressAsync(context, cancellationToken);
-        if (address is null)
+        UserEmail email = await EmailAsync(context, cancellationToken);
+        if (email is not { Address: { } address, IsConfirmed: true })
         {
             return null;
         }
@@ -328,20 +328,29 @@ public sealed class NotificationsService : ServiceBase<NotificationsService>, IN
         return null;
     }
 
-    private async Task<string?> AddressAsync(FinanceTrackerContext context, CancellationToken cancellationToken)
+    private async Task<UserEmail> EmailAsync(FinanceTrackerContext context, CancellationToken cancellationToken)
     {
-        string? address = await context.Users.Where(x => x.Id == UserId).Select(static x => x.Email)
+        UserEmail? email = await context.Users.Where(x => x.Id == UserId)
+            .Select(static x => new UserEmail(x.Email, x.EmailConfirmed))
             .SingleOrDefaultAsync(cancellationToken);
-        return string.IsNullOrWhiteSpace(address) ? null : address;
+        if (email is null || string.IsNullOrWhiteSpace(email.Address))
+        {
+            return new UserEmail(null, false);
+        }
+
+        return email;
     }
 
     private async Task<NotificationSettings> ToContractAsync(FinanceTrackerContext context,
-        DomainNotificationSettings settings, CancellationToken cancellationToken) =>
-        new()
+        DomainNotificationSettings settings, CancellationToken cancellationToken)
+    {
+        UserEmail email = await EmailAsync(context, cancellationToken);
+        return new NotificationSettings
         {
             InApp = settings.InApp.Select(NotificationMapper.ToContract).ToList(),
             Emailed = settings.Emailed.Select(NotificationMapper.ToContract).ToList(),
-            EmailAddress = await AddressAsync(context, cancellationToken),
+            EmailAddress = email.Address,
+            EmailConfirmed = email.IsConfirmed,
             EmailAvailable = _mailSender.IsAvailable,
             LastEmail = Status(settings.LastEmailAt, settings.LastEmailFailure),
             Webhooked = settings.Webhooked.Select(NotificationMapper.ToContract).ToList(),
@@ -353,6 +362,7 @@ public sealed class NotificationsService : ServiceBase<NotificationsService>, IN
             LargeTransactionOver = settings.LargeTransactionOver,
             LowBalance = await LowBalanceAsync(context, settings, cancellationToken)
         };
+    }
 
     private static DeliveryStatus? Status(DateTime? at, string? failure)
     {

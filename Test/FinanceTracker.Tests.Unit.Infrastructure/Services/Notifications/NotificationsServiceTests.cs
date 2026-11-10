@@ -367,6 +367,27 @@ public class NotificationsServiceTests : InfrastructureTestBase
     }
 
     [Test]
+    public async Task SendTestEmail_EmailNotConfirmed_SendsNothingAndSaysItIsnt()
+    {
+        // Arrange
+        _mail.IsAvailable.Returns(true);
+        await Scenario.Do(s => s.UserScenario.WithUnconfirmedEmail(Username));
+
+        // Act
+        NotificationSettings? sent = await Subject(Username).SendTestEmailAsync(CancellationToken);
+        NotificationSettings settings = await Subject(Username).GetSettingsAsync(CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(sent).IsNull();
+            await _mail.DidNotReceive().SendAsync(Arg.Any<MailMessage>(), Arg.Any<CancellationToken>());
+            await Assert.That(settings.EmailAddress).IsEqualTo("sam@example.test");
+            await Assert.That(settings.EmailConfirmed).IsFalse();
+        }
+    }
+
+    [Test]
     public async Task SendTestEmail_Fails_RecordsWhyInWords()
     {
         // Arrange
