@@ -1,0 +1,19 @@
+/* The field at a readable width, the full width on a phone */
+.ft-profile__fields {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-width: 420px;
+}
+
+/* The address with whether it's confirmed beside it, the chip below a long address on a phone */
+.ft-profile__email {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+}
+
+.ft-profile__email ::deep .ft-profile__address {
+    overflow-wrap: anywhere;
+}

@@ -1,0 +1,34 @@
+/* The name with its admin chip beside it */
+.ft-users__name {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+}
+
+.ft-users__name ::deep .ft-users__username {
+    font-weight: 600;
+}
+
+.ft-list__row ::deep .ft-users__email {
+    overflow-wrap: anywhere;
+}
+
+/* Reset link and lock side by side, wrapping when there isn't room */
+.ft-users__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 4px;
+}
+
+/* A phone puts the buttons under the details rather than squeezing them */
+@media (max-width: 599.98px) {
+    .ft-users__row {
+        flex-wrap: wrap;
+    }
+
+    .ft-users__row ::deep .ft-list__main {
+        flex-basis: calc(100% - 36px);
+    }
+}

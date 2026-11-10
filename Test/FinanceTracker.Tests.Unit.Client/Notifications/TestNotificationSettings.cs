@@ -4,7 +4,7 @@ namespace FinanceTracker.Tests.Unit.Client.Notifications;
 
 /// <summary>
 /// Notification settings as the server answers them, every kind going everywhere unless said, emailed to
-/// sam@example.test.
+/// sam@example.test, confirmed unless said.
 /// </summary>
 internal static class TestNotificationSettings
 {
@@ -18,7 +18,8 @@ internal static class TestNotificationSettings
 
     public static NotificationSettings Create(string? emailAddress = Address, bool emailAvailable = true,
         string? webhookUrl = null, DeliveryStatus? lastEmail = null, IReadOnlyList<NotificationKind>? inApp = null,
-        IReadOnlyList<NotificationKind>? emailed = null, IReadOnlyList<NotificationKind>? webhooked = null)
+        IReadOnlyList<NotificationKind>? emailed = null, IReadOnlyList<NotificationKind>? webhooked = null,
+        bool emailConfirmed = true)
     {
         string? secret = null;
         if (webhookUrl is not null)
@@ -32,6 +33,7 @@ internal static class TestNotificationSettings
             Emailed = emailed ?? Enum.GetValues<NotificationKind>(),
             Webhooked = webhooked ?? Enum.GetValues<NotificationKind>(),
             EmailAddress = emailAddress,
+            EmailConfirmed = emailConfirmed,
             EmailAvailable = emailAvailable,
             LastEmail = lastEmail,
             WebhookUrl = webhookUrl,

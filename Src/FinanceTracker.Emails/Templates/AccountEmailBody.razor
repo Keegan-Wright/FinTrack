@@ -1,0 +1,54 @@
+@* An email about the user's account, such as a password reset what it's for, a button with its one-time link, the
+   link written out for email apps that drop buttons, and why it came. *@
+<EmailLayout Title="@Title" Preheader="@Message">
+    <ChildContent>
+        <p style="@EmailStyles.Eyebrow color: @LightPalette.Primary;">Your account</p>
+        <h1 style="@EmailStyles.Heading">@Title</h1>
+        <p style="@EmailStyles.Body">@Message</p>
+        <EmailButton Text="@ButtonText" Href="@Link"/>
+        <p style="@EmailStyles.Quiet margin-top: 16px;">
+            If the button doesn't work, copy this link into your browser:
+        </p>
+        <p style="@EmailStyles.Quiet word-break: break-all;">
+            <a href="@Link" style="@EmailStyles.Link">@Link</a>
+        </p>
+    </ChildContent>
+    <Footer>
+        <EmailFooter Reason="@Reason" IsNotification="false" PublicUrl="@PublicUrl"/>
+    </Footer>
+</EmailLayout>
+
+@code {
+
+    /// <summary>
+    /// What the email is for, its heading and title, e.g. <c>Reset your password</c>.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public required string Title { get; set; }
+
+    /// <summary>
+    /// What the link does, a sentence or two.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public required string Message { get; set; }
+
+    [Parameter, EditorRequired]
+    public required string ButtonText { get; set; }
+
+    /// <summary>
+    /// The one-time link.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public required Uri Link { get; set; }
+
+    /// <summary>
+    /// Why the email came and what to do if the user didn't ask for it.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public required string Reason { get; set; }
+
+    /// <inheritdoc cref="EmailFooter.PublicUrl"/>
+    [Parameter]
+    public Uri? PublicUrl { get; set; }
+
+}

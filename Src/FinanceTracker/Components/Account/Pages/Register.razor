@@ -14,6 +14,7 @@
 @inject NavigationManager NavigationManager
 @inject IValidator<RegisterRequest> Validator
 @inject AdminProvisioner AdminProvisioner
+@inject IEmailConfirmation EmailConfirmation
 
 <PageTitle>FinTrack - Create an account</PageTitle>
 
@@ -103,8 +104,26 @@
         Logger.LogUserRegistered();
         await UserManager.AddClaimAsync(user, new Claim(CustomClaims.FirstName, RegisterRequest.FirstName));
         await AdminProvisioner.GrantIfFirstUserAsync(user);
+        await SendConfirmationAsync(user);
+
         await SignInManager.SignInAsync(user, false);
         RedirectManager.RedirectTo(ReturnUrl);
+    }
+
+    /// <summary>
+    /// Emails the link that confirms their email when there's a mail server. A failure only leaves it unconfirmed,
+    /// the app's banner sends another.
+    /// </summary>
+    private async Task SendConfirmationAsync(FinanceTrackerUser user)
+    {
+        try
+        {
+            await EmailConfirmation.SendAsync(user);
+        }
+        catch (Exception exception)
+        {
+            Logger.LogConfirmationEmailFailed(exception, user.Id);
+        }
     }
 
 }

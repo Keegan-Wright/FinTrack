@@ -47,4 +47,28 @@ public static partial class WebLoggerMessages
 
     [LoggerMessage(LogLevel.Warning, "Failed to tell the browsers of user {userId} about a new notification")]
     public static partial void LogNotificationPushFailed(this ILogger logger, Exception exception, Guid userId);
+
+    [LoggerMessage(LogLevel.Warning, "An account email for user {userId} wasn't sent, no mail server is set up")]
+    public static partial void LogAccountEmailSkipped(this ILogger logger, Guid userId);
+
+    [LoggerMessage(LogLevel.Error, "Failed to send a password reset email to user {userId}")]
+    public static partial void LogPasswordResetEmailFailed(this ILogger logger, Exception exception, Guid userId);
+
+    [LoggerMessage(LogLevel.Error, "Failed to send an email confirmation link to user {userId}")]
+    public static partial void LogConfirmationEmailFailed(this ILogger logger, Exception exception, Guid userId);
+
+    [LoggerMessage(LogLevel.Information, "User {userId} changed their password")]
+    public static partial void LogPasswordChanged(this ILogger logger, Guid userId);
+
+    [LoggerMessage(LogLevel.Information, "User {userId} changed their email")]
+    public static partial void LogEmailChanged(this ILogger logger, Guid userId);
+
+    [LoggerMessage(LogLevel.Information, "Admin {adminId} made a password reset link for user {userId}")]
+    public static partial void LogResetLinkCreated(this ILogger logger, Guid adminId, Guid userId);
+
+    [LoggerMessage(LogLevel.Information, "Admin {adminId} locked user {userId}")]
+    public static partial void LogUserLocked(this ILogger logger, Guid adminId, Guid userId);
+
+    [LoggerMessage(LogLevel.Information, "Admin {adminId} unlocked user {userId}")]
+    public static partial void LogUserUnlocked(this ILogger logger, Guid adminId, Guid userId);
 }

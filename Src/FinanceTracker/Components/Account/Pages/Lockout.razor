@@ -1,7 +1,37 @@
-﻿@page "/Account/Lockout"
+@page "/Account/Lockout"
+@* Where a locked account's sign in lands, whether wrong passwords locked it for a while or an admin locked it *@
+@using FinanceTracker.Domain.Identity
 
 <PageTitle>FinTrack - Account locked</PageTitle>
 
-<AuthMessage Icon="@Icons.Material.Outlined.LockClock" IconColor="Color.Warning" Title="Account locked">
-    Too many wrong passwords, so it's locked for a little while. Try again later.
-</AuthMessage>
+@if (ByAdmin)
+{
+    <AuthMessage Icon="@Icons.Material.Outlined.Lock" IconColor="Color.Warning" Title="Account locked">
+        An admin has locked this account. Ask them to unlock it.
+    </AuthMessage>
+}
+else
+{
+    <AuthMessage Icon="@Icons.Material.Outlined.LockClock" IconColor="Color.Warning" Title="Account locked">
+        Too many wrong passwords, so it's locked for a little while. Try again later.
+    </AuthMessage>
+}
+
+@code {
+
+    [SupplyParameterFromQuery] private bool ByAdmin { get; set; }
+
+    /// <summary>
+    /// The page for a sign in turned away as locked, relative to the app, saying who locked it.
+    /// </summary>
+    public static string PathFor(FinanceTrackerUser? user)
+    {
+        if (user is { IsLockedByAdmin: true })
+        {
+            return "Account/Lockout?byAdmin=true";
+        }
+
+        return "Account/Lockout";
+    }
+
+}

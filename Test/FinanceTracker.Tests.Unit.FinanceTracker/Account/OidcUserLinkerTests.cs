@@ -63,6 +63,7 @@ public class OidcUserLinkerTests : InfrastructureTestBase
             await Assert.That(user.Email).IsEqualTo(Email);
             await Assert.That(user.FirstName).IsEqualTo("Jane");
             await Assert.That(user.LastName).IsEqualTo("Doe");
+            await Assert.That(user.EmailConfirmed).IsTrue();
             await Assert.That(claims.Any(x => x is { Type: CustomClaims.FirstName, Value: "Jane" })).IsTrue();
             await Assert.That(await UserManager.IsInRoleAsync(user, FinTrackRoles.Admin)).IsTrue();
         }
@@ -104,14 +105,56 @@ public class OidcUserLinkerTests : InfrastructureTestBase
     }
 
     [Test]
+    public async Task FindOrCreateAsync_LinkedBeforeEmailsWereConfirmed_ConfirmsTheVerifiedEmail()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser("jdoe"))
+            .Do(s => s.UserScenario.WithEmail("jdoe", Email))
+            .Do(s => s.UserScenario.WithOidcSubject("jdoe", OidcSubject))
+            .Do(s => s.UserScenario.WithUnconfirmedEmail("jdoe"));
+
+        // Act
+        await Subject.FindOrCreateAsync(Principal());
+
+        // Assert
+        FinanceTrackerUser? stored = await UserManager.FindByIdAsync(Scenario.UserMappings["jdoe"].ToString());
+        await Assert.That(stored!.EmailConfirmed).IsTrue();
+    }
+
+    [Test]
+    [Arguments("other@test.local", "true")]
+    [Arguments(Email, "false")]
+    public async Task FindOrCreateAsync_LinkedWithAnUnverifiedOrOtherEmail_LeavesItUnconfirmed(string email,
+        string emailVerified)
+    {
+        // Arrange, the provider vouches for its own email, not one that's changed here since
+        await Scenario.Do(s => s.UserScenario.WithUser("jdoe"))
+            .Do(s => s.UserScenario.WithEmail("jdoe", email))
+            .Do(s => s.UserScenario.WithOidcSubject("jdoe", OidcSubject))
+            .Do(s => s.UserScenario.WithUnconfirmedEmail("jdoe"));
+
+        // Act
+        FinanceTrackerUser? user = await Subject.FindOrCreateAsync(Principal(emailVerified: emailVerified));
+
+        // Assert, still signed in
+        FinanceTrackerUser? stored = await UserManager.FindByIdAsync(Scenario.UserMappings["jdoe"].ToString());
+        using (Assert.Multiple())
+        {
+            await Assert.That(user).IsNotNull();
+            await Assert.That(stored!.EmailConfirmed).IsFalse();
+        }
+    }
+
+    [Test]
     public async Task FindOrCreateAsync_ForALocalUserWithTheEmail_LinksThem()
     {
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser("jdoe"))
-            .Do(s => s.UserScenario.WithEmail("jdoe", Email));
+            .Do(s => s.UserScenario.WithEmail("jdoe", Email))
+            .Do(s => s.UserScenario.WithUnconfirmedEmail("jdoe"));
         Guid localId = Scenario.UserMappings["jdoe"];
 
-        // Act
+        // Act, the provider checked the email is theirs
         FinanceTrackerUser? user = await Subject.FindOrCreateAsync(Principal());
 
         // Assert
@@ -120,6 +163,7 @@ public class OidcUserLinkerTests : InfrastructureTestBase
         {
             await Assert.That(user!.Id).IsEqualTo(localId);
             await Assert.That(stored!.OpenIdConnectSubject).IsEqualTo(OidcSubject);
+            await Assert.That(stored.EmailConfirmed).IsTrue();
         }
     }
 

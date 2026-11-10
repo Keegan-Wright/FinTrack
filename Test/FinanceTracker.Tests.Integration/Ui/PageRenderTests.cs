@@ -38,7 +38,8 @@ public class PageRenderTests : UiTestBase
         ("/ProviderSetup", "Bank connections"),
         ("/Notifications", "Notifications"),
         ("/Notifications/Settings", "Notification settings"),
-        ("/YourData", "Your data")
+        ("/YourData", "Your data"),
+        ("/YourProfile", "Your profile")
     ];
 
     public static IEnumerable<(string Path, string? Title, ScreenSize Screen)> PagesOnEachScreen() =>

@@ -22,6 +22,11 @@ public sealed class NotificationSettings
     public string? EmailAddress { get; init; }
 
     /// <summary>
+    /// Whether <see cref="EmailAddress"/> is confirmed. Notifications are only emailed to a confirmed one.
+    /// </summary>
+    public bool EmailConfirmed { get; init; }
+
+    /// <summary>
     /// Whether this FinTrack can send email at all, set up by whoever runs it.
     /// </summary>
     public required bool EmailAvailable { get; init; }

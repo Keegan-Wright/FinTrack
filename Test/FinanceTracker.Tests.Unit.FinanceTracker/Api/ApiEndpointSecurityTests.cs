@@ -1,6 +1,7 @@
 using FinanceTracker.Api;
 using FinanceTracker.Contracts.Api;
 using FinanceTracker.Contracts.Auth;
+using FinanceTracker.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Infrastructure;
 using Microsoft.AspNetCore.Builder;
@@ -17,7 +18,7 @@ namespace FinanceTracker.Tests.Unit.FinanceTracker.Api;
 /// </summary>
 public class ApiEndpointSecurityTests
 {
-    private static readonly string[] AdminRoutes = [ApiRoutes.AutomationJobs, ApiRoutes.AutomationRuns];
+    private static readonly string[] AdminRoutes = [ApiRoutes.AutomationJobs, ApiRoutes.AutomationRuns, ApiRoutes.Users];
 
     [Test]
     public async Task EveryEndpoint_NeedsASignedInUser()
@@ -91,6 +92,7 @@ public class ApiEndpointSecurityTests
         Program.AddFinanceTrackerServices(builder.Services);
         Program.AddFinanceTrackerValidators(builder.Services);
         Program.AddFinanceTrackerExternalServices(builder.Services);
+        builder.Services.AddFinTrackAccountServices();
         builder.Services.AddSingleton(TimeProvider.System);
         builder.Services.AddAuthorization();
         builder.Services.AddSignalR();

@@ -36,6 +36,18 @@ public sealed class UserScenario : ScenarioBuilder
         });
 
     /// <summary>
+    /// Makes the user's email unconfirmed, as it is from registering until they open the link emailed to it.
+    /// </summary>
+    public Task<TestingScenario> WithUnconfirmedEmail(string username) =>
+        PersistAsync(async context => (await LoadAsync(context, username)).EmailConfirmed = false);
+
+    /// <summary>
+    /// Locks the user as an admin does from the users page.
+    /// </summary>
+    public Task<TestingScenario> WithLockedByAdmin(string username) =>
+        PersistAsync(async context => (await LoadAsync(context, username)).LockByAdmin());
+
+    /// <summary>
     /// Links the user to an OpenID Connect provider's <paramref name="subject"/>.
     /// </summary>
     public Task<TestingScenario> WithOidcSubject(string username, string subject) =>
@@ -70,6 +82,9 @@ public sealed class UserScenario : ScenarioBuilder
         user.NormalizedUserName = Normalizer.NormalizeName(user.UserName);
         user.NormalizedEmail = Normalizer.NormalizeEmail(user.Email);
         user.SecurityStamp = Guid.NewGuid().ToString();
+
+        // Confirmed, as an account is once its link is opened, so notifications are emailed; see WithUnconfirmedEmail
+        user.EmailConfirmed = true;
 
         Scenario.UserMappings.Add(user.UserName!, user.Id);
         return PersistAsync(context => context.Users.Add(user));

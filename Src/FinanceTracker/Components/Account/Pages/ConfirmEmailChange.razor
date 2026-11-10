@@ -1,0 +1,85 @@
+@page "/Account/ConfirmEmailChange"
+@* Opened from the link EmailChange sends the new email. Works signed in or out, the link says whose account it is
+   and the email it moves to. *@
+@using System.Text
+@using FinanceTracker.Domain.Identity
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.WebUtilities
+
+@inject UserManager<FinanceTrackerUser> UserManager
+@inject SignInManager<FinanceTrackerUser> SignInManager
+@inject ILogger<ConfirmEmailChange> Logger
+
+<PageTitle>FinTrack - Confirm your new email</PageTitle>
+
+@if (_changed)
+{
+    <AuthMessage Icon="@Icons.Material.Outlined.CheckCircle" IconColor="Color.Success" Title="Email changed"
+                 ActionHref="./" ActionText="Open FinTrack">
+        Your account now uses @Email. Notifications and password reset links go there from now on.
+    </AuthMessage>
+}
+else
+{
+    <AuthMessage Icon="@Icons.Material.Outlined.LinkOff" IconColor="Color.Error" Title="That link isn't valid"
+                 ActionHref="./" ActionText="Open FinTrack">
+        It may have expired, or the email is now used by another account. Your account still uses its old email,
+        change it again from your profile.
+    </AuthMessage>
+}
+
+@code {
+
+    [CascadingParameter] private HttpContext HttpContext { get; set; } = null!;
+
+    [SupplyParameterFromQuery] private string? UserId { get; set; }
+
+    [SupplyParameterFromQuery] private string? Email { get; set; }
+
+    [SupplyParameterFromQuery] private string? Code { get; set; }
+
+    private bool _changed;
+
+    protected override async Task OnInitializedAsync()
+    {
+        string? code = Decode(Code);
+        if (code is null || UserId is null || Email is null
+            || await UserManager.FindByIdAsync(UserId) is not { } user)
+        {
+            return;
+        }
+
+        IdentityResult result = await UserManager.ChangeEmailAsync(user, Email, code);
+        _changed = result.Succeeded;
+        if (!_changed)
+        {
+            return;
+        }
+
+        Logger.LogEmailChanged(user.Id);
+        if (UserManager.GetUserId(HttpContext.User) == UserId)
+        {
+            // The change signs out everywhere else, this browser signs in again to stay signed in
+            await SignInManager.RefreshSignInAsync(user);
+        }
+    }
+
+    // The token from the link, null when there isn't one or it was cut short or changed on the way
+    private static string? Decode(string? code)
+    {
+        if (code is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            return Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(code));
+        }
+        catch (FormatException)
+        {
+            return null;
+        }
+    }
+
+}

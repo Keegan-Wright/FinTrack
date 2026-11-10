@@ -119,8 +119,8 @@ public sealed class Notifier : ServiceBase<Notifier>, INotifier
     }
 
     /// <summary>
-    /// Where to email <paramref name="kind"/>: the user's address when they have that kind emailed, have an address,
-    /// and a mail server is set up. Null when it isn't emailed.
+    /// Where to email <paramref name="kind"/>: the user's address when they have that kind emailed, have a confirmed
+    /// address, and a mail server is set up. Null when it isn't emailed.
     /// </summary>
     private async Task<string?> AddressIfEmailedAsync(FinanceTrackerContext context, NotificationSettings? settings,
         NotificationKind kind, CancellationToken cancellationToken)
@@ -130,7 +130,9 @@ public sealed class Notifier : ServiceBase<Notifier>, INotifier
             return null;
         }
 
-        string? address = await context.Users.Where(x => x.Id == UserId).Select(static x => x.Email)
+        // Only a confirmed address, so a mistyped one doesn't get them
+        string? address = await context.Users.Where(x => x.Id == UserId && x.EmailConfirmed)
+            .Select(static x => x.Email)
             .SingleOrDefaultAsync(cancellationToken);
         if (string.IsNullOrWhiteSpace(address))
         {

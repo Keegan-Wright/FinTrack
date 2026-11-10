@@ -375,6 +375,40 @@ public class BackgroundSyncTests : IntegrationTestBase
     }
 
     [Test]
+    public async Task ScheduledSync_UserLockedByAnAdmin_LeavesTheirConnectionsAlone()
+    {
+        // Arrange
+        string username = UniqueName();
+        string lockedUsername = UniqueName();
+        string accessToken = UniqueName("token");
+        string lockedAccessToken = UniqueName("token");
+        await Scenario.Do(s => s.UserScenario.WithUser(username))
+            .Do(s => s.UserScenario.WithUser(lockedUsername))
+            .Do(s => s.UserScenario.WithLockedByAdmin(lockedUsername))
+            .Do(s => s.BankConnectionScenario.WithConnection("open", username))
+            .Do(s => s.BankConnectionScenario.WithAccessToken("open", token: accessToken))
+            .Do(s => s.BankConnectionScenario.WithConnection("locked", lockedUsername))
+            .Do(s => s.BankConnectionScenario.WithAccessToken("locked", token: lockedAccessToken));
+
+        await App.TrueLayer.StubAccountAsync(accessToken, new ExternalOpenBankingAccountFaker().Generate());
+        await App.TrueLayer.StubAccountAsync(lockedAccessToken, new ExternalOpenBankingAccountFaker().Generate());
+
+        // Act
+        await RunJobAsync(SyncFunction);
+
+        // Assert
+        Guid connectionId = Scenario.ConnectionMappings["open"];
+        Guid lockedConnectionId = Scenario.ConnectionMappings["locked"];
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(await context.BankAccounts.AnyAsync(x => x.ConnectionId == connectionId, CancellationToken)).IsTrue();
+            await Assert.That(await context.BankAccounts.AnyAsync(x => x.ConnectionId == lockedConnectionId, CancellationToken)).IsFalse();
+        }
+    }
+
+    [Test]
     public async Task UserSync_OnlySyncsTheRequestingUsersConnections()
     {
         // Arrange

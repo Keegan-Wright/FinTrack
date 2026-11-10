@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using FinanceTracker.Domain.Identity;
 using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Notifications;
@@ -69,8 +70,11 @@ public class MonitorOpenBankingTokenExpirationAsync : IJob
             DateTime warnFrom = now + ConsentNotices.WeekOut;
             DateTime endedSince = ConsentNotices.EndedSince(now);
 
+            // A user an admin has locked isn't told, they couldn't sign in to reconnect
             owners = await dbContext.BankConnections
                 .Where(x => x.ConsentExpiresAt <= warnFrom && x.ConsentExpiresAt > endedSince)
+                .Where(x => !dbContext.Users.Any(u =>
+                    u.Id == x.UserId && u.LockoutEnd == FinanceTrackerUser.LockedByAdminUntil))
                 .Select(static x => x.UserId)
                 .Distinct()
                 .ToListAsync(cancellationToken);

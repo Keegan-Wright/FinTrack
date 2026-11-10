@@ -1,5 +1,7 @@
 using FinanceTracker.AppHost.ServiceDefaults;
 using FinanceTracker.Components.Account;
+using FinanceTracker.Components.Account.Pages;
+using FinanceTracker.Contracts.Services;
 using FinanceTracker.Domain.Identity;
 using FinanceTracker.Infrastructure;
 using Microsoft.AspNetCore.Authentication;
@@ -37,6 +39,11 @@ public static class AuthenticationExtensions
 
             authBuilder.AddIdentityCookies();
 
+            // How long a cookie is trusted before it's checked against the account, so a locked user or one whose
+            // password changed is signed out within a minute rather than Identity's default half hour
+            builder.Services.Configure<SecurityStampValidatorOptions>(options =>
+                options.ValidationInterval = TimeSpan.FromMinutes(1));
+
             if (builder.Configuration.IsOidcEnabled())
             {
                 authBuilder.AddOpenIdConnect(OpenIdConnectDefaults.AuthenticationScheme,
@@ -55,7 +62,7 @@ public static class AuthenticationExtensions
                 .AddSignInManager()
                 .AddDefaultTokenProviders();
 
-            builder.Services.AddSingleton<IEmailSender<FinanceTrackerUser>, IdentityNoOpEmailSender>();
+            builder.Services.AddFinTrackAccountServices();
             builder.Services.AddScoped<AdminProvisioner>();
             builder.Services.AddScoped<OidcUserLinker>();
 
@@ -127,7 +134,7 @@ public static class AuthenticationExtensions
 
                 if (await userManager.IsLockedOutAsync(user))
                 {
-                    return TypedResults.Redirect("/Account/Lockout");
+                    return TypedResults.Redirect($"/{Lockout.PathFor(user)}");
                 }
 
                 // Builds the cookie the same way as a password sign in, roles and the first name included
@@ -224,5 +231,25 @@ public static class AuthenticationExtensions
         return Uri.TryCreate(site, returnUrl, out Uri? target) && target.Authority == site.Authority
             ? target.PathAndQuery
             : "/";
+    }
+
+    extension(IServiceCollection services)
+    {
+        /// <summary>
+        /// What the account pages, <see cref="IProfileService"/> and <see cref="IUsersService"/> use: Identity's
+        /// emails, the links they carry, confirming an email and resetting a password.
+        /// </summary>
+        public IServiceCollection AddFinTrackAccountServices()
+        {
+            services.AddSingleton<IEmailSender<FinanceTrackerUser>, IdentityEmailSender>();
+            services.AddHttpContextAccessor();
+            services.AddScoped<IAccountUrls, AccountUrls>();
+            services.AddScoped<IEmailConfirmation, EmailConfirmation>();
+            services.AddScoped<IEmailChange, EmailChange>();
+            services.AddScoped<IProfileService, ProfileService>();
+            services.AddScoped<IPasswordReset, PasswordReset>();
+            services.AddScoped<IUsersService, UsersService>();
+            return services;
+        }
     }
 }

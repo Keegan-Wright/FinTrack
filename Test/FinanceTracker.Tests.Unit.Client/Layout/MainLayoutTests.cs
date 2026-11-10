@@ -3,6 +3,7 @@ using Bunit.TestDoubles;
 using FinanceTracker.Client;
 using FinanceTracker.Client.Layout;
 using FinanceTracker.Contracts.OpenBanking;
+using FinanceTracker.Contracts.Profile;
 using FinanceTracker.Contracts.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,6 +23,7 @@ public class MainLayoutTests : ComponentTestBase
     private readonly IBillsService _billsService = Substitute.For<IBillsService>();
     private readonly IOpenBankingService _openBankingService = Substitute.For<IOpenBankingService>();
     private readonly INotificationsService _notificationsService = Substitute.For<INotificationsService>();
+    private readonly IProfileService _profileService = Substitute.For<IProfileService>();
     private readonly IBrowserViewportService _viewport = Substitute.For<IBrowserViewportService>();
     private readonly ApplicationState _applicationState = new();
     private readonly AppUpdate _update = new("0.1.1+3e871e2");
@@ -40,6 +42,7 @@ public class MainLayoutTests : ComponentTestBase
         Services.AddSingleton(_billsService);
         Services.AddSingleton(_openBankingService);
         Services.AddSingleton(_notificationsService);
+        Services.AddSingleton(_profileService);
         Services.AddSingleton(_viewport);
         Services.AddSingleton(_update);
 
@@ -55,6 +58,7 @@ public class MainLayoutTests : ComponentTestBase
                 Arg.Any<CancellationToken>())
             .Returns(Substitute.For<IDisposable>());
         GivenConnections();
+        GivenEmail(confirmed: true);
     }
 
     [Test]
@@ -276,6 +280,76 @@ public class MainLayoutTests : ComponentTestBase
             await Assert.That(cut.Find(".ft-renew-banner a").GetAttribute("href")).IsEqualTo("ProviderSetup");
             await Assert.That(cut.Find("a[href='ProviderSetup'] .ft-nav__count").TextContent.Trim()).IsEqualTo("2");
         }
+    }
+
+    [Test]
+    public async Task Render_EmailNotConfirmed_AsksToConfirmIt()
+    {
+        // Arrange
+        GivenEmail(confirmed: false);
+
+        // Act
+        IRenderedComponent<MainLayout> cut = RenderLayout();
+
+        // Assert
+        cut.WaitForState(() => cut.FindAll(".ft-confirm-banner").Count == 1);
+        await Assert.That(cut.Find(".ft-confirm-banner").TextContent)
+            .Contains("Confirm your email to get notifications and password resets by email.");
+    }
+
+    [Test]
+    [Arguments(true, true)]
+    [Arguments(false, false)]
+    public async Task Render_NothingToConfirm_ShowsNoConfirmBanner(bool confirmed, bool mailAvailable)
+    {
+        // Arrange, confirmed already, or no mail server to send the link
+        GivenEmail(confirmed, mailAvailable);
+
+        // Act
+        IRenderedComponent<MainLayout> cut = RenderLayout();
+
+        // Assert
+        cut.WaitForState(() => _profileService.ReceivedCalls().Any());
+        await Assert.That(cut.FindAll(".ft-confirm-banner")).IsEmpty();
+    }
+
+    [Test]
+    public async Task ConfirmBanner_SendClicked_SendsTheLinkAndSaysWhereItWent()
+    {
+        // Arrange
+        GivenEmail(confirmed: false);
+        _profileService.SendEmailConfirmationAsync(Arg.Any<CancellationToken>()).Returns(true);
+        IRenderedComponent<MainLayout> cut = RenderLayout();
+        cut.WaitForState(() => cut.FindAll(".ft-confirm-banner").Count == 1);
+
+        // Act
+        await cut.Find(".ft-confirm-banner__send").ClickAsync(new());
+
+        // Assert
+        cut.WaitForState(() => cut.Find(".ft-confirm-banner").TextContent.Contains("on its way",
+            StringComparison.Ordinal));
+        using (Assert.Multiple())
+        {
+            await _profileService.Received(1).SendEmailConfirmationAsync(Arg.Any<CancellationToken>());
+            await Assert.That(cut.Find(".ft-confirm-banner").TextContent)
+                .Contains("A link is on its way to sam@example.test.");
+        }
+    }
+
+    [Test]
+    public async Task ConfirmBanner_NothingToSend_GoesAway()
+    {
+        // Arrange, confirmed in another tab meanwhile
+        GivenEmail(confirmed: false);
+        _profileService.SendEmailConfirmationAsync(Arg.Any<CancellationToken>()).Returns(false);
+        IRenderedComponent<MainLayout> cut = RenderLayout();
+        cut.WaitForState(() => cut.FindAll(".ft-confirm-banner").Count == 1);
+
+        // Act
+        await cut.Find(".ft-confirm-banner__send").ClickAsync(new());
+
+        // Assert
+        cut.WaitForState(() => cut.FindAll(".ft-confirm-banner").Count == 0);
     }
 
     [Test]
@@ -624,6 +698,17 @@ public class MainLayoutTests : ComponentTestBase
         _syncNotifications.Paused.Returns(paused);
         _syncNotifications.PausedChanged += Raise.Event();
     }
+
+    private void GivenEmail(bool confirmed, bool mailAvailable = true) =>
+        _profileService.GetProfileAsync(Arg.Any<CancellationToken>()).Returns(new ProfileDetails
+        {
+            Username = "sam",
+            Email = "sam@example.test",
+            EmailConfirmed = confirmed,
+            HasPassword = true,
+            UsesIdentityProvider = false,
+            MailAvailable = mailAvailable
+        });
 
     private IRenderedComponent<MainLayout> RenderLayout() =>
         Render<MainLayout>(p => p.AddCascadingValue(_applicationState));

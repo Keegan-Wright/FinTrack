@@ -1,0 +1,63 @@
+@* A reset link an admin made, to copy and send the user however suits, e.g. a message. Shown once, as making
+   another is as easy as this one. *@
+@using System.Globalization
+@using FinanceTracker.Contracts.Users
+@inject IJSRuntime JsRuntime
+@inject ISnackbar Snackbar
+@inject TimeProvider TimeProvider
+
+<MudDialog>
+    <DialogContent>
+        <div class="ft-stack">
+            <MudText Typo="Typo.body2">
+                Send this to @Username yourself. Opening it lets them choose a new password.
+            </MudText>
+            <MudTextField T="string" Value="@Link.Url" Label="Reset link" ReadOnly="true" Variant="Variant.Outlined"
+                          Margin="Margin.Dense" Lines="3" Class="ft-reset-link"/>
+            <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                It works once, until @ExpiresText. Changing their password or email before then stops it working.
+            </MudText>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@Close">Close</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.ContentCopy"
+                   OnClick="@CopyAsync">Copy link</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public required string Username { get; set; }
+
+    [Parameter, EditorRequired]
+    public required ResetLink Link { get; set; }
+
+    private string ExpiresText =>
+        TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(Link.ExpiresAt, DateTimeKind.Utc),
+                TimeProvider.LocalTimeZone)
+            .ToString("d MMM, HH:mm", CultureInfo.CurrentCulture);
+
+    /// <summary>
+    /// Copies it with the browser's clipboard, which only works over HTTPS or on this computer; otherwise the link
+    /// is there to select and copy.
+    /// </summary>
+    internal async Task CopyAsync()
+    {
+        try
+        {
+            await JsRuntime.InvokeVoidAsync("navigator.clipboard.writeText", Link.Url);
+            Snackbar.Add("Link copied", Severity.Success);
+        }
+        catch (JSException)
+        {
+            Snackbar.Add("Couldn't copy it, select the link and copy it instead", Severity.Warning);
+        }
+    }
+
+    private void Close() => MudDialog.Close();
+
+}

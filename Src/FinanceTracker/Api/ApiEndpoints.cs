@@ -31,12 +31,14 @@ public static class ApiEndpoints
                 .MapNotificationEndpoints()
                 .MapOpenBankingEndpoints()
                 .MapPayPeriodEndpoints()
+                .MapProfileEndpoints()
                 .MapReportEndpoints()
                 .MapRuleEndpoints()
                 .MapSavingsGoalEndpoints()
                 .MapNetWorthEndpoints()
                 .MapTransactionEndpoints()
-                .MapTransferEndpoints();
+                .MapTransferEndpoints()
+                .MapUsersEndpoints();
 
             // An API address that isn't an endpoint answers a bare 404 for the app to read, rather than the front
             // end's not found page, whose catch-all route it otherwise matches

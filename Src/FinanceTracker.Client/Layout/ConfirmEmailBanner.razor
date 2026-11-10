@@ -1,0 +1,70 @@
+@* Above every page while the user's email isn't confirmed and a link can be sent to confirm it, e.g. once a mail
+   server is added after they registered. Nothing is emailed until they ask here. *@
+@using FinanceTracker.Contracts.Profile
+@implements IDisposable
+@inject IProfileService ProfileService
+@inject ISnackbar Snackbar
+
+<div class="ft-confirm-banner">
+    <MudAlert Severity="Severity.Info" Variant="Variant.Text" Dense="true">
+        @if (_sent)
+        {
+            <text>A link is on its way to @Profile.Email. Open it to confirm your email.</text>
+        }
+        else
+        {
+            <text>Confirm your email to get notifications and password resets by email.</text>
+            <MudLink Color="Color.Inherit" Underline="Underline.Always" Class="ft-confirm-banner__send"
+                     Disabled="@_sending" OnClick="@SendAsync">Send confirmation link</MudLink>
+        }
+    </MudAlert>
+</div>
+
+@code {
+
+    /// <summary>
+    /// The user's profile, see <see cref="ProfileDetails.NeedsConfirming"/>.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public required ProfileDetails Profile { get; set; }
+
+    /// <summary>
+    /// There was nothing to send, it's confirmed already or email has gone, so the banner can go.
+    /// </summary>
+    [Parameter]
+    public EventCallback NothingToConfirm { get; set; }
+
+    private readonly CancellationTokenSource _cts = new();
+    private bool _sending;
+    private bool _sent;
+
+    internal async Task SendAsync()
+    {
+        _sending = true;
+        try
+        {
+            if (await ProfileService.SendEmailConfirmationAsync(_cts.Token))
+            {
+                _sent = true;
+                return;
+            }
+
+            await NothingToConfirm.InvokeAsync();
+        }
+        catch (Exception) when (!_cts.IsCancellationRequested)
+        {
+            Snackbar.Add("Couldn't send the link, try again", Severity.Error);
+        }
+        finally
+        {
+            _sending = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        _cts.Cancel();
+        _cts.Dispose();
+    }
+
+}

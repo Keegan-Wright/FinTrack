@@ -16,8 +16,8 @@ public static class NotificationEndpoints
     {
         /// <summary>
         /// <see cref="INotificationsService"/> at <see cref="ApiRoutes.Notifications"/>. Marking one that doesn't
-        /// exist or isn't the user's answers 404. a test email when there's no mail server or address, or a webhook
-        /// test or new secret without a webhook, 409.
+        /// exist or isn't the user's answers 404. A test email when there's no mail server or confirmed address, or a
+        /// webhook test or new secret without a webhook, 409.
         /// </summary>
         public RouteGroupBuilder MapNotificationEndpoints()
         {

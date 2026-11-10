@@ -1,0 +1,79 @@
+@page "/YourProfile"
+@* The user's own account: their email and password (IProfileService), a tab each. One made by signing in through
+   the identity provider has no password here, its password and email are the provider's. *@
+@using FinanceTracker.Client.Components.Profile
+@using FinanceTracker.Contracts.Profile
+@using Microsoft.AspNetCore.Authorization
+@inherits PageComponent
+
+@attribute [Authorize]
+@inject IProfileService ProfileService
+
+<PageTitle>FinTrack - Your profile</PageTitle>
+<PageHeader Title="Your profile" Subtitle="@Subtitle"/>
+
+@if (Profile is null)
+{
+    <Section>
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">Your profile couldn't be loaded.</MudText>
+    </Section>
+}
+else if (!Profile.HasPassword)
+{
+    <Section Title="Signing in">
+        <MudText Typo="Typo.body2">
+            You sign in through your identity provider, which looks after your password and email. Change them there.
+        </MudText>
+        @if (Profile.Email is { } email)
+        {
+            <MudText Typo="Typo.body2" Class="mt-2">Your email is <strong>@email</strong>.</MudText>
+        }
+    </Section>
+}
+else
+{
+    <MudTabs Elevation="0" Rounded="true" TabPanelsClass="pt-4" Color="Color.Transparent"
+             SliderColor="Color.Primary" ActiveTabClass="mud-primary-text">
+        <MudTabPanel Text="Email">
+            <ChangeEmailSection Profile="@Profile" ProfileChanged="@ReloadAsync"/>
+        </MudTabPanel>
+        <MudTabPanel Text="Password">
+            <ChangePasswordSection/>
+        </MudTabPanel>
+    </MudTabs>
+}
+
+@code {
+
+    /// <summary>
+    /// The profile, loaded once, see <see cref="PageComponent.LoadOnceAsync{T}"/>.
+    /// </summary>
+    [PersistentState]
+    public ProfileDetails? Profile { get; set; }
+
+    private string Subtitle
+    {
+        get
+        {
+            if (Profile is null)
+            {
+                return "How you sign in";
+            }
+
+            return $"Signed in as {Profile.Username}";
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        Profile = await LoadOnceAsync(Profile, "Loading your profile",
+            cancellationToken => ProfileService.GetProfileAsync(cancellationToken));
+    }
+
+    /// <summary>
+    /// The email changed straight away, so the page shows the new one.
+    /// </summary>
+    private async Task ReloadAsync() => Profile = await ProfileService.GetProfileAsync(_cts.Token);
+
+}

@@ -1,8 +1,9 @@
 @* Where notifications are emailed, and a test to see email works, with how the last email went. Says why when they
-   can't be emailed. *@
+   can't be emailed, and sends the link to confirm the address when that's why. *@
 @using FinanceTracker.Contracts.Notifications
 @implements IDisposable
 @inject INotificationsService NotificationsService
+@inject IProfileService ProfileService
 @inject ISnackbar Snackbar
 
 <Section>
@@ -18,6 +19,25 @@
             <MudText Typo="Typo.body2" Class="mud-text-secondary">
                 Your account has no email address, so you can't be notified by email.
             </MudText>
+        }
+        else if (!Settings.EmailConfirmed && _confirmationSent)
+        {
+            <MudText Typo="Typo.body2">
+                A link is on its way to <strong>@Settings.EmailAddress</strong>. Open it to confirm your email, then
+                notifications can be emailed to you.
+            </MudText>
+        }
+        else if (!Settings.EmailConfirmed)
+        {
+            <MudText Typo="Typo.body2">
+                Confirm <strong>@Settings.EmailAddress</strong> is your email to be notified there.
+            </MudText>
+            <div>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Send"
+                           Disabled="@_sendingConfirmation" OnClick="@SendConfirmationAsync">
+                    Send confirmation link
+                </MudButton>
+            </div>
         }
         else
         {
@@ -47,6 +67,8 @@
 
     private readonly CancellationTokenSource _cts = new();
     private bool _sendingTest;
+    private bool _sendingConfirmation;
+    private bool _confirmationSent;
 
     internal async Task SendTestAsync()
     {
@@ -78,6 +100,30 @@
         finally
         {
             _sendingTest = false;
+        }
+    }
+
+    internal async Task SendConfirmationAsync()
+    {
+        _sendingConfirmation = true;
+        try
+        {
+            if (await ProfileService.SendEmailConfirmationAsync(_cts.Token))
+            {
+                _confirmationSent = true;
+                return;
+            }
+
+            // Confirmed meanwhile, or email stopped being possible, the settings again say which
+            await ChangeSettingsAsync(await NotificationsService.GetSettingsAsync(_cts.Token));
+        }
+        catch (Exception) when (!_cts.IsCancellationRequested)
+        {
+            Snackbar.Add("Couldn't send the link, try again", Severity.Error);
+        }
+        finally
+        {
+            _sendingConfirmation = false;
         }
     }
 

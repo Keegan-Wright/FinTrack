@@ -125,9 +125,11 @@ public abstract class IntegrationTestBase
     /// Registers a new user through the register page and returns a client signed in as them. The user is
     /// added to <see cref="Scenario"/> under its username so scenarios can build data for it. Given
     /// <paramref name="at"/>, the app's clock reads that for everything the user does from registering on, time
-    /// passing from there, see <see cref="TestClock"/>.
+    /// passing from there, see <see cref="TestClock"/>. Their email is confirmed, as an account's is once its link is
+    /// opened, unless <paramref name="confirmEmail"/> is false.
     /// </summary>
-    protected async Task<SignedInUser> RegisterUserAsync(string? username = null, DateTimeOffset? at = null)
+    protected async Task<SignedInUser> RegisterUserAsync(string? username = null, DateTimeOffset? at = null,
+        bool confirmEmail = true)
     {
         username ??= UniqueName();
         at ??= DefaultClock;
@@ -150,6 +152,11 @@ public abstract class IntegrationTestBase
         Guid userId = await context.Users.Where(x => x.UserName == username).Select(x => x.Id).SingleAsync(CancellationToken);
 
         Scenario.UserMappings[username] = userId;
+        if (confirmEmail)
+        {
+            await context.Users.Where(x => x.Id == userId)
+                .ExecuteUpdateAsync(x => x.SetProperty(u => u.EmailConfirmed, true), CancellationToken);
+        }
 
         return new SignedInUser(username, userId, client) { ClockOffset = offset };
     }

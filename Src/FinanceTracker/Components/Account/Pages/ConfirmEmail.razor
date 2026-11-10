@@ -1,0 +1,65 @@
+@page "/Account/ConfirmEmail"
+@* Opened from the link EmailConfirmation emails. Works signed in or out, the link says whose email it is. *@
+@using System.Text
+@using FinanceTracker.Domain.Identity
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.WebUtilities
+
+@inject UserManager<FinanceTrackerUser> UserManager
+
+<PageTitle>FinTrack - Confirm your email</PageTitle>
+
+@if (_confirmed)
+{
+    <AuthMessage Icon="@Icons.Material.Outlined.CheckCircle" IconColor="Color.Success" Title="Email confirmed"
+                 ActionHref="./" ActionText="Open FinTrack">
+        Notifications and password reset links can now be emailed to you.
+    </AuthMessage>
+}
+else
+{
+    <AuthMessage Icon="@Icons.Material.Outlined.LinkOff" IconColor="Color.Error" Title="That link isn't valid"
+                 ActionHref="./" ActionText="Open FinTrack">
+        It may have expired, or a newer one was sent. Open FinTrack to send yourself a new link.
+    </AuthMessage>
+}
+
+@code {
+
+    [SupplyParameterFromQuery] private string? UserId { get; set; }
+
+    [SupplyParameterFromQuery] private string? Code { get; set; }
+
+    private bool _confirmed;
+
+    protected override async Task OnInitializedAsync()
+    {
+        string? code = Decode(Code);
+        if (code is null || UserId is null || await UserManager.FindByIdAsync(UserId) is not { } user)
+        {
+            return;
+        }
+
+        IdentityResult result = await UserManager.ConfirmEmailAsync(user, code);
+        _confirmed = result.Succeeded;
+    }
+
+    // The token from the link, null when there isn't one or it was cut short or changed on the way
+    private static string? Decode(string? code)
+    {
+        if (code is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            return Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(code));
+        }
+        catch (FormatException)
+        {
+            return null;
+        }
+    }
+
+}

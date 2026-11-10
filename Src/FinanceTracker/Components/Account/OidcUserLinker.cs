@@ -51,6 +51,7 @@ public sealed class OidcUserLinker
         FinanceTrackerUser? user = await _userManager.Users.FirstOrDefaultAsync(x => x.OpenIdConnectSubject == subject);
         if (user is not null)
         {
+            await ConfirmIfVerifiedAsync(user, external);
             return user;
         }
 
@@ -75,7 +76,9 @@ public sealed class OidcUserLinker
             return null;
         }
 
+        // The provider checked this email is theirs, which is how they matched
         user.SetOidcSubject(subject);
+        user.EmailConfirmed = true;
         if (!Succeeded(await _userManager.UpdateAsync(user)))
         {
             return null;
@@ -97,7 +100,8 @@ public sealed class OidcUserLinker
             ? preferredUsername
             : email;
 
-        FinanceTrackerUser user = new(firstName, lastName, email, userName, subject);
+        // Confirmed, as the provider checked the email is theirs
+        FinanceTrackerUser user = new(firstName, lastName, email, userName, subject) { EmailConfirmed = true };
         if (!Succeeded(await _userManager.CreateAsync(user)))
         {
             return null;
@@ -107,6 +111,23 @@ public sealed class OidcUserLinker
         await _adminProvisioner.GrantIfFirstUserAsync(user);
         _logger.LogOidcUserRegistered(user.Id);
         return user;
+    }
+
+    /// <summary>
+    /// Confirms an already linked user's email when the provider says it checked that same email, e.g. for users
+    /// linked before emails were confirmed. A failure only leaves it unconfirmed, sign in carries on.
+    /// </summary>
+    private async Task ConfirmIfVerifiedAsync(FinanceTrackerUser user, ClaimsPrincipal external)
+    {
+        string? email = external.FindFirstValue(Email);
+        if (user.EmailConfirmed || !IsTrue(external.FindFirstValue(EmailVerified))
+                                || !string.Equals(email, user.Email, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        user.EmailConfirmed = true;
+        Succeeded(await _userManager.UpdateAsync(user));
     }
 
     private bool Succeeded(IdentityResult result)

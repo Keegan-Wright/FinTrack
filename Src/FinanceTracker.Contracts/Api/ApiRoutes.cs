@@ -77,6 +77,16 @@ public static class ApiRoutes
     public const string Notifications = "api/notifications";
 
     /// <summary>
+    /// <see cref="Services.IUsersService"/>, admins only.
+    /// </summary>
+    public const string Users = "api/users";
+
+    /// <summary>
+    /// <see cref="Services.IProfileService"/>.
+    /// </summary>
+    public const string Profile = "api/profile";
+
+    /// <summary>
     /// <see cref="Services.INetWorthService"/>.
     /// </summary>
     public const string NetWorth = "api/net-worth";

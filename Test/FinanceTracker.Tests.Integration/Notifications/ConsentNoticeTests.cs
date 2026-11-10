@@ -10,9 +10,10 @@ namespace FinanceTracker.Tests.Integration.Notifications;
 
 /// <summary>
 /// The scheduled consent check, run now, telling a user their bank's access is about to end: under the bell and by
-/// email to the mail catcher, linking to where they renew it.
+/// email to the mail catcher, linking to where they renew it. Not alongside the background sync tests either, which
+/// run the same job, as only one run of it can go at once.
 /// </summary>
-[NotInParallel(JobNames.MonitorTokens)]
+[NotInParallel([JobNames.MonitorTokens, nameof(OpenBanking.BackgroundSyncTests)])]
 public class ConsentNoticeTests : IntegrationTestBase
 {
     [Test]
@@ -38,7 +39,8 @@ public class ConsentNoticeTests : IntegrationTestBase
         }
 
         // Assert, and by email, linking back to the app
-        IReadOnlyList<CaughtMail> mail = await App.Mail.WaitForAsync($"{user.Username}@fintrack.test", CancellationToken);
+        IReadOnlyList<CaughtMail> mail = await App.Mail.WaitForAsync($"{user.Username}@fintrack.test",
+            notification.Title, CancellationToken);
         CaughtMail email = mail.Single();
         using (Assert.Multiple())
         {

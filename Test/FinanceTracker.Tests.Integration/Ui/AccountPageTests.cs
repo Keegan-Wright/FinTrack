@@ -1,3 +1,4 @@
+using FinanceTracker.Tests.Integration.Http;
 using Microsoft.Playwright;
 
 namespace FinanceTracker.Tests.Integration.Ui;
@@ -10,14 +11,17 @@ namespace FinanceTracker.Tests.Integration.Ui;
 [ParallelLimiter<UiParallelLimit>]
 public class AccountPageTests : UiTestBase
 {
+    private const string UserPlaceholder = "{user}";
+
     private static readonly (string Path, string Heading)[] Pages =
     [
         ("/Account/Login", "Sign in"),
         ("/Account/Register", "Create an account"),
         ("/Account/ForgotPassword", "Forgot your password?"),
         ("/Account/ForgotPasswordConfirmation", "Check your email"),
-        // Any code that decodes shows the form, it's only checked once a new password is sent. "placeholder" here
-        ("/Account/ResetPassword?code=cGxhY2Vob2xkZXI", "Choose a new password"),
+        // Any code that decodes shows the form for an account that exists, it's only checked once a new password is
+        // sent. "placeholder" here, {user} is the first user's id
+        ($"/Account/ResetPassword?userId={UserPlaceholder}&code=cGxhY2Vob2xkZXI", "Choose a new password"),
         ("/Account/ResetPasswordConfirmation", "Password reset"),
         ("/Account/InvalidPasswordReset", "That reset link isn't valid"),
         ("/Account/AccessDenied", "Access denied"),
@@ -36,7 +40,7 @@ public class AccountPageTests : UiTestBase
         IPage page = await OpenAsync(screen);
 
         // Act
-        await page.GotoAsync(path);
+        await page.GotoAsync(path.Replace(UserPlaceholder, App.FirstUser.UserId.ToString(), StringComparison.Ordinal));
 
         // Assert
         ILocator title = page.GetByRole(AriaRole.Heading, new PageGetByRoleOptions { Level = 1 });
@@ -80,22 +84,51 @@ public class AccountPageTests : UiTestBase
     }
 
     /// <summary>
-    /// A link without its code, or with one cut short or changed so it doesn't decode.
+    /// A link without its code or account, with a code cut short or changed so it doesn't decode, or for an account
+    /// that doesn't exist.
     /// </summary>
     [Test]
     [Arguments("/Account/ResetPassword")]
-    [Arguments("/Account/ResetPassword?code=placeholder")]
-    public async Task ResetPassword_WithoutAWholeCode_SaysTheLinkIsntValid(string link)
+    [Arguments($"/Account/ResetPassword?userId={UserPlaceholder}")]
+    [Arguments($"/Account/ResetPassword?userId={UserPlaceholder}&code=placeholder")]
+    [Arguments("/Account/ResetPassword?code=cGxhY2Vob2xkZXI")]
+    [Arguments("/Account/ResetPassword?userId=00000000-0000-0000-0000-000000000001&code=cGxhY2Vob2xkZXI")]
+    public async Task ResetPassword_NotAWholeLink_SaysTheLinkIsntValid(string link)
     {
         // Arrange
         IPage page = await OpenAsync(ScreenSize.Phone);
 
         // Act
-        await page.GotoAsync(link);
+        await page.GotoAsync(link.Replace(UserPlaceholder, App.FirstUser.UserId.ToString(), StringComparison.Ordinal));
 
         // Assert
         await Assertions.Expect(page.GetByRole(AriaRole.Heading, new PageGetByRoleOptions { Level = 1 }))
             .ToHaveTextAsync("That reset link isn't valid");
         await Assert.That(new Uri(page.Url).AbsolutePath).IsEqualTo("/Account/InvalidPasswordReset");
+    }
+
+    /// <summary>
+    /// A link whose code decodes but isn't the account's, used already or changed, only found out once a new
+    /// password is sent. It says so rather than seeming to work.
+    /// </summary>
+    [Test]
+    public async Task ResetPassword_WrongCode_SaysTheLinkIsntValidAndKeepsThePassword()
+    {
+        // Arrange
+        SignedInUser user = await RegisterUserAsync();
+        IPage page = await OpenAsync(ScreenSize.Phone);
+        await page.GotoAsync($"/Account/ResetPassword?userId={user.UserId}&code=cGxhY2Vob2xkZXI");
+
+        // Act
+        await page.GetByLabel("New password", new PageGetByLabelOptions { Exact = true }).FillAsync("Another-Password-4!");
+        await page.GetByLabel("Confirm new password").FillAsync("Another-Password-4!");
+        await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = "Reset password" }).ClickAsync();
+
+        // Assert
+        await Assertions.Expect(page.GetByRole(AriaRole.Heading, new PageGetByRoleOptions { Level = 1 }))
+            .ToHaveTextAsync("That reset link isn't valid");
+        using FinTrackClient client = CreateClient();
+        HttpResponseMessage signIn = await client.LoginAsync(user.Username, SignedInUser.DefaultPassword, CancellationToken);
+        await Assert.That(signIn.StatusCode).IsEqualTo(System.Net.HttpStatusCode.Redirect);
     }
 }
