@@ -4,6 +4,7 @@ using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using FinanceTracker.Infrastructure.Notifications.Email;
 using FinanceTracker.Infrastructure.Notifications.Webhooks;
+using FinanceTracker.Infrastructure.Telemetry;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -71,10 +72,11 @@ public sealed class Notifier : ServiceBase<Notifier>, INotifier
         }
 
         Logger.LogNotified(UserId, kind, notification.Id, inApp, address is not null, webhooked);
+        InfrastructureTelemetry.IncrementCurrent(TelemetryTags.NotificationsRaised);
         Activity.Current?.AddEvent(new ActivityEvent("Notified", tags: new ActivityTagsCollection
         {
-            ["fintrack.notification.kind"] = kind.ToString(),
-            ["fintrack.notification.id"] = notification.Id.ToString()
+            [TelemetryTags.NotificationKind] = kind.ToString(),
+            [TelemetryTags.NotificationId] = notification.Id.ToString()
         }));
 
         if (inApp)

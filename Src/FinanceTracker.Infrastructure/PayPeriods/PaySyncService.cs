@@ -34,6 +34,11 @@ public class PaySyncService : ServiceBase<PaySyncService>, IPaySyncService
         {
             if (detected.Count == 0)
             {
+                InfrastructureTelemetry.TagCurrent(
+                    (TelemetryTags.PayIncomes, 0),
+                    (TelemetryTags.PayDays, 0),
+                    (TelemetryTags.PayChosen, false),
+                    (TelemetryTags.PayOff, false));
                 return false;
             }
 
@@ -48,10 +53,10 @@ public class PaySyncService : ServiceBase<PaySyncService>, IPaySyncService
         await context.SaveChangesAsync(cancellationToken);
         Logger.LogSyncedPay(UserId, detected.Count, schedule.PayDays.Count, schedule.IsChosen, schedule.IsOff);
         InfrastructureTelemetry.TagCurrent(
-            ("fintrack.pay.incomes", detected.Count),
-            ("fintrack.pay.days", schedule.PayDays.Count),
-            ("fintrack.pay.chosen", schedule.IsChosen),
-            ("fintrack.pay.off", schedule.IsOff));
+            (TelemetryTags.PayIncomes, detected.Count),
+            (TelemetryTags.PayDays, schedule.PayDays.Count),
+            (TelemetryTags.PayChosen, schedule.IsChosen),
+            (TelemetryTags.PayOff, schedule.IsOff));
         return true;
     }
 }

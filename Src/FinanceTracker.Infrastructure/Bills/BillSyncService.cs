@@ -76,11 +76,11 @@ public class BillSyncService : ServiceBase<BillSyncService>, IBillSyncService
         Logger.LogSyncedBills(UserId, summary.Added, summary.Ended, summary.Matched, summary.PricesChanged,
             summary.Suggested);
         InfrastructureTelemetry.TagCurrent(
-            ("fintrack.bills.added", summary.Added),
-            ("fintrack.bills.ended", summary.Ended),
-            ("fintrack.bills.matched", summary.Matched),
-            ("fintrack.bills.prices_changed", summary.PricesChanged),
-            ("fintrack.subscriptions.suggested", summary.Suggested));
+            (TelemetryTags.BillsAdded, summary.Added),
+            (TelemetryTags.BillsEnded, summary.Ended),
+            (TelemetryTags.BillsMatched, summary.Matched),
+            (TelemetryTags.BillsPricesChanged, summary.PricesChanged),
+            (TelemetryTags.SubscriptionsSuggested, summary.Suggested));
 
         return summary;
     }

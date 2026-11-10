@@ -6,12 +6,6 @@ namespace FinanceTracker;
 internal static class Telemetry
 {
     /// <summary>
-    /// The span and log attribute naming the user the work is for, OpenTelemetry's <c>user.id</c>, so Tempo and Loki
-    /// can be searched by it.
-    /// </summary>
-    public const string UserIdTag = InfrastructureTelemetry.UserIdTag;
-
-    /// <summary>
     /// Shared for the app's lifetime, as sources are meant to be. The name matches the application name that
     /// ServiceDefaults registers for tracing, so these activities are exported.
     /// </summary>
@@ -23,7 +17,7 @@ internal static class Telemetry
     public static Activity? StartUserActivity(string name, Guid userId)
     {
         Activity? activity = ActivitySource.StartActivity(name);
-        activity?.SetTag(UserIdTag, userId.ToString());
+        activity?.SetTag(TelemetryTags.UserId, userId.ToString());
         return activity;
     }
 }

@@ -307,9 +307,15 @@ public class BalanceSnapshotServiceTests : InfrastructureTestBase
         BalanceSnapshotService subject = BuildSubject(Username);
         await subject.SnapshotAsync(Day, Morning, CancellationToken);
 
+        using SpanRecorder spans = new();
+
         // Act
         int days = await subject.BackfillAsync(CancellationToken);
-        int again = await subject.BackfillAsync(CancellationToken);
+        int again;
+        using (spans.StartRoot())
+        {
+            again = await subject.BackfillAsync(CancellationToken);
+        }
 
         // Assert
         Dictionary<DateOnly, BalanceSnapshot> balances = (await LoadBalancesAsync()).ToDictionary(static x => x.Date);
@@ -318,6 +324,7 @@ public class BalanceSnapshotServiceTests : InfrastructureTestBase
         {
             await Assert.That(days).IsEqualTo(2);
             await Assert.That(again).IsEqualTo(0);
+            await Assert.That(spans.Root.GetTagItem("fintrack.days")).IsEqualTo(0);
             await Assert.That(balances[Day.AddDays(-1)].Balance.Current).IsEqualTo(500m);
             await Assert.That(balances[Day.AddDays(-2)].Balance.Current).IsEqualTo(400m);
             await Assert.That(balances[Day.AddDays(-2)].Source).IsEqualTo(BalanceSnapshotSource.Derived);

@@ -3,36 +3,11 @@ using System.Diagnostics;
 namespace FinanceTracker.Infrastructure.Telemetry;
 
 /// <summary>
-/// The spans the services publish, and the attribute names they share. Exported because the app's tracing listens
-/// to every source under its name, see the service defaults.
+/// The spans the services publish, named with <see cref="TelemetryTags"/>. Exported because the app's tracing
+/// listens to every source under its name, see the service defaults.
 /// </summary>
 public static class InfrastructureTelemetry
 {
-    /// <summary>
-    /// The span attribute naming the user the work is for, OpenTelemetry's <c>user.id</c>.
-    /// </summary>
-    public const string UserIdTag = "user.id";
-
-    /// <summary>
-    /// The bank connection a span is for.
-    /// </summary>
-    public const string ConnectionIdTag = "fintrack.connection.id";
-
-    /// <summary>
-    /// The account or card a span is for.
-    /// </summary>
-    public const string AccountIdTag = "fintrack.account.id";
-
-    /// <summary>
-    /// How many items a fetch from the bank returned.
-    /// </summary>
-    public const string ItemCountTag = "fintrack.items";
-
-    /// <summary>
-    /// TrueLayer's id for a request it refused, which their support can look up.
-    /// </summary>
-    public const string TrueLayerTraceIdTag = "truelayer.trace_id";
-
     /// <summary>
     /// Shared for the app's lifetime, as sources are meant to be.
     /// </summary>
@@ -54,5 +29,20 @@ public static class InfrastructureTelemetry
         {
             current.SetTag(key, value);
         }
+    }
+
+    /// <summary>
+    /// Adds one to a count on the span this runs in, starting it at one when the span has none yet.
+    /// </summary>
+    public static void IncrementCurrent(string key)
+    {
+        Activity? current = Activity.Current;
+        if (current is null)
+        {
+            return;
+        }
+
+        int count = current.GetTagItem(key) as int? ?? 0;
+        current.SetTag(key, count + 1);
     }
 }

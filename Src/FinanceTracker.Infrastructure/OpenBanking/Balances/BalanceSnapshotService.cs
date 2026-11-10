@@ -39,6 +39,7 @@ public class BalanceSnapshotService : ServiceBase<BalanceSnapshotService>, IBala
         if (withBalance.Count == 0)
         {
             Logger.LogNoBalancesToSnapshot(UserId, day);
+            InfrastructureTelemetry.TagCurrent((TelemetryTags.SnapshotsRefreshed, 0), (TelemetryTags.SnapshotsStale, 0));
             return null;
         }
 
@@ -89,8 +90,8 @@ public class BalanceSnapshotService : ServiceBase<BalanceSnapshotService>, IBala
         int stale = balances.Count(static x => x.IsStale);
         Logger.LogSnapshotBalances(UserId, day, refreshed.Count, stale);
         InfrastructureTelemetry.TagCurrent(
-            ("fintrack.snapshots.refreshed", refreshed.Count),
-            ("fintrack.snapshots.stale", stale));
+            (TelemetryTags.SnapshotsRefreshed, refreshed.Count),
+            (TelemetryTags.SnapshotsStale, stale));
 
         return netWorth;
     }
@@ -109,6 +110,7 @@ public class BalanceSnapshotService : ServiceBase<BalanceSnapshotService>, IBala
 
         if (accounts.Count == 0)
         {
+            InfrastructureTelemetry.TagCurrent((TelemetryTags.Accounts, 0), (TelemetryTags.Days, 0));
             return 0;
         }
 
@@ -139,7 +141,7 @@ public class BalanceSnapshotService : ServiceBase<BalanceSnapshotService>, IBala
         await RetotalAsync(context, days, cancellationToken);
 
         Logger.LogBackfilledBalanceHistory(UserId, accounts.Count, days.Count);
-        InfrastructureTelemetry.TagCurrent(("fintrack.accounts", accounts.Count), ("fintrack.days", days.Count));
+        InfrastructureTelemetry.TagCurrent((TelemetryTags.Accounts, accounts.Count), (TelemetryTags.Days, days.Count));
         return days.Count;
     }
 

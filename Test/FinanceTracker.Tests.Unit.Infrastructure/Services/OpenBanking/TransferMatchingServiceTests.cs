@@ -169,11 +169,22 @@ public class TransferMatchingServiceTests : InfrastructureTestBase
         TransferMatchingService subject = BuildSubject(Username);
         await subject.MatchChangesAsync(CancellationToken);
 
-        // Act
-        TransferMatchSummary? summary = await subject.MatchChangesAsync(CancellationToken);
+        using SpanRecorder spans = new();
 
-        // Assert
-        await Assert.That(summary).IsNull();
+        // Act
+        TransferMatchSummary? summary;
+        using (spans.StartRoot())
+        {
+            summary = await subject.MatchChangesAsync(CancellationToken);
+        }
+
+        // Assert, the span still says it matched nothing
+        using (Assert.Multiple())
+        {
+            await Assert.That(summary).IsNull();
+            await Assert.That(spans.Root.GetTagItem("fintrack.transactions.considered")).IsEqualTo(0);
+            await Assert.That(spans.Root.GetTagItem("fintrack.transfers")).IsEqualTo(0);
+        }
     }
 
     [Test]

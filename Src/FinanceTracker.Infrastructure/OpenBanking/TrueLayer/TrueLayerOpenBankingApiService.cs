@@ -367,7 +367,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         _logger.LogTrueLayerRequestRefused(requested, (int)response.StatusCode, response.ReasonPhrase, traceId);
 
         // On the span that asked, such as a sync's fetch, so the trace leads to what TrueLayer's support can look up
-        Activity.Current?.SetTag(InfrastructureTelemetry.TrueLayerTraceIdTag, traceId);
+        Activity.Current?.SetTag(TelemetryTags.TrueLayerTraceId, traceId);
         return false;
     }
 

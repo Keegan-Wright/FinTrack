@@ -62,6 +62,7 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
         if (changed.Count == 0)
         {
             Logger.LogNoTransferChanges(UserId);
+            TagNothingMatched();
             return null;
         }
 
@@ -83,12 +84,21 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
 
         if (dates.Count == 0)
         {
+            TagNothingMatched();
             return new TransferMatchSummary(0, 0, 0);
         }
 
         // A sync saved since the last run hasn't been matched yet, so the checkpoint stays put for that run to find it
         return await MatchAroundAsync(context, dates, startedAt, recordCheckpoint: false, cancellationToken);
     }
+
+    // The span still says what matching did when there was nothing to look at
+    private static void TagNothingMatched() =>
+        InfrastructureTelemetry.TagCurrent(
+            (TelemetryTags.TransactionsConsidered, 0),
+            (TelemetryTags.Transfers, 0),
+            (TelemetryTags.TransfersToReview, 0),
+            (TelemetryTags.TransfersCleared, 0));
 
     /// <summary>
     /// Matches the transactions near <paramref name="dates"/>. Something on those dates can only affect transactions
@@ -159,10 +169,10 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
         await context.SaveChangesAsync(cancellationToken);
         Logger.LogMatchedTransfers(UserId, transactions.Count, summary.Transfers, summary.ToReview, summary.Cleared);
         InfrastructureTelemetry.TagCurrent(
-            ("fintrack.transactions.considered", transactions.Count),
-            ("fintrack.transfers", summary.Transfers),
-            ("fintrack.transfers.to_review", summary.ToReview),
-            ("fintrack.transfers.cleared", summary.Cleared));
+            (TelemetryTags.TransactionsConsidered, transactions.Count),
+            (TelemetryTags.Transfers, summary.Transfers),
+            (TelemetryTags.TransfersToReview, summary.ToReview),
+            (TelemetryTags.TransfersCleared, summary.Cleared));
 
         return summary;
     }

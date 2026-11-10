@@ -191,10 +191,10 @@ public class RuleApplicationService : ServiceBase<RuleApplicationService>, IRule
     private void Report(RuleRun run)
     {
         InfrastructureTelemetry.TagCurrent(
-            ("fintrack.rules", run.Rules),
-            ("fintrack.rules.matched", run.Matches.Count),
-            ("fintrack.transactions.considered", run.Considered),
-            ("fintrack.transactions.changed", run.Changed));
+            (TelemetryTags.Rules, run.Rules),
+            (TelemetryTags.RulesMatched, run.Matches.Count),
+            (TelemetryTags.TransactionsConsidered, run.Considered),
+            (TelemetryTags.TransactionsChanged, run.Changed));
 
         foreach ((Guid ruleId, int matched) in run.Matches)
         {

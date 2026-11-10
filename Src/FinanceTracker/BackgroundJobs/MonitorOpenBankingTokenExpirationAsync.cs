@@ -89,6 +89,7 @@ public class MonitorOpenBankingTokenExpirationAsync : IJob
         {
             // A span for each owner, so a failure shows whose it was
             using Activity? ownerActivity = Telemetry.StartUserActivity("Send consent notices", owner);
+            ownerActivity?.SetTag(TelemetryTags.NotificationsRaised, 0);
             using IDisposable? logScope = _logger.BeginUserScope(owner);
             try
             {

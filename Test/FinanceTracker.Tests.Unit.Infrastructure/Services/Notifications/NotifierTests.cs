@@ -74,6 +74,7 @@ public class NotifierTests : InfrastructureTestBase
                 .StartsWith($"Notified user {Scenario.UserMappings[Username]} of ConsentEnded")
                 .And.EndsWith("in app True, emailed True, webhook False");
             await Assert.That(spans.Root.Events.Select(x => x.Name)).IsEquivalentTo(["Notified"]);
+            await Assert.That(spans.Root.GetTagItem("fintrack.notifications.raised")).IsEqualTo(1);
         }
     }
 

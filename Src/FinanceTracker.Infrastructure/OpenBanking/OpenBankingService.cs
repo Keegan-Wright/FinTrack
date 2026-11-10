@@ -332,19 +332,19 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
             tally.TransactionsUpdated, tally.PendingRemoved, tally.FailedFetches, (long)took.TotalMilliseconds);
 
         Activity? connectionActivity = Activity.Current;
-        connectionActivity?.SetTag("fintrack.accounts", tally.Accounts);
-        connectionActivity?.SetTag("fintrack.cards", tally.Cards);
-        connectionActivity?.SetTag("fintrack.transactions.added", tally.TransactionsAdded);
-        connectionActivity?.SetTag("fintrack.transactions.updated", tally.TransactionsUpdated);
-        connectionActivity?.SetTag("fintrack.pending.removed", tally.PendingRemoved);
-        connectionActivity?.SetTag("fintrack.fetches.failed", tally.FailedFetches);
+        connectionActivity?.SetTag(TelemetryTags.Accounts, tally.Accounts);
+        connectionActivity?.SetTag(TelemetryTags.Cards, tally.Cards);
+        connectionActivity?.SetTag(TelemetryTags.TransactionsAdded, tally.TransactionsAdded);
+        connectionActivity?.SetTag(TelemetryTags.TransactionsUpdated, tally.TransactionsUpdated);
+        connectionActivity?.SetTag(TelemetryTags.PendingRemoved, tally.PendingRemoved);
+        connectionActivity?.SetTag(TelemetryTags.FetchesFailed, tally.FailedFetches);
     }
 
     // A span for one account or card's sync
     private static Activity? StartAccountActivity(string name, BankAccount account)
     {
         Activity? activity = InfrastructureTelemetry.ActivitySource.StartActivity(name);
-        activity?.SetTag(InfrastructureTelemetry.AccountIdTag, account.Id.ToString());
+        activity?.SetTag(TelemetryTags.AccountId, account.Id.ToString());
         return activity;
     }
 
@@ -521,7 +521,7 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
         {
             IAsyncEnumerable<T>? items = results(await fetch());
             List<T> fetched = items is null ? [] : await items.ToListAsync(cancellationToken);
-            activity?.SetTag(InfrastructureTelemetry.ItemCountTag, fetched.Count);
+            activity?.SetTag(TelemetryTags.ItemCount, fetched.Count);
             return fetched;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)

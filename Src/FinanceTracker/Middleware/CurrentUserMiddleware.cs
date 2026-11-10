@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using FinanceTracker.Extensions;
 using FinanceTracker.Infrastructure;
+using FinanceTracker.Infrastructure.Telemetry;
 
 namespace FinanceTracker.Middleware;
 
@@ -28,7 +29,7 @@ public sealed class CurrentUserMiddleware
             return;
         }
 
-        Activity.Current?.SetTag(Telemetry.UserIdTag, userId.ToString());
+        Activity.Current?.SetTag(TelemetryTags.UserId, userId.ToString());
         using (_logger.BeginUserScope(userId))
         {
             await _next(context);

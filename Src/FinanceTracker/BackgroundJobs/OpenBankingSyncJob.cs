@@ -24,8 +24,6 @@ namespace FinanceTracker.BackgroundJobs;
 /// </summary>
 public abstract class OpenBankingSyncJob
 {
-    private const string ConnectionCountTag = "fintrack.connection.count";
-
     private readonly IDbContextFactory<FinanceTrackerContext> _dbContextFactory;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ISyncNotifier _syncNotifier;
@@ -72,7 +70,7 @@ public abstract class OpenBankingSyncJob
             }
         }
 
-        performingBackgroundSyncActivity?.SetTag(ConnectionCountTag, toSync.Count);
+        performingBackgroundSyncActivity?.SetTag(TelemetryTags.ConnectionCount, toSync.Count);
 
         // Every owner's browsers show it syncing, whoever asked or if it's the schedule
         HashSet<Guid> owners = toSync.Select(static x => x.UserId).ToHashSet();
@@ -86,7 +84,7 @@ public abstract class OpenBankingSyncJob
             // A span for each connection, so its bank calls and queries sit under it in the trace
             using Activity? connectionActivity = Telemetry.StartUserActivity("Sync connection", userId);
             using IDisposable? logScope = _logger.BeginUserScope(userId);
-            connectionActivity?.SetTag(InfrastructureTelemetry.ConnectionIdTag, connectionId.ToString());
+            connectionActivity?.SetTag(TelemetryTags.ConnectionId, connectionId.ToString());
 
             try
             {
@@ -173,6 +171,9 @@ public abstract class OpenBankingSyncJob
         foreach (ISyncNotices notices in scope.ServiceProvider.GetServices<ISyncNotices>())
         {
             using Activity? noticesActivity = Telemetry.StartUserActivity(notices.GetType().Name, userId);
+
+            // Counted up by each notification raised, so a span that raised none says so
+            noticesActivity?.SetTag(TelemetryTags.NotificationsRaised, 0);
             try
             {
                 await notices.NotifyAsync(cancellationToken);
