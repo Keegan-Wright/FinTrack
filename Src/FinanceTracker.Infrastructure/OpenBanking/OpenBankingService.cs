@@ -11,7 +11,7 @@ using FinanceTracker.Generated.Enums;
 using FinanceTracker.Infrastructure.OpenBanking.TrueLayer;
 using FinanceTracker.Infrastructure.OpenBanking.TrueLayer.Contracts;
 using FinanceTracker.Infrastructure.Persistence;
-using FinanceTracker.Infrastructure.Telemetry;
+using FinanceTracker.Telemetry;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
@@ -343,7 +343,7 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
     // A span for one account or card's sync
     private static Activity? StartAccountActivity(string name, BankAccount account)
     {
-        Activity? activity = InfrastructureTelemetry.ActivitySource.StartActivity(name);
+        Activity? activity = FinTrackActivitySources.Infrastructure.StartActivity(name);
         activity?.SetTag(TelemetryTags.AccountId, account.Id.ToString());
         return activity;
     }
@@ -413,7 +413,7 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
             return activeToken.Token;
         }
 
-        using Activity? refreshActivity = InfrastructureTelemetry.ActivitySource.StartActivity("Refresh access token");
+        using Activity? refreshActivity = FinTrackActivitySources.Infrastructure.StartActivity("Refresh access token");
         ExternalOpenBankingAccessResponse refreshed =
             await _openBankingApiService.GetAccessTokenByRefreshTokenAsync(activeToken.RefreshToken,
                 cancellationToken);
@@ -516,7 +516,7 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
             return null;
         }
 
-        using Activity? activity = InfrastructureTelemetry.ActivitySource.StartActivity(name);
+        using Activity? activity = FinTrackActivitySources.Infrastructure.StartActivity(name);
         try
         {
             IAsyncEnumerable<T>? items = results(await fetch());

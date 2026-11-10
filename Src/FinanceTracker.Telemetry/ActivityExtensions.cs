@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace FinanceTracker.Infrastructure.Telemetry;
+namespace FinanceTracker.Telemetry;
 
 public static class ActivityExtensions
 {

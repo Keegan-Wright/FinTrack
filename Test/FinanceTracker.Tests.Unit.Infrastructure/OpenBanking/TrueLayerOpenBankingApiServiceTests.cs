@@ -4,6 +4,7 @@ using System.Text.Json;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.OpenBanking.TrueLayer;
 using FinanceTracker.Infrastructure.OpenBanking.TrueLayer.Contracts;
+using FinanceTracker.Telemetry;
 using FinanceTracker.Tests.Unit.Shared;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -591,7 +592,7 @@ public class TrueLayerOpenBankingApiServiceTests : UnitTestBase
             await subject.GetAllAccountsAsync("token", CancellationToken);
         }
 
-        await Assert.That(spans.Root.GetTagItem("truelayer.trace_id")).IsEqualTo("trace-123");
+        await Assert.That(spans.Root.GetTagItem(TelemetryTags.TrueLayerTraceId)).IsEqualTo("trace-123");
     }
 
     [Test]

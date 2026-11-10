@@ -4,6 +4,7 @@ using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.OpenBanking.Transfers;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.OpenBanking.Transfers;
+using FinanceTracker.Telemetry;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Fakers;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
@@ -182,8 +183,8 @@ public class TransferMatchingServiceTests : InfrastructureTestBase
         using (Assert.Multiple())
         {
             await Assert.That(summary).IsNull();
-            await Assert.That(spans.Root.GetTagItem("fintrack.transactions.considered")).IsEqualTo(0);
-            await Assert.That(spans.Root.GetTagItem("fintrack.transfers")).IsEqualTo(0);
+            await Assert.That(spans.Root.GetTagItem(TelemetryTags.TransactionsConsidered)).IsEqualTo(0);
+            await Assert.That(spans.Root.GetTagItem(TelemetryTags.Transfers)).IsEqualTo(0);
         }
     }
 

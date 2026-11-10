@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using FinanceTracker.Telemetry;
 using Npgsql;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
@@ -100,10 +101,10 @@ public static class Extensions
                     // Each hub method call the browser makes, ASP.NET Core's own source
                     tracing.AddSource(SignalRServerActivitySource);
 
-                    // The app's own spans, the services' under its name too, e.g. FinanceTracker.Infrastructure
-                    tracing.AddSource($"{builder.Environment.ApplicationName}.*");
+                    // FinTrack's own spans, the web app's and the services'
+                    tracing.AddSource([.. FinTrackActivitySources.All]);
 
-                    tracing.AddSource(builder.Environment.ApplicationName)
+                    tracing
                         .AddAspNetCoreInstrumentation(options =>
                         {
                             options.Filter = TraceFilters.IsTraced;

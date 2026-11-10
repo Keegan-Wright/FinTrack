@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Security.Claims;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Middleware;
+using FinanceTracker.Telemetry;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
@@ -51,9 +52,9 @@ public class CurrentUserMiddlewareTests : IDisposable
         {
             await Assert.That(ranNext).IsTrue();
             await Assert.That(_currentUser.UserId).IsEqualTo(userId);
-            await Assert.That(request!.GetTagItem("user.id")).IsEqualTo(userId.ToString());
+            await Assert.That(request!.GetTagItem(TelemetryTags.UserId)).IsEqualTo(userId.ToString());
             _logger.Received(1).BeginScope(Arg.Is<KeyValuePair<string, object?>[]>(x =>
-                x.Single().Key == "user.id" && Equals(x.Single().Value, userId.ToString())));
+                x.Single().Key == TelemetryTags.UserId && Equals(x.Single().Value, userId.ToString())));
         }
     }
 
@@ -71,7 +72,7 @@ public class CurrentUserMiddlewareTests : IDisposable
         using (Assert.Multiple())
         {
             await Assert.That(_currentUser.UserIdIfSet).IsNull();
-            await Assert.That(request!.GetTagItem("user.id")).IsNull();
+            await Assert.That(request!.GetTagItem(TelemetryTags.UserId)).IsNull();
             _logger.DidNotReceiveWithAnyArgs().BeginScope<object>(default!);
         }
     }

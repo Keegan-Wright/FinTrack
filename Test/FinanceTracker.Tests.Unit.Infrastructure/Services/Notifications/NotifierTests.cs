@@ -3,6 +3,7 @@ using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Notifications;
 using FinanceTracker.Infrastructure.Notifications.Email;
 using FinanceTracker.Infrastructure.Notifications.Webhooks;
+using FinanceTracker.Telemetry;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.EntityFrameworkCore;
@@ -74,7 +75,7 @@ public class NotifierTests : InfrastructureTestBase
                 .StartsWith($"Notified user {Scenario.UserMappings[Username]} of ConsentEnded")
                 .And.EndsWith("in app True, emailed True, webhook False");
             await Assert.That(spans.Root.Events.Select(x => x.Name)).IsEquivalentTo(["Notified"]);
-            await Assert.That(spans.Root.GetTagItem("fintrack.notifications.raised")).IsEqualTo(1);
+            await Assert.That(spans.Root.GetTagItem(TelemetryTags.NotificationsRaised)).IsEqualTo(1);
         }
     }
 

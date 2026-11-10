@@ -5,6 +5,7 @@ using FinanceTracker.Domain.Rules;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.OpenBanking.Transfers;
 using FinanceTracker.Infrastructure.Rules;
+using FinanceTracker.Telemetry;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Fakers;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
@@ -66,10 +67,10 @@ public class RuleApplicationServiceTests : InfrastructureTestBase
         Guid ruleId = Scenario.RuleMappings["groceries"];
         using (Assert.Multiple())
         {
-            await Assert.That(spans.Root.GetTagItem("fintrack.rules")).IsEqualTo(1);
-            await Assert.That(spans.Root.GetTagItem("fintrack.rules.matched")).IsEqualTo(1);
-            await Assert.That(spans.Root.GetTagItem("fintrack.transactions.considered")).IsEqualTo(3);
-            await Assert.That(spans.Root.GetTagItem("fintrack.transactions.changed")).IsEqualTo(2);
+            await Assert.That(spans.Root.GetTagItem(TelemetryTags.Rules)).IsEqualTo(1);
+            await Assert.That(spans.Root.GetTagItem(TelemetryTags.RulesMatched)).IsEqualTo(1);
+            await Assert.That(spans.Root.GetTagItem(TelemetryTags.TransactionsConsidered)).IsEqualTo(3);
+            await Assert.That(spans.Root.GetTagItem(TelemetryTags.TransactionsChanged)).IsEqualTo(2);
             await Assert.That(logger.Entries).Contains(x =>
                 x.Level == LogLevel.Debug && x.Message == $"Rule {ruleId} matched 2 transactions for user {Scenario.UserMappings[Username]}");
         }

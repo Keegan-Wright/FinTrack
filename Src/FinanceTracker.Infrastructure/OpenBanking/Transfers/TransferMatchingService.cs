@@ -5,7 +5,7 @@ using FinanceTracker.Domain.OpenBanking.Transfers;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using FinanceTracker.Infrastructure.Persistence;
-using FinanceTracker.Infrastructure.Telemetry;
+using FinanceTracker.Telemetry;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -94,7 +94,7 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
 
     // The span still says what matching did when there was nothing to look at
     private static void TagNothingMatched() =>
-        InfrastructureTelemetry.TagCurrent(
+        CurrentActivity.Tag(
             (TelemetryTags.TransactionsConsidered, 0),
             (TelemetryTags.Transfers, 0),
             (TelemetryTags.TransfersToReview, 0),
@@ -168,7 +168,7 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
 
         await context.SaveChangesAsync(cancellationToken);
         Logger.LogMatchedTransfers(UserId, transactions.Count, summary.Transfers, summary.ToReview, summary.Cleared);
-        InfrastructureTelemetry.TagCurrent(
+        CurrentActivity.Tag(
             (TelemetryTags.TransactionsConsidered, transactions.Count),
             (TelemetryTags.Transfers, summary.Transfers),
             (TelemetryTags.TransfersToReview, summary.ToReview),

@@ -1,7 +1,6 @@
 using System.Diagnostics;
-using FinanceTracker.Extensions;
 using FinanceTracker.Infrastructure;
-using FinanceTracker.Infrastructure.Telemetry;
+using FinanceTracker.Telemetry;
 
 namespace FinanceTracker.Middleware;
 

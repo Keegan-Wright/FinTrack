@@ -1,4 +1,4 @@
-namespace FinanceTracker.Infrastructure.Telemetry;
+namespace FinanceTracker.Telemetry;
 
 /// <summary>
 /// The names of the attributes FinTrack puts on its spans, in one place so Tempo queries and dashboards can rely on

@@ -2,12 +2,11 @@ using System.Diagnostics;
 using System.Linq.Expressions;
 using FinanceTracker.Contracts;
 using FinanceTracker.Domain.Identity;
-using FinanceTracker.Extensions;
 using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Bills;
 using FinanceTracker.Infrastructure.Notifications;
-using FinanceTracker.Infrastructure.Telemetry;
+using FinanceTracker.Telemetry;
 using FinanceTracker.Infrastructure.OpenBanking;
 using FinanceTracker.Infrastructure.OpenBanking.Balances;
 using FinanceTracker.Infrastructure.OpenBanking.Transfers;
@@ -50,7 +49,7 @@ public abstract class OpenBankingSyncJob
     protected async Task<IReadOnlySet<Guid>> SyncConnectionsAsync(Expression<Func<BankConnection, bool>> connections,
         CancellationToken cancellationToken)
     {
-        using Activity? performingBackgroundSyncActivity = Telemetry.ActivitySource.StartActivity(GetType().Name);
+        using Activity? performingBackgroundSyncActivity = FinTrackActivitySources.App.StartActivity(GetType().Name);
 
         DateTime startedAt = _timeProvider.UtcNow;
         DateOnly today = _timeProvider.Today;
@@ -82,7 +81,7 @@ public abstract class OpenBankingSyncJob
         foreach ((Guid connectionId, Guid userId) in toSync)
         {
             // A span for each connection, so its bank calls and queries sit under it in the trace
-            using Activity? connectionActivity = Telemetry.StartUserActivity("Sync connection", userId);
+            using Activity? connectionActivity = FinTrackActivitySources.App.StartUserActivity("Sync connection", userId);
             using IDisposable? logScope = _logger.BeginUserScope(userId);
             connectionActivity?.SetTag(TelemetryTags.ConnectionId, connectionId.ToString());
 
@@ -108,7 +107,7 @@ public abstract class OpenBankingSyncJob
         foreach (Guid userId in owners)
         {
             // A span for each owner's steps after their connections synced, each step a span inside it
-            using Activity? ownerActivity = Telemetry.StartUserActivity("Update owner", userId);
+            using Activity? ownerActivity = FinTrackActivitySources.App.StartUserActivity("Update owner", userId);
             using IDisposable? logScope = _logger.BeginUserScope(userId);
 
             // Rules on what the sync brought in or changed, before transfers so the matcher sees what they decided
@@ -165,12 +164,12 @@ public abstract class OpenBankingSyncJob
     /// </summary>
     private async Task NotifyOwnerAsync(Guid userId, CancellationToken cancellationToken)
     {
-        using Activity? notifyActivity = Telemetry.StartUserActivity("Send sync notices", userId);
+        using Activity? notifyActivity = FinTrackActivitySources.App.StartUserActivity("Send sync notices", userId);
 
         await using AsyncServiceScope scope = _scopeFactory.CreateUserScope(userId);
         foreach (ISyncNotices notices in scope.ServiceProvider.GetServices<ISyncNotices>())
         {
-            using Activity? noticesActivity = Telemetry.StartUserActivity(notices.GetType().Name, userId);
+            using Activity? noticesActivity = FinTrackActivitySources.App.StartUserActivity(notices.GetType().Name, userId);
 
             // Counted up by each notification raised, so a span that raised none says so
             noticesActivity?.SetTag(TelemetryTags.NotificationsRaised, 0);
@@ -194,7 +193,7 @@ public abstract class OpenBankingSyncJob
     private async Task RunAsOwnerAsync<TService>(Guid userId, string step, Func<TService, Task> run)
         where TService : notnull
     {
-        using Activity? activity = Telemetry.StartUserActivity(step, userId);
+        using Activity? activity = FinTrackActivitySources.App.StartUserActivity(step, userId);
         try
         {
             await using AsyncServiceScope scope = _scopeFactory.CreateUserScope(userId);

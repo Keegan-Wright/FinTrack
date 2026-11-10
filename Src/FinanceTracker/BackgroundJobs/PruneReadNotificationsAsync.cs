@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Notifications;
+using FinanceTracker.Telemetry;
 using Microsoft.EntityFrameworkCore;
 using Quartz;
 
@@ -28,7 +29,7 @@ public class PruneReadNotificationsAsync : IJob
 
     private async Task PruneAsync(CancellationToken cancellationToken)
     {
-        using Activity? activity = Telemetry.ActivitySource.StartActivity(nameof(PruneReadNotificationsAsync));
+        using Activity? activity = FinTrackActivitySources.App.StartActivity(nameof(PruneReadNotificationsAsync));
 
         await using FinanceTrackerContext dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
 

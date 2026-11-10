@@ -5,6 +5,7 @@ using FinanceTracker.Domain.OpenBanking.Balances;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.OpenBanking.Balances;
+using FinanceTracker.Telemetry;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Fakers;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
@@ -324,7 +325,7 @@ public class BalanceSnapshotServiceTests : InfrastructureTestBase
         {
             await Assert.That(days).IsEqualTo(2);
             await Assert.That(again).IsEqualTo(0);
-            await Assert.That(spans.Root.GetTagItem("fintrack.days")).IsEqualTo(0);
+            await Assert.That(spans.Root.GetTagItem(TelemetryTags.Days)).IsEqualTo(0);
             await Assert.That(balances[Day.AddDays(-1)].Balance.Current).IsEqualTo(500m);
             await Assert.That(balances[Day.AddDays(-2)].Balance.Current).IsEqualTo(400m);
             await Assert.That(balances[Day.AddDays(-2)].Source).IsEqualTo(BalanceSnapshotSource.Derived);

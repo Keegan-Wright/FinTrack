@@ -7,6 +7,7 @@ using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.OpenBanking;
 using FinanceTracker.Infrastructure.OpenBanking.TrueLayer.Contracts;
+using FinanceTracker.Telemetry;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Fakers;
 using FinanceTracker.Tests.Unit.Shared.Fakers.TrueLayer;
@@ -671,14 +672,14 @@ public class OpenBankingServiceTests : InfrastructureTestBase
         Activity transactionsSpan = spans.Named("Fetch transactions");
         using (Assert.Multiple())
         {
-            await Assert.That(accountSpan.GetTagItem("fintrack.account.id")).IsEqualTo(account.Id.ToString());
+            await Assert.That(accountSpan.GetTagItem(TelemetryTags.AccountId)).IsEqualTo(account.Id.ToString());
             await Assert.That(transactionsSpan.ParentSpanId).IsEqualTo(accountSpan.SpanId);
-            await Assert.That(transactionsSpan.GetTagItem("fintrack.items")).IsEqualTo(2);
+            await Assert.That(transactionsSpan.GetTagItem(TelemetryTags.ItemCount)).IsEqualTo(2);
             await Assert.That(spans.Names).Contains("Fetch balance");
             await Assert.That(spans.Names).Contains("Fetch pending transactions");
             await Assert.That(spans.Names).Contains("Fetch standing orders");
             await Assert.That(spans.Names).Contains("Fetch direct debits");
-            await Assert.That(spans.Root.GetTagItem("fintrack.transactions.added")).IsEqualTo(2);
+            await Assert.That(spans.Root.GetTagItem(TelemetryTags.TransactionsAdded)).IsEqualTo(2);
             await Assert.That(logger.Entries.Single(x => x.Message.StartsWith("Synced connection", StringComparison.Ordinal)).Message)
                 .Contains(": 1 accounts, 0 cards, 2 transactions added, 0 updated, 0 stale pending removed, 0 fetches failed");
         }
@@ -709,7 +710,7 @@ public class OpenBankingServiceTests : InfrastructureTestBase
             await Assert.That(balanceSpan.Status).IsEqualTo(ActivityStatusCode.Error);
             await Assert.That(balanceSpan.Events.Select(x => x.Name)).Contains("exception");
             await Assert.That(spans.Named("Fetch transactions").Status).IsNotEqualTo(ActivityStatusCode.Error);
-            await Assert.That(spans.Root.GetTagItem("fintrack.fetches.failed")).IsEqualTo(1);
+            await Assert.That(spans.Root.GetTagItem(TelemetryTags.FetchesFailed)).IsEqualTo(1);
             await Assert.That(logger.Entries.Single(x => x.Message.StartsWith("Synced connection", StringComparison.Ordinal)).Message)
                 .EndsWith("1 fetches failed");
         }

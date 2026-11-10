@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using FinanceTracker.Telemetry;
 
 namespace FinanceTracker.Tests.Unit.Infrastructure;
 
@@ -18,7 +19,7 @@ public sealed class SpanRecorder : IDisposable
     {
         _listener = new ActivityListener
         {
-            ShouldListenTo = static x => x.Name is "FinanceTracker.Infrastructure" or nameof(SpanRecorder),
+            ShouldListenTo = static x => x.Name is FinTrackActivitySources.InfrastructureName or nameof(SpanRecorder),
             Sample = static (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
             ActivityStopped = activity =>
             {

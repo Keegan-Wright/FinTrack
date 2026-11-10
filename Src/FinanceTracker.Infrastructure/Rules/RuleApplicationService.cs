@@ -4,7 +4,7 @@ using FinanceTracker.Domain.Rules;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using FinanceTracker.Infrastructure.OpenBanking.Transfers;
-using FinanceTracker.Infrastructure.Telemetry;
+using FinanceTracker.Telemetry;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -190,7 +190,7 @@ public class RuleApplicationService : ServiceBase<RuleApplicationService>, IRule
     /// </summary>
     private void Report(RuleRun run)
     {
-        InfrastructureTelemetry.TagCurrent(
+        CurrentActivity.Tag(
             (TelemetryTags.Rules, run.Rules),
             (TelemetryTags.RulesMatched, run.Matches.Count),
             (TelemetryTags.TransactionsConsidered, run.Considered),

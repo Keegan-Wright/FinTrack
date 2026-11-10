@@ -1,10 +1,9 @@
 using System.Diagnostics;
 using FinanceTracker.Domain.Identity;
 using FinanceTracker.Domain.OpenBanking.Connections;
-using FinanceTracker.Extensions;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Notifications;
-using FinanceTracker.Infrastructure.Telemetry;
+using FinanceTracker.Telemetry;
 using Microsoft.EntityFrameworkCore;
 using Quartz;
 
@@ -34,7 +33,7 @@ public class MonitorOpenBankingTokenExpirationAsync : IJob
     public async ValueTask Execute(IJobExecutionContext context, CancellationToken cancellationToken)
     {
         using Activity? performingMonitoringActivity =
-            Telemetry.ActivitySource.StartActivity(nameof(MonitorOpenBankingTokenExpirationAsync));
+            FinTrackActivitySources.App.StartActivity(nameof(MonitorOpenBankingTokenExpirationAsync));
 
         await RevokeLapsedConnectionsAsync(performingMonitoringActivity, cancellationToken);
         await NotifyOwnersAsync(performingMonitoringActivity, cancellationToken);
@@ -88,7 +87,7 @@ public class MonitorOpenBankingTokenExpirationAsync : IJob
         foreach (Guid owner in owners)
         {
             // A span for each owner, so a failure shows whose it was
-            using Activity? ownerActivity = Telemetry.StartUserActivity("Send consent notices", owner);
+            using Activity? ownerActivity = FinTrackActivitySources.App.StartUserActivity("Send consent notices", owner);
             ownerActivity?.SetTag(TelemetryTags.NotificationsRaised, 0);
             using IDisposable? logScope = _logger.BeginUserScope(owner);
             try

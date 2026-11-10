@@ -7,7 +7,7 @@ using System.Text;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using FinanceTracker.Infrastructure.OpenBanking.TrueLayer.Contracts;
-using FinanceTracker.Infrastructure.Telemetry;
+using FinanceTracker.Telemetry;
 using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Infrastructure.OpenBanking.TrueLayer;
