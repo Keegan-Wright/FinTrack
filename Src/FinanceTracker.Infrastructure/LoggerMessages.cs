@@ -20,6 +20,9 @@ public static partial class LoggerMessages
     [LoggerMessage(LogLevel.Error, "Error occured syncing pending transactions for provider {providerId} with account {accountId} for user {userId}")]
     public static partial void LogErrorSyncingPendingTransactions(this ILogger logger, Exception exception, Guid providerId, string accountId, Guid userId);
 
+    [LoggerMessage(LogLevel.Error, "The browser hit an error for user {userId} on {page}, logged by {category}: {exceptionType}: {errorMessage}\n{stackTrace}")]
+    public static partial void LogBrowserError(this ILogger logger, Guid userId, string page, string category, string? exceptionType, string errorMessage, string? stackTrace);
+
     [LoggerMessage(LogLevel.Information, "Synced connection {connectionId} for user {userId} in {elapsedMs}ms: {accounts} accounts, {cards} cards, {added} transactions added, {updated} updated, {pendingRemoved} stale pending removed, {failedFetches} fetches failed")]
     public static partial void LogSyncedConnection(this ILogger logger, Guid connectionId, Guid userId, int accounts, int cards, int added, int updated, int pendingRemoved, int failedFetches, long elapsedMs);
 

@@ -24,6 +24,7 @@ public static class ApiEndpoints
                 .MapBudgetEndpoints()
                 .MapCalendarEndpoints()
                 .MapClassificationEndpoints()
+                .MapClientErrorEndpoints()
                 .MapDashboardEndpoints()
                 .MapDebtEndpoints()
                 .MapExportEndpoints()
