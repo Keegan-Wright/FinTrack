@@ -143,6 +143,7 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
 
             context.Bills.Add(added);
             await context.SaveChangesAsync(cancellationToken);
+            Logger.LogChanged(UserId, "created", "bill", added.Id);
             id = added.Id;
 
             await MatchHistoryAsync(added, cancellationToken);
@@ -172,6 +173,7 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
             updated.ChangeTolerance(bill.TolerancePercent);
 
             await context.SaveChangesAsync(cancellationToken);
+            Logger.LogChanged(UserId, "updated", "bill", id);
 
             // The payee or schedule may have changed which payments are its
             await MatchHistoryAsync(updated, cancellationToken);
@@ -215,6 +217,7 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
 
         context.Bills.Remove(bill);
         await context.SaveChangesAsync(cancellationToken);
+        Logger.LogChanged(UserId, "deleted", "bill", id);
     }
 
     public async Task<Transaction> PayBillAsync(Guid transactionId, PayBill payment,
@@ -238,6 +241,7 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
         }
 
         await context.SaveChangesAsync(cancellationToken);
+        Logger.LogChanged(UserId, "set the bill paid by", "transaction", transactionId);
 
         Dictionary<Guid, string> customTags = await context.CustomClassifications.OwnedBy(UserId)
             .ToDictionaryAsync(static x => x.Id, static x => x.Tag, cancellationToken);
@@ -309,6 +313,7 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
 
             context.BillSuggestions.Remove(suggestion);
             await context.SaveChangesAsync(cancellationToken);
+            Logger.LogChanged(UserId, "confirmed a suggestion as", "bill", bill.Id);
         }
 
         await MatchHistoryAsync(bill, cancellationToken);
@@ -353,6 +358,7 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
 
         suggestion.Dismiss();
         await context.SaveChangesAsync(cancellationToken);
+        Logger.LogChanged(UserId, "dismissed", "bill suggestion", id);
     }
 
     private async Task<Bill> ChangeBillAsync(Guid id, Func<DomainBill, bool> change,

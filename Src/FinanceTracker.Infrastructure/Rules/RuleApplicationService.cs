@@ -4,6 +4,7 @@ using FinanceTracker.Domain.Rules;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using FinanceTracker.Infrastructure.OpenBanking.Transfers;
+using FinanceTracker.Telemetry;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -36,7 +37,7 @@ public class RuleApplicationService : ServiceBase<RuleApplicationService>, IRule
         DateTime since = checkpoint?.AppliedFrom ?? firstRunFrom;
 
         List<Rule> rules = await LoadEnabledRulesAsync(context, cancellationToken);
-        int changed = 0;
+        RuleRun run = RuleRun.Nothing;
 
         // Without rules there's nothing to apply, but the checkpoint still moves on so enabling one later doesn't
         // reach back over the transactions synced in the meantime
@@ -46,7 +47,7 @@ public class RuleApplicationService : ServiceBase<RuleApplicationService>, IRule
                 .Where(x => x.Created > since || x.Updated > since)
                 .ToListAsync(cancellationToken);
 
-            changed = Apply(rules, transactions);
+            run = Apply(rules, transactions);
         }
 
         if (checkpoint is null)
@@ -59,9 +60,10 @@ public class RuleApplicationService : ServiceBase<RuleApplicationService>, IRule
         }
 
         await context.SaveChangesAsync(cancellationToken);
-        Logger.LogAppliedRules(UserId, rules.Count, changed);
+        Logger.LogAppliedRules(UserId, rules.Count, run.Considered, run.Changed);
+        Report(run);
 
-        return changed;
+        return run.Changed;
     }
 
     public async Task<int> ReapplyAsync(Guid ruleId, CancellationToken cancellationToken)
@@ -88,17 +90,18 @@ public class RuleApplicationService : ServiceBase<RuleApplicationService>, IRule
             .ToList();
 
         List<Rule> rules = await LoadEnabledRulesAsync(context, cancellationToken);
-        int changed = Apply(rules, transactions);
+        RuleRun run = Apply(rules, transactions);
 
         await context.SaveChangesAsync(cancellationToken);
-        Logger.LogReappliedRules(UserId, ruleId, transactions.Count, changed);
+        Logger.LogReappliedRules(UserId, ruleId, run.Considered, run.Changed);
+        Report(run);
 
         if (decidedByTheRule.Count > 0)
         {
             await _transferMatchingService.MatchAroundAsync(decidedByTheRule, cancellationToken);
         }
 
-        return changed;
+        return run.Changed;
     }
 
     public async Task<int> ApplyToExistingAsync(Guid ruleId, CancellationToken cancellationToken)
@@ -123,10 +126,11 @@ public class RuleApplicationService : ServiceBase<RuleApplicationService>, IRule
             reached.ToDictionary(static x => x.Id, static x => x.Transfer);
 
         List<Rule> rules = await LoadEnabledRulesAsync(context, cancellationToken);
-        int changed = Apply(rules, reached);
+        RuleRun run = Apply(rules, reached);
 
         await context.SaveChangesAsync(cancellationToken);
-        Logger.LogAppliedRuleToExisting(UserId, ruleId, reached.Count, changed);
+        Logger.LogAppliedRuleToExisting(UserId, ruleId, run.Considered, run.Changed);
+        Report(run);
 
         List<Guid> transferChanged = reached
             .Where(x => TransferChanged(transfersBefore[x.Id], x.Transfer))
@@ -138,7 +142,7 @@ public class RuleApplicationService : ServiceBase<RuleApplicationService>, IRule
             await _transferMatchingService.MatchAroundAsync(transferChanged, cancellationToken);
         }
 
-        return changed;
+        return run.Changed;
     }
 
     private static bool TransferChanged(TransferInfo? before, TransferInfo? after)
@@ -157,19 +161,44 @@ public class RuleApplicationService : ServiceBase<RuleApplicationService>, IRule
             .Where(x => x.IsEnabled)
             .ToListAsync(cancellationToken);
 
-    private int Apply(List<Rule> rules, List<BankTransaction> transactions)
+    private RuleRun Apply(List<Rule> rules, List<BankTransaction> transactions)
     {
         DateTime decidedAt = _timeProvider.UtcNow;
         int changed = 0;
+        Dictionary<Guid, int> matches = [];
 
         foreach (BankTransaction transaction in transactions)
         {
-            if (RuleEvaluator.Apply(rules, transaction, decidedAt))
+            RuleOutcome outcome = RuleEvaluator.Evaluate(rules, transaction);
+            foreach (Guid ruleId in outcome.MatchedRuleIds)
+            {
+                matches[ruleId] = matches.GetValueOrDefault(ruleId) + 1;
+            }
+
+            if (transaction.ApplyRules(outcome, decidedAt))
             {
                 changed++;
             }
         }
 
-        return changed;
+        return new RuleRun(rules.Count, transactions.Count, changed, matches);
+    }
+
+    /// <summary>
+    /// Tags the span the rules ran in with what they did, and logs how many transactions each rule matched at
+    /// Debug, for working out why a rule does or doesn't fire.
+    /// </summary>
+    private void Report(RuleRun run)
+    {
+        CurrentActivity.Tag(
+            (TelemetryTags.Rules, run.Rules),
+            (TelemetryTags.RulesMatched, run.Matches.Count),
+            (TelemetryTags.TransactionsConsidered, run.Considered),
+            (TelemetryTags.TransactionsChanged, run.Changed));
+
+        foreach ((Guid ruleId, int matched) in run.Matches)
+        {
+            Logger.LogRuleMatched(UserId, ruleId, matched);
+        }
     }
 }

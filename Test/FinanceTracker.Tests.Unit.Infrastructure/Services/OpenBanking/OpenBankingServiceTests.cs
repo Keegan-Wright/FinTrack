@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.OpenBanking;
 using FinanceTracker.Domain.OpenBanking.Accounts;
@@ -6,6 +7,7 @@ using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.OpenBanking;
 using FinanceTracker.Infrastructure.OpenBanking.TrueLayer.Contracts;
+using FinanceTracker.Telemetry;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Fakers;
 using FinanceTracker.Tests.Unit.Shared.Fakers.TrueLayer;
@@ -13,6 +15,7 @@ using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.Metrics.Testing;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -648,6 +651,82 @@ public class OpenBankingServiceTests : InfrastructureTestBase
     }
 
     [Test]
+    public async Task SyncConnectionAsync_TracesEachAccountAndItsFetchesAndSumsUp()
+    {
+        // Arrange
+        await SeedConnectionAsync();
+        GivenProviderReturns(accounts: [new ExternalOpenBankingAccountFaker().Generate()],
+            transactions: new ExternalOpenBankingAccountTransactionFaker().Generate(2).ToArray());
+        CapturingLogger<OpenBankingService> logger = new();
+        using TestMetrics metrics = new();
+        using MetricCollector<long> synced = metrics.Collect<long>(FinTrackMetrics.TransactionsSyncedName);
+        OpenBankingService subject = BuildSubject(logger, metrics.Metrics);
+        using SpanRecorder spans = new();
+
+        // Act
+        using (Activity? connection = spans.StartRoot())
+        {
+            await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+        }
+
+        // Assert
+        BankAccount account = (await LoadAccountsAsync()).Single();
+        long added = synced.GetMeasurementSnapshot()
+            .Where(static x => Equals(x.Tags[TelemetryTags.Change], "added"))
+            .Sum(static x => x.Value);
+        Activity accountSpan = spans.Named("Sync account");
+        Activity transactionsSpan = spans.Named("Fetch transactions");
+        using (Assert.Multiple())
+        {
+            await Assert.That(accountSpan.GetTagItem(TelemetryTags.AccountId)).IsEqualTo(account.Id.ToString());
+            await Assert.That(transactionsSpan.ParentSpanId).IsEqualTo(accountSpan.SpanId);
+            await Assert.That(transactionsSpan.GetTagItem(TelemetryTags.ItemCount)).IsEqualTo(2);
+            await Assert.That(spans.Names).Contains("Fetch balance");
+            await Assert.That(spans.Names).Contains("Fetch pending transactions");
+            await Assert.That(spans.Names).Contains("Fetch standing orders");
+            await Assert.That(spans.Names).Contains("Fetch direct debits");
+            await Assert.That(spans.Root.GetTagItem(TelemetryTags.TransactionsAdded)).IsEqualTo(2);
+            await Assert.That(added).IsEqualTo(2);
+            await Assert.That(logger.Entries.Single(x => x.Message.StartsWith("Synced connection", StringComparison.Ordinal)).Message)
+                .Contains(": 1 accounts, 0 cards, 2 transactions added, 0 updated, 0 stale pending removed, 0 fetches failed");
+        }
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_FetchFails_MarksItsSpanFailedAndCountsIt()
+    {
+        // Arrange
+        await SeedConnectionAsync();
+        GivenProviderReturns(accounts: [new ExternalOpenBankingAccountFaker().Generate()]);
+        _api.GetAccountBalanceAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new HttpRequestException("provider down"));
+        CapturingLogger<OpenBankingService> logger = new();
+        using TestMetrics metrics = new();
+        using MetricCollector<long> failed = metrics.Collect<long>(FinTrackMetrics.FetchesFailedName);
+        OpenBankingService subject = BuildSubject(logger, metrics.Metrics);
+        using SpanRecorder spans = new();
+
+        // Act
+        using (Activity? connection = spans.StartRoot())
+        {
+            await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+        }
+
+        // Assert
+        Activity balanceSpan = spans.Named("Fetch balance");
+        using (Assert.Multiple())
+        {
+            await Assert.That(balanceSpan.Status).IsEqualTo(ActivityStatusCode.Error);
+            await Assert.That(balanceSpan.Events.Select(x => x.Name)).Contains("exception");
+            await Assert.That(spans.Named("Fetch transactions").Status).IsNotEqualTo(ActivityStatusCode.Error);
+            await Assert.That(spans.Root.GetTagItem(TelemetryTags.FetchesFailed)).IsEqualTo(1);
+            await Assert.That(failed.GetMeasurementSnapshot().Sum(static x => x.Value)).IsEqualTo(1);
+            await Assert.That(logger.Entries.Single(x => x.Message.StartsWith("Synced connection", StringComparison.Ordinal)).Message)
+                .EndsWith("1 fetches failed");
+        }
+    }
+
+    [Test]
     public async Task SyncConnectionAsync_WithPreviousTransactionSync_RequestsBookedFromSevenDaysEarlier()
     {
         // Arrange
@@ -698,7 +777,7 @@ public class OpenBankingServiceTests : InfrastructureTestBase
 
         CapturingLogger<OpenBankingService> logger = new();
         OpenBankingService subject = new(CurrentUserFor(Username), DbContextFactory, _api, logger, TimeProvider.System, _cache,
-            _syncScheduler);
+            _syncScheduler, TestMetrics.Unobserved);
 
         // Act
         await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
@@ -1407,7 +1486,7 @@ public class OpenBankingServiceTests : InfrastructureTestBase
 
         CapturingLogger<OpenBankingService> logger = new();
         OpenBankingService subject = new(CurrentUserFor(Username), DbContextFactory, _api, logger, TimeProvider.System, _cache,
-            _syncScheduler);
+            _syncScheduler, TestMetrics.Unobserved);
 
         // Act
         await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
@@ -1669,7 +1748,8 @@ public class OpenBankingServiceTests : InfrastructureTestBase
         new BankConnection(userId, $"ob-{Guid.NewGuid():N}", name, "code", ["accounts"], [1], DateTime.UtcNow,
             DateTime.UtcNow.AddDays(90));
 
-    private OpenBankingService BuildSubject() =>
-        new(CurrentUserFor(Username), DbContextFactory, _api, NullLogger<OpenBankingService>.Instance,
-            TimeProvider.System, _cache, _syncScheduler);
+    private OpenBankingService BuildSubject(ILogger<OpenBankingService>? logger = null,
+        FinTrackMetrics? metrics = null) =>
+        new(CurrentUserFor(Username), DbContextFactory, _api, logger ?? NullLogger<OpenBankingService>.Instance,
+            TimeProvider.System, _cache, _syncScheduler, metrics ?? TestMetrics.Unobserved);
 }

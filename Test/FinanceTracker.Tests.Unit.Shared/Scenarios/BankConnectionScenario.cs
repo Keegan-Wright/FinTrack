@@ -45,6 +45,12 @@ public sealed class BankConnectionScenario : ScenarioBuilder
         });
 
     /// <summary>
+    /// Has the connection failing to sync since <paramref name="since"/>, as after a failed sync.
+    /// </summary>
+    public Task<TestingScenario> WithSyncFailing(string connectionName, DateTime since) =>
+        PersistAsync(async context => (await LoadAsync(context, connectionName)).RecordSyncFailed(since));
+
+    /// <summary>
     /// Revokes the active token at <paramref name="revokedAt"/>.
     /// </summary>
     public Task<TestingScenario> WithRevokedToken(string connectionName, DateTime revokedAt) =>

@@ -9,6 +9,7 @@ using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using DomainRule = FinanceTracker.Domain.Rules.Rule;
+using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Tests.Unit.Infrastructure.Services.Rules;
 
@@ -41,6 +42,26 @@ public class RulesServiceTests : InfrastructureTestBase
             await Assert.That(added.Conditions.Single().Value).IsEqualTo("GROCER STORE");
             await Assert.That((await LoadTransactionAsync("history")).CustomClassificationIds).IsEmpty();
         }
+    }
+
+    [Test]
+    public async Task AddAndDeleteRule_LogWhoChangedWhichRule()
+    {
+        // Arrange
+        await SeedAsync(Username);
+        CapturingLogger<RulesService> logger = new();
+        RulesService subject = BuildSubject(Username, logger);
+        Guid userId = Scenario.UserMappings[Username];
+
+        // Act
+        Rule added = await subject.AddRuleAsync(TagGroceries("shopping"), CancellationToken);
+        await subject.DeleteRuleAsync(added.Id, CancellationToken);
+
+        // Assert
+        await Assert.That(logger.Entries.Select(x => x.Message)).IsEquivalentTo([
+            $"User {userId} created rule {added.Id}",
+            $"User {userId} deleted rule {added.Id}"
+        ]);
     }
 
     [Test]
@@ -622,7 +643,7 @@ public class RulesServiceTests : InfrastructureTestBase
                 NullLogger<TransferMatchingService>.Instance, TimeProvider.System),
             TimeProvider.System);
 
-    private RulesService BuildSubject(string username) =>
-        new(CurrentUserFor(username), DbContextFactory, NullLogger<RulesService>.Instance,
+    private RulesService BuildSubject(string username, ILogger<RulesService>? logger = null) =>
+        new(CurrentUserFor(username), DbContextFactory, logger ?? NullLogger<RulesService>.Instance,
             BuildApplication(username), TimeProvider.System);
 }

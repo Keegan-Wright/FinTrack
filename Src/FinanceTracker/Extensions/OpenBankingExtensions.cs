@@ -1,8 +1,10 @@
+using System.Diagnostics;
 using System.Net;
 using System.Threading.RateLimiting;
 using FinanceTracker.AppHost.ServiceDefaults;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.OpenBanking.TrueLayer;
+using FinanceTracker.Telemetry;
 using Microsoft.Extensions.Http.Resilience;
 
 namespace FinanceTracker.Extensions;
@@ -174,6 +176,23 @@ public static class OpenBankingExtensions
     /// starts the total request timeout, so time spent queuing doesn't count against it.
     /// </summary>
     private static void ThrottleClient(IHttpStandardResiliencePipelineBuilder client, RateLimiter rateLimiter) =>
-        client.Configure(options => options.RateLimiter.RateLimiter = arguments =>
-            rateLimiter.AcquireAsync(1, arguments.Context.CancellationToken));
+        client.Configure((options, services) =>
+        {
+            FinTrackMetrics metrics = services.GetRequiredService<FinTrackMetrics>();
+            options.RateLimiter.RateLimiter = arguments =>
+                AcquireAsync(rateLimiter, metrics, arguments.Context.CancellationToken);
+        });
+
+    /// <summary>
+    /// Waits for <paramref name="rateLimiter"/>, recording how long the call queued, see
+    /// <see cref="FinTrackMetrics.TrueLayerThrottled"/>.
+    /// </summary>
+    private static async ValueTask<RateLimitLease> AcquireAsync(RateLimiter rateLimiter, FinTrackMetrics metrics,
+        CancellationToken cancellationToken)
+    {
+        long startedAt = Stopwatch.GetTimestamp();
+        RateLimitLease lease = await rateLimiter.AcquireAsync(1, cancellationToken);
+        metrics.TrueLayerThrottled(Stopwatch.GetElapsedTime(startedAt));
+        return lease;
+    }
 }

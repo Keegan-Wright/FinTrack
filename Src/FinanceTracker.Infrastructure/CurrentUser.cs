@@ -10,6 +10,11 @@ public sealed class CurrentUser : ICurrentUser
 {
     private Guid? _userId;
 
+    /// <summary>
+    /// The user, null when nobody is set, such as a request from someone not signed in.
+    /// </summary>
+    public Guid? UserIdIfSet => _userId;
+
     public Guid UserId => _userId ?? throw new InvalidOperationException(
         "No user is set for this scope. Services need a signed in user, or a scope created for a user.");
 

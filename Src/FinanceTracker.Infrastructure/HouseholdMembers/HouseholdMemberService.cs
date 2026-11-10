@@ -52,6 +52,7 @@ public class HouseholdMemberService : ServiceBase<HouseholdMemberService>, IHous
         context.HouseholdMembers.Add(householdMember);
         await NameCheck.SaveKeepingNamesApartAsync(context, NameTakenException.Person,
             FullName(categoryToAdd.FirstName, categoryToAdd.LastName), cancellationToken);
+        Logger.LogChanged(UserId, "created", "household member", householdMember.Id);
 
         return ToContract(householdMember);
     }
@@ -71,6 +72,7 @@ public class HouseholdMemberService : ServiceBase<HouseholdMemberService>, IHous
         householdMember.ChangeYearlyIncome(request.YearlyIncome);
         await NameCheck.SaveKeepingNamesApartAsync(context, NameTakenException.Person,
             FullName(request.FirstName, request.LastName), cancellationToken);
+        Logger.LogChanged(UserId, "updated", "household member", id);
 
         return ToContract(householdMember);
     }
@@ -90,6 +92,7 @@ public class HouseholdMemberService : ServiceBase<HouseholdMemberService>, IHous
             ?? throw new ArgumentException("A linked account needs a sort code and number.", nameof(request))));
 
         await context.SaveChangesAsync(cancellationToken);
+        Logger.LogChanged(UserId, "changed how transfers are recognised for", "household member", id);
 
         // Applied to the transactions already there now, rather than waiting for the next sync
         await _transferMatchingService.MatchAsync(cancellationToken);
@@ -119,6 +122,7 @@ public class HouseholdMemberService : ServiceBase<HouseholdMemberService>, IHous
 
         context.HouseholdMembers.Remove(householdMember);
         await context.SaveChangesAsync(cancellationToken);
+        Logger.LogChanged(UserId, "deleted", "household member", id);
 
         // Their transactions were transfers because of them, so count again or go back to review
         await _transferMatchingService.MatchAsync(cancellationToken);

@@ -87,6 +87,11 @@ public static class ApiRoutes
     public const string Profile = "api/profile";
 
     /// <summary>
+    /// <see cref="Services.IClientErrorsService"/>.
+    /// </summary>
+    public const string ClientErrors = "api/client-errors";
+
+    /// <summary>
     /// <see cref="Services.INetWorthService"/>.
     /// </summary>
     public const string NetWorth = "api/net-worth";

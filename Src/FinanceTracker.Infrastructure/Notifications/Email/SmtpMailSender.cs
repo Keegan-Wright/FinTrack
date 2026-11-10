@@ -1,4 +1,5 @@
 using FinanceTracker.Emails;
+using FinanceTracker.Telemetry;
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using MimeKit;
@@ -16,8 +17,13 @@ public sealed class SmtpMailSender : IMailSender
     public static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);
 
     private readonly MailSettings _settings;
+    private readonly FinTrackMetrics _metrics;
 
-    public SmtpMailSender(MailSettings settings) => _settings = settings;
+    public SmtpMailSender(MailSettings settings, FinTrackMetrics metrics)
+    {
+        _settings = settings;
+        _metrics = metrics;
+    }
 
     public bool IsAvailable => _settings.IsConfigured;
 
@@ -29,6 +35,20 @@ public sealed class SmtpMailSender : IMailSender
             throw new InvalidOperationException("No mail server is set up, set SMTP_HOST to send email.");
         }
 
+        try
+        {
+            await SendThroughAsync(host, message, cancellationToken);
+            _metrics.EmailSent(succeeded: true);
+        }
+        catch (Exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            _metrics.EmailSent(succeeded: false);
+            throw;
+        }
+    }
+
+    private async Task SendThroughAsync(string host, MailMessage message, CancellationToken cancellationToken)
+    {
         using MimeMessage mime = ToMime(message);
         using SmtpClient client = new() { Timeout = (int)Timeout.TotalMilliseconds };
 

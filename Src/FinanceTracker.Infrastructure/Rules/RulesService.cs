@@ -79,6 +79,7 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
 
         context.Rules.Add(newRule);
         await context.SaveChangesAsync(cancellationToken);
+        Logger.LogChanged(UserId, "created", "rule", newRule.Id);
 
         return RuleMapper.ToContract(newRule);
     }
@@ -105,6 +106,7 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
         }
 
         await context.SaveChangesAsync(cancellationToken);
+        Logger.LogChanged(UserId, "updated", "rule", id);
 
         await _ruleApplicationService.ReapplyAsync(id, cancellationToken);
 
@@ -130,6 +132,7 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
         }
 
         await context.SaveChangesAsync(cancellationToken);
+        Logger.LogChangedTheir(UserId, "reordered", "rules");
     }
 
     public async Task<RulePreview> PreviewRuleAsync(Guid? id, SaveRule rule, CancellationToken cancellationToken)
@@ -189,6 +192,7 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
             DomainRule rule = await context.Rules.OwnedBy(UserId).SingleAsync(x => x.Id == id, cancellationToken);
             context.Rules.Remove(rule);
             await context.SaveChangesAsync(cancellationToken);
+            Logger.LogChanged(UserId, "deleted", "rule", id);
         }
 
         // With the rule gone, what it gave is taken back and any later rule that also matches takes over

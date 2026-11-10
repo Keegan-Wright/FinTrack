@@ -39,7 +39,6 @@
     <PackageReference Include="MudBlazor" />
     <PackageReference Include="Extensions.MudBlazor.StaticInput"/>
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
-    <PackageReference Include="OpenTelemetry.Instrumentation.EntityFrameworkCore"/>
     <PackageReference Include="Quartz"/>
   </ItemGroup>
 

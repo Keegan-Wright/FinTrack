@@ -63,6 +63,7 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
 
         await NameCheck.SaveKeepingNamesApartAsync(context, NameTakenException.Tag, classification.Tag,
             cancellationToken);
+        Logger.LogChanged(UserId, "created", "tag", newClassification.Id);
 
         return new Contracts.Classifications.Classification { Tag = newClassification.Tag, ClassificationId = newClassification.Id };
     }
@@ -79,6 +80,7 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
         classification.Rename(request.Tag);
 
         await NameCheck.SaveKeepingNamesApartAsync(context, NameTakenException.Tag, request.Tag, cancellationToken);
+        Logger.LogChanged(UserId, "renamed", "tag", id);
 
         return new Contracts.Classifications.Classification { Tag = classification.Tag, ClassificationId = classification.Id };
     }
@@ -104,6 +106,7 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
         }
 
         await context.SaveChangesAsync(cancellationToken);
+        Logger.LogChanged(UserId, "tagged", "transaction", model.TransactionId);
     }
 
     public async Task RemoveCustomClassificationAsync(Guid id, CancellationToken cancellationToken)
@@ -143,6 +146,7 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
 
         context.CustomClassifications.Remove(classificationToRemove);
         await context.SaveChangesAsync(cancellationToken);
+        Logger.LogChanged(UserId, "deleted", "tag", id);
     }
 
     /// <exception cref="NameTakenException">Another of the user's tags is called <paramref name="tag"/>.</exception>

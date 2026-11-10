@@ -122,6 +122,7 @@ public sealed class NotificationsService : ServiceBase<NotificationsService>, IN
         stored.EmailOnly(settings.Emailed.Select(NotificationMapper.ToDomain));
         stored.WebhookOnly(settings.Webhooked.Select(NotificationMapper.ToDomain));
         await context.SaveChangesAsync(cancellationToken);
+        Logger.LogChangedTheir(UserId, "changed", "notification settings");
         return await ToContractAsync(context, stored, cancellationToken);
     }
 
@@ -138,6 +139,7 @@ public sealed class NotificationsService : ServiceBase<NotificationsService>, IN
         stored.ChangeAlerts(alerts.BudgetWarningPercent, alerts.BillReminderDays, alerts.LargeTransactionOver);
         stored.WatchBalances(await BelowByAccountAsync(context, alerts.LowBalance, cancellationToken));
         await context.SaveChangesAsync(cancellationToken);
+        Logger.LogChangedTheir(UserId, "changed", "alerts");
 
         return await ToContractAsync(context, stored, cancellationToken);
     }
@@ -191,6 +193,7 @@ public sealed class NotificationsService : ServiceBase<NotificationsService>, IN
         DomainNotificationSettings stored = await FindOrAddSettingsAsync(context, cancellationToken);
         stored.SetWebhook(url.ToString(), WebhookSignature.NewSecret());
         await context.SaveChangesAsync(cancellationToken);
+        Logger.LogChangedTheir(UserId, "set", "webhook");
         return new WebhookChange { Settings = await ToContractAsync(context, stored, cancellationToken) };
     }
 
@@ -207,6 +210,7 @@ public sealed class NotificationsService : ServiceBase<NotificationsService>, IN
 
         stored.RemoveWebhook();
         await context.SaveChangesAsync(cancellationToken);
+        Logger.LogChangedTheir(UserId, "removed", "webhook");
         return await ToContractAsync(context, stored, cancellationToken);
     }
 
@@ -222,6 +226,7 @@ public sealed class NotificationsService : ServiceBase<NotificationsService>, IN
         }
 
         await context.SaveChangesAsync(cancellationToken);
+        Logger.LogChangedTheir(UserId, "replaced", "webhook secret");
         return await ToContractAsync(context, stored, cancellationToken);
     }
 

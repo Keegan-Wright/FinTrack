@@ -15,6 +15,11 @@ public sealed record RuleOutcome(IReadOnlyList<RuleTag> Tags, RuleTransfer? Tran
     IReadOnlyList<HiddenClassification> HiddenClassifications, RuleBill? Bill = null, RuleDebt? Debt = null)
 {
     /// <summary>
+    /// The rules that matched, in the order they ran, whether or not their actions changed anything.
+    /// </summary>
+    public IReadOnlyList<Guid> MatchedRuleIds { get; init; } = [];
+
+    /// <summary>
     /// Tags and a transfer answer, hiding nothing.
     /// </summary>
     public RuleOutcome(IReadOnlyList<RuleTag> tags, RuleTransfer? transfer) : this(tags, transfer, [])

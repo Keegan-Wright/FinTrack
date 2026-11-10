@@ -33,6 +33,7 @@ public static class RuleEvaluator
         RuleTransfer? transfer = null;
         RuleBill? bill = null;
         RuleDebt? debt = null;
+        List<Guid> matched = [];
 
         // By id after order so rules sharing a position always run the same way
         IEnumerable<Rule> enabled = rules
@@ -52,6 +53,8 @@ public static class RuleEvaluator
             {
                 continue;
             }
+
+            matched.Add(rule.Id);
 
             foreach (RuleAction action in rule.Actions)
             {
@@ -81,7 +84,7 @@ public static class RuleEvaluator
             }
         }
 
-        return new RuleOutcome(tags, transfer, hidden, bill, debt);
+        return new RuleOutcome(tags, transfer, hidden, bill, debt) { MatchedRuleIds = matched };
     }
 
     /// <summary>

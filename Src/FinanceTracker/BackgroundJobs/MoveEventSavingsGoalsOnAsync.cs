@@ -2,6 +2,7 @@ using System.Diagnostics;
 using FinanceTracker.Domain.Calendar;
 using FinanceTracker.Domain.SavingsGoals;
 using FinanceTracker.Infrastructure;
+using FinanceTracker.Telemetry;
 using Microsoft.EntityFrameworkCore;
 using Quartz;
 
@@ -28,7 +29,7 @@ public class MoveEventSavingsGoalsOnAsync : IJob
 
     private async Task MoveGoalsOnAsync(CancellationToken cancellationToken)
     {
-        using Activity? activity = Telemetry.ActivitySource.StartActivity(nameof(MoveEventSavingsGoalsOnAsync));
+        using Activity? activity = FinTrackActivitySources.App.StartActivity(nameof(MoveEventSavingsGoalsOnAsync));
 
         await using FinanceTrackerContext dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
 

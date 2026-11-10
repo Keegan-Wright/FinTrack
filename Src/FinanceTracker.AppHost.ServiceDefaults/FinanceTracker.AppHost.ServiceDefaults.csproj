@@ -26,4 +26,8 @@
     <PackageReference Include="OpenTelemetry.Resources.ProcessRuntime"/>
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\FinanceTracker.Telemetry\FinanceTracker.Telemetry.csproj"/>
+  </ItemGroup>
+
 </Project>

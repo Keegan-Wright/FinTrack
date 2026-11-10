@@ -140,6 +140,7 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
         context.CalendarEvents.Add(added);
         await NameCheck.SaveKeepingNamesApartAsync(context, NameTakenException.SavingsGoal, calendarEvent.Title,
             cancellationToken);
+        Logger.LogChanged(UserId, "created", "calendar event", added.Id);
         return CalendarEventMapper.ToContract(added, goal?.Name, _timeProvider.Today);
     }
 
@@ -157,6 +158,7 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
 
         await NameCheck.SaveKeepingNamesApartAsync(context, NameTakenException.SavingsGoal, calendarEvent.Title,
             cancellationToken);
+        Logger.LogChanged(UserId, "updated", "calendar event", id);
         return CalendarEventMapper.ToContract(updated, goal?.Name, _timeProvider.Today);
     }
 
@@ -168,6 +170,7 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
 
         context.CalendarEvents.Remove(calendarEvent);
         await context.SaveChangesAsync(cancellationToken);
+        Logger.LogChanged(UserId, "deleted", "calendar event", id);
     }
 
     private async Task<DomainCalendarEvent> FindEventAsync(FinanceTrackerContext context, Guid id,

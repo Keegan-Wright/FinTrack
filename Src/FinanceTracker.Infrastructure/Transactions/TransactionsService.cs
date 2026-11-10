@@ -59,7 +59,7 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
 
     public Task<Transaction> HideBankClassificationAsync(Guid transactionId, ChangeBankClassification request,
         CancellationToken cancellationToken) =>
-        ChangeAsync(transactionId, (_, transaction) =>
+        ChangeAsync(transactionId, "hid a bank classification on", (_, transaction) =>
         {
             if (!transaction.ProviderClassifications.Contains(request.Classification, StringComparer.OrdinalIgnoreCase))
             {
@@ -74,7 +74,7 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
     public Task<Transaction> ShowBankClassificationAsync(Guid transactionId, ChangeBankClassification request,
         CancellationToken cancellationToken)
     {
-        return ChangeAsync(transactionId, (_, transaction) =>
+        return ChangeAsync(transactionId, "showed a bank classification on", (_, transaction) =>
         {
             transaction.ShowClassification(request.Classification);
             return Task.CompletedTask;
@@ -84,7 +84,7 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
     public Task<Transaction> SplitAsync(Guid transactionId, SplitTransaction request,
         CancellationToken cancellationToken)
     {
-        return ChangeAsync(transactionId, async (context, transaction) =>
+        return ChangeAsync(transactionId, "split", async (context, transaction) =>
         {
             List<Guid> tagIds = request.Parts.Select(static x => x.TagId).OfType<Guid>().Distinct().ToList();
             List<CustomClassification> tags = await context.CustomClassifications.OwnedBy(UserId)
@@ -108,7 +108,7 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
 
     public Task<Transaction> UnsplitAsync(Guid transactionId, CancellationToken cancellationToken)
     {
-        return ChangeAsync(transactionId, (_, transaction) =>
+        return ChangeAsync(transactionId, "unsplit", (_, transaction) =>
         {
             transaction.Unsplit();
             return Task.CompletedTask;
@@ -128,8 +128,9 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
     /// <summary>
     /// Makes <paramref name="change"/> to one of the user's transactions and returns it as it is now.
     /// </summary>
+    /// <param name="action">What the change was, for the log, e.g. <c>split</c>.</param>
     /// <exception cref="InvalidOperationException">The user has no such transaction.</exception>
-    private async Task<Transaction> ChangeAsync(Guid transactionId,
+    private async Task<Transaction> ChangeAsync(Guid transactionId, string action,
         Func<FinanceTrackerContext, BankTransaction, Task> change, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -140,6 +141,7 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
 
         await change(context, transaction);
         await context.SaveChangesAsync(cancellationToken);
+        Logger.LogChanged(UserId, action, "transaction", transactionId);
 
         Dictionary<Guid, string> customTags = await context.CustomClassifications.OwnedBy(UserId)
             .ToDictionaryAsync(static x => x.Id, static x => x.Tag, cancellationToken);

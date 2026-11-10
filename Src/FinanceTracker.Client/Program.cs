@@ -1,5 +1,6 @@
 using ApexCharts;
 using FinanceTracker.Client.Api;
+using FinanceTracker.Client.Diagnostics;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.Logging;
 using MudBlazor.Services;
@@ -21,6 +22,10 @@ public static partial class Program
         WebAssemblyHostBuilder builder = WebAssemblyHostBuilder.CreateDefault(args);
 
         builder.Logging.SetMinimumLevel(LogLevel.Warning);
+
+        // Errors in the browser are sent to the server's logs too, see ClientErrorLoggerProvider
+        builder.Services.AddSingleton<ClientErrorReporter>();
+        builder.Services.AddSingleton<ILoggerProvider, ClientErrorLoggerProvider>();
 
         builder.Services.AddMudServices();
         builder.Services.AddApexCharts();

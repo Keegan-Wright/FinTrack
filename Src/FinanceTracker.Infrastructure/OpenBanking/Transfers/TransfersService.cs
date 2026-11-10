@@ -60,7 +60,7 @@ public class TransfersService : ServiceBase<TransfersService>, ITransfersService
     }
 
     public Task<IReadOnlyList<Transaction>> MarkAsTransferAsync(Guid id, CancellationToken cancellationToken) =>
-        DecideAsync(id, (transaction, partner, decidedAt) =>
+        DecideAsync(id, "marked as a transfer", (transaction, partner, decidedAt) =>
         {
             transaction.MarkAsTransfer(decidedAt);
             // Confirming a suggested pair confirms both halves, otherwise the other half would wait for review alone
@@ -68,7 +68,7 @@ public class TransfersService : ServiceBase<TransfersService>, ITransfersService
         }, cancellationToken);
 
     public Task<IReadOnlyList<Transaction>> MarkNotATransferAsync(Guid id, CancellationToken cancellationToken) =>
-        DecideAsync(id, (transaction, partner, decidedAt) =>
+        DecideAsync(id, "marked as not a transfer", (transaction, partner, decidedAt) =>
         {
             transaction.MarkNotATransfer(decidedAt);
             // The other half was only a transfer because of this one, so FinTrack decides about it again
@@ -76,7 +76,7 @@ public class TransfersService : ServiceBase<TransfersService>, ITransfersService
         }, cancellationToken);
 
     public Task<IReadOnlyList<Transaction>> ResetTransferAsync(Guid id, CancellationToken cancellationToken) =>
-        DecideAsync(id, static (transaction, partner, _) =>
+        DecideAsync(id, "reset the transfer answer on", static (transaction, partner, _) =>
         {
             transaction.ClearTransfer(DecisionSource.User);
             // Halves confirmed together are reset together, a confirmed half would otherwise hold the other in place
@@ -90,8 +90,9 @@ public class TransfersService : ServiceBase<TransfersService>, ITransfersService
     /// Applies the user's <paramref name="decide"/> to the transaction and the other half that names it back, then
     /// re-matches around them so the pairs they affect update.
     /// </summary>
+    /// <param name="action">What the user decided, for the log, e.g. <c>marked as a transfer</c>.</param>
     /// <returns>The transaction and its other halves before and after, as they are now.</returns>
-    private async Task<IReadOnlyList<Transaction>> DecideAsync(Guid id,
+    private async Task<IReadOnlyList<Transaction>> DecideAsync(Guid id, string action,
         Action<BankTransaction, BankTransaction?, DateTime> decide, CancellationToken cancellationToken)
     {
         HashSet<Guid> affected = [id];
@@ -121,6 +122,7 @@ public class TransfersService : ServiceBase<TransfersService>, ITransfersService
 
             decide(transaction, partner, _timeProvider.UtcNow);
             await context.SaveChangesAsync(cancellationToken);
+            Logger.LogChanged(UserId, action, "transaction", id);
         }
 
         await _transferMatchingService.MatchAroundAsync(affected, cancellationToken);

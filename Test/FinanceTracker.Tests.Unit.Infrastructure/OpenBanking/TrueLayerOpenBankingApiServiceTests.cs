@@ -4,6 +4,7 @@ using System.Text.Json;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.OpenBanking.TrueLayer;
 using FinanceTracker.Infrastructure.OpenBanking.TrueLayer.Contracts;
+using FinanceTracker.Telemetry;
 using FinanceTracker.Tests.Unit.Shared;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -578,6 +579,20 @@ public class TrueLayerOpenBankingApiServiceTests : UnitTestBase
             await Assert.That(thrown!.StatusCode).IsEqualTo(HttpStatusCode.TooManyRequests);
             await Assert.That(thrown.Message).Contains("429").And.Contains("tl-trace-id trace-123");
         }
+    }
+
+    [Test]
+    public async Task GetAllAccountsAsync_RefusedRequest_TagsTheSpanThatAskedWithTheTraceId()
+    {
+        TrueLayerOpenBankingApiService subject = BuildSubject(_ => Task.FromResult(TooManyRequests()));
+        using SpanRecorder spans = new();
+
+        using (spans.StartRoot())
+        {
+            await subject.GetAllAccountsAsync("token", CancellationToken);
+        }
+
+        await Assert.That(spans.Root.GetTagItem(TelemetryTags.TrueLayerTraceId)).IsEqualTo("trace-123");
     }
 
     [Test]

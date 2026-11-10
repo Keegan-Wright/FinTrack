@@ -3,10 +3,13 @@ using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Notifications;
 using FinanceTracker.Infrastructure.Notifications.Email;
 using FinanceTracker.Infrastructure.Notifications.Webhooks;
+using FinanceTracker.Telemetry;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.Metrics.Testing;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 
@@ -50,6 +53,36 @@ public class NotifierTests : InfrastructureTestBase
             await _mail.Received(1).SendAsync(
                 Arg.Is<MailMessage>(x => x.To == Address && x.Subject == "Bank access has ended"),
                 Arg.Any<CancellationToken>());
+        }
+    }
+
+    [Test]
+    public async Task Notify_NewEvent_LogsItAndMarksTheSpanThatRaisedIt()
+    {
+        // Arrange
+        CapturingLogger<Notifier> logger = new();
+        using TestMetrics metrics = new();
+        using MetricCollector<long> raised = metrics.Collect<long>(FinTrackMetrics.NotificationsRaisedName);
+        using MetricCollector<long> delivered = metrics.Collect<long>(FinTrackMetrics.NotificationsDeliveredName);
+        using SpanRecorder spans = new();
+
+        // Act
+        using (spans.StartRoot())
+        {
+            await Notify("consent-ended:a", logger, metrics.Metrics);
+        }
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(logger.Entries.Single().Message)
+                .StartsWith($"Notified user {Scenario.UserMappings[Username]} of ConsentEnded")
+                .And.EndsWith("in app True, emailed True, webhook False");
+            await Assert.That(spans.Root.Events.Select(x => x.Name)).IsEquivalentTo(["Notified"]);
+            await Assert.That(spans.Root.GetTagItem(TelemetryTags.NotificationsRaised)).IsEqualTo(1);
+            await Assert.That(raised.LastMeasurement!.Tags[TelemetryTags.NotificationKind]).IsEqualTo("ConsentEnded");
+            await Assert.That(delivered.LastMeasurement!.Tags[TelemetryTags.NotificationChannel]).IsEqualTo("email");
+            await Assert.That(delivered.LastMeasurement.Tags[TelemetryTags.Outcome]).IsEqualTo("succeeded");
         }
     }
 
@@ -334,9 +367,10 @@ public class NotifierTests : InfrastructureTestBase
         await context.SaveChangesAsync(CancellationToken);
     }
 
-    private Task<bool> Notify(string key) =>
-        new Notifier(CurrentUserFor(Username), DbContextFactory, NullLogger<Notifier>.Instance, _publisher, _mail,
-                TestEmails.Create(), _webhooks, PublicAddress.Unknown, new FixedTimeProvider(Now))
+    private Task<bool> Notify(string key, ILogger<Notifier>? logger = null, FinTrackMetrics? metrics = null) =>
+        new Notifier(CurrentUserFor(Username), DbContextFactory, logger ?? NullLogger<Notifier>.Instance, _publisher, _mail,
+                TestEmails.Create(), _webhooks, PublicAddress.Unknown, new FixedTimeProvider(Now),
+                metrics ?? TestMetrics.Unobserved)
             .NotifyAsync(NotificationKind.ConsentEnded, key, "Bank access has ended",
                 "FinTrack can no longer sync Bank.", "ProviderSetup", CancellationToken);
 }
