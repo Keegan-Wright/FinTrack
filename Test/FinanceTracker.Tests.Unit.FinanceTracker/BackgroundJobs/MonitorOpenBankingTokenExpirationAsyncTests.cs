@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using FinanceTracker.BackgroundJobs;
 using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Infrastructure;
@@ -186,6 +187,7 @@ public class MonitorOpenBankingTokenExpirationAsyncTests : InfrastructureTestBas
         });
 
         return new MonitorOpenBankingTokenExpirationAsync(DbContextFactory,
-            services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(), TimeProvider.System);
+            services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(), TimeProvider.System,
+            NullLogger<MonitorOpenBankingTokenExpirationAsync>.Instance);
     }
 }

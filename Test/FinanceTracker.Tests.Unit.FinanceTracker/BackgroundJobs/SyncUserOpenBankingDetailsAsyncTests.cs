@@ -1,6 +1,7 @@
 using FinanceTracker.BackgroundJobs;
 using FinanceTracker.Contracts;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 
@@ -109,5 +110,6 @@ public class SyncUserOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
         }
     }
 
-    private SyncUserOpenBankingDetailsAsync BuildSubject() => new(ScopeFactory, DbContextFactory, SyncNotifier, Clock);
+    private SyncUserOpenBankingDetailsAsync BuildSubject() =>
+        new(ScopeFactory, DbContextFactory, SyncNotifier, Clock, NullLogger<OpenBankingSyncJob>.Instance);
 }

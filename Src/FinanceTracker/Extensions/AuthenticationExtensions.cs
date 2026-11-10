@@ -4,6 +4,7 @@ using FinanceTracker.Components.Account.Pages;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Domain.Identity;
 using FinanceTracker.Infrastructure;
+using FinanceTracker.Middleware;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -86,17 +87,13 @@ public static class AuthenticationExtensions
         }
 
         /// <summary>
-        /// Sets the request's <see cref="CurrentUser"/>. Authentication has already run, so the user is known. Covers
-        /// the static Identity pages, prerendering the client's pages, and the API the browser calls.
+        /// Sets the request's <see cref="CurrentUser"/> and tags its span and logs with them, see
+        /// <see cref="CurrentUserMiddleware"/>. Covers the static Identity pages, prerendering the client's pages, and
+        /// the API the browser calls.
         /// </summary>
         public WebApplication UseCurrentUser()
         {
-            app.Use((context, next) =>
-            {
-                context.RequestServices.GetRequiredService<CurrentUser>().Set(context.User);
-                return next(context);
-            });
-
+            app.UseMiddleware<CurrentUserMiddleware>();
             return app;
         }
 

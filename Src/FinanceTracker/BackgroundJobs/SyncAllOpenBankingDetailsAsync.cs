@@ -11,8 +11,8 @@ public class SyncAllOpenBankingDetailsAsync : OpenBankingSyncJob, IJob
 {
     public SyncAllOpenBankingDetailsAsync(IServiceScopeFactory scopeFactory,
         IDbContextFactory<FinanceTrackerContext> dbContextFactory, ISyncNotifier syncNotifier,
-        TimeProvider timeProvider)
-        : base(scopeFactory, dbContextFactory, syncNotifier, timeProvider)
+        TimeProvider timeProvider, ILogger<OpenBankingSyncJob> logger)
+        : base(scopeFactory, dbContextFactory, syncNotifier, timeProvider, logger)
     {
     }
 

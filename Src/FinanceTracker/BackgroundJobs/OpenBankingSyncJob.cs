@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Linq.Expressions;
 using FinanceTracker.Contracts;
 using FinanceTracker.Domain.Identity;
+using FinanceTracker.Extensions;
 using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Bills;
@@ -22,7 +23,6 @@ namespace FinanceTracker.BackgroundJobs;
 /// </summary>
 public abstract class OpenBankingSyncJob
 {
-    private const string UserIdTag = "user.id";
     private const string ConnectionIdTag = "fintrack.connection.id";
     private const string ConnectionCountTag = "fintrack.connection.count";
 
@@ -30,11 +30,13 @@ public abstract class OpenBankingSyncJob
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ISyncNotifier _syncNotifier;
     private readonly TimeProvider _timeProvider;
+    private readonly ILogger<OpenBankingSyncJob> _logger;
 
     protected OpenBankingSyncJob(IServiceScopeFactory scopeFactory,
         IDbContextFactory<FinanceTrackerContext> dbContextFactory, ISyncNotifier syncNotifier,
-        TimeProvider timeProvider)
+        TimeProvider timeProvider, ILogger<OpenBankingSyncJob> logger)
     {
+        _logger = logger;
         _scopeFactory = scopeFactory;
         _dbContextFactory = dbContextFactory;
         _syncNotifier = syncNotifier;
@@ -82,7 +84,8 @@ public abstract class OpenBankingSyncJob
         foreach ((Guid connectionId, Guid userId) in toSync)
         {
             // A span for each connection, so its bank calls and queries sit under it in the trace
-            using Activity? connectionActivity = StartActivity("Sync connection", userId);
+            using Activity? connectionActivity = Telemetry.StartUserActivity("Sync connection", userId);
+            using IDisposable? logScope = _logger.BeginUserScope(userId);
             connectionActivity?.SetTag(ConnectionIdTag, connectionId.ToString());
 
             try
@@ -99,7 +102,7 @@ public abstract class OpenBankingSyncJob
             }
             catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
-                RecordError(connectionActivity, ex);
+                Telemetry.RecordError(connectionActivity, ex);
                 await RecordFailedAsync(connectionId, userId, connectionActivity, cancellationToken);
             }
         }
@@ -107,7 +110,8 @@ public abstract class OpenBankingSyncJob
         foreach (Guid userId in owners)
         {
             // A span for each owner's steps after their connections synced, each step a span inside it
-            using Activity? ownerActivity = StartActivity("Update owner", userId);
+            using Activity? ownerActivity = Telemetry.StartUserActivity("Update owner", userId);
+            using IDisposable? logScope = _logger.BeginUserScope(userId);
 
             // Rules on what the sync brought in or changed, before transfers so the matcher sees what they decided
             await RunAsOwnerAsync<IRuleApplicationService>(userId, "Apply rules",
@@ -163,19 +167,19 @@ public abstract class OpenBankingSyncJob
     /// </summary>
     private async Task NotifyOwnerAsync(Guid userId, CancellationToken cancellationToken)
     {
-        using Activity? notifyActivity = StartActivity("Send sync notices", userId);
+        using Activity? notifyActivity = Telemetry.StartUserActivity("Send sync notices", userId);
 
         await using AsyncServiceScope scope = _scopeFactory.CreateUserScope(userId);
         foreach (ISyncNotices notices in scope.ServiceProvider.GetServices<ISyncNotices>())
         {
-            using Activity? noticesActivity = StartActivity(notices.GetType().Name, userId);
+            using Activity? noticesActivity = Telemetry.StartUserActivity(notices.GetType().Name, userId);
             try
             {
                 await notices.NotifyAsync(cancellationToken);
             }
             catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
-                RecordError(noticesActivity, ex);
+                Telemetry.RecordError(noticesActivity, ex);
             }
         }
     }
@@ -189,7 +193,7 @@ public abstract class OpenBankingSyncJob
     private async Task RunAsOwnerAsync<TService>(Guid userId, string step, Func<TService, Task> run)
         where TService : notnull
     {
-        using Activity? activity = StartActivity(step, userId);
+        using Activity? activity = Telemetry.StartUserActivity(step, userId);
         try
         {
             await using AsyncServiceScope scope = _scopeFactory.CreateUserScope(userId);
@@ -197,23 +201,8 @@ public abstract class OpenBankingSyncJob
         }
         catch (Exception ex)
         {
-            RecordError(activity, ex);
+            Telemetry.RecordError(activity, ex);
         }
-    }
-
-    // A child of the current span, tagged with whose sync it's part of
-    private static Activity? StartActivity(string name, Guid userId)
-    {
-        Activity? activity = Telemetry.ActivitySource.StartActivity(name);
-        activity?.SetTag(UserIdTag, userId.ToString());
-        return activity;
-    }
-
-    // Marks the span failed, so the trace shows it in red with the exception on it
-    private static void RecordError(Activity? activity, Exception ex)
-    {
-        activity?.AddException(ex);
-        activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
     }
 
     protected async Task NotifyAsync(IEnumerable<Guid> userIds)

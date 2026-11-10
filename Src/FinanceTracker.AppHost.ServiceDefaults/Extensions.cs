@@ -12,20 +12,29 @@ using OpenTelemetry.Trace;
 
 namespace FinanceTracker.AppHost.ServiceDefaults;
 
-// Adds common Aspire services: service discovery, resilience, health checks, and OpenTelemetry.
+// Adds common Aspire services service discovery, resilience, health checks, and OpenTelemetry.
 // This project should be referenced by each service project in your solution.
 // To learn more about using this project, see https://aka.ms/dotnet/aspire/service-defaults
 public static class Extensions
 {
-    private const string HealthEndpointPath = "/health";
+    internal const string HealthEndpointPath = "/health";
 
     /// <summary>
     /// The activity source and meter Quartz 4 publishes through, <c>Quartz.Diagnostics.QuartzInstrumentation</c>'s
-    /// ActivitySourceName and MeterName. Built in, so no instrumentation package: OpenTelemetry.Instrumentation.Quartz
-    /// produces no spans on Quartz 4.
+    /// ActivitySourceName and MeterName.
     /// </summary>
     private const string QuartzInstrumentationName = "Quartz";
-    private const string AlivenessEndpointPath = "/alive";
+    internal const string AlivenessEndpointPath = "/alive";
+
+    /// <summary>
+    /// The meter EF Core publishes through.
+    /// </summary>
+    private const string EntityFrameworkCoreMeterName = "Microsoft.EntityFrameworkCore";
+
+    /// <summary>
+    /// The activity source ASP.NET Core's SignalR server publishes hub method calls through.
+    /// </summary>
+    private const string SignalRServerActivitySource = "Microsoft.AspNetCore.SignalR.Server";
 
     extension<TBuilder>(TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
@@ -76,6 +85,10 @@ public static class Extensions
 
                     metrics.AddNpgsqlInstrumentation();
 
+                    // EF Core's own active contexts, queries and SaveChanges calls, compiled query cache hits and
+                    // misses, optimistic concurrency failures and execution strategy retries
+                    metrics.AddMeter(EntityFrameworkCoreMeterName);
+
                     // Job run times, retries, misfires and the store's operations
                     metrics.AddMeter(QuartzInstrumentationName);
                 })
@@ -84,13 +97,18 @@ public static class Extensions
                     // A span for each job run and each store write, the jobs' own spans inside them
                     tracing.AddSource(QuartzInstrumentationName);
 
+                    // Each hub method call the browser makes, ASP.NET Core's own source
+                    tracing.AddSource(SignalRServerActivitySource);
+
                     tracing.AddSource(builder.Environment.ApplicationName)
-                        .AddAspNetCoreInstrumentation(aspNetCoreTraceInstrumentationOptions =>
-                            aspNetCoreTraceInstrumentationOptions.Filter = context =>
-                                !context.Request.Path.StartsWithSegments(HealthEndpointPath)
-                                && !context.Request.Path.StartsWithSegments(AlivenessEndpointPath)
-                        )
-                        .AddHttpClientInstrumentation()
+                        .AddAspNetCoreInstrumentation(options =>
+                        {
+                            options.Filter = TraceFilters.IsTraced;
+
+                            // An exception the request threw, on its span as well as in the logs
+                            options.RecordException = true;
+                        })
+                        .AddHttpClientInstrumentation(options => options.RecordException = true)
                         .AddNpgsql();
                 });
             builder.AddOpenTelemetryExporters();

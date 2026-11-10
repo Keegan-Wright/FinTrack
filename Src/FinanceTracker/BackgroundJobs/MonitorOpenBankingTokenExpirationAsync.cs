@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using FinanceTracker.Domain.Identity;
 using FinanceTracker.Domain.OpenBanking.Connections;
+using FinanceTracker.Extensions;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Notifications;
 using Microsoft.EntityFrameworkCore;
@@ -17,10 +18,13 @@ public class MonitorOpenBankingTokenExpirationAsync : IJob
     private readonly IDbContextFactory<FinanceTrackerContext> _dbContextFactory;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly TimeProvider _timeProvider;
+    private readonly ILogger<MonitorOpenBankingTokenExpirationAsync> _logger;
 
     public MonitorOpenBankingTokenExpirationAsync(IDbContextFactory<FinanceTrackerContext> dbContextFactory,
-        IServiceScopeFactory scopeFactory, TimeProvider timeProvider)
+        IServiceScopeFactory scopeFactory, TimeProvider timeProvider,
+        ILogger<MonitorOpenBankingTokenExpirationAsync> logger)
     {
+        _logger = logger;
         _dbContextFactory = dbContextFactory;
         _scopeFactory = scopeFactory;
         _timeProvider = timeProvider;
@@ -82,6 +86,9 @@ public class MonitorOpenBankingTokenExpirationAsync : IJob
 
         foreach (Guid owner in owners)
         {
+            // A span for each owner, so a failure shows whose it was
+            using Activity? ownerActivity = Telemetry.StartUserActivity("Send consent notices", owner);
+            using IDisposable? logScope = _logger.BeginUserScope(owner);
             try
             {
                 await using AsyncServiceScope scope = _scopeFactory.CreateUserScope(owner);
@@ -89,7 +96,7 @@ public class MonitorOpenBankingTokenExpirationAsync : IJob
             }
             catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
-                activity?.AddException(ex);
+                Telemetry.RecordError(ownerActivity, ex);
             }
         }
     }
