@@ -18,7 +18,7 @@ namespace FinanceTracker.Tests.Unit.FinanceTracker.Api;
 /// </summary>
 public class ApiEndpointSecurityTests
 {
-    private static readonly string[] AdminRoutes = [ApiRoutes.AutomationJobs, ApiRoutes.AutomationRuns];
+    private static readonly string[] AdminRoutes = [ApiRoutes.AutomationJobs, ApiRoutes.AutomationRuns, ApiRoutes.Users];
 
     [Test]
     public async Task EveryEndpoint_NeedsASignedInUser()

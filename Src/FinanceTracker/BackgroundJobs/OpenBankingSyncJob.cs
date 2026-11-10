@@ -20,6 +20,10 @@ namespace FinanceTracker.BackgroundJobs;
 /// </summary>
 public abstract class OpenBankingSyncJob
 {
+    private const string UserIdTag = "user.id";
+    private const string ConnectionIdTag = "fintrack.connection.id";
+    private const string ConnectionCountTag = "fintrack.connection.count";
+
     private readonly IDbContextFactory<FinanceTrackerContext> _dbContextFactory;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ISyncNotifier _syncNotifier;
@@ -61,6 +65,8 @@ public abstract class OpenBankingSyncJob
             }
         }
 
+        performingBackgroundSyncActivity?.SetTag(ConnectionCountTag, toSync.Count);
+
         // Every owner's browsers show it syncing, whoever asked or if it's the schedule
         HashSet<Guid> owners = toSync.Select(static x => x.UserId).ToHashSet();
         foreach (Guid owner in owners)
@@ -70,8 +76,9 @@ public abstract class OpenBankingSyncJob
 
         foreach ((Guid connectionId, Guid userId) in toSync)
         {
-            performingBackgroundSyncActivity?.AddEvent(
-                new ActivityEvent($"Processing Connection {connectionId} for User {userId}"));
+            // A span for each connection, so its bank calls and queries sit under it in the trace
+            using Activity? connectionActivity = StartActivity("Sync connection", userId);
+            connectionActivity?.SetTag(ConnectionIdTag, connectionId.ToString());
 
             try
             {
@@ -84,47 +91,43 @@ public abstract class OpenBankingSyncJob
                 await openBankingSyncService.SyncConnectionAsync(connectionId, SyncTypes.All, cancellationToken);
                 await scope.ServiceProvider.GetRequiredService<ISyncHealth>()
                     .RecordSucceededAsync(connectionId, cancellationToken);
-
-                performingBackgroundSyncActivity?.AddEvent(
-                    new ActivityEvent($"Finished Processing Connection {connectionId} for User {userId}"));
             }
             catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
-                performingBackgroundSyncActivity?.AddException(ex);
-                await RecordFailedAsync(connectionId, userId, performingBackgroundSyncActivity, cancellationToken);
+                RecordError(connectionActivity, ex);
+                await RecordFailedAsync(connectionId, userId, connectionActivity, cancellationToken);
             }
         }
 
         foreach (Guid userId in owners)
         {
+            // A span for each owner's steps after their connections synced, each step a span inside it
+            using Activity? ownerActivity = StartActivity("Update owner", userId);
+
             // Rules on what the sync brought in or changed, before transfers so the matcher sees what they decided
-            await RunAsOwnerAsync<IRuleApplicationService>(userId, "Applied rules", performingBackgroundSyncActivity,
+            await RunAsOwnerAsync<IRuleApplicationService>(userId, "Apply rules",
                 x => x.ApplyChangesAsync(startedAt, cancellationToken));
 
-            await RunAsOwnerAsync<ITransferMatchingService>(userId, "Matched transfers",
-                performingBackgroundSyncActivity, x => x.MatchChangesAsync(cancellationToken));
+            await RunAsOwnerAsync<ITransferMatchingService>(userId, "Match transfers",
+                x => x.MatchChangesAsync(cancellationToken));
 
             // Bills after rules, so the matcher sees which bills rules said were paid
-            await RunAsOwnerAsync<IBillSyncService>(userId, "Synced bills", performingBackgroundSyncActivity,
-                x => x.SyncAsync(cancellationToken));
+            await RunAsOwnerAsync<IBillSyncService>(userId, "Sync bills", x => x.SyncAsync(cancellationToken));
 
             // After transfers, so money moved from the user's own accounts isn't taken as pay
-            await RunAsOwnerAsync<IPaySyncService>(userId, "Synced pay", performingBackgroundSyncActivity,
-                x => x.SyncAsync(cancellationToken));
+            await RunAsOwnerAsync<IPaySyncService>(userId, "Sync pay", x => x.SyncAsync(cancellationToken));
 
             // After the rules, so net worth counts the debt payments they linked
             await RunAsOwnerAsync<IBalanceSnapshotService>(userId, "Snapshot balances",
-                performingBackgroundSyncActivity, x => x.SnapshotAsync(today, startedAt, cancellationToken));
+                x => x.SnapshotAsync(today, startedAt, cancellationToken));
 
             // After today's snapshot, so newly connected accounts are worked back from it
-            await RunAsOwnerAsync<IBalanceSnapshotService>(userId, "Backfilled balance history",
-                performingBackgroundSyncActivity, x => x.BackfillAsync(cancellationToken));
+            await RunAsOwnerAsync<IBalanceSnapshotService>(userId, "Backfill balance history",
+                x => x.BackfillAsync(cancellationToken));
 
             // Last, so they're told about bills, budgets, payments and balances as everything above left them
-            await NotifyOwnerAsync(userId, performingBackgroundSyncActivity, cancellationToken);
+            await NotifyOwnerAsync(userId, cancellationToken);
         }
-
-        performingBackgroundSyncActivity?.AddEvent(new ActivityEvent("Background sync completed"));
 
         return owners;
     }
@@ -150,46 +153,62 @@ public abstract class OpenBankingSyncJob
     }
 
     /// <summary>
-    /// Runs every <see cref="ISyncNotices"/> as <paramref name="userId"/>. One failing is recorded on
-    /// <paramref name="activity"/> and the rest still run.
+    /// Runs every <see cref="ISyncNotices"/> as <paramref name="userId"/>, each in its own span. One failing is
+    /// recorded on its span and the rest still run.
     /// </summary>
-    private async Task NotifyOwnerAsync(Guid userId, Activity? activity, CancellationToken cancellationToken)
+    private async Task NotifyOwnerAsync(Guid userId, CancellationToken cancellationToken)
     {
+        using Activity? notifyActivity = StartActivity("Send sync notices", userId);
+
         await using AsyncServiceScope scope = _scopeFactory.CreateUserScope(userId);
         foreach (ISyncNotices notices in scope.ServiceProvider.GetServices<ISyncNotices>())
         {
+            using Activity? noticesActivity = StartActivity(notices.GetType().Name, userId);
             try
             {
-                    await notices.NotifyAsync(cancellationToken);
-                activity?.AddEvent(new ActivityEvent($"Ran {notices.GetType().Name} for User {userId}"));
+                await notices.NotifyAsync(cancellationToken);
             }
             catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
-                activity?.AddException(ex);
+                RecordError(noticesActivity, ex);
             }
         }
     }
 
     /// <summary>
     /// Runs <paramref name="run"/> on a <typeparamref name="TService"/> resolved in a scope acting as
-    /// <paramref name="userId"/>, as these services work for the current user. A failure is recorded on
-    /// <paramref name="activity"/> rather than thrown, so it doesn't stop the other steps or owners.
+    /// <paramref name="userId"/>, as these services work for the current user. A failure is recorded on the step's
+    /// span rather than thrown, so it doesn't stop the other steps or owners.
     /// </summary>
-    /// <param name="done">What the step did, for the activity event e.g. <c>Applied rules</c>.</param>
-    private async Task RunAsOwnerAsync<TService>(Guid userId, string done, Activity? activity,
-        Func<TService, Task> run) where TService : notnull
+    /// <param name="step">The step's span name, e.g. <c>Apply rules</c>.</param>
+    private async Task RunAsOwnerAsync<TService>(Guid userId, string step, Func<TService, Task> run)
+        where TService : notnull
     {
+        using Activity? activity = StartActivity(step, userId);
         try
         {
             await using AsyncServiceScope scope = _scopeFactory.CreateUserScope(userId);
             await run(scope.ServiceProvider.GetRequiredService<TService>());
-
-            activity?.AddEvent(new ActivityEvent($"{done} for User {userId}"));
         }
         catch (Exception ex)
         {
-            activity?.AddException(ex);
+            RecordError(activity, ex);
         }
+    }
+
+    // A child of the current span, tagged with whose sync it's part of
+    private static Activity? StartActivity(string name, Guid userId)
+    {
+        Activity? activity = Telemetry.ActivitySource.StartActivity(name);
+        activity?.SetTag(UserIdTag, userId.ToString());
+        return activity;
+    }
+
+    // Marks the span failed, so the trace shows it in red with the exception on it
+    private static void RecordError(Activity? activity, Exception ex)
+    {
+        activity?.AddException(ex);
+        activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
     }
 
     protected async Task NotifyAsync(IEnumerable<Guid> userIds)

@@ -62,4 +62,7 @@ public static partial class WebLoggerMessages
 
     [LoggerMessage(LogLevel.Information, "User {userId} changed their email")]
     public static partial void LogEmailChanged(this ILogger logger, Guid userId);
+
+    [LoggerMessage(LogLevel.Information, "Admin {adminId} made a password reset link for user {userId}")]
+    public static partial void LogResetLinkCreated(this ILogger logger, Guid adminId, Guid userId);
 }

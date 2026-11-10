@@ -1,0 +1,141 @@
+@page "/Users"
+@* Everyone who can sign in (IUsersService), for admins: how each signs in and whether their email is confirmed, and
+   a one-time reset link for one who's forgotten their password and can't be emailed one. *@
+@using FinanceTracker.Client.Components.Users
+@using FinanceTracker.Contracts.Auth
+@using FinanceTracker.Contracts.Users
+@using Microsoft.AspNetCore.Authorization
+@inherits PageComponent
+
+@attribute [Authorize(Roles = FinTrackRoles.Admin)]
+@inject IUsersService UsersService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>FinTrack - Users</PageTitle>
+<PageHeader Title="Users" Subtitle="Everyone who can sign in to this FinTrack"/>
+
+<Section>
+    <div class="ft-stack">
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+            Someone who's forgotten their password and can't get a reset email can be given a link from here. They
+            choose the new password, you never see it.
+        </MudText>
+
+        @if (Items is null or { Count: 0 })
+        {
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">Nobody could be loaded.</MudText>
+        }
+        else
+        {
+            <div class="ft-list">
+                @foreach (UserSummary user in Items)
+                {
+                    <div class="ft-list__row ft-users__row">
+                        <MudIcon Icon="@Icons.Material.Outlined.Person" aria-hidden="true"/>
+                        <div class="ft-list__main">
+                            <div class="ft-users__name">
+                                <MudText Typo="Typo.body2" Class="ft-users__username">@user.Username</MudText>
+                                @if (user.IsAdmin)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                                             Color="Color.Primary">Admin</MudChip>
+                                }
+                            </div>
+                            <MudText Typo="Typo.body2" Class="mud-text-secondary ft-users__email">
+                                @EmailText(user)
+                            </MudText>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary">@SignInText(user)</MudText>
+                        </div>
+                        @if (user.HasPassword)
+                        {
+                            <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                                       StartIcon="@Icons.Material.Outlined.Key" Disabled="@_busy"
+                                       aria-label="@($"Make a reset link for {user.Username}")"
+                                       OnClick="@(() => MakeResetLinkAsync(user))">Reset link</MudButton>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</Section>
+
+@code {
+
+    /// <summary>
+    /// The users, loaded once, see <see cref="PageComponent.LoadOnceAsync{T}"/>.
+    /// </summary>
+    [PersistentState]
+    public List<UserSummary>? Items { get; set; }
+
+    private bool _busy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        Items = await LoadOnceAsync(Items, "Loading the users", cancellationToken =>
+            UsersService.GetUsersAsync(cancellationToken).ToListAsync(cancellationToken).AsTask());
+    }
+
+    private static string EmailText(UserSummary user)
+    {
+        if (user.Email is null)
+        {
+            return "No email";
+        }
+
+        if (user.EmailConfirmed)
+        {
+            return $"{user.Email} · Confirmed";
+        }
+
+        return $"{user.Email} · Not confirmed";
+    }
+
+    private static string SignInText(UserSummary user)
+    {
+        if (user.HasPassword && user.UsesIdentityProvider)
+        {
+            return "Signs in with a password or the identity provider";
+        }
+
+        if (user.HasPassword)
+        {
+            return "Signs in with a password";
+        }
+
+        return "Signs in through the identity provider, which looks after their password";
+    }
+
+    internal async Task MakeResetLinkAsync(UserSummary user)
+    {
+        _busy = true;
+        try
+        {
+            ResetLink? link = await UsersService.CreateResetLinkAsync(user.Id, _cts.Token);
+            if (link is null)
+            {
+                Snackbar.Add($"{user.Username} signs in through the identity provider, there's no password to reset",
+                    Severity.Warning);
+                return;
+            }
+
+            DialogParameters<ResetLinkDialog> parameters = new()
+            {
+                { x => x.Username, user.Username },
+                { x => x.Link, link }
+            };
+            await DialogService.ShowAsync<ResetLinkDialog>($"Reset link for {user.Username}", parameters);
+        }
+        catch (Exception) when (!_cts.IsCancellationRequested)
+        {
+            Snackbar.Add("Couldn't make a reset link, try again", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+}

@@ -10,7 +10,7 @@ namespace FinanceTracker.Components.Account;
 /// Emails a user the link that confirms their email, see <c>ConfirmEmail.razor</c>. Notifications and password
 /// resets are only emailed to a confirmed one.
 /// </summary>
-public sealed class EmailConfirmation
+public sealed class EmailConfirmation : IEmailConfirmation
 {
     /// <summary>
     /// The page the link opens, relative to the app.
@@ -20,10 +20,10 @@ public sealed class EmailConfirmation
     private readonly UserManager<FinanceTrackerUser> _userManager;
     private readonly IEmailSender<FinanceTrackerUser> _emailSender;
     private readonly IMailSender _mailSender;
-    private readonly AccountUrls _accountUrls;
+    private readonly IAccountUrls _accountUrls;
 
     public EmailConfirmation(UserManager<FinanceTrackerUser> userManager,
-        IEmailSender<FinanceTrackerUser> emailSender, IMailSender mailSender, AccountUrls accountUrls)
+        IEmailSender<FinanceTrackerUser> emailSender, IMailSender mailSender, IAccountUrls accountUrls)
     {
         _userManager = userManager;
         _emailSender = emailSender;
@@ -31,11 +31,7 @@ public sealed class EmailConfirmation
         _accountUrls = accountUrls;
     }
 
-    /// <summary>
-    /// Sends the link, unless there's nothing to confirm or no way to send it.
-    /// </summary>
-    /// <returns>Whether it was sent not when it's confirmed already, there's no email, or no mail server.</returns>
-    /// <exception cref="Exception">Sending failed, see <see cref="IMailSender.SendAsync"/>.</exception>
+    /// <inheritdoc/>
     public async Task<bool> SendAsync(FinanceTrackerUser user)
     {
         ArgumentNullException.ThrowIfNull(user);

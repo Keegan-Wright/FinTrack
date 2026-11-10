@@ -61,26 +61,30 @@ public class PageAccessTests : IntegrationTestBase
     }
 
     [Test]
-    public async Task AutomationPage_RendersForAnAdmin()
+    [Arguments("/Automation")]
+    [Arguments("/Users")]
+    public async Task AdminPage_RendersForAnAdmin(string path)
     {
         // Arrange
         SignedInUser admin = await RegisterAdminAsync();
 
         // Act
-        HttpResponseMessage response = await admin.Client.GetAsync("/Automation", CancellationToken);
+        HttpResponseMessage response = await admin.Client.GetAsync(path, CancellationToken);
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
     }
 
     [Test]
-    public async Task AutomationPage_SendsNonAdminsToAccessDenied()
+    [Arguments("/Automation")]
+    [Arguments("/Users")]
+    public async Task AdminPage_SendsNonAdminsToAccessDenied(string path)
     {
         // Arrange
         SignedInUser user = await RegisterUserAsync();
 
         // Act
-        HttpResponseMessage response = await user.Client.GetAsync("/Automation", CancellationToken);
+        HttpResponseMessage response = await user.Client.GetAsync(path, CancellationToken);
 
         // Assert
         using (Assert.Multiple())

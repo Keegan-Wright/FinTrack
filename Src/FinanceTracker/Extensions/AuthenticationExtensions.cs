@@ -230,17 +230,19 @@ public static class AuthenticationExtensions
     extension(IServiceCollection services)
     {
         /// <summary>
-        /// What the account pages and <see cref="IProfileService"/> use: Identity's emails, the links they carry,
-        /// and confirming an email.
+        /// What the account pages, <see cref="IProfileService"/> and <see cref="IUsersService"/> use: Identity's
+        /// emails, the links they carry, confirming an email and resetting a password.
         /// </summary>
         public IServiceCollection AddFinTrackAccountServices()
         {
             services.AddSingleton<IEmailSender<FinanceTrackerUser>, IdentityEmailSender>();
             services.AddHttpContextAccessor();
-            services.AddScoped<AccountUrls>();
-            services.AddScoped<EmailConfirmation>();
-            services.AddScoped<EmailChange>();
+            services.AddScoped<IAccountUrls, AccountUrls>();
+            services.AddScoped<IEmailConfirmation, EmailConfirmation>();
+            services.AddScoped<IEmailChange, EmailChange>();
             services.AddScoped<IProfileService, ProfileService>();
+            services.AddScoped<IPasswordReset, PasswordReset>();
+            services.AddScoped<IUsersService, UsersService>();
             return services;
         }
     }

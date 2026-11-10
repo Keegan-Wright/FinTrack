@@ -16,13 +16,13 @@ public sealed class ProfileService : IProfileService
     private readonly SignInManager<FinanceTrackerUser> _signInManager;
     private readonly ICurrentUser _currentUser;
     private readonly IMailSender _mailSender;
-    private readonly EmailConfirmation _emailConfirmation;
-    private readonly EmailChange _emailChange;
+    private readonly IEmailConfirmation _emailConfirmation;
+    private readonly IEmailChange _emailChange;
     private readonly ILogger<ProfileService> _logger;
 
     public ProfileService(UserManager<FinanceTrackerUser> userManager,
         SignInManager<FinanceTrackerUser> signInManager, ICurrentUser currentUser, IMailSender mailSender,
-        EmailConfirmation emailConfirmation, EmailChange emailChange, ILogger<ProfileService> logger)
+        IEmailConfirmation emailConfirmation, IEmailChange emailChange, ILogger<ProfileService> logger)
     {
         _userManager = userManager;
         _signInManager = signInManager;

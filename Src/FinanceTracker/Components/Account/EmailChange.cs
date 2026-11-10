@@ -13,7 +13,7 @@ namespace FinanceTracker.Components.Account;
 /// so it's only used once it's shown to be theirs. The account keeps the old one until then. Without one, straight
 /// away and unconfirmed, as nothing could confirm it.
 /// </summary>
-public sealed class EmailChange
+public sealed class EmailChange : IEmailChange
 {
     /// <summary>
     /// The page the link opens, relative to the app.
@@ -23,10 +23,10 @@ public sealed class EmailChange
     private readonly UserManager<FinanceTrackerUser> _userManager;
     private readonly IMailSender _mailSender;
     private readonly IAccountEmails _emails;
-    private readonly AccountUrls _accountUrls;
+    private readonly IAccountUrls _accountUrls;
 
     public EmailChange(UserManager<FinanceTrackerUser> userManager, IMailSender mailSender, IAccountEmails emails,
-        AccountUrls accountUrls)
+        IAccountUrls accountUrls)
     {
         _userManager = userManager;
         _mailSender = mailSender;
@@ -34,7 +34,7 @@ public sealed class EmailChange
         _accountUrls = accountUrls;
     }
 
-    /// <exception cref="Exception">Sending the link failed, see <see cref="IMailSender.SendAsync"/>.</exception>
+    /// <inheritdoc/>
     public async Task<ProfileChange> RequestAsync(FinanceTrackerUser user, string newEmail)
     {
         ArgumentNullException.ThrowIfNull(user);
