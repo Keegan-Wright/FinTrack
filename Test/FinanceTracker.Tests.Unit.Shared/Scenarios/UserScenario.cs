@@ -42,6 +42,12 @@ public sealed class UserScenario : ScenarioBuilder
         PersistAsync(async context => (await LoadAsync(context, username)).EmailConfirmed = false);
 
     /// <summary>
+    /// Locks the user as an admin does from the users page.
+    /// </summary>
+    public Task<TestingScenario> WithLockedByAdmin(string username) =>
+        PersistAsync(async context => (await LoadAsync(context, username)).LockByAdmin());
+
+    /// <summary>
     /// Links the user to an OpenID Connect provider's <paramref name="subject"/>.
     /// </summary>
     public Task<TestingScenario> WithOidcSubject(string username, string subject) =>

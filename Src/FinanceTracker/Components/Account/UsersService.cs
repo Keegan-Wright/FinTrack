@@ -50,15 +50,16 @@ public sealed class UsersService : IUsersService
                 EmailConfirmed = user.EmailConfirmed,
                 HasPassword = user.PasswordHash is not null,
                 UsesIdentityProvider = user.OpenIdConnectSubject is not null,
-                IsAdmin = admins.Contains(user.Id)
+                IsAdmin = admins.Contains(user.Id),
+                IsLocked = user.IsLockedByAdmin,
+                IsYou = user.Id == _currentUser.UserId
             };
         }
     }
 
     public async Task<ResetLink?> CreateResetLinkAsync(Guid userId, CancellationToken cancellationToken)
     {
-        FinanceTrackerUser user = await _userManager.FindByIdAsync(userId.ToString())
-                                  ?? throw new InvalidOperationException($"There's no user {userId}");
+        FinanceTrackerUser user = await FindAsync(userId);
 
         // Their password is the identity provider's, a reset would give them a way in around it
         if (!await _userManager.HasPasswordAsync(user))
@@ -69,5 +70,43 @@ public sealed class UsersService : IUsersService
         Uri link = await _passwordReset.CreateLinkAsync(user);
         _logger.LogResetLinkCreated(_currentUser.UserId, user.Id);
         return new ResetLink { Url = link.AbsoluteUri, ExpiresAt = _passwordReset.ExpiresAt };
+    }
+
+    public async Task<bool> LockAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        // The admin locking would lose the page to unlock themselves with, and admins are never all locked
+        if (userId == _currentUser.UserId)
+        {
+            return false;
+        }
+
+        FinanceTrackerUser user = await FindAsync(userId);
+        user.LockByAdmin();
+
+        // A new stamp saves the lock with it and signs them out, their cookie is turned away the next time it's checked
+        ThrowIfFailed(await _userManager.UpdateSecurityStampAsync(user));
+        _logger.LogUserLocked(_currentUser.UserId, user.Id);
+        return true;
+    }
+
+    public async Task UnlockAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        FinanceTrackerUser user = await FindAsync(userId);
+        user.Unlock();
+
+        ThrowIfFailed(await _userManager.UpdateAsync(user));
+        _logger.LogUserUnlocked(_currentUser.UserId, user.Id);
+    }
+
+    private async Task<FinanceTrackerUser> FindAsync(Guid userId) =>
+        await _userManager.FindByIdAsync(userId.ToString())
+        ?? throw new InvalidOperationException($"There's no user {userId}");
+
+    private static void ThrowIfFailed(IdentityResult result)
+    {
+        if (!result.Succeeded)
+        {
+            throw new AccountUpdateFailedException(result);
+        }
     }
 }

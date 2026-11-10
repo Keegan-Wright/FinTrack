@@ -14,13 +14,19 @@ public class UsersPageTests : ComponentTestBase
     private static readonly UserSummary Local = new()
     {
         Id = Guid.NewGuid(), Username = "sam", Email = "sam@example.test", EmailConfirmed = true,
-        HasPassword = true, UsesIdentityProvider = false, IsAdmin = true
+        HasPassword = true, UsesIdentityProvider = false, IsAdmin = true, IsLocked = false, IsYou = true
     };
 
     private static readonly UserSummary Provider = new()
     {
         Id = Guid.NewGuid(), Username = "alex", Email = "alex@example.test", EmailConfirmed = false,
-        HasPassword = false, UsesIdentityProvider = true, IsAdmin = false
+        HasPassword = false, UsesIdentityProvider = true, IsAdmin = false, IsLocked = false, IsYou = false
+    };
+
+    private static readonly UserSummary LockedProvider = new()
+    {
+        Id = Provider.Id, Username = "alex", Email = "alex@example.test", EmailConfirmed = false,
+        HasPassword = false, UsesIdentityProvider = true, IsAdmin = false, IsLocked = true, IsYou = false
     };
 
     private readonly IUsersService _service = Substitute.For<IUsersService>();
@@ -35,7 +41,7 @@ public class UsersPageTests : ComponentTestBase
     }
 
     [Test]
-    public async Task Render_SaysHowEachSignsInWithAResetLinkOnlyForAPassword()
+    public async Task Render_SaysHowEachSignsInWithAResetLinkOnlyForAPasswordAndNoLockForYou()
     {
         // Act
         IRenderedComponent<UsersPage> cut = RenderPage();
@@ -49,10 +55,12 @@ public class UsersPageTests : ComponentTestBase
             await Assert.That(local.TextContent).Contains("sam@example.test · Confirmed");
             await Assert.That(local.TextContent).Contains("Signs in with a password");
             await Assert.That(local.TextContent).Contains("Admin");
-            await Assert.That(local.QuerySelectorAll("button")).Count().IsEqualTo(1);
+            await Assert.That(local.TextContent).Contains("You");
+            await Assert.That(ButtonTexts(local)).IsEquivalentTo(["Reset link"]);
             await Assert.That(provider.TextContent).Contains("alex@example.test · Not confirmed");
             await Assert.That(provider.TextContent).Contains("Signs in through the identity provider");
-            await Assert.That(provider.QuerySelectorAll("button")).IsEmpty();
+            await Assert.That(ButtonTexts(provider)).IsEquivalentTo(["Lock"]);
+            await Assert.That(provider.TextContent).DoesNotContain("Locked");
         }
     }
 
@@ -71,7 +79,7 @@ public class UsersPageTests : ComponentTestBase
         cut.WaitForState(() => cut.FindAll(".ft-users__row").Count == 2);
 
         // Act
-        await Row(cut, "sam").QuerySelector("button")!.ClickAsync(new());
+        await RowButton(cut, "sam", "Reset link").ClickAsync(new());
 
         // Assert
         dialogs.WaitForState(() => dialogs.FindAll("textarea").Count == 1);
@@ -84,9 +92,78 @@ public class UsersPageTests : ComponentTestBase
         }
     }
 
+    [Test]
+    public async Task Lock_Confirmed_LocksThemAndShowsThemLocked()
+    {
+        // Arrange
+        _service.GetUsersAsync(Arg.Any<CancellationToken>()).Returns(
+            new[] { Provider, Local }.ToAsyncEnumerable(), new[] { LockedProvider, Local }.ToAsyncEnumerable());
+        _service.LockAsync(Provider.Id, Arg.Any<CancellationToken>()).Returns(true);
+        IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
+        IRenderedComponent<UsersPage> cut = RenderPage();
+        cut.WaitForState(() => cut.FindAll(".ft-users__row").Count == 2);
+
+        // Act
+        Task locking = RowButton(cut, "alex", "Lock").ClickAsync(new());
+        await RowMenu.ConfirmAsync(dialogs, "Lock");
+        await locking.WaitAsync(TestTimeouts.Wait);
+
+        // Assert
+        cut.WaitForState(() => Row(cut, "alex").TextContent.Contains("Locked"));
+        using (Assert.Multiple())
+        {
+            await _service.Received(1).LockAsync(Provider.Id, Arg.Any<CancellationToken>());
+            await Assert.That(ButtonTexts(Row(cut, "alex"))).IsEquivalentTo(["Unlock"]);
+        }
+    }
+
+    [Test]
+    public async Task Lock_Cancelled_LeavesThemBe()
+    {
+        // Arrange
+        IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
+        IRenderedComponent<UsersPage> cut = RenderPage();
+        cut.WaitForState(() => cut.FindAll(".ft-users__row").Count == 2);
+
+        // Act
+        Task locking = RowButton(cut, "alex", "Lock").ClickAsync(new());
+        await RowMenu.ConfirmAsync(dialogs, "Cancel");
+        await locking.WaitAsync(TestTimeouts.Wait);
+
+        // Assert
+        await _service.DidNotReceive().LockAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Unlock_Clicked_UnlocksThemAndShowsTheLockAgain()
+    {
+        // Arrange
+        _service.GetUsersAsync(Arg.Any<CancellationToken>()).Returns(
+            new[] { LockedProvider, Local }.ToAsyncEnumerable(), new[] { Provider, Local }.ToAsyncEnumerable());
+        IRenderedComponent<UsersPage> cut = RenderPage();
+        cut.WaitForState(() => cut.FindAll(".ft-users__row").Count == 2);
+
+        // Act
+        await RowButton(cut, "alex", "Unlock").ClickAsync(new());
+
+        // Assert
+        cut.WaitForState(() => !Row(cut, "alex").TextContent.Contains("Locked"));
+        using (Assert.Multiple())
+        {
+            await _service.Received(1).UnlockAsync(Provider.Id, Arg.Any<CancellationToken>());
+            await Assert.That(ButtonTexts(Row(cut, "alex"))).IsEquivalentTo(["Lock"]);
+        }
+    }
+
     private IRenderedComponent<UsersPage> RenderPage() =>
         Render<UsersPage>(p => p.AddCascadingValue(new ApplicationState()));
 
     private static AngleSharp.Dom.IElement Row(IRenderedComponent<UsersPage> cut, string username) =>
         cut.FindAll(".ft-users__row").Single(x => x.QuerySelector(".ft-users__username")!.TextContent.Trim() == username);
+
+    private static AngleSharp.Dom.IElement RowButton(IRenderedComponent<UsersPage> cut, string username, string text) =>
+        Row(cut, username).QuerySelectorAll("button").Single(x => x.TextContent.Trim() == text);
+
+    private static string[] ButtonTexts(AngleSharp.Dom.IElement row) =>
+        row.QuerySelectorAll("button").Select(static x => x.TextContent.Trim()).ToArray();
 }

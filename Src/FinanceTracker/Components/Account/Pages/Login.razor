@@ -105,7 +105,8 @@
         else if (result.IsLockedOut)
         {
             Logger.LogUserLockedOut();
-            RedirectManager.RedirectTo("Account/Lockout");
+            FinanceTrackerUser? user = await SignInManager.UserManager.FindByNameAsync(LoginRequest.Username);
+            RedirectManager.RedirectTo(Lockout.PathFor(user));
         }
         else
         {

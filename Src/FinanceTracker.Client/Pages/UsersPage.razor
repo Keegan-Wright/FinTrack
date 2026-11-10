@@ -1,6 +1,6 @@
 @page "/Users"
-@* Everyone who can sign in (IUsersService), for admins: how each signs in and whether their email is confirmed, and
-   a one-time reset link for one who's forgotten their password and can't be emailed one. *@
+@* Everyone who can sign in (IUsersService), for admins: how each signs in and whether their email is confirmed, a
+   one-time reset link for one who's forgotten their password and can't be emailed one, and locking one out. *@
 @using FinanceTracker.Client.Components.Users
 @using FinanceTracker.Contracts.Auth
 @using FinanceTracker.Contracts.Users
@@ -20,6 +20,9 @@
         <MudText Typo="Typo.body2" Class="mud-text-secondary">
             Someone who's forgotten their password and can't get a reset email can be given a link from here. They
             choose the new password, you never see it.
+        </MudText>
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+            Locking someone signs them out and stops them signing in until you unlock them.
         </MudText>
 
         @if (Items is null or { Count: 0 })
@@ -41,19 +44,44 @@
                                     <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
                                              Color="Color.Primary">Admin</MudChip>
                                 }
+                                @if (user.IsYou)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">You</MudChip>
+                                }
+                                @if (user.IsLocked)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                                             Color="Color.Warning" Icon="@Icons.Material.Outlined.Lock">Locked</MudChip>
+                                }
                             </div>
                             <MudText Typo="Typo.body2" Class="mud-text-secondary ft-users__email">
                                 @EmailText(user)
                             </MudText>
                             <MudText Typo="Typo.caption" Class="mud-text-secondary">@SignInText(user)</MudText>
                         </div>
-                        @if (user.HasPassword)
-                        {
-                            <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
-                                       StartIcon="@Icons.Material.Outlined.Key" Disabled="@_busy"
-                                       aria-label="@($"Make a reset link for {user.Username}")"
-                                       OnClick="@(() => MakeResetLinkAsync(user))">Reset link</MudButton>
-                        }
+                        <div class="ft-users__actions">
+                            @if (user.HasPassword)
+                            {
+                                <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                                           StartIcon="@Icons.Material.Outlined.Key" Disabled="@_busy"
+                                           aria-label="@($"Make a reset link for {user.Username}")"
+                                           OnClick="@(() => MakeResetLinkAsync(user))">Reset link</MudButton>
+                            }
+                            @if (user.IsLocked)
+                            {
+                                <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                                           StartIcon="@Icons.Material.Outlined.LockOpen" Disabled="@_busy"
+                                           aria-label="@($"Unlock {user.Username}")"
+                                           OnClick="@(() => UnlockAsync(user))">Unlock</MudButton>
+                            }
+                            else if (!user.IsYou)
+                            {
+                                <MudButton Variant="Variant.Text" Color="Color.Warning" Size="Size.Small"
+                                           StartIcon="@Icons.Material.Outlined.Lock" Disabled="@_busy"
+                                           aria-label="@($"Lock {user.Username}")"
+                                           OnClick="@(() => LockAsync(user))">Lock</MudButton>
+                            }
+                        </div>
                     </div>
                 }
             </div>
@@ -131,6 +159,48 @@
         catch (Exception) when (!_cts.IsCancellationRequested)
         {
             Snackbar.Add("Couldn't make a reset link, try again", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    internal async Task LockAsync(UserSummary user)
+    {
+        bool? confirmed = await DialogService.ShowMessageBoxAsync($"Lock {user.Username}?",
+            "They're signed out within a minute and can't sign in until you unlock them. Their banks aren't synced " +
+            "and they get no notifications meanwhile.",
+            yesText: "Lock", cancelText: "Cancel");
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        await ChangeAsync(async () =>
+        {
+            if (!await UsersService.LockAsync(user.Id, _cts.Token))
+            {
+                Snackbar.Add("You can't lock yourself out", Severity.Warning);
+            }
+        }, $"Couldn't lock {user.Username}, try again");
+    }
+
+    internal Task UnlockAsync(UserSummary user) =>
+        ChangeAsync(() => UsersService.UnlockAsync(user.Id, _cts.Token), $"Couldn't unlock {user.Username}, try again");
+
+    // Makes a change to a user, then reloads them all so the rows show it
+    private async Task ChangeAsync(Func<Task> change, string failed)
+    {
+        _busy = true;
+        try
+        {
+            await change();
+            Items = await UsersService.GetUsersAsync(_cts.Token).ToListAsync(_cts.Token);
+        }
+        catch (Exception) when (!_cts.IsCancellationRequested)
+        {
+            Snackbar.Add(failed, Severity.Error);
         }
         finally
         {

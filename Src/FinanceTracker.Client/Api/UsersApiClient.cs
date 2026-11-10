@@ -31,12 +31,38 @@ public sealed class UsersApiClient : IUsersService
             return null;
         }
 
+        ThrowIfMissing(response, userId);
+        response.EnsureSuccessStatusCode();
+        return await response.ReadRequiredJsonAsync<ResetLink>(cancellationToken);
+    }
+
+    public async Task<bool> LockAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        using HttpResponseMessage response =
+            await _http.PostAsync($"{ApiRoutes.Users}/{userId}/lock", null, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.Conflict)
+        {
+            return false;
+        }
+
+        ThrowIfMissing(response, userId);
+        response.EnsureSuccessStatusCode();
+        return true;
+    }
+
+    public async Task UnlockAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        using HttpResponseMessage response =
+            await _http.PostAsync($"{ApiRoutes.Users}/{userId}/unlock", null, cancellationToken);
+        ThrowIfMissing(response, userId);
+        response.EnsureSuccessStatusCode();
+    }
+
+    private static void ThrowIfMissing(HttpResponseMessage response, Guid userId)
+    {
         if (response.StatusCode == HttpStatusCode.NotFound)
         {
             throw new InvalidOperationException($"There's no user {userId}");
         }
-
-        response.EnsureSuccessStatusCode();
-        return await response.ReadRequiredJsonAsync<ResetLink>(cancellationToken);
     }
 }

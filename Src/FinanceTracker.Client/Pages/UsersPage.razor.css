@@ -14,7 +14,15 @@
     overflow-wrap: anywhere;
 }
 
-/* A phone puts the button under the details rather than squeezing them */
+/* Reset link and lock side by side, wrapping when there isn't room */
+.ft-users__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 4px;
+}
+
+/* A phone puts the buttons under the details rather than squeezing them */
 @media (max-width: 599.98px) {
     .ft-users__row {
         flex-wrap: wrap;

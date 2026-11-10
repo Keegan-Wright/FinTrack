@@ -1,5 +1,6 @@
 using FinanceTracker.AppHost.ServiceDefaults;
 using FinanceTracker.Components.Account;
+using FinanceTracker.Components.Account.Pages;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Domain.Identity;
 using FinanceTracker.Infrastructure;
@@ -37,6 +38,11 @@ public static class AuthenticationExtensions
             });
 
             authBuilder.AddIdentityCookies();
+
+            // How long a cookie is trusted before it's checked against the account, so a locked user or one whose
+            // password changed is signed out within a minute rather than Identity's default half hour
+            builder.Services.Configure<SecurityStampValidatorOptions>(options =>
+                options.ValidationInterval = TimeSpan.FromMinutes(1));
 
             if (builder.Configuration.IsOidcEnabled())
             {
@@ -128,7 +134,7 @@ public static class AuthenticationExtensions
 
                 if (await userManager.IsLockedOutAsync(user))
                 {
-                    return TypedResults.Redirect("/Account/Lockout");
+                    return TypedResults.Redirect($"/{Lockout.PathFor(user)}");
                 }
 
                 // Builds the cookie the same way as a password sign in, roles and the first name included

@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Linq.Expressions;
 using FinanceTracker.Contracts;
+using FinanceTracker.Domain.Identity;
 using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Bills;
@@ -16,7 +17,8 @@ namespace FinanceTracker.BackgroundJobs;
 
 /// <summary>
 /// Syncs a set of connections, each as its owner, updates each owner's balance snapshots for the day, applies their
-/// rules and matches their transfers. Tells those owners as the sync starts and once it has finished.
+/// rules and matches their transfers. Tells those owners as the sync starts and once it has finished. Connections of
+/// a user an admin has locked are skipped.
 /// </summary>
 public abstract class OpenBankingSyncJob
 {
@@ -56,8 +58,11 @@ public abstract class OpenBankingSyncJob
         var toSync = new List<(Guid Id, Guid UserId)>();
         await using (FinanceTrackerContext dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken))
         {
+            // A user an admin has locked is left alone until they're unlocked, their data catches up then
             await foreach (var connection in dbContext.BankConnections
                                .Where(connections)
+                               .Where(x => !dbContext.Users.Any(u =>
+                                   u.Id == x.UserId && u.LockoutEnd == FinanceTrackerUser.LockedByAdminUntil))
                                .Select(static x => new { x.Id, x.UserId })
                                .AsAsyncEnumerable().WithCancellation(cancellationToken))
             {

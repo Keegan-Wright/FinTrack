@@ -65,4 +65,10 @@ public static partial class WebLoggerMessages
 
     [LoggerMessage(LogLevel.Information, "Admin {adminId} made a password reset link for user {userId}")]
     public static partial void LogResetLinkCreated(this ILogger logger, Guid adminId, Guid userId);
+
+    [LoggerMessage(LogLevel.Information, "Admin {adminId} locked user {userId}")]
+    public static partial void LogUserLocked(this ILogger logger, Guid adminId, Guid userId);
+
+    [LoggerMessage(LogLevel.Information, "Admin {adminId} unlocked user {userId}")]
+    public static partial void LogUserUnlocked(this ILogger logger, Guid adminId, Guid userId);
 }

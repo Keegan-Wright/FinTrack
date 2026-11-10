@@ -40,4 +40,14 @@ public sealed class UserSummary
     /// Whether they're an admin.
     /// </summary>
     public required bool IsAdmin { get; init; }
+
+    /// <summary>
+    /// Whether an admin has locked them, so they can't sign in and their banks aren't synced until they're unlocked.
+    /// </summary>
+    public required bool IsLocked { get; init; }
+
+    /// <summary>
+    /// Whether they're the admin looking, who can't lock themselves out.
+    /// </summary>
+    public required bool IsYou { get; init; }
 }
