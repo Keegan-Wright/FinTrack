@@ -12,6 +12,8 @@
         <PackageReference Include="TUnit" />
         <PackageReference Include="TUnit.Aspire" />
         <PackageReference Include="WireMock.Net" />
+        <!-- Overrides the vulnerable version WireMock.Net brings, see Directory.Packages.props -->
+        <PackageReference Include="Microsoft.AspNetCore.WebUtilities" />
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     </ItemGroup>
 

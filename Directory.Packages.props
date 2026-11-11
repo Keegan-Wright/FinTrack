@@ -3,10 +3,10 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="Aspire.Hosting.AppHost" Version="13.6.4" />
-    <PackageVersion Include="Aspire.Hosting.Docker" Version="13.6.4" />
-    <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="13.6.4" />
-    <PackageVersion Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="13.6.4" />
+    <PackageVersion Include="Aspire.Hosting.AppHost" Version="13.6.5" />
+    <PackageVersion Include="Aspire.Hosting.Docker" Version="13.6.5" />
+    <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="13.6.5" />
+    <PackageVersion Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="13.6.5" />
     <PackageVersion Include="CommunityToolkit.Aspire.Hosting.MailPit" Version="13.6.1" />
     <PackageVersion Include="CsvHelper" Version="34.0.0" />
     <PackageVersion Include="MailKit" Version="4.18.2" />
@@ -60,6 +60,9 @@
     <PackageVersion Include="TUnit.AspNetCore" Version="1.78.0" />
     <PackageVersion Include="TUnit.Aspire" Version="1.78.0" />
     <PackageVersion Include="WireMock.Net" Version="2.21.0" />
+    <!-- Not used directly. WireMock.Net, up to 2.30.0, still brings 2.3.0, which has GHSA-6527-9fp8-r4x6. Referencing
+         the patched version from the integration tests overrides it, drop both once WireMock depends on 2.3.14 or later -->
+    <PackageVersion Include="Microsoft.AspNetCore.WebUtilities" Version="2.3.14" />
 
     <PackageVersion Include="Blazilla" Version="2.4.3" />
     <PackageVersion Include="Blazor-ApexCharts" Version="7.1.0" />
