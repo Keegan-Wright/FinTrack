@@ -5,6 +5,7 @@ using FinanceTracker.Contracts.Services;
 using FinanceTracker.Domain.Identity;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Middleware;
+using FinanceTracker.Telemetry;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -114,23 +115,26 @@ public static class AuthenticationExtensions
             // The handler has signed the provider's identity into the external cookie, swap it for the local user's
             app.MapGet("/auth/oidc/complete", async Task<RedirectHttpResult> (HttpContext context, string? returnUrl,
                 OidcUserLinker linker, UserManager<FinanceTrackerUser> userManager,
-                SignInManager<FinanceTrackerUser> signInManager) =>
+                SignInManager<FinanceTrackerUser> signInManager, FinTrackMetrics metrics) =>
             {
                 AuthenticateResult external = await context.AuthenticateAsync(IdentityConstants.ExternalScheme);
                 await context.SignOutAsync(IdentityConstants.ExternalScheme);
                 if (!external.Succeeded)
                 {
+                    metrics.SingleSignOnFailed(SingleSignOnFailure.NoIdentity);
                     return TypedResults.Redirect(OidcFailedPath);
                 }
 
                 FinanceTrackerUser? user = await linker.FindOrCreateAsync(external.Principal);
                 if (user is null)
                 {
+                    metrics.SingleSignOnFailed(SingleSignOnFailure.NoAccount);
                     return TypedResults.Redirect(OidcFailedPath);
                 }
 
                 if (await userManager.IsLockedOutAsync(user))
                 {
+                    metrics.SingleSignOnFailed(SingleSignOnFailure.LockedOut);
                     return TypedResults.Redirect($"/{Lockout.PathFor(user)}");
                 }
 
@@ -179,8 +183,9 @@ public static class AuthenticationExtensions
             // Declining at the provider, or a misconfigured client, comes back as a failure rather than an error page
             OnRemoteFailure = context =>
             {
-                context.HttpContext.RequestServices.GetRequiredService<ILogger<OidcUserLinker>>()
-                    .LogOidcRemoteFailure(context.Failure);
+                IServiceProvider services = context.HttpContext.RequestServices;
+                services.GetRequiredService<ILogger<OidcUserLinker>>().LogOidcRemoteFailure(context.Failure);
+                services.GetRequiredService<FinTrackMetrics>().SingleSignOnFailed(SingleSignOnFailure.Provider);
                 context.Response.Redirect(OidcFailedPath);
                 context.HandleResponse();
                 return Task.CompletedTask;
@@ -209,6 +214,8 @@ public static class AuthenticationExtensions
         catch (Exception exception) when (IsProviderFailure(exception))
         {
             context.RequestServices.GetRequiredService<ILogger<OidcUserLinker>>().LogOidcChallengeFailed(exception);
+            context.RequestServices.GetRequiredService<FinTrackMetrics>()
+                .SingleSignOnFailed(SingleSignOnFailure.NotStarted);
             return TypedResults.Redirect(OidcFailedPath);
         }
     }

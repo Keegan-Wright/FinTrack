@@ -111,6 +111,29 @@ public class FinTrackMetricsTests
     }
 
     [Test]
+    [Arguments(SingleSignOnFailure.NotStarted, "not_started")]
+    [Arguments(SingleSignOnFailure.Provider, "provider")]
+    [Arguments(SingleSignOnFailure.NoIdentity, "no_identity")]
+    [Arguments(SingleSignOnFailure.NoAccount, "no_account")]
+    [Arguments(SingleSignOnFailure.LockedOut, "locked_out")]
+    public async Task SingleSignOnFailed_CountsOneTaggedWithWhy(SingleSignOnFailure reason, string tag)
+    {
+        // Arrange
+        using TestMetrics metrics = new();
+        using MetricCollector<long> failures = metrics.Collect<long>(FinTrackMetrics.SingleSignOnFailuresName);
+
+        // Act
+        metrics.Metrics.SingleSignOnFailed(reason);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(failures.LastMeasurement!.Value).IsEqualTo(1);
+            await Assert.That(failures.LastMeasurement.Tags[TelemetryTags.SingleSignOnFailureReason]).IsEqualTo(tag);
+        }
+    }
+
+    [Test]
     public async Task Metrics_NeverTagTheUser()
     {
         // Arrange

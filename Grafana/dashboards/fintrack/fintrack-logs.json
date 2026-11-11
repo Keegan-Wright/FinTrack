@@ -1,0 +1,736 @@
+{
+  "uid": "fintrack-logs",
+  "title": "FinTrack logs and traces",
+  "description": "Search FinTrack's logs and find failed or slow traces.",
+  "tags": [
+    "fintrack"
+  ],
+  "editable": true,
+  "graphTooltip": 1,
+  "timezone": "browser",
+  "refresh": "1m",
+  "schemaVersion": 41,
+  "version": 1,
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "fiscalYearStartMonth": 0,
+  "liveNow": false,
+  "templating": {
+    "list": [
+      {
+        "type": "datasource",
+        "name": "prometheus",
+        "label": "Metrics",
+        "query": "prometheus",
+        "refresh": 1,
+        "hide": 0,
+        "current": {},
+        "options": [],
+        "regex": "",
+        "skipUrlSync": false
+      },
+      {
+        "type": "datasource",
+        "name": "loki",
+        "label": "Logs",
+        "query": "loki",
+        "refresh": 1,
+        "hide": 0,
+        "current": {},
+        "options": [],
+        "regex": "",
+        "skipUrlSync": false
+      },
+      {
+        "type": "datasource",
+        "name": "tempo",
+        "label": "Traces",
+        "query": "tempo",
+        "refresh": 1,
+        "hide": 0,
+        "current": {},
+        "options": [],
+        "regex": "",
+        "skipUrlSync": false
+      },
+      {
+        "type": "query",
+        "name": "service",
+        "label": "Service",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus}"
+        },
+        "query": {
+          "query": "label_values(fintrack_connections, job)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery",
+          "qryType": 1
+        },
+        "definition": "label_values(fintrack_connections, job)",
+        "refresh": 2,
+        "hide": 0,
+        "multi": false,
+        "includeAll": false,
+        "sort": 1,
+        "regex": "",
+        "options": [],
+        "skipUrlSync": false,
+        "current": {
+          "text": "FinTrackWeb",
+          "value": "FinTrackWeb"
+        }
+      },
+      {
+        "type": "custom",
+        "name": "level",
+        "label": "Level",
+        "query": "critical,error,warn,info,debug,trace",
+        "multi": true,
+        "includeAll": false,
+        "hide": 0,
+        "options": [
+          {
+            "text": "critical",
+            "value": "critical",
+            "selected": true
+          },
+          {
+            "text": "error",
+            "value": "error",
+            "selected": true
+          },
+          {
+            "text": "warn",
+            "value": "warn",
+            "selected": true
+          },
+          {
+            "text": "info",
+            "value": "info",
+            "selected": true
+          },
+          {
+            "text": "debug",
+            "value": "debug",
+            "selected": false
+          },
+          {
+            "text": "trace",
+            "value": "trace",
+            "selected": false
+          }
+        ],
+        "current": {
+          "text": [
+            "critical",
+            "error",
+            "warn",
+            "info"
+          ],
+          "value": [
+            "critical",
+            "error",
+            "warn",
+            "info"
+          ]
+        },
+        "skipUrlSync": false
+      },
+      {
+        "type": "textbox",
+        "name": "search",
+        "label": "Search",
+        "query": "",
+        "hide": 0,
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "options": [],
+        "skipUrlSync": false
+      },
+      {
+        "type": "textbox",
+        "name": "user",
+        "label": "User id",
+        "query": "",
+        "hide": 0,
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "options": [],
+        "skipUrlSync": false
+      }
+    ]
+  },
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      },
+      {
+        "name": "Releases",
+        "enable": true,
+        "hide": false,
+        "iconColor": "purple",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus}"
+        },
+        "expr": "group by (service_version) (target_info{job=\"$service\"}) unless group by (service_version) (target_info{job=\"$service\"} offset 10m)",
+        "step": "1m",
+        "titleFormat": "Released {{service_version}}",
+        "textFormat": "",
+        "tagKeys": "service_version",
+        "useValueForTime": false
+      }
+    ]
+  },
+  "links": [
+    {
+      "title": "Hub",
+      "type": "dashboards",
+      "tags": [
+        "hub"
+      ],
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false,
+      "icon": "external link"
+    },
+    {
+      "title": "FinTrack",
+      "type": "dashboards",
+      "tags": [
+        "fintrack"
+      ],
+      "asDropdown": true,
+      "includeVars": true,
+      "keepTime": true,
+      "targetBlank": false,
+      "icon": "external link"
+    }
+  ],
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Logs by level",
+      "description": "How many lines were logged, by level, matching the filters above.",
+      "datasource": {
+        "type": "loki",
+        "uid": "${loki}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "${loki}"
+          },
+          "expr": "sum by (detected_level) (count_over_time({service_name=\"$service\"} | detected_level=~\"$level\" |~ \"(?i)$search\" | user_id=~\"$user.*\" [$__auto]))",
+          "legendFormat": "{{detected_level}}",
+          "queryType": "range"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "showPoints": "never",
+            "spanNulls": false,
+            "axisSoftMin": 0,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "insertNulls": false
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "critical"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "dark-red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "error"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "warn"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "info"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "debug"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "trace"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "purple"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 1,
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 6
+      }
+    },
+    {
+      "type": "logs",
+      "title": "Logs",
+      "description": "FinTrack's logs matching the filters above, newest first. Search is case-insensitive and takes a regular expression. User id narrows to one person. Open a line for its details and trace.",
+      "datasource": {
+        "type": "loki",
+        "uid": "${loki}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "${loki}"
+          },
+          "expr": "{service_name=\"$service\"} | detected_level=~\"$level\" |~ \"(?i)$search\" | user_id=~\"$user.*\"",
+          "legendFormat": "",
+          "queryType": "range"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "enableInfiniteScrolling": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      },
+      "id": 2,
+      "gridPos": {
+        "x": 0,
+        "y": 6,
+        "w": 24,
+        "h": 14
+      }
+    },
+    {
+      "type": "logs",
+      "title": "Browser errors",
+      "description": "Errors the app in people's browsers reported, with the page and stack trace.",
+      "datasource": {
+        "type": "loki",
+        "uid": "${loki}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "${loki}"
+          },
+          "expr": "{service_name=\"$service\"} |= \"The browser hit an error\" | user_id=~\"$user.*\"",
+          "legendFormat": "",
+          "queryType": "range"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "enableInfiniteScrolling": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      },
+      "id": 3,
+      "gridPos": {
+        "x": 0,
+        "y": 20,
+        "w": 24,
+        "h": 8
+      }
+    },
+    {
+      "type": "row",
+      "title": "Traces",
+      "collapsed": false,
+      "panels": [],
+      "id": 4,
+      "gridPos": {
+        "x": 0,
+        "y": 28,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "type": "table",
+      "title": "Failed traces",
+      "datasource": {
+        "type": "tempo",
+        "uid": "${tempo}"
+      },
+      "description": "Recent traces with a failed span, over the time range. Select a trace id to open it.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "tempo",
+            "uid": "${tempo}"
+          },
+          "queryType": "traceql",
+          "limit": 50,
+          "tableType": "traces",
+          "query": "{resource.service.name=\"$service\" && status=error}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "id": 5,
+      "gridPos": {
+        "x": 0,
+        "y": 29,
+        "w": 12,
+        "h": 10
+      }
+    },
+    {
+      "type": "table",
+      "title": "Slowest traces",
+      "datasource": {
+        "type": "tempo",
+        "uid": "${tempo}"
+      },
+      "description": "Traces that took longer than a second over the time range, page loads and syncs alike.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "tempo",
+            "uid": "${tempo}"
+          },
+          "queryType": "traceql",
+          "limit": 50,
+          "tableType": "traces",
+          "query": "{resource.service.name=\"$service\" && duration > 1s}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "id": 6,
+      "gridPos": {
+        "x": 12,
+        "y": 29,
+        "w": 12,
+        "h": 10
+      }
+    },
+    {
+      "type": "table",
+      "title": "Spans by name",
+      "description": "Every kind of span over the time range, from requests to database commands, with how often it ran, failed and how long it took.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${prometheus}"
+          },
+          "expr": "sum by (span_name, span_kind) (increase(traces_spanmetrics_calls_total{service=\"$service\"}[$__range]))",
+          "legendFormat": "__auto",
+          "range": false,
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${prometheus}"
+          },
+          "expr": "sum by (span_name, span_kind) (increase(traces_spanmetrics_calls_total{service=\"$service\", status_code=\"STATUS_CODE_ERROR\"}[$__range]))",
+          "legendFormat": "__auto",
+          "range": false,
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${prometheus}"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le, span_name, span_kind) (rate(traces_spanmetrics_latency_bucket{service=\"$service\"}[$__range])))",
+          "legendFormat": "__auto",
+          "range": false,
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "p95"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Calls"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Failed"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "sortBy": [
+          {
+            "displayName": "Calls",
+            "desc": true
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "span_name": "Span",
+              "span_kind": "Kind",
+              "Value #A": "Calls",
+              "Value #B": "Failed",
+              "Value #C": "p95"
+            }
+          }
+        }
+      ],
+      "id": 7,
+      "gridPos": {
+        "x": 0,
+        "y": 39,
+        "w": 24,
+        "h": 12
+      }
+    }
+  ]
+}

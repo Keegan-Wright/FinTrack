@@ -196,4 +196,9 @@ public static class TelemetryTags
     /// The notification raised.
     /// </summary>
     public const string NotificationId = "fintrack.notification.id";
+
+    /// <summary>
+    /// Why a single sign-on attempt failed, see <see cref="SingleSignOnFailure"/>, on metrics.
+    /// </summary>
+    public const string SingleSignOnFailureReason = "fintrack.sso.failure";
 }

@@ -19,6 +19,7 @@ public sealed class FinTrackMetrics
     public const string ConnectionsName = "fintrack.connections";
     public const string OldestSyncAgeName = "fintrack.sync.oldest_age";
     public const string TrueLayerThrottleWaitName = "fintrack.truelayer.throttle.wait";
+    public const string SingleSignOnFailuresName = "fintrack.sso.failures";
 
     private const string Succeeded = "succeeded";
     private const string Failed = "failed";
@@ -45,6 +46,7 @@ public sealed class FinTrackMetrics
     private readonly Counter<long> _emailsSent;
     private readonly Gauge<long> _connections;
     private readonly Histogram<double> _trueLayerThrottleWait;
+    private readonly Counter<long> _singleSignOnFailures;
     private readonly TimeProvider _timeProvider;
 
     // When the connection that's waited longest for a sync last synced, read when the age gauge is collected
@@ -76,6 +78,9 @@ public sealed class FinTrackMetrics
         _trueLayerThrottleWait = meter.CreateHistogram(TrueLayerThrottleWaitName, "s",
             "How long calls to TrueLayer's data API queued for FinTrack's own rate limit before going",
             advice: new InstrumentAdvice<double> { HistogramBucketBoundaries = ThrottleWaitBuckets });
+        _singleSignOnFailures = meter.CreateCounter<long>(SingleSignOnFailuresName, "{sign_in}",
+            "Single sign-on attempts that didn't sign anyone in, by why. Identity's own metrics only see the sign "
+            + "ins that work");
     }
 
     /// <summary>
@@ -126,6 +131,32 @@ public sealed class FinTrackMetrics
     /// How long a call to TrueLayer queued for the rate limit, nothing for most.
     /// </summary>
     public void TrueLayerThrottled(TimeSpan waited) => _trueLayerThrottleWait.Record(waited.TotalSeconds);
+
+    /// <summary>
+    /// A single sign-on attempt that ended back on the sign in page, or at the lockout page, rather than signed in.
+    /// </summary>
+    public void SingleSignOnFailed(SingleSignOnFailure reason) =>
+        _singleSignOnFailures.Add(1,
+            new KeyValuePair<string, object?>(TelemetryTags.SingleSignOnFailureReason, ReasonTag(reason)));
+
+    private static string ReasonTag(SingleSignOnFailure reason)
+    {
+        switch (reason)
+        {
+            case SingleSignOnFailure.NotStarted:
+                return "not_started";
+            case SingleSignOnFailure.Provider:
+                return "provider";
+            case SingleSignOnFailure.NoIdentity:
+                return "no_identity";
+            case SingleSignOnFailure.NoAccount:
+                return "no_account";
+            case SingleSignOnFailure.LockedOut:
+                return "locked_out";
+            default:
+                throw new ArgumentOutOfRangeException(nameof(reason), reason, null);
+        }
+    }
 
     private IEnumerable<Measurement<double>> ObserveOldestSyncAge()
     {

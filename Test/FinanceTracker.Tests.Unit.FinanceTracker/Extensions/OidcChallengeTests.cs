@@ -1,8 +1,11 @@
 using FinanceTracker.Extensions;
+using FinanceTracker.Telemetry;
+using FinanceTracker.Tests.Unit.Shared;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.Metrics.Testing;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
@@ -14,9 +17,10 @@ namespace FinanceTracker.Tests.Unit.FinanceTracker.Extensions;
 /// <summary>
 /// Starting an OIDC sign in, which the provider can refuse before the user ever gets there.
 /// </summary>
-public class OidcChallengeTests
+public sealed class OidcChallengeTests : IDisposable
 {
     private readonly IAuthenticationService _authentication = Substitute.For<IAuthenticationService>();
+    private readonly TestMetrics _metrics = new();
 
     public static IEnumerable<Func<Exception>> ProviderFailures() =>
     [
@@ -45,6 +49,35 @@ public class OidcChallengeTests
     }
 
     [Test]
+    public async Task Challenge_ProviderRefuses_CountsASingleSignOnThatNeverStarted()
+    {
+        // Arrange
+        using MetricCollector<long> failures = _metrics.Collect<long>(FinTrackMetrics.SingleSignOnFailuresName);
+        _authentication.ChallengeAsync(Arg.Any<HttpContext>(), Arg.Any<string?>(),
+            Arg.Any<AuthenticationProperties?>()).ThrowsAsync(new HttpRequestException("Connection refused"));
+
+        // Act
+        await AuthenticationExtensions.ChallengeOidcAsync(Context(), "/Bills");
+
+        // Assert
+        await Assert.That(failures.LastMeasurement!.Tags[TelemetryTags.SingleSignOnFailureReason])
+            .IsEqualTo("not_started");
+    }
+
+    [Test]
+    public async Task Challenge_ProviderAccepts_CountsNoFailure()
+    {
+        // Arrange
+        using MetricCollector<long> failures = _metrics.Collect<long>(FinTrackMetrics.SingleSignOnFailuresName);
+
+        // Act
+        await AuthenticationExtensions.ChallengeOidcAsync(Context(), "/Bills");
+
+        // Assert
+        await Assert.That(failures.GetMeasurementSnapshot()).IsEmpty();
+    }
+
+    [Test]
     public async Task Challenge_ProviderAccepts_SendsThemThereComingBackToWhereTheyWere()
     {
         // Act
@@ -62,9 +95,12 @@ public class OidcChallengeTests
         ServiceCollection services = new();
         services.AddSingleton(_authentication);
         services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
+        services.AddSingleton(_metrics.Metrics);
         DefaultHttpContext context = new() { RequestServices = services.BuildServiceProvider() };
         context.Request.Scheme = "https";
         context.Request.Host = new HostString("fintrack.example.test");
         return context;
     }
+
+    public void Dispose() => _metrics.Dispose();
 }

@@ -47,6 +47,7 @@ public class TelemetryNamesTests
     [Arguments(TelemetryTags.NotificationChannel, "fintrack.notification.channel")]
     [Arguments(TelemetryTags.NotificationKind, "fintrack.notification.kind")]
     [Arguments(TelemetryTags.NotificationId, "fintrack.notification.id")]
+    [Arguments(TelemetryTags.SingleSignOnFailureReason, "fintrack.sso.failure")]
     public async Task Tag_GoesOutUnderItsName(string tag, string name) =>
         await Assert.That(tag).IsEqualTo(name);
 
@@ -60,6 +61,7 @@ public class TelemetryNamesTests
     [Arguments(FinTrackMetrics.ConnectionsName, "fintrack.connections")]
     [Arguments(FinTrackMetrics.OldestSyncAgeName, "fintrack.sync.oldest_age")]
     [Arguments(FinTrackMetrics.TrueLayerThrottleWaitName, "fintrack.truelayer.throttle.wait")]
+    [Arguments(FinTrackMetrics.SingleSignOnFailuresName, "fintrack.sso.failures")]
     public async Task Instrument_GoesOutUnderItsName(string instrument, string name) =>
         await Assert.That(instrument).IsEqualTo(name);
 
@@ -84,8 +86,8 @@ public class TelemetryNamesTests
 
         using (Assert.Multiple())
         {
-            await Assert.That(tags).IsEqualTo(38);
-            await Assert.That(instruments).IsEqualTo(9);
+            await Assert.That(tags).IsEqualTo(39);
+            await Assert.That(instruments).IsEqualTo(10);
         }
     }
 }
