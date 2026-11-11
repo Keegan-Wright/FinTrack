@@ -28,6 +28,8 @@ public static class NotificationKindText
         NotificationKind.BudgetOverLimit => "A budget going over",
         NotificationKind.LargeTransaction => "A large payment",
         NotificationKind.LowBalance => "An account running low",
+        NotificationKind.SharingInvite => "Someone inviting you to share",
+        NotificationKind.SharingAccepted => "Someone accepting your invite to share",
         _ => kind.ToString()
     };
 
@@ -43,6 +45,8 @@ public static class NotificationKindText
         NotificationKind.BudgetOverLimit => Icons.Material.Outlined.MoneyOff,
         NotificationKind.LargeTransaction => Icons.Material.Outlined.Payments,
         NotificationKind.LowBalance => Icons.Material.Outlined.AccountBalanceWallet,
+        NotificationKind.SharingInvite => Icons.Material.Outlined.GroupAdd,
+        NotificationKind.SharingAccepted => Icons.Material.Outlined.Handshake,
         _ => Icons.Material.Outlined.Notifications
     };
 }

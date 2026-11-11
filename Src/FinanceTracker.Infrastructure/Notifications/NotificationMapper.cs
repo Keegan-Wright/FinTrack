@@ -37,6 +37,8 @@ public static class NotificationMapper
         DomainKind.BudgetOverLimit => ContractKind.BudgetOverLimit,
         DomainKind.LargeTransaction => ContractKind.LargeTransaction,
         DomainKind.LowBalance => ContractKind.LowBalance,
+        DomainKind.SharingInvite => ContractKind.SharingInvite,
+        DomainKind.SharingAccepted => ContractKind.SharingAccepted,
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
     };
 
@@ -52,6 +54,8 @@ public static class NotificationMapper
         ContractKind.BudgetOverLimit => DomainKind.BudgetOverLimit,
         ContractKind.LargeTransaction => DomainKind.LargeTransaction,
         ContractKind.LowBalance => DomainKind.LowBalance,
+        ContractKind.SharingInvite => DomainKind.SharingInvite,
+        ContractKind.SharingAccepted => DomainKind.SharingAccepted,
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
     };
 }

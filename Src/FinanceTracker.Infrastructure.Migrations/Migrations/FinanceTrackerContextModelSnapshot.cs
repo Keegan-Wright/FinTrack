@@ -1442,6 +1442,54 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.ToTable("SavingsGoals", (string)null);
                 });
 
+            modelBuilder.Entity("FinanceTracker.Domain.Sharing.UserLink", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("AnsweredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("EndedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("EndedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("InvitedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("InviteeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("Updated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InviteeId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("UserLinks", (string)null);
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey", b =>
                 {
                     b.Property<int>("Id")
@@ -2387,6 +2435,21 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
             modelBuilder.Entity("FinanceTracker.Domain.SavingsGoals.SavingsGoal", b =>
                 {
+                    b.HasOne("FinanceTracker.Domain.Identity.FinanceTrackerUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FinanceTracker.Domain.Sharing.UserLink", b =>
+                {
+                    b.HasOne("FinanceTracker.Domain.Identity.FinanceTrackerUser", null)
+                        .WithMany()
+                        .HasForeignKey("InviteeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("FinanceTracker.Domain.Identity.FinanceTrackerUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")

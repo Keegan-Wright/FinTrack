@@ -23,6 +23,8 @@ public static class NotificationKindStyle
         NotificationKind.BudgetOverLimit => "Budgets",
         NotificationKind.LargeTransaction => "Payments",
         NotificationKind.LowBalance => "Balances",
+        NotificationKind.SharingInvite => "Sharing",
+        NotificationKind.SharingAccepted => "Sharing",
         _ => "Notification"
     };
 
@@ -42,6 +44,8 @@ public static class NotificationKindStyle
         NotificationKind.BudgetOverLimit => LightPalette.Error,
         NotificationKind.LargeTransaction => LightPalette.Primary,
         NotificationKind.LowBalance => LightPalette.Warning,
+        NotificationKind.SharingInvite => LightPalette.Primary,
+        NotificationKind.SharingAccepted => LightPalette.Primary,
         _ => LightPalette.Primary
     };
 }
