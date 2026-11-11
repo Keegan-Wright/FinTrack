@@ -3,6 +3,8 @@ using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Sharing;
 using FinanceTracker.Domain.Identity;
 using FinanceTracker.Domain.Notifications;
+using FinanceTracker.Domain.OpenBanking.Accounts;
+using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Domain.Sharing;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
@@ -12,6 +14,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ContractLink = FinanceTracker.Contracts.Sharing.UserLink;
 using DomainLink = FinanceTracker.Domain.Sharing.UserLink;
+using DomainShareMode = FinanceTracker.Domain.Sharing.ShareMode;
+using ShareMode = FinanceTracker.Contracts.Sharing.ShareMode;
 
 namespace FinanceTracker.Infrastructure.Sharing;
 
@@ -46,6 +50,14 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
+        // Counted per link and per person sharing, each side's own shares only ever being its own accounts
+        List<Guid> linkIds = links.Select(static x => x.Id).ToList();
+        var shareCounts = await context.Shares.AsNoTracking()
+            .Where(x => linkIds.Contains(x.LinkId) && x.ItemType == ShareItemType.BankAccount)
+            .GroupBy(static x => new { x.LinkId, x.UserId })
+            .Select(static x => new { x.Key.LinkId, x.Key.UserId, Count = x.Count() })
+            .ToListAsync(cancellationToken);
+
         List<Guid> otherIds = links.Select(x => x.OtherThan(UserId)).ToList();
         Dictionary<Guid, FinanceTrackerUser> others = await context.Users
             .Where(x => otherIds.Contains(x.Id))
@@ -54,7 +66,12 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
 
         foreach (DomainLink link in links.OrderBy(static x => x.InvitedAt))
         {
-            yield return ToContract(link, others[link.OtherThan(UserId)]);
+            Guid otherId = link.OtherThan(UserId);
+            yield return ToContract(link, others[otherId]) with
+            {
+                AccountsYouShare = shareCounts.Where(x => x.LinkId == link.Id && x.UserId == UserId).Sum(static x => x.Count),
+                AccountsTheyShare = shareCounts.Where(x => x.LinkId == link.Id && x.UserId == otherId).Sum(static x => x.Count)
+            };
         }
     }
 
@@ -156,10 +173,174 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
         }
 
         link.End(UserId, _timeProvider.GetUtcNow().UtcDateTime);
+
+        // Both ways, so linking again later shares nothing until each of them chooses it again
+        context.Shares.RemoveRange(await context.Shares.Where(x => x.LinkId == link.Id).ToListAsync(cancellationToken));
         await context.SaveChangesAsync(cancellationToken);
         Logger.LogChanged(UserId, "ended", "user link", link.Id);
         return true;
     }
+
+    public async Task<LinkShares?> GetSharesAsync(Guid linkId, CancellationToken cancellationToken)
+    {
+        await using FinanceTrackerContext context =
+            await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+
+        DomainLink? link = await AcceptedLinkAsync(context, linkId, cancellationToken);
+        if (link is null)
+        {
+            return null;
+        }
+
+        return await LinkSharesAsync(context, link, cancellationToken);
+    }
+
+    public async Task<LinkShares> ChangeAccountSharesAsync(Guid linkId, ChangeAccountShares request,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        await using FinanceTrackerContext context =
+            await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+
+        DomainLink link = await AcceptedLinkAsync(context, linkId, cancellationToken)
+                          ?? throw new InvalidOperationException($"No accepted link {linkId} was found.");
+
+        // Only their own accounts can be shared, never one shared with them
+        HashSet<Guid> ownAccountIds = (await context.BankAccounts.OwnedBy(UserId)
+            .Select(static x => x.Id)
+            .ToListAsync(cancellationToken)).ToHashSet();
+        if (request.Accounts.Any(x => !ownAccountIds.Contains(x.AccountId)))
+        {
+            throw new InvalidOperationException("Only your own accounts can be shared.");
+        }
+
+        Dictionary<Guid, DomainShareMode> wanted =
+            request.Accounts.ToDictionary(static x => x.AccountId, static x => ToDomain(x.Mode));
+        List<Share> existing = await OwnAccountShares(context, link.Id).ToListAsync(cancellationToken);
+
+        foreach (Share share in existing)
+        {
+            if (wanted.Remove(share.ItemId, out DomainShareMode mode))
+            {
+                share.ChangeMode(mode);
+            }
+            else
+            {
+                context.Shares.Remove(share);
+            }
+        }
+
+        DateTime now = _timeProvider.GetUtcNow().UtcDateTime;
+        foreach ((Guid accountId, DomainShareMode mode) in wanted)
+        {
+            context.Shares.Add(new Share(UserId, link.Id, ShareItemType.BankAccount, accountId, mode, now));
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
+        Logger.LogChanged(UserId, "changed account shares in", "user link", link.Id);
+
+        return await LinkSharesAsync(context, link, cancellationToken);
+    }
+
+    /// <summary>
+    /// The user's accepted link with <paramref name="linkId"/>, from either side.
+    /// </summary>
+    private Task<DomainLink?> AcceptedLinkAsync(FinanceTrackerContext context, Guid linkId,
+        CancellationToken cancellationToken) =>
+        context.UserLinks.SingleOrDefaultAsync(
+            x => x.Id == linkId && (x.UserId == UserId || x.InviteeId == UserId) &&
+                 x.Status == UserLinkStatus.Accepted, cancellationToken);
+
+    /// <summary>
+    /// The account shares the user made in <paramref name="linkId"/>.
+    /// </summary>
+    private IQueryable<Share> OwnAccountShares(FinanceTrackerContext context, Guid linkId) =>
+        context.Shares.Where(x => x.LinkId == linkId && x.UserId == UserId &&
+                                  x.ItemType == ShareItemType.BankAccount);
+
+    /// <summary>
+    /// What's shared both ways in <paramref name="link"/>: every account of the user's with how it's shared, and the
+    /// accounts the other person shares.
+    /// </summary>
+    private async Task<LinkShares> LinkSharesAsync(FinanceTrackerContext context, DomainLink link,
+        CancellationToken cancellationToken)
+    {
+        Guid otherId = link.OtherThan(UserId);
+
+        List<Share> shares = await context.Shares.AsNoTracking()
+            .Where(x => x.LinkId == link.Id && x.ItemType == ShareItemType.BankAccount)
+            .ToListAsync(cancellationToken);
+        Dictionary<Guid, DomainShareMode> yours = shares.Where(x => x.UserId == UserId)
+            .ToDictionary(static x => x.ItemId, static x => x.Mode);
+        Dictionary<Guid, DomainShareMode> theirs = shares.Where(x => x.UserId == otherId)
+            .ToDictionary(static x => x.ItemId, static x => x.Mode);
+
+        // The other person's accounts only as far as they share them
+        List<Guid> theirIds = theirs.Keys.ToList();
+        List<BankAccount> accounts = await context.BankAccounts.AsNoTracking()
+            .Where(x => x.UserId == UserId || (x.UserId == otherId && theirIds.Contains(x.Id)))
+            .ToListAsync(cancellationToken);
+
+        List<Guid> connectionIds = accounts.Select(static x => x.ConnectionId).Distinct().ToList();
+        Dictionary<Guid, string> bankNames = await context.BankConnections.AsNoTracking()
+            .Where(x => connectionIds.Contains(x.Id))
+            .ToDictionaryAsync(static x => x.Id, static x => x.Name, cancellationToken);
+
+        FinanceTrackerUser other = await context.Users.AsNoTracking().SingleAsync(x => x.Id == otherId, cancellationToken);
+
+        List<ShareableAccount> yourAccounts = accounts.Where(x => x.UserId == UserId)
+            .OrderBy(x => bankNames.GetValueOrDefault(x.ConnectionId)).ThenBy(static x => x.DisplayName)
+            .Select(x => new ShareableAccount
+            {
+                AccountId = x.Id,
+                Name = x.DisplayName,
+                BankName = bankNames.GetValueOrDefault(x.ConnectionId) ?? string.Empty,
+                Mode = ModeIfShared(yours, x.Id)
+            })
+            .ToList();
+
+        List<AccountSharedWithYou> theirAccounts = accounts.Where(x => x.UserId == otherId)
+            .OrderBy(x => bankNames.GetValueOrDefault(x.ConnectionId)).ThenBy(static x => x.DisplayName)
+            .Select(x => new AccountSharedWithYou
+            {
+                Name = x.DisplayName,
+                BankName = bankNames.GetValueOrDefault(x.ConnectionId) ?? string.Empty,
+                Mode = ToContract(theirs[x.Id])
+            })
+            .ToList();
+
+        return new LinkShares
+        {
+            LinkId = link.Id,
+            Name = FullName(other),
+            YourAccounts = yourAccounts,
+            TheirAccounts = theirAccounts
+        };
+    }
+
+    private static ShareMode? ModeIfShared(Dictionary<Guid, DomainShareMode> shared, Guid accountId)
+    {
+        if (shared.TryGetValue(accountId, out DomainShareMode mode))
+        {
+            return ToContract(mode);
+        }
+
+        return null;
+    }
+
+    private static ShareMode ToContract(DomainShareMode mode) => mode switch
+    {
+        DomainShareMode.ReadOnly => ShareMode.ReadOnly,
+        DomainShareMode.AllowChanges => ShareMode.AllowChanges,
+        _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, null)
+    };
+
+    private static DomainShareMode ToDomain(ShareMode mode) => mode switch
+    {
+        ShareMode.ReadOnly => DomainShareMode.ReadOnly,
+        ShareMode.AllowChanges => DomainShareMode.AllowChanges,
+        _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, null)
+    };
 
     /// <summary>
     /// The links <paramref name="userId"/> is in, from either side, that are waiting for an answer or accepted.

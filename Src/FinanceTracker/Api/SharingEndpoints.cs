@@ -36,6 +36,24 @@ public static class SharingEndpoints
                     ISharingService service, CancellationToken cancellationToken) =>
                 NoContentIfFound(await service.EndAsync(id, cancellationToken)));
 
+            links.MapGet("{id:guid}/shares", async Task<Results<Ok<LinkShares>, NotFound>> (Guid id,
+                ISharingService service, CancellationToken cancellationToken) =>
+            {
+                LinkShares? shares = await service.GetSharesAsync(id, cancellationToken);
+                if (shares is null)
+                {
+                    return TypedResults.NotFound();
+                }
+
+                return TypedResults.Ok(shares);
+            });
+
+            links.MapPut("{id:guid}/shares/accounts", async Task<Ok<LinkShares>> (Guid id,
+                        ChangeAccountShares request, ISharingService service, CancellationToken cancellationToken) =>
+                    TypedResults.Ok(await service.ChangeAccountSharesAsync(id, request, cancellationToken)))
+                .Validated<ChangeAccountShares>()
+                .NotFoundWhenMissing();
+
             return api;
         }
     }

@@ -1,0 +1,39 @@
+.ft-share {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* Select all on the left, how many are shared on the right */
+.ft-share__all {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.ft-share__bank ::deep .mud-typography-overline {
+    display: block;
+    line-height: 1.5;
+}
+
+.ft-share__row {
+    padding: 4px 0;
+    min-height: 44px;
+}
+
+/* One width for every row, empty until the account is ticked, so the toggles line up and nothing shifts */
+.ft-share__mode {
+    flex: 0 0 148px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.ft-share__mode ::deep .mud-toggle-group {
+    width: 100%;
+}
+
+.ft-share__mode ::deep .mud-toggle-item {
+    flex: 1 1 0;
+    min-width: 0;
+}

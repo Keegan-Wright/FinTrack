@@ -65,6 +65,53 @@ public class SharingApiTests : IntegrationTestBase
     }
 
     [Test]
+    public async Task Shares_OnlyThePeopleInTheLinkCanSeeOrChangeThem()
+    {
+        // Arrange
+        SignedInUser alex = await RegisterUserAsync();
+        SignedInUser sam = await RegisterUserAsync();
+        SignedInUser stranger = await RegisterUserAsync();
+        ISharingService alexApi = ApiFor(alex).Get<ISharingService>();
+        InviteOutcome sent = await alexApi.InviteAsync(new InviteToShare { Who = sam.Username }, CancellationToken);
+        await ApiFor(sam).Get<ISharingService>().AcceptAsync(sent.Link!.Id, CancellationToken);
+        ISharingService strangerApi = ApiFor(stranger).Get<ISharingService>();
+
+        // Act
+        LinkShares? alexSees = await alexApi.GetSharesAsync(sent.Link.Id, CancellationToken);
+        LinkShares? strangerSees = await strangerApi.GetSharesAsync(sent.Link.Id, CancellationToken);
+        Task StrangerChanges() => strangerApi.ChangeAccountSharesAsync(sent.Link.Id,
+            new ChangeAccountShares { Accounts = [] }, CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(alexSees!.Name).IsNotEmpty();
+            await Assert.That(strangerSees).IsNull();
+            await Assert.That(StrangerChanges).Throws<InvalidOperationException>();
+        }
+    }
+
+    [Test]
+    public async Task Shares_AnAccountThatIsntTheirs_IsNotFound()
+    {
+        // Arrange
+        SignedInUser alex = await RegisterUserAsync();
+        SignedInUser sam = await RegisterUserAsync();
+        ISharingService alexApi = ApiFor(alex).Get<ISharingService>();
+        InviteOutcome sent = await alexApi.InviteAsync(new InviteToShare { Who = sam.Username }, CancellationToken);
+        await ApiFor(sam).Get<ISharingService>().AcceptAsync(sent.Link!.Id, CancellationToken);
+
+        // Act
+        Task ShareSomeoneElses() => alexApi.ChangeAccountSharesAsync(sent.Link.Id, new ChangeAccountShares
+        {
+            Accounts = [new AccountShareChoice { AccountId = Guid.NewGuid(), Mode = ShareMode.AllowChanges }]
+        }, CancellationToken);
+
+        // Assert
+        await Assert.That(ShareSomeoneElses).Throws<InvalidOperationException>();
+    }
+
+    [Test]
     public async Task Invite_Blank_IsRejectedByValidation()
     {
         // Arrange

@@ -4,6 +4,7 @@
 @using System.Globalization
 @using FinanceTracker.Contracts.Sharing
 @using FinanceTracker.Contracts.Validation
+@using FinanceTracker.Client.Components.Dialogs
 @using Microsoft.AspNetCore.Authorization
 @inherits PageComponent
 
@@ -66,7 +67,7 @@
             <div class="ft-list">
                 @foreach (UserLink link in Others)
                 {
-                    <div class="ft-list__row">
+                    <div class="ft-list__row ft-sharing__row">
                         <MudAvatar Color="Color.Primary" Variant="@AvatarVariant(link)" Size="Size.Medium">
                             @Initials(link)
                         </MudAvatar>
@@ -74,8 +75,16 @@
                             <MudText Typo="Typo.body2" Class="text-truncate">@link.Name</MudText>
                             <MudText Typo="Typo.caption" Class="mud-text-secondary text-truncate">@StateText(link)</MudText>
                         </div>
-                        <MudButton Variant="Variant.Text" Color="Color.Error" Size="Size.Small"
-                                   OnClick="@(() => EndAsync(link))">@EndText(link)</MudButton>
+                        <div class="ft-sharing__actions">
+                            @if (link.State == LinkState.Linked)
+                            {
+                                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                                           StartIcon="@Icons.Material.Outlined.Tune"
+                                           OnClick="@(() => ChooseSharesAsync(link))">Share</MudButton>
+                            }
+                            <MudButton Variant="Variant.Text" Color="Color.Error" Size="Size.Small"
+                                       OnClick="@(() => EndAsync(link))">@EndText(link)</MudButton>
+                        </div>
                     </div>
                 }
             </div>
@@ -128,10 +137,33 @@
         string date = link.Since.ToLocalTime().ToString("d MMM yyyy", CultureInfo.CurrentCulture);
         return link.State switch
         {
-            LinkState.Linked => $"@{link.Username} · linked since {date}",
+            LinkState.Linked => $"@{link.Username} · linked since {date} · {SharedSummary(link)}",
             LinkState.Invited => $"@{link.Username} · invited {date}, waiting for them",
             _ => $"@{link.Username} · invited you {date}"
         };
+    }
+
+    /// <summary>
+    /// What's shared both ways in a link, e.g. <c>you share 3 accounts, they share 1</c>.
+    /// </summary>
+    internal static string SharedSummary(UserLink link)
+    {
+        if (link.AccountsYouShare == 0 && link.AccountsTheyShare == 0)
+        {
+            return "nothing shared yet";
+        }
+
+        return $"you share {AccountsText(link.AccountsYouShare)}, they share {link.AccountsTheyShare}";
+    }
+
+    private static string AccountsText(int count)
+    {
+        if (count == 1)
+        {
+            return "1 account";
+        }
+
+        return $"{count} accounts";
     }
 
     /// <summary>
@@ -233,6 +265,79 @@
         }
 
         await AnswerAsync(link, SharingService.EndAsync, EndedText(link), "Couldn't do that, try again");
+    }
+
+    /// <summary>
+    /// Opens the choice of which accounts to share with them, and saves it.
+    /// </summary>
+    internal async Task ChooseSharesAsync(UserLink link)
+    {
+        LinkShares? shares;
+        try
+        {
+            SetLoadingState(true, $"Loading what you share with {link.Name}…");
+            shares = await SharingService.GetSharesAsync(link.Id, _cts.Token);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't load what you share, try again", Severity.Error);
+            return;
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+
+        if (shares is null)
+        {
+            Links = await LoadLinksAsync(_cts.Token);
+            Snackbar.Add($"You're no longer linked with {link.Name}", Severity.Info);
+            return;
+        }
+
+        DialogParameters<ShareAccountsDialog> parameters = new() { { x => x.Shares, shares } };
+        IDialogReference dialog = await DialogService.ShowAsync<ShareAccountsDialog>(null, parameters);
+        DialogResult? result = await dialog.Result;
+        if (result is null || result.Canceled)
+        {
+            return;
+        }
+
+        try
+        {
+            SetLoadingState(true, $"Saving what you share with {link.Name}…");
+            LinkShares saved = await SharingService.ChangeAccountSharesAsync(link.Id,
+                (ChangeAccountShares)result.Data!, _cts.Token);
+            Links = await LoadLinksAsync(_cts.Token);
+            Snackbar.Add(SharedText(saved), Severity.Success);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't save what you share, try again", Severity.Error);
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
+    /// <summary>
+    /// How many accounts they now share, once saved.
+    /// </summary>
+    internal static string SharedText(LinkShares shares)
+    {
+        int count = shares.YourAccounts.Count(static x => x.Mode is not null);
+        if (count == 0)
+        {
+            return $"Nothing shared with {shares.Name}";
+        }
+
+        if (count == 1)
+        {
+            return $"Sharing 1 account with {shares.Name}";
+        }
+
+        return $"Sharing {count} accounts with {shares.Name}";
     }
 
     private static string ConfirmTitle(UserLink link)

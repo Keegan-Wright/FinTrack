@@ -29,4 +29,14 @@ public sealed record UserLink
     /// When the invite was sent, or when it was accepted once they're linked.
     /// </summary>
     public required DateTime Since { get; init; }
+
+    /// <summary>
+    /// How many of their accounts the signed in user shares with the other person, none until they're linked.
+    /// </summary>
+    public int AccountsYouShare { get; init; }
+
+    /// <summary>
+    /// How many accounts the other person shares with them, none until they're linked.
+    /// </summary>
+    public int AccountsTheyShare { get; init; }
 }

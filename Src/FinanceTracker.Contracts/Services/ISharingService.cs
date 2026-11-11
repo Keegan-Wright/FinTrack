@@ -38,4 +38,20 @@ public interface ISharingService
     /// <returns><see langword="false"/> if the user has no live link or invite of their own with
     /// <paramref name="id"/>.</returns>
     Task<bool> EndAsync(Guid id, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// What's shared both ways in one of the user's accepted links.
+    /// </summary>
+    /// <returns>Null if they have no accepted link with <paramref name="linkId"/>.</returns>
+    Task<LinkShares?> GetSharesAsync(Guid linkId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Replaces which of the user's accounts they share in one of their accepted links, and how. Validate the request
+    /// with <see cref="Validation.ChangeAccountSharesValidator"/> first.
+    /// </summary>
+    /// <returns>What's shared both ways now.</returns>
+    /// <exception cref="InvalidOperationException">They have no accepted link with <paramref name="linkId"/>, or
+    /// an account in the request isn't theirs.</exception>
+    Task<LinkShares> ChangeAccountSharesAsync(Guid linkId, ChangeAccountShares request,
+        CancellationToken cancellationToken);
 }

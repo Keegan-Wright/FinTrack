@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Json;
 using FinanceTracker.Contracts.Api;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Sharing;
@@ -33,6 +34,28 @@ public sealed class SharingApiClient : ISharingService
 
     public Task<bool> EndAsync(Guid id, CancellationToken cancellationToken) =>
         _http.DeleteIfFoundAsync($"{ApiRoutes.SharingLinks}/{id}", cancellationToken);
+
+    public async Task<LinkShares?> GetSharesAsync(Guid linkId, CancellationToken cancellationToken)
+    {
+        using HttpResponseMessage response =
+            await _http.GetAsync($"{ApiRoutes.SharingLinks}/{linkId}/shares", cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        response.EnsureSuccessStatusCode();
+        return await response.ReadRequiredJsonAsync<LinkShares>(cancellationToken);
+    }
+
+    public async Task<LinkShares> ChangeAccountSharesAsync(Guid linkId, ChangeAccountShares request,
+        CancellationToken cancellationToken)
+    {
+        using HttpResponseMessage response = await _http.PutAsJsonAsync(
+            $"{ApiRoutes.SharingLinks}/{linkId}/shares/accounts", request, cancellationToken);
+        response.EnsureFound();
+        return await response.ReadRequiredJsonAsync<LinkShares>(cancellationToken);
+    }
 
     private async Task<bool> PostIfFoundAsync(string path, CancellationToken cancellationToken)
     {
