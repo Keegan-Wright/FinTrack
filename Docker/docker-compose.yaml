@@ -69,6 +69,20 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_OTLP_ENDPOINT}"
       OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
       OTEL_SERVICE_NAME: "FinTrack"
+
+      # Continuous profiling into Pyroscope, such as otel-lgtm's on port 4040: where FinTrack spends its CPU,
+      # allocates memory, waits on locks and throws. Off unless uncommented. PYROSCOPE_APPLICATION_NAME should match
+      # OTEL_SERVICE_NAME so Grafana can put profiles beside the rest of FinTrack's telemetry
+      # CORECLR_ENABLE_PROFILING: "1"
+      # CORECLR_PROFILER: "{BD1A650D-AC5D-4896-B64F-D6FA25D6B26A}"
+      # CORECLR_PROFILER_PATH: "/pyroscope/Pyroscope.Profiler.Native.so"
+      # LD_PRELOAD: "/pyroscope/Pyroscope.Linux.ApiWrapper.x64.so"
+      # PYROSCOPE_SERVER_ADDRESS: "${PYROSCOPE_SERVER_ADDRESS}"
+      # PYROSCOPE_APPLICATION_NAME: "FinTrack"
+      # PYROSCOPE_PROFILING_ENABLED: "1"
+      # PYROSCOPE_PROFILING_ALLOCATION_ENABLED: "true"
+      # PYROSCOPE_PROFILING_LOCK_ENABLED: "true"
+      # PYROSCOPE_PROFILING_EXCEPTION_ENABLED: "true"
     expose:
       - 8080
     depends_on:

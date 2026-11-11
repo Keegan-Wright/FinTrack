@@ -26,6 +26,25 @@ RUN dotnet restore "Src/FinanceTracker/FinanceTracker.csproj" -a $TARGETARCH
 
 COPY ["Src/", "Src/"]
 
+# Pyroscope's .NET profiler, for continuous profiling. It only loads when the compose file turns it on with
+# CORECLR_ENABLE_PROFILING and the rest of its settings, otherwise the files sit unused. Pinned by checksum, so a
+# release replaced upstream fails the build rather than going into the image
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0 AS profiler
+ARG TARGETARCH
+ARG PYROSCOPE_VERSION=1.6.1
+ARG PYROSCOPE_SHA256_ARM64=de0f1fc384f2af754bfb331ce4c0028ba92ec6a25ce98efba4aa9e2f81a012c4
+ARG PYROSCOPE_SHA256_AMD64=9efda5cf621511ff937a0f765fe8af0ea59ab8c47a227c8afcf25637779dd36f
+RUN if [ "$TARGETARCH" = "arm64" ]; then \
+        arch=aarch64; sha256=$PYROSCOPE_SHA256_ARM64; \
+    else \
+        arch=x86_64; sha256=$PYROSCOPE_SHA256_AMD64; \
+    fi \
+    && curl -fsSL -o /tmp/pyroscope.tar.gz \
+        "https://github.com/grafana/pyroscope-dotnet/releases/download/pyroscope-${PYROSCOPE_VERSION}/pyroscope.${PYROSCOPE_VERSION}-glibc-${arch}.tar.gz" \
+    && echo "$sha256  /tmp/pyroscope.tar.gz" | sha256sum -c - \
+    && mkdir /pyroscope \
+    && tar xzf /tmp/pyroscope.tar.gz -C /pyroscope
+
 # Publish builds the app itself, for the target's architecture only, so the image carries only its native libraries
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
@@ -38,4 +57,5 @@ RUN dotnet publish "Src/FinanceTracker/FinanceTracker.csproj" -c $BUILD_CONFIGUR
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
+COPY --from=profiler /pyroscope /pyroscope
 ENTRYPOINT ["dotnet", "FinanceTracker.dll"]
