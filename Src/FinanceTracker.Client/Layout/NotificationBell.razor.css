@@ -1,0 +1,11 @@
+/* Holds the bell so its badge can be styled from here, MudBlazor's own elements don't carry this component's scope */
+.ft-bell {
+    display: inline-flex;
+}
+
+/* MudBlazor pins the count to the corner of the 48px button rather than the bell, so it reaches above the button.
+   The app bar is only 56px on phones, which leaves the count touching its top edge. Moved down and in, it sits on the
+   bell's corner at every width */
+.ft-bell ::deep .ft-bell-count {
+    translate: -4px 10px;
+}

@@ -424,5 +424,5 @@ public class TransferMatchingServiceTests : InfrastructureTestBase
 
     private TransferMatchingService BuildSubject(string username) =>
         new(CurrentUserFor(username), DbContextFactory, NullLogger<TransferMatchingService>.Instance,
-            TimeProvider.System);
+            TimeProvider.System, TestMetrics.Unobserved);
 }

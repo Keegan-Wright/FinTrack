@@ -196,4 +196,19 @@ public static class TelemetryTags
     /// The notification raised.
     /// </summary>
     public const string NotificationId = "fintrack.notification.id";
+
+    /// <summary>
+    /// Why a single sign-on attempt failed, see <see cref="SingleSignOnFailure"/>, on metrics.
+    /// </summary>
+    public const string SingleSignOnFailureReason = "fintrack.sso.failure";
+
+    /// <summary>
+    /// What transfer matching decided about a transaction, transfer, to review or cleared, on metrics.
+    /// </summary>
+    public const string TransferDecision = "fintrack.transfer.decision";
+
+    /// <summary>
+    /// How a bill changed, added, ended or price changed, on metrics.
+    /// </summary>
+    public const string BillChange = "fintrack.bill.change";
 }

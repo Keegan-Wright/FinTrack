@@ -640,8 +640,8 @@ public class RulesServiceTests : InfrastructureTestBase
     private RuleApplicationService BuildApplication(string username) =>
         new(CurrentUserFor(username), DbContextFactory, NullLogger<RuleApplicationService>.Instance,
             new TransferMatchingService(CurrentUserFor(username), DbContextFactory,
-                NullLogger<TransferMatchingService>.Instance, TimeProvider.System),
-            TimeProvider.System);
+                NullLogger<TransferMatchingService>.Instance, TimeProvider.System, TestMetrics.Unobserved),
+            TimeProvider.System, TestMetrics.Unobserved);
 
     private RulesService BuildSubject(string username, ILogger<RulesService>? logger = null) =>
         new(CurrentUserFor(username), DbContextFactory, logger ?? NullLogger<RulesService>.Instance,

@@ -24,12 +24,14 @@ public class BillSyncService : ServiceBase<BillSyncService>, IBillSyncService
     public const int RecentDays = 100;
 
     private readonly TimeProvider _timeProvider;
+    private readonly FinTrackMetrics _metrics;
 
     public BillSyncService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<BillSyncService> logger,
-        TimeProvider timeProvider) : base(currentUser, financeTrackerContextFactory, logger)
+        TimeProvider timeProvider, FinTrackMetrics metrics) : base(currentUser, financeTrackerContextFactory, logger)
     {
         _timeProvider = timeProvider;
+        _metrics = metrics;
     }
 
     public async Task<BillSyncSummary> SyncAsync(CancellationToken cancellationToken)
@@ -81,6 +83,7 @@ public class BillSyncService : ServiceBase<BillSyncService>, IBillSyncService
             (TelemetryTags.BillsMatched, summary.Matched),
             (TelemetryTags.BillsPricesChanged, summary.PricesChanged),
             (TelemetryTags.SubscriptionsSuggested, summary.Suggested));
+        _metrics.BillsSynced(summary.Added, summary.Ended, summary.PricesChanged, summary.Matched, summary.Suggested);
 
         return summary;
     }

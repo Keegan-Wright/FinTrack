@@ -18,6 +18,17 @@
     <File Path="Docker\docker-compose.yaml" />
     <File Path="Src\Dockerfile" />
   </Folder>
+  <Folder Name="/Misc/Grafana/">
+    <File Path="Grafana\dashboards.yaml" />
+  </Folder>
+  <Folder Name="/Misc/Grafana/Dashboards/">
+    <File Path="Grafana\dashboards\fintrack\fintrack-logs.json" />
+    <File Path="Grafana\dashboards\fintrack\fintrack-notifications.json" />
+    <File Path="Grafana\dashboards\fintrack\fintrack-overview.json" />
+    <File Path="Grafana\dashboards\fintrack\fintrack-runtime.json" />
+    <File Path="Grafana\dashboards\fintrack\fintrack-sync.json" />
+    <File Path="Grafana\dashboards\fintrack\fintrack-users.json" />
+  </Folder>
   <Folder Name="/SourceGenerators/">
     <Project Path="Src/Generators/FinanceTracker.Generated.Attributes/FinanceTracker.Generated.Attributes/FinanceTracker.Generated.Attributes.csproj" />
     <Project Path="Src/Generators/FinanceTracker.Generated.DependencyInjection/FinanceTracker.Generated.DependencyInjection/FinanceTracker.Generated.DependencyInjection.csproj" />

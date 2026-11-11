@@ -537,6 +537,6 @@ public class BillsServiceTests : InfrastructureTestBase
         FixedTimeProvider time = new(Now);
         return new BillsService(CurrentUserFor(username), DbContextFactory, NullLogger<BillsService>.Instance,
             new BillSyncService(CurrentUserFor(username), DbContextFactory, NullLogger<BillSyncService>.Instance,
-                time), time);
+                time, TestMetrics.Unobserved), time);
     }
 }

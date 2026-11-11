@@ -16,12 +16,14 @@ namespace FinanceTracker.Infrastructure.OpenBanking.Transfers;
 public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITransferMatchingService
 {
     private readonly TimeProvider _timeProvider;
+    private readonly FinTrackMetrics _metrics;
 
     public TransferMatchingService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<TransferMatchingService> logger,
-        TimeProvider timeProvider) : base(currentUser, financeTrackerContextFactory, logger)
+        TimeProvider timeProvider, FinTrackMetrics metrics) : base(currentUser, financeTrackerContextFactory, logger)
     {
         _timeProvider = timeProvider;
+        _metrics = metrics;
     }
 
     public async Task<TransferMatchSummary> MatchAsync(CancellationToken cancellationToken)
@@ -173,6 +175,7 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
             (TelemetryTags.Transfers, summary.Transfers),
             (TelemetryTags.TransfersToReview, summary.ToReview),
             (TelemetryTags.TransfersCleared, summary.Cleared));
+        _metrics.TransfersMatched(summary.Transfers, summary.ToReview, summary.Cleared);
 
         return summary;
     }

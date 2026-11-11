@@ -111,6 +111,87 @@ public class FinTrackMetricsTests
     }
 
     [Test]
+    [Arguments(SingleSignOnFailure.NotStarted, "not_started")]
+    [Arguments(SingleSignOnFailure.Provider, "provider")]
+    [Arguments(SingleSignOnFailure.NoIdentity, "no_identity")]
+    [Arguments(SingleSignOnFailure.NoAccount, "no_account")]
+    [Arguments(SingleSignOnFailure.LockedOut, "locked_out")]
+    public async Task SingleSignOnFailed_CountsOneTaggedWithWhy(SingleSignOnFailure reason, string tag)
+    {
+        // Arrange
+        using TestMetrics metrics = new();
+        using MetricCollector<long> failures = metrics.Collect<long>(FinTrackMetrics.SingleSignOnFailuresName);
+
+        // Act
+        metrics.Metrics.SingleSignOnFailed(reason);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(failures.LastMeasurement!.Value).IsEqualTo(1);
+            await Assert.That(failures.LastMeasurement.Tags[TelemetryTags.SingleSignOnFailureReason]).IsEqualTo(tag);
+        }
+    }
+
+    [Test]
+    public async Task TransfersMatched_CountsEachDecisionApart()
+    {
+        // Arrange
+        using TestMetrics metrics = new();
+        using MetricCollector<long> decisions = metrics.Collect<long>(FinTrackMetrics.TransferDecisionsName);
+
+        // Act
+        metrics.Metrics.TransfersMatched(transfers: 4, toReview: 1, cleared: 2);
+
+        // Assert
+        await Assert.That(ByTag(decisions, TelemetryTags.TransferDecision)).IsEquivalentTo(
+            new Dictionary<string, long> { ["transfer"] = 4, ["to_review"] = 1, ["cleared"] = 2 });
+    }
+
+    [Test]
+    public async Task BillsSynced_CountsBillsTransactionsAndSuggestionsOnTheirOwnInstruments()
+    {
+        // Arrange
+        using TestMetrics metrics = new();
+        using MetricCollector<long> bills = metrics.Collect<long>(FinTrackMetrics.BillChangesName);
+        using MetricCollector<long> matched = metrics.Collect<long>(FinTrackMetrics.BillTransactionsMatchedName);
+        using MetricCollector<long> suggested = metrics.Collect<long>(FinTrackMetrics.SubscriptionsSuggestedName);
+
+        // Act
+        metrics.Metrics.BillsSynced(added: 2, ended: 1, pricesChanged: 3, transactionsMatched: 6,
+            subscriptionsSuggested: 1);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(ByTag(bills, TelemetryTags.BillChange)).IsEquivalentTo(
+                new Dictionary<string, long> { ["added"] = 2, ["ended"] = 1, ["price_changed"] = 3 });
+            await Assert.That(matched.LastMeasurement!.Value).IsEqualTo(6);
+            await Assert.That(suggested.LastMeasurement!.Value).IsEqualTo(1);
+        }
+    }
+
+    [Test]
+    public async Task RulesAppliedAndSnapshotsRefreshed_CountWhatChanged()
+    {
+        // Arrange
+        using TestMetrics metrics = new();
+        using MetricCollector<long> rules = metrics.Collect<long>(FinTrackMetrics.RulesChangedName);
+        using MetricCollector<long> snapshots = metrics.Collect<long>(FinTrackMetrics.SnapshotsRefreshedName);
+
+        // Act
+        metrics.Metrics.RulesApplied(transactionsChanged: 5);
+        metrics.Metrics.SnapshotsRefreshed(refreshed: 3);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(rules.LastMeasurement!.Value).IsEqualTo(5);
+            await Assert.That(snapshots.LastMeasurement!.Value).IsEqualTo(3);
+        }
+    }
+
+    [Test]
     public async Task Metrics_NeverTagTheUser()
     {
         // Arrange
@@ -127,4 +208,7 @@ public class FinTrackMetricsTests
             .Concat(raised.GetMeasurementSnapshot().SelectMany(static x => x.Tags.Keys));
         await Assert.That(tags).DoesNotContain(TelemetryTags.UserId);
     }
+
+    private static Dictionary<string, long> ByTag(MetricCollector<long> collector, string tag) =>
+        collector.GetMeasurementSnapshot().ToDictionary(x => x.Tags[tag]!.ToString()!, static x => x.Value);
 }

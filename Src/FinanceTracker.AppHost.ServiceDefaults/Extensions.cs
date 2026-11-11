@@ -49,6 +49,11 @@ public static class Extensions
     /// </summary>
     private const string SignalRServerActivitySource = "Microsoft.AspNetCore.SignalR.Server";
 
+    /// <summary>
+    /// OpenTelemetry's resource attribute for the version of the service, see <see cref="ServiceVersion"/>.
+    /// </summary>
+    private const string ServiceVersionAttribute = "service.version";
+
     extension<TBuilder>(TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
         public void AddServiceDefaults()
@@ -82,16 +87,22 @@ public static class Extensions
 
 
             // The service's name and instance come from OTEL_SERVICE_NAME and OTEL_RESOURCE_ATTRIBUTES, which Aspire
-            // sets so the dashboard files the telemetry under the app's resource. Naming it here would override them
+            // sets so the dashboard files the telemetry under the app's resource. Naming it here would override them.
+            // Its version is the build's own, so dashboards can mark each release
             builder.Services.AddOpenTelemetry()
                 .ConfigureResource(x =>
-                    x.AddProcessDetector()
+                    x.AddAttributes([new KeyValuePair<string, object>(ServiceVersionAttribute, ServiceVersion.Current)])
+                        .AddProcessDetector()
                         .AddProcessRuntimeDetector()
                         .AddOperatingSystemDetector()
                         .AddHostDetector()
                         .AddContainerDetector())
                 .WithMetrics(metrics =>
                 {
+                    // Measurements taken inside a sampled trace carry its id, so a point on a latency chart links to a
+                    // request that made it
+                    metrics.SetExemplarFilter(ExemplarFilterType.TraceBased);
+
                     metrics.AddAspNetCoreInstrumentation()
                         .AddHttpClientInstrumentation()
                         .AddRuntimeInstrumentation();

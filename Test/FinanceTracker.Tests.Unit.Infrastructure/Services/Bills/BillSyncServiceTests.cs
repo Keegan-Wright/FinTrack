@@ -219,5 +219,5 @@ public class BillSyncServiceTests : InfrastructureTestBase
 
     private BillSyncService BuildSubject() =>
         new(CurrentUserFor(Username), DbContextFactory, NullLogger<BillSyncService>.Instance,
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now), TestMetrics.Unobserved);
 }
