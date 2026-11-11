@@ -891,6 +891,7 @@
           "sort": "desc"
         }
       },
+      "interval": "2m",
       "id": 11,
       "gridPos": {
         "x": 0,
@@ -1043,6 +1044,7 @@
           "sort": "desc"
         }
       },
+      "interval": "2m",
       "id": 13,
       "gridPos": {
         "x": 16,
@@ -2050,153 +2052,154 @@
     {
       "type": "row",
       "title": "Profiles",
-      "collapsed": false,
-      "panels": [],
+      "collapsed": true,
+      "panels": [
+        {
+          "type": "text",
+          "title": "",
+          "options": {
+            "mode": "markdown",
+            "content": "Where FinTrack spends its time and memory, from Pyroscope's profiler, over the time range. Wider means more. These show 0 samples until profiling is turned on in FinTrack's compose file. **Drilldown \u2192 Profiles** in Grafana's menu compares time ranges and goes into more detail."
+          },
+          "id": 28,
+          "gridPos": {
+            "x": 0,
+            "y": 56,
+            "w": 24,
+            "h": 2
+          }
+        },
+        {
+          "type": "flamegraph",
+          "title": "CPU",
+          "description": "The code FinTrack's CPU time went on.",
+          "datasource": {
+            "type": "grafana-pyroscope-datasource",
+            "uid": "${pyroscope}"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "grafana-pyroscope-datasource",
+                "uid": "${pyroscope}"
+              },
+              "queryType": "profile",
+              "profileTypeId": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+              "labelSelector": "{service_name=\"$service\"}",
+              "groupBy": [],
+              "spanSelector": []
+            }
+          ],
+          "options": {},
+          "id": 29,
+          "gridPos": {
+            "x": 0,
+            "y": 58,
+            "w": 12,
+            "h": 14
+          }
+        },
+        {
+          "type": "flamegraph",
+          "title": "Memory allocated",
+          "description": "The code that allocated the most memory, which garbage collection then has to clear.",
+          "datasource": {
+            "type": "grafana-pyroscope-datasource",
+            "uid": "${pyroscope}"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "grafana-pyroscope-datasource",
+                "uid": "${pyroscope}"
+              },
+              "queryType": "profile",
+              "profileTypeId": "memory:alloc_size:bytes:space:bytes",
+              "labelSelector": "{service_name=\"$service\"}",
+              "groupBy": [],
+              "spanSelector": []
+            }
+          ],
+          "options": {},
+          "id": 30,
+          "gridPos": {
+            "x": 12,
+            "y": 58,
+            "w": 12,
+            "h": 14
+          }
+        },
+        {
+          "type": "flamegraph",
+          "title": "Waiting on locks",
+          "description": "Where threads waited for a lock another held.",
+          "datasource": {
+            "type": "grafana-pyroscope-datasource",
+            "uid": "${pyroscope}"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "grafana-pyroscope-datasource",
+                "uid": "${pyroscope}"
+              },
+              "queryType": "profile",
+              "profileTypeId": "lock:lock_time:nanoseconds:cpu:nanoseconds",
+              "labelSelector": "{service_name=\"$service\"}",
+              "groupBy": [],
+              "spanSelector": []
+            }
+          ],
+          "options": {},
+          "id": 31,
+          "gridPos": {
+            "x": 0,
+            "y": 72,
+            "w": 12,
+            "h": 12
+          }
+        },
+        {
+          "type": "flamegraph",
+          "title": "Exceptions",
+          "description": "Where exceptions were thrown, caught ones included.",
+          "datasource": {
+            "type": "grafana-pyroscope-datasource",
+            "uid": "${pyroscope}"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "grafana-pyroscope-datasource",
+                "uid": "${pyroscope}"
+              },
+              "queryType": "profile",
+              "profileTypeId": "exception:exception:count:cpu:nanoseconds",
+              "labelSelector": "{service_name=\"$service\"}",
+              "groupBy": [],
+              "spanSelector": []
+            }
+          ],
+          "options": {},
+          "id": 32,
+          "gridPos": {
+            "x": 12,
+            "y": 72,
+            "w": 12,
+            "h": 12
+          }
+        }
+      ],
       "id": 27,
       "gridPos": {
         "x": 0,
         "y": 55,
         "w": 24,
         "h": 1
-      }
-    },
-    {
-      "type": "text",
-      "title": "",
-      "options": {
-        "mode": "markdown",
-        "content": "Where FinTrack spends its time and memory, from Pyroscope's profiler, over the time range. Wider means more. These stay empty unless profiling is turned on in FinTrack's compose file. **Drilldown \u2192 Profiles** in Grafana's menu compares time ranges and goes into more detail."
-      },
-      "id": 28,
-      "gridPos": {
-        "x": 0,
-        "y": 56,
-        "w": 24,
-        "h": 2
-      }
-    },
-    {
-      "type": "flamegraph",
-      "title": "CPU",
-      "description": "The code FinTrack's CPU time went on.",
-      "datasource": {
-        "type": "grafana-pyroscope-datasource",
-        "uid": "${pyroscope}"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "grafana-pyroscope-datasource",
-            "uid": "${pyroscope}"
-          },
-          "queryType": "profile",
-          "profileTypeId": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
-          "labelSelector": "{service_name=\"$service\"}",
-          "groupBy": [],
-          "spanSelector": []
-        }
-      ],
-      "options": {},
-      "id": 29,
-      "gridPos": {
-        "x": 0,
-        "y": 58,
-        "w": 12,
-        "h": 14
-      }
-    },
-    {
-      "type": "flamegraph",
-      "title": "Memory allocated",
-      "description": "The code that allocated the most memory, which garbage collection then has to clear.",
-      "datasource": {
-        "type": "grafana-pyroscope-datasource",
-        "uid": "${pyroscope}"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "grafana-pyroscope-datasource",
-            "uid": "${pyroscope}"
-          },
-          "queryType": "profile",
-          "profileTypeId": "memory:alloc_size:bytes:space:bytes",
-          "labelSelector": "{service_name=\"$service\"}",
-          "groupBy": [],
-          "spanSelector": []
-        }
-      ],
-      "options": {},
-      "id": 30,
-      "gridPos": {
-        "x": 12,
-        "y": 58,
-        "w": 12,
-        "h": 14
-      }
-    },
-    {
-      "type": "flamegraph",
-      "title": "Waiting on locks",
-      "description": "Where threads waited for a lock another held.",
-      "datasource": {
-        "type": "grafana-pyroscope-datasource",
-        "uid": "${pyroscope}"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "grafana-pyroscope-datasource",
-            "uid": "${pyroscope}"
-          },
-          "queryType": "profile",
-          "profileTypeId": "lock:lock_time:nanoseconds:cpu:nanoseconds",
-          "labelSelector": "{service_name=\"$service\"}",
-          "groupBy": [],
-          "spanSelector": []
-        }
-      ],
-      "options": {},
-      "id": 31,
-      "gridPos": {
-        "x": 0,
-        "y": 72,
-        "w": 12,
-        "h": 12
-      }
-    },
-    {
-      "type": "flamegraph",
-      "title": "Exceptions",
-      "description": "Where exceptions were thrown, caught ones included.",
-      "datasource": {
-        "type": "grafana-pyroscope-datasource",
-        "uid": "${pyroscope}"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "grafana-pyroscope-datasource",
-            "uid": "${pyroscope}"
-          },
-          "queryType": "profile",
-          "profileTypeId": "exception:exception:count:cpu:nanoseconds",
-          "labelSelector": "{service_name=\"$service\"}",
-          "groupBy": [],
-          "spanSelector": []
-        }
-      ],
-      "options": {},
-      "id": 32,
-      "gridPos": {
-        "x": 12,
-        "y": 72,
-        "w": 12,
-        "h": 12
       }
     }
   ]

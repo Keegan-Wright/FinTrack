@@ -479,6 +479,7 @@
           "sort": "desc"
         }
       },
+      "interval": "2m",
       "id": 5,
       "gridPos": {
         "x": 0,
@@ -686,6 +687,7 @@
           "sort": "desc"
         }
       },
+      "interval": "2m",
       "id": 7,
       "gridPos": {
         "x": 0,
@@ -793,6 +795,7 @@
           "sort": "desc"
         }
       },
+      "interval": "2m",
       "id": 8,
       "gridPos": {
         "x": 12,

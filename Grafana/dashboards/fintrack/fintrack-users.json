@@ -726,6 +726,7 @@
           "sort": "desc"
         }
       },
+      "interval": "2m",
       "id": 8,
       "gridPos": {
         "x": 0,
@@ -870,6 +871,7 @@
           "sort": "desc"
         }
       },
+      "interval": "2m",
       "id": 9,
       "gridPos": {
         "x": 12,
@@ -1022,6 +1024,7 @@
           "sort": "desc"
         }
       },
+      "interval": "2m",
       "id": 10,
       "gridPos": {
         "x": 0,
@@ -1120,6 +1123,7 @@
           "sort": "desc"
         }
       },
+      "interval": "2m",
       "id": 11,
       "gridPos": {
         "x": 8,
@@ -1196,6 +1200,7 @@
           "sort": "desc"
         }
       },
+      "interval": "2m",
       "id": 12,
       "gridPos": {
         "x": 16,
