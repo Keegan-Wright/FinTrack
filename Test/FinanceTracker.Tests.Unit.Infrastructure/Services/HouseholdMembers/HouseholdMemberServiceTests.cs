@@ -382,7 +382,7 @@ public class HouseholdMemberServiceTests : InfrastructureTestBase
 
     private TransferMatchingService BuildMatcher() =>
         new(CurrentUserFor(Username), DbContextFactory, NullLogger<TransferMatchingService>.Instance,
-            TimeProvider.System);
+            TimeProvider.System, TestMetrics.Unobserved);
 
     private HouseholdMemberService BuildSubject() =>
         new(CurrentUserFor(Username), DbContextFactory, NullLogger<HouseholdMemberService>.Instance, BuildMatcher());

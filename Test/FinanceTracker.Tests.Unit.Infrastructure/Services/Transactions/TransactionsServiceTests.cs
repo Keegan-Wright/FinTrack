@@ -161,7 +161,7 @@ public class TransactionsServiceTests : InfrastructureTestBase
             .Do(s => s.TransactionScenario.WithTransaction("rent", "main", Details("J SMITH 01JAN26")));
 
         await new TransferMatchingService(CurrentUserFor(Username), DbContextFactory,
-            NullLogger<TransferMatchingService>.Instance, TimeProvider.System).MatchAsync(CancellationToken);
+            NullLogger<TransferMatchingService>.Instance, TimeProvider.System, TestMetrics.Unobserved).MatchAsync(CancellationToken);
 
         TransactionsService subject = BuildSubject();
 

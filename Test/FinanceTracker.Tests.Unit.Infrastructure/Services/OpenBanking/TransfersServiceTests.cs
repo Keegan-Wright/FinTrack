@@ -192,7 +192,7 @@ public class TransfersServiceTests : InfrastructureTestBase
 
     private Task<TransferMatchSummary> MatchAsync(string username) =>
         new TransferMatchingService(CurrentUserFor(username), DbContextFactory,
-            NullLogger<TransferMatchingService>.Instance, TimeProvider.System).MatchAsync(CancellationToken);
+            NullLogger<TransferMatchingService>.Instance, TimeProvider.System, TestMetrics.Unobserved).MatchAsync(CancellationToken);
 
     private async Task<Dictionary<Guid, BankTransaction>> LoadTransactionsAsync()
     {
@@ -203,6 +203,6 @@ public class TransfersServiceTests : InfrastructureTestBase
     private TransfersService BuildSubject(string username) =>
         new(CurrentUserFor(username), DbContextFactory, NullLogger<TransfersService>.Instance,
             new TransferMatchingService(CurrentUserFor(username), DbContextFactory,
-                NullLogger<TransferMatchingService>.Instance, TimeProvider.System),
+                NullLogger<TransferMatchingService>.Instance, TimeProvider.System, TestMetrics.Unobserved),
             TimeProvider.System);
 }

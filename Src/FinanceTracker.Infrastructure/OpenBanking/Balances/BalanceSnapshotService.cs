@@ -16,12 +16,14 @@ namespace FinanceTracker.Infrastructure.OpenBanking.Balances;
 public class BalanceSnapshotService : ServiceBase<BalanceSnapshotService>, IBalanceSnapshotService
 {
     private readonly TimeProvider _timeProvider;
+    private readonly FinTrackMetrics _metrics;
 
     public BalanceSnapshotService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<BalanceSnapshotService> logger,
-        TimeProvider timeProvider) : base(currentUser, financeTrackerContextFactory, logger)
+        TimeProvider timeProvider, FinTrackMetrics metrics) : base(currentUser, financeTrackerContextFactory, logger)
     {
         _timeProvider = timeProvider;
+        _metrics = metrics;
     }
 
     public async Task<NetWorthSnapshot?> SnapshotAsync(DateOnly day, DateTime balancesSyncedFrom,
@@ -92,6 +94,7 @@ public class BalanceSnapshotService : ServiceBase<BalanceSnapshotService>, IBala
         CurrentActivity.Tag(
             (TelemetryTags.SnapshotsRefreshed, refreshed.Count),
             (TelemetryTags.SnapshotsStale, stale));
+        _metrics.SnapshotsRefreshed(refreshed.Count);
 
         return netWorth;
     }

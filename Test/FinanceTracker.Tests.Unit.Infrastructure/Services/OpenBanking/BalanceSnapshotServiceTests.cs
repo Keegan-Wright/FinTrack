@@ -408,5 +408,5 @@ public class BalanceSnapshotServiceTests : InfrastructureTestBase
 
     private BalanceSnapshotService BuildSubject(string username) =>
         new(CurrentUserFor(username), DbContextFactory, NullLogger<BalanceSnapshotService>.Instance,
-            new FixedTimeProvider(Evening));
+            new FixedTimeProvider(Evening), TestMetrics.Unobserved);
 }

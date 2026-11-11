@@ -16,12 +16,14 @@ public class RuleApplicationService : ServiceBase<RuleApplicationService>, IRule
 {
     private readonly ITransferMatchingService _transferMatchingService;
     private readonly TimeProvider _timeProvider;
+    private readonly FinTrackMetrics _metrics;
 
     public RuleApplicationService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<RuleApplicationService> logger,
-        ITransferMatchingService transferMatchingService, TimeProvider timeProvider)
+        ITransferMatchingService transferMatchingService, TimeProvider timeProvider, FinTrackMetrics metrics)
         : base(currentUser, financeTrackerContextFactory, logger)
     {
+        _metrics = metrics;
         _transferMatchingService = transferMatchingService;
         _timeProvider = timeProvider;
     }
@@ -195,6 +197,7 @@ public class RuleApplicationService : ServiceBase<RuleApplicationService>, IRule
             (TelemetryTags.RulesMatched, run.Matches.Count),
             (TelemetryTags.TransactionsConsidered, run.Considered),
             (TelemetryTags.TransactionsChanged, run.Changed));
+        _metrics.RulesApplied(run.Changed);
 
         foreach ((Guid ruleId, int matched) in run.Matches)
         {

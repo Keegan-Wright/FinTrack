@@ -48,6 +48,8 @@ public class TelemetryNamesTests
     [Arguments(TelemetryTags.NotificationKind, "fintrack.notification.kind")]
     [Arguments(TelemetryTags.NotificationId, "fintrack.notification.id")]
     [Arguments(TelemetryTags.SingleSignOnFailureReason, "fintrack.sso.failure")]
+    [Arguments(TelemetryTags.TransferDecision, "fintrack.transfer.decision")]
+    [Arguments(TelemetryTags.BillChange, "fintrack.bill.change")]
     public async Task Tag_GoesOutUnderItsName(string tag, string name) =>
         await Assert.That(tag).IsEqualTo(name);
 
@@ -62,6 +64,12 @@ public class TelemetryNamesTests
     [Arguments(FinTrackMetrics.OldestSyncAgeName, "fintrack.sync.oldest_age")]
     [Arguments(FinTrackMetrics.TrueLayerThrottleWaitName, "fintrack.truelayer.throttle.wait")]
     [Arguments(FinTrackMetrics.SingleSignOnFailuresName, "fintrack.sso.failures")]
+    [Arguments(FinTrackMetrics.RulesChangedName, "fintrack.rules.transactions_changed")]
+    [Arguments(FinTrackMetrics.TransferDecisionsName, "fintrack.transfers.decisions")]
+    [Arguments(FinTrackMetrics.BillChangesName, "fintrack.bills.changes")]
+    [Arguments(FinTrackMetrics.BillTransactionsMatchedName, "fintrack.bills.transactions_matched")]
+    [Arguments(FinTrackMetrics.SubscriptionsSuggestedName, "fintrack.subscriptions.suggested")]
+    [Arguments(FinTrackMetrics.SnapshotsRefreshedName, "fintrack.balances.snapshots_refreshed")]
     public async Task Instrument_GoesOutUnderItsName(string instrument, string name) =>
         await Assert.That(instrument).IsEqualTo(name);
 
@@ -86,8 +94,8 @@ public class TelemetryNamesTests
 
         using (Assert.Multiple())
         {
-            await Assert.That(tags).IsEqualTo(39);
-            await Assert.That(instruments).IsEqualTo(10);
+            await Assert.That(tags).IsEqualTo(41);
+            await Assert.That(instruments).IsEqualTo(16);
         }
     }
 }
