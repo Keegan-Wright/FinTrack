@@ -184,6 +184,9 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
+        Dictionary<Guid, DateTime> recurringPaymentsUpdatedAt =
+            await RecurringPaymentsUpdatedAtAsync(context, connections, cancellationToken);
+
         DateTime now = _timeProvider.UtcNow;
         foreach (BankConnection connection in connections.OrderBy(static x => x.Name))
         {
@@ -193,9 +196,40 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
                 Name = connection.Name,
                 Logo = connection.Logo,
                 ConsentExpiresAt = connection.ConsentExpiresAt,
-                ConsentState = ConsentStateOf(connection, now)
+                ConsentState = ConsentStateOf(connection, now),
+                RecurringPaymentsUpdatedAt = UpdatedAtOrNull(recurringPaymentsUpdatedAt, connection.Id)
             };
         }
+    }
+
+    // A connection missing from the dictionary has never had them, which is null rather than DateTime's default
+    private static DateTime? UpdatedAtOrNull(Dictionary<Guid, DateTime> updatedAt, Guid connectionId)
+    {
+        if (updatedAt.TryGetValue(connectionId, out DateTime at))
+        {
+            return at;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// When each of <paramref name="connections"/> last had its standing orders or direct debits fetched, from the
+    /// entries a sync leaves only when it saved them. Connections that never have are left out.
+    /// </summary>
+    private static async Task<Dictionary<Guid, DateTime>> RecurringPaymentsUpdatedAtAsync(
+        FinanceTrackerContext context, List<BankConnection> connections, CancellationToken cancellationToken)
+    {
+        List<Guid> connectionIds = connections.Select(static x => x.Id).ToList();
+
+        return await context.SyncLog
+            .Where(static x => x.Type == SyncType.StandingOrders || x.Type == SyncType.DirectDebits)
+            .Join(context.BankAccounts, static x => x.AccountId, static x => x.Id,
+                static (entry, account) => new { account.ConnectionId, entry.OccurredAt })
+            .Where(x => connectionIds.Contains(x.ConnectionId))
+            .GroupBy(static x => x.ConnectionId)
+            .Select(static x => new { ConnectionId = x.Key, UpdatedAt = x.Max(e => e.OccurredAt) })
+            .ToDictionaryAsync(static x => x.ConnectionId, static x => x.UpdatedAt, cancellationToken);
     }
 
     public async Task<string> GetRenewalUrlAsync(Guid connectionId, CancellationToken cancellationToken)
@@ -283,6 +317,7 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
             .ToDictionaryAsync(static x => x.AccountId, static x => x.OccurredAt, cancellationToken);
 
         DateTime now = _timeProvider.UtcNow;
+        SyncTypes strongAuthenticationFlags = StrongAuthenticationSyncFlags(connection, syncFlags, now);
         foreach (ExternalOpenBankingAccount externalAccount in externalAccounts)
         {
             if (accounts.TryGetValue(externalAccount.AccountId, out BankAccount? account))
@@ -311,7 +346,7 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
                 : null;
 
             AccountSnapshot snapshot = await FetchAccountSnapshotAsync(connection, account, authToken, syncFlags,
-                transactionsFrom, tally, cancellationToken);
+                strongAuthenticationFlags, transactionsFrom, tally, cancellationToken);
 
             await ApplySnapshotAsync(context, account, snapshot, now, tally, cancellationToken);
         }
@@ -324,6 +359,29 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
 
         await context.SaveChangesAsync(cancellationToken);
         Summarise(connection, tally, Stopwatch.GetElapsedTime(startedAt));
+    }
+
+    /// <summary>
+    /// What to fetch of what only the bank's strong authentication window releases, standing orders and direct
+    /// debits. Banks refuse them a few minutes after the user authenticated, so outside that a sync leaves them out
+    /// rather than have every account's fetches refused. The ones already stored are kept, and the next connect or
+    /// renewal refreshes them.
+    /// </summary>
+    private SyncTypes StrongAuthenticationSyncFlags(BankConnection connection, SyncTypes syncFlags, DateTime now)
+    {
+        if (connection.IsWithinStrongAuthentication(now))
+        {
+            return syncFlags;
+        }
+
+        bool wanted = ShouldSynchronise(syncFlags, SyncTypes.StandingOrders) ||
+                      ShouldSynchronise(syncFlags, SyncTypes.DirectDebits);
+        if (wanted)
+        {
+            Logger.LogStandingOrdersAndDirectDebitsSkipped(connection.Id, UserId, connection.ConsentGrantedAt);
+        }
+
+        return default;
     }
 
     /// <summary>
@@ -432,9 +490,12 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
         return issued.Token;
     }
 
+    /// <param name="strongAuthenticationFlags">
+    /// What to fetch of standing orders and direct debits, see <see cref="StrongAuthenticationSyncFlags"/>.
+    /// </param>
     private async Task<AccountSnapshot> FetchAccountSnapshotAsync(BankConnection connection, BankAccount account,
-        string authToken, SyncTypes syncFlags, DateTime? transactionsFrom, ConnectionSyncTally tally,
-        CancellationToken cancellationToken)
+        string authToken, SyncTypes syncFlags, SyncTypes strongAuthenticationFlags, DateTime? transactionsFrom,
+        ConnectionSyncTally tally, CancellationToken cancellationToken)
     {
         string externalId = account.ExternalId;
         string accountId = account.Id.ToString();
@@ -444,13 +505,14 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
             static x => x.Results,
             ex => Logger.LogErrorSyncingAccountBalance(ex, connection.Id, accountId, UserId), tally, cancellationToken);
 
-        Task<List<ExternalOpenBankingAccountStandingOrder>?> standingOrders = FetchAsync("Fetch standing orders", syncFlags,
-            SyncTypes.StandingOrders,
+        Task<List<ExternalOpenBankingAccountStandingOrder>?> standingOrders = FetchAsync("Fetch standing orders",
+            strongAuthenticationFlags, SyncTypes.StandingOrders,
             () => _openBankingApiService.GetAccountStandingOrdersAsync(externalId, authToken, cancellationToken),
             static x => x.Results,
             ex => Logger.LogErrorSyncingStandingOrders(ex, connection.Id, accountId, UserId), tally, cancellationToken);
 
-        Task<List<ExternalOpenBankingDirectDebit>?> directDebits = FetchAsync("Fetch direct debits", syncFlags, SyncTypes.DirectDebits,
+        Task<List<ExternalOpenBankingDirectDebit>?> directDebits = FetchAsync("Fetch direct debits",
+            strongAuthenticationFlags, SyncTypes.DirectDebits,
             () => _openBankingApiService.GetAccountDirectDebitsAsync(externalId, authToken, cancellationToken),
             static x => x.Results,
             ex => Logger.LogErrorSyncingDirectDebits(ex, connection.Id, accountId, UserId), tally, cancellationToken);

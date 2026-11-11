@@ -817,6 +817,65 @@ public class OpenBankingServiceTests : InfrastructureTestBase
     }
 
     [Test]
+    public async Task SyncConnectionAsync_LongAfterAuthenticating_LeavesOutStandingOrdersAndDirectDebits()
+    {
+        // Arrange, a scheduled sync hours after the user connected, when the bank would refuse them
+        ExternalOpenBankingAccount externalAccount = new ExternalOpenBankingAccountFaker().Generate();
+
+        await SeedAccountAsync(externalAccount, authenticatedAgo: TimeSpan.FromHours(4))
+            .Do(s => s.BankAccountScenario.WithStandingOrders("main", new StandingOrderDetailsFaker().Generate()))
+            .Do(s => s.BankAccountScenario.WithDirectDebits("main", new DirectDebitDetailsFaker().Generate()));
+
+        ExternalOpenBankingAccountBalance balance = new ExternalOpenBankingAccountBalanceFaker().Generate();
+        GivenProviderReturns(accounts: [externalAccount], balances: [balance]);
+        using TestMetrics metrics = new();
+        using MetricCollector<long> fetchesFailed = metrics.Collect<long>(FinTrackMetrics.FetchesFailedName);
+
+        OpenBankingService subject = BuildSubject(metrics: metrics.Metrics);
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert, not asked for, so nothing refused, the stored ones kept and the rest synced as usual
+        BankAccount account = (await LoadAccountsAsync()).Single();
+
+        using (Assert.Multiple())
+        {
+            await _api.DidNotReceiveWithAnyArgs().GetAccountStandingOrdersAsync(default!, default!, default);
+            await _api.DidNotReceiveWithAnyArgs().GetAccountDirectDebitsAsync(default!, default!, default);
+            await Assert.That(account.StandingOrders).Count().IsEqualTo(1);
+            await Assert.That(account.DirectDebits).Count().IsEqualTo(1);
+            await Assert.That(account.Balance!.Available).IsEqualTo(balance.Available);
+            await Assert.That(fetchesFailed.GetMeasurementSnapshot().Sum(static x => x.Value)).IsEqualTo(0);
+        }
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_JustAfterAuthenticating_FetchesStandingOrdersAndDirectDebits()
+    {
+        // Arrange, the sync straight after connecting or renewing
+        ExternalOpenBankingAccount externalAccount = new ExternalOpenBankingAccountFaker().Generate();
+        await SeedAccountAsync(externalAccount, authenticatedAgo: TimeSpan.FromMinutes(1));
+        GivenProviderReturns(accounts: [externalAccount],
+            standingOrders: [new ExternalOpenBankingAccountStandingOrderFaker().Generate()],
+            directDebits: [new ExternalOpenBankingDirectDebitFaker().Generate()]);
+
+        OpenBankingService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        BankAccount account = (await LoadAccountsAsync()).Single();
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(account.StandingOrders).Count().IsEqualTo(1);
+            await Assert.That(account.DirectDebits).Count().IsEqualTo(1);
+        }
+    }
+
+    [Test]
     public async Task SyncConnectionAsync_StandingOrdersAndDirectDebitsFetchFails_KeepsTheStoredOnes()
     {
         // Arrange
@@ -1161,6 +1220,33 @@ public class OpenBankingServiceTests : InfrastructureTestBase
             ("Active Bank", ConsentState.Active),
             ("Lapsed Bank", ConsentState.Lapsed),
             ("Soon Bank", ConsentState.RenewSoon)
+        ]);
+    }
+
+    [Test]
+    public async Task GetConnectionsAsync_SaysWhenStandingOrdersAndDirectDebitsWereLastFetched()
+    {
+        // Arrange, one connection with both fetched at different times and a later sync that left them out, one
+        // never fetched
+        DateTime connectedAt = new(2026, 10, 1, 9, 0, 0, DateTimeKind.Utc);
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("fetched", Username, Named("Fetched Bank")))
+            .Do(s => s.BankAccountScenario.WithAccount("current", "fetched"))
+            .Do(s => s.BankAccountScenario.WithSyncLog("current", SyncType.StandingOrders, connectedAt))
+            .Do(s => s.BankAccountScenario.WithSyncLog("current", SyncType.DirectDebits, connectedAt.AddMinutes(1)))
+            .Do(s => s.BankAccountScenario.WithSyncLog("current", SyncType.Transactions, connectedAt.AddDays(5)))
+            .Do(s => s.BankConnectionScenario.WithConnection("never", Username, Named("Never Bank")));
+
+        OpenBankingService subject = BuildSubject();
+
+        // Act
+        List<BankConnectionSummary> connections = await subject.GetConnectionsAsync(CancellationToken)
+            .ToListAsync(CancellationToken);
+
+        // Assert, the later of the two, not the transactions sync
+        await Assert.That(connections.Select(x => (x.Name, x.RecurringPaymentsUpdatedAt))).IsEquivalentTo([
+            ("Fetched Bank", (DateTime?)connectedAt.AddMinutes(1)),
+            ("Never Bank", (DateTime?)null)
         ]);
     }
 
@@ -1623,8 +1709,9 @@ public class OpenBankingServiceTests : InfrastructureTestBase
         await Assert.That((await context.BankConnections.SingleAsync(CancellationToken)).Scopes.Count).IsEqualTo(0);
     }
 
-    private Task<TestingScenario> SeedAccountAsync(ExternalOpenBankingAccount externalAccount) =>
-        SeedConnectionAsync()
+    private Task<TestingScenario> SeedAccountAsync(ExternalOpenBankingAccount externalAccount,
+        TimeSpan authenticatedAgo = default) =>
+        SeedConnectionAsync(authenticatedAgo: authenticatedAgo)
             .Do(s => s.BankAccountScenario.WithAccount("main", "bank", (userId, connectionId) =>
                 new BankAccount(userId, connectionId, externalAccount.AccountId, "TRANSACTION", "Main", "GBP")));
 
@@ -1633,7 +1720,8 @@ public class OpenBankingServiceTests : InfrastructureTestBase
             TransactionMetadata.None, false);
 
     /// <param name="withCards">Whether the connection's consent covers cards.</param>
-    private Task<TestingScenario> SeedConnectionAsync(bool withCards = false) =>
+    /// <param name="authenticatedAgo">How long ago the user authenticated, just now unless given.</param>
+    private Task<TestingScenario> SeedConnectionAsync(bool withCards = false, TimeSpan authenticatedAgo = default) =>
         Scenario.Do(s => s.UserScenario.WithUser(Username))
             .Do(s => s.BankConnectionScenario.WithConnection("bank", Username, userId =>
             {
@@ -1643,8 +1731,9 @@ public class OpenBankingServiceTests : InfrastructureTestBase
                     scopes.Add("cards");
                 }
 
-                return new BankConnection(userId, "ob-bank", "Bank", "code", scopes, [1], DateTime.UtcNow,
-                    DateTime.UtcNow.AddDays(90));
+                DateTime authenticatedAt = DateTime.UtcNow - authenticatedAgo;
+                return new BankConnection(userId, "ob-bank", "Bank", "code", scopes, [1], authenticatedAt,
+                    authenticatedAt.AddDays(90));
             }))
             .Do(s => s.BankConnectionScenario.WithAccessToken("bank", token: Token));
 

@@ -45,6 +45,12 @@ RUN if [ "$TARGETARCH" = "arm64" ]; then \
     && mkdir /pyroscope \
     && tar xzf /tmp/pyroscope.tar.gz -C /pyroscope
 
+# The profiler needs zlib, which .NET's own images stopped carrying in .NET 9 (the runtime has its own copy built in).
+# Without it the runtime quietly skips loading the profiler. Taken from the same Ubuntu release the chiseled image is
+# cut from, for the target's architecture, and put beside the profiler, which looks in its own folder first. Nothing
+# runs in this stage, so it builds without emulation
+FROM ubuntu:24.04 AS zlib
+
 # Publish builds the app itself, for the target's architecture only, so the image carries only its native libraries
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
@@ -58,4 +64,5 @@ FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
 COPY --from=profiler /pyroscope /pyroscope
+COPY --from=zlib /usr/lib/*-linux-gnu/libz.so.1* /pyroscope/
 ENTRYPOINT ["dotnet", "FinanceTracker.dll"]

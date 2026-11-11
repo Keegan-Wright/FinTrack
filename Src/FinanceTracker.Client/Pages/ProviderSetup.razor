@@ -29,6 +29,10 @@
                             <div class="ft-list__main">
                                 <MudText Typo="Typo.body2" Class="text-truncate">@connection.Name</MudText>
                                 <MudText Typo="Typo.caption" Class="@ConsentClass(connection)">@ConsentText(connection)</MudText>
+                                @if (RecurringPaymentsText(connection) is { } recurringPayments)
+                                {
+                                    <MudText Typo="Typo.caption" Class="mud-text-secondary d-block">@recurringPayments</MudText>
+                                }
                             </div>
                             @if (renewing)
                             {
@@ -196,6 +200,21 @@
             ConsentState.RenewSoon => $"Access ends {date}, renew to keep syncing",
             _ => $"Access until {date}"
         };
+    }
+
+    /// <summary>
+    /// How current the bank's standing orders and direct debits are. Banks only release them when you sign in, so
+    /// renewing is what brings in new ones. Null when it has none to show.
+    /// </summary>
+    internal static string? RecurringPaymentsText(BankConnectionSummary connection)
+    {
+        if (connection.RecurringPaymentsUpdatedAt is not { } updatedAt)
+        {
+            return null;
+        }
+
+        string date = updatedAt.ToLocalTime().ToString("d MMM yyyy", CultureInfo.CurrentCulture);
+        return $"Standing orders and direct debits from {date}, renew to bring in new ones";
     }
 
     private static string ConsentClass(BankConnectionSummary connection) => connection.ConsentState switch

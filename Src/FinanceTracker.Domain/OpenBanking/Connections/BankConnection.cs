@@ -18,6 +18,15 @@ public sealed class BankConnection : AggregateRoot
     /// </summary>
     public static readonly TimeSpan RenewalWindow = TimeSpan.FromDays(14);
 
+    /// <summary>
+    /// How long after the user authenticates with their bank it still releases what it only gives out then:
+    /// standing orders, direct debits and transactions older than 90 days. After that it refuses them with a 403.
+    /// Most banks allow about 45 minutes, a few only 5. The longer one is used, as the sync after connecting is queued
+    /// behind the user's other connections and can start minutes later. Missing that sync would leave the connection
+    /// without them until it's renewed, a refused fetch in the minutes between only costs a warning.
+    /// </summary>
+    public static readonly TimeSpan StrongAuthenticationWindow = TimeSpan.FromMinutes(45);
+
     private readonly List<string> _scopes = [];
     private readonly List<AccessToken> _accessTokens = [];
 
@@ -71,6 +80,12 @@ public sealed class BankConnection : AggregateRoot
     /// Consent ends within <see cref="RenewalWindow"/>, or already has, so the user should renew it.
     /// </summary>
     public bool NeedsRenewal(DateTime now) => now >= ConsentExpiresAt - RenewalWindow;
+
+    /// <summary>
+    /// The user authenticated within <see cref="StrongAuthenticationWindow"/>, connecting or renewing, so the bank
+    /// still releases standing orders and direct debits.
+    /// </summary>
+    public bool IsWithinStrongAuthentication(DateTime now) => now < ConsentGrantedAt + StrongAuthenticationWindow;
 
     /// <summary>
     /// The refresh token to renew the consent with: the latest one issued, revoked or not, as renewing works for a

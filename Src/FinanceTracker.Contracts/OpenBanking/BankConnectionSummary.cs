@@ -29,4 +29,11 @@ public sealed record BankConnectionSummary
     /// Whether the consent needs renewing, worked out from <see cref="ConsentExpiresAt"/>.
     /// </summary>
     public required ConsentState ConsentState { get; init; }
+
+    /// <summary>
+    /// When its standing orders and direct debits were last fetched, null when they never have been, as for a
+    /// connection with only cards. Banks only release them just after the user authenticates, so they're as of the
+    /// last connect or renewal.
+    /// </summary>
+    public DateTime? RecurringPaymentsUpdatedAt { get; init; }
 }

@@ -41,6 +41,10 @@ public static partial class LoggerMessages
     [LoggerMessage(LogLevel.Warning, "Connection {connectionId} for user {userId} has no active consent, re-authentication is required before it can sync")]
     public static partial void LogConnectionNotAuthenticated(this ILogger logger, Guid connectionId, Guid userId);
 
+    [LoggerMessage(LogLevel.Debug, "Left out standing orders and direct debits for connection {connectionId} for user {userId}, the bank only releases them just after the user authenticates, last at {consentGrantedAt}. The stored ones are kept until the next renewal")]
+    public static partial void LogStandingOrdersAndDirectDebitsSkipped(this ILogger logger, Guid connectionId,
+        Guid userId, DateTime consentGrantedAt);
+
     [LoggerMessage(LogLevel.Information, "Updated {refreshed} balance snapshots for {day} for user {userId}, {stale} of the day's snapshots are stale")]
     public static partial void LogSnapshotBalances(this ILogger logger, Guid userId, DateOnly day, int refreshed, int stale);
 

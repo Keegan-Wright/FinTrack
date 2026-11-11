@@ -257,6 +257,34 @@ public class BankConnectionTests
         Assert.Throws<InvalidOperationException>(() => connection.RefreshTokenForRenewal());
     }
 
+    [Test]
+    [Arguments(0, true)]
+    [Arguments(5, true)]
+    [Arguments(44, true)]
+    [Arguments(45, false)]
+    [Arguments(240, false)]
+    public async Task IsWithinStrongAuthentication_OnlyForTheFirstMinutesAfterAuthenticating(int minutesLater,
+        bool within)
+    {
+        BankConnection connection = BuildConnection();
+
+        await Assert.That(connection.IsWithinStrongAuthentication(IssuedAt.AddMinutes(minutesLater))).IsEqualTo(within);
+    }
+
+    [Test]
+    public async Task IsWithinStrongAuthentication_RenewingStartsTheWindowAgain()
+    {
+        // Arrange, a connection authenticated a month ago
+        BankConnection connection = BuildConnection();
+        DateTime renewedAt = IssuedAt.AddDays(30);
+
+        // Act
+        connection.Reauthenticate("new-code", ["accounts"], renewedAt, renewedAt.AddDays(90));
+
+        // Assert
+        await Assert.That(connection.IsWithinStrongAuthentication(renewedAt.AddMinutes(1))).IsTrue();
+    }
+
     private static DateTime ExpiresAt => IssuedAt.AddDays(90);
 
     private static BankConnection BuildConnection() =>
