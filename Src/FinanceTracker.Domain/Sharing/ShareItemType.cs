@@ -11,8 +11,8 @@ public enum ShareItemType
     BankAccount = 0,
 
     /// <summary>
-    /// A custom classification, read only, shared when it's put on the other person's transaction so they see its
-    /// name.
+    /// A custom classification, a tag. Chosen, the other person can use it on their own transactions too, and rename
+    /// it if allowed. Or read only, when it's put on the other person's transaction so they see its name.
     /// </summary>
     Classification = 1,
 

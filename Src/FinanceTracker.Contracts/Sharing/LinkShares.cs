@@ -1,8 +1,8 @@
 namespace FinanceTracker.Contracts.Sharing;
 
 /// <summary>
-/// What's shared both ways in one link, each of the signed in user's accounts and whether they share it, and the
-/// accounts the other person shares with them.
+/// What's shared both ways in one link, each of the signed in user's accounts and other things and whether they share
+/// it, and what the other person shares with them.
 /// </summary>
 public sealed record LinkShares
 {
@@ -25,6 +25,16 @@ public sealed record LinkShares
     /// The accounts the other person shares with them.
     /// </summary>
     public required IReadOnlyList<AccountSharedWithYou> TheirAccounts { get; init; }
+
+    /// <summary>
+    /// Every one of the user's own things besides accounts that can be shared, shared or not, so they can choose.
+    /// </summary>
+    public IReadOnlyList<ShareableItem> YourItems { get; init; } = [];
+
+    /// <summary>
+    /// The things besides accounts the other person chose to share with them.
+    /// </summary>
+    public IReadOnlyList<ItemSharedWithYou> TheirItems { get; init; } = [];
 
     /// <summary>
     /// Accounts both of them connected that look like one joint account and could be merged.

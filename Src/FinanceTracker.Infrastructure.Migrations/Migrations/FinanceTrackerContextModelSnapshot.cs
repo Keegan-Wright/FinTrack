@@ -1520,6 +1520,12 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("Chosen");
+
                     b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
@@ -1541,7 +1547,7 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
                     b.HasIndex("ItemType", "ItemId");
 
-                    b.HasIndex("LinkId", "ItemType", "ItemId")
+                    b.HasIndex("LinkId", "ItemType", "ItemId", "Reason")
                         .IsUnique();
 
                     b.ToTable("Shares", (string)null);

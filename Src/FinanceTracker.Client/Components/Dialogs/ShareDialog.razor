@@ -1,0 +1,297 @@
+@* Chooses which of the user's accounts and tags to share with the other person in a link, and what they can do with
+   each, and shows what the other person shares with them. Returns the whole choice as ShareChoices. *@
+@using FinanceTracker.Contracts.Sharing
+
+<DialogBase TResponse="ShareChoices" Title="@($"Share with {Shares.Name}")"
+            ResponseConstructor="BuildResponseModel">
+    <Content>
+        <div class="ft-share">
+            <MudTabs Elevation="0" Rounded="true" TabPanelsClass="pt-4" Color="Color.Transparent"
+                     SliderColor="Color.Primary" ActiveTabClass="mud-primary-text">
+                <MudTabPanel Text="Accounts">
+                    <div class="ft-share">
+                        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                            Tick the accounts @Shares.Name can see. <strong>See</strong> lets them look,
+                            <strong>Change</strong> also lets them tag and split its transactions.
+                        </MudText>
+
+                        @if (Shares.YourAccounts.Count == 0)
+                        {
+                            <MudText Typo="Typo.body2">You haven't connected any accounts yet.</MudText>
+                        }
+                        else
+                        {
+                            <div class="ft-share__all">
+                                <MudCheckBox T="bool?" Value="@AllAccountsChosen" ValueChanged="@ChooseAllAccounts"
+                                             TriState="true" Label="Select all" Color="Color.Primary" Dense="true"/>
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">@AccountsCountText</MudText>
+                            </div>
+
+                            @foreach (IGrouping<string, ShareableAccount> bank in ByBank)
+                            {
+                                <div class="ft-share__bank">
+                                    <MudText Typo="Typo.overline" Class="mud-text-secondary">@bank.Key</MudText>
+                                    <div class="ft-list">
+                                        @foreach (ShareableAccount account in bank)
+                                        {
+                                            @Row(account.Name, _accounts, account.AccountId)
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        }
+                    </div>
+                </MudTabPanel>
+                <MudTabPanel Text="Tags">
+                    <div class="ft-share">
+                        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                            Tick the tags @Shares.Name can use. <strong>See</strong> lets them put it on their own
+                            transactions, <strong>Change</strong> also lets them rename it.
+                        </MudText>
+                        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                            Untick one and it comes off their transactions again.
+                        </MudText>
+
+                        @if (Tags.Count == 0)
+                        {
+                            <MudText Typo="Typo.body2">You haven't made any tags yet.</MudText>
+                        }
+                        else
+                        {
+                            <div class="ft-share__all">
+                                <MudCheckBox T="bool?" Value="@AllTagsChosen" ValueChanged="@ChooseAllTags"
+                                             TriState="true" Label="Select all" Color="Color.Primary" Dense="true"/>
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">@TagsCountText</MudText>
+                            </div>
+
+                            <div class="ft-list">
+                                @foreach (ShareableItem tag in Tags)
+                                {
+                                    @Row(tag.Name, _tags, tag.ItemId)
+                                }
+                            </div>
+                        }
+                    </div>
+                </MudTabPanel>
+            </MudTabs>
+
+            <MudDivider/>
+
+            <div>
+                <MudText Typo="Typo.subtitle2">@Shares.Name shares with you</MudText>
+                @if (Shares.TheirAccounts.Count == 0 && Shares.TheirItems.Count == 0)
+                {
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">Nothing yet.</MudText>
+                }
+                else
+                {
+                    <div class="ft-list">
+                        @foreach (AccountSharedWithYou account in Shares.TheirAccounts)
+                        {
+                            <div class="ft-list__row">
+                                <div class="ft-list__main">
+                                    <MudText Typo="Typo.body2" Class="text-truncate">@account.Name</MudText>
+                                    <MudText Typo="Typo.caption" Class="mud-text-secondary text-truncate">
+                                        @account.BankName · @ModeText(account.Mode).ToLowerInvariant()
+                                    </MudText>
+                                </div>
+                            </div>
+                        }
+                        @foreach (ItemSharedWithYou item in Shares.TheirItems)
+                        {
+                            <div class="ft-list__row">
+                                <div class="ft-list__main">
+                                    <MudText Typo="Typo.body2" Class="text-truncate">@item.Name</MudText>
+                                    <MudText Typo="Typo.caption" Class="mud-text-secondary text-truncate">
+                                        @KindText(item.Kind) · @ModeText(item.Mode).ToLowerInvariant()
+                                    </MudText>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </Content>
+</DialogBase>
+
+@code {
+
+    [Parameter] [EditorRequired] public required LinkShares Shares { get; set; }
+
+    /// <summary>
+    /// The accounts ticked and what the other person can do with each.
+    /// </summary>
+    private readonly Dictionary<Guid, ShareMode> _accounts = [];
+
+    /// <summary>
+    /// The tags ticked and what the other person can do with each.
+    /// </summary>
+    private readonly Dictionary<Guid, ShareMode> _tags = [];
+
+    protected override void OnParametersSet()
+    {
+        _accounts.Clear();
+        foreach (ShareableAccount account in Shares.YourAccounts)
+        {
+            if (account.Mode is { } mode)
+            {
+                _accounts[account.AccountId] = mode;
+            }
+        }
+
+        _tags.Clear();
+        foreach (ShareableItem tag in Tags)
+        {
+            if (tag.Mode is { } mode)
+            {
+                _tags[tag.ItemId] = mode;
+            }
+        }
+    }
+
+    private List<ShareableItem> Tags =>
+        Shares.YourItems.Where(static x => x.Kind == SharedItemKind.Classification).ToList();
+
+    /// <summary>
+    /// The accounts under their bank, in the order they came, which is by bank then name.
+    /// </summary>
+    private IEnumerable<IGrouping<string, ShareableAccount>> ByBank =>
+        Shares.YourAccounts.GroupBy(static x => x.BankName);
+
+    private string AccountsCountText => $"{_accounts.Count} of {Shares.YourAccounts.Count} shared";
+
+    private string TagsCountText => $"{_tags.Count} of {Tags.Count} shared";
+
+    private bool? AllAccountsChosen => AllChosen(_accounts.Count, Shares.YourAccounts.Count);
+
+    private bool? AllTagsChosen => AllChosen(_tags.Count, Tags.Count);
+
+    /// <summary>
+    /// A row to tick one thing and, once ticked, say what the other person can do with it. The toggle always takes
+    /// its room, so ticking a row doesn't move anything.
+    /// </summary>
+    private RenderFragment Row(string name, Dictionary<Guid, ShareMode> chosen, Guid id) => __builder =>
+    {
+        bool isChosen = chosen.TryGetValue(id, out ShareMode mode);
+        <div class="ft-list__row ft-share__row">
+            <MudCheckBox T="bool" Value="@isChosen" ValueChanged="@(x => Choose(chosen, id, x))"
+                         Color="Color.Primary" Dense="true" aria-label="@($"Share {name}")"/>
+            <MudText Typo="Typo.body2" Class="ft-list__main text-truncate">@name</MudText>
+            <div class="ft-share__mode">
+                @if (isChosen)
+                {
+                    <MudToggleGroup T="ShareMode" Value="@mode" ValueChanged="@(x => chosen[id] = x)"
+                                    Size="Size.Small" Color="Color.Primary" Outlined="true"
+                                    aria-label="@($"What {Shares.Name} can do with {name}")">
+                        <MudToggleItem Value="ShareMode.ReadOnly" Text="See"/>
+                        <MudToggleItem Value="ShareMode.AllowChanges" Text="Change"/>
+                    </MudToggleGroup>
+                }
+            </div>
+        </div>
+    };
+
+    /// <summary>
+    /// Ticked when every one is shared, empty when none are, and in between otherwise.
+    /// </summary>
+    private static bool? AllChosen(int chosen, int all)
+    {
+        if (chosen == 0)
+        {
+            return false;
+        }
+
+        if (chosen == all)
+        {
+            return true;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// What a mode lets the other person do, as the list of what's shared with them reads.
+    /// </summary>
+    internal static string ModeText(ShareMode mode) => mode switch
+    {
+        ShareMode.AllowChanges => "Can see and change",
+        _ => "Can see"
+    };
+
+    /// <summary>
+    /// What kind of thing something shared with them is, as the list reads.
+    /// </summary>
+    internal static string KindText(SharedItemKind kind) => kind switch
+    {
+        SharedItemKind.Classification => "Tag",
+        _ => "Item"
+    };
+
+    private static void Choose(Dictionary<Guid, ShareMode> chosen, Guid id, bool isChosen)
+    {
+        if (isChosen)
+        {
+            chosen.TryAdd(id, ShareMode.ReadOnly);
+        }
+        else
+        {
+            chosen.Remove(id);
+        }
+    }
+
+    // Select all ticks the accounts listed now, read only unless already chosen otherwise. It's not a standing choice,
+    // accounts connected later still start private
+    private void ChooseAllAccounts(bool? all) =>
+        ChooseAll(_accounts, Shares.YourAccounts.Select(static x => x.AccountId), all);
+
+    private void ChooseAllTags(bool? all) => ChooseAll(_tags, Tags.Select(static x => x.ItemId), all);
+
+    private static void ChooseAll(Dictionary<Guid, ShareMode> chosen, IEnumerable<Guid> ids, bool? all)
+    {
+        if (all != true)
+        {
+            chosen.Clear();
+            return;
+        }
+
+        foreach (Guid id in ids)
+        {
+            chosen.TryAdd(id, ShareMode.ReadOnly);
+        }
+    }
+
+    private Task<ShareChoices?> BuildResponseModel()
+    {
+        Dictionary<Guid, ShareMode> accountsBefore = Shares.YourAccounts
+            .Where(static x => x.Mode is not null)
+            .ToDictionary(static x => x.AccountId, static x => x.Mode!.Value);
+        Dictionary<Guid, ShareMode> tagsBefore = Tags
+            .Where(static x => x.Mode is not null)
+            .ToDictionary(static x => x.ItemId, static x => x.Mode!.Value);
+
+        ShareChoices choices = new(
+            new ChangeAccountShares
+            {
+                Accounts = _accounts
+                    .Select(static x => new AccountShareChoice { AccountId = x.Key, Mode = x.Value })
+                    .ToList()
+            },
+            !SameChoice(accountsBefore, _accounts),
+            new ChangeItemShares
+            {
+                Items = _tags
+                    .Select(static x => new ItemShareChoice
+                    {
+                        Kind = SharedItemKind.Classification, ItemId = x.Key, Mode = x.Value
+                    })
+                    .ToList()
+            },
+            !SameChoice(tagsBefore, _tags));
+
+        return Task.FromResult<ShareChoices?>(choices);
+    }
+
+    private static bool SameChoice(Dictionary<Guid, ShareMode> before, Dictionary<Guid, ShareMode> now) =>
+        before.Count == now.Count && before.All(x => now.TryGetValue(x.Key, out ShareMode mode) && mode == x.Value);
+}

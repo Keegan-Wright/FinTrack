@@ -74,7 +74,9 @@
         Accounts = await LoadOnceAsync(Accounts, "Loading your goals", cancellationToken =>
             SavingsGoalsService.GetSavingsAccountsAsync(cancellationToken).ToListAsync(cancellationToken).AsTask());
         Tags = await LoadOnceAsync(Tags, "Loading your goals", cancellationToken =>
+            // Only their own, tags shared with them are for their transactions, not rules, budgets or goals yet
             ClassificationService.GetAllCustomClassificationsAsync(cancellationToken)
+                .Where(static x => x.SharedBy is null)
                 .ToListAsync(cancellationToken).AsTask());
     }
 

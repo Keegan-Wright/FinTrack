@@ -154,12 +154,41 @@
     /// </summary>
     internal static string SharedSummary(UserLink link)
     {
-        if (link.AccountsYouShare == 0 && link.AccountsTheyShare == 0)
+        if (link.AccountsYouShare == 0 && link.AccountsTheyShare == 0 && link.ItemsYouShare == 0 &&
+            link.ItemsTheyShare == 0)
         {
             return "nothing shared yet";
         }
 
-        return $"you share {AccountsText(link.AccountsYouShare)}, they share {link.AccountsTheyShare}";
+        string yours = $"you share {AccountsText(link.AccountsYouShare)}{MoreText(link.ItemsYouShare)}";
+        return $"{yours}, they share {link.AccountsTheyShare}{MoreText(link.ItemsTheyShare)}";
+    }
+
+    /// <summary>
+    /// The other things shared besides accounts, after the accounts, e.g. <c> and 2 more</c>. Empty when there are
+    /// none.
+    /// </summary>
+    private static string MoreText(int items)
+    {
+        if (items == 0)
+        {
+            return string.Empty;
+        }
+
+        return $" and {items} more";
+    }
+
+    /// <summary>
+    /// <paramref name="count"/> of <paramref name="what"/>, e.g. <c>1 tag</c> or <c>3 tags</c>.
+    /// </summary>
+    private static string CountText(int count, string what)
+    {
+        if (count == 1)
+        {
+            return $"1 {what}";
+        }
+
+        return $"{count} {what}s";
     }
 
     /// <summary>
@@ -332,10 +361,16 @@
             return;
         }
 
-        DialogParameters<ShareAccountsDialog> parameters = new() { { x => x.Shares, shares } };
-        IDialogReference dialog = await DialogService.ShowAsync<ShareAccountsDialog>(null, parameters);
+        DialogParameters<ShareDialog> parameters = new() { { x => x.Shares, shares } };
+        IDialogReference dialog = await DialogService.ShowAsync<ShareDialog>(null, parameters);
         DialogResult? result = await dialog.Result;
         if (result is null || result.Canceled)
+        {
+            return;
+        }
+
+        ShareChoices choices = (ShareChoices)result.Data!;
+        if (!choices.AccountsChanged && !choices.ItemsChanged)
         {
             return;
         }
@@ -343,8 +378,17 @@
         try
         {
             SetLoadingState(true, $"Saving what you share with {link.Name}…");
-            LinkShares saved = await SharingService.ChangeAccountSharesAsync(link.Id,
-                (ChangeAccountShares)result.Data!, _cts.Token);
+            LinkShares saved = shares;
+            if (choices.AccountsChanged)
+            {
+                saved = await SharingService.ChangeAccountSharesAsync(link.Id, choices.Accounts, _cts.Token);
+            }
+
+            if (choices.ItemsChanged)
+            {
+                saved = await SharingService.ChangeItemSharesAsync(link.Id, choices.Items, _cts.Token);
+            }
+
             Links = await LoadLinksAsync(_cts.Token);
             Snackbar.Add(SharedText(saved), Severity.Success);
         }
@@ -445,22 +489,30 @@
     }
 
     /// <summary>
-    /// How many accounts they now share, once saved.
+    /// How many accounts and other things they now share, once saved, e.g. <c>Sharing 2 accounts and 3 tags with
+    /// Sam</c>.
     /// </summary>
     internal static string SharedText(LinkShares shares)
     {
-        int count = shares.YourAccounts.Count(static x => x.Mode is not null);
-        if (count == 0)
+        int accounts = shares.YourAccounts.Count(static x => x.Mode is not null);
+        int tags = shares.YourItems.Count(static x => x.Kind == SharedItemKind.Classification && x.Mode is not null);
+        if (accounts == 0 && tags == 0)
         {
             return $"Nothing shared with {shares.Name}";
         }
 
-        if (count == 1)
+        List<string> parts = [];
+        if (accounts > 0)
         {
-            return $"Sharing 1 account with {shares.Name}";
+            parts.Add(AccountsText(accounts));
         }
 
-        return $"Sharing {count} accounts with {shares.Name}";
+        if (tags > 0)
+        {
+            parts.Add(CountText(tags, "tag"));
+        }
+
+        return $"Sharing {string.Join(" and ", parts)} with {shares.Name}";
     }
 
     private static string ConfirmTitle(UserLink link)

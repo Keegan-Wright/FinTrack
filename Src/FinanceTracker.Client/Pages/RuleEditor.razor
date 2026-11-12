@@ -134,7 +134,9 @@ else
             TransactionsService.GetAccountsForTransactionFiltersAsync(cancellationToken)
                 .ToListAsync(cancellationToken).AsTask());
         Tags = await LoadOnceAsync(Tags, "Loading the rule", cancellationToken =>
+            // Only their own, tags shared with them are for their transactions, not rules, budgets or goals yet
             ClassificationService.GetAllCustomClassificationsAsync(cancellationToken)
+                .Where(static x => x.SharedBy is null)
                 .ToListAsync(cancellationToken).AsTask());
         BillList = await LoadOnceAsync(BillList, "Loading the rule", cancellationToken =>
             BillsService.GetBillsAsync(cancellationToken).ToListAsync(cancellationToken).AsTask());

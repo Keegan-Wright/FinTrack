@@ -148,7 +148,9 @@
         BudgetList = await LoadOnceAsync(BudgetList, "Loading your budgets", cancellationToken =>
             BudgetsService.GetBudgetsAsync(cancellationToken).ToListAsync(cancellationToken).AsTask());
         Tags = await LoadOnceAsync(Tags, "Loading your budgets", cancellationToken =>
+            // Only their own, tags shared with them are for their transactions, not rules, budgets or goals yet
             ClassificationService.GetAllCustomClassificationsAsync(cancellationToken)
+                .Where(static x => x.SharedBy is null)
                 .ToListAsync(cancellationToken).AsTask());
     }
 

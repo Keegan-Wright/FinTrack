@@ -56,6 +56,16 @@ public interface ISharingService
         CancellationToken cancellationToken);
 
     /// <summary>
+    /// Replaces which of the user's things besides accounts they choose to share in one of their accepted links, and
+    /// how. Validate the request with <see cref="Validation.ChangeItemSharesValidator"/> first.
+    /// </summary>
+    /// <returns>What's shared both ways now.</returns>
+    /// <exception cref="InvalidOperationException">They have no accepted link with <paramref name="linkId"/>, or an
+    /// item in the request isn't theirs.</exception>
+    Task<LinkShares> ChangeItemSharesAsync(Guid linkId, ChangeItemShares request,
+        CancellationToken cancellationToken);
+
+    /// <summary>
     /// Merges the user's and the other person's copies of joint accounts they both connected, so each is counted
     /// once. The first connected is shown to both and the other hidden, still syncing. The hidden copy's tags join the
     /// shown one's. The other person is notified. Validate the request with

@@ -52,12 +52,12 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
-        // Counted per link and per person sharing, each side's own shares only ever being its own accounts
+        // Counted per link and per person sharing, accounts apart from the other things they chose to share
         List<Guid> linkIds = links.Select(static x => x.Id).ToList();
         var shareCounts = await context.Shares.AsNoTracking()
-            .Where(x => linkIds.Contains(x.LinkId) && x.ItemType == ShareItemType.BankAccount)
-            .GroupBy(static x => new { x.LinkId, x.UserId })
-            .Select(static x => new { x.Key.LinkId, x.Key.UserId, Count = x.Count() })
+            .Where(x => linkIds.Contains(x.LinkId) && x.Reason == ShareReason.Chosen)
+            .GroupBy(static x => new { x.LinkId, x.UserId, IsAccount = x.ItemType == ShareItemType.BankAccount })
+            .Select(static x => new { x.Key.LinkId, x.Key.UserId, x.Key.IsAccount, Count = x.Count() })
             .ToListAsync(cancellationToken);
 
         List<Guid> otherIds = links.Select(x => x.OtherThan(UserId)).ToList();
@@ -82,8 +82,14 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
 
             yield return ToContract(link, others[otherId]) with
             {
-                AccountsYouShare = shareCounts.Where(x => x.LinkId == link.Id && x.UserId == UserId).Sum(static x => x.Count),
-                AccountsTheyShare = shareCounts.Where(x => x.LinkId == link.Id && x.UserId == otherId).Sum(static x => x.Count),
+                AccountsYouShare = shareCounts.Where(x => x.LinkId == link.Id && x.UserId == UserId && x.IsAccount)
+                    .Sum(static x => x.Count),
+                AccountsTheyShare = shareCounts.Where(x => x.LinkId == link.Id && x.UserId == otherId && x.IsAccount)
+                    .Sum(static x => x.Count),
+                ItemsYouShare = shareCounts.Where(x => x.LinkId == link.Id && x.UserId == UserId && !x.IsAccount)
+                    .Sum(static x => x.Count),
+                ItemsTheyShare = shareCounts.Where(x => x.LinkId == link.Id && x.UserId == otherId && !x.IsAccount)
+                    .Sum(static x => x.Count),
                 JointAccounts = jointCounts.GetValueOrDefault(link.Id),
                 JointSuggestions = suggestions
             };
@@ -267,6 +273,24 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
         Logger.LogChanged(UserId, "changed account shares in", "user link", link.Id);
 
         await RematchTransfersAsync(context, link, cancellationToken);
+
+        return await LinkSharesAsync(context, link, cancellationToken);
+    }
+
+    public async Task<LinkShares> ChangeItemSharesAsync(Guid linkId, ChangeItemShares request,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        await using FinanceTrackerContext context =
+            await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+
+        DomainLink link = await AcceptedLinkAsync(context, linkId, cancellationToken)
+                          ?? throw new InvalidOperationException($"No accepted link {linkId} was found.");
+
+        await ItemShares.ChangeAsync(context, link, UserId, request, _timeProvider.GetUtcNow().UtcDateTime,
+            cancellationToken);
+        await context.SaveChangesAsync(cancellationToken);
+        Logger.LogChanged(UserId, "changed item shares in", "user link", link.Id);
 
         return await LinkSharesAsync(context, link, cancellationToken);
     }
@@ -466,47 +490,8 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
     {
         foreach (Share share in shares.Where(static x => x.ItemType != ShareItemType.BankAccount))
         {
-            Guid itemId = share.ItemId;
-            IQueryable<BankTransaction> theirs = context.BankTransactions.OwnedBy(link.OtherThan(share.UserId));
-
-            List<BankTransaction> carrying = await Carrying(theirs, share.ItemType, itemId)
-                .ToListAsync(cancellationToken);
-            foreach (BankTransaction transaction in carrying)
-            {
-                TakeOff(transaction, share.ItemType, itemId);
-            }
-        }
-    }
-
-    /// <summary>
-    /// Those of <paramref name="transactions"/> that carry the tag, bill or debt <paramref name="itemId"/>.
-    /// </summary>
-    private static IQueryable<BankTransaction> Carrying(IQueryable<BankTransaction> transactions,
-        ShareItemType itemType, Guid itemId) => itemType switch
-    {
-        ShareItemType.Classification => transactions.Where(x => x.CustomClassificationIds.Contains(itemId)),
-        ShareItemType.Bill => transactions.Where(x => x.BillPayment != null && x.BillPayment.BillId == itemId),
-        ShareItemType.Debt => transactions.Where(x => x.DebtPayment != null && x.DebtPayment.DebtId == itemId),
-        _ => transactions.Where(static _ => false)
-    };
-
-    /// <summary>
-    /// Takes the tag, bill or debt <paramref name="itemId"/> off <paramref name="transaction"/>, as if it had been
-    /// deleted, so matching and rules can decide about it again.
-    /// </summary>
-    private static void TakeOff(BankTransaction transaction, ShareItemType itemType, Guid itemId)
-    {
-        switch (itemType)
-        {
-            case ShareItemType.Classification:
-                transaction.RemoveDeletedClassification(itemId);
-                break;
-            case ShareItemType.Bill:
-                transaction.RemoveDeletedBill(itemId);
-                break;
-            case ShareItemType.Debt:
-                transaction.RemoveDeletedDebt(itemId);
-                break;
+            await AnnotationShares.TakeOffTransactionsOfAsync(context, link.OtherThan(share.UserId), share.ItemType,
+                share.ItemId, cancellationToken);
         }
     }
 
@@ -587,6 +572,8 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
             Name = FullName(other),
             YourAccounts = yourAccounts,
             TheirAccounts = theirAccounts,
+            YourItems = await ItemShares.YoursAsync(context, link, UserId, cancellationToken),
+            TheirItems = await ItemShares.TheirsAsync(context, link, UserId, cancellationToken),
             JointSuggestions = (await JointAccounts.SuggestionsAsync(context, link, UserId, cancellationToken))
                 .Select(static x => new JointAccountSuggestion
                 {
@@ -633,19 +620,9 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
         return null;
     }
 
-    private static ShareMode ToContract(DomainShareMode mode) => mode switch
-    {
-        DomainShareMode.ReadOnly => ShareMode.ReadOnly,
-        DomainShareMode.AllowChanges => ShareMode.AllowChanges,
-        _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, null)
-    };
+    private static ShareMode ToContract(DomainShareMode mode) => ShareModeMapping.ToContract(mode);
 
-    private static DomainShareMode ToDomain(ShareMode mode) => mode switch
-    {
-        ShareMode.ReadOnly => DomainShareMode.ReadOnly,
-        ShareMode.AllowChanges => DomainShareMode.AllowChanges,
-        _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, null)
-    };
+    private static DomainShareMode ToDomain(ShareMode mode) => ShareModeMapping.ToDomain(mode);
 
     /// <summary>
     /// The links <paramref name="userId"/> is in, from either side, that are waiting for an answer or accepted.

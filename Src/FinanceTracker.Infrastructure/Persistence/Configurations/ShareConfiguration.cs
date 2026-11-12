@@ -18,9 +18,10 @@ internal sealed class ShareConfiguration : AggregateRootConfiguration<Share>
 
         builder.Property(x => x.ItemType).HasConversion<string>();
         builder.Property(x => x.Mode).HasConversion<string>();
+        builder.Property(x => x.Reason).HasConversion<string>().HasDefaultValue(ShareReason.Chosen);
 
-        // Each thing is shared once through a link, and looked up by what's shared when reading it
-        builder.HasIndex(x => new { x.LinkId, x.ItemType, x.ItemId }).IsUnique();
+        // Each thing is shared once for each reason through a link, and looked up by what's shared when reading it
+        builder.HasIndex(x => new { x.LinkId, x.ItemType, x.ItemId, x.Reason }).IsUnique();
         builder.HasIndex(x => new { x.ItemType, x.ItemId });
     }
 }

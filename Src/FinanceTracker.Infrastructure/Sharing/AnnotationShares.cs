@@ -35,17 +35,68 @@ internal static class AnnotationShares
                       ?? throw new InvalidOperationException(
                           $"Transaction {transaction.Id} belongs to someone not linked with the user.");
 
+        // Kept apart from a share they chose, which they can take back without it coming off the transaction
         bool shared = context.Shares.Local.Any(x => IsShare(x, linkId, itemType, itemId)) ||
                       await context.Shares.AnyAsync(
-                          x => x.LinkId == linkId && x.ItemType == itemType && x.ItemId == itemId, cancellationToken);
+                          x => x.LinkId == linkId && x.ItemType == itemType && x.ItemId == itemId &&
+                               x.Reason == ShareReason.OnTransaction, cancellationToken);
         if (shared)
         {
             return;
         }
 
-        context.Shares.Add(new Share(by, linkId, itemType, itemId, ShareMode.ReadOnly, now));
+        context.Shares.Add(new Share(by, linkId, itemType, itemId, ShareMode.ReadOnly, now,
+            ShareReason.OnTransaction));
+    }
+
+    /// <summary>
+    /// Takes the tag, bill or debt <paramref name="itemId"/> off every transaction of <paramref name="ownerId"/>'s, as
+    /// when they can no longer see it. Tracked changes, saved by the caller.
+    /// </summary>
+    public static async Task TakeOffTransactionsOfAsync(FinanceTrackerContext context, Guid ownerId,
+        ShareItemType itemType, Guid itemId, CancellationToken cancellationToken)
+    {
+        List<BankTransaction> carrying = await Carrying(context.BankTransactions.OwnedBy(ownerId), itemType, itemId)
+            .ToListAsync(cancellationToken);
+        foreach (BankTransaction transaction in carrying)
+        {
+            TakeOff(transaction, itemType, itemId);
+        }
+    }
+
+    /// <summary>
+    /// Those of <paramref name="transactions"/> that carry the tag, bill or debt <paramref name="itemId"/>.
+    /// </summary>
+    private static IQueryable<BankTransaction> Carrying(IQueryable<BankTransaction> transactions,
+        ShareItemType itemType, Guid itemId) => itemType switch
+    {
+        ShareItemType.Classification => transactions.Where(x => x.CustomClassificationIds.Contains(itemId)),
+        ShareItemType.Bill => transactions.Where(x => x.BillPayment != null && x.BillPayment.BillId == itemId),
+        ShareItemType.Debt => transactions.Where(x => x.DebtPayment != null && x.DebtPayment.DebtId == itemId),
+        _ => transactions.Where(static _ => false)
+    };
+
+    /// <summary>
+    /// Takes the tag, bill or debt <paramref name="itemId"/> off <paramref name="transaction"/>, as if it had been
+    /// deleted, so matching and rules can decide about it again.
+    /// </summary>
+    private static void TakeOff(BankTransaction transaction, ShareItemType itemType, Guid itemId)
+    {
+        switch (itemType)
+        {
+            case ShareItemType.Classification:
+                transaction.RemoveDeletedClassification(itemId);
+                break;
+            case ShareItemType.Bill:
+                transaction.RemoveDeletedBill(itemId);
+                break;
+            case ShareItemType.Debt:
+                transaction.RemoveDeletedDebt(itemId);
+                break;
+        }
     }
 
     private static bool IsShare(Share share, Guid linkId, ShareItemType itemType, Guid itemId) =>
-        share.LinkId == linkId && share.ItemType == itemType && share.ItemId == itemId;
+        share.LinkId == linkId && share.ItemType == itemType && share.ItemId == itemId &&
+        share.Reason == ShareReason.OnTransaction;
 }

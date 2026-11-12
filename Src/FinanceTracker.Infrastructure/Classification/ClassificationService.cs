@@ -36,13 +36,29 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
     {
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
-        IAsyncEnumerable<CustomClassification> classifications = context.CustomClassifications.OwnedBy(UserId)
+        List<CustomClassification> own = await context.CustomClassifications.OwnedBy(UserId)
             .AsNoTracking()
-            .AsAsyncEnumerable();
+            .ToListAsync(cancellationToken);
 
-        await foreach (CustomClassification classification in classifications.WithCancellation(cancellationToken))
+        foreach (CustomClassification classification in own)
         {
-            yield return new Contracts.Classifications.Classification { Tag = classification.Tag, ClassificationId = classification.Id };
+            yield return new Contracts.Classifications.Classification
+            {
+                Tag = classification.Tag, ClassificationId = classification.Id
+            };
+        }
+
+        // Those another person chose to share with them, which they can use too
+        foreach ((CustomClassification classification, string sharedBy, bool canChange) in
+                 await SharedWithThemAsync(context, cancellationToken))
+        {
+            yield return new Contracts.Classifications.Classification
+            {
+                Tag = classification.Tag,
+                ClassificationId = classification.Id,
+                SharedBy = sharedBy,
+                CanChange = canChange
+            };
         }
     }
 
@@ -50,8 +66,9 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
     {
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
-        CustomClassification classification = await context.CustomClassifications.OwnedBy(UserId)
-            .AsNoTracking()
+        IQueryable<Guid> shared = ChosenSharedIds(context);
+        CustomClassification classification = await context.CustomClassifications.AsNoTracking()
+            .Where(x => x.UserId == UserId || shared.Contains(x.Id))
             .SingleAsync(x => x.Id == id, cancellationToken);
 
         return new GetClassification { Tag = classification.Tag, ClassificationId = classification.Id };
@@ -63,7 +80,7 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        await EnsureTagIsFreeAsync(context, classification.Tag, null, cancellationToken);
+        await EnsureTagIsFreeAsync(context, UserId, classification.Tag, null, cancellationToken);
 
         CustomClassification newClassification = new(UserId, classification.Tag);
         context.CustomClassifications.Add(newClassification);
@@ -81,9 +98,14 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        CustomClassification classification = await context.CustomClassifications.OwnedBy(UserId)
+        // Their own, or one shared with them with changes allowed, kept apart from its owner's other tags
+        IQueryable<Guid> changeable = context.ChosenSharesWith(UserId, ShareItemType.Classification)
+            .Where(static x => x.Mode == ShareMode.AllowChanges)
+            .Select(static x => x.ItemId);
+        CustomClassification classification = await context.CustomClassifications
+            .Where(x => x.UserId == UserId || changeable.Contains(x.Id))
             .SingleAsync(x => x.Id == id, cancellationToken);
-        await EnsureTagIsFreeAsync(context, request.Tag, id, cancellationToken);
+        await EnsureTagIsFreeAsync(context, classification.UserId, request.Tag, id, cancellationToken);
         classification.Rename(request.Tag);
 
         await NameCheck.SaveKeepingNamesApartAsync(context, NameTakenException.Tag, request.Tag, cancellationToken);
@@ -99,22 +121,26 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        // Their own, or one on an account shared with them with changes allowed, tagged with their own tags. The
-        // owner is shared those, so they see what they're called
+        // Their own, or one on an account shared with them with changes allowed, tagged with their own tags or those
+        // shared with them. The owner is shared their own, so they see what they're called
         AccountsInView changeable = await _accountScope.ResolveChangeableAsync(context, cancellationToken);
         BankTransaction transaction = await context.BankTransactions.ChangeableIn(changeable)
             .SingleAsync(x => x.Id == model.TransactionId, cancellationToken);
 
         List<Guid> classificationIds = model.Classifications.Select(static x => x.ClassificationId).ToList();
-        List<CustomClassification> classifications = await context.CustomClassifications.OwnedBy(UserId)
-            .Where(x => classificationIds.Contains(x.Id))
+        List<Guid> sharedWithThem = await ChosenSharedIds(context).ToListAsync(cancellationToken);
+        List<CustomClassification> classifications = await context.CustomClassifications
+            .Where(x => classificationIds.Contains(x.Id) && (x.UserId == UserId || sharedWithThem.Contains(x.Id)))
             .ToListAsync(cancellationToken);
 
         foreach (CustomClassification classification in classifications)
         {
-            transaction.Classify(classification, UserId);
-            await AnnotationShares.ShareWithOwnerAsync(context, UserId, transaction, ShareItemType.Classification,
-                classification.Id, _timeProvider.UtcNow, cancellationToken);
+            transaction.Classify(classification, UserId, sharedWithThem);
+            if (classification.UserId == UserId)
+            {
+                await AnnotationShares.ShareWithOwnerAsync(context, UserId, transaction,
+                    ShareItemType.Classification, classification.Id, _timeProvider.UtcNow, cancellationToken);
+            }
         }
 
         await context.SaveChangesAsync(cancellationToken);
@@ -162,11 +188,38 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
         Logger.LogChanged(UserId, "deleted", "tag", id);
     }
 
-    /// <exception cref="NameTakenException">Another of the user's tags is called <paramref name="tag"/>.</exception>
-    private async Task EnsureTagIsFreeAsync(FinanceTrackerContext context, string tag, Guid? exceptId,
-        CancellationToken cancellationToken)
+    /// <summary>
+    /// The tags another person chose to share with the user. A query, to be used inside another.
+    /// </summary>
+    private IQueryable<Guid> ChosenSharedIds(FinanceTrackerContext context) =>
+        context.ChosenSharesWith(UserId, ShareItemType.Classification).Select(static x => x.ItemId);
+
+    /// <summary>
+    /// The tags other people chose to share with the user, each with who shares it and whether they can rename it.
+    /// </summary>
+    private async Task<List<(CustomClassification Tag, string SharedBy, bool CanChange)>> SharedWithThemAsync(
+        FinanceTrackerContext context, CancellationToken cancellationToken)
     {
-        List<CustomClassification> existing = await context.CustomClassifications.OwnedBy(UserId).AsNoTracking()
+        var shared = await (
+                from share in context.ChosenSharesWith(UserId, ShareItemType.Classification)
+                join tag in context.CustomClassifications on share.ItemId equals tag.Id
+                join owner in context.Users on tag.UserId equals owner.Id
+                where tag.UserId == share.UserId
+                select new { Tag = tag, owner.FirstName, owner.LastName, share.Mode })
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        return shared
+            .Select(static x => (x.Tag, $"{x.FirstName} {x.LastName}".Trim(), x.Mode == ShareMode.AllowChanges))
+            .ToList();
+    }
+
+    /// <exception cref="NameTakenException">Another of <paramref name="ownerId"/>'s tags is called
+    /// <paramref name="tag"/>.</exception>
+    private static async Task EnsureTagIsFreeAsync(FinanceTrackerContext context, Guid ownerId, string tag,
+        Guid? exceptId, CancellationToken cancellationToken)
+    {
+        List<CustomClassification> existing = await context.CustomClassifications.OwnedBy(ownerId).AsNoTracking()
             .ToListAsync(cancellationToken);
         NameCheck.EnsureFree(existing.Select(static x => (x.Id, x.Tag)), tag, exceptId, NameTakenException.Tag);
     }

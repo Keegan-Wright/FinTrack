@@ -93,13 +93,22 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
     {
         return ChangeAsync(transactionId, "split", async (context, transaction) =>
         {
-            // Their own tags, or one already on it, which on a shared transaction may be the other person's
+            // Their own tags, those shared with them, or one already on it, which on a shared transaction may be the
+            // other person's
             List<Guid> onIt = [.. transaction.CustomClassificationIds, .. transaction.Splits.Select(static x => x.TagId)
                 .OfType<Guid>()];
+
             List<Guid> tagIds = request.Parts.Select(static x => x.TagId).OfType<Guid>().Distinct().ToList();
+
             Guid userId = UserId;
+
+            List<Guid> sharedWithThem = await context.ChosenSharesWith(userId, ShareItemType.Classification)
+                .Select(static x => x.ItemId)
+                .ToListAsync(cancellationToken);
+
             List<CustomClassification> tags = await context.CustomClassifications
-                .Where(x => tagIds.Contains(x.Id) && (x.UserId == userId || onIt.Contains(x.Id)))
+                .Where(x => tagIds.Contains(x.Id) &&
+                            (x.UserId == userId || onIt.Contains(x.Id) || sharedWithThem.Contains(x.Id)))
                 .ToListAsync(cancellationToken);
 
             List<TransactionSplit> parts = request.Parts
@@ -108,7 +117,7 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
 
             try
             {
-                transaction.Split(parts, tags, UserId);
+                transaction.Split(parts, tags, UserId, sharedWithThem);
             }
             catch (Exception exception) when (exception is ArgumentException or InvalidOperationException)
             {

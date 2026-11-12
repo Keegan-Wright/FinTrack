@@ -374,13 +374,16 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
     /// <summary>
     /// The user tags the transaction, which from now on rules leave its tags alone, see <see cref="TagsSetByUser"/>.
     /// </summary>
-    /// <param name="by">Who tags it, the owner or someone they let change it. Only their own tags can be used.</param>
-    /// <exception cref="InvalidOperationException">The tag isn't <paramref name="by"/>'s, or the transaction is split
-    /// and its tags are its parts.</exception>
-    public void Classify(CustomClassification classification, Guid by)
+    /// <param name="by">Who tags it, the owner or someone they let change it. Only their own tags can be used, or
+    /// those shared with them.</param>
+    /// <param name="sharedWithThem">The tags another person has shared with <paramref name="by"/>.</param>
+    /// <exception cref="InvalidOperationException">The tag is neither <paramref name="by"/>'s nor shared with them,
+    /// or the transaction is split and its tags are its parts.</exception>
+    public void Classify(CustomClassification classification, Guid by,
+        IReadOnlyCollection<Guid>? sharedWithThem = null)
     {
         ArgumentNullException.ThrowIfNull(classification);
-        if (classification.UserId != by)
+        if (classification.UserId != by && sharedWithThem?.Contains(classification.Id) != true)
         {
             throw new InvalidOperationException("Cannot apply another user's classification to this transaction.");
         }
@@ -437,13 +440,15 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
     /// </summary>
     /// <param name="parts">At least two, each signed like the transaction, adding up to its amount.</param>
     /// <param name="tags">The tags the parts count under.</param>
-    /// <param name="by">Who splits it, the owner or someone they let change it. Parts can use their own tags, or a tag
-    /// already on the transaction, which may be the other person's.</param>
+    /// <param name="by">Who splits it, the owner or someone they let change it. Parts can use their own tags, those
+    /// shared with them, or a tag already on the transaction, which may be the other person's.</param>
+    /// <param name="sharedWithThem">The tags another person has shared with <paramref name="by"/>.</param>
     /// <exception cref="InvalidOperationException">It's pending, so its amount may still change, or a tag is neither
     /// <paramref name="by"/>'s nor already on it.</exception>
     /// <exception cref="ArgumentException">The parts don't add up, are signed the other way or are zero, there's
     /// only one, or a part's tag isn't among <paramref name="tags"/>.</exception>
-    public void Split(IReadOnlyList<TransactionSplit> parts, IReadOnlyCollection<CustomClassification> tags, Guid by)
+    public void Split(IReadOnlyList<TransactionSplit> parts, IReadOnlyCollection<CustomClassification> tags, Guid by,
+        IReadOnlyCollection<Guid>? sharedWithThem = null)
     {
         ArgumentNullException.ThrowIfNull(parts);
         ArgumentNullException.ThrowIfNull(tags);
@@ -453,7 +458,7 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
             throw new InvalidOperationException("A pending transaction can't be split until the bank settles it.");
         }
 
-        if (tags.Any(x => x.UserId != by && !HasTag(x.Id)))
+        if (tags.Any(x => x.UserId != by && !HasTag(x.Id) && sharedWithThem?.Contains(x.Id) != true))
         {
             throw new InvalidOperationException("Cannot apply another user's classification to this transaction.");
         }

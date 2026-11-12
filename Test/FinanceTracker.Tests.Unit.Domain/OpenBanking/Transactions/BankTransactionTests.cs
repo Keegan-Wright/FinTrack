@@ -146,6 +146,17 @@ public class BankTransactionTests
     }
 
     [Test]
+    public async Task BankTransaction_Classify_AnotherUsersClassificationSharedWithThem_IsAdded()
+    {
+        var transaction = BankTransaction.Import(BuildAccount(), Details("tx-1"));
+        var classification = new CustomClassification(Guid.NewGuid(), "Holiday");
+
+        transaction.Classify(classification, transaction.UserId, [classification.Id]);
+
+        await Assert.That(transaction.CustomClassificationIds).IsEquivalentTo([classification.Id]);
+    }
+
+    [Test]
     public void BankTransaction_Classify_Null_Throws_ArgumentNullException()
     {
         var transaction = BankTransaction.Import(BuildAccount(), Details("tx-1"));

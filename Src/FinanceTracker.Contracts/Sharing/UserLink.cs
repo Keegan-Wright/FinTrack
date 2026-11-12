@@ -41,6 +41,16 @@ public sealed record UserLink
     public int AccountsTheyShare { get; init; }
 
     /// <summary>
+    /// How many other things, such as tags, the signed in user chose to share with the other person.
+    /// </summary>
+    public int ItemsYouShare { get; init; }
+
+    /// <summary>
+    /// How many other things, such as tags, the other person chose to share with them.
+    /// </summary>
+    public int ItemsTheyShare { get; init; }
+
+    /// <summary>
     /// How many joint accounts they've merged, see <see cref="LinkShares.JointAccounts"/>.
     /// </summary>
     public int JointAccounts { get; init; }

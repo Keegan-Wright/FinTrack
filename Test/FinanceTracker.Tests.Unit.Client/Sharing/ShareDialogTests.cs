@@ -12,9 +12,9 @@ using NSubstitute;
 namespace FinanceTracker.Tests.Unit.Client.Sharing;
 
 /// <summary>
-/// Choosing which accounts to share with someone, from the Sharing page.
+/// Choosing which accounts and tags to share with someone, from the Sharing page.
 /// </summary>
-public class ShareAccountsTests : ComponentTestBase
+public class ShareDialogTests : ComponentTestBase
 {
     private readonly ISharingService _sharingService = Substitute.For<ISharingService>();
     private readonly ApplicationState _applicationState = new();
@@ -31,8 +31,10 @@ public class ShareAccountsTests : ComponentTestBase
     private readonly ShareableAccount _current = Account("Current", null);
     private readonly ShareableAccount _savings = Account("Savings", ShareMode.AllowChanges);
     private readonly ShareableAccount _birthday = Account("Birthday fund", null);
+    private readonly ShareableItem _holiday = TagItem("Holiday", ShareMode.ReadOnly);
+    private readonly ShareableItem _kids = TagItem("Kids", null);
 
-    public ShareAccountsTests()
+    public ShareDialogTests()
     {
         AddBunitPersistentComponentState();
         Services.AddSingleton(_sharingService);
@@ -42,8 +44,18 @@ public class ShareAccountsTests : ComponentTestBase
             LinkId = _linked.Id,
             Name = _linked.Name,
             YourAccounts = [_current, _savings, _birthday],
-            TheirAccounts = [new AccountSharedWithYou { Name = "Joint", BankName = "Bank", Mode = ShareMode.ReadOnly }]
+            TheirAccounts = [new AccountSharedWithYou { Name = "Joint", BankName = "Bank", Mode = ShareMode.ReadOnly }],
+            YourItems = [_holiday, _kids],
+            TheirItems =
+            [
+                new ItemSharedWithYou
+                {
+                    Kind = SharedItemKind.Classification, Name = "Groceries", Mode = ShareMode.AllowChanges
+                }
+            ]
         });
+        _sharingService.ChangeItemSharesAsync(_linked.Id, Arg.Any<ChangeItemShares>(), Arg.Any<CancellationToken>())
+            .Returns(new LinkShares { LinkId = _linked.Id, Name = _linked.Name, YourAccounts = [], TheirAccounts = [] });
         _sharingService.ChangeAccountSharesAsync(_linked.Id, Arg.Any<ChangeAccountShares>(), Arg.Any<CancellationToken>())
             .Returns(call => new LinkShares
             {
@@ -74,6 +86,54 @@ public class ShareAccountsTests : ComponentTestBase
             await Assert.That(dialogs.Markup).Contains("1 of 3 shared");
             await Assert.That(dialogs.Markup).Contains("Joint");
             await Assert.That(dialogs.Markup).Contains("Bank · can see");
+            await Assert.That(dialogs.Markup).Contains("Tag · can see and change");
+        }
+    }
+
+    [Test]
+    public async Task Tags_TickingOne_SavesOnlyTheTags()
+    {
+        // Arrange
+        IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
+        IRenderedComponent<FinanceTracker.Client.Pages.Sharing> cut = RenderPage();
+        Button(cut, "Share").Click();
+        dialogs.WaitForState(() => dialogs.Markup.Contains("Birthday fund"));
+        dialogs.FindAll(".mud-tab").First(x => x.TextContent.Trim() == "Tags").Click();
+        dialogs.WaitForState(() => dialogs.Markup.Contains("Kids"));
+
+        // Act
+        Checkbox(dialogs, "Share Kids").Change(true);
+        Button(dialogs, "OK").Click();
+        cut.WaitForAssertion(() => _sharingService.ReceivedWithAnyArgs(1)
+            .ChangeItemSharesAsync(default, default!, default));
+
+        // Assert
+        await _sharingService.Received(1).ChangeItemSharesAsync(_linked.Id, Arg.Is<ChangeItemShares>(x =>
+                x.Items.Count == 2 &&
+                x.Items.All(i => i.Kind == SharedItemKind.Classification && i.Mode == ShareMode.ReadOnly) &&
+                x.Items.Any(i => i.ItemId == _kids.ItemId) && x.Items.Any(i => i.ItemId == _holiday.ItemId)),
+            Arg.Any<CancellationToken>());
+        await _sharingService.DidNotReceiveWithAnyArgs().ChangeAccountSharesAsync(default, default!, default);
+    }
+
+    [Test]
+    public async Task NothingChanged_SavesNothing()
+    {
+        // Arrange
+        IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
+        IRenderedComponent<FinanceTracker.Client.Pages.Sharing> cut = RenderPage();
+        Button(cut, "Share").Click();
+        dialogs.WaitForState(() => dialogs.Markup.Contains("Birthday fund"));
+
+        // Act
+        Button(dialogs, "OK").Click();
+        dialogs.WaitForState(() => !dialogs.Markup.Contains("Birthday fund"));
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await _sharingService.DidNotReceiveWithAnyArgs().ChangeAccountSharesAsync(default, default!, default);
+            await _sharingService.DidNotReceiveWithAnyArgs().ChangeItemSharesAsync(default, default!, default);
         }
     }
 
@@ -139,16 +199,40 @@ public class ShareAccountsTests : ComponentTestBase
     }
 
     [Test]
+    public async Task SharedText_CountsTagsToo()
+    {
+        LinkShares shares = new()
+        {
+            LinkId = Guid.NewGuid(),
+            Name = "Sam Taylor",
+            YourAccounts = [Account("Current", ShareMode.ReadOnly)],
+            TheirAccounts = [],
+            YourItems = [TagItem("Holiday", ShareMode.ReadOnly), TagItem("Kids", ShareMode.AllowChanges)]
+        };
+
+        await Assert.That(FinanceTracker.Client.Pages.Sharing.SharedText(shares))
+            .IsEqualTo("Sharing 1 account and 2 tags with Sam Taylor");
+    }
+
+    [Test]
     [Arguments(ShareMode.ReadOnly, "Can see")]
     [Arguments(ShareMode.AllowChanges, "Can see and change")]
     public async Task ModeText_SaysWhatTheyCanDo(ShareMode mode, string expected) =>
-        await Assert.That(ShareAccountsDialog.ModeText(mode)).IsEqualTo(expected);
+        await Assert.That(ShareDialog.ModeText(mode)).IsEqualTo(expected);
 
     private static ShareableAccount Account(string name, ShareMode? mode) => new()
     {
         AccountId = Guid.NewGuid(),
         Name = name,
         BankName = "Bank",
+        Mode = mode
+    };
+
+    private static ShareableItem TagItem(string name, ShareMode? mode) => new()
+    {
+        Kind = SharedItemKind.Classification,
+        ItemId = Guid.NewGuid(),
+        Name = name,
         Mode = mode
     };
 

@@ -42,4 +42,30 @@ public class ShareTests
         Assert.Throws<ArgumentOutOfRangeException>(() => _ = new Share(Guid.NewGuid(), Guid.NewGuid(),
             ShareItemType.BankAccount, Guid.Empty, ShareMode.ReadOnly, DateTime.UtcNow));
     }
+
+    [Test]
+    public async Task New_IsChosenUnlessSaidOtherwise()
+    {
+        Share share = new(Guid.NewGuid(), Guid.NewGuid(), ShareItemType.Classification, Guid.NewGuid(),
+            ShareMode.AllowChanges, DateTime.UtcNow);
+
+        await Assert.That(share.Reason).IsEqualTo(ShareReason.Chosen);
+    }
+
+    [Test]
+    public void New_OnATransaction_AllowingChanges_Throws()
+    {
+        Assert.Throws<ArgumentException>(() => _ = new Share(Guid.NewGuid(), Guid.NewGuid(),
+            ShareItemType.Classification, Guid.NewGuid(), ShareMode.AllowChanges, DateTime.UtcNow,
+            ShareReason.OnTransaction));
+    }
+
+    [Test]
+    public void ChangeMode_OnATransaction_ToAllowChanges_Throws()
+    {
+        Share share = new(Guid.NewGuid(), Guid.NewGuid(), ShareItemType.Classification, Guid.NewGuid(),
+            ShareMode.ReadOnly, DateTime.UtcNow, ShareReason.OnTransaction);
+
+        Assert.Throws<InvalidOperationException>(() => share.ChangeMode(ShareMode.AllowChanges));
+    }
 }
