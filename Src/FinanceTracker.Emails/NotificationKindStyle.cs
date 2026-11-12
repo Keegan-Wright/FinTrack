@@ -25,6 +25,7 @@ public static class NotificationKindStyle
         NotificationKind.LowBalance => "Balances",
         NotificationKind.SharingInvite => "Sharing",
         NotificationKind.SharingAccepted => "Sharing",
+        NotificationKind.JointAccount => "Sharing",
         _ => "Notification"
     };
 
@@ -46,6 +47,7 @@ public static class NotificationKindStyle
         NotificationKind.LowBalance => LightPalette.Warning,
         NotificationKind.SharingInvite => LightPalette.Primary,
         NotificationKind.SharingAccepted => LightPalette.Primary,
+        NotificationKind.JointAccount => LightPalette.Primary,
         _ => LightPalette.Primary
     };
 }

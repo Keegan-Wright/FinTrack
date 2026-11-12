@@ -15,8 +15,10 @@
     flex-wrap: wrap;
 }
 
+/* Wraps at narrow widths rather than squeezing, with Share, Joint accounts and End side by side */
 .ft-sharing__actions {
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
     margin-left: auto;
 }

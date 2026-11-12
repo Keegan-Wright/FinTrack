@@ -66,13 +66,26 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
             .AsNoTracking()
             .ToDictionaryAsync(static x => x.Id, cancellationToken);
 
+        Dictionary<Guid, int> jointCounts = await context.JointAccounts.AsNoTracking()
+            .Where(x => linkIds.Contains(x.LinkId))
+            .GroupBy(static x => x.LinkId)
+            .ToDictionaryAsync(static x => x.Key, static x => x.Count(), cancellationToken);
+
         foreach (DomainLink link in links.OrderBy(static x => x.InvitedAt))
         {
             Guid otherId = link.OtherThan(UserId);
+            int suggestions = 0;
+            if (link.Status == UserLinkStatus.Accepted)
+            {
+                suggestions = (await JointAccounts.SuggestionsAsync(context, link, UserId, cancellationToken)).Count;
+            }
+
             yield return ToContract(link, others[otherId]) with
             {
                 AccountsYouShare = shareCounts.Where(x => x.LinkId == link.Id && x.UserId == UserId).Sum(static x => x.Count),
-                AccountsTheyShare = shareCounts.Where(x => x.LinkId == link.Id && x.UserId == otherId).Sum(static x => x.Count)
+                AccountsTheyShare = shareCounts.Where(x => x.LinkId == link.Id && x.UserId == otherId).Sum(static x => x.Count),
+                JointAccounts = jointCounts.GetValueOrDefault(link.Id),
+                JointSuggestions = suggestions
             };
         }
     }
@@ -174,6 +187,10 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
             return false;
         }
 
+        // Each gets their own copy of a joint account back first, with its tags as they stand, while the link still
+        // lets each see the other's names. Then the other person's come off with everything else of theirs
+        await SplitJointAccountsAsync(context, link, cancellationToken);
+
         link.End(UserId, _timeProvider.GetUtcNow().UtcDateTime);
 
         // Both ways, so linking again later shares nothing until each of them chooses it again
@@ -252,6 +269,126 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
         await RematchTransfersAsync(context, link, cancellationToken);
 
         return await LinkSharesAsync(context, link, cancellationToken);
+    }
+
+    public async Task<LinkShares> MergeJointAccountsAsync(Guid linkId, MergeJointAccounts request,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        await using FinanceTrackerContext context =
+            await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+
+        DomainLink link = await AcceptedLinkAsync(context, linkId, cancellationToken)
+                          ?? throw new InvalidOperationException($"No accepted link {linkId} was found.");
+
+        List<(Guid Yours, Guid Theirs)> pairs =
+            request.Accounts.Select(static x => (x.YourAccountId, x.TheirAccountId)).ToList();
+        List<JointAccount> merged = await JointAccounts.MergeAsync(context, link, UserId, pairs,
+            _timeProvider.GetUtcNow().UtcDateTime, cancellationToken);
+        await context.SaveChangesAsync(cancellationToken);
+        foreach (JointAccount joint in merged)
+        {
+            Logger.LogChanged(UserId, "merged", "joint account", joint.Id);
+        }
+
+        // Once for all of them, it matches everything both of them have
+        await RematchTransfersAsync(context, link, cancellationToken);
+
+        string name = await MergedNamesAsync(context, merged, cancellationToken);
+        await NotifyOtherAsync(context, link, $"joint-account:{merged[0].Id}:merged",
+            person => $"{person} merged {name}",
+            "You'd both connected them, so each is counted once now. You each see and tag the same copy, and yours " +
+            "keeps syncing in the background. Either of you can split one again on the Sharing page.",
+            cancellationToken);
+
+        return await LinkSharesAsync(context, link, cancellationToken);
+    }
+
+    /// <summary>
+    /// What was merged, for the notification, e.g. <c>your joint account Joint</c> or <c>3 joint accounts</c>.
+    /// </summary>
+    private static async Task<string> MergedNamesAsync(FinanceTrackerContext context, List<JointAccount> merged,
+        CancellationToken cancellationToken)
+    {
+        if (merged.Count > 1)
+        {
+            return $"{merged.Count} of your joint accounts";
+        }
+
+        string name = await AccountNameAsync(context, merged[0].ShownAccountId, cancellationToken);
+        return $"your joint account {name}";
+    }
+
+    public async Task<LinkShares> SplitJointAccountAsync(Guid linkId, Guid jointAccountId,
+        CancellationToken cancellationToken)
+    {
+        await using FinanceTrackerContext context =
+            await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+
+        DomainLink link = await AcceptedLinkAsync(context, linkId, cancellationToken)
+                          ?? throw new InvalidOperationException($"No accepted link {linkId} was found.");
+        JointAccount joint = await context.JointAccounts
+                                 .SingleOrDefaultAsync(x => x.Id == jointAccountId && x.LinkId == link.Id,
+                                     cancellationToken)
+                             ?? throw new InvalidOperationException($"No joint account {jointAccountId} was found.");
+
+        string name = await AccountNameAsync(context, joint.ShownAccountId, cancellationToken);
+        await JointAccounts.SplitAsync(context, link, joint, _timeProvider.GetUtcNow().UtcDateTime,
+            cancellationToken);
+        await context.SaveChangesAsync(cancellationToken);
+        Logger.LogChanged(UserId, "split", "joint account", joint.Id);
+
+        await RematchTransfersAsync(context, link, cancellationToken);
+
+        await NotifyOtherAsync(context, link, $"joint-account:{joint.Id}:split",
+            person => $"{person} split your joint account {name}",
+            "You each see your own copy again, with its tags as they were. It counts in both of your totals until " +
+            "you merge it again.",
+            cancellationToken);
+
+        return await LinkSharesAsync(context, link, cancellationToken);
+    }
+
+    /// <summary>
+    /// Splits every joint account merged in <paramref name="link"/>, and saves.
+    /// </summary>
+    private async Task SplitJointAccountsAsync(FinanceTrackerContext context, DomainLink link,
+        CancellationToken cancellationToken)
+    {
+        List<JointAccount> joints = await context.JointAccounts.Where(x => x.LinkId == link.Id)
+            .ToListAsync(cancellationToken);
+        if (joints.Count == 0)
+        {
+            return;
+        }
+
+        DateTime now = _timeProvider.GetUtcNow().UtcDateTime;
+        foreach (JointAccount joint in joints)
+        {
+            await JointAccounts.SplitAsync(context, link, joint, now, cancellationToken);
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
+    private static async Task<string> AccountNameAsync(FinanceTrackerContext context, Guid accountId,
+        CancellationToken cancellationToken) =>
+        await context.BankAccounts.AsNoTracking()
+            .Where(x => x.Id == accountId)
+            .Select(static x => x.DisplayName)
+            .SingleAsync(cancellationToken);
+
+    /// <summary>
+    /// Tells the other person in <paramref name="link"/> what the user did.
+    /// </summary>
+    /// <param name="title">The title, given the user's name.</param>
+    private async Task NotifyOtherAsync(FinanceTrackerContext context, DomainLink link, string key,
+        Func<string, string> title, string message, CancellationToken cancellationToken)
+    {
+        FinanceTrackerUser user = await context.Users.AsNoTracking().SingleAsync(x => x.Id == UserId,
+            cancellationToken);
+        await NotifyAsync(link.OtherThan(UserId), NotificationKind.JointAccount, key, title(FullName(user)), message,
+            cancellationToken);
     }
 
     public async Task<SharingView> GetViewAsync(CancellationToken cancellationToken)
@@ -406,10 +543,14 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
         Dictionary<Guid, DomainShareMode> theirs = shares.Where(x => x.UserId == otherId)
             .ToDictionary(static x => x.ItemId, static x => x.Mode);
 
-        // The other person's accounts only as far as they share them
+        // The other person's accounts only as far as they share them. Hidden copies of joint accounts aside, the
+        // shown copy stands for both
         List<Guid> theirIds = theirs.Keys.ToList();
+        List<Guid> hidden = await context.JointAccounts.Select(static x => x.HiddenAccountId)
+            .ToListAsync(cancellationToken);
         List<BankAccount> accounts = await context.BankAccounts.AsNoTracking()
-            .Where(x => x.UserId == UserId || (x.UserId == otherId && theirIds.Contains(x.Id)))
+            .Where(x => (x.UserId == UserId || (x.UserId == otherId && theirIds.Contains(x.Id))) &&
+                        !hidden.Contains(x.Id))
             .ToListAsync(cancellationToken);
 
         List<Guid> connectionIds = accounts.Select(static x => x.ConnectionId).Distinct().ToList();
@@ -445,8 +586,41 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
             LinkId = link.Id,
             Name = FullName(other),
             YourAccounts = yourAccounts,
-            TheirAccounts = theirAccounts
+            TheirAccounts = theirAccounts,
+            JointSuggestions = (await JointAccounts.SuggestionsAsync(context, link, UserId, cancellationToken))
+                .Select(static x => new JointAccountSuggestion
+                {
+                    YourAccountId = x.Yours.Id,
+                    YourAccountName = x.Yours.DisplayName,
+                    TheirAccountId = x.Theirs.Id,
+                    TheirAccountName = x.Theirs.DisplayName
+                })
+                .ToList(),
+            JointAccounts = await MergedJointAccountsAsync(context, link, cancellationToken)
         };
+    }
+
+    /// <summary>
+    /// The joint accounts merged in <paramref name="link"/>, named as the copy both see.
+    /// </summary>
+    private async Task<List<MergedJointAccount>> MergedJointAccountsAsync(FinanceTrackerContext context,
+        DomainLink link, CancellationToken cancellationToken)
+    {
+        var joints = await (
+                from joint in context.JointAccounts
+                join shown in context.BankAccounts on joint.ShownAccountId equals shown.Id
+                where joint.LinkId == link.Id
+                select new { joint.Id, shown.DisplayName, shown.UserId })
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        return joints
+            .Select(x => new MergedJointAccount
+            {
+                JointAccountId = x.Id, Name = x.DisplayName, ShownIsYours = x.UserId == UserId
+            })
+            .OrderBy(static x => x.Name, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
     }
 
     private static ShareMode? ModeIfShared(Dictionary<Guid, DomainShareMode> shared, Guid accountId)

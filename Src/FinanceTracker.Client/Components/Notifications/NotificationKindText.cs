@@ -30,6 +30,7 @@ public static class NotificationKindText
         NotificationKind.LowBalance => "An account running low",
         NotificationKind.SharingInvite => "Someone inviting you to share",
         NotificationKind.SharingAccepted => "Someone accepting your invite to share",
+        NotificationKind.JointAccount => "A joint account being merged or split",
         _ => kind.ToString()
     };
 
@@ -47,6 +48,7 @@ public static class NotificationKindText
         NotificationKind.LowBalance => Icons.Material.Outlined.AccountBalanceWallet,
         NotificationKind.SharingInvite => Icons.Material.Outlined.GroupAdd,
         NotificationKind.SharingAccepted => Icons.Material.Outlined.Handshake,
+        NotificationKind.JointAccount => Icons.Material.Outlined.JoinInner,
         _ => Icons.Material.Outlined.Notifications
     };
 }

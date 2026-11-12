@@ -25,4 +25,14 @@ public sealed record LinkShares
     /// The accounts the other person shares with them.
     /// </summary>
     public required IReadOnlyList<AccountSharedWithYou> TheirAccounts { get; init; }
+
+    /// <summary>
+    /// Accounts both of them connected that look like one joint account and could be merged.
+    /// </summary>
+    public IReadOnlyList<JointAccountSuggestion> JointSuggestions { get; init; } = [];
+
+    /// <summary>
+    /// Joint accounts they've merged.
+    /// </summary>
+    public IReadOnlyList<MergedJointAccount> JointAccounts { get; init; } = [];
 }

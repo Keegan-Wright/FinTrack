@@ -39,6 +39,7 @@ public static class NotificationMapper
         DomainKind.LowBalance => ContractKind.LowBalance,
         DomainKind.SharingInvite => ContractKind.SharingInvite,
         DomainKind.SharingAccepted => ContractKind.SharingAccepted,
+        DomainKind.JointAccount => ContractKind.JointAccount,
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
     };
 
@@ -56,6 +57,7 @@ public static class NotificationMapper
         ContractKind.LowBalance => DomainKind.LowBalance,
         ContractKind.SharingInvite => DomainKind.SharingInvite,
         ContractKind.SharingAccepted => DomainKind.SharingAccepted,
+        ContractKind.JointAccount => DomainKind.JointAccount,
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
     };
 }

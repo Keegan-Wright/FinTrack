@@ -57,6 +57,24 @@ public sealed class SharingApiClient : ISharingService
         return await response.ReadRequiredJsonAsync<LinkShares>(cancellationToken);
     }
 
+    public async Task<LinkShares> MergeJointAccountsAsync(Guid linkId, MergeJointAccounts request,
+        CancellationToken cancellationToken)
+    {
+        using HttpResponseMessage response = await _http.PostAsJsonAsync(
+            $"{ApiRoutes.SharingLinks}/{linkId}/joint-accounts", request, cancellationToken);
+        response.EnsureFound();
+        return await response.ReadRequiredJsonAsync<LinkShares>(cancellationToken);
+    }
+
+    public async Task<LinkShares> SplitJointAccountAsync(Guid linkId, Guid jointAccountId,
+        CancellationToken cancellationToken)
+    {
+        using HttpResponseMessage response = await _http.DeleteAsync(
+            $"{ApiRoutes.SharingLinks}/{linkId}/joint-accounts/{jointAccountId}", cancellationToken);
+        response.EnsureFound();
+        return await response.ReadRequiredJsonAsync<LinkShares>(cancellationToken);
+    }
+
     public async Task<SharingView> GetViewAsync(CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.GetAsync(ApiRoutes.SharingView, cancellationToken);

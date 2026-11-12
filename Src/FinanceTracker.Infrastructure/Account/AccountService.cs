@@ -34,6 +34,7 @@ public class AccountService : ServiceBase<AccountService>, IAccountService
 
         AccountsInView view = await _accountScope.ResolveAsync(context, cancellationToken);
         Dictionary<Guid, string> sharedBy = await view.SharedByAsync(context, cancellationToken);
+        Dictionary<Guid, string> jointWith = await view.JointWithAsync(context, cancellationToken);
 
         List<BankAccount> accounts = await context.BankAccounts.InView(view)
             .AsNoTracking()
@@ -60,6 +61,7 @@ public class AccountService : ServiceBase<AccountService>, IAccountService
                 AccountBalance = account.Balance?.Current ?? 0,
                 AccountName = account.DisplayName,
                 SharedBy = sharedBy.GetValueOrDefault(account.Id),
+                JointWith = jointWith.GetValueOrDefault(account.Id),
                 AccountType = account.AccountType,
                 AvailableBalance = account.Balance?.Available ?? 0,
                 CardEnding = account.Card?.PartialNumber,

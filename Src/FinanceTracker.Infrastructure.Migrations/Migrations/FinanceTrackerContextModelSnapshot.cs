@@ -1448,6 +1448,53 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.ToTable("SavingsGoals", (string)null);
                 });
 
+            modelBuilder.Entity("FinanceTracker.Domain.Sharing.JointAccount", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("HiddenAccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("LinkId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("MergedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<Guid>("ShownAccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("Updated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HiddenAccountId")
+                        .IsUnique();
+
+                    b.HasIndex("LinkId");
+
+                    b.HasIndex("ShownAccountId")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("JointAccounts", (string)null);
+                });
+
             modelBuilder.Entity("FinanceTracker.Domain.Sharing.Share", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2521,6 +2568,33 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
             modelBuilder.Entity("FinanceTracker.Domain.SavingsGoals.SavingsGoal", b =>
                 {
+                    b.HasOne("FinanceTracker.Domain.Identity.FinanceTrackerUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FinanceTracker.Domain.Sharing.JointAccount", b =>
+                {
+                    b.HasOne("FinanceTracker.Domain.OpenBanking.Accounts.BankAccount", null)
+                        .WithMany()
+                        .HasForeignKey("HiddenAccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("FinanceTracker.Domain.Sharing.UserLink", null)
+                        .WithMany()
+                        .HasForeignKey("LinkId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("FinanceTracker.Domain.OpenBanking.Accounts.BankAccount", null)
+                        .WithMany()
+                        .HasForeignKey("ShownAccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("FinanceTracker.Domain.Identity.FinanceTrackerUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")

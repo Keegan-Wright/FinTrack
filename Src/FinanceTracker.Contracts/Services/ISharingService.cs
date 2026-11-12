@@ -56,6 +56,27 @@ public interface ISharingService
         CancellationToken cancellationToken);
 
     /// <summary>
+    /// Merges the user's and the other person's copies of joint accounts they both connected, so each is counted
+    /// once. The first connected is shown to both and the other hidden, still syncing. The hidden copy's tags join the
+    /// shown one's. The other person is notified. Validate the request with
+    /// <see cref="Validation.MergeJointAccountsValidator"/> first.
+    /// </summary>
+    /// <returns>What's shared both ways now.</returns>
+    /// <exception cref="InvalidOperationException">They have no accepted link with <paramref name="linkId"/>, or a
+    /// pair isn't one of its <see cref="LinkShares.JointSuggestions"/>.</exception>
+    Task<LinkShares> MergeJointAccountsAsync(Guid linkId, MergeJointAccounts request,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Splits a merged joint account, so each person sees their own copy again with the tags it has as it stands. The
+    /// other person is notified.
+    /// </summary>
+    /// <returns>What's shared both ways now.</returns>
+    /// <exception cref="InvalidOperationException">They have no accepted link with <paramref name="linkId"/>, or it
+    /// has no such merged account.</exception>
+    Task<LinkShares> SplitJointAccountAsync(Guid linkId, Guid jointAccountId, CancellationToken cancellationToken);
+
+    /// <summary>
     /// Whether the money views show accounts shared with the user, and whether any are.
     /// </summary>
     Task<SharingView> GetViewAsync(CancellationToken cancellationToken);

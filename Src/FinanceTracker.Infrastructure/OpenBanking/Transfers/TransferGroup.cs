@@ -1,3 +1,5 @@
+using FinanceTracker.Domain.OpenBanking.Accounts;
+using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.OpenBanking.Transfers;
 using FinanceTracker.Domain.Sharing;
 using Microsoft.EntityFrameworkCore;
@@ -11,8 +13,33 @@ namespace FinanceTracker.Infrastructure.OpenBanking.Transfers;
 /// </summary>
 /// <param name="UserIds">Everyone in the group, the user included.</param>
 /// <param name="Pairing">Which of their accounts can pair across a link.</param>
-internal sealed record TransferGroup(IReadOnlyList<Guid> UserIds, TransferPairing Pairing)
+/// <param name="HiddenAccountIds">The hidden copies of joint accounts, left out of matching as the shown copy stands
+/// for both.</param>
+internal sealed record TransferGroup(
+    IReadOnlyList<Guid> UserIds,
+    TransferPairing Pairing,
+    IReadOnlyList<Guid> HiddenAccountIds)
 {
+    /// <summary>
+    /// The group's transactions, the hidden copies' aside.
+    /// </summary>
+    public IQueryable<BankTransaction> Transactions(FinanceTrackerContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        IReadOnlyList<Guid> hidden = HiddenAccountIds;
+        return context.BankTransactions.OwnedByAny(UserIds).Where(x => !hidden.Contains(x.AccountId));
+    }
+
+    /// <summary>
+    /// The group's accounts, the hidden copies aside.
+    /// </summary>
+    public IQueryable<BankAccount> Accounts(FinanceTrackerContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        IReadOnlyList<Guid> hidden = HiddenAccountIds;
+        return context.BankAccounts.OwnedByAny(UserIds).Where(x => !hidden.Contains(x.Id));
+    }
+
     /// <summary>
     /// <paramref name="userId"/>'s group, just them when nothing's shared with or by them.
     /// </summary>
@@ -30,6 +57,22 @@ internal sealed record TransferGroup(IReadOnlyList<Guid> UserIds, TransferPairin
                       && account.UserId == share.UserId
                 select new { AccountId = account.Id, SharedBy = share.UserId, link.UserId, link.InviteeId })
             .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        // A joint account is shared between its two people however it's shared otherwise, the shown copy with the
+        // hidden copy's owner
+        var joints = await (
+                from joint in context.JointAccounts
+                join link in context.UserLinks on joint.LinkId equals link.Id
+                join shown in context.BankAccounts on joint.ShownAccountId equals shown.Id
+                where link.Status == UserLinkStatus.Accepted
+                select new { AccountId = shown.Id, SharedBy = shown.UserId, link.UserId, link.InviteeId })
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+        shares.AddRange(joints);
+
+        List<Guid> hidden = await context.JointAccounts.AsNoTracking()
+            .Select(static x => x.HiddenAccountId)
             .ToListAsync(cancellationToken);
 
         HashSet<Guid> group = [userId];
@@ -50,6 +93,6 @@ internal sealed record TransferGroup(IReadOnlyList<Guid> UserIds, TransferPairin
             .Where(x => group.Contains(x.SharedBy))
             .Select(static x => (x.AccountId, x.SharedBy == x.UserId ? x.InviteeId : x.UserId));
 
-        return new TransferGroup(group.ToList(), new TransferPairing(pairs));
+        return new TransferGroup(group.ToList(), new TransferPairing(pairs), hidden);
     }
 }

@@ -25,6 +25,12 @@ public class AccountAndTransactions
     public string? SharedBy { get; init; }
 
     /// <summary>
+    /// Who else connected it, when it's a joint account the two of them merged, their first and last name. Null
+    /// otherwise.
+    /// </summary>
+    public string? JointWith { get; init; }
+
+    /// <summary>
     /// The bank the account is with, as its connection is named, e.g. <c>Monzo</c>.
     /// </summary>
     [Description("The bank the account is with")]

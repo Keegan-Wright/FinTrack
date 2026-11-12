@@ -39,4 +39,14 @@ public sealed record UserLink
     /// How many accounts the other person shares with them, none until they're linked.
     /// </summary>
     public int AccountsTheyShare { get; init; }
+
+    /// <summary>
+    /// How many joint accounts they've merged, see <see cref="LinkShares.JointAccounts"/>.
+    /// </summary>
+    public int JointAccounts { get; init; }
+
+    /// <summary>
+    /// How many accounts both of them connected could be merged, see <see cref="LinkShares.JointSuggestions"/>.
+    /// </summary>
+    public int JointSuggestions { get; init; }
 }

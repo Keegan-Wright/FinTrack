@@ -1,0 +1,18 @@
+.ft-joint {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.ft-joint__row {
+    min-height: 44px;
+}
+
+/* The heading, with Merge all beside it when there's more than one */
+.ft-joint__heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 36px;
+}

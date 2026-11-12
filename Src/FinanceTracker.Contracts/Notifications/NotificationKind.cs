@@ -63,5 +63,10 @@ public enum NotificationKind
     /// <summary>
     /// Someone they invited to share accepted.
     /// </summary>
-    SharingAccepted = 11
+    SharingAccepted = 11,
+
+    /// <summary>
+    /// The other person merged a joint account they both connected, or split it again.
+    /// </summary>
+    JointAccount = 12
 }

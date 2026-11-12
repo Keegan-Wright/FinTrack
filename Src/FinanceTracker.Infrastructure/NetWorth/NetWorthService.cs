@@ -62,13 +62,14 @@ public class NetWorthService : ServiceBase<NetWorthService>, INetWorthService
     /// <summary>
     /// The user's own daily net worth with the balances of the accounts shared with them added in, each shared account
     /// counted from its owner's daily snapshots. A day either side lacks carries the last known one forward, so the
-    /// line doesn't dip where one history starts later than the other.
+    /// line doesn't dip where one history starts later than the other. Their own copy of a joint account is taken
+    /// back out of their totals, the shown copy counts it once.
     /// </summary>
     private static async Task<List<NetWorthPoint>> WithSharedAccountsAsync(FinanceTrackerContext context,
         AccountsInView view, List<NetWorthSnapshot> own, CancellationToken cancellationToken)
     {
         List<NetWorthPoint> ownPoints = own.Select(ToPoint).ToList();
-        if (view.SharedAccountIds.Count == 0)
+        if (view.SharedAccountIds.Count == 0 && view.HiddenAccountIds.Count == 0)
         {
             return ownPoints;
         }
@@ -77,7 +78,15 @@ public class NetWorthService : ServiceBase<NetWorthService>, INetWorthService
         List<BalanceSnapshot> shared = await context.BalanceSnapshots.AsNoTracking()
             .Where(x => sharedIds.Contains(x.AccountId))
             .ToListAsync(cancellationToken);
-        if (shared.Count == 0)
+
+        // In their own totals on the days they were snapshotted, so taken out on those days
+        List<Guid> hiddenIds = view.HiddenAccountIds.ToList();
+        ILookup<DateOnly, BalanceSnapshot> hidden = (await context.BalanceSnapshots.AsNoTracking()
+                .Where(x => hiddenIds.Contains(x.AccountId))
+                .ToListAsync(cancellationToken))
+            .ToLookup(static x => x.Date);
+
+        if (shared.Count == 0 && hidden.Count == 0)
         {
             return ownPoints;
         }
@@ -98,42 +107,25 @@ public class NetWorthService : ServiceBase<NetWorthService>, INetWorthService
                 lastOwn = ownToday;
             }
 
-            decimal assets = lastOwn?.Assets ?? 0;
-            decimal liabilities = lastOwn?.Liabilities ?? 0;
-            bool isStale = lastOwn?.IsStale ?? false;
-            bool isDerived = lastOwn?.IsDerived ?? false;
+            NetWorthTally tally = new(lastOwn);
+            if (lastOwn is not null)
+            {
+                foreach (BalanceSnapshot copy in hidden[lastOwn.Date])
+                {
+                    tally.Remove(copy);
+                }
+            }
 
             foreach (IGrouping<Guid, BalanceSnapshot> account in byAccount)
             {
                 BalanceSnapshot? latest = account.Where(x => x.Date <= day).MaxBy(static x => x.Date);
-                if (latest is null)
+                if (latest is not null)
                 {
-                    continue;
+                    tally.Add(latest);
                 }
-
-                decimal current = latest.Balance.Current;
-                if (current >= 0)
-                {
-                    assets += current;
-                }
-                else
-                {
-                    liabilities -= current;
-                }
-
-                isStale |= latest.IsStale;
-                isDerived |= latest.Source == BalanceSnapshotSource.Derived;
             }
 
-            combined.Add(new NetWorthPoint
-            {
-                Date = day,
-                Assets = assets,
-                Liabilities = liabilities,
-                NetWorth = assets - liabilities,
-                IsDerived = isDerived,
-                IsStale = isStale
-            });
+            combined.Add(tally.ToPoint(day));
         }
 
         return combined;

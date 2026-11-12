@@ -42,29 +42,34 @@ public static class FinanceTrackerContextExtensions
         public IQueryable<T> ChangeableIn(AccountsInView changeable) => query.InView(changeable);
 
         /// <summary>
-        /// Restricts to what belongs to the accounts <paramref name="view"/> covers: the user's own, and those shared
-        /// with them. For reading only, changes go through <see cref="OwnedBy"/>.
+        /// Restricts to what belongs to the accounts <paramref name="view"/> covers: the user's own, their copies of
+        /// joint accounts aside, and those shared with them. For reading only, changes go through
+        /// <see cref="OwnedBy"/>.
         /// </summary>
         public IQueryable<T> InView(AccountsInView view)
         {
             ArgumentNullException.ThrowIfNull(view);
             Guid userId = view.UserId;
             IReadOnlyList<Guid> shared = view.SharedAccountIds;
-            return query.Where(x => x.UserId == userId || shared.Contains(x.AccountId));
+            List<Guid> hidden = view.HiddenAccountIds.ToList();
+            return query.Where(x =>
+                (x.UserId == userId && !hidden.Contains(x.AccountId)) || shared.Contains(x.AccountId));
         }
     }
 
     extension(IQueryable<BankAccount> accounts)
     {
         /// <summary>
-        /// The accounts <paramref name="view"/> covers the user's own, and those shared with them. For reading only.
+        /// The accounts <paramref name="view"/> covers: the user's own, their copies of joint accounts aside, and those
+        /// shared with them. For reading only.
         /// </summary>
         public IQueryable<BankAccount> InView(AccountsInView view)
         {
             ArgumentNullException.ThrowIfNull(view);
             Guid userId = view.UserId;
             IReadOnlyList<Guid> shared = view.SharedAccountIds;
-            return accounts.Where(x => x.UserId == userId || shared.Contains(x.Id));
+            List<Guid> hidden = view.HiddenAccountIds.ToList();
+            return accounts.Where(x => (x.UserId == userId && !hidden.Contains(x.Id)) || shared.Contains(x.Id));
         }
     }
 }

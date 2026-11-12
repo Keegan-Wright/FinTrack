@@ -36,7 +36,7 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
         // transactions the matcher changed
         TransferGroup group = await TransferGroup.ForAsync(context, UserId, cancellationToken);
         List<BankTransaction> transactions =
-            await context.BankTransactions.OwnedByAny(group.UserIds).ToListAsync(cancellationToken);
+            await group.Transactions(context).ToListAsync(cancellationToken);
 
         return await MatchAndSaveAsync(context, group, transactions, startedAt, recordCheckpoint: true,
             cancellationToken);
@@ -54,7 +54,7 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
         if (checkpoint is null)
         {
             List<BankTransaction> everything =
-                await context.BankTransactions.OwnedByAny(group.UserIds).ToListAsync(cancellationToken);
+                await group.Transactions(context).ToListAsync(cancellationToken);
             return await MatchAndSaveAsync(context, group, everything, startedAt, recordCheckpoint: true,
                 cancellationToken);
         }
@@ -85,7 +85,7 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
 
         // The other half of a pair may be someone else's in the group
         TransferGroup group = await TransferGroup.ForAsync(context, UserId, cancellationToken);
-        List<DateTime> dates = await context.BankTransactions.OwnedByAny(group.UserIds)
+        List<DateTime> dates = await group.Transactions(context)
             .Where(x => transactionIds.Contains(x.Id))
             .Select(static x => x.OccurredAt)
             .ToListAsync(cancellationToken);
@@ -119,7 +119,7 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
         DateTime from = dates.Min().AddDays(-TransferMatcher.MaxDaysApart);
         DateTime to = (dates.Max() > startedAt ? dates.Max() : startedAt).AddDays(TransferMatcher.MaxDaysApart);
 
-        List<BankTransaction> transactions = await context.BankTransactions.OwnedByAny(group.UserIds)
+        List<BankTransaction> transactions = await group.Transactions(context)
             .WhereEncryptedDayBetween(x => x.OccurredAt, from, to, context)
             .ToListAsync(cancellationToken);
 
@@ -145,7 +145,7 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
             .Distinct()
             .ToList();
 
-        return await context.BankTransactions.OwnedByAny(group.UserIds)
+        return await group.Transactions(context)
             .Where(x => !loadedIds.Contains(x.Id) &&
                         (partnerIds.Contains(x.Id) ||
                          (x.Transfer != null && x.Transfer.PartnerTransactionId != null &&
@@ -161,8 +161,7 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
         List<BankTransaction> transactions, DateTime startedAt, bool recordCheckpoint,
         CancellationToken cancellationToken)
     {
-        List<BankAccount> accounts = await context.BankAccounts.OwnedByAny(group.UserIds)
-            .ToListAsync(cancellationToken);
+        List<BankAccount> accounts = await group.Accounts(context).ToListAsync(cancellationToken);
 
         List<HouseholdMember> householdMembers =
             await context.HouseholdMembers.OwnedByAny(group.UserIds).ToListAsync(cancellationToken);

@@ -63,6 +63,17 @@ public static class SharingEndpoints
                 .Validated<ChangeAccountShares>()
                 .NotFoundWhenMissing();
 
+            links.MapPost("{id:guid}/joint-accounts", async Task<Ok<LinkShares>> (Guid id,
+                        MergeJointAccounts request, ISharingService service, CancellationToken cancellationToken) =>
+                    TypedResults.Ok(await service.MergeJointAccountsAsync(id, request, cancellationToken)))
+                .Validated<MergeJointAccounts>()
+                .NotFoundWhenMissing();
+
+            links.MapDelete("{id:guid}/joint-accounts/{jointAccountId:guid}", async Task<Ok<LinkShares>> (Guid id,
+                        Guid jointAccountId, ISharingService service, CancellationToken cancellationToken) =>
+                    TypedResults.Ok(await service.SplitJointAccountAsync(id, jointAccountId, cancellationToken)))
+                .NotFoundWhenMissing();
+
             return api;
         }
     }

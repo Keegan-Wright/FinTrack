@@ -464,6 +464,46 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
     }
 
     /// <summary>
+    /// Takes the tags and hidden bank classifications on <paramref name="other"/>, the same transaction as another
+    /// person's copy of a joint account has it, adding to its own. With <paramref name="withSplit"/>, its split too
+    /// when it isn't split itself. For merging the two copies of a joint account and splitting them again, the tags
+    /// may be either person's.
+    /// </summary>
+    /// <param name="withSplit">Whether to take the split, which only the copy being shown decides.</param>
+    public void TakeAnnotationsFrom(BankTransaction other, bool withSplit)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+
+        if (withSplit && !IsSplit && other.IsSplit && other.Amount == Amount)
+        {
+            _splits.AddRange(other._splits);
+            _customClassificationIds.Clear();
+        }
+
+        if (IsSplit)
+        {
+            _customClassificationIds.AddRange(_splits.Select(static x => x.TagId).OfType<Guid>()
+                .Except(_customClassificationIds));
+        }
+        else
+        {
+            _customClassificationIds.AddRange(other._customClassificationIds.Except(_customClassificationIds));
+        }
+
+        foreach (HiddenClassification hidden in other._hiddenClassifications.Where(static x => x.HiddenByUser))
+        {
+            if (_providerClassifications.Contains(hidden.Classification, StringComparer.OrdinalIgnoreCase) &&
+                !_hiddenClassifications.Exists(x => string.Equals(x.Classification, hidden.Classification,
+                    StringComparison.OrdinalIgnoreCase)))
+            {
+                _hiddenClassifications.Add(hidden);
+            }
+        }
+
+        TagsSetByUser |= other.TagsSetByUser;
+    }
+
+    /// <summary>
     /// Whether <paramref name="tagId"/> is on it already, on the whole or on one of its parts.
     /// </summary>
     private bool HasTag(Guid tagId) =>

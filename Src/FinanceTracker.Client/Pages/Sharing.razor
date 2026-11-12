@@ -82,6 +82,12 @@
                                            StartIcon="@Icons.Material.Outlined.Tune"
                                            OnClick="@(() => ChooseSharesAsync(link))">Share</MudButton>
                             }
+                            @if (HasJointAccounts(link))
+                            {
+                                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                                           StartIcon="@Icons.Material.Outlined.JoinInner"
+                                           OnClick="@(() => ManageJointAccountsAsync(link))">Joint accounts</MudButton>
+                            }
                             <MudButton Variant="Variant.Text" Color="Color.Error" Size="Size.Small"
                                        OnClick="@(() => EndAsync(link))">@EndText(link)</MudButton>
                         </div>
@@ -137,7 +143,7 @@
         string date = link.Since.ToLocalTime().ToString("d MMM yyyy", CultureInfo.CurrentCulture);
         return link.State switch
         {
-            LinkState.Linked => $"@{link.Username} · linked since {date} · {SharedSummary(link)}",
+            LinkState.Linked => $"@{link.Username} · linked since {date} · {SharedSummary(link)}{JointSummary(link)}",
             LinkState.Invited => $"@{link.Username} · invited {date}, waiting for them",
             _ => $"@{link.Username} · invited you {date}"
         };
@@ -155,6 +161,37 @@
 
         return $"you share {AccountsText(link.AccountsYouShare)}, they share {link.AccountsTheyShare}";
     }
+
+    /// <summary>
+    /// Their joint accounts, after what's shared, e.g. <c> · a joint account to merge</c>. Empty when there are none.
+    /// </summary>
+    internal static string JointSummary(UserLink link)
+    {
+        if (link.JointSuggestions == 1)
+        {
+            return " · a joint account to merge";
+        }
+
+        if (link.JointSuggestions > 1)
+        {
+            return $" · {link.JointSuggestions} joint accounts to merge";
+        }
+
+        if (link.JointAccounts == 1)
+        {
+            return " · 1 joint account";
+        }
+
+        if (link.JointAccounts > 1)
+        {
+            return $" · {link.JointAccounts} joint accounts";
+        }
+
+        return string.Empty;
+    }
+
+    private static bool HasJointAccounts(UserLink link) =>
+        link.State == LinkState.Linked && (link.JointAccounts > 0 || link.JointSuggestions > 0);
 
     private static string AccountsText(int count)
     {
@@ -318,6 +355,92 @@
         finally
         {
             SetLoadingState(false);
+        }
+    }
+
+    /// <summary>
+    /// Opens the joint accounts they could merge or have merged with them, each change saved as it's made.
+    /// </summary>
+    internal async Task ManageJointAccountsAsync(UserLink link)
+    {
+        LinkShares? shares;
+        try
+        {
+            SetLoadingState(true, $"Loading your joint accounts with {link.Name}…");
+            shares = await SharingService.GetSharesAsync(link.Id, _cts.Token);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't load your joint accounts, try again", Severity.Error);
+            return;
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+
+        if (shares is null)
+        {
+            Links = await LoadLinksAsync(_cts.Token);
+            Snackbar.Add($"You're no longer linked with {link.Name}", Severity.Info);
+            return;
+        }
+
+        DialogParameters<JointAccountsDialog> parameters = new()
+        {
+            { x => x.Shares, shares },
+            { x => x.OnMerge, suggestions => ChangeJointAsync(() => SharingService.MergeJointAccountsAsync(link.Id,
+                MergeRequest(suggestions), _cts.Token), MergedText(suggestions)) },
+            { x => x.OnSplit, joint => ChangeJointAsync(() => SharingService.SplitJointAccountAsync(link.Id,
+                joint.JointAccountId, _cts.Token), $"Split {joint.Name}, you each see your own copy again") }
+        };
+
+        IDialogReference dialog = await DialogService.ShowAsync<JointAccountsDialog>(null, parameters);
+        DialogResult? result = await dialog.Result;
+        if (result?.Data is true)
+        {
+            Links = await LoadLinksAsync(_cts.Token);
+        }
+    }
+
+    private static MergeJointAccounts MergeRequest(IReadOnlyList<JointAccountSuggestion> suggestions) => new()
+    {
+        Accounts = suggestions
+            .Select(static x => new MergeJointAccount
+            {
+                YourAccountId = x.YourAccountId, TheirAccountId = x.TheirAccountId
+            })
+            .ToList()
+    };
+
+    /// <summary>
+    /// What merging did, e.g. <c>Merged Christmas, it's counted once now</c>.
+    /// </summary>
+    internal static string MergedText(IReadOnlyList<JointAccountSuggestion> suggestions)
+    {
+        if (suggestions.Count == 1)
+        {
+            return $"Merged {suggestions[0].YourAccountName}, it's counted once now";
+        }
+
+        return $"Merged {suggestions.Count} accounts, each is counted once now";
+    }
+
+    /// <summary>
+    /// Merges or splits joint accounts, saying so, and gives what's shared after, or null when it failed.
+    /// </summary>
+    private async Task<LinkShares?> ChangeJointAsync(Func<Task<LinkShares>> change, string done)
+    {
+        try
+        {
+            LinkShares after = await change();
+            Snackbar.Add(done, Severity.Success);
+            return after;
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't do that, try again", Severity.Error);
+            return null;
         }
     }
 

@@ -486,6 +486,31 @@ public class TransferMatcherTests
     }
 
     [Test]
+    public async Task Match_TheirCopyOfTheSameTransfer_DoesntTieWithTheUsersOwn()
+    {
+        // Both connected a joint account and its pot, each copy has the same move into the pot. The user's own pair
+        // comes first rather than all four going to review as a tie
+        BankAccount theirJoint = Account("Their joint", "555555", "55555555", Partner);
+        BankAccount theirPot = new(Partner, Guid.NewGuid(), "ext-their-pot", "SAVINGS", "Christmas", "GBP");
+        BankTransaction outgoing = Transaction(_joint, -36m, Monday, labelled: true);
+        BankTransaction intoPot = Transaction(_savings, 36m, Monday, labelled: true);
+        BankTransaction theirOutgoing = Transaction(theirJoint, -36m, Monday, labelled: true);
+        BankTransaction intoTheirPot = Transaction(theirPot, 36m, Monday, labelled: true);
+
+        TransferMatcher.Match([_joint, _savings, theirJoint, theirPot], [],
+            [outgoing, intoPot, theirOutgoing, intoTheirPot], DecidedAt,
+            new TransferPairing([(theirJoint.Id, UserId), (theirPot.Id, UserId), (_joint.Id, Partner)]));
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(outgoing.Transfer).IsEqualTo(
+                TransferInfo.Matched(TransferReason.MirrorPair, intoPot.Id, _savings.Id, DecidedAt));
+            await Assert.That(theirOutgoing.Transfer).IsEqualTo(
+                TransferInfo.Matched(TransferReason.MirrorPair, intoTheirPot.Id, theirPot.Id, DecidedAt));
+        }
+    }
+
+    [Test]
     public async Task Match_AnotherPersonsAccountNotSharedEitherWay_NeverPairs()
     {
         // A payment to someone and theirs coming in stay spending and income, nothing between them is shared

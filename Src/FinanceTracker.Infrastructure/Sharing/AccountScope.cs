@@ -20,34 +20,93 @@ public sealed class AccountScope : IAccountScope
 
         SharingSettings? settings = await context.SharingSettings.AsNoTracking()
             .SingleOrDefaultAsync(x => x.UserId == userId, cancellationToken);
-        if (settings is { IncludeShared: false })
-        {
-            return AccountsInView.Mine(userId, await OwnAccountIdsAsync(context, userId, cancellationToken));
-        }
+        bool justMine = settings is { IncludeShared: false };
 
-        return await SharedAsync(context, userId, onlyChangeable: false, cancellationToken);
+        return await ResolveAsync(context, userId, onlyChangeable: false, justMine, cancellationToken);
     }
 
     public Task<AccountsInView> ResolveAllAsync(FinanceTrackerContext context, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(context);
-        return SharedAsync(context, _currentUser.UserId, onlyChangeable: false, cancellationToken);
+        return ResolveAsync(context, _currentUser.UserId, onlyChangeable: false, justMine: false, cancellationToken);
     }
 
     public Task<AccountsInView> ResolveChangeableAsync(FinanceTrackerContext context,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(context);
-        return SharedAsync(context, _currentUser.UserId, onlyChangeable: true, cancellationToken);
+        return ResolveAsync(context, _currentUser.UserId, onlyChangeable: true, justMine: false, cancellationToken);
+    }
+
+    /// <param name="onlyChangeable">Only the shared accounts they're allowed to change.</param>
+    /// <param name="justMine">Only their own, and joint accounts they're one of the two of.</param>
+    private static async Task<AccountsInView> ResolveAsync(FinanceTrackerContext context, Guid userId,
+        bool onlyChangeable, bool justMine, CancellationToken cancellationToken)
+    {
+        List<Guid> hidden = await context.JointAccounts.AsNoTracking()
+            .Select(static x => x.HiddenAccountId)
+            .ToListAsync(cancellationToken);
+
+        Dictionary<Guid, Guid> owners = [];
+        HashSet<Guid> changeable = [];
+
+        // Their copy of a joint account is hidden, the shown one is theirs to change as much as the other person's
+        foreach ((Guid AccountId, Guid OwnerId) joint in await JointAccountsOfAsync(context, userId, cancellationToken))
+        {
+            owners[joint.AccountId] = joint.OwnerId;
+            changeable.Add(joint.AccountId);
+        }
+
+        if (!justMine)
+        {
+            foreach ((Guid AccountId, Guid OwnerId, ShareMode Mode) share in
+                     await SharesWithAsync(context, userId, onlyChangeable, cancellationToken))
+            {
+                if (hidden.Contains(share.AccountId))
+                {
+                    continue;
+                }
+
+                owners[share.AccountId] = share.OwnerId;
+                if (share.Mode == ShareMode.AllowChanges)
+                {
+                    changeable.Add(share.AccountId);
+                }
+            }
+        }
+
+        List<Guid> ownIds = await context.BankAccounts.OwnedBy(userId).Select(static x => x.Id)
+            .ToListAsync(cancellationToken);
+        HashSet<Guid> ownHidden = ownIds.Intersect(hidden).ToHashSet();
+
+        return new AccountsInView(userId, ownIds.Except(ownHidden).ToHashSet(), owners, changeable,
+            await OwnersWithPrivateAccountsAsync(context, owners, hidden, cancellationToken), ownHidden);
     }
 
     /// <summary>
-    /// Their own accounts, and those the other person in an accepted link shares with them that are still that
-    /// person's own, so a share left behind by an account changing hands never shows it.
+    /// The shown copies of joint accounts whose other copy is the user's, and who owns each.
     /// </summary>
-    /// <param name="onlyChangeable">Only the shared accounts they're allowed to change.</param>
-    private static async Task<AccountsInView> SharedAsync(FinanceTrackerContext context, Guid userId,
-        bool onlyChangeable, CancellationToken cancellationToken)
+    private static async Task<List<(Guid AccountId, Guid OwnerId)>> JointAccountsOfAsync(
+        FinanceTrackerContext context, Guid userId, CancellationToken cancellationToken)
+    {
+        var joints = await (
+                from joint in context.JointAccounts
+                join hiddenCopy in context.BankAccounts on joint.HiddenAccountId equals hiddenCopy.Id
+                join shown in context.BankAccounts on joint.ShownAccountId equals shown.Id
+                where hiddenCopy.UserId == userId
+                select new { AccountId = shown.Id, OwnerId = shown.UserId })
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        return joints.Select(static x => (x.AccountId, x.OwnerId)).ToList();
+    }
+
+    /// <summary>
+    /// The accounts the other person in an accepted link shares with them that are still that person's own, so a
+    /// share left behind by an account changing hands never shows it.
+    /// </summary>
+    private static async Task<List<(Guid AccountId, Guid OwnerId, ShareMode Mode)>> SharesWithAsync(
+        FinanceTrackerContext context, Guid userId, bool onlyChangeable, CancellationToken cancellationToken)
     {
         var shared = await (
                 from share in context.Shares
@@ -61,28 +120,18 @@ public sealed class AccountScope : IAccountScope
                       && (!onlyChangeable || share.Mode == ShareMode.AllowChanges)
                 select new { AccountId = account.Id, OwnerId = account.UserId, share.Mode })
             .Distinct()
+            .AsNoTracking()
             .ToListAsync(cancellationToken);
 
-        Dictionary<Guid, Guid> owners = [];
-        HashSet<Guid> changeable = [];
-        foreach (var account in shared)
-        {
-            owners[account.AccountId] = account.OwnerId;
-            if (account.Mode == ShareMode.AllowChanges)
-            {
-                changeable.Add(account.AccountId);
-            }
-        }
-
-        return new AccountsInView(userId, await OwnAccountIdsAsync(context, userId, cancellationToken), owners,
-            changeable, await OwnersWithPrivateAccountsAsync(context, owners, cancellationToken));
+        return shared.Select(static x => (x.AccountId, x.OwnerId, x.Mode)).ToList();
     }
 
     /// <summary>
-    /// Which of the owners of <paramref name="shared"/> have other accounts, not among them.
+    /// Which of the owners of <paramref name="shared"/> have other accounts, not among them, the hidden copies of
+    /// joint accounts aside.
     /// </summary>
     private static async Task<IReadOnlySet<Guid>> OwnersWithPrivateAccountsAsync(FinanceTrackerContext context,
-        Dictionary<Guid, Guid> shared, CancellationToken cancellationToken)
+        Dictionary<Guid, Guid> shared, List<Guid> hidden, CancellationToken cancellationToken)
     {
         if (shared.Count == 0)
         {
@@ -90,18 +139,13 @@ public sealed class AccountScope : IAccountScope
         }
 
         List<Guid> ownerIds = shared.Values.Distinct().ToList();
-        List<Guid> sharedIds = shared.Keys.ToList();
+        List<Guid> visibleIds = shared.Keys.ToList();
         List<Guid> withPrivate = await context.BankAccounts
-            .Where(x => ownerIds.Contains(x.UserId) && !sharedIds.Contains(x.Id))
+            .Where(x => ownerIds.Contains(x.UserId) && !visibleIds.Contains(x.Id) && !hidden.Contains(x.Id))
             .Select(static x => x.UserId)
             .Distinct()
             .ToListAsync(cancellationToken);
 
         return withPrivate.ToHashSet();
     }
-
-    private static async Task<IReadOnlySet<Guid>> OwnAccountIdsAsync(FinanceTrackerContext context, Guid userId,
-        CancellationToken cancellationToken) =>
-        (await context.BankAccounts.OwnedBy(userId).Select(static x => x.Id).ToListAsync(cancellationToken))
-        .ToHashSet();
 }

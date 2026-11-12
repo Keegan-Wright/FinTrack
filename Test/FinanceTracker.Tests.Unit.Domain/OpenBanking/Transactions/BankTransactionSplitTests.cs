@@ -281,6 +281,48 @@ public class BankTransactionSplitTests
         }
     }
 
+    [Test]
+    public async Task TakeAnnotationsFrom_AddsTheOtherCopysTagsToItsOwn()
+    {
+        // Arrange, the same shop on the other person's copy of a joint account
+        BankTransaction transaction = Build(-100m);
+        transaction.Classify(_groceries, UserId);
+        BankTransaction other = Build(-100m);
+        other.Classify(_household, UserId);
+
+        // Act
+        transaction.TakeAnnotationsFrom(other, withSplit: false);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(transaction.CustomClassificationIds).IsEquivalentTo([_groceries.Id, _household.Id]);
+            await Assert.That(transaction.TagsSetByUser).IsTrue();
+        }
+    }
+
+    [Test]
+    [Arguments(true)]
+    [Arguments(false)]
+    public async Task TakeAnnotationsFrom_ASplitCopy_TakesTheSplitOnlyWhenAsked(bool withSplit)
+    {
+        // Arrange
+        BankTransaction transaction = Build(-100m);
+        BankTransaction other = Build(-100m);
+        other.Split([new(-60m, _groceries.Id, null), new(-40m, _household.Id, null)], [_groceries, _household],
+            UserId);
+
+        // Act
+        transaction.TakeAnnotationsFrom(other, withSplit);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(transaction.IsSplit).IsEqualTo(withSplit);
+            await Assert.That(transaction.CustomClassificationIds).IsEquivalentTo([_groceries.Id, _household.Id]);
+        }
+    }
+
     private static BankTransaction Build(decimal amount) => BankTransaction.Import(Account, Details(amount));
 
     private static TransactionDetails Details(decimal amount) =>

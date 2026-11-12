@@ -244,7 +244,7 @@ public static class TransferMatcher
 
     /// <summary>
     /// The undecided mirrors of <paramref name="transaction"/> among <paramref name="candidates"/> that are closest
-    /// in time, more than one when they're equally close.
+    /// in time, more than one when they're equally close. Its owner's own come first, see below.
     /// </summary>
     /// <remarks>
     /// Closeness is the exact time apart, while <see cref="IsMirror"/> limits candidates by calendar day. For a bank
@@ -257,6 +257,16 @@ public static class TransferMatcher
             .Where(x => !decisions.ContainsKey(x.Id) && IsMirror(transaction, x) && pairing.CanPair(transaction, x))
             .Select(x => (x, (x.OccurredAt - transaction.OccurredAt).Duration()))
             .ToList();
+
+        // Its owner's own accounts first, another person's only when none of theirs fits. Two people who've both
+        // connected the same account each have a copy of every transaction on it, which would otherwise tie with
+        // their own and send both to review
+        List<(BankTransaction Candidate, TimeSpan Apart)> own =
+            mirrors.Where(x => x.Candidate.UserId == transaction.UserId).ToList();
+        if (own.Count > 0)
+        {
+            mirrors = own;
+        }
 
         if (mirrors.Count == 0)
         {
