@@ -61,8 +61,21 @@
     [PersistentState]
     public List<Classification>? Tags { get; set; }
 
-    private IReadOnlyDictionary<Guid, string> TagNames =>
-        (Tags ?? []).ToDictionary(static x => x.ClassificationId, static x => x.Tag ?? string.Empty);
+    // Theirs, with the names of someone else's goals' tags, which are that person's
+    private IReadOnlyDictionary<Guid, string> TagNames
+    {
+        get
+        {
+            Dictionary<Guid, string> names =
+                (Tags ?? []).ToDictionary(static x => x.ClassificationId, static x => x.Tag ?? string.Empty);
+            foreach ((Guid id, string name) in (Goals ?? []).SelectMany(static x => x.TagNames))
+            {
+                names.TryAdd(id, name);
+            }
+
+            return names;
+        }
+    }
 
     private string SectionTitle => Goals?.Count == 1 ? "1 goal" : $"{Goals?.Count ?? 0} goals";
 

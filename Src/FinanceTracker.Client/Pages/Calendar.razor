@@ -149,6 +149,10 @@
                                     {
                                         <MudText Typo="Typo.caption" Class="mud-text-secondary">@notes</MudText>
                                     }
+                                    @if (calendarEvent.SharedBy is { } sharedBy)
+                                    {
+                                        <MudText Typo="Typo.caption" Class="mud-text-secondary">@($"{sharedBy}'s")</MudText>
+                                    }
                                 </div>
                                 <div class="ft-list__end">
                                     <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true"
@@ -156,8 +160,12 @@
                                              AriaLabel="@($"Actions for {calendarEvent.Title}")">
                                         <MudMenuItem Icon="@Icons.Material.Outlined.Edit"
                                                      OnClick="@(() => EditEventAsync(calendarEvent))">Edit</MudMenuItem>
-                                        <MudMenuItem Icon="@Icons.Material.Outlined.Delete"
-                                                     OnClick="@(() => DeleteEventAsync(calendarEvent))">Delete</MudMenuItem>
+                                        @* Only its owner deletes it *@
+                                        @if (calendarEvent.SharedBy is null)
+                                        {
+                                            <MudMenuItem Icon="@Icons.Material.Outlined.Delete"
+                                                         OnClick="@(() => DeleteEventAsync(calendarEvent))">Delete</MudMenuItem>
+                                        }
                                     </MudMenu>
                                 </div>
                             </div>
@@ -407,6 +415,12 @@
         {
             Snackbar.Add($"{item.Title} isn't there any more", Severity.Error);
             await ReloadAsync();
+            return;
+        }
+
+        if (!existing.CanChange)
+        {
+            Snackbar.Add($"Only {existing.SharedBy} can change {existing.Title}", Severity.Info);
             return;
         }
 

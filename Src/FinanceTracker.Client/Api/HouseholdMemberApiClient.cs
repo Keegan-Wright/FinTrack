@@ -51,6 +51,16 @@ public sealed class HouseholdMemberApiClient : IHouseholdMemberService
         return await response.ReadRequiredJsonAsync<HouseholdMemberRecognitionSaved>(cancellationToken);
     }
 
+    public async Task<HouseholdMember> LinkHouseholdMemberAsync(Guid id, LinkHouseholdMember request,
+        CancellationToken cancellationToken)
+    {
+        using HttpResponseMessage response = await _http.PutAsJsonAsync($"{ApiRoutes.HouseholdMembers}/{id}/link",
+            request, cancellationToken);
+        // The name that clashes is the linked person's, which the page knows
+        response.EnsureNameFree(NameTakenException.Person, "that person");
+        return await response.ReadRequiredJsonAsync<HouseholdMember>(cancellationToken);
+    }
+
     public Task<bool> DeleteHouseholdMemberAsync(Guid id, CancellationToken cancellationToken) =>
         _http.DeleteIfFoundAsync($"{ApiRoutes.HouseholdMembers}/{id}", cancellationToken);
 }

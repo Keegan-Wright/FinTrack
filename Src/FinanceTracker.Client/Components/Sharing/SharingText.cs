@@ -25,6 +25,9 @@ public static class SharingText
         SharedItemKind.Rule => "Rule",
         SharedItemKind.Bill => "Bill",
         SharedItemKind.Debt => "Debt",
+        SharedItemKind.Budget => "Budget",
+        SharedItemKind.SavingsGoal => "Goal",
+        SharedItemKind.CalendarEvent => "Event",
         _ => "Item"
     };
 
@@ -65,6 +68,9 @@ public static class SharingText
         AddCount(parts, shares, SharedItemKind.Rule, "rule");
         AddCount(parts, shares, SharedItemKind.Bill, "bill");
         AddCount(parts, shares, SharedItemKind.Debt, "debt");
+        AddCount(parts, shares, SharedItemKind.Budget, "budget");
+        AddCount(parts, shares, SharedItemKind.SavingsGoal, "goal");
+        AddCount(parts, shares, SharedItemKind.CalendarEvent, "event");
         if (parts.Count == 0)
         {
             return $"Nothing shared with {shares.Name}";

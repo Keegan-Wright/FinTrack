@@ -249,7 +249,7 @@ public class NetWorthService : ServiceBase<NetWorthService>, INetWorthService
         items.AddRange(sharedDebts.Debts
             .Select(x => new NetWorthItem
             {
-                Name = $"{x.Debt.Name} · {x.SharedBy}'s",
+                Name = $"{x.Item.Name} · {x.SharedBy}'s",
                 Kind = NetWorthItemKind.Debt,
                 Amount = -sharedDebts.OwedOn(x, day)
             })

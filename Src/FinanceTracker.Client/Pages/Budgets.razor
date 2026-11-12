@@ -303,10 +303,17 @@
     /// <returns>What the user entered, null when they cancelled.</returns>
     private async Task<SaveBudget?> ShowDialogAsync(Budget? budget)
     {
+        // Someone else's covers their tags, those shared with the user
+        IReadOnlyDictionary<Guid, string> tagNames = TagNames;
+        if (budget?.SharedBy is not null)
+        {
+            tagNames = budget.TagChoices;
+        }
+
         DialogParameters<BudgetDialog> parameters = new()
         {
             { x => x.Budget, budget },
-            { x => x.TagNames, TagNames }
+            { x => x.TagNames, tagNames }
         };
 
         IDialogReference dialog = await DialogService.ShowAsync<BudgetDialog>(null, parameters);

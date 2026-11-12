@@ -17,13 +17,12 @@ internal static class SharedBills
     /// </summary>
     /// <param name="view">Their accounts and those shared with them. A bill paid from one shared with changes allowed
     /// can be changed. Just mine leaves out those chosen for them, as it does accounts.</param>
-    public static async Task<List<VisibleBill>> ForAsync(FinanceTrackerContext context, Guid userId,
+    public static async Task<List<VisibleItem<DomainBill>>> ForAsync(FinanceTrackerContext context, Guid userId,
         AccountsInView view, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(view);
-
-        List<DomainBill> own = await context.Bills.OwnedBy(userId).AsNoTracking().ToListAsync(cancellationToken);
+        List<VisibleItem<DomainBill>> chosen = await SharedChosenItems.ForAsync(context, context.Bills, userId,
+            ShareItemType.Bill, view.IsJustMine, cancellationToken);
 
         // Paid from an account they see that's someone else's, shared as the account is
         IReadOnlyList<Guid> sharedAccounts = view.SharedAccountIds;
@@ -31,49 +30,9 @@ internal static class SharedBills
             .Where(x => x.UserId != userId && sharedAccounts.Contains(x.AccountId))
             .ToListAsync(cancellationToken);
 
-        IQueryable<Share> chosenShares = context.ChosenSharesWith(userId, ShareItemType.Bill);
-        if (view.IsJustMine)
-        {
-            chosenShares = chosenShares.Where(static _ => false);
-        }
-
-        var chosen = await (
-                from share in chosenShares
-                join bill in context.Bills on share.ItemId equals bill.Id
-                where bill.UserId == share.UserId
-                select new { Bill = bill, share.Mode })
-            .AsNoTracking()
-            .ToListAsync(cancellationToken);
-
-        Dictionary<Guid, (DomainBill Bill, bool CanChange)> others = [];
-        foreach (DomainBill bill in followingAccounts)
-        {
-            others[bill.Id] = (bill, view.ChangeableAccountIds.Contains(bill.AccountId));
-        }
-
-        foreach (var shared in chosen)
-        {
-            bool canChange = shared.Mode == ShareMode.AllowChanges;
-            if (others.TryGetValue(shared.Bill.Id, out (DomainBill Bill, bool CanChange) already))
-            {
-                canChange |= already.CanChange;
-            }
-
-            others[shared.Bill.Id] = (shared.Bill, canChange);
-        }
-
-        List<Guid> ownerIds = others.Values.Select(static x => x.Bill.UserId).Distinct().ToList();
-        Dictionary<Guid, string> names = await context.Users.AsNoTracking()
-            .Where(x => ownerIds.Contains(x.Id))
-            .ToDictionaryAsync(static x => x.Id, static x => $"{x.FirstName} {x.LastName}".Trim(), cancellationToken);
-
-        return
-        [
-            .. own.Where(x => !StandsInForIt(x, view, followingAccounts))
-                .Select(static x => new VisibleBill(x, null, true)),
-            .. others.Values.Select(x =>
-                new VisibleBill(x.Bill, names.GetValueOrDefault(x.Bill.UserId, string.Empty), x.CanChange))
-        ];
+        List<VisibleItem<DomainBill>> bills = await SharedChosenItems.WithFollowingAsync(context, chosen,
+            followingAccounts, static x => x.AccountId, view, cancellationToken);
+        return bills.Where(x => !x.IsOwn || !StandsInForIt(x.Item, view, followingAccounts)).ToList();
     }
 
     /// <summary>

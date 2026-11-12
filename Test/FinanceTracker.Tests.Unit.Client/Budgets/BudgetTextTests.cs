@@ -6,6 +6,16 @@ namespace FinanceTracker.Tests.Unit.Client.Budgets;
 public class BudgetTextTests
 {
     [Test]
+    [Arguments(null, false, null)]
+    [Arguments(null, true, "Household")]
+    [Arguments("Sam Taylor", true, "Household · Sam Taylor's")]
+    public async Task SharedText_SaysItsAHouseholdBudgetAndWhose(string? sharedBy, bool household, string? expected) =>
+        await Assert.That(BudgetText.SharedText(new BudgetStatus
+        {
+            BudgetId = Guid.NewGuid(), Name = "Groceries", SharedBy = sharedBy, IsHousehold = household
+        })).IsEqualTo(expected);
+
+    [Test]
     [Arguments(120, 400, "£120.00 of £400.00", "£280.00 left")]
     [Arguments(430, 400, "£430.00 of £400.00", "£30.00 over")]
     public async Task SpentAndRemaining_SayWhereItStands(int spent, int available, string spentOf, string remaining)

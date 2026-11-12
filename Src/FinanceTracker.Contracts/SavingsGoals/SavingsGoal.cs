@@ -108,4 +108,24 @@ public class SavingsGoal
     /// </summary>
     [Description("Whether the monthly contribution reaches the target by its date")]
     public bool? OnTrack { get; init; }
+
+    /// <summary>
+    /// The first and last name of whoever shares it with the user, null when it's their own. Shared because it tracks
+    /// an account they share, or because they chose to share it.
+    /// </summary>
+    [Description("Who shares the goal with the user, empty when it's their own")]
+    public string? SharedBy { get; init; }
+
+    /// <summary>
+    /// Whether the user can edit its name, target and monthly amount: their own, or shared with them with changes
+    /// allowed. Only its owner changes what it tracks or deletes it.
+    /// </summary>
+    [Description("Whether the user can edit the goal")]
+    public bool CanChange { get; init; } = true;
+
+    /// <summary>
+    /// For one someone else shares, the names of the tags it tracks, by id, as they're its owner's.
+    /// </summary>
+    [Description("Names of a shared goal's tags, by id")]
+    public Dictionary<Guid, string> TagNames { get; init; } = [];
 }

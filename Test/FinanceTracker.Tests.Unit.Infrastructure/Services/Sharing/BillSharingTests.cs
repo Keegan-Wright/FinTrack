@@ -207,7 +207,7 @@ public class BillSharingTests : InfrastructureTestBase
         // Act
         await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
         AccountsInView justMine = await Scope(Alex).ResolveAsync(context, CancellationToken);
-        List<VisibleBill> bills = await SharedBills.ForAsync(context, Scenario.UserMappings[Alex], justMine,
+        List<VisibleItem<DomainBill>> bills = await SharedBills.ForAsync(context, Scenario.UserMappings[Alex], justMine,
             CancellationToken);
 
         // Assert

@@ -203,6 +203,18 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
 
         link.End(UserId, _timeProvider.GetUtcNow().UtcDateTime);
 
+        // A household member either of them said is the other is a plain name again, kept as it is
+        Guid inviterId = link.UserId;
+        Guid inviteeId = link.InviteeId;
+        List<Domain.Household.HouseholdMember> linkedMembers = await context.HouseholdMembers
+            .Where(x => (x.UserId == inviterId && x.LinkedUserId == inviteeId) ||
+                        (x.UserId == inviteeId && x.LinkedUserId == inviterId))
+            .ToListAsync(cancellationToken);
+        foreach (Domain.Household.HouseholdMember member in linkedMembers)
+        {
+            member.UnlinkUser();
+        }
+
         // Both ways, so linking again later shares nothing until each of them chooses it again
         List<Share> shares = await context.Shares.Where(x => x.LinkId == link.Id).ToListAsync(cancellationToken);
         await TakeOffAnnotationsAsync(context, link, shares, cancellationToken);

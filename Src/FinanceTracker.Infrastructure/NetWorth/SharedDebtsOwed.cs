@@ -12,17 +12,17 @@ namespace FinanceTracker.Infrastructure.NetWorth;
 /// </summary>
 /// <param name="Debts">The shared debts not linked to an account.</param>
 /// <param name="Owed">What they owed on any day.</param>
-internal sealed record SharedDebtsOwed(IReadOnlyList<VisibleDebt> Debts, DebtsOwed Owed)
+internal sealed record SharedDebtsOwed(IReadOnlyList<VisibleItem<Debt>> Debts, DebtsOwed Owed)
 {
     public bool IsEmpty => Debts.Count == 0;
 
     /// <summary>
     /// What <paramref name="debt"/> owed on <paramref name="day"/>.
     /// </summary>
-    public decimal OwedOn(VisibleDebt debt, DateOnly day)
+    public decimal OwedOn(VisibleItem<Debt> debt, DateOnly day)
     {
         ArgumentNullException.ThrowIfNull(debt);
-        return DebtCalculator.OwedOn(debt.Debt, Owed.Payments, Owed.TimeZone, day);
+        return DebtCalculator.OwedOn(debt.Item, Owed.Payments, Owed.TimeZone, day);
     }
 
     /// <summary>
@@ -37,13 +37,13 @@ internal sealed record SharedDebtsOwed(IReadOnlyList<VisibleDebt> Debts, DebtsOw
             return new SharedDebtsOwed([], new DebtsOwed([], [], timeZone));
         }
 
-        List<VisibleDebt> debts = (await SharedDebts.ForAsync(context, userId, view, cancellationToken))
-            .Where(static x => !x.IsOwn && x.Debt.AccountId is null)
+        List<VisibleItem<Debt>> debts = (await SharedDebts.ForAsync(context, userId, view, cancellationToken))
+            .Where(static x => !x.IsOwn && x.Item.AccountId is null)
             .ToList();
         Dictionary<Guid, DebtFigures> figures = await SharedDebts.FiguresAsync(context, view, debts,
             cancellationToken);
 
-        return new SharedDebtsOwed(debts, new DebtsOwed(debts.Select(static x => x.Debt).ToList(),
+        return new SharedDebtsOwed(debts, new DebtsOwed(debts.Select(static x => x.Item).ToList(),
             figures.Values.SelectMany(static x => x.Payments).ToList(), timeZone));
     }
 }

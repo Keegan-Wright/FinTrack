@@ -23,24 +23,27 @@ internal static class SharedRules
     /// The rules shared with <paramref name="userId"/>, untracked, each with whoever shares it and whether they can
     /// change it, by sharer then in the order they run.
     /// </summary>
-    public static async Task<List<SharedRule>> WithAsync(FinanceTrackerContext context, Guid userId,
+    public static async Task<List<VisibleItem<DomainRule>>> WithAsync(FinanceTrackerContext context, Guid userId,
         CancellationToken cancellationToken)
     {
         var shared = await (
                 from share in context.ChosenSharesWith(userId, ShareItemType.Rule)
                 join rule in context.Rules on share.ItemId equals rule.Id
-                join owner in context.Users on rule.UserId equals owner.Id
                 where rule.UserId == share.UserId
-                select new { Rule = rule, owner.FirstName, owner.LastName, share.Mode })
+                select new { Rule = rule, share.Mode })
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
+        List<Guid> ownerIds = shared.Select(static x => x.Rule.UserId).Distinct().ToList();
+        Dictionary<Guid, string> names = await SharedChosenItems.OwnerNamesAsync(context, ownerIds,
+            cancellationToken);
+
         return shared
-            .Select(static x => new SharedRule(x.Rule, $"{x.FirstName} {x.LastName}".Trim(),
+            .Select(x => new VisibleItem<DomainRule>(x.Rule, names.GetValueOrDefault(x.Rule.UserId, string.Empty),
                 x.Mode == ShareMode.AllowChanges))
             .OrderBy(static x => x.SharedBy, StringComparer.CurrentCultureIgnoreCase)
-            .ThenBy(static x => x.Rule.Order)
-            .ThenBy(static x => x.Rule.Id)
+            .ThenBy(static x => x.Item.Order)
+            .ThenBy(static x => x.Item.Id)
             .ToList();
     }
 
@@ -50,9 +53,9 @@ internal static class SharedRules
     /// </summary>
     /// <param name="seen">Every account the user can see, so those they can't are named as private.</param>
     public static async Task<Rule> ToContractAsync(FinanceTrackerContext context, Guid userId, AccountsInView seen,
-        SharedRule shared, CancellationToken cancellationToken)
+        VisibleItem<DomainRule> shared, CancellationToken cancellationToken)
     {
-        DomainRule rule = shared.Rule;
+        DomainRule rule = shared.Item;
         Rule contract = RuleMapper.ToContract(rule);
         Dictionary<Guid, string> names = await NamesAsync(context, seen, rule, cancellationToken);
 
@@ -159,8 +162,8 @@ internal static class SharedRules
     {
         Guid ownerId = rule.UserId;
         Dictionary<Guid, string> choices = (await SharedBills.ForAsync(context, userId, seen, cancellationToken))
-            .Where(x => x.Bill.UserId == ownerId)
-            .ToDictionary(static x => x.Bill.Id, static x => x.Bill.Name);
+            .Where(x => x.Item.UserId == ownerId)
+            .ToDictionary(static x => x.Item.Id, static x => x.Item.Name);
 
         List<Guid> onIt = rule.Actions.Select(static x => x.BillId).OfType<Guid>()
             .Where(x => !choices.ContainsKey(x))
@@ -184,8 +187,8 @@ internal static class SharedRules
     {
         Guid ownerId = rule.UserId;
         Dictionary<Guid, string> choices = (await SharedDebts.ForAsync(context, userId, seen, cancellationToken))
-            .Where(x => x.Debt.UserId == ownerId)
-            .ToDictionary(static x => x.Debt.Id, static x => x.Debt.Name);
+            .Where(x => x.Item.UserId == ownerId)
+            .ToDictionary(static x => x.Item.Id, static x => x.Item.Name);
 
         List<Guid> onIt = rule.Actions.Select(static x => x.DebtId).OfType<Guid>()
             .Where(x => !choices.ContainsKey(x))

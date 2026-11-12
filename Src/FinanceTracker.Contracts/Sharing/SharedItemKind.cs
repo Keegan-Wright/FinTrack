@@ -26,5 +26,22 @@ public enum SharedItemKind
     /// A debt. One following an account shared with the other person, a loan or card, is shared with it, in the same
     /// way. Others can be chosen. Shared, the other person sees it, and edits it too when allowed changes.
     /// </summary>
-    Debt = 3
+    Debt = 3,
+
+    /// <summary>
+    /// A budget. Shared, it's a household budget, counting tagged spending on every account its owner sees, and the
+    /// other person sees it, or edits it too when allowed changes.
+    /// </summary>
+    Budget = 4,
+
+    /// <summary>
+    /// A savings goal. One tracking an account shared with the other person goes with it, in the same way. Others can
+    /// be chosen.
+    /// </summary>
+    SavingsGoal = 5,
+
+    /// <summary>
+    /// A calendar event, shown on the other person's calendar too.
+    /// </summary>
+    CalendarEvent = 6
 }

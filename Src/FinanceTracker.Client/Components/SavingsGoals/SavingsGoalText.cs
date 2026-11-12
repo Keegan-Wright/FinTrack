@@ -120,4 +120,17 @@ public static class SavingsGoalText
         SavingsDirection.MoneyOut => "Somewhere FinTrack can't see",
         _ => "Into an account here"
     };
+
+    /// <summary>
+    /// Whose a shared goal is and what the user can do, e.g. <c>Jane Doe's · you can change it</c>.
+    /// </summary>
+    public static string SharedText(string sharedBy, bool canChange)
+    {
+        if (canChange)
+        {
+            return $"{sharedBy}'s · you can change it";
+        }
+
+        return $"{sharedBy}'s · you can see it";
+    }
 }

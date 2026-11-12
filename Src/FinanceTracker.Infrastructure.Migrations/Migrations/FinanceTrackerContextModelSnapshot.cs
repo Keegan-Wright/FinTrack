@@ -394,6 +394,9 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                         .HasColumnType("text")
                         .HasAnnotation("FinanceTracker.EncrptedColumn", true);
 
+                    b.Property<Guid?>("LinkedUserId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("NameKeyBlindIndex")
                         .IsRequired()
                         .HasColumnType("text")
@@ -422,6 +425,12 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                         .HasAnnotation("FinanceTracker.EncrptedColumn", true);
 
                     b.HasKey("Id");
+
+                    b.HasIndex("LinkedUserId");
+
+                    b.HasIndex("UserId", "LinkedUserId")
+                        .IsUnique()
+                        .HasFilter("\"LinkedUserId\" IS NOT NULL");
 
                     b.HasIndex("UserId", "NameKeyBlindIndex")
                         .IsUnique();
@@ -1891,6 +1900,11 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
             modelBuilder.Entity("FinanceTracker.Domain.Household.HouseholdMember", b =>
                 {
+                    b.HasOne("FinanceTracker.Domain.Identity.FinanceTrackerUser", null)
+                        .WithMany()
+                        .HasForeignKey("LinkedUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("FinanceTracker.Domain.Identity.FinanceTrackerUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")

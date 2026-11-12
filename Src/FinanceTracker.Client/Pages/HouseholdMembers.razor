@@ -1,14 +1,17 @@
 @page "/HouseholdMembers"
-@* Adds the people in the user's household and their incomes, and how to recognise money moved to or from them.*@
+@* Adds the people in the user's household and their incomes, and how to recognise money moved to or from them. A
+   member can be marked as someone the user is linked with, taking their name. *@
 @using FinanceTracker.Client.Components.Dashboard
 @using FinanceTracker.Client.Components.Dialogs
 @using FinanceTracker.Contracts
 @using FinanceTracker.Contracts.HouseholdMember
+@using FinanceTracker.Contracts.Sharing
 @using Microsoft.AspNetCore.Authorization
 @inherits PageComponent
 
 @attribute [Authorize]
 @inject IHouseholdMemberService HouseholdMemberService
+@inject ISharingService SharingService
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 
@@ -41,6 +44,12 @@
                         <MudText Typo="Typo.caption" Class="mud-text-secondary text-truncate">
                             @RecognitionSummary(member)
                         </MudText>
+                        @if (member.LinkedUsername is { } username)
+                        {
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary text-truncate">
+                                @($"This is @{username}")
+                            </MudText>
+                        }
                     </div>
                     <div class="ft-list__end">
                         @if (member.YearlyIncome is { } yearly)
@@ -60,6 +69,19 @@
                                      OnClick="@(() => EditAsync(member))">Edit</MudMenuItem>
                         <MudMenuItem Icon="@Icons.Material.Outlined.PersonSearch"
                                      OnClick="@(() => RecognisePayments(member))">Recognise their payments</MudMenuItem>
+                        @if (member.LinkedUsername is { } linkedAs)
+                        {
+                            <MudMenuItem Icon="@Icons.Material.Outlined.LinkOff"
+                                         OnClick="@(() => LinkAsync(member, null))">@($"Not @{linkedAs} any more")</MudMenuItem>
+                        }
+                        else
+                        {
+                            @foreach (UserLink person in LinkablePeople)
+                            {
+                                <MudMenuItem Icon="@Icons.Material.Outlined.Link"
+                                             OnClick="@(() => LinkAsync(member, person))">@($"This is {person.Name}")</MudMenuItem>
+                            }
+                        }
                         <MudMenuItem Icon="@Icons.Material.Outlined.Delete"
                                      OnClick="@(() => DeleteAsync(member))">Delete</MudMenuItem>
                     </MudMenu>
@@ -76,6 +98,18 @@
     /// </summary>
     [PersistentState]
     public List<HouseholdMember>? Members { get; set; }
+
+    /// <summary>
+    /// The people the user is linked with, whom a member can be marked as.
+    /// </summary>
+    [PersistentState]
+    public List<UserLink>? People { get; set; }
+
+    /// <summary>
+    /// Those not already a member, so each person is at most one.
+    /// </summary>
+    private IEnumerable<UserLink> LinkablePeople => (People ?? [])
+        .Where(x => !(Members ?? []).Exists(m => m.LinkedUsername == x.Username));
 
     private string Subtitle
     {
@@ -140,6 +174,40 @@
         await base.OnInitializedAsync();
         Members = await LoadOnceAsync(Members, "Loading your household", cancellationToken =>
             HouseholdMemberService.GetHouseholdMembersAsync(cancellationToken).ToListAsync(cancellationToken).AsTask());
+        People = await LoadOnceAsync(People, "Loading your household", cancellationToken =>
+            SharingService.GetLinksAsync(cancellationToken)
+                .Where(static x => x.State == LinkState.Linked)
+                .ToListAsync(cancellationToken).AsTask());
+    }
+
+    /// <summary>
+    /// Marks <paramref name="member"/> as <paramref name="person"/>, taking their name, or as no one when null.
+    /// </summary>
+    internal async Task LinkAsync(HouseholdMember member, UserLink? person)
+    {
+        try
+        {
+            SetLoadingState(true, $"Updating {member.FirstName}…");
+            HouseholdMember saved = await HouseholdMemberService.LinkHouseholdMemberAsync(member.Id,
+                new LinkHouseholdMember { LinkId = person?.Id }, _cts.Token);
+            Members![Members.IndexOf(member)] = saved;
+            Snackbar.Add(person is null
+                ? $"{saved.FirstName} is no longer marked as someone you share with"
+                : $"{saved.FirstName} {saved.LastName} is {person.Name}", Severity.Success);
+        }
+        catch (NameTakenException)
+        {
+            Snackbar.Add("Another household member already has their name, rename or delete it first",
+                Severity.Warning);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't save that, try again", Severity.Error);
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
     }
 
     private async Task AddHouseholdMember()

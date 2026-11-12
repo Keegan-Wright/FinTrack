@@ -49,14 +49,14 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
         }
 
         // Then those other people share with them, which run where their owner's rules run
-        List<SharedRule> shared = await SharedRules.WithAsync(context, UserId, cancellationToken);
+        List<VisibleItem<DomainRule>> shared = await SharedRules.WithAsync(context, UserId, cancellationToken);
         if (shared.Count == 0)
         {
             yield break;
         }
 
         AccountsInView seen = await _accountScope.ResolveAllAsync(context, cancellationToken);
-        foreach (SharedRule rule in shared)
+        foreach (VisibleItem<DomainRule> rule in shared)
         {
             yield return await SharedRules.ToContractAsync(context, UserId, seen, rule, cancellationToken);
         }
@@ -75,7 +75,7 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
             return RuleMapper.ToContract(rule);
         }
 
-        SharedRule shared = await SharedRuleAsync(context, id, mustChange: false, cancellationToken);
+        VisibleItem<DomainRule> shared = await SharedRuleAsync(context, id, mustChange: false, cancellationToken);
         AccountsInView seen = await _accountScope.ResolveAllAsync(context, cancellationToken);
         return await SharedRules.ToContractAsync(context, UserId, seen, shared, cancellationToken);
     }
@@ -120,9 +120,9 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
         }
         else
         {
-            SharedRule shared = await SharedRuleAsync(context, id, mustChange: true, cancellationToken);
+            VisibleItem<DomainRule> shared = await SharedRuleAsync(context, id, mustChange: true, cancellationToken);
             AccountsInView seen = await _accountScope.ResolveAllAsync(context, cancellationToken);
-            await SharedRules.EnsureAllowedAsync(context, UserId, seen, shared.Rule, rule, cancellationToken);
+            await SharedRules.EnsureAllowedAsync(context, UserId, seen, shared.Item, rule, cancellationToken);
         }
 
         Overwrite(updated, rule);
@@ -147,7 +147,7 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
         }
 
         // Still shared as it was, as they'll see it
-        SharedRule saved = await SharedRuleAsync(context, id, mustChange: true, cancellationToken);
+        VisibleItem<DomainRule> saved = await SharedRuleAsync(context, id, mustChange: true, cancellationToken);
         AccountsInView visible = await _accountScope.ResolveAllAsync(context, cancellationToken);
         return await SharedRules.ToContractAsync(context, UserId, visible, saved, cancellationToken);
     }
@@ -372,11 +372,11 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
             return DraftOf(id, rule, saved);
         }
 
-        SharedRule shared = await SharedRuleAsync(context, ruleId, mustChange: true, cancellationToken);
+        VisibleItem<DomainRule> shared = await SharedRuleAsync(context, ruleId, mustChange: true, cancellationToken);
         AccountsInView seen = await _accountScope.ResolveAllAsync(context, cancellationToken);
-        await SharedRules.EnsureAllowedAsync(context, UserId, seen, shared.Rule, rule, cancellationToken);
+        await SharedRules.EnsureAllowedAsync(context, UserId, seen, shared.Item, rule, cancellationToken);
 
-        DomainRule draft = shared.Rule;
+        DomainRule draft = shared.Item;
         Overwrite(draft, rule);
         draft.Enable();
         return draft;
@@ -387,11 +387,11 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
     /// </summary>
     /// <param name="mustChange">Whether they must be allowed to change it.</param>
     /// <exception cref="InvalidOperationException">It isn't shared with them, or not so they can change it.</exception>
-    private async Task<SharedRule> SharedRuleAsync(FinanceTrackerContext context, Guid id, bool mustChange,
+    private async Task<VisibleItem<DomainRule>> SharedRuleAsync(FinanceTrackerContext context, Guid id, bool mustChange,
         CancellationToken cancellationToken)
     {
-        SharedRule? shared = (await SharedRules.WithAsync(context, UserId, cancellationToken))
-            .SingleOrDefault(x => x.Rule.Id == id);
+        VisibleItem<DomainRule>? shared = (await SharedRules.WithAsync(context, UserId, cancellationToken))
+            .SingleOrDefault(x => x.Item.Id == id);
         if (shared is null || (mustChange && !shared.CanChange))
         {
             throw new InvalidOperationException($"No rule {id} the user can change was found.");

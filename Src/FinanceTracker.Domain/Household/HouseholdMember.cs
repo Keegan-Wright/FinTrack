@@ -36,6 +36,12 @@ public sealed class HouseholdMember : AggregateRoot
     public decimal? YearlyIncome { get; private set; }
 
     /// <summary>
+    /// The FinTrack user the member is, once the owner links them, someone they're linked with. Their name follows
+    /// that user's, their income stays the owner's to give. Null for a member who isn't a user.
+    /// </summary>
+    public Guid? LinkedUserId { get; private set; }
+
+    /// <summary>
     /// The member's own accounts, which aren't connected to the app. Money to or from them is a household transfer.
     /// </summary>
     public IReadOnlyList<AccountIdentifier> LinkedAccounts => _linkedAccounts.AsReadOnly();
@@ -54,6 +60,27 @@ public sealed class HouseholdMember : AggregateRoot
         FirstName = firstName;
         LastName = lastName;
     }
+
+    /// <summary>
+    /// The member is <paramref name="userId"/>, taking their name.
+    /// </summary>
+    /// <exception cref="ArgumentException">It's the member's owner, who can't be in their own household.</exception>
+    public void LinkToUser(Guid userId, string firstName, string lastName)
+    {
+        ArgumentOutOfRangeException.ThrowIfEqual(userId, Guid.Empty);
+        if (userId == UserId)
+        {
+            throw new ArgumentException("A household member can't be its owner.", nameof(userId));
+        }
+
+        Rename(firstName, lastName);
+        LinkedUserId = userId;
+    }
+
+    /// <summary>
+    /// The member is no longer known to be a user, keeping the name they had.
+    /// </summary>
+    public void UnlinkUser() => LinkedUserId = null;
 
     public void ChangeYearlyIncome(decimal? yearlyIncome)
     {

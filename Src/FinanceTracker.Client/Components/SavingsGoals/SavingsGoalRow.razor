@@ -1,5 +1,5 @@
 @* One savings goal what's saved of its target, where that comes from, and whether the monthly contribution gets
-   there in time. *@
+   there in time. Someone else's says whose, and only has actions when the user can change it. *@
 @using FinanceTracker.Contracts.SavingsGoals
 
 <div class="ft-savings-goal">
@@ -9,7 +9,7 @@
         {
             <MudText Typo="Typo.body2" Class="ft-money">@($"{SavingsGoalText.Progress(Goal):P0}")</MudText>
         }
-        @if (Editable)
+        @if (Editable && Goal.CanChange)
         {
             <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true"
                      AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
@@ -19,7 +19,11 @@
                 {
                     <MudMenuItem Icon="@Icons.Material.Outlined.ShowChart" OnClick="@OnHistory">History</MudMenuItem>
                 }
-                <MudMenuItem Icon="@Icons.Material.Outlined.Delete" OnClick="@OnDelete">Delete</MudMenuItem>
+                @* Only its owner deletes it *@
+                @if (Goal.SharedBy is null)
+                {
+                    <MudMenuItem Icon="@Icons.Material.Outlined.Delete" OnClick="@OnDelete">Delete</MudMenuItem>
+                }
             </MudMenu>
         }
     </div>
@@ -34,6 +38,11 @@
     @if (SavingsGoalText.Problem(Goal) is { } problem)
     {
         <MudText Typo="Typo.caption" Color="Color.Warning">@problem</MudText>
+    }
+
+    @if (Goal.SharedBy is { } sharedBy)
+    {
+        <MudText Typo="Typo.caption" Class="mud-text-secondary">@SavingsGoalText.SharedText(sharedBy, Goal.CanChange)</MudText>
     }
 
     <div class="ft-savings-goal__details">

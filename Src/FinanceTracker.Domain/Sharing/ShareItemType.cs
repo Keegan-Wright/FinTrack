@@ -30,5 +30,20 @@ public enum ShareItemType
     /// A rule, chosen. The other person sees it, and edits it too when allowed changes. It stays its owner's, so it
     /// runs where its owner's rules run.
     /// </summary>
-    Rule = 4
+    Rule = 4,
+
+    /// <summary>
+    /// A budget, chosen. A shared budget is a household one, counting tagged spending on every account its owner sees.
+    /// </summary>
+    Budget = 5,
+
+    /// <summary>
+    /// A savings goal. One tracking an account shared with the other person goes with it, others are chosen.
+    /// </summary>
+    SavingsGoal = 6,
+
+    /// <summary>
+    /// A calendar event, chosen.
+    /// </summary>
+    CalendarEvent = 7
 }

@@ -244,15 +244,22 @@ internal static class ItemShares
         var bills = await context.Bills.OwnedBy(userId).AsNoTracking()
             .Select(static x => new { x.Id, x.AccountId })
             .ToListAsync(cancellationToken);
+
         var debts = await context.Debts.OwnedBy(userId).AsNoTracking()
             .Where(static x => x.AccountId != null)
+            .Select(static x => new { x.Id, AccountId = x.AccountId!.Value })
+            .ToListAsync(cancellationToken);
+
+        var goals = await context.SavingsGoals.OwnedBy(userId).AsNoTracking()
+            .Where(static x => x.Source == Domain.SavingsGoals.SavingsGoalSource.Account && x.AccountId != null)
             .Select(static x => new { x.Id, AccountId = x.AccountId!.Value })
             .ToListAsync(cancellationToken);
 
         return
         [
             .. bills.Select(static x => (ShareItemType.Bill, x.Id, x.AccountId)),
-            .. debts.Select(static x => (ShareItemType.Debt, x.Id, x.AccountId))
+            .. debts.Select(static x => (ShareItemType.Debt, x.Id, x.AccountId)),
+            .. goals.Select(static x => (ShareItemType.SavingsGoal, x.Id, x.AccountId))
         ];
     }
 
@@ -262,6 +269,9 @@ internal static class ItemShares
         SharedItemKind.Rule => ShareItemType.Rule,
         SharedItemKind.Bill => ShareItemType.Bill,
         SharedItemKind.Debt => ShareItemType.Debt,
+        SharedItemKind.Budget => ShareItemType.Budget,
+        SharedItemKind.SavingsGoal => ShareItemType.SavingsGoal,
+        SharedItemKind.CalendarEvent => ShareItemType.CalendarEvent,
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
     };
 
@@ -271,11 +281,15 @@ internal static class ItemShares
         ShareItemType.Rule => SharedItemKind.Rule,
         ShareItemType.Bill => SharedItemKind.Bill,
         ShareItemType.Debt => SharedItemKind.Debt,
+        ShareItemType.Budget => SharedItemKind.Budget,
+        ShareItemType.SavingsGoal => SharedItemKind.SavingsGoal,
+        ShareItemType.CalendarEvent => SharedItemKind.CalendarEvent,
         _ => throw new ArgumentOutOfRangeException(nameof(itemType), itemType, null)
     };
 
     /// <summary>
-    /// What <paramref name="userId"/> can share besides accounts: their tags, rules, bills and debts, each by name.
+    /// What <paramref name="userId"/> can share besides accounts: their tags, rules, bills, debts, budgets, goals and
+    /// calendar events, each by name.
     /// </summary>
     private static async Task<List<(ShareItemType ItemType, Guid Id, string Name)>> ShareableOfAsync(
         FinanceTrackerContext context, Guid userId, CancellationToken cancellationToken)
@@ -292,13 +306,25 @@ internal static class ItemShares
         var debts = await context.Debts.OwnedBy(userId).AsNoTracking()
             .Select(static x => new { x.Id, x.Name })
             .ToListAsync(cancellationToken);
+        var budgets = await context.Budgets.OwnedBy(userId).AsNoTracking()
+            .Select(static x => new { x.Id, x.Name })
+            .ToListAsync(cancellationToken);
+        var goals = await context.SavingsGoals.OwnedBy(userId).AsNoTracking()
+            .Select(static x => new { x.Id, x.Name })
+            .ToListAsync(cancellationToken);
+        var events = await context.CalendarEvents.OwnedBy(userId).AsNoTracking()
+            .Select(static x => new { x.Id, Name = x.Title })
+            .ToListAsync(cancellationToken);
 
         return
         [
             .. ByName(ShareItemType.Classification, tags.Select(static x => (x.Id, x.Name))),
             .. ByName(ShareItemType.Rule, rules.Select(static x => (x.Id, x.Name))),
             .. ByName(ShareItemType.Bill, bills.Select(static x => (x.Id, x.Name))),
-            .. ByName(ShareItemType.Debt, debts.Select(static x => (x.Id, x.Name)))
+            .. ByName(ShareItemType.Debt, debts.Select(static x => (x.Id, x.Name))),
+            .. ByName(ShareItemType.Budget, budgets.Select(static x => (x.Id, x.Name))),
+            .. ByName(ShareItemType.SavingsGoal, goals.Select(static x => (x.Id, x.Name))),
+            .. ByName(ShareItemType.CalendarEvent, events.Select(static x => (x.Id, x.Name)))
         ];
     }
 

@@ -103,6 +103,40 @@ else
                     @ItemList(SharedItemKind.Debt, "debts", "You haven't any debts yet.")
                 </div>
             </MudTabPanel>
+            <MudTabPanel Text="@ItemsTabText("Budgets", SharedItemKind.Budget)">
+                <div class="ft-sharing-with__tab">
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        A shared budget is a household one. It counts tagged spending on your accounts and those shared
+                        with you, and @Shares.Name sees the same figures.
+                    </MudText>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        <strong>Change</strong> also lets them edit it, with your tags shared with them.
+                    </MudText>
+                    @ItemList(SharedItemKind.Budget, "budgets", "You haven't made any budgets yet.")
+                </div>
+            </MudTabPanel>
+            <MudTabPanel Text="@ItemsTabText("Goals", SharedItemKind.SavingsGoal)">
+                <div class="ft-sharing-with__tab">
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        A goal tracking an account you share goes with it. Tick others @Shares.Name can see.
+                    </MudText>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        <strong>Change</strong> also lets them edit its name, target and monthly amount.
+                    </MudText>
+                    @ItemList(SharedItemKind.SavingsGoal, "goals", "You haven't set any savings goals yet.")
+                </div>
+            </MudTabPanel>
+            <MudTabPanel Text="@ItemsTabText("Events", SharedItemKind.CalendarEvent)">
+                <div class="ft-sharing-with__tab">
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        Tick the calendar events @Shares.Name can see on their calendar.
+                    </MudText>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        <strong>Change</strong> also lets them move or rename them.
+                    </MudText>
+                    @ItemList(SharedItemKind.CalendarEvent, "events", "You haven't added any events yet.")
+                </div>
+            </MudTabPanel>
             @if (Shares.JointSuggestions.Count > 0 || Shares.JointAccounts.Count > 0)
             {
                 <MudTabPanel Text="@JointTabText">

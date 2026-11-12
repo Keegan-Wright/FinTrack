@@ -12,6 +12,7 @@ using FinanceTracker.Infrastructure.Bills;
 using FinanceTracker.Infrastructure.Sharing;
 using FinanceTracker.Infrastructure.Persistence;
 using FinanceTracker.Infrastructure.SavingsGoals;
+using FinanceTracker.Domain.Sharing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using CalendarEvent = FinanceTracker.Contracts.Calendar.CalendarEvent;
@@ -74,9 +75,10 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
             .GroupBy(static x => x.TransactionTime.Date)
             .ToList();
 
-        List<CalendarGoalItem> goalItems = await context.SavingsGoals.OwnedBy(UserId)
-            .Select(x => new CalendarGoalItem { Name = x.Name, GoalCompletionDate = x.TargetDate })
-            .ToListAsync(cancellationToken);
+        // Their own goals and those shared with them, outside Just mine
+        List<CalendarGoalItem> goalItems = (await SharedGoals.ForAsync(context, UserId, view, cancellationToken))
+            .Select(static x => new CalendarGoalItem { Name = x.Item.Name, GoalCompletionDate = x.Item.TargetDate })
+            .ToList();
 
         List<IGrouping<DateTime, CalendarGoalItem>> goals = goalItems
             .Where(x => x.GoalCompletionDate is { } goalDate && goalDate >= startDate && goalDate < endDate)
@@ -89,7 +91,7 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
         Dictionary<DateOnly, List<CalendarBillItem>> bills = await LoadBillsAsync(context, view, first, last,
             cancellationToken);
 
-        Dictionary<DateOnly, List<CalendarEventItem>> events = await LoadEventsAsync(context, first, last,
+        Dictionary<DateOnly, List<CalendarEventItem>> events = await LoadEventsAsync(context, view, first, last,
             cancellationToken);
 
         Dictionary<DateOnly, List<CalendarDebtItem>> debts = await LoadDebtsAsync(view, first, last,
@@ -119,14 +121,17 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
     {
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
-        List<DomainCalendarEvent> calendarEvents = await context.CalendarEvents.OwnedBy(UserId).AsNoTracking()
-            .ToListAsync(cancellationToken);
-        Dictionary<Guid, string> goalNames = await LoadGoalNamesAsync(context, cancellationToken);
+        // Their own and those shared with them
+        List<VisibleItem<DomainCalendarEvent>> calendarEvents = await VisibleEventsAsync(context, justMine: false,
+            cancellationToken);
+        Dictionary<Guid, string> goalNames = await LoadGoalNamesAsync(context,
+            calendarEvents.Select(static x => x.Item).ToList(), cancellationToken);
         DateOnly today = _timeProvider.Today;
 
         // Dates and titles are encrypted, so they're ordered once decrypted
         IEnumerable<CalendarEvent> ordered = calendarEvents
-            .Select(x => CalendarEventMapper.ToContract(x, GoalName(x, goalNames), today))
+            .Select(x => CalendarEventMapper.ToContract(x.Item, GoalName(x.Item, goalNames), today, x.SharedBy,
+                x.CanChange))
             .OrderBy(static x => x.NextOn is null)
             .ThenBy(static x => x.NextOn)
             .ThenBy(static x => x.Title, StringComparer.CurrentCultureIgnoreCase);
@@ -159,16 +164,30 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        DomainCalendarEvent updated = await FindEventAsync(context, id, cancellationToken);
+        // Their own, or one shared with them with changes allowed, whose savings stay its owner's to set
+        VisibleItem<DomainCalendarEvent> visible = await VisibleEventAsync(context, id, mustChange: true,
+            cancellationToken);
+        DomainCalendarEvent updated = await context.CalendarEvents.SingleAsync(x => x.Id == id, cancellationToken);
 
         updated.Rename(calendarEvent.Title);
         updated.Reschedule(calendarEvent.Date, CalendarEventMapper.ToDomain(calendarEvent.Recurrence));
-        DomainSavingsGoal? goal = await ApplyAsync(context, updated, calendarEvent, cancellationToken);
+        string? goalName;
+        if (visible.IsOwn)
+        {
+            DomainSavingsGoal? goal = await ApplyAsync(context, updated, calendarEvent, cancellationToken);
+            goalName = goal?.Name;
+        }
+        else
+        {
+            updated.ChangeNotes(calendarEvent.Notes);
+            goalName = GoalName(updated, await LoadGoalNamesAsync(context, [updated], cancellationToken));
+        }
 
         await NameCheck.SaveKeepingNamesApartAsync(context, NameTakenException.SavingsGoal, calendarEvent.Title,
             cancellationToken);
         Logger.LogChanged(UserId, "updated", "calendar event", id);
-        return CalendarEventMapper.ToContract(updated, goal?.Name, _timeProvider.Today);
+        return CalendarEventMapper.ToContract(updated, goalName, _timeProvider.Today, visible.SharedBy,
+            visible.CanChange);
     }
 
     public async Task DeleteEventAsync(Guid id, CancellationToken cancellationToken)
@@ -247,11 +266,12 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
     /// with what's saved in their goals.
     /// </summary>
     private async Task<Dictionary<DateOnly, List<CalendarEventItem>>> LoadEventsAsync(FinanceTrackerContext context,
-        DateOnly first, DateOnly last, CancellationToken cancellationToken)
+        AccountsInView view, DateOnly first, DateOnly last, CancellationToken cancellationToken)
     {
-        // Dates are encrypted, so each event is checked once decrypted
-        List<DomainCalendarEvent> calendarEvents = await context.CalendarEvents.OwnedBy(UserId).AsNoTracking()
-            .ToListAsync(cancellationToken);
+        // Their own and, outside Just mine, those shared with them. Dates are encrypted, so each event is checked once
+        // decrypted
+        List<VisibleItem<DomainCalendarEvent>> calendarEvents = await VisibleEventsAsync(context, view.IsJustMine,
+            cancellationToken);
 
         Dictionary<DateOnly, List<CalendarEventItem>> byDay = [];
         if (calendarEvents.Count == 0)
@@ -259,10 +279,12 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
             return byDay;
         }
 
-        Dictionary<Guid, ContractSavingsGoal> goals = await LoadGoalsAsync(calendarEvents, cancellationToken);
+        Dictionary<Guid, ContractSavingsGoal> goals = await LoadGoalsAsync(
+            calendarEvents.Select(static x => x.Item).ToList(), cancellationToken);
         for (DateOnly day = first; day <= last; day = day.AddDays(1))
         {
-            foreach (DomainCalendarEvent calendarEvent in calendarEvents.Where(x => x.OccursOn(day)))
+            foreach ((DomainCalendarEvent calendarEvent, string? sharedBy, _) in calendarEvents
+                         .Where(x => x.Item.OccursOn(day)))
             {
                 ContractSavingsGoal? goal = null;
                 if (calendarEvent.SavingsGoalId is { } goalId)
@@ -270,7 +292,7 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
                     goal = goals.GetValueOrDefault(goalId);
                 }
 
-                AddTo(byDay, day, CalendarEventMapper.ToItem(calendarEvent, goal?.Name, goal?.Saved));
+                AddTo(byDay, day, CalendarEventMapper.ToItem(calendarEvent, goal?.Name, goal?.Saved, sharedBy));
             }
         }
 
@@ -293,10 +315,45 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
         return goals.ToDictionary(static x => x.Id);
     }
 
-    private async Task<Dictionary<Guid, string>> LoadGoalNamesAsync(FinanceTrackerContext context,
-        CancellationToken cancellationToken) =>
-        await context.SavingsGoals.OwnedBy(UserId).AsNoTracking()
+    /// <summary>
+    /// The names of the goals <paramref name="calendarEvents"/> save in, whoever's, as a shared event's goal is its
+    /// owner's.
+    /// </summary>
+    private static async Task<Dictionary<Guid, string>> LoadGoalNamesAsync(FinanceTrackerContext context,
+        List<DomainCalendarEvent> calendarEvents, CancellationToken cancellationToken)
+    {
+        List<Guid> goalIds = calendarEvents.Select(static x => x.SavingsGoalId).OfType<Guid>().ToList();
+        return await context.SavingsGoals.AsNoTracking()
+            .Where(x => goalIds.Contains(x.Id))
             .ToDictionaryAsync(static x => x.Id, static x => x.Name, cancellationToken);
+    }
+
+    /// <summary>
+    /// The user's events and, unless <paramref name="justMine"/>, those shared with them.
+    /// </summary>
+    private Task<List<VisibleItem<DomainCalendarEvent>>> VisibleEventsAsync(FinanceTrackerContext context,
+        bool justMine, CancellationToken cancellationToken) =>
+        SharedChosenItems.ForAsync(context, context.CalendarEvents, UserId, ShareItemType.CalendarEvent, justMine,
+            cancellationToken);
+
+    /// <summary>
+    /// Event <paramref name="id"/>, the user's own or one shared with them.
+    /// </summary>
+    /// <param name="mustChange">Whether they must be allowed to change it.</param>
+    /// <exception cref="InvalidOperationException">They can't see it, or can't change it.</exception>
+    private async Task<VisibleItem<DomainCalendarEvent>> VisibleEventAsync(FinanceTrackerContext context, Guid id,
+        bool mustChange, CancellationToken cancellationToken)
+    {
+        VisibleItem<DomainCalendarEvent>? found = (await VisibleEventsAsync(context, justMine: false,
+                cancellationToken))
+            .SingleOrDefault(x => x.Item.Id == id);
+        if (found is null || (mustChange && !found.CanChange))
+        {
+            throw new InvalidOperationException($"No event {id} the user can see or change was found.");
+        }
+
+        return found;
+    }
 
     private static string? GoalName(DomainCalendarEvent calendarEvent, Dictionary<Guid, string> goalNames)
     {
@@ -376,7 +433,7 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
         AccountsInView view, DateOnly first, DateOnly last, CancellationToken cancellationToken)
     {
         List<Bill> bills = (await SharedBills.ForAsync(context, UserId, view, cancellationToken))
-            .Select(static x => x.Bill)
+            .Select(static x => x.Item)
             .ToList();
 
         List<Guid> billIds = bills.Select(static x => x.Id).ToList();

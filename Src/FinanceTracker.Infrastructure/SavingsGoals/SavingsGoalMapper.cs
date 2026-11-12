@@ -14,7 +14,10 @@ namespace FinanceTracker.Infrastructure.SavingsGoals;
 internal static class SavingsGoalMapper
 {
     /// <param name="accountName">The backing account's name, null when it has none or it's been removed.</param>
-    public static SavingsGoal ToContract(DomainSavingsGoal goal, SavingsGoalProgress progress, string? accountName) =>
+    /// <param name="sharedBy">Whoever shares it with the user, null when it's theirs.</param>
+    /// <param name="canChange">Whether the user can edit it.</param>
+    public static SavingsGoal ToContract(DomainSavingsGoal goal, SavingsGoalProgress progress, string? accountName,
+        string? sharedBy = null, bool canChange = true, Dictionary<Guid, string>? tagNames = null) =>
         new()
         {
             Id = goal.Id,
@@ -33,7 +36,10 @@ internal static class SavingsGoalMapper
             CoversNothing = goal.CoversNothing,
             ReachedBy = progress.ReachedBy,
             NeededPerMonth = progress.NeededPerMonth,
-            OnTrack = progress.OnTrack
+            OnTrack = progress.OnTrack,
+            SharedBy = sharedBy,
+            CanChange = canChange,
+            TagNames = tagNames ?? []
         };
 
     public static DomainSavingsGoalSource ToDomain(SavingsGoalSource source) =>

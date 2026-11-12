@@ -41,6 +41,16 @@ public interface IHouseholdMemberService
         HouseholdMember.UpdateHouseholdMemberRecognition request, CancellationToken cancellationToken);
 
     /// <summary>
+    /// Links one of the user's household members to someone they're linked with, the member taking their name, or
+    /// unlinks them, keeping the name.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">The user has no such member, or no accepted link with
+    /// <see cref="HouseholdMember.LinkHouseholdMember.LinkId"/>.</exception>
+    /// <exception cref="NameTakenException">Another of their members already has that person's name.</exception>
+    Task<HouseholdMember.HouseholdMember> LinkHouseholdMemberAsync(Guid id, HouseholdMember.LinkHouseholdMember request,
+        CancellationToken cancellationToken);
+
+    /// <summary>
     /// Deletes one of the user's household members.
     /// </summary>
     /// <returns><see langword="false"/> if the user has no member with <paramref name="id"/>.</returns>

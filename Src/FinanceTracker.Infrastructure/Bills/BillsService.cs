@@ -60,9 +60,9 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
 
         // Their own and those shared with them, an account's bills being shared with it
         AccountsInView all = await _accountScope.ResolveAllAsync(context, cancellationToken);
-        List<VisibleBill> running = (await SharedBills.ForAsync(context, UserId, all, cancellationToken))
-            .Where(x => x.Bill.StartsOn <= last && (x.Bill.EndedOn is null || x.Bill.EndedOn >= first))
-            .OrderBy(static x => x.Bill.Name, StringComparer.CurrentCultureIgnoreCase)
+        List<VisibleItem<DomainBill>> running = (await SharedBills.ForAsync(context, UserId, all, cancellationToken))
+            .Where(x => x.Item.StartsOn <= last && (x.Item.EndedOn is null || x.Item.EndedOn >= first))
+            .OrderBy(static x => x.Item.Name, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
 
         List<BankTransaction> payments = await LoadPaymentsAsync(context, all, running, cancellationToken);
@@ -111,7 +111,7 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
 
         // Their own and those shared with them. Names are encrypted, so they're ordered once decrypted
         AccountsInView all = await _accountScope.ResolveAllAsync(context, cancellationToken);
-        List<VisibleBill> bills = await SharedBills.ForAsync(context, UserId, all, cancellationToken);
+        List<VisibleItem<DomainBill>> bills = await SharedBills.ForAsync(context, UserId, all, cancellationToken);
         List<BankTransaction> payments = await LoadPaymentsAsync(context, all, bills, cancellationToken);
         Dictionary<Guid, string> accountNames = await LoadAccountNamesAsync(context, all, cancellationToken);
 
@@ -119,7 +119,7 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
         TimeZoneInfo timeZone = _timeProvider.LocalTimeZone;
 
         foreach ((DomainBill bill, string? sharedBy, bool canChange) in bills
-                     .OrderBy(static x => x.Bill.Name, StringComparer.CurrentCultureIgnoreCase))
+                     .OrderBy(static x => x.Item.Name, StringComparer.CurrentCultureIgnoreCase))
         {
             yield return BillMapper.ToContract(bill, AccountName(accountNames, bill.AccountId), payments, timeZone,
                 today, sharedBy, canChange);
@@ -131,7 +131,7 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        VisibleBill bill = await VisibleAsync(context, id, mustChange: false, cancellationToken);
+        VisibleItem<DomainBill> bill = await VisibleAsync(context, id, mustChange: false, cancellationToken);
         return await ToContractAsync(context, bill, cancellationToken);
     }
 
@@ -164,7 +164,7 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
                      await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken))
         {
             // Their own, or one shared with them with changes allowed, which stays on its owner's account
-            VisibleBill visible = await VisibleAsync(context, id, mustChange: true, cancellationToken);
+            VisibleItem<DomainBill> visible = await VisibleAsync(context, id, mustChange: true, cancellationToken);
             DomainBill updated = await context.Bills.SingleAsync(x => x.Id == id, cancellationToken);
 
             if (!visible.IsOwn && bill.AccountId != updated.AccountId)
@@ -253,8 +253,8 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
         else
         {
             // Their own, or one shared with them. Their own is shared with the transaction's owner so they see its name
-            VisibleBill bill = await VisibleAsync(context, billId, mustChange: false, cancellationToken);
-            transaction.PayBill(bill.Bill, UserId, _timeProvider.UtcNow, sharedWithThem: !bill.IsOwn);
+            VisibleItem<DomainBill> bill = await VisibleAsync(context, billId, mustChange: false, cancellationToken);
+            transaction.PayBill(bill.Item, UserId, _timeProvider.UtcNow, sharedWithThem: !bill.IsOwn);
 
             if (bill.IsOwn)
             {
@@ -391,12 +391,12 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        VisibleBill visible = await VisibleAsync(context, id, mustChange: true, cancellationToken);
+        VisibleItem<DomainBill> visible = await VisibleAsync(context, id, mustChange: true, cancellationToken);
         DomainBill bill = await context.Bills.SingleAsync(x => x.Id == id, cancellationToken);
         change(bill);
         await context.SaveChangesAsync(cancellationToken);
 
-        return await ToContractAsync(context, visible with { Bill = bill }, cancellationToken);
+        return await ToContractAsync(context, visible with { Item = bill }, cancellationToken);
     }
 
     /// <summary>
@@ -412,12 +412,12 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
     /// </summary>
     /// <param name="mustChange">Whether they must be allowed to change it.</param>
     /// <exception cref="InvalidOperationException">They can't see it, or can't change it.</exception>
-    private async Task<VisibleBill> VisibleAsync(FinanceTrackerContext context, Guid id, bool mustChange,
+    private async Task<VisibleItem<DomainBill>> VisibleAsync(FinanceTrackerContext context, Guid id, bool mustChange,
         CancellationToken cancellationToken)
     {
         AccountsInView all = await _accountScope.ResolveAllAsync(context, cancellationToken);
-        VisibleBill? bill = (await SharedBills.ForAsync(context, UserId, all, cancellationToken))
-            .SingleOrDefault(x => x.Bill.Id == id);
+        VisibleItem<DomainBill>? bill = (await SharedBills.ForAsync(context, UserId, all, cancellationToken))
+            .SingleOrDefault(x => x.Item.Id == id);
 
         if (bill is null || (mustChange && !bill.CanChange))
         {
@@ -427,7 +427,7 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
         return bill;
     }
 
-    private async Task<Bill> ToContractAsync(FinanceTrackerContext context, VisibleBill visible,
+    private async Task<Bill> ToContractAsync(FinanceTrackerContext context, VisibleItem<DomainBill> visible,
         CancellationToken cancellationToken)
     {
         // From any account it may be paid from, see LoadPaymentsAsync
@@ -435,7 +435,7 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
         List<BankTransaction> payments = await LoadPaymentsAsync(context, all, [visible], cancellationToken);
         Dictionary<Guid, string> accountNames = await LoadAccountNamesAsync(context, all, cancellationToken);
 
-        return BillMapper.ToContract(visible.Bill, AccountName(accountNames, visible.Bill.AccountId), payments,
+        return BillMapper.ToContract(visible.Item, AccountName(accountNames, visible.Item.AccountId), payments,
             _timeProvider.LocalTimeZone, _timeProvider.Today, visible.SharedBy, visible.CanChange);
     }
 
@@ -445,9 +445,9 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
     /// are needed.
     /// </summary>
     private static async Task<List<BankTransaction>> LoadPaymentsAsync(FinanceTrackerContext context,
-        AccountsInView all, IEnumerable<VisibleBill> bills, CancellationToken cancellationToken)
+        AccountsInView all, IEnumerable<VisibleItem<DomainBill>> bills, CancellationToken cancellationToken)
     {
-        List<Guid> billIds = bills.Select(static x => x.Bill.Id).ToList();
+        List<Guid> billIds = bills.Select(static x => x.Item.Id).ToList();
         return await context.BankTransactions.InView(all).AsNoTracking()
             .Where(x => x.BillPayment != null && x.BillPayment.BillId != null &&
                         billIds.Contains(x.BillPayment.BillId.Value))

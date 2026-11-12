@@ -66,4 +66,17 @@ public class CalendarEvent
     /// </summary>
     [Description("The next day the event is on, null once a one-off has passed")]
     public DateOnly? NextOn { get; init; }
+
+    /// <summary>
+    /// The first and last name of whoever shares it with the user, null when it's their own.
+    /// </summary>
+    [Description("Who shares the event with the user, empty when it's their own")]
+    public string? SharedBy { get; init; }
+
+    /// <summary>
+    /// Whether the user can change its title, date, repeat and notes: their own, or shared with them with changes
+    /// allowed. Only its owner changes what it saves towards or deletes it.
+    /// </summary>
+    [Description("Whether the user can edit the event")]
+    public bool CanChange { get; init; } = true;
 }

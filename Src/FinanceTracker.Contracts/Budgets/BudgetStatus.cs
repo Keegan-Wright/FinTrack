@@ -72,4 +72,22 @@ public class BudgetStatus
     /// </summary>
     [Description("Whether spending is no further along than a steady pace")]
     public bool OnPace { get; init; }
+
+    /// <summary>
+    /// The first and last name of whoever shares it with the user, null when it's their own.
+    /// </summary>
+    [Description("Who shares the budget with the user, empty when it's their own")]
+    public string? SharedBy { get; init; }
+
+    /// <summary>
+    /// Whether it's a household budget, see <see cref="Budget.IsHousehold"/>.
+    /// </summary>
+    [Description("Whether the budget counts spending on every account its owner sees")]
+    public bool IsHousehold { get; init; }
+
+    /// <summary>
+    /// Whether the user can edit it, see <see cref="Budget.CanChange"/>.
+    /// </summary>
+    [Description("Whether the user can edit the budget")]
+    public bool CanChange { get; init; } = true;
 }

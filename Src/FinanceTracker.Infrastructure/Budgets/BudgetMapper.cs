@@ -14,18 +14,29 @@ namespace FinanceTracker.Infrastructure.Budgets;
 internal static class BudgetMapper
 {
     /// <param name="currentMonth">The month whose limit is shown as the budget's monthly limit.</param>
-    public static Budget ToContract(DomainBudget budget, BudgetMonth currentMonth) => new()
-    {
-        Id = budget.Id,
-        Name = budget.Name,
-        TagIds = budget.TagIds.ToList(),
-        RolloverMode = Enum.Parse<RolloverMode>(budget.RolloverMode.ToString()),
-        MonthlyLimit = budget.LimitFor(currentMonth) ?? budget.Limits[^1].Amount,
-        Limits = budget.Limits.Select(static x => new BudgetLimit { From = x.From, Amount = x.Amount }).ToList()
-    };
+    /// <param name="sharing">How it's shared with the user, none for their own unshared one.</param>
+    public static Budget ToContract(DomainBudget budget, BudgetMonth currentMonth, BudgetSharing? sharing = null) =>
+        new()
+        {
+            Id = budget.Id,
+            Name = budget.Name,
+            TagIds = budget.TagIds.ToList(),
+            RolloverMode = Enum.Parse<RolloverMode>(budget.RolloverMode.ToString()),
+            MonthlyLimit = budget.LimitFor(currentMonth) ?? budget.Limits[^1].Amount,
+            Limits = budget.Limits.Select(static x => new BudgetLimit { From = x.From, Amount = x.Amount }).ToList(),
+            SharedBy = sharing?.SharedBy,
+            CanChange = sharing?.CanChange ?? true,
+            IsHousehold = sharing?.IsHousehold ?? false,
+            TagNames = sharing?.TagNames ?? [],
+            TagChoices = sharing?.TagChoices ?? []
+        };
 
-    public static BudgetStatus ToContract(DomainBudget budget, BudgetMonthResult result) => new()
+    public static BudgetStatus ToContract(DomainBudget budget, BudgetMonthResult result,
+        BudgetSharing? sharing = null) => new()
     {
+        SharedBy = sharing?.SharedBy,
+        IsHousehold = sharing?.IsHousehold ?? false,
+        CanChange = sharing?.CanChange ?? true,
         BudgetId = budget.Id,
         Name = budget.Name,
         CoversNothing = budget.CoversNothing,
