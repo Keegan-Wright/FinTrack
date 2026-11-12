@@ -78,9 +78,39 @@ public sealed class AccountScope : IAccountScope
         List<Guid> ownIds = await context.BankAccounts.OwnedBy(userId).Select(static x => x.Id)
             .ToListAsync(cancellationToken);
         HashSet<Guid> ownHidden = ownIds.Intersect(hidden).ToHashSet();
+        HashSet<Guid> ownShown = ownIds.Except(ownHidden).ToHashSet();
 
-        return new AccountsInView(userId, ownIds.Except(ownHidden).ToHashSet(), owners, changeable,
-            await OwnersWithPrivateAccountsAsync(context, owners, hidden, cancellationToken), ownHidden);
+        List<(Guid HiddenId, Guid ShownId, Guid HiddenOwner)> filling =
+            (await FillingCopiesAsync(context, cancellationToken))
+            .Where(x => ownShown.Contains(x.ShownId) || owners.ContainsKey(x.ShownId))
+            .ToList();
+
+        // Another person's hidden copy filling in for an account here may move money to their private accounts
+        Dictionary<Guid, Guid> othersAccounts = new(owners);
+        foreach ((Guid hiddenId, _, Guid hiddenOwner) in filling.Where(x => x.HiddenOwner != userId))
+        {
+            othersAccounts[hiddenId] = hiddenOwner;
+        }
+
+        return new AccountsInView(userId, ownShown, owners, changeable,
+            await OwnersWithPrivateAccountsAsync(context, othersAccounts, hidden, cancellationToken), ownHidden,
+            filling.ToDictionary(static x => x.HiddenId, static x => x.ShownId));
+    }
+
+    /// <summary>
+    /// Every joint account's hidden copy, with its shown copy and who owns the hidden one.
+    /// </summary>
+    private static async Task<List<(Guid HiddenId, Guid ShownId, Guid HiddenOwner)>> FillingCopiesAsync(
+        FinanceTrackerContext context, CancellationToken cancellationToken)
+    {
+        var joints = await (
+                from joint in context.JointAccounts
+                join hiddenCopy in context.BankAccounts on joint.HiddenAccountId equals hiddenCopy.Id
+                select new { joint.HiddenAccountId, joint.ShownAccountId, hiddenCopy.UserId })
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        return joints.Select(static x => (x.HiddenAccountId, x.ShownAccountId, x.UserId)).ToList();
     }
 
     /// <summary>

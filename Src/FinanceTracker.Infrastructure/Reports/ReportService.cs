@@ -187,8 +187,9 @@ public class ReportService : ServiceBase<ReportService>, IReportService
         Dictionary<Guid, string> accountNames = await context.BankAccounts.InView(view)
             .ToDictionaryAsync(static x => x.Id, static x => x.DisplayName, cancellationToken);
 
+        // A hidden copy's transactions filling a joint account's gap count as the shown copy's
         List<ReportAmount> amounts = openBankingTransactions
-            .Select(x => Matching(x, request.Tags, customTags))
+            .Select(x => Matching(x, request.Tags, customTags) with { AccountId = view.ShownAs(x.AccountId) })
             .ToList();
 
         // By id, display names aren't unique across providers
@@ -292,7 +293,7 @@ public class ReportService : ServiceBase<ReportService>, IReportService
         Dictionary<Guid, string> customTags = await TagNames.LoadAsync(context, view, cancellationToken);
 
         List<BankTransaction> transactions = await criteria
-            .ApplyServerFilters(context.BankTransactions.InView(view), context)
+            .ApplyServerFilters(context.BankTransactions.InView(view), context, view)
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 

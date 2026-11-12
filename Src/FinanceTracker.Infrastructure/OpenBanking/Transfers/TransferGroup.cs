@@ -14,20 +14,21 @@ namespace FinanceTracker.Infrastructure.OpenBanking.Transfers;
 /// <param name="UserIds">Everyone in the group, the user included.</param>
 /// <param name="Pairing">Which of their accounts can pair across a link.</param>
 /// <param name="HiddenAccountIds">The hidden copies of joint accounts, left out of matching as the shown copy stands
-/// for both.</param>
+/// for both, apart from their transactions that fill a gap the shown copy missed.</param>
 internal sealed record TransferGroup(
     IReadOnlyList<Guid> UserIds,
     TransferPairing Pairing,
     IReadOnlyList<Guid> HiddenAccountIds)
 {
     /// <summary>
-    /// The group's transactions, the hidden copies' aside.
+    /// The group's transactions, the hidden copies' aside unless they fill a gap.
     /// </summary>
     public IQueryable<BankTransaction> Transactions(FinanceTrackerContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
         IReadOnlyList<Guid> hidden = HiddenAccountIds;
-        return context.BankTransactions.OwnedByAny(UserIds).Where(x => !hidden.Contains(x.AccountId));
+        return context.BankTransactions.OwnedByAny(UserIds)
+            .Where(x => !hidden.Contains(x.AccountId) || x.FillsJointGap);
     }
 
     /// <summary>
@@ -60,16 +61,24 @@ internal sealed record TransferGroup(
             .ToListAsync(cancellationToken);
 
         // A joint account is shared between its two people however it's shared otherwise, the shown copy with the
-        // hidden copy's owner
+        // hidden copy's owner, and the hidden copy, while it fills a gap, with the shown copy's
         var joints = await (
                 from joint in context.JointAccounts
                 join link in context.UserLinks on joint.LinkId equals link.Id
                 join shown in context.BankAccounts on joint.ShownAccountId equals shown.Id
+                join hiddenCopy in context.BankAccounts on joint.HiddenAccountId equals hiddenCopy.Id
                 where link.Status == UserLinkStatus.Accepted
-                select new { AccountId = shown.Id, SharedBy = shown.UserId, link.UserId, link.InviteeId })
+                select new
+                {
+                    ShownId = shown.Id, ShownOwner = shown.UserId, HiddenId = hiddenCopy.Id,
+                    HiddenOwner = hiddenCopy.UserId, link.UserId, link.InviteeId
+                })
             .AsNoTracking()
             .ToListAsync(cancellationToken);
-        shares.AddRange(joints);
+        shares.AddRange(joints.Select(static x => new
+            { AccountId = x.ShownId, SharedBy = x.ShownOwner, x.UserId, x.InviteeId }));
+        shares.AddRange(joints.Select(static x => new
+            { AccountId = x.HiddenId, SharedBy = x.HiddenOwner, x.UserId, x.InviteeId }));
 
         List<Guid> hidden = await context.JointAccounts.AsNoTracking()
             .Select(static x => x.HiddenAccountId)

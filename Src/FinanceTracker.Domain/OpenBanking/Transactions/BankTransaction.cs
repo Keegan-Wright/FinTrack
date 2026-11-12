@@ -55,6 +55,27 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
     public bool IsPending { get; private set; }
 
     /// <summary>
+    /// Whether it's on the hidden copy of a joint account and stands in for the shown copy, in a stretch the shown copy
+    /// missed while its connection lapsed, see <see cref="Sharing.JointAccount.Gaps"/>.
+    /// </summary>
+    public bool FillsJointGap { get; private set; }
+
+    /// <summary>
+    /// Sets whether it fills a joint account's gap, see <see cref="FillsJointGap"/>.
+    /// </summary>
+    /// <returns>Whether that changed.</returns>
+    public bool MarkFillsJointGap(bool fills)
+    {
+        if (FillsJointGap == fills)
+        {
+            return false;
+        }
+
+        FillsJointGap = fills;
+        return true;
+    }
+
+    /// <summary>
     /// Whether the provider labels it a transfer. Only a hint, many aren't between the user's own accounts.
     /// </summary>
     public bool LabelledAsTransfer { get; private set; }

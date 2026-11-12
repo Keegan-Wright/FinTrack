@@ -12,13 +12,14 @@ using FinanceTracker.Infrastructure.OpenBanking.Balances;
 using FinanceTracker.Infrastructure.OpenBanking.Transfers;
 using FinanceTracker.Infrastructure.PayPeriods;
 using FinanceTracker.Infrastructure.Rules;
+using FinanceTracker.Infrastructure.Sharing;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.BackgroundJobs;
 
 /// <summary>
-/// Syncs a set of connections, each as its owner, updates each owner's balance snapshots for the day, applies their
-/// rules and matches their transfers. Tells those owners as the sync starts and once it has finished. Connections of
+/// Syncs a set of connections, each as its owner, fills in their joint accounts whose shown copy has stopped syncing,
+/// updates each owner's balance snapshots for the day, applies their rules and matches their transfers. Tells those owners as the sync starts and once it has finished. Connections of
 /// a user an admin has locked are skipped.
 /// </summary>
 public abstract class OpenBankingSyncJob
@@ -115,6 +116,11 @@ public abstract class OpenBankingSyncJob
             // A span for each owner's steps after their connections synced, each step a span inside it
             using Activity? ownerActivity = FinTrackActivitySources.App.StartUserActivity("Update owner", userId);
             using IDisposable? logScope = _logger.BeginUserScope(userId);
+
+            // First, so a joint account whose shown copy has stopped syncing is filled in from the other copy before
+            // anything reads it
+            await RunAsOwnerAsync<IJointAccountGapService>(userId, "Fill joint account gaps",
+                x => x.RefreshAsync(cancellationToken));
 
             // Rules on what the sync brought in or changed, before transfers so the matcher sees what they decided
             await RunAsOwnerAsync<IRuleApplicationService>(userId, "Apply rules",

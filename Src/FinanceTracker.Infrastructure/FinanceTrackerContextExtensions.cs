@@ -1,5 +1,6 @@
 using FinanceTracker.Domain.Common;
 using FinanceTracker.Domain.OpenBanking.Accounts;
+using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Infrastructure.Sharing;
 
 namespace FinanceTracker.Infrastructure;
@@ -54,6 +55,31 @@ public static class FinanceTrackerContextExtensions
             List<Guid> hidden = view.HiddenAccountIds.ToList();
             return query.Where(x =>
                 (x.UserId == userId && !hidden.Contains(x.AccountId)) || shared.Contains(x.AccountId));
+        }
+    }
+
+    extension(IQueryable<BankTransaction> query)
+    {
+        /// <summary>
+        /// <see cref="ChangeableIn{T}"/> for transactions, with the hidden copies' that fill a joint account's gap.
+        /// </summary>
+        public IQueryable<BankTransaction> ChangeableIn(AccountsInView changeable) => query.InView(changeable);
+
+        /// <summary>
+        /// <see cref="InView{T}"/> for transactions, with the hidden copies' that fill a joint account's gap, see
+        /// <see cref="BankTransaction.FillsJointGap"/>. They show as the shown copy's, see
+        /// <see cref="AccountsInView.ShownAs"/>.
+        /// </summary>
+        public IQueryable<BankTransaction> InView(AccountsInView view)
+        {
+            ArgumentNullException.ThrowIfNull(view);
+            Guid userId = view.UserId;
+            IReadOnlyList<Guid> shared = view.SharedAccountIds;
+            List<Guid> hidden = view.HiddenAccountIds.ToList();
+            IReadOnlyList<Guid> filling = view.FillingAccountIds;
+            return query.Where(x =>
+                (x.UserId == userId && !hidden.Contains(x.AccountId)) || shared.Contains(x.AccountId) ||
+                (x.FillsJointGap && filling.Contains(x.AccountId)));
         }
     }
 

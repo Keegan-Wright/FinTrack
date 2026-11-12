@@ -77,10 +77,14 @@ public static class PrivateTransfers
 
     /// <summary>
     /// <paramref name="transaction"/>'s transfer when it's on an account shared with the user and is, or may be, one.
+    /// The other person's copy of a joint account filling a gap counts as shared, it's theirs as much as one they
+    /// share.
     /// </summary>
     private static TransferInfo? SharedTransfer(AccountsInView view, BankTransaction transaction)
     {
-        if (!view.IsShared(transaction.AccountId))
+        bool othersFillingCopy = transaction.UserId != view.UserId &&
+                                 view.FillingAccounts.ContainsKey(transaction.AccountId);
+        if (!view.IsShared(transaction.AccountId) && !othersFillingCopy)
         {
             return null;
         }

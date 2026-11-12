@@ -1137,6 +1137,9 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                         .HasColumnType("text")
                         .HasAnnotation("FinanceTracker.BlindIndexSource", "ExternalId");
 
+                    b.Property<bool>("FillsJointGap")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("IsPending")
                         .HasColumnType("boolean");
 
@@ -2600,6 +2603,38 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.OwnsMany("FinanceTracker.Domain.Sharing.JointAccountGap", "Gaps", b1 =>
+                        {
+                            b1.Property<Guid>("JointAccountId");
+
+                            b1.Property<int>("__synthesizedOrdinal")
+                                .ValueGeneratedOnAdd();
+
+                            b1.Property<DateTime?>("ClosedAt");
+
+                            b1.Property<string>("From")
+                                .IsRequired()
+                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                            b1.Property<DateTime>("OpenedAt");
+
+                            b1.Property<string>("To")
+                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+
+                            b1.HasKey("JointAccountId", "__synthesizedOrdinal");
+
+                            b1.ToTable("JointAccounts");
+
+                            b1
+                                .ToJson("Gaps")
+                                .HasColumnType("jsonb");
+
+                            b1.WithOwner()
+                                .HasForeignKey("JointAccountId");
+                        });
+
+                    b.Navigation("Gaps");
                 });
 
             modelBuilder.Entity("FinanceTracker.Domain.Sharing.Share", b =>

@@ -63,16 +63,19 @@ public class NetWorthService : ServiceBase<NetWorthService>, INetWorthService
     /// The user's own daily net worth with the balances of the accounts shared with them added in, each shared account
     /// counted from its owner's daily snapshots. A day either side lacks carries the last known one forward, so the
     /// line doesn't dip where one history starts later than the other. Their own copy of a joint account is taken
-    /// back out of their totals, the shown copy counts it once.
+    /// back out of their totals, the shown copy counts it once, and on the days its connection had lapsed with the
+    /// hidden copy's balance, see <see cref="JointGapBalances"/>.
     /// </summary>
     private static async Task<List<NetWorthPoint>> WithSharedAccountsAsync(FinanceTrackerContext context,
         AccountsInView view, List<NetWorthSnapshot> own, CancellationToken cancellationToken)
     {
         List<NetWorthPoint> ownPoints = own.Select(ToPoint).ToList();
-        if (view.SharedAccountIds.Count == 0 && view.HiddenAccountIds.Count == 0)
+        if (view.SharedAccountIds.Count == 0 && view.HiddenAccountIds.Count == 0 && view.FillingAccounts.Count == 0)
         {
             return ownPoints;
         }
+
+        JointGapBalances gaps = await JointGapBalances.LoadAsync(context, view, cancellationToken);
 
         List<Guid> sharedIds = view.SharedAccountIds.ToList();
         List<BalanceSnapshot> shared = await context.BalanceSnapshots.AsNoTracking()
@@ -86,13 +89,14 @@ public class NetWorthService : ServiceBase<NetWorthService>, INetWorthService
                 .ToListAsync(cancellationToken))
             .ToLookup(static x => x.Date);
 
-        if (shared.Count == 0 && hidden.Count == 0)
+        if (shared.Count == 0 && hidden.Count == 0 && gaps.IsEmpty)
         {
             return ownPoints;
         }
 
         List<DateOnly> days = ownPoints.Select(static x => x.Date)
             .Union(shared.Select(static x => x.Date))
+            .Union(gaps.Days)
             .Order()
             .ToList();
         Dictionary<DateOnly, NetWorthPoint> ownByDay = ownPoints.ToDictionary(static x => x.Date);
@@ -125,6 +129,7 @@ public class NetWorthService : ServiceBase<NetWorthService>, INetWorthService
                 }
             }
 
+            gaps.Adjust(tally, day, lastOwn);
             combined.Add(tally.ToPoint(day));
         }
 
@@ -145,13 +150,15 @@ public class NetWorthService : ServiceBase<NetWorthService>, INetWorthService
         }
 
         List<BalanceSnapshot> loaded = await snapshots.OrderBy(static x => x.Date).ToListAsync(cancellationToken);
+        JointGapBalances gaps = await JointGapBalances.LoadAsync(context, view, cancellationToken);
 
         foreach (IGrouping<Guid, BalanceSnapshot> account in loaded.GroupBy(static x => x.AccountId))
         {
+            List<BalancePoint> points = gaps.History(account.Key, account.Select(ToPoint).ToList());
             yield return new AccountBalanceHistory
             {
                 AccountId = account.Key,
-                Points = account.Select(ToPoint).ToList()
+                Points = points.Where(x => from is null || x.Date >= from).ToList()
             };
         }
     }
@@ -205,6 +212,7 @@ public class NetWorthService : ServiceBase<NetWorthService>, INetWorthService
             .Where(x => sharedIds.Contains(x.AccountId) && x.Date <= day)
             .ToListAsync(cancellationToken);
         balances.AddRange(shared.GroupBy(static x => x.AccountId).Select(static x => x.MaxBy(s => s.Date)!));
+        JointGapBalances gaps = await JointGapBalances.LoadAsync(context, view, cancellationToken);
 
         List<NetWorthItem> items = [];
         foreach (BalanceSnapshot balance in balances)
@@ -220,7 +228,12 @@ public class NetWorthService : ServiceBase<NetWorthService>, INetWorthService
                 kind = NetWorthItemKind.Card;
             }
 
-            items.Add(new NetWorthItem { Name = account.DisplayName, Kind = kind, Amount = balance.Balance.Current });
+            items.Add(new NetWorthItem
+            {
+                Name = account.DisplayName,
+                Kind = kind,
+                Amount = gaps.BalanceOn(account.Id, day, balance.Balance.Current)
+            });
         }
 
         items.AddRange(await DebtsAsync(context, day, cancellationToken));

@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using FinanceTracker.Contracts.Account;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Domain.OpenBanking.Accounts;
+using FinanceTracker.Domain.OpenBanking.Balances;
 using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Generated.Attributes;
@@ -47,25 +48,31 @@ public class AccountService : ServiceBase<AccountService>, IAccountService
             .AsNoTracking()
             .ToDictionaryAsync(static x => x.Id, cancellationToken);
 
-        // Encrypted timestamps sort by ciphertext in SQL, so the most recent are picked after decryption
+        // Encrypted timestamps sort by ciphertext in SQL, so the most recent are picked after decryption. A hidden
+        // copy's filling a joint account's gap are the shown copy's
         ILookup<Guid, BankTransaction> transactions = (await context.BankTransactions.InView(view)
                 .AsNoTracking()
                 .ToListAsync(cancellationToken))
-            .ToLookup(static x => x.AccountId);
+            .ToLookup(x => view.ShownAs(x.AccountId));
+
+        // A joint account whose shown copy has stopped syncing has the hidden copy's balance
+        Dictionary<Guid, AccountBalance?> gapBalances =
+            await JointAccountGaps.OpenGapBalancesAsync(context, view, cancellationToken);
 
         foreach (BankAccount account in accounts)
         {
+            AccountBalance? balance = gapBalances.GetValueOrDefault(account.Id) ?? account.Balance;
             yield return new AccountAndTransactions
             {
                 AccountId = account.Id,
-                AccountBalance = account.Balance?.Current ?? 0,
+                AccountBalance = balance?.Current ?? 0,
                 AccountName = account.DisplayName,
                 SharedBy = sharedBy.GetValueOrDefault(account.Id),
                 JointWith = jointWith.GetValueOrDefault(account.Id),
                 AccountType = account.AccountType,
-                AvailableBalance = account.Balance?.Available ?? 0,
+                AvailableBalance = balance?.Available ?? 0,
                 CardEnding = account.Card?.PartialNumber,
-                CreditLimit = account.Balance?.CreditLimit,
+                CreditLimit = balance?.CreditLimit,
                 ProviderName = connections[account.ConnectionId].Name,
                 Logo = connections[account.ConnectionId].Logo,
                 Transactions = transactions[account.Id]

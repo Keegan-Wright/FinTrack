@@ -227,6 +227,16 @@ internal static class JointAccounts
     {
         await CopyAnnotationsAsync(context, link, joint.ShownAccountId, joint.HiddenAccountId, withSplits: true, now,
             cancellationToken);
+
+        // Standing alone again, all of its transactions are its own to show
+        Guid hiddenId = joint.HiddenAccountId;
+        foreach (BankTransaction filling in await context.BankTransactions
+                     .Where(x => x.AccountId == hiddenId && x.FillsJointGap)
+                     .ToListAsync(cancellationToken))
+        {
+            filling.MarkFillsJointGap(false);
+        }
+
         context.JointAccounts.Remove(joint);
     }
 
@@ -280,7 +290,7 @@ internal static class JointAccounts
     /// different connections, whose ids for a transaction differ, so they're paired by day, amount and description.
     /// Settled ones only, a pending one may still change.
     /// </summary>
-    private static List<(BankTransaction From, BankTransaction To)> SameTransactions(List<BankTransaction> from,
+    internal static List<(BankTransaction From, BankTransaction To)> SameTransactions(List<BankTransaction> from,
         List<BankTransaction> to)
     {
         Dictionary<(DateOnly, decimal, string), Queue<BankTransaction>> waiting = to
@@ -311,7 +321,7 @@ internal static class JointAccounts
     /// Shares the tags on <paramref name="transactions"/> that are the other person's in <paramref name="link"/> with
     /// each transaction's owner, so they see their names.
     /// </summary>
-    private static async Task ShareForeignTagsAsync(FinanceTrackerContext context, UserLink link,
+    internal static async Task ShareForeignTagsAsync(FinanceTrackerContext context, UserLink link,
         List<BankTransaction> transactions, DateTime now, CancellationToken cancellationToken)
     {
         List<Guid> tagIds = transactions.SelectMany(static x => x.CustomClassificationIds).Distinct().ToList();
@@ -350,7 +360,22 @@ internal static class JointAccounts
         List<BankTransaction> hidden = await context.BankTransactions
             .Where(x => x.AccountId == hiddenAccountId && x.Transfer != null)
             .ToListAsync(cancellationToken);
-        List<Guid> hiddenIds = hidden.Select(static x => x.Id).ToList();
+        await ClearTransfersAsync(context, hidden, cancellationToken);
+    }
+
+    /// <summary>
+    /// Takes the transfer answers off <paramref name="hidden"/>, tracked, and the other halves paired with them, for
+    /// transactions of a hidden copy leaving the views.
+    /// </summary>
+    /// <returns>The other halves cleared.</returns>
+    internal static async Task<List<BankTransaction>> ClearTransfersAsync(FinanceTrackerContext context,
+        IReadOnlyCollection<BankTransaction> hidden, CancellationToken cancellationToken)
+    {
+        List<Guid> hiddenIds = hidden.Where(static x => x.Transfer is not null).Select(static x => x.Id).ToList();
+        if (hiddenIds.Count == 0)
+        {
+            return [];
+        }
 
         List<BankTransaction> partners = await context.BankTransactions
             .Where(x => x.Transfer != null && x.Transfer.PartnerTransactionId != null &&
@@ -361,5 +386,7 @@ internal static class JointAccounts
         {
             transaction.ClearTransfer(DecisionSource.User);
         }
+
+        return partners;
     }
 }

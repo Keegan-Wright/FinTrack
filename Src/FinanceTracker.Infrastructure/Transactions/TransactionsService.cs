@@ -44,7 +44,7 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
         Dictionary<Guid, string> customTags = await TagNames.LoadAsync(context, view, cancellationToken);
 
         List<BankTransaction> transactions = await criteria
-            .ApplyServerFilters(context.BankTransactions.InView(view), context)
+            .ApplyServerFilters(context.BankTransactions.InView(view), context, view)
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 

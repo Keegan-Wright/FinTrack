@@ -137,10 +137,12 @@ internal sealed class TransactionMapper
     private static async Task<Dictionary<Guid, Guid>> LoadPartnerAccountOwnersAsync(FinanceTrackerContext context,
         AccountsInView view, IReadOnlyCollection<BankTransaction> transactions, CancellationToken cancellationToken)
     {
+        // A hidden copy filling a gap stands for its shown copy, whoever's that is
         List<Guid> accountIds = transactions
             .Where(x => x.UserId == view.UserId)
             .Select(static x => x.Transfer?.PartnerAccountId)
             .OfType<Guid>()
+            .Select(view.ShownAs)
             .Where(x => !view.OwnAccountIds.Contains(x))
             .Distinct()
             .ToList();
@@ -304,9 +306,9 @@ internal sealed class TransactionMapper
         TransactionType = transaction.Type.ToString(),
         Tags = TransactionCriteria.GetTags(transaction, _customTags).ToList(),
         CountsAsIncomeOrSpending = transaction.CountsAsIncomeOrSpending,
-        AccountId = transaction.AccountId,
-        AccountName = _accountNames.GetValueOrDefault(transaction.AccountId, string.Empty),
-        SharedBy = _sharedBy.GetValueOrDefault(transaction.AccountId),
+        AccountId = _view.ShownAs(transaction.AccountId),
+        AccountName = _accountNames.GetValueOrDefault(_view.ShownAs(transaction.AccountId), string.Empty),
+        SharedBy = _sharedBy.GetValueOrDefault(_view.ShownAs(transaction.AccountId)),
         IsReadOnly = _view.IsReadOnly(transaction.AccountId),
         Transfer = TransferOf(transaction),
         Bill = ToContract(transaction.BillPayment),
@@ -377,9 +379,11 @@ internal sealed class TransactionMapper
             PartnerTransactionId = partner?.Id,
             PartnerDescription = partner?.Description,
             PartnerTime = partner?.OccurredAt,
-            PartnerAccountId = transfer.PartnerAccountId,
+            PartnerAccountId = transfer.PartnerAccountId is { } partnerAccountId
+                ? _view.ShownAs(partnerAccountId)
+                : null,
             PartnerAccountName = transfer.PartnerAccountId is { } accountId
-                ? _accountNames.GetValueOrDefault(accountId)
+                ? _accountNames.GetValueOrDefault(_view.ShownAs(accountId))
                 : null,
             PartnerHouseholdMemberName = transfer.PartnerHouseholdMemberId is { } memberId
                 ? _householdMemberNames.GetValueOrDefault(memberId)
@@ -419,7 +423,7 @@ internal sealed class TransactionMapper
     {
         // Only on their own, the other person's say nothing of who else it moved money with
         if (transaction.UserId != _view.UserId || transaction.Transfer?.PartnerAccountId is not { } accountId ||
-            !_partnerAccountOwners.TryGetValue(accountId, out Guid ownerId))
+            !_partnerAccountOwners.TryGetValue(_view.ShownAs(accountId), out Guid ownerId))
         {
             return null;
         }
