@@ -23,13 +23,17 @@
         <MudButton Href="Debts" Variant="Variant.Text" StartIcon="@Icons.Material.Outlined.ArrowBack">
             All debts
         </MudButton>
-        @if (Detail is not null)
+        @if (Detail is { Debt.CanChange: true })
         {
             <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true"
                      AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
                      AriaLabel="@($"Actions for {Detail.Debt.Name}")">
                 <MudMenuItem Icon="@Icons.Material.Outlined.Edit" OnClick="@EditAsync">Edit</MudMenuItem>
-                <MudMenuItem Icon="@Icons.Material.Outlined.Delete" OnClick="@DeleteAsync">Delete</MudMenuItem>
+                @* Only its owner deletes it *@
+                @if (Detail.Debt.SharedBy is null)
+                {
+                    <MudMenuItem Icon="@Icons.Material.Outlined.Delete" OnClick="@DeleteAsync">Delete</MudMenuItem>
+                }
             </MudMenu>
         }
     </Actions>

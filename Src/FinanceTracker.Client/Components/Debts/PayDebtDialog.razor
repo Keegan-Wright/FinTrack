@@ -12,7 +12,7 @@
                 <MudSelectItem T="Guid" Value="@Guid.Empty">No debt</MudSelectItem>
                 @foreach (Debt debt in Debts.OrderBy(static x => x.Name))
                 {
-                    <MudSelectItem T="Guid" Value="@debt.Id">@debt.Name</MudSelectItem>
+                    <MudSelectItem T="Guid" Value="@debt.Id">@DebtText.PickerLabel(debt)</MudSelectItem>
                 }
             </MudSelect>
             @if (Debts.Count == 0)
@@ -48,7 +48,13 @@
             return "No debt";
         }
 
-        return Debts.FirstOrDefault(x => x.Id == debtId)?.Name ?? string.Empty;
+        Debt? debt = Debts.FirstOrDefault(x => x.Id == debtId);
+        if (debt is null)
+        {
+            return string.Empty;
+        }
+
+        return DebtText.PickerLabel(debt);
     }
 
     private Task<PayDebt?> BuildResponseModel()

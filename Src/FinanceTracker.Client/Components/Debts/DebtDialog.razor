@@ -56,7 +56,7 @@
             }
 
             <MudSelect T="Guid?" Label="Balance from" @bind-Value="_model.AccountId" ToStringFunc="@AccountName"
-                       HelperText="A loan or card account that syncs what's owed, or none to work it out from payments">
+                       Disabled="@(Debt?.SharedBy is not null)" HelperText="@AccountHelp">
                 <MudSelectItem T="Guid?" Value="@((Guid?)null)">None, from my payments</MudSelectItem>
                 @foreach (TransactionAccountFilter account in Accounts)
                 {
@@ -113,6 +113,22 @@
         };
         _startedOn = Debt.StartedOn.ToDateTime(TimeOnly.MinValue);
         _payOffGoal = Debt.PayOffGoal?.ToDateTime(TimeOnly.MinValue);
+    }
+
+    /// <summary>
+    /// Someone else's keeps the account its owner chose.
+    /// </summary>
+    private string AccountHelp
+    {
+        get
+        {
+            if (Debt?.SharedBy is { } owner)
+            {
+                return $"Only {owner} can change which account it follows";
+            }
+
+            return "A loan or card account that syncs what's owed, or none to work it out from payments";
+        }
     }
 
     private string AccountName(Guid? accountId)

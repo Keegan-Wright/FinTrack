@@ -40,7 +40,10 @@ public class NetWorthService : ServiceBase<NetWorthService>, INetWorthService
         List<NetWorthSnapshot> own = await context.NetWorthSnapshots.OwnedBy(UserId).AsNoTracking()
             .OrderBy(static x => x.Date)
             .ToListAsync(cancellationToken);
-        List<NetWorthPoint> history = await WithSharedAccountsAsync(context, view, own, cancellationToken);
+        SharedDebtsOwed sharedDebts = await SharedDebtsOwed.LoadAsync(context, UserId, view,
+            _timeProvider.LocalTimeZone, cancellationToken);
+        List<NetWorthPoint> history = await WithSharedAccountsAsync(context, view, own, sharedDebts,
+            cancellationToken);
 
         if (history.Count == 0)
         {
@@ -55,7 +58,7 @@ public class NetWorthService : ServiceBase<NetWorthService>, INetWorthService
             Points = history.Where(x => from is null || x.Date >= from).ToList(),
             ChangeThisMonth = ChangeSince(history, latest, new DateOnly(today.Year, today.Month, 1)),
             ChangeThisYear = ChangeSince(history, latest, new DateOnly(today.Year, 1, 1)),
-            Breakdown = await BreakdownAsync(context, view, latest.Date, cancellationToken)
+            Breakdown = await BreakdownAsync(context, view, sharedDebts, latest.Date, cancellationToken)
         };
     }
 
@@ -64,13 +67,16 @@ public class NetWorthService : ServiceBase<NetWorthService>, INetWorthService
     /// counted from its owner's daily snapshots. A day either side lacks carries the last known one forward, so the
     /// line doesn't dip where one history starts later than the other. Their own copy of a joint account is taken
     /// back out of their totals, the shown copy counts it once, and on the days its connection had lapsed with the
-    /// hidden copy's balance, see <see cref="JointGapBalances"/>.
+    /// hidden copy's balance, see <see cref="JointGapBalances"/>. Debts shared with them not linked to an account count
+    /// as owed, see <see cref="SharedDebtsOwed"/>.
     /// </summary>
     private static async Task<List<NetWorthPoint>> WithSharedAccountsAsync(FinanceTrackerContext context,
-        AccountsInView view, List<NetWorthSnapshot> own, CancellationToken cancellationToken)
+        AccountsInView view, List<NetWorthSnapshot> own, SharedDebtsOwed sharedDebts,
+        CancellationToken cancellationToken)
     {
         List<NetWorthPoint> ownPoints = own.Select(ToPoint).ToList();
-        if (view.SharedAccountIds.Count == 0 && view.HiddenAccountIds.Count == 0 && view.FillingAccounts.Count == 0)
+        if (view.SharedAccountIds.Count == 0 && view.HiddenAccountIds.Count == 0 &&
+            view.FillingAccounts.Count == 0 && sharedDebts.IsEmpty)
         {
             return ownPoints;
         }
@@ -89,7 +95,7 @@ public class NetWorthService : ServiceBase<NetWorthService>, INetWorthService
                 .ToListAsync(cancellationToken))
             .ToLookup(static x => x.Date);
 
-        if (shared.Count == 0 && hidden.Count == 0 && gaps.IsEmpty)
+        if (shared.Count == 0 && hidden.Count == 0 && gaps.IsEmpty && sharedDebts.IsEmpty)
         {
             return ownPoints;
         }
@@ -130,6 +136,7 @@ public class NetWorthService : ServiceBase<NetWorthService>, INetWorthService
             }
 
             gaps.Adjust(tally, day, lastOwn);
+            tally.AddOwed(sharedDebts.Owed.On(day));
             combined.Add(tally.ToPoint(day));
         }
 
@@ -198,7 +205,7 @@ public class NetWorthService : ServiceBase<NetWorthService>, INetWorthService
     /// Each account and card's balance on <paramref name="day"/>, and what each debt not linked to an account owed.
     /// </summary>
     private async Task<List<NetWorthItem>> BreakdownAsync(FinanceTrackerContext context, AccountsInView view,
-        DateOnly day, CancellationToken cancellationToken)
+        SharedDebtsOwed sharedDebts, DateOnly day, CancellationToken cancellationToken)
     {
         Dictionary<Guid, BankAccount> accounts = await context.BankAccounts.InView(view).AsNoTracking()
             .ToDictionaryAsync(static x => x.Id, cancellationToken);
@@ -237,6 +244,16 @@ public class NetWorthService : ServiceBase<NetWorthService>, INetWorthService
         }
 
         items.AddRange(await DebtsAsync(context, day, cancellationToken));
+
+        // Another person's, shared with them, saying whose
+        items.AddRange(sharedDebts.Debts
+            .Select(x => new NetWorthItem
+            {
+                Name = $"{x.Debt.Name} · {x.SharedBy}'s",
+                Kind = NetWorthItemKind.Debt,
+                Amount = -sharedDebts.OwedOn(x, day)
+            })
+            .Where(static x => x.Amount < 0));
 
         return items.OrderByDescending(static x => Math.Abs(x.Amount)).ToList();
     }

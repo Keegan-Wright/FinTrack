@@ -1,6 +1,7 @@
 using FinanceTracker.Contracts.Rules;
 using FinanceTracker.Domain.Sharing;
 using FinanceTracker.Infrastructure.Bills;
+using FinanceTracker.Infrastructure.Debts;
 using FinanceTracker.Infrastructure.Sharing;
 using Microsoft.EntityFrameworkCore;
 using DomainRule = FinanceTracker.Domain.Rules.Rule;
@@ -57,10 +58,12 @@ internal static class SharedRules
 
         Dictionary<Guid, string> tagChoices = [];
         Dictionary<Guid, string> billChoices = [];
+        Dictionary<Guid, string> debtChoices = [];
         if (shared.CanChange)
         {
             tagChoices = await TagChoicesAsync(context, userId, rule, cancellationToken);
             billChoices = await BillChoicesAsync(context, userId, seen, rule, cancellationToken);
+            debtChoices = await DebtChoicesAsync(context, userId, seen, rule, cancellationToken);
         }
 
         return new Rule
@@ -77,14 +80,15 @@ internal static class SharedRules
             CanChange = shared.CanChange,
             Names = names,
             TagChoices = tagChoices,
-            BillChoices = billChoices
+            BillChoices = billChoices,
+            DebtChoices = debtChoices
         };
     }
 
     /// <summary>
     /// Checks an edit of <paramref name="existing"/>, someone else's rule, by <paramref name="userId"/> only uses
-    /// what they may. Its owner's tags and bills shared with them or already on it, the debts already on it, and
-    /// accounts they can see or it already looks at.
+    /// what they may. Its owner's tags, bills and debts shared with them or already on it, and accounts they can see or
+    /// it already looks at.
     /// </summary>
     /// <exception cref="InvalidOperationException">The edit uses something else.</exception>
     public static async Task EnsureAllowedAsync(FinanceTrackerContext context, Guid userId, AccountsInView seen,
@@ -103,10 +107,11 @@ internal static class SharedRules
             throw new InvalidOperationException("A shared rule can only pay its owner's bills shared with you.");
         }
 
-        HashSet<Guid> debts = existing.Actions.Select(static x => x.DebtId).OfType<Guid>().ToHashSet();
+        HashSet<Guid> debts = (await DebtChoicesAsync(context, userId, seen, existing, cancellationToken)).Keys
+            .ToHashSet();
         if (rule.Actions.Any(x => x.DebtId is { } debtId && !debts.Contains(debtId)))
         {
-            throw new InvalidOperationException("A shared rule can only keep the debts it already pays.");
+            throw new InvalidOperationException("A shared rule can only pay off its owner's debts shared with you.");
         }
 
         HashSet<Guid> accounts = AccountsOf(existing).ToHashSet();
@@ -165,6 +170,30 @@ internal static class SharedRules
                      .Select(static x => new { x.Id, x.Name }).ToListAsync(cancellationToken))
         {
             choices[bill.Id] = bill.Name;
+        }
+
+        return choices;
+    }
+
+    /// <summary>
+    /// The debts <paramref name="userId"/> can have <paramref name="rule"/>, someone else's, pay off. Its owner's debts
+    /// they see, shared with them or following an account shared with them, and those already on it.
+    /// </summary>
+    private static async Task<Dictionary<Guid, string>> DebtChoicesAsync(FinanceTrackerContext context, Guid userId,
+        AccountsInView seen, DomainRule rule, CancellationToken cancellationToken)
+    {
+        Guid ownerId = rule.UserId;
+        Dictionary<Guid, string> choices = (await SharedDebts.ForAsync(context, userId, seen, cancellationToken))
+            .Where(x => x.Debt.UserId == ownerId)
+            .ToDictionary(static x => x.Debt.Id, static x => x.Debt.Name);
+
+        List<Guid> onIt = rule.Actions.Select(static x => x.DebtId).OfType<Guid>()
+            .Where(x => !choices.ContainsKey(x))
+            .ToList();
+        foreach (var debt in await context.Debts.AsNoTracking().Where(x => onIt.Contains(x.Id))
+                     .Select(static x => new { x.Id, x.Name }).ToListAsync(cancellationToken))
+        {
+            choices[debt.Id] = debt.Name;
         }
 
         return choices;

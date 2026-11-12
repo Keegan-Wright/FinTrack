@@ -24,6 +24,7 @@ public static class SharingText
         SharedItemKind.Classification => "Tag",
         SharedItemKind.Rule => "Rule",
         SharedItemKind.Bill => "Bill",
+        SharedItemKind.Debt => "Debt",
         _ => "Item"
     };
 
@@ -63,6 +64,7 @@ public static class SharingText
         AddCount(parts, shares, SharedItemKind.Classification, "tag");
         AddCount(parts, shares, SharedItemKind.Rule, "rule");
         AddCount(parts, shares, SharedItemKind.Bill, "bill");
+        AddCount(parts, shares, SharedItemKind.Debt, "debt");
         if (parts.Count == 0)
         {
             return $"Nothing shared with {shares.Name}";

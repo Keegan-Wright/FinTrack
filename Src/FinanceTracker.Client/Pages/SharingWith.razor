@@ -92,6 +92,17 @@ else
                     @ItemList(SharedItemKind.Bill, "bills", "You haven't any bills yet.")
                 </div>
             </MudTabPanel>
+            <MudTabPanel Text="@ItemsTabText("Debts", SharedItemKind.Debt)">
+                <div class="ft-sharing-with__tab">
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        A debt following a loan or card you share goes with it. Tick others @Shares.Name can see.
+                    </MudText>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        <strong>Change</strong> also lets them edit them. Shared debts count in their net worth too.
+                    </MudText>
+                    @ItemList(SharedItemKind.Debt, "debts", "You haven't any debts yet.")
+                </div>
+            </MudTabPanel>
             @if (Shares.JointSuggestions.Count > 0 || Shares.JointAccounts.Count > 0)
             {
                 <MudTabPanel Text="@JointTabText">

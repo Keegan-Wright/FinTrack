@@ -20,5 +20,11 @@ public enum SharedItemKind
     /// A bill. One paid from an account shared with the other person is shared with it, in the same way. Others can be
     /// chosen. Shared, the other person sees it, and edits it too when allowed changes.
     /// </summary>
-    Bill = 2
+    Bill = 2,
+
+    /// <summary>
+    /// A debt. One following an account shared with the other person, a loan or card, is shared with it, in the same
+    /// way. Others can be chosen. Shared, the other person sees it, and edits it too when allowed changes.
+    /// </summary>
+    Debt = 3
 }

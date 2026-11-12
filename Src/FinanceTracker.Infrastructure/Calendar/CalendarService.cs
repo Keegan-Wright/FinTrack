@@ -92,7 +92,8 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
         Dictionary<DateOnly, List<CalendarEventItem>> events = await LoadEventsAsync(context, first, last,
             cancellationToken);
 
-        Dictionary<DateOnly, List<CalendarDebtItem>> debts = await LoadDebtsAsync(first, last, cancellationToken);
+        Dictionary<DateOnly, List<CalendarDebtItem>> debts = await LoadDebtsAsync(view, first, last,
+            cancellationToken);
 
         for (int i = 0; i < daysInMonth; i++)
         {
@@ -308,17 +309,32 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
     }
 
     /// <summary>
-    /// Each debt still owing's forecast pay-off day and its goal, from <paramref name="first"/> to
-    /// <paramref name="last"/>.
+    /// Whether <paramref name="debt"/> belongs in <paramref name="view"/>: their own, or shared outside Just mine, or
+    /// following an account still in it, such as a joint account's.
     /// </summary>
-    private async Task<Dictionary<DateOnly, List<CalendarDebtItem>>> LoadDebtsAsync(DateOnly first, DateOnly last,
-        CancellationToken cancellationToken)
+    private static bool InView(Debt debt, AccountsInView view)
+    {
+        if (debt.SharedBy is null || !view.IsJustMine)
+        {
+            return true;
+        }
+
+        return debt.AccountId is { } accountId && view.Contains(accountId);
+    }
+
+    /// <summary>
+    /// Each debt still owing's forecast pay-off day and its goal, from <paramref name="first"/> to
+    /// <paramref name="last"/>. Their own and those shared with them, though Just mine leaves out those shared, as
+    /// <paramref name="view"/> does their accounts.
+    /// </summary>
+    private async Task<Dictionary<DateOnly, List<CalendarDebtItem>>> LoadDebtsAsync(AccountsInView view,
+        DateOnly first, DateOnly last, CancellationToken cancellationToken)
     {
         Dictionary<DateOnly, List<CalendarDebtItem>> byDay = [];
 
         await foreach (Debt debt in _debtsService.GetDebtsAsync(cancellationToken))
         {
-            if (debt.Owed <= 0)
+            if (debt.Owed <= 0 || !InView(debt, view))
             {
                 continue;
             }

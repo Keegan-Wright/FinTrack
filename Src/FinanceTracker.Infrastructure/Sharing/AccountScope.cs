@@ -46,6 +46,14 @@ public sealed class AccountScope : IAccountScope
         CancellationToken cancellationToken) =>
         ResolveAsync(context, userId, onlyChangeable: true, justMine: false, cancellationToken);
 
+    /// <summary>
+    /// Every account <paramref name="userId"/> sees, as <see cref="ResolveAllAsync"/> gives the current user, for
+    /// working out their figures the same way for someone they share with, such as what a shared debt owes.
+    /// </summary>
+    internal static Task<AccountsInView> ResolveAllForAsync(FinanceTrackerContext context, Guid userId,
+        CancellationToken cancellationToken) =>
+        ResolveAsync(context, userId, onlyChangeable: false, justMine: false, cancellationToken);
+
     /// <param name="onlyChangeable">Only the shared accounts they're allowed to change.</param>
     /// <param name="justMine">Only their own, and joint accounts they're one of the two of.</param>
     private static async Task<AccountsInView> ResolveAsync(FinanceTrackerContext context, Guid userId,

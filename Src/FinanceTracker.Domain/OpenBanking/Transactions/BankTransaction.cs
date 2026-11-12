@@ -341,12 +341,15 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
     /// <summary>
     /// The user says this pays off <paramref name="debt"/>, which rules then leave alone.
     /// </summary>
-    /// <param name="by">Who says so, the owner or someone they let change it. Only their own debts can be paid.</param>
-    /// <exception cref="InvalidOperationException">The debt isn't <paramref name="by"/>'s.</exception>
-    public void PayDebt(Debt debt, Guid by, DateTime decidedAt)
+    /// <param name="by">Who says so, the owner or someone they let change it. Only their own debts can be paid, or
+    /// one shared with them.</param>
+    /// <param name="sharedWithThem">Whether the debt is shared with <paramref name="by"/>.</param>
+    /// <exception cref="InvalidOperationException">The debt is neither <paramref name="by"/>'s nor shared with them.
+    /// </exception>
+    public void PayDebt(Debt debt, Guid by, DateTime decidedAt, bool sharedWithThem = false)
     {
         ArgumentNullException.ThrowIfNull(debt);
-        if (debt.UserId != by)
+        if (debt.UserId != by && !sharedWithThem)
         {
             throw new InvalidOperationException("Cannot pay another user's debt with this transaction.");
         }

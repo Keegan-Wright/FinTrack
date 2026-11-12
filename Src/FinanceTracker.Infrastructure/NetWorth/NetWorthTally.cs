@@ -33,6 +33,11 @@ internal sealed class NetWorthTally
     }
 
     /// <summary>
+    /// Counts in what a debt not linked to an account owed, a liability.
+    /// </summary>
+    public void AddOwed(decimal owed) => _liabilities += owed;
+
+    /// <summary>
     /// Takes an account's balance back out of the total it was counted in.
     /// </summary>
     public void Remove(BalanceSnapshot balance) => Count(balance.Balance.Current, sign: -1);

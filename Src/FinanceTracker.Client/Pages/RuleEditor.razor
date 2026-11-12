@@ -214,21 +214,13 @@ else
         {
             if (Shared is { } shared)
             {
-                return NamesOf(shared, shared.Actions.Select(static x => x.DebtId));
+                return shared.DebtChoices;
             }
 
             return (DebtList ?? []).ToDictionary(static x => x.Id, static x => x.Name);
         }
     }
 
-    /// <summary>
-    /// The names <paramref name="shared"/> carries for <paramref name="ids"/>, the bills or debts it already pays.
-    /// </summary>
-    private static Dictionary<Guid, string> NamesOf(Rule shared, IEnumerable<Guid?> ids) =>
-        ids.OfType<Guid>()
-            .Distinct()
-            .Where(shared.Names.ContainsKey)
-            .ToDictionary(static x => x, x => shared.Names[x]);
 
     protected override async Task OnInitializedAsync()
     {
@@ -247,7 +239,10 @@ else
                 .Where(static x => x.SharedBy is null)
                 .ToListAsync(cancellationToken).AsTask());
         DebtList = await LoadOnceAsync(DebtList, "Loading the rule", cancellationToken =>
-            DebtsService.GetDebtsAsync(cancellationToken).ToListAsync(cancellationToken).AsTask());
+            // Only their own, as with tags and bills
+            DebtsService.GetDebtsAsync(cancellationToken)
+                .Where(static x => x.SharedBy is null)
+                .ToListAsync(cancellationToken).AsTask());
 
         if (Draft is null)
         {

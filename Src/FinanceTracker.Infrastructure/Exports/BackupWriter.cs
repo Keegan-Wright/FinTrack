@@ -94,8 +94,10 @@ public sealed class BackupWriter
             cancellationToken);
         files["budgets.json"] = await WriteListAsync(zip, "budgets.json",
             _budgetsService.GetBudgetsAsync(cancellationToken), cancellationToken);
+        // Their own, not those someone else shares with them
         files["debts.json"] = await WriteListAsync(zip, "debts.json",
-            _debtsService.GetDebtsAsync(cancellationToken), cancellationToken);
+            _debtsService.GetDebtsAsync(cancellationToken).Where(static x => x.SharedBy is null),
+            cancellationToken);
         files["savings-goals.json"] = await WriteListAsync(zip, "savings-goals.json",
             _savingsGoalsService.GetSavingsGoalsAsync(cancellationToken), cancellationToken);
         // Their own, not those someone else shares with them

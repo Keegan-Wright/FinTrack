@@ -40,6 +40,11 @@ public class SharingWithPageTests : ComponentTestBase
         FollowsAccount = "Joint"
     };
 
+    private readonly ShareableItem _cardDebt = Item(SharedItemKind.Debt, "Credit card", ShareMode.AllowChanges) with
+    {
+        FollowsAccount = "Card"
+    };
+
     private readonly JointAccountSuggestion _suggestion = new()
     {
         YourAccountId = Guid.NewGuid(),
@@ -82,7 +87,7 @@ public class SharingWithPageTests : ComponentTestBase
             await Assert.That(cut.Markup).Contains("Sharing with Sam Taylor");
             await Assert.That(cut.Markup).Contains("@sam · linked since");
             await Assert.That(tabs).IsEquivalentTo(
-                ["Accounts · 1/3", "Tags · 1/2", "Rules · 0/1", "Bills · 1/1", "From Sam"],
+                ["Accounts · 1/3", "Tags · 1/2", "Rules · 0/1", "Bills · 1/1", "Debts · 1/1", "From Sam"],
                 TUnit.Assertions.Enums.CollectionOrdering.Matching);
             await Assert.That(Checkbox(cut, "Share Savings").IsChecked()).IsTrue();
             await Assert.That(cut.FindAll(".ft-save-bar")).IsEmpty();
@@ -153,7 +158,7 @@ public class SharingWithPageTests : ComponentTestBase
                 x.Items.Any(i => i.ItemId == _kids.ItemId) &&
                 x.Items.Any(i => i.ItemId == _shops.ItemId && i.Kind == SharedItemKind.Rule) &&
                 x.Items.Any(i => i.ItemId == _holiday.ItemId) &&
-                x.Items.All(i => i.ItemId != _rent.ItemId)),
+                x.Items.All(i => i.ItemId != _rent.ItemId && i.ItemId != _cardDebt.ItemId)),
             Arg.Any<CancellationToken>());
     }
 
@@ -301,7 +306,7 @@ public class SharingWithPageTests : ComponentTestBase
         Name = _linked.Name,
         YourAccounts = [_current, _savings, _birthday],
         TheirAccounts = [new AccountSharedWithYou { Name = "Joint", BankName = "Bank", Mode = ShareMode.ReadOnly }],
-        YourItems = [_holiday, _kids, _shops, _rent],
+        YourItems = [_holiday, _kids, _shops, _rent, _cardDebt],
         TheirItems =
         [
             new ItemSharedWithYou

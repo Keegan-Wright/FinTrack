@@ -256,9 +256,9 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
             request.Accounts.ToDictionary(static x => x.AccountId, static x => ToDomain(x.Mode));
         List<Share> existing = await OwnAccountShares(context, link.Id).ToListAsync(cancellationToken);
 
-        // An account's bills go with it
-        HashSet<Guid> billsBefore = await ItemShares.BillsFollowingAccountsAsync(context, link, UserId,
-            cancellationToken);
+        // An account's bills and debts go with it
+        HashSet<(ShareItemType ItemType, Guid Id)> goingWithBefore =
+            await ItemShares.FollowingAccountsAsync(context, link, UserId, cancellationToken);
 
         // The other person's rules reach an account only while they can change it
         HashSet<Guid> changeableBefore = existing.Where(static x => x.Mode == DomainShareMode.AllowChanges)
@@ -288,7 +288,7 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
         }
 
         await context.SaveChangesAsync(cancellationToken);
-        await ItemShares.TakeOffBillsNoLongerSharedAsync(context, link, UserId, billsBefore, cancellationToken);
+        await ItemShares.TakeOffNoLongerSharedAsync(context, link, UserId, goingWithBefore, cancellationToken);
         await context.SaveChangesAsync(cancellationToken);
         Logger.LogChanged(UserId, "changed account shares in", "user link", link.Id);
 
