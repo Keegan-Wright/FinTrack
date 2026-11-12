@@ -24,5 +24,11 @@ public enum ShareItemType
     /// <summary>
     /// A debt, read only, shared when the other person's transaction is said to pay it off so they see its name.
     /// </summary>
-    Debt = 3
+    Debt = 3,
+
+    /// <summary>
+    /// A rule, chosen. The other person sees it, and edits it too when allowed changes. It stays its owner's, so it
+    /// runs where its owner's rules run.
+    /// </summary>
+    Rule = 4
 }

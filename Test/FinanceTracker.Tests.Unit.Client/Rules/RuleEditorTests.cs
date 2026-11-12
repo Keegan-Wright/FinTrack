@@ -239,6 +239,70 @@ public class RuleEditorTests : ComponentTestBase
         }
     }
 
+    [Test]
+    public async Task SharedWithChanges_OffersTheirTags_AndOnlyItsOwnerDeletesIt()
+    {
+        // Arrange
+        Guid samsTag = Guid.NewGuid();
+        Rule shared = new()
+        {
+            Id = Guid.NewGuid(),
+            Name = "Sam's shops",
+            IsEnabled = true,
+            Conditions = [new RuleCondition { Field = RuleField.Description, Operator = RuleOperator.Contains,
+                Value = "shop" }],
+            Actions = [new RuleAction { Type = RuleActionType.AddTag, ClassificationId = samsTag }],
+            SharedBy = "Sam Taylor",
+            CanChange = true,
+            Names = new Dictionary<Guid, string> { [samsTag] = "Groceries" },
+            TagChoices = new Dictionary<Guid, string> { [samsTag] = "Groceries" }
+        };
+        _rulesService.GetRuleAsync(shared.Id, Arg.Any<CancellationToken>()).Returns(shared);
+
+        // Act
+        IRenderedComponent<RuleEditor> cut = RenderEditor(shared.Id);
+
+        // Assert
+        List<string> buttons = cut.FindAll("button").Select(static x => x.TextContent.Trim()).ToList();
+        using (Assert.Multiple())
+        {
+            await Assert.That(cut.Markup).Contains("Sam Taylor's rule");
+            await Assert.That(cut.Markup).Contains("Groceries");
+            await Assert.That(cut.Markup).DoesNotContain("Shopping");
+            await Assert.That(buttons).Contains("Save");
+            await Assert.That(buttons).DoesNotContain("Delete");
+        }
+    }
+
+    [Test]
+    public async Task SharedToSeeOnly_SaysWhoCanChangeIt_AndCantBeSaved()
+    {
+        // Arrange
+        Rule shared = new()
+        {
+            Id = Guid.NewGuid(),
+            Name = "Sam's shops",
+            IsEnabled = true,
+            Conditions = [new RuleCondition { Field = RuleField.Description, Operator = RuleOperator.Contains,
+                Value = "shop" }],
+            Actions = [new RuleAction { Type = RuleActionType.MarkNotATransfer }],
+            SharedBy = "Sam Taylor",
+            CanChange = false
+        };
+        _rulesService.GetRuleAsync(shared.Id, Arg.Any<CancellationToken>()).Returns(shared);
+
+        // Act
+        IRenderedComponent<RuleEditor> cut = RenderEditor(shared.Id);
+
+        // Assert
+        List<string> buttons = cut.FindAll("button").Select(static x => x.TextContent.Trim()).ToList();
+        using (Assert.Multiple())
+        {
+            await Assert.That(cut.Markup).Contains("Only Sam Taylor can change this rule");
+            await Assert.That(buttons).DoesNotContain("Save");
+        }
+    }
+
     private IRenderedComponent<RuleEditor> RenderEditor(Guid? id) => Render<RuleEditor>(p => p
         .Add(x => x.Id, id)
         .AddCascadingValue(_applicationState));

@@ -24,14 +24,15 @@ internal static class ItemShares
             .ToDictionaryAsync(static x => (x.ItemType, x.ItemId), static x => x.Mode, cancellationToken);
 
         List<ShareableItem> items = [];
-        foreach ((Guid id, string name) in await TagsOfAsync(context, userId, cancellationToken))
+        foreach ((ShareItemType itemType, Guid id, string name) in await ShareableOfAsync(context, userId,
+                     cancellationToken))
         {
             items.Add(new ShareableItem
             {
-                Kind = SharedItemKind.Classification,
+                Kind = ToContract(itemType),
                 ItemId = id,
                 Name = name,
-                Mode = ModeIfChosen(chosen, ShareItemType.Classification, id)
+                Mode = ModeIfChosen(chosen, itemType, id)
             });
         }
 
@@ -47,22 +48,30 @@ internal static class ItemShares
     {
         Guid otherId = link.OtherThan(userId);
 
-        // Only the tags they share, while still theirs. Names are encrypted, so they're sorted once read
-        var shared = await (
+        // Only what they share, while still theirs. Names may be encrypted, so they're sorted once read
+        var tags = await (
                 from share in context.Shares
                 join tag in context.CustomClassifications on share.ItemId equals tag.Id
                 where share.LinkId == link.Id && share.UserId == otherId && share.Reason == ShareReason.Chosen &&
                       share.ItemType == ShareItemType.Classification && tag.UserId == otherId
-                select new { tag.Tag, share.Mode })
+                select new { Name = tag.Tag, share.Mode })
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
-        return shared.OrderBy(static x => x.Tag, StringComparer.CurrentCultureIgnoreCase)
-            .Select(static x => new ItemSharedWithYou
-            {
-                Kind = SharedItemKind.Classification, Name = x.Tag, Mode = ShareModeMapping.ToContract(x.Mode)
-            })
-            .ToList();
+        var rules = await (
+                from share in context.Shares
+                join rule in context.Rules on share.ItemId equals rule.Id
+                where share.LinkId == link.Id && share.UserId == otherId && share.Reason == ShareReason.Chosen &&
+                      share.ItemType == ShareItemType.Rule && rule.UserId == otherId
+                select new { rule.Name, share.Mode })
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        return
+        [
+            .. Named(SharedItemKind.Classification, tags.Select(static x => (x.Name, x.Mode))),
+            .. Named(SharedItemKind.Rule, rules.Select(static x => (x.Name, x.Mode)))
+        ];
     }
 
     /// <summary>
@@ -74,12 +83,12 @@ internal static class ItemShares
     public static async Task ChangeAsync(FinanceTrackerContext context, DomainLink link, Guid userId,
         ChangeItemShares request, DateTime now, CancellationToken cancellationToken)
     {
-        HashSet<Guid> ownTags = (await TagsOfAsync(context, userId, cancellationToken))
-            .Select(static x => x.Id)
+        HashSet<(ShareItemType, Guid)> own = (await ShareableOfAsync(context, userId, cancellationToken))
+            .Select(static x => (x.ItemType, x.Id))
             .ToHashSet();
-        if (request.Items.Any(x => x.Kind == SharedItemKind.Classification && !ownTags.Contains(x.ItemId)))
+        if (request.Items.Any(x => !own.Contains((ToDomain(x.Kind), x.ItemId))))
         {
-            throw new InvalidOperationException("Only your own tags can be shared.");
+            throw new InvalidOperationException("Only your own things can be shared.");
         }
 
         Dictionary<(ShareItemType, Guid), DomainShareMode> wanted = request.Items.ToDictionary(
@@ -116,23 +125,49 @@ internal static class ItemShares
     private static ShareItemType ToDomain(SharedItemKind kind) => kind switch
     {
         SharedItemKind.Classification => ShareItemType.Classification,
+        SharedItemKind.Rule => ShareItemType.Rule,
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
     };
 
+    private static SharedItemKind ToContract(ShareItemType itemType) => itemType switch
+    {
+        ShareItemType.Classification => SharedItemKind.Classification,
+        ShareItemType.Rule => SharedItemKind.Rule,
+        _ => throw new ArgumentOutOfRangeException(nameof(itemType), itemType, null)
+    };
+
     /// <summary>
-    /// <paramref name="userId"/>'s tags by name.
+    /// What <paramref name="userId"/> can choose to share besides accounts: their tags, then their rules, each by name.
     /// </summary>
-    private static async Task<List<(Guid Id, string Name)>> TagsOfAsync(FinanceTrackerContext context, Guid userId,
-        CancellationToken cancellationToken)
+    private static async Task<List<(ShareItemType ItemType, Guid Id, string Name)>> ShareableOfAsync(
+        FinanceTrackerContext context, Guid userId, CancellationToken cancellationToken)
     {
         var tags = await context.CustomClassifications.OwnedBy(userId).AsNoTracking()
-            .Select(static x => new { x.Id, x.Tag })
+            .Select(static x => new { x.Id, Name = x.Tag })
+            .ToListAsync(cancellationToken);
+        var rules = await context.Rules.OwnedBy(userId).AsNoTracking()
+            .Select(static x => new { x.Id, x.Name })
             .ToListAsync(cancellationToken);
 
-        return tags.OrderBy(static x => x.Tag, StringComparer.CurrentCultureIgnoreCase)
-            .Select(static x => (x.Id, x.Tag))
-            .ToList();
+        return
+        [
+            .. tags.OrderBy(static x => x.Name, StringComparer.CurrentCultureIgnoreCase)
+                .Select(static x => (ShareItemType.Classification, x.Id, x.Name)),
+            .. rules.OrderBy(static x => x.Name, StringComparer.CurrentCultureIgnoreCase)
+                .Select(static x => (ShareItemType.Rule, x.Id, x.Name))
+        ];
     }
+
+    /// <summary>
+    /// <paramref name="items"/> of <paramref name="kind"/> shared with the user, by name.
+    /// </summary>
+    private static IEnumerable<ItemSharedWithYou> Named(SharedItemKind kind,
+        IEnumerable<(string Name, DomainShareMode Mode)> items) =>
+        items.OrderBy(static x => x.Name, StringComparer.CurrentCultureIgnoreCase)
+            .Select(x => new ItemSharedWithYou
+            {
+                Kind = kind, Name = x.Name, Mode = ShareModeMapping.ToContract(x.Mode)
+            });
 
     private static Contracts.Sharing.ShareMode? ModeIfChosen(Dictionary<(ShareItemType, Guid), DomainShareMode> chosen,
         ShareItemType itemType, Guid itemId)

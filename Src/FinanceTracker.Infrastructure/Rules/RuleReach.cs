@@ -45,6 +45,16 @@ internal sealed class RuleReach
     }
 
     /// <summary>
+    /// Whether <paramref name="userId"/>'s rules reach <paramref name="transaction"/>: it's theirs, or they're allowed
+    /// to change its account.
+    /// </summary>
+    public bool Reaches(Guid userId, BankTransaction transaction)
+    {
+        ArgumentNullException.ThrowIfNull(transaction);
+        return transaction.UserId == userId || _othersByAccount[transaction.AccountId].Contains(userId);
+    }
+
+    /// <summary>
     /// Whose rule <paramref name="ruleId"/> is, among <see cref="Rules"/>.
     /// </summary>
     public Guid? OwnerOf(Guid ruleId) => Rules.FirstOrDefault(x => x.Id == ruleId)?.UserId;

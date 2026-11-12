@@ -73,7 +73,11 @@ public class RuleApplicationService : ServiceBase<RuleApplicationService>, IRule
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        List<BankTransaction> transactions = await (await ChangeableAsync(context, cancellationToken))
+        // Its owner's reach, the user may be someone they let edit it
+        Guid ownerId = await context.Rules.Where(x => x.Id == ruleId).Select(static x => (Guid?)x.UserId)
+            .SingleOrDefaultAsync(cancellationToken) ?? UserId;
+        AccountsInView ownersReach = await AccountScope.ResolveChangeableForAsync(context, ownerId, cancellationToken);
+        List<BankTransaction> transactions = await context.BankTransactions.ChangeableIn(ownersReach)
             .Where(x => x.RuleTags.Any(t => t.RuleId == ruleId) ||
                         (x.Transfer != null && x.Transfer.RuleId == ruleId) ||
                         (x.BillPayment != null && x.BillPayment.RuleId == ruleId) ||

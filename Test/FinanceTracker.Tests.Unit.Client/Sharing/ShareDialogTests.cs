@@ -33,6 +33,10 @@ public class ShareDialogTests : ComponentTestBase
     private readonly ShareableAccount _birthday = Account("Birthday fund", null);
     private readonly ShareableItem _holiday = TagItem("Holiday", ShareMode.ReadOnly);
     private readonly ShareableItem _kids = TagItem("Kids", null);
+    private readonly ShareableItem _shops = new()
+    {
+        Kind = SharedItemKind.Rule, ItemId = Guid.NewGuid(), Name = "Shops", Mode = null
+    };
 
     public ShareDialogTests()
     {
@@ -45,7 +49,7 @@ public class ShareDialogTests : ComponentTestBase
             Name = _linked.Name,
             YourAccounts = [_current, _savings, _birthday],
             TheirAccounts = [new AccountSharedWithYou { Name = "Joint", BankName = "Bank", Mode = ShareMode.ReadOnly }],
-            YourItems = [_holiday, _kids],
+            YourItems = [_holiday, _kids, _shops],
             TheirItems =
             [
                 new ItemSharedWithYou
@@ -114,6 +118,31 @@ public class ShareDialogTests : ComponentTestBase
                 x.Items.Any(i => i.ItemId == _kids.ItemId) && x.Items.Any(i => i.ItemId == _holiday.ItemId)),
             Arg.Any<CancellationToken>());
         await _sharingService.DidNotReceiveWithAnyArgs().ChangeAccountSharesAsync(default, default!, default);
+    }
+
+    [Test]
+    public async Task Rules_TickingOne_SavesItWithTheTagsAsTheyWere()
+    {
+        // Arrange
+        IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
+        IRenderedComponent<FinanceTracker.Client.Pages.Sharing> cut = RenderPage();
+        Button(cut, "Share").Click();
+        dialogs.WaitForState(() => dialogs.Markup.Contains("Birthday fund"));
+        dialogs.FindAll(".mud-tab").First(x => x.TextContent.Trim() == "Rules").Click();
+        dialogs.WaitForState(() => dialogs.Markup.Contains("Shops"));
+
+        // Act
+        Checkbox(dialogs, "Share Shops").Change(true);
+        Button(dialogs, "OK").Click();
+        cut.WaitForAssertion(() => _sharingService.ReceivedWithAnyArgs(1)
+            .ChangeItemSharesAsync(default, default!, default));
+
+        // Assert
+        await _sharingService.Received(1).ChangeItemSharesAsync(_linked.Id, Arg.Is<ChangeItemShares>(x =>
+                x.Items.Count == 2 &&
+                x.Items.Any(i => i.Kind == SharedItemKind.Rule && i.ItemId == _shops.ItemId) &&
+                x.Items.Any(i => i.Kind == SharedItemKind.Classification && i.ItemId == _holiday.ItemId)),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -212,6 +241,27 @@ public class ShareDialogTests : ComponentTestBase
 
         await Assert.That(FinanceTracker.Client.Pages.Sharing.SharedText(shares))
             .IsEqualTo("Sharing 1 account and 2 tags with Sam Taylor");
+    }
+
+    [Test]
+    public async Task SharedText_ListsEachKind()
+    {
+        LinkShares shares = new()
+        {
+            LinkId = Guid.NewGuid(),
+            Name = "Sam Taylor",
+            YourAccounts = [Account("Current", ShareMode.ReadOnly)],
+            TheirAccounts = [],
+            YourItems =
+            [
+                TagItem("Holiday", ShareMode.ReadOnly),
+                new ShareableItem { Kind = SharedItemKind.Rule, ItemId = Guid.NewGuid(), Name = "Shops",
+                    Mode = ShareMode.ReadOnly }
+            ]
+        };
+
+        await Assert.That(FinanceTracker.Client.Pages.Sharing.SharedText(shares))
+            .IsEqualTo("Sharing 1 account, 1 tag and 1 rule with Sam Taylor");
     }
 
     [Test]

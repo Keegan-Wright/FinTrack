@@ -2,7 +2,8 @@
 @page "/Rules/{Id:guid}"
 @* Makes a rule or edits one (IRulesService), optionally starting from a transaction (?from={transactionId}). A new
    or edited rule reaches the transactions that arrive from the next sync, unless the user previews it and applies it
-   to the ones they have. *@
+   to the ones they have. A rule someone else shares with changes allowed can be edited with their tags shared with
+   the user, but only its owner deletes it or applies it to past transactions. *@
 @using FinanceTracker.Client.Components.Bills
 @using FinanceTracker.Client.Components.Rules
 @using FinanceTracker.Contracts.Bills
@@ -46,19 +47,28 @@ else
         <RuleForm @ref="_form" Model="@Draft" AccountNames="@AccountNames" TagNames="@TagNames" BillNames="@BillNames"
                   DebtNames="@DebtNames"/>
 
-        <RulePreviewPanel Preview="@_preview" Busy="@_previewing" CanApply="@Draft.IsEnabled"
-                          OnPreview="@PreviewAsync" OnApply="@SaveAndApplyAsync"/>
+        @if (Shared is { CanChange: false } seeOnly)
+        {
+            <MudAlert Severity="Severity.Info" Dense="true">
+                Only @seeOnly.SharedBy can change this rule.
+            </MudAlert>
+        }
+        else
+        {
+            <RulePreviewPanel Preview="@_preview" Busy="@_previewing" CanApply="@(Draft.IsEnabled && Shared is null)"
+                              OnPreview="@PreviewAsync" OnApply="@SaveAndApplyAsync"/>
 
-        <div class="ft-rule-editor__actions">
-            @if (Id is not null)
-            {
-                <MudButton Variant="Variant.Text" Color="Color.Error" StartIcon="@Icons.Material.Outlined.Delete"
-                           OnClick="@DeleteAsync">Delete</MudButton>
-            }
-            <span class="ft-rule-editor__spacer"></span>
-            <MudButton Href="Rules" Variant="Variant.Text">Cancel</MudButton>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@SaveAsync">Save</MudButton>
-        </div>
+            <div class="ft-rule-editor__actions">
+                @if (Id is not null && Shared is null)
+                {
+                    <MudButton Variant="Variant.Text" Color="Color.Error" StartIcon="@Icons.Material.Outlined.Delete"
+                               OnClick="@DeleteAsync">Delete</MudButton>
+                }
+                <span class="ft-rule-editor__spacer"></span>
+                <MudButton Href="Rules" Variant="Variant.Text">Cancel</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@SaveAsync">Save</MudButton>
+            </div>
+        }
     </div>
 }
 
@@ -80,6 +90,13 @@ else
     /// </summary>
     [PersistentState]
     public SaveRule? Draft { get; set; }
+
+    /// <summary>
+    /// The rule as it was loaded when someone else shares it with the user, with the names it uses and the tags they
+    /// can give it. Null for their own, or a new one.
+    /// </summary>
+    [PersistentState]
+    public Rule? Shared { get; set; }
 
     /// <summary>
     /// The user's accounts.
@@ -109,23 +126,109 @@ else
     private RulePreview? _preview;
     private bool _previewing;
 
-    private string Title => Id is null ? "New rule" : "Edit rule";
+    private string Title
+    {
+        get
+        {
+            if (Id is null)
+            {
+                return "New rule";
+            }
 
-    private string Subtitle => Id is null
-        ? "Applies to transactions from the next sync, the ones you have already are left as they are"
-        : "Saving checks again the transactions this rule already reached, taking back what it no longer gives";
+            if (Shared is { } shared)
+            {
+                return $"{shared.SharedBy}'s rule";
+            }
 
-    private IReadOnlyDictionary<Guid, string> AccountNames =>
-        (Accounts ?? []).ToDictionary(static x => x.AccountId, static x => x.AccountName);
+            return "Edit rule";
+        }
+    }
 
-    private IReadOnlyDictionary<Guid, string> TagNames =>
-        (Tags ?? []).ToDictionary(static x => x.ClassificationId, static x => x.Tag ?? string.Empty);
+    private string Subtitle
+    {
+        get
+        {
+            if (Id is null)
+            {
+                return "Applies to transactions from the next sync, the ones you have already are left as they are";
+            }
 
-    private IReadOnlyDictionary<Guid, string> BillNames =>
-        (BillList ?? []).ToDictionary(static x => x.Id, BillText.PickerLabel);
+            if (Shared is not null)
+            {
+                return "It runs on the accounts its owner can change. Saving checks again what it already reached";
+            }
 
-    private IReadOnlyDictionary<Guid, string> DebtNames =>
-        (DebtList ?? []).ToDictionary(static x => x.Id, static x => x.Name);
+            return "Saving checks again the transactions this rule already reached, taking back what it no longer gives";
+        }
+    }
+
+    // Someone else's rule names what it uses, and offers only their tags shared with the user
+    private IReadOnlyDictionary<Guid, string> AccountNames
+    {
+        get
+        {
+            Dictionary<Guid, string> names =
+                (Accounts ?? []).ToDictionary(static x => x.AccountId, static x => x.AccountName);
+            foreach (RuleCondition condition in Shared?.Conditions ?? [])
+            {
+                if (condition.Field == RuleField.Account && Guid.TryParse(condition.Value, out Guid accountId) &&
+                    Shared!.Names.TryGetValue(accountId, out string? name))
+                {
+                    names.TryAdd(accountId, name);
+                }
+            }
+
+            return names;
+        }
+    }
+
+    private IReadOnlyDictionary<Guid, string> TagNames
+    {
+        get
+        {
+            if (Shared is { } shared)
+            {
+                return shared.TagChoices;
+            }
+
+            return (Tags ?? []).ToDictionary(static x => x.ClassificationId, static x => x.Tag ?? string.Empty);
+        }
+    }
+
+    private IReadOnlyDictionary<Guid, string> BillNames
+    {
+        get
+        {
+            if (Shared is { } shared)
+            {
+                return NamesOf(shared, shared.Actions.Select(static x => x.BillId));
+            }
+
+            return (BillList ?? []).ToDictionary(static x => x.Id, BillText.PickerLabel);
+        }
+    }
+
+    private IReadOnlyDictionary<Guid, string> DebtNames
+    {
+        get
+        {
+            if (Shared is { } shared)
+            {
+                return NamesOf(shared, shared.Actions.Select(static x => x.DebtId));
+            }
+
+            return (DebtList ?? []).ToDictionary(static x => x.Id, static x => x.Name);
+        }
+    }
+
+    /// <summary>
+    /// The names <paramref name="shared"/> carries for <paramref name="ids"/>, the bills or debts it already pays.
+    /// </summary>
+    private static Dictionary<Guid, string> NamesOf(Rule shared, IEnumerable<Guid?> ids) =>
+        ids.OfType<Guid>()
+            .Distinct()
+            .Where(shared.Names.ContainsKey)
+            .ToDictionary(static x => x, x => shared.Names[x]);
 
     protected override async Task OnInitializedAsync()
     {
@@ -172,7 +275,13 @@ else
         try
         {
             SetLoadingState(true, "Loading the rule");
-            return RuleDrafts.From(await RulesService.GetRuleAsync(id, _cts.Token));
+            Rule rule = await RulesService.GetRuleAsync(id, _cts.Token);
+            if (rule.SharedBy is not null)
+            {
+                Shared = rule;
+            }
+
+            return RuleDrafts.From(rule);
         }
         catch (InvalidOperationException)
         {

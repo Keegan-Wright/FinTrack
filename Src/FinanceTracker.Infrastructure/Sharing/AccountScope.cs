@@ -38,6 +38,14 @@ public sealed class AccountScope : IAccountScope
         return ResolveAsync(context, _currentUser.UserId, onlyChangeable: true, justMine: false, cancellationToken);
     }
 
+    /// <summary>
+    /// The accounts <paramref name="userId"/> can change, as <see cref="ResolveChangeableAsync"/> gives the current
+    /// user, for work done on someone else's behalf, such as re-applying their rule after another person edited it.
+    /// </summary>
+    internal static Task<AccountsInView> ResolveChangeableForAsync(FinanceTrackerContext context, Guid userId,
+        CancellationToken cancellationToken) =>
+        ResolveAsync(context, userId, onlyChangeable: true, justMine: false, cancellationToken);
+
     /// <param name="onlyChangeable">Only the shared accounts they're allowed to change.</param>
     /// <param name="justMine">Only their own, and joint accounts they're one of the two of.</param>
     private static async Task<AccountsInView> ResolveAsync(FinanceTrackerContext context, Guid userId,

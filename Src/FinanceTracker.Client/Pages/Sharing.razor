@@ -489,30 +489,51 @@
     }
 
     /// <summary>
-    /// How many accounts and other things they now share, once saved, e.g. <c>Sharing 2 accounts and 3 tags with
-    /// Sam</c>.
+    /// How many accounts and other things they now share, once saved, e.g. <c>Sharing 2 accounts, 3 tags and 1 rule
+    /// with Sam</c>.
     /// </summary>
     internal static string SharedText(LinkShares shares)
     {
-        int accounts = shares.YourAccounts.Count(static x => x.Mode is not null);
-        int tags = shares.YourItems.Count(static x => x.Kind == SharedItemKind.Classification && x.Mode is not null);
-        if (accounts == 0 && tags == 0)
-        {
-            return $"Nothing shared with {shares.Name}";
-        }
-
         List<string> parts = [];
+        int accounts = shares.YourAccounts.Count(static x => x.Mode is not null);
         if (accounts > 0)
         {
             parts.Add(AccountsText(accounts));
         }
 
-        if (tags > 0)
+        AddCount(parts, shares, SharedItemKind.Classification, "tag");
+        AddCount(parts, shares, SharedItemKind.Rule, "rule");
+        if (parts.Count == 0)
         {
-            parts.Add(CountText(tags, "tag"));
+            return $"Nothing shared with {shares.Name}";
         }
 
-        return $"Sharing {string.Join(" and ", parts)} with {shares.Name}";
+        return $"Sharing {ListText(parts)} with {shares.Name}";
+    }
+
+    /// <summary>
+    /// Adds how many of <paramref name="kind"/> they share to <paramref name="parts"/>, when any.
+    /// </summary>
+    private static void AddCount(List<string> parts, LinkShares shares, SharedItemKind kind, string what)
+    {
+        int count = shares.YourItems.Count(x => x.Kind == kind && x.Mode is not null);
+        if (count > 0)
+        {
+            parts.Add(CountText(count, what));
+        }
+    }
+
+    /// <summary>
+    /// <paramref name="parts"/> as a list, e.g. <c>a, b and c</c>.
+    /// </summary>
+    private static string ListText(List<string> parts)
+    {
+        if (parts.Count == 1)
+        {
+            return parts[0];
+        }
+
+        return $"{string.Join(", ", parts[..^1])} and {parts[^1]}";
     }
 
     private static string ConfirmTitle(UserLink link)

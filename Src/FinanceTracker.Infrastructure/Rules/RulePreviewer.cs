@@ -18,8 +18,11 @@ internal static class RulePreviewer
     /// <param name="transactions">The user's transactions, untracked, as they're changed in place.</param>
     /// <param name="names">The user's tags, bills and debts by id, to say what changes by name.</param>
     /// <param name="rulesFor">The rules that reach each transaction, the draft among them.</param>
+    /// <param name="describe">What the user is shown of a transaction, see <see cref="Sharing.PrivateTransfers"/>.
+    /// </param>
     public static RulePreview Preview(Func<BankTransaction, IReadOnlyList<DomainRule>> rulesFor, DomainRule draft,
-        IEnumerable<BankTransaction> transactions, RulePreviewNames names, DateTime now)
+        IEnumerable<BankTransaction> transactions, RulePreviewNames names, Func<BankTransaction, string> describe,
+        DateTime now)
     {
         List<RulePreviewChange> changes = [];
         int leftAlone = 0;
@@ -36,7 +39,7 @@ internal static class RulePreviewer
 
             if (transaction.ApplyRules(outcome, now))
             {
-                changes.Add(ToChange(transaction, before, names));
+                changes.Add(ToChange(transaction, before, names, describe(transaction)));
             }
         }
 
@@ -49,14 +52,14 @@ internal static class RulePreviewer
     }
 
     private static RulePreviewChange ToChange(BankTransaction transaction, RulePreviewSnapshot before,
-        RulePreviewNames names)
+        RulePreviewNames names, string description)
     {
         RulePreviewSnapshot after = RulePreviewSnapshot.Of(transaction);
 
         return new RulePreviewChange
         {
             TransactionId = transaction.Id,
-            Description = transaction.Description,
+            Description = description,
             Amount = transaction.Amount,
             TransactionTime = transaction.OccurredAt,
             TagsAdded = Names(after.Tags.Except(before.Tags), names.Tags),

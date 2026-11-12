@@ -8,5 +8,11 @@ public enum SharedItemKind
     /// <summary>
     /// A tag. Shared, the other person can put it on their own transactions too, and rename it when allowed changes.
     /// </summary>
-    Classification = 0
+    Classification = 0,
+
+    /// <summary>
+    /// A rule. Shared, the other person sees it on their Rules page, and edits it too when allowed changes. It still
+    /// runs where its owner's rules run.
+    /// </summary>
+    Rule = 1
 }
