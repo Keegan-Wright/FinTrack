@@ -201,7 +201,7 @@ else
         {
             if (Shared is { } shared)
             {
-                return NamesOf(shared, shared.Actions.Select(static x => x.BillId));
+                return shared.BillChoices;
             }
 
             return (BillList ?? []).ToDictionary(static x => x.Id, BillText.PickerLabel);
@@ -242,7 +242,10 @@ else
                 .Where(static x => x.SharedBy is null)
                 .ToListAsync(cancellationToken).AsTask());
         BillList = await LoadOnceAsync(BillList, "Loading the rule", cancellationToken =>
-            BillsService.GetBillsAsync(cancellationToken).ToListAsync(cancellationToken).AsTask());
+            // Only their own, as with tags
+            BillsService.GetBillsAsync(cancellationToken)
+                .Where(static x => x.SharedBy is null)
+                .ToListAsync(cancellationToken).AsTask());
         DebtList = await LoadOnceAsync(DebtList, "Loading the rule", cancellationToken =>
             DebtsService.GetDebtsAsync(cancellationToken).ToListAsync(cancellationToken).AsTask());
 
@@ -259,7 +262,9 @@ else
     {
         Accounts = await TransactionsService.GetAccountsForTransactionFiltersAsync(_cts.Token)
             .ToListAsync(_cts.Token);
-        BillList = await BillsService.GetBillsAsync(_cts.Token).ToListAsync(_cts.Token);
+        BillList = await BillsService.GetBillsAsync(_cts.Token)
+            .Where(static x => x.SharedBy is null)
+            .ToListAsync(_cts.Token);
     }
 
     /// <summary>

@@ -102,7 +102,7 @@ public sealed class AccountScope : IAccountScope
 
         return new AccountsInView(userId, ownShown, owners, changeable,
             await OwnersWithPrivateAccountsAsync(context, othersAccounts, hidden, cancellationToken), ownHidden,
-            filling.ToDictionary(static x => x.HiddenId, static x => x.ShownId));
+            filling.ToDictionary(static x => x.HiddenId, static x => x.ShownId), justMine);
     }
 
     /// <summary>

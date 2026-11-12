@@ -55,7 +55,7 @@ public class BillSyncService : ServiceBase<BillSyncService>, IBillSyncService
         bills.AddRange(seeded.Added);
 
         DateOnly from = MatchFrom(seeded.Added, today);
-        List<BankTransaction> transactions = await LoadTransactionsAsync(context, from, cancellationToken);
+        List<BankTransaction> transactions = await LoadTransactionsAsync(context, UserId, from, cancellationToken);
 
         int matched = BillMatcher.Match(bills, transactions, timeZone, _timeProvider.UtcNow);
         int pricesChanged = FollowPrices(bills, transactions, from, timeZone, today);
@@ -88,13 +88,16 @@ public class BillSyncService : ServiceBase<BillSyncService>, IBillSyncService
         return summary;
     }
 
-    public async Task<int> MatchFromAsync(DateOnly from, CancellationToken cancellationToken)
+    public Task<int> MatchFromAsync(DateOnly from, CancellationToken cancellationToken) =>
+        MatchFromForAsync(UserId, from, cancellationToken);
+
+    public async Task<int> MatchFromForAsync(Guid ownerId, DateOnly from, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        List<Bill> bills = await context.Bills.OwnedBy(UserId).ToListAsync(cancellationToken);
-        List<BankTransaction> transactions = await LoadTransactionsAsync(context, from, cancellationToken);
+        List<Bill> bills = await context.Bills.OwnedBy(ownerId).ToListAsync(cancellationToken);
+        List<BankTransaction> transactions = await LoadTransactionsAsync(context, ownerId, from, cancellationToken);
 
         int matched = BillMatcher.Match(bills, transactions, _timeProvider.LocalTimeZone, _timeProvider.UtcNow);
         FollowPrices(bills, transactions, from, _timeProvider.LocalTimeZone, _timeProvider.Today);
@@ -125,12 +128,12 @@ public class BillSyncService : ServiceBase<BillSyncService>, IBillSyncService
     /// Tracked, so saving writes only the transactions the matcher changed. Dates are encrypted, so the day index
     /// narrows them and the decrypted dates give the exact range.
     /// </summary>
-    private async Task<List<BankTransaction>> LoadTransactionsAsync(FinanceTrackerContext context, DateOnly from,
-        CancellationToken cancellationToken)
+    private static async Task<List<BankTransaction>> LoadTransactionsAsync(FinanceTrackerContext context,
+        Guid ownerId, DateOnly from, CancellationToken cancellationToken)
     {
         DateTime fromUtc = from.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc).AddDays(-1);
 
-        List<BankTransaction> transactions = await context.BankTransactions.OwnedBy(UserId)
+        List<BankTransaction> transactions = await context.BankTransactions.OwnedBy(ownerId)
             .WhereEncryptedDayWithin(x => x.OccurredAt, fromUtc, null, context)
             .ToListAsync(cancellationToken);
 

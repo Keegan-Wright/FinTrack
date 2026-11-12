@@ -22,11 +22,30 @@ internal static class ItemShares
             .Where(x => x.LinkId == link.Id && x.UserId == userId && x.Reason == ShareReason.Chosen &&
                         x.ItemType != ShareItemType.BankAccount)
             .ToDictionaryAsync(static x => (x.ItemType, x.ItemId), static x => x.Mode, cancellationToken);
+        Dictionary<Guid, (string Name, DomainShareMode Mode)> sharedAccounts =
+            await SharedAccountsAsync(context, link, userId, cancellationToken);
+        Dictionary<Guid, Guid> billAccounts = await context.Bills.OwnedBy(userId).AsNoTracking()
+            .ToDictionaryAsync(static x => x.Id, static x => x.AccountId, cancellationToken);
 
         List<ShareableItem> items = [];
         foreach ((ShareItemType itemType, Guid id, string name) in await ShareableOfAsync(context, userId,
                      cancellationToken))
         {
+            // A bill paid from a shared account goes with it, and is shared as it is
+            if (itemType == ShareItemType.Bill &&
+                sharedAccounts.TryGetValue(billAccounts[id], out (string Name, DomainShareMode Mode) account))
+            {
+                items.Add(new ShareableItem
+                {
+                    Kind = SharedItemKind.Bill,
+                    ItemId = id,
+                    Name = name,
+                    Mode = ShareModeMapping.ToContract(account.Mode),
+                    FollowsAccount = account.Name
+                });
+                continue;
+            }
+
             items.Add(new ShareableItem
             {
                 Kind = ToContract(itemType),
@@ -37,6 +56,62 @@ internal static class ItemShares
         }
 
         return items;
+    }
+
+    /// <summary>
+    /// <paramref name="userId"/>'s bills paid from an account they share in <paramref name="link"/>, so shared with it.
+    /// </summary>
+    public static async Task<HashSet<Guid>> BillsFollowingAccountsAsync(FinanceTrackerContext context,
+        DomainLink link, Guid userId, CancellationToken cancellationToken)
+    {
+        List<Guid> accountIds = (await SharedAccountsAsync(context, link, userId, cancellationToken)).Keys.ToList();
+        List<Guid> bills = await context.Bills.OwnedBy(userId).AsNoTracking()
+            .Where(x => accountIds.Contains(x.AccountId))
+            .Select(static x => x.Id)
+            .ToListAsync(cancellationToken);
+
+        return bills.ToHashSet();
+    }
+
+    /// <summary>
+    /// Takes <paramref name="userId"/>'s bills that stopped being shared in <paramref name="link"/>, as the account
+    /// they're paid from no longer is, off the other person's transactions. Not those still shared another way, chosen
+    /// or for being on their transaction. Tracked changes, saved by the caller.
+    /// </summary>
+    /// <param name="before">The bills that went with a shared account before the change.</param>
+    public static async Task TakeOffBillsNoLongerSharedAsync(FinanceTrackerContext context, DomainLink link,
+        Guid userId, HashSet<Guid> before, CancellationToken cancellationToken)
+    {
+        HashSet<Guid> after = await BillsFollowingAccountsAsync(context, link, userId, cancellationToken);
+        List<Guid> stillShared = await context.Shares.AsNoTracking()
+            .Where(x => x.LinkId == link.Id && x.UserId == userId && x.ItemType == ShareItemType.Bill)
+            .Select(static x => x.ItemId)
+            .ToListAsync(cancellationToken);
+
+        foreach (Guid billId in before.Except(after).Except(stillShared))
+        {
+            await AnnotationShares.TakeOffTransactionsOfAsync(context, link.OtherThan(userId), ShareItemType.Bill,
+                billId, cancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// The accounts <paramref name="userId"/> shares in <paramref name="link"/>, with their names and how each is
+    /// shared, by account.
+    /// </summary>
+    private static async Task<Dictionary<Guid, (string Name, DomainShareMode Mode)>> SharedAccountsAsync(
+        FinanceTrackerContext context, DomainLink link, Guid userId, CancellationToken cancellationToken)
+    {
+        var shared = await (
+                from share in context.Shares
+                join account in context.BankAccounts on share.ItemId equals account.Id
+                where share.LinkId == link.Id && share.UserId == userId &&
+                      share.ItemType == ShareItemType.BankAccount && account.UserId == userId
+                select new { account.Id, account.DisplayName, share.Mode })
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        return shared.ToDictionary(static x => x.Id, static x => (x.DisplayName, x.Mode));
     }
 
     /// <summary>
@@ -67,10 +142,44 @@ internal static class ItemShares
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
+        // Bills they chose to share, and those paid from an account they share, as that account is
+        var chosenBills = await (
+                from share in context.Shares
+                join bill in context.Bills on share.ItemId equals bill.Id
+                where share.LinkId == link.Id && share.UserId == otherId && share.Reason == ShareReason.Chosen &&
+                      share.ItemType == ShareItemType.Bill && bill.UserId == otherId
+                select new { bill.Id, bill.Name, share.Mode })
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        Dictionary<Guid, (string Name, DomainShareMode Mode)> theirAccounts =
+            await SharedAccountsAsync(context, link, otherId, cancellationToken);
+        List<Guid> theirAccountIds = theirAccounts.Keys.ToList();
+
+        var accountBills = await context.Bills.OwnedBy(otherId).AsNoTracking()
+            .Where(x => theirAccountIds.Contains(x.AccountId))
+            .Select(static x => new { x.Id, x.Name, x.AccountId })
+            .ToListAsync(cancellationToken);
+
+        Dictionary<Guid, (string Name, DomainShareMode Mode)> bills = chosenBills
+            .ToDictionary(static x => x.Id, static x => (x.Name, x.Mode));
+        foreach (var bill in accountBills)
+        {
+            DomainShareMode mode = theirAccounts[bill.AccountId].Mode;
+            if (bills.TryGetValue(bill.Id, out (string Name, DomainShareMode Mode) chosen) &&
+                chosen.Mode == DomainShareMode.AllowChanges)
+            {
+                mode = DomainShareMode.AllowChanges;
+            }
+
+            bills[bill.Id] = (bill.Name, mode);
+        }
+
         return
         [
             .. Named(SharedItemKind.Classification, tags.Select(static x => (x.Name, x.Mode))),
-            .. Named(SharedItemKind.Rule, rules.Select(static x => (x.Name, x.Mode)))
+            .. Named(SharedItemKind.Rule, rules.Select(static x => (x.Name, x.Mode))),
+            .. Named(SharedItemKind.Bill, bills.Values)
         ];
     }
 
@@ -91,8 +200,11 @@ internal static class ItemShares
             throw new InvalidOperationException("Only your own things can be shared.");
         }
 
-        Dictionary<(ShareItemType, Guid), DomainShareMode> wanted = request.Items.ToDictionary(
-            static x => (ToDomain(x.Kind), x.ItemId), static x => ShareModeMapping.ToDomain(x.Mode));
+        // A bill paid from an account shared here goes with the account, it isn't chosen on its own
+        HashSet<Guid> followingAccounts = await BillsFollowingAccountsAsync(context, link, userId, cancellationToken);
+        Dictionary<(ShareItemType, Guid), DomainShareMode> wanted = request.Items
+            .Where(x => !(x.Kind == SharedItemKind.Bill && followingAccounts.Contains(x.ItemId)))
+            .ToDictionary(static x => (ToDomain(x.Kind), x.ItemId), static x => ShareModeMapping.ToDomain(x.Mode));
 
         List<Share> existing = await context.Shares
             .Where(x => x.LinkId == link.Id && x.UserId == userId && x.ItemType != ShareItemType.BankAccount)
@@ -109,7 +221,8 @@ internal static class ItemShares
             context.Shares.Remove(share);
             bool stillOnTheirs = existing.Exists(x => x.Reason == ShareReason.OnTransaction &&
                                                       x.ItemType == share.ItemType && x.ItemId == share.ItemId);
-            if (!stillOnTheirs)
+            bool stillWithItsAccount = share.ItemType == ShareItemType.Bill && followingAccounts.Contains(share.ItemId);
+            if (!stillOnTheirs && !stillWithItsAccount)
             {
                 await AnnotationShares.TakeOffTransactionsOfAsync(context, link.OtherThan(userId), share.ItemType,
                     share.ItemId, cancellationToken);
@@ -126,6 +239,7 @@ internal static class ItemShares
     {
         SharedItemKind.Classification => ShareItemType.Classification,
         SharedItemKind.Rule => ShareItemType.Rule,
+        SharedItemKind.Bill => ShareItemType.Bill,
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
     };
 
@@ -133,11 +247,12 @@ internal static class ItemShares
     {
         ShareItemType.Classification => SharedItemKind.Classification,
         ShareItemType.Rule => SharedItemKind.Rule,
+        ShareItemType.Bill => SharedItemKind.Bill,
         _ => throw new ArgumentOutOfRangeException(nameof(itemType), itemType, null)
     };
 
     /// <summary>
-    /// What <paramref name="userId"/> can choose to share besides accounts: their tags, then their rules, each by name.
+    /// What <paramref name="userId"/> can choose to share besides accounts: their tags, rules and bills, each by name.
     /// </summary>
     private static async Task<List<(ShareItemType ItemType, Guid Id, string Name)>> ShareableOfAsync(
         FinanceTrackerContext context, Guid userId, CancellationToken cancellationToken)
@@ -148,13 +263,18 @@ internal static class ItemShares
         var rules = await context.Rules.OwnedBy(userId).AsNoTracking()
             .Select(static x => new { x.Id, x.Name })
             .ToListAsync(cancellationToken);
+        var bills = await context.Bills.OwnedBy(userId).AsNoTracking()
+            .Select(static x => new { x.Id, x.Name })
+            .ToListAsync(cancellationToken);
 
         return
         [
             .. tags.OrderBy(static x => x.Name, StringComparer.CurrentCultureIgnoreCase)
                 .Select(static x => (ShareItemType.Classification, x.Id, x.Name)),
             .. rules.OrderBy(static x => x.Name, StringComparer.CurrentCultureIgnoreCase)
-                .Select(static x => (ShareItemType.Rule, x.Id, x.Name))
+                .Select(static x => (ShareItemType.Rule, x.Id, x.Name)),
+            .. bills.OrderBy(static x => x.Name, StringComparer.CurrentCultureIgnoreCase)
+                .Select(static x => (ShareItemType.Bill, x.Id, x.Name))
         ];
     }
 

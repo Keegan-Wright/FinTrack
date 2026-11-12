@@ -82,4 +82,11 @@ public class Rule
     /// </summary>
     [Description("The tags a shared rule the user can edit can add, by id")]
     public Dictionary<Guid, string> TagChoices { get; init; } = [];
+
+    /// <summary>
+    /// For a rule someone else shares with changes allowed, the bills its actions can pay: its owner's bills shared
+    /// with the user, and those already on it, by id.
+    /// </summary>
+    [Description("The bills a shared rule the user can edit can pay, by id")]
+    public Dictionary<Guid, string> BillChoices { get; init; } = [];
 }

@@ -1,5 +1,6 @@
 using FinanceTracker.Contracts.Rules;
 using FinanceTracker.Domain.Sharing;
+using FinanceTracker.Infrastructure.Bills;
 using FinanceTracker.Infrastructure.Sharing;
 using Microsoft.EntityFrameworkCore;
 using DomainRule = FinanceTracker.Domain.Rules.Rule;
@@ -55,9 +56,11 @@ internal static class SharedRules
         Dictionary<Guid, string> names = await NamesAsync(context, seen, rule, cancellationToken);
 
         Dictionary<Guid, string> tagChoices = [];
+        Dictionary<Guid, string> billChoices = [];
         if (shared.CanChange)
         {
             tagChoices = await TagChoicesAsync(context, userId, rule, cancellationToken);
+            billChoices = await BillChoicesAsync(context, userId, seen, rule, cancellationToken);
         }
 
         return new Rule
@@ -73,13 +76,14 @@ internal static class SharedRules
             SharedBy = shared.SharedBy,
             CanChange = shared.CanChange,
             Names = names,
-            TagChoices = tagChoices
+            TagChoices = tagChoices,
+            BillChoices = billChoices
         };
     }
 
     /// <summary>
     /// Checks an edit of <paramref name="existing"/>, someone else's rule, by <paramref name="userId"/> only uses
-    /// what they may. Its owner's tags shared with them or already on it, the bills and debts already on it, and
+    /// what they may. Its owner's tags and bills shared with them or already on it, the debts already on it, and
     /// accounts they can see or it already looks at.
     /// </summary>
     /// <exception cref="InvalidOperationException">The edit uses something else.</exception>
@@ -92,12 +96,17 @@ internal static class SharedRules
             throw new InvalidOperationException("A shared rule can only add its owner's tags shared with you.");
         }
 
-        HashSet<Guid> bills = existing.Actions.Select(static x => x.BillId).OfType<Guid>().ToHashSet();
-        HashSet<Guid> debts = existing.Actions.Select(static x => x.DebtId).OfType<Guid>().ToHashSet();
-        if (rule.Actions.Any(x => (x.BillId is { } billId && !bills.Contains(billId)) ||
-                                  (x.DebtId is { } debtId && !debts.Contains(debtId))))
+        HashSet<Guid> bills = (await BillChoicesAsync(context, userId, seen, existing, cancellationToken)).Keys
+            .ToHashSet();
+        if (rule.Actions.Any(x => x.BillId is { } billId && !bills.Contains(billId)))
         {
-            throw new InvalidOperationException("A shared rule can only keep the bills and debts it already pays.");
+            throw new InvalidOperationException("A shared rule can only pay its owner's bills shared with you.");
+        }
+
+        HashSet<Guid> debts = existing.Actions.Select(static x => x.DebtId).OfType<Guid>().ToHashSet();
+        if (rule.Actions.Any(x => x.DebtId is { } debtId && !debts.Contains(debtId)))
+        {
+            throw new InvalidOperationException("A shared rule can only keep the debts it already pays.");
         }
 
         HashSet<Guid> accounts = AccountsOf(existing).ToHashSet();
@@ -134,6 +143,31 @@ internal static class SharedRules
         return await context.CustomClassifications.AsNoTracking()
             .Where(x => x.UserId == ownerId && (onIt.Contains(x.Id) || shared.Contains(x.Id)))
             .ToDictionaryAsync(static x => x.Id, static x => x.Tag, cancellationToken);
+    }
+
+    /// <summary>
+    /// The bills <paramref name="userId"/> can have <paramref name="rule"/>, someone else's, pay. Its owner's bills
+    /// they see, shared with them or paid from an account shared with them, and those already on it.
+    /// </summary>
+    private static async Task<Dictionary<Guid, string>> BillChoicesAsync(FinanceTrackerContext context, Guid userId,
+        AccountsInView seen, DomainRule rule, CancellationToken cancellationToken)
+    {
+        Guid ownerId = rule.UserId;
+        Dictionary<Guid, string> choices = (await SharedBills.ForAsync(context, userId, seen, cancellationToken))
+            .Where(x => x.Bill.UserId == ownerId)
+            .ToDictionary(static x => x.Bill.Id, static x => x.Bill.Name);
+
+        List<Guid> onIt = rule.Actions.Select(static x => x.BillId).OfType<Guid>()
+            .Where(x => !choices.ContainsKey(x))
+            .ToList();
+
+        foreach (var bill in await context.Bills.AsNoTracking().Where(x => onIt.Contains(x.Id))
+                     .Select(static x => new { x.Id, x.Name }).ToListAsync(cancellationToken))
+        {
+            choices[bill.Id] = bill.Name;
+        }
+
+        return choices;
     }
 
     /// <summary>

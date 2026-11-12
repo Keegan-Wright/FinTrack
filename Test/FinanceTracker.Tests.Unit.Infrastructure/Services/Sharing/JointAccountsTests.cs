@@ -282,6 +282,32 @@ public class JointAccountsTests : InfrastructureTestBase
     }
 
     [Test]
+    public async Task Merged_AlexsCopysBills_ShowOnceThroughSamsCopy_UnlessSamsHasNoSuchBill()
+    {
+        // Arrange, the phone direct debit seeded on both copies, a gym bill only Alex added
+        await using (FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken))
+        {
+            DateOnly start = DateOnly.FromDateTime(Spent).AddMonths(-2);
+            context.Bills.AddRange(
+                Bill(Sam, "sam-joint", "Phone", "PHONE CO", start),
+                Bill(Alex, "alex-joint", "Phone", "Phone Co ", start),
+                Bill(Alex, "alex-joint", "Gym", "GYM", start));
+            await context.SaveChangesAsync(CancellationToken);
+        }
+
+        await ShareSamsJointAsync();
+
+        // Act
+        await MergeAsync();
+
+        // Assert
+        List<FinanceTracker.Contracts.Bills.Bill> alexs = await Bills(Alex).GetBillsAsync(CancellationToken)
+            .ToListAsync(CancellationToken);
+        await Assert.That(alexs.Select(static x => (x.Name, x.SharedBy)))
+            .IsEquivalentTo([("Gym", (string?)null), ("Phone", "Sam Taylor")]);
+    }
+
+    [Test]
     public async Task PotsWithoutAnAccountNumber_AreSuggestedByBankNameAndTheirTransactions()
     {
         // Arrange, pots of the joint account each of them has a copy of. Christmas has the same move on both, Garden
@@ -416,6 +442,19 @@ public class JointAccountsTests : InfrastructureTestBase
         context.NetWorthSnapshots.Add(new NetWorthSnapshot(account.UserId, BalanceDay, theirs));
         await context.SaveChangesAsync(CancellationToken);
     }
+
+    private FinanceTracker.Domain.Bills.Bill Bill(string username, string account, string name, string payee,
+        DateOnly start) =>
+        new(Scenario.UserMappings[username], Account(account), name, payee,
+            FinanceTracker.Domain.Bills.BillFrequency.Monthly, 12m, start,
+            FinanceTracker.Domain.Bills.BillSource.DirectDebit, Guid.NewGuid());
+
+    private FinanceTracker.Infrastructure.Bills.BillsService Bills(string username) =>
+        new(CurrentUserFor(username), DbContextFactory,
+            NullLogger<FinanceTracker.Infrastructure.Bills.BillsService>.Instance,
+            new FinanceTracker.Infrastructure.Bills.BillSyncService(CurrentUserFor(username), DbContextFactory,
+                NullLogger<FinanceTracker.Infrastructure.Bills.BillSyncService>.Instance, TimeProvider.System,
+                TestMetrics.Unobserved), TimeProvider.System, Scope(username));
 
     private async Task<BankTransaction> LoadAsync(string transaction)
     {

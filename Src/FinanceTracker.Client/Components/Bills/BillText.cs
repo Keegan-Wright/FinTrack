@@ -72,12 +72,17 @@ public static class BillText
 
     /// <summary>
     /// How a bill reads where one is picked, telling apart bills with the same name, e.g.
-    /// <c>Phone · Joint · £12.00 monthly</c>, or <c>… · ended</c> once it has.
+    /// <c>Phone · Joint · £12.00 monthly</c>, with whose it is when someone else's, and <c>… · ended</c> once it has.
     /// </summary>
     public static string PickerLabel(Bill bill)
     {
         string label = $"{bill.Name} · {bill.AccountName} · {CurrencyFormatter.Format(bill.ExpectedAmount)} " +
                        FrequencyName(bill.Frequency).ToLowerInvariant();
+        if (bill.SharedBy is { } sharedBy)
+        {
+            label = $"{label} · {sharedBy}'s";
+        }
+
         if (bill.EndedOn is not null)
         {
             return $"{label} · ended";
@@ -172,4 +177,17 @@ public static class BillText
     /// </summary>
     public static string PaidOfDue(BillMonthOverview overview) =>
         $"{CurrencyFormatter.Format(overview.Paid)} of {CurrencyFormatter.Format(overview.Due)} paid";
+
+    /// <summary>
+    /// Whose a shared bill is and what the user can do, e.g. <c>Sam Taylor's · you can change it</c>.
+    /// </summary>
+    public static string SharedText(string sharedBy, bool canChange)
+    {
+        if (canChange)
+        {
+            return $"{sharedBy}'s · you can change it";
+        }
+
+        return $"{sharedBy}'s · you can see it";
+    }
 }

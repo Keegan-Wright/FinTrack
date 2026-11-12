@@ -8,6 +8,7 @@ using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.OpenBanking.Transfers;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
+using FinanceTracker.Infrastructure.Bills;
 using FinanceTracker.Infrastructure.Sharing;
 using FinanceTracker.Infrastructure.Persistence;
 using FinanceTracker.Infrastructure.SavingsGoals;
@@ -85,10 +86,12 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
         DateOnly first = DateOnly.FromDateTime(startDate);
         DateOnly last = DateOnly.FromDateTime(endDate).AddDays(-1);
 
-        Dictionary<DateOnly, List<CalendarBillItem>> bills = await LoadBillsAsync(context, first, last,
+        Dictionary<DateOnly, List<CalendarBillItem>> bills = await LoadBillsAsync(context, view, first, last,
             cancellationToken);
+
         Dictionary<DateOnly, List<CalendarEventItem>> events = await LoadEventsAsync(context, first, last,
             cancellationToken);
+
         Dictionary<DateOnly, List<CalendarDebtItem>> debts = await LoadDebtsAsync(first, last, cancellationToken);
 
         for (int i = 0; i < daysInMonth; i++)
@@ -350,14 +353,21 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
     }
 
     /// <summary>
-    /// Each bill's periods due from <paramref name="first"/> to <paramref name="last"/>, by the day they're due.
+    /// Each bill's periods due from <paramref name="first"/> to <paramref name="last"/>, by the day they're due. Their
+    /// own and those shared with them through <paramref name="view"/>, so Just mine leaves out the shared ones.
     /// </summary>
     private async Task<Dictionary<DateOnly, List<CalendarBillItem>>> LoadBillsAsync(FinanceTrackerContext context,
-        DateOnly first, DateOnly last, CancellationToken cancellationToken)
+        AccountsInView view, DateOnly first, DateOnly last, CancellationToken cancellationToken)
     {
-        List<Bill> bills = await context.Bills.OwnedBy(UserId).AsNoTracking().ToListAsync(cancellationToken);
-        List<BankTransaction> payments = await context.BankTransactions.OwnedBy(UserId).AsNoTracking()
-            .Where(static x => x.BillPayment != null && x.BillPayment.BillId != null)
+        List<Bill> bills = (await SharedBills.ForAsync(context, UserId, view, cancellationToken))
+            .Select(static x => x.Bill)
+            .ToList();
+
+        List<Guid> billIds = bills.Select(static x => x.Id).ToList();
+
+        List<BankTransaction> payments = await context.BankTransactions.InView(view).AsNoTracking()
+            .Where(x => x.BillPayment != null && x.BillPayment.BillId != null &&
+                        billIds.Contains(x.BillPayment.BillId.Value))
             .ToListAsync(cancellationToken);
 
         DateOnly today = _timeProvider.Today;

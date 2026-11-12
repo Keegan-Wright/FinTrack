@@ -33,6 +33,12 @@ public class ShareDialogTests : ComponentTestBase
     private readonly ShareableAccount _birthday = Account("Birthday fund", null);
     private readonly ShareableItem _holiday = TagItem("Holiday", ShareMode.ReadOnly);
     private readonly ShareableItem _kids = TagItem("Kids", null);
+    private readonly ShareableItem _rent = new()
+    {
+        Kind = SharedItemKind.Bill, ItemId = Guid.NewGuid(), Name = "Rent", Mode = ShareMode.ReadOnly,
+        FollowsAccount = "Joint"
+    };
+
     private readonly ShareableItem _shops = new()
     {
         Kind = SharedItemKind.Rule, ItemId = Guid.NewGuid(), Name = "Shops", Mode = null
@@ -49,7 +55,7 @@ public class ShareDialogTests : ComponentTestBase
             Name = _linked.Name,
             YourAccounts = [_current, _savings, _birthday],
             TheirAccounts = [new AccountSharedWithYou { Name = "Joint", BankName = "Bank", Mode = ShareMode.ReadOnly }],
-            YourItems = [_holiday, _kids, _shops],
+            YourItems = [_holiday, _kids, _shops, _rent],
             TheirItems =
             [
                 new ItemSharedWithYou
@@ -143,6 +149,36 @@ public class ShareDialogTests : ComponentTestBase
                 x.Items.Any(i => i.Kind == SharedItemKind.Rule && i.ItemId == _shops.ItemId) &&
                 x.Items.Any(i => i.Kind == SharedItemKind.Classification && i.ItemId == _holiday.ItemId)),
             Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Bills_OneGoingWithAnAccount_SaysSo_AndIsntChosen()
+    {
+        // Arrange
+        IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
+        IRenderedComponent<FinanceTracker.Client.Pages.Sharing> cut = RenderPage();
+        Button(cut, "Share").Click();
+        dialogs.WaitForState(() => dialogs.Markup.Contains("Birthday fund"));
+        dialogs.FindAll(".mud-tab").First(x => x.TextContent.Trim() == "Bills").Click();
+        dialogs.WaitForState(() => dialogs.Markup.Contains("Rent"));
+
+        // Act, a change elsewhere so something is saved
+        string says = dialogs.Markup;
+        dialogs.FindAll(".mud-tab").First(x => x.TextContent.Trim() == "Rules").Click();
+        dialogs.WaitForState(() => dialogs.Markup.Contains("Shops"));
+        Checkbox(dialogs, "Share Shops").Change(true);
+        Button(dialogs, "OK").Click();
+        cut.WaitForAssertion(() => _sharingService.ReceivedWithAnyArgs(1)
+            .ChangeItemSharesAsync(default, default!, default));
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(says).Contains("Goes with Joint · can see");
+            await _sharingService.Received(1).ChangeItemSharesAsync(_linked.Id,
+                Arg.Is<ChangeItemShares>(x => x.Items.All(i => i.ItemId != _rent.ItemId)),
+                Arg.Any<CancellationToken>());
+        }
     }
 
     [Test]

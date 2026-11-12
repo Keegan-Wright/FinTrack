@@ -221,13 +221,13 @@ public class SharedChangesTests : InfrastructureTestBase
     }
 
     [Test]
-    public async Task PayingAnotherPersonsBill_IsRefused()
+    public async Task PayingAnotherPersonsBillNotSharedWithThem_IsRefused()
     {
-        // Arrange
+        // Arrange, paid from Sam's private account, so not shared with Alex
         Guid samsBill;
         await using (FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken))
         {
-            DomainBill bill = new(Scenario.UserMappings[Sam], Account("sam-joint"), "Energy", "ENERGY",
+            DomainBill bill = new(Scenario.UserMappings[Sam], Account("sam-private"), "Energy", "ENERGY",
                 DomainBillFrequency.Monthly, 40m, DateOnly.FromDateTime(Spent), DomainBillSource.Manual);
             context.Bills.Add(bill);
             await context.SaveChangesAsync(CancellationToken);

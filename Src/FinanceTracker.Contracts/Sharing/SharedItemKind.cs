@@ -14,5 +14,11 @@ public enum SharedItemKind
     /// A rule. Shared, the other person sees it on their Rules page, and edits it too when allowed changes. It still
     /// runs where its owner's rules run.
     /// </summary>
-    Rule = 1
+    Rule = 1,
+
+    /// <summary>
+    /// A bill. One paid from an account shared with the other person is shared with it, in the same way. Others can be
+    /// chosen. Shared, the other person sees it, and edits it too when allowed changes.
+    /// </summary>
+    Bill = 2
 }

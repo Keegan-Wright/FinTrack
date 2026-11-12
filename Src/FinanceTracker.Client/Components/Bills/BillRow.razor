@@ -1,12 +1,13 @@
 @* One bill. Its name and what it costs, where it's paid from and how often, how each of its periods in the month
-   stands, and when it's next due and was last paid. *@
+   stands, and when it's next due and was last paid. Someone else's says whose, and only has actions when the user can
+   change it. *@
 @using FinanceTracker.Contracts.Bills
 
 <div class="ft-bill">
     <div class="ft-bill__line">
         <MudText Typo="Typo.body2" Class="ft-bill__name">@Bill.Name</MudText>
         <MoneyText Value="@Bill.ExpectedAmount"/>
-        @if (Editable)
+        @if (Editable && Bill.CanChange)
         {
             <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true"
                      AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
@@ -29,6 +30,10 @@
     </div>
 
     <MudText Typo="Typo.caption" Class="mud-text-secondary ft-bill__summary">@BillText.Summary(Bill)</MudText>
+    @if (Bill.SharedBy is { } sharedBy)
+    {
+        <MudText Typo="Typo.caption" Class="mud-text-secondary">@BillText.SharedText(sharedBy, Bill.CanChange)</MudText>
+    }
 
     @if (Periods is not null)
     {

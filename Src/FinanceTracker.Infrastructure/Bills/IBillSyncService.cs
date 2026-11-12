@@ -22,4 +22,11 @@ public interface IBillSyncService
     /// </summary>
     /// <returns>How many transactions' bill changed.</returns>
     Task<int> MatchFromAsync(DateOnly from, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// <see cref="MatchFromAsync"/> for <paramref name="ownerId"/>'s bills and transactions, after someone they share a
+    /// bill with changed it.
+    /// </summary>
+    /// <returns>How many transactions' bill changed.</returns>
+    Task<int> MatchFromForAsync(Guid ownerId, DateOnly from, CancellationToken cancellationToken);
 }

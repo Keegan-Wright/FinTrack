@@ -14,6 +14,8 @@ namespace FinanceTracker.Infrastructure.Sharing;
 /// <param name="FillingAccounts">The hidden copies of the joint accounts in it, by hidden copy, each with its shown
 /// copy. Their transactions that <see cref="Domain.OpenBanking.Transactions.BankTransaction.FillsJointGap">fill a
 /// gap</see> are in it as the shown copy's.</param>
+/// <param name="IsJustMine">Whether it's the user's Just mine view, which leaves out what others share, joint accounts
+/// aside.</param>
 public sealed record AccountsInView(
     Guid UserId,
     IReadOnlySet<Guid> OwnAccountIds,
@@ -21,7 +23,8 @@ public sealed record AccountsInView(
     IReadOnlySet<Guid> ChangeableAccountIds,
     IReadOnlySet<Guid> OwnersWithPrivateAccounts,
     IReadOnlySet<Guid> HiddenAccountIds,
-    IReadOnlyDictionary<Guid, Guid> FillingAccounts)
+    IReadOnlyDictionary<Guid, Guid> FillingAccounts,
+    bool IsJustMine = false)
 {
     /// <summary>
     /// The accounts other people share with them that are in it, none for Just mine.

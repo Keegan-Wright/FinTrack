@@ -296,12 +296,15 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
     /// <summary>
     /// The user says this pays <paramref name="bill"/>, which matching and rules then leave alone.
     /// </summary>
-    /// <param name="by">Who says so, the owner or someone they let change it. Only their own bills can be paid.</param>
-    /// <exception cref="InvalidOperationException">The bill isn't <paramref name="by"/>'s.</exception>
-    public void PayBill(Bill bill, Guid by, DateTime decidedAt)
+    /// <param name="by">Who says so, the owner or someone they let change it. Only their own bills can be paid, or
+    /// one shared with them.</param>
+    /// <param name="sharedWithThem">Whether the bill is shared with <paramref name="by"/>.</param>
+    /// <exception cref="InvalidOperationException">The bill is neither <paramref name="by"/>'s nor shared with them.
+    /// </exception>
+    public void PayBill(Bill bill, Guid by, DateTime decidedAt, bool sharedWithThem = false)
     {
         ArgumentNullException.ThrowIfNull(bill);
-        if (bill.UserId != by)
+        if (bill.UserId != by && !sharedWithThem)
         {
             throw new InvalidOperationException("Cannot pay another user's bill with this transaction.");
         }

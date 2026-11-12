@@ -24,4 +24,10 @@ public sealed record ShareableItem
     /// How it's shared, null when it isn't.
     /// </summary>
     public ShareMode? Mode { get; init; }
+
+    /// <summary>
+    /// The shared account it goes with, when it's shared because that account is, such as a bill paid from it. It's
+    /// shared as that account is, so it can't be chosen apart from it. Null when it's chosen on its own.
+    /// </summary>
+    public string? FollowsAccount { get; init; }
 }
