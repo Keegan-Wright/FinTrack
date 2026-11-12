@@ -5,6 +5,7 @@ using FinanceTracker.Domain.Classifications;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
+using FinanceTracker.Infrastructure.Sharing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -15,13 +16,15 @@ namespace FinanceTracker.Infrastructure.Transactions;
 public class TransactionsService : ServiceBase<TransactionsService>, ITransactionsService
 {
     private readonly TimeProvider _timeProvider;
+    private readonly IAccountScope _accountScope;
 
     public TransactionsService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
-        ILogger<TransactionsService> logger, TimeProvider timeProvider)
+        ILogger<TransactionsService> logger, TimeProvider timeProvider, IAccountScope accountScope)
         : base(currentUser, financeTrackerContextFactory, logger)
     {
         _timeProvider = timeProvider;
+        _accountScope = accountScope;
     }
 
     public async IAsyncEnumerable<Transaction> GetAllTransactionsAsync(
@@ -31,13 +34,18 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
+        AccountsInView view = await _accountScope.ResolveAsync(context, cancellationToken);
         TransactionCriteria criteria = await TransactionCriteria.From(filterTransactions)
             .WithSavingsGoalsAsync(context, UserId, _timeProvider.LocalTimeZone, cancellationToken);
-        Dictionary<Guid, string> customTags = await context.CustomClassifications.OwnedBy(UserId)
+
+        // A shared transaction's tags are its owner's, so theirs are named too. Only those on transactions in view
+        // ever show
+        Dictionary<Guid, string> customTags = await context.CustomClassifications
+            .OwnedByAny([UserId, .. view.SharedOwnerIds])
             .ToDictionaryAsync(static x => x.Id, static x => x.Tag, cancellationToken);
 
         List<BankTransaction> transactions = await criteria
-            .ApplyServerFilters(context.BankTransactions.OwnedBy(UserId), context)
+            .ApplyServerFilters(context.BankTransactions.InView(view), context)
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
@@ -48,7 +56,7 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
             .ToList();
 
         TransactionMapper mapper =
-            await TransactionMapper.LoadAsync(context, UserId, customTags, matching,
+            await TransactionMapper.LoadAsync(context, view, customTags, matching,
                 _timeProvider.LocalTimeZone, cancellationToken);
 
         foreach (BankTransaction transaction in matching)
@@ -174,7 +182,8 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        IAsyncEnumerable<TransactionAccountFilter> accounts = context.BankAccounts.OwnedBy(UserId)
+        AccountsInView view = await _accountScope.ResolveAsync(context, cancellationToken);
+        IAsyncEnumerable<TransactionAccountFilter> accounts = context.BankAccounts.InView(view)
             .AsNoTracking()
             .Select(static x => new TransactionAccountFilter { AccountId = x.Id, AccountName = x.DisplayName })
             .AsAsyncEnumerable();
@@ -191,7 +200,17 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        IAsyncEnumerable<TransactionProviderFilter> providers = context.BankConnections.OwnedBy(UserId)
+        // Their own banks, and the banks behind accounts shared with them, a shared account's being its owner's
+        AccountsInView view = await _accountScope.ResolveAsync(context, cancellationToken);
+        List<Guid> sharedIds = view.SharedAccountIds.ToList();
+        List<Guid> sharedConnectionIds = await context.BankAccounts
+            .Where(x => sharedIds.Contains(x.Id))
+            .Select(static x => x.ConnectionId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        Guid userId = UserId;
+        IAsyncEnumerable<TransactionProviderFilter> providers = context.BankConnections
+            .Where(x => x.UserId == userId || sharedConnectionIds.Contains(x.Id))
             .AsNoTracking()
             .Select(static x => new TransactionProviderFilter { ProviderId = x.Id, ProviderName = x.Name })
             .AsAsyncEnumerable();
@@ -209,7 +228,8 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
         // Encrypted, so equal types only compare equal once decrypted
-        List<TransactionType> types = await context.BankTransactions.OwnedBy(UserId)
+        AccountsInView view = await _accountScope.ResolveAsync(context, cancellationToken);
+        List<TransactionType> types = await context.BankTransactions.InView(view)
             .Select(static x => x.Type)
             .ToListAsync(cancellationToken);
 
@@ -226,7 +246,8 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
         // Encrypted, so equal categories only compare equal once decrypted
-        List<string> categories = await context.BankTransactions.OwnedBy(UserId)
+        AccountsInView view = await _accountScope.ResolveAsync(context, cancellationToken);
+        List<string> categories = await context.BankTransactions.InView(view)
             .Select(static x => x.Category)
             .ToListAsync(cancellationToken);
 
@@ -244,8 +265,9 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
 
         // Unable to use .SelectMany on the encrypted column ProviderClassifications. Hidden ones are left out unless
         // another transaction still shows them
+        AccountsInView view = await _accountScope.ResolveAsync(context, cancellationToken);
         var materialisedClassifications = await context.BankTransactions
-            .OwnedBy(UserId)
+            .InView(view)
             .AsNoTracking()
             .Select(static x => new { x.ProviderClassifications, x.HiddenClassifications })
             .ToListAsync(cancellationToken);

@@ -1,3 +1,4 @@
+using FinanceTracker.Infrastructure.Sharing;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Transactions;
 using FinanceTracker.Domain.Bills;
@@ -1014,5 +1015,5 @@ public class TransactionsServiceTests : InfrastructureTestBase
         subject.GetAllTransactionsAsync(filter, CancellationToken).ToListAsync(CancellationToken).AsTask();
 
     private TransactionsService BuildSubject() => new(CurrentUserFor(Username), DbContextFactory,
-        NullLogger<TransactionsService>.Instance, TimeProvider.System);
+        NullLogger<TransactionsService>.Instance, TimeProvider.System, new AccountScope(CurrentUserFor(Username)));
 }

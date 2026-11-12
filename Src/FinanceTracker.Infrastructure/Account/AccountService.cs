@@ -7,6 +7,7 @@ using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
+using FinanceTracker.Infrastructure.Sharing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -16,9 +17,12 @@ namespace FinanceTracker.Infrastructure.Account;
 [Scoped<IAccountService>]
 public class AccountService : ServiceBase<AccountService>, IAccountService
 {
+    private readonly IAccountScope _accountScope;
+
     public AccountService(ICurrentUser currentUser, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
-        ILogger<AccountService> logger) : base(currentUser, financeTrackerContextFactory, logger)
+        ILogger<AccountService> logger, IAccountScope accountScope) : base(currentUser, financeTrackerContextFactory, logger)
     {
+        _accountScope = accountScope;
     }
 
     public async IAsyncEnumerable<AccountAndTransactions> GetAccountsAndMostRecentTransactionsAsync(
@@ -28,16 +32,22 @@ public class AccountService : ServiceBase<AccountService>, IAccountService
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        List<BankAccount> accounts = await context.BankAccounts.OwnedBy(UserId)
+        AccountsInView view = await _accountScope.ResolveAsync(context, cancellationToken);
+        Dictionary<Guid, string> sharedBy = await view.SharedByAsync(context, cancellationToken);
+
+        List<BankAccount> accounts = await context.BankAccounts.InView(view)
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
-        Dictionary<Guid, BankConnection> connections = await context.BankConnections.OwnedBy(UserId)
+        // The connections behind the accounts in view, a shared account's being its owner's
+        List<Guid> connectionIds = accounts.Select(static x => x.ConnectionId).Distinct().ToList();
+        Dictionary<Guid, BankConnection> connections = await context.BankConnections
+            .Where(x => connectionIds.Contains(x.Id))
             .AsNoTracking()
             .ToDictionaryAsync(static x => x.Id, cancellationToken);
 
         // Encrypted timestamps sort by ciphertext in SQL, so the most recent are picked after decryption
-        ILookup<Guid, BankTransaction> transactions = (await context.BankTransactions.OwnedBy(UserId)
+        ILookup<Guid, BankTransaction> transactions = (await context.BankTransactions.InView(view)
                 .AsNoTracking()
                 .ToListAsync(cancellationToken))
             .ToLookup(static x => x.AccountId);
@@ -49,6 +59,7 @@ public class AccountService : ServiceBase<AccountService>, IAccountService
                 AccountId = account.Id,
                 AccountBalance = account.Balance?.Current ?? 0,
                 AccountName = account.DisplayName,
+                SharedBy = sharedBy.GetValueOrDefault(account.Id),
                 AccountType = account.AccountType,
                 AvailableBalance = account.Balance?.Available ?? 0,
                 CardEnding = account.Card?.PartialNumber,

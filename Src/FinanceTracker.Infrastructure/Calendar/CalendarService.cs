@@ -8,6 +8,7 @@ using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.OpenBanking.Transfers;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
+using FinanceTracker.Infrastructure.Sharing;
 using FinanceTracker.Infrastructure.Persistence;
 using FinanceTracker.Infrastructure.SavingsGoals;
 using Microsoft.EntityFrameworkCore;
@@ -26,12 +27,15 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
     private readonly TimeProvider _timeProvider;
     private readonly ISavingsGoalsService _savingsGoalsService;
     private readonly IDebtsService _debtsService;
+    private readonly IAccountScope _accountScope;
 
     public CalendarService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<CalendarService> logger,
-        TimeProvider timeProvider, ISavingsGoalsService savingsGoalsService, IDebtsService debtsService)
+        TimeProvider timeProvider, ISavingsGoalsService savingsGoalsService, IDebtsService debtsService,
+        IAccountScope accountScope)
         : base(currentUser, financeTrackerContextFactory, logger)
     {
+        _accountScope = accountScope;
         _timeProvider = timeProvider;
         _savingsGoalsService = savingsGoalsService;
         _debtsService = debtsService;
@@ -49,7 +53,8 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
         // Transaction timestamps / goal dates are encrypted at rest, so the month's transactions are found by their day
         // blind index, then filtered exactly once decrypted.
         // The calendar is income and spending, so transfers are left out like the dashboard's totals
-        List<CalendarTransactionItem> transactionItems = (await context.BankTransactions.OwnedBy(UserId)
+        AccountsInView view = await _accountScope.ResolveAsync(context, cancellationToken);
+        List<CalendarTransactionItem> transactionItems = (await context.BankTransactions.InView(view)
                 .WhereEncryptedDayBetween(x => x.OccurredAt, startDate, endDate, context)
                 .Where(static x => x.Transfer == null || x.Transfer.Decision != TransferDecision.Transfer)
                 .Select(static x => new { x.Description, x.Amount, x.Type, x.OccurredAt })

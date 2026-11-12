@@ -81,6 +81,11 @@ public class SavingsGoal
     public DateOnly? TrackedFrom { get; init; }
 
     /// <summary>
+    /// Which way tagged money moves when it's saved, for <see cref="SavingsGoalSource.Tags"/>.
+    /// </summary>
+    public SavingsDirection Direction { get; init; } = SavingsDirection.MoneyIn;
+
+    /// <summary>
     /// Whether it tracks tags and all of them were deleted.
     /// </summary>
     [Description("Whether all of the goal's tags were deleted")]

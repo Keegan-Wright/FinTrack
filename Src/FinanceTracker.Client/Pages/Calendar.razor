@@ -22,6 +22,7 @@
 <PageTitle>FinTrack - Calendar</PageTitle>
 <PageHeader Title="Calendar" Subtitle="@MonthStart.ToString("MMMM yyyy", CultureInfo.CurrentCulture)">
     <Actions>
+        <SharingViewSwitch/>
         <MudTooltip Text="Previous month">
             <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" aria-label="Previous month"
                            OnClick="@(() => ChangeMonthAsync(-1))"/>

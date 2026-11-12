@@ -21,6 +21,9 @@ internal sealed class SavingsGoalConfiguration : AggregateRootConfiguration<Savi
         builder.Property(x => x.Source).HasConversion<string>().HasDefaultValue(SavingsGoalSource.Manual)
             .HasSentinel((SavingsGoalSource)0);
         builder.Property(x => x.TrackedFrom).Encrypted();
+
+        // Goals from before it existed all counted money in, as a tag goal into an account here still does
+        builder.Property(x => x.Direction).HasConversion<string>().HasDefaultValue(SavingsDirection.MoneyIn);
         builder.PrimitiveCollection(x => x.TagIds).HasField("_tagIds");
         builder.Ignore(x => x.CoversNothing);
 

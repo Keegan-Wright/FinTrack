@@ -8,6 +8,7 @@ using FinanceTracker.Domain.OpenBanking.Balances;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
+using FinanceTracker.Infrastructure.Sharing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -18,12 +19,14 @@ namespace FinanceTracker.Infrastructure.NetWorth;
 public class NetWorthService : ServiceBase<NetWorthService>, INetWorthService
 {
     private readonly TimeProvider _timeProvider;
+    private readonly IAccountScope _accountScope;
 
     public NetWorthService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<NetWorthService> logger,
-        TimeProvider timeProvider) : base(currentUser, financeTrackerContextFactory, logger)
+        TimeProvider timeProvider, IAccountScope accountScope) : base(currentUser, financeTrackerContextFactory, logger)
     {
         _timeProvider = timeProvider;
+        _accountScope = accountScope;
     }
 
     public async Task<NetWorthHistory> GetNetWorthAsync(DateOnly? from, CancellationToken cancellationToken)
@@ -31,26 +34,109 @@ public class NetWorthService : ServiceBase<NetWorthService>, INetWorthService
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
+        AccountsInView view = await _accountScope.ResolveAsync(context, cancellationToken);
+
         // Every day, as the changes this month and year need the days before the range too
-        List<NetWorthSnapshot> history = await context.NetWorthSnapshots.OwnedBy(UserId).AsNoTracking()
+        List<NetWorthSnapshot> own = await context.NetWorthSnapshots.OwnedBy(UserId).AsNoTracking()
             .OrderBy(static x => x.Date)
             .ToListAsync(cancellationToken);
+        List<NetWorthPoint> history = await WithSharedAccountsAsync(context, view, own, cancellationToken);
 
         if (history.Count == 0)
         {
             return new NetWorthHistory();
         }
 
-        NetWorthSnapshot latest = history[^1];
+        NetWorthPoint latest = history[^1];
         DateOnly today = _timeProvider.Today;
 
         return new NetWorthHistory
         {
-            Points = history.Where(x => from is null || x.Date >= from).Select(ToPoint).ToList(),
+            Points = history.Where(x => from is null || x.Date >= from).ToList(),
             ChangeThisMonth = ChangeSince(history, latest, new DateOnly(today.Year, today.Month, 1)),
             ChangeThisYear = ChangeSince(history, latest, new DateOnly(today.Year, 1, 1)),
-            Breakdown = await BreakdownAsync(context, latest.Date, cancellationToken)
+            Breakdown = await BreakdownAsync(context, view, latest.Date, cancellationToken)
         };
+    }
+
+    /// <summary>
+    /// The user's own daily net worth with the balances of the accounts shared with them added in, each shared account
+    /// counted from its owner's daily snapshots. A day either side lacks carries the last known one forward, so the
+    /// line doesn't dip where one history starts later than the other.
+    /// </summary>
+    private static async Task<List<NetWorthPoint>> WithSharedAccountsAsync(FinanceTrackerContext context,
+        AccountsInView view, List<NetWorthSnapshot> own, CancellationToken cancellationToken)
+    {
+        List<NetWorthPoint> ownPoints = own.Select(ToPoint).ToList();
+        if (view.SharedAccountIds.Count == 0)
+        {
+            return ownPoints;
+        }
+
+        List<Guid> sharedIds = view.SharedAccountIds.ToList();
+        List<BalanceSnapshot> shared = await context.BalanceSnapshots.AsNoTracking()
+            .Where(x => sharedIds.Contains(x.AccountId))
+            .ToListAsync(cancellationToken);
+        if (shared.Count == 0)
+        {
+            return ownPoints;
+        }
+
+        List<DateOnly> days = ownPoints.Select(static x => x.Date)
+            .Union(shared.Select(static x => x.Date))
+            .Order()
+            .ToList();
+        Dictionary<DateOnly, NetWorthPoint> ownByDay = ownPoints.ToDictionary(static x => x.Date);
+        List<IGrouping<Guid, BalanceSnapshot>> byAccount = shared.GroupBy(static x => x.AccountId).ToList();
+
+        List<NetWorthPoint> combined = [];
+        NetWorthPoint? lastOwn = null;
+        foreach (DateOnly day in days)
+        {
+            if (ownByDay.TryGetValue(day, out NetWorthPoint? ownToday))
+            {
+                lastOwn = ownToday;
+            }
+
+            decimal assets = lastOwn?.Assets ?? 0;
+            decimal liabilities = lastOwn?.Liabilities ?? 0;
+            bool isStale = lastOwn?.IsStale ?? false;
+            bool isDerived = lastOwn?.IsDerived ?? false;
+
+            foreach (IGrouping<Guid, BalanceSnapshot> account in byAccount)
+            {
+                BalanceSnapshot? latest = account.Where(x => x.Date <= day).MaxBy(static x => x.Date);
+                if (latest is null)
+                {
+                    continue;
+                }
+
+                decimal current = latest.Balance.Current;
+                if (current >= 0)
+                {
+                    assets += current;
+                }
+                else
+                {
+                    liabilities -= current;
+                }
+
+                isStale |= latest.IsStale;
+                isDerived |= latest.Source == BalanceSnapshotSource.Derived;
+            }
+
+            combined.Add(new NetWorthPoint
+            {
+                Date = day,
+                Assets = assets,
+                Liabilities = liabilities,
+                NetWorth = assets - liabilities,
+                IsDerived = isDerived,
+                IsStale = isStale
+            });
+        }
+
+        return combined;
     }
 
     public async IAsyncEnumerable<AccountBalanceHistory> GetBalanceHistoriesAsync(DateOnly? from,
@@ -59,7 +145,8 @@ public class NetWorthService : ServiceBase<NetWorthService>, INetWorthService
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        IQueryable<BalanceSnapshot> snapshots = context.BalanceSnapshots.OwnedBy(UserId).AsNoTracking();
+        AccountsInView view = await _accountScope.ResolveAsync(context, cancellationToken);
+        IQueryable<BalanceSnapshot> snapshots = context.BalanceSnapshots.InView(view).AsNoTracking();
         if (from is { } first)
         {
             snapshots = snapshots.Where(x => x.Date >= first);
@@ -97,9 +184,9 @@ public class NetWorthService : ServiceBase<NetWorthService>, INetWorthService
     /// <summary>
     /// <paramref name="latest"/> less the last net worth before <paramref name="start"/>, null when there's none.
     /// </summary>
-    private static decimal? ChangeSince(List<NetWorthSnapshot> history, NetWorthSnapshot latest, DateOnly start)
+    private static decimal? ChangeSince(List<NetWorthPoint> history, NetWorthPoint latest, DateOnly start)
     {
-        NetWorthSnapshot? before = history.LastOrDefault(x => x.Date < start);
+        NetWorthPoint? before = history.LastOrDefault(x => x.Date < start);
         if (before is null)
         {
             return null;
@@ -111,14 +198,21 @@ public class NetWorthService : ServiceBase<NetWorthService>, INetWorthService
     /// <summary>
     /// Each account and card's balance on <paramref name="day"/>, and what each debt not linked to an account owed.
     /// </summary>
-    private async Task<List<NetWorthItem>> BreakdownAsync(FinanceTrackerContext context, DateOnly day,
-        CancellationToken cancellationToken)
+    private async Task<List<NetWorthItem>> BreakdownAsync(FinanceTrackerContext context, AccountsInView view,
+        DateOnly day, CancellationToken cancellationToken)
     {
-        Dictionary<Guid, BankAccount> accounts = await context.BankAccounts.OwnedBy(UserId).AsNoTracking()
+        Dictionary<Guid, BankAccount> accounts = await context.BankAccounts.InView(view).AsNoTracking()
             .ToDictionaryAsync(static x => x.Id, cancellationToken);
         List<BalanceSnapshot> balances = await context.BalanceSnapshots.OwnedBy(UserId).AsNoTracking()
             .Where(x => x.Date == day)
             .ToListAsync(cancellationToken);
+
+        // A shared account counts as of its latest balance by then, as the line above does
+        List<Guid> sharedIds = view.SharedAccountIds.ToList();
+        List<BalanceSnapshot> shared = await context.BalanceSnapshots.AsNoTracking()
+            .Where(x => sharedIds.Contains(x.AccountId) && x.Date <= day)
+            .ToListAsync(cancellationToken);
+        balances.AddRange(shared.GroupBy(static x => x.AccountId).Select(static x => x.MaxBy(s => s.Date)!));
 
         List<NetWorthItem> items = [];
         foreach (BalanceSnapshot balance in balances)

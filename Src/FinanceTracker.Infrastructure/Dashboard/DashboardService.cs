@@ -6,6 +6,7 @@ using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.OpenBanking.Transfers;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
+using FinanceTracker.Infrastructure.Sharing;
 using FinanceTracker.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -34,11 +35,15 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
     private const int AheadDays = 45;
 
     private readonly TimeProvider _timeProvider;
+    private readonly IAccountScope _accountScope;
 
     public DashboardService(ICurrentUser currentUser, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
-        ILogger<DashboardService> logger, TimeProvider timeProvider)
-        : base(currentUser, financeTrackerContextFactory, logger) =>
+        ILogger<DashboardService> logger, TimeProvider timeProvider, IAccountScope accountScope)
+        : base(currentUser, financeTrackerContextFactory, logger)
+    {
         _timeProvider = timeProvider;
+        _accountScope = accountScope;
+    }
 
     public async Task<SpentInTimePeriod> GetSpentInTimePeriod(DateTime fromDate, DateTime toDate,
         CancellationToken cancellationToken)
@@ -49,7 +54,8 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
         DateTime fromUtc = fromDate.ToUniversalTime();
         DateTime toUtc = toDate.ToUniversalTime();
 
-        List<TransactionLite> items = await context.BankTransactions.OwnedBy(UserId)
+        AccountsInView view = await _accountScope.ResolveAsync(context, cancellationToken);
+        List<TransactionLite> items = await context.BankTransactions.InView(view)
             .WhereEncryptedDayBetween(x => x.OccurredAt, fromUtc, toUtc, context)
             .Select(x => new TransactionLite
             {

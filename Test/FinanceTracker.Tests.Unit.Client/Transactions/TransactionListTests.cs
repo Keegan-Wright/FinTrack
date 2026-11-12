@@ -78,7 +78,8 @@ public class TransactionListTests : ComponentTestBase
 
     internal static Transaction Transaction(string description, decimal amount, bool pending = false,
         TransactionTransfer? transfer = null, string category = "PURCHASE", TransactionBill? bill = null,
-        TransactionDebt? debt = null, List<TransactionSplitPart>? splits = null, Guid? id = null) => new()
+        TransactionDebt? debt = null, List<TransactionSplitPart>? splits = null, Guid? id = null,
+        string? sharedBy = null) => new()
     {
         TransactionId = id ?? Guid.NewGuid(),
         Description = description,
@@ -93,6 +94,7 @@ public class TransactionListTests : ComponentTestBase
         Transfer = transfer,
         Bill = bill,
         Debt = debt,
-        Splits = splits ?? []
+        Splits = splits ?? [],
+        SharedBy = sharedBy
     };
 }

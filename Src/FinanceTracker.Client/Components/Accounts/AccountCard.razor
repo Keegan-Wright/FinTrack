@@ -13,6 +13,10 @@
                 <MudText Typo="Typo.caption" Class="mud-text-secondary">
                     @TypeCaption(Account)
                 </MudText>
+                @if (Account.SharedBy is { } sharedBy)
+                {
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary d-block">Shared by @sharedBy</MudText>
+                }
             </div>
         </div>
     </TitleContent>

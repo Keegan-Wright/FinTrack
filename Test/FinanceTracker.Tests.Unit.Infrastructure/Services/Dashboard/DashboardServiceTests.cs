@@ -1,3 +1,4 @@
+using FinanceTracker.Infrastructure.Sharing;
 using FinanceTracker.Contracts.Dashboard;
 using FinanceTracker.Domain.Bills;
 using FinanceTracker.Infrastructure;
@@ -229,5 +230,5 @@ public class DashboardServiceTests : InfrastructureTestBase
         new TransactionDetailsFaker().Generate() with { Amount = amount, OccurredAt = occurredAt, Category = category };
 
     private DashboardService BuildSubject(DateTime? now = null) => new(CurrentUserFor(Username), DbContextFactory,
-        NullLogger<DashboardService>.Instance, new FixedTimeProvider(now ?? Now));
+        NullLogger<DashboardService>.Instance, new FixedTimeProvider(now ?? Now), new AccountScope(CurrentUserFor(Username)));
 }

@@ -15,6 +15,15 @@ public static class SharingEndpoints
         public RouteGroupBuilder MapSharingEndpoints()
         {
             RouteGroupBuilder links = api.MapGroup(ApiRoutes.SharingLinks);
+            RouteGroupBuilder view = api.MapGroup(ApiRoutes.SharingView);
+
+            view.MapGet(string.Empty, async Task<Ok<SharingView>> (ISharingService service,
+                    CancellationToken cancellationToken) =>
+                TypedResults.Ok(await service.GetViewAsync(cancellationToken)));
+
+            view.MapPut(string.Empty, async Task<Ok<SharingView>> (ChangeSharingView request, ISharingService service,
+                    CancellationToken cancellationToken) =>
+                TypedResults.Ok(await service.ChangeViewAsync(request, cancellationToken)));
 
             links.MapGet(string.Empty, (ISharingService service, CancellationToken cancellationToken) =>
                 service.GetLinksAsync(cancellationToken));

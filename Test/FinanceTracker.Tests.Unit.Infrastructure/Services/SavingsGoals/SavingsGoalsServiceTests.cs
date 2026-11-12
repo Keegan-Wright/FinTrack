@@ -342,6 +342,38 @@ public class SavingsGoalsServiceTests : InfrastructureTestBase
     }
 
     [Test]
+    public async Task GetSavingsGoalsAsync_TagsSavedSomewhereElse_CountsTheMoneyGoingOut()
+    {
+        // Arrange, paid out of the current account into a pot FinTrack can't see
+        await SeedAccountsAsync(Username)
+            .Do(s => s.ClassificationScenario.WithClassification("car", Username, "Car fund"))
+            .Do(s => s.TransactionScenario.WithTransaction("paid-out", "savings", Moved(-200m, new DateTime(2026, 3, 2))))
+            .Do(s => s.TransactionScenario.WithCustomClassification("paid-out", "car"));
+        SavingsGoalsService subject = BuildSubject(Username);
+        await subject.AddSavingsGoalAsync(new SaveSavingsGoal
+        {
+            Name = "Car",
+            Target = 4000m,
+            Source = SavingsGoalSource.Tags,
+            Saved = 1000m,
+            TagIds = [Scenario.ClassificationMappings["car"]],
+            TrackedFrom = new DateOnly(2026, 2, 1),
+            Direction = SavingsDirection.MoneyOut
+        }, CancellationToken);
+
+        // Act
+        SavingsGoal goal = (await subject.GetSavingsGoalsAsync(CancellationToken).ToListAsync(CancellationToken))
+            .Single();
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(goal.Saved).IsEqualTo(1200m);
+            await Assert.That(goal.Direction).IsEqualTo(SavingsDirection.MoneyOut);
+        }
+    }
+
+    [Test]
     public async Task UpdateSavingsGoalAsync_FromAnAccountToTypedIn_FreesTheAccount()
     {
         // Arrange

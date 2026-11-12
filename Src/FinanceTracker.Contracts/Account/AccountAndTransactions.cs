@@ -20,6 +20,11 @@ public class AccountAndTransactions
     public required string AccountName { get; init; }
 
     /// <summary>
+    /// Who shares the account with the user, their first and last name, null when it's their own.
+    /// </summary>
+    public string? SharedBy { get; init; }
+
+    /// <summary>
     /// The bank the account is with, as its connection is named, e.g. <c>Monzo</c>.
     /// </summary>
     [Description("The bank the account is with")]

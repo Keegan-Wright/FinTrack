@@ -1,0 +1,59 @@
+@* Everyone or Just mine, for the money views whether accounts other people share show beside the user's own. Only
+   there when someone shares accounts with them, as otherwise there's nothing to switch. Changing it refreshes the page
+   showing, as a finished sync does. *@
+@using FinanceTracker.Contracts.Sharing
+@inject ISharingService SharingService
+@inject ISnackbar Snackbar
+
+@if (_view is { HasSharedAccounts: true } view)
+{
+    <MudToggleGroup T="bool" Value="@view.IncludesShared" ValueChanged="@ChangeAsync" Size="Size.Small"
+                    Color="Color.Primary" Outlined="true" Disabled="@_saving"
+                    aria-label="Show accounts shared with you">
+        <MudToggleItem Value="true" Text="Everyone"/>
+        <MudToggleItem Value="false" Text="Just mine"/>
+    </MudToggleGroup>
+}
+
+@code {
+
+    [CascadingParameter] private ApplicationState? ApplicationState { get; set; }
+
+    private SharingView? _view;
+    private bool _saving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _view = await SharingService.GetViewAsync(CancellationToken.None);
+        }
+        catch (Exception)
+        {
+            // Without it there's just no switch, the page shows as it would
+            _view = null;
+        }
+    }
+
+    internal async Task ChangeAsync(bool includeShared)
+    {
+        _saving = true;
+        try
+        {
+            _view = await SharingService.ChangeViewAsync(new ChangeSharingView { IncludeShared = includeShared },
+                CancellationToken.None);
+            if (ApplicationState is not null)
+            {
+                await ApplicationState.NotifyViewChangedAsync();
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't change what's shown, try again", Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

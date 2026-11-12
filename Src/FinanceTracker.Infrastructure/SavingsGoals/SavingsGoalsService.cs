@@ -183,7 +183,8 @@ public class SavingsGoalsService : ServiceBase<SavingsGoalsService>, ISavingsGoa
                 target.TrackAccount(goal.AccountId!.Value);
                 break;
             case DomainSavingsGoalSource.Tags:
-                target.TrackTags(goal.TagIds, goal.Saved, goal.TrackedFrom!.Value);
+                target.TrackTags(goal.TagIds, goal.Saved, goal.TrackedFrom!.Value,
+                    SavingsGoalMapper.ToDomain(goal.Direction));
                 break;
             default:
                 target.TrackManually(goal.Saved);

@@ -1375,6 +1375,12 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.Property<DateTime>("Created")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("Direction")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("MoneyIn");
+
                     b.Property<string>("MonthlyContribution")
                         .IsRequired()
                         .HasColumnType("text")
@@ -1489,6 +1495,37 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                         .IsUnique();
 
                     b.ToTable("Shares", (string)null);
+                });
+
+            modelBuilder.Entity("FinanceTracker.Domain.Sharing.SharingSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IncludeShared")
+                        .HasColumnType("boolean");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<DateTime?>("Updated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("SharingSettings", (string)null);
                 });
 
             modelBuilder.Entity("FinanceTracker.Domain.Sharing.UserLink", b =>
@@ -2499,6 +2536,15 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("FinanceTracker.Domain.Identity.FinanceTrackerUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FinanceTracker.Domain.Sharing.SharingSettings", b =>
+                {
                     b.HasOne("FinanceTracker.Domain.Identity.FinanceTrackerUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")

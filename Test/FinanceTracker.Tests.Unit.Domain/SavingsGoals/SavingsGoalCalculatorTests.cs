@@ -165,6 +165,76 @@ public class SavingsGoalCalculatorTests
     }
 
     [Test]
+    public async Task Progress_TagsSavedSomewhereElse_MoneyOutAddsAndMoneyBackInTakesAway()
+    {
+        // Arrange, £200 a month paid into a pot FinTrack can't see, and £50 taken back out of it
+        SavingsGoal goal = Goal();
+        goal.TrackTags([CarFund], 100m, new DateOnly(2026, 1, 1), SavingsDirection.MoneyOut);
+        BankTransaction[] transactions =
+        [
+            Tagged(Current, -200m, new DateTime(2026, 1, 28), CarFund),
+            Tagged(Current, -200m, new DateTime(2026, 2, 28), CarFund),
+            Tagged(Current, 50m, new DateTime(2026, 3, 5), CarFund),
+            Tagged(Current, -999m, new DateTime(2026, 3, 6))
+        ];
+
+        // Act
+        SavingsGoalProgress progress = Calculate(goal, transactions: transactions);
+
+        // Assert
+        await Assert.That(progress.Saved).IsEqualTo(450m);
+    }
+
+    [Test]
+    public async Task Progress_TagsSavedSomewhereElse_BothHalvesOfATransferTagged_CountsTheMoneyOutOnce()
+    {
+        // Arrange
+        SavingsGoal goal = Goal();
+        goal.TrackTags([CarFund], 0m, new DateOnly(2026, 1, 1), SavingsDirection.MoneyOut);
+        BankTransaction outgoing = Tagged(Current, -100m, new DateTime(2026, 3, 2), CarFund);
+        BankTransaction incoming = Tagged(Savings, 100m, new DateTime(2026, 3, 2), CarFund);
+        DateTime decidedAt = DateTime.UtcNow;
+        outgoing.DecideTransfer(TransferInfo.Matched(TransferReason.MirrorPair, incoming.Id, Savings.Id, decidedAt));
+        incoming.DecideTransfer(TransferInfo.Matched(TransferReason.MirrorPair, outgoing.Id, Current.Id, decidedAt));
+
+        // Act
+        SavingsGoalProgress progress = Calculate(goal, transactions: [outgoing, incoming]);
+
+        // Assert
+        await Assert.That(progress.Saved).IsEqualTo(100m);
+    }
+
+    [Test]
+    public async Task History_TagsSavedSomewhereElse_ClimbsAsMoneyGoesOut()
+    {
+        // Arrange
+        SavingsGoal goal = Goal();
+        goal.TrackTags([CarFund], 0m, new DateOnly(2026, 3, 13), SavingsDirection.MoneyOut);
+        BankTransaction[] transactions = [Tagged(Current, -200m, new DateTime(2026, 3, 14), CarFund)];
+
+        // Act
+        IReadOnlyList<SavedOn> history = SavingsGoalCalculator.History(goal, transactions, TimeZoneInfo.Utc, Today);
+
+        // Assert
+        await Assert.That(history.Select(static x => x.Saved)).IsEquivalentTo([0m, 200m, 200m],
+            TUnit.Assertions.Enums.CollectionOrdering.Matching);
+    }
+
+    [Test]
+    public async Task TrackingAnythingElse_GoesBackToMoneyIn()
+    {
+        // Arrange
+        SavingsGoal goal = Goal();
+        goal.TrackTags([CarFund], 0m, new DateOnly(2026, 1, 1), SavingsDirection.MoneyOut);
+
+        // Act
+        goal.TrackManually(10m);
+
+        // Assert
+        await Assert.That(goal.Direction).IsEqualTo(SavingsDirection.MoneyIn);
+    }
+
+    [Test]
     public async Task History_TagGoal_RunsFromItsStartingAmountDayByDay()
     {
         // Arrange

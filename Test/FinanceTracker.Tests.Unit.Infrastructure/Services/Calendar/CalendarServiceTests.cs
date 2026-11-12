@@ -1,3 +1,4 @@
+using FinanceTracker.Infrastructure.Sharing;
 using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.Calendar;
 using FinanceTracker.Domain.Bills;
@@ -507,6 +508,7 @@ public class CalendarServiceTests : InfrastructureTestBase
         return new CalendarService(currentUser, DbContextFactory, NullLogger<CalendarService>.Instance, timeProvider,
             new SavingsGoalsService(currentUser, DbContextFactory, NullLogger<SavingsGoalsService>.Instance,
                 timeProvider),
-            new DebtsService(currentUser, DbContextFactory, NullLogger<DebtsService>.Instance, timeProvider));
+            new DebtsService(currentUser, DbContextFactory, NullLogger<DebtsService>.Instance, timeProvider),
+            new AccountScope(currentUser));
     }
 }

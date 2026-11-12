@@ -1,3 +1,4 @@
+using FinanceTracker.Infrastructure.Sharing;
 using System.Globalization;
 using FinanceTracker.Contracts.Reports;
 using FinanceTracker.Contracts.Reports.Account;
@@ -607,5 +608,5 @@ public class ReportServiceTests : InfrastructureTestBase
 
     private ReportService BuildSubject(TimeProvider? timeProvider = null) =>
         new(CurrentUserFor(Username), DbContextFactory, NullLogger<ReportService>.Instance,
-            timeProvider ?? TimeProvider.System);
+            timeProvider ?? TimeProvider.System, new AccountScope(CurrentUserFor(Username)));
 }

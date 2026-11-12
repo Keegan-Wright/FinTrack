@@ -11,6 +11,8 @@ using FinanceTracker.Infrastructure.Debts;
 using Microsoft.EntityFrameworkCore;
 using Transaction = FinanceTracker.Contracts.Transactions.Transaction;
 
+using FinanceTracker.Infrastructure.Sharing;
+
 namespace FinanceTracker.Infrastructure.Transactions;
 
 /// <summary>
@@ -30,10 +32,13 @@ internal sealed class TransactionMapper
     private readonly List<SavingsGoal> _savingsGoals;
     private readonly TimeZoneInfo _timeZone;
 
+    // Who shares each shared account in view, by account
+    private readonly Dictionary<Guid, string> _sharedBy;
+
     private TransactionMapper(IReadOnlyDictionary<Guid, string> customTags, Dictionary<Guid, string> accountNames,
         Dictionary<Guid, string> householdMemberNames, Dictionary<Guid, BankTransaction> partners,
         Dictionary<Guid, string> ruleNames, Dictionary<Guid, Bill> bills, Dictionary<Guid, string> debtNames,
-        List<SavingsGoal> savingsGoals, TimeZoneInfo timeZone)
+        List<SavingsGoal> savingsGoals, TimeZoneInfo timeZone, Dictionary<Guid, string> sharedBy)
     {
         _customTags = customTags;
         _accountNames = accountNames;
@@ -44,41 +49,65 @@ internal sealed class TransactionMapper
         _debtNames = debtNames;
         _savingsGoals = savingsGoals;
         _timeZone = timeZone;
+        _sharedBy = sharedBy;
     }
 
+    /// <summary>
+    /// A mapper for the user's own transactions only.
+    /// </summary>
     /// <param name="customTags">The user's custom classifications by id, for the tags.</param>
     /// <param name="transactions">What will be mapped. Partners outside it are loaded.</param>
     /// <param name="timeZone">Where the user is, for the day a tag savings goal tracks from.</param>
-    public static async Task<TransactionMapper> LoadAsync(FinanceTrackerContext context, Guid userId,
+    public static Task<TransactionMapper> LoadAsync(FinanceTrackerContext context, Guid userId,
+        IReadOnlyDictionary<Guid, string> customTags, IReadOnlyCollection<BankTransaction> transactions,
+        TimeZoneInfo timeZone, CancellationToken cancellationToken) =>
+        LoadAsync(context, new AccountsInView(userId, [], new Dictionary<Guid, Guid>()), customTags, transactions,
+            timeZone, cancellationToken);
+
+    /// <summary>
+    /// A mapper for the transactions in <paramref name="view"/>, the user's own and those of accounts shared with
+    /// them. A shared transaction's tags, bills, debts, rules and household members are its owner's, so their names
+    /// come from whoever owns them. Transfer partners only from accounts in view, never another's private account.
+    /// </summary>
+    /// <param name="customTags">Custom classifications by id, for the tags, the sharers' included.</param>
+    /// <param name="transactions">What will be mapped. Partners outside it are loaded.</param>
+    /// <param name="timeZone">Where the user is, for the day a tag savings goal tracks from.</param>
+    public static async Task<TransactionMapper> LoadAsync(FinanceTrackerContext context, AccountsInView view,
         IReadOnlyDictionary<Guid, string> customTags, IReadOnlyCollection<BankTransaction> transactions,
         TimeZoneInfo timeZone, CancellationToken cancellationToken)
     {
-        Dictionary<Guid, string> accountNames = await context.BankAccounts.OwnedBy(userId)
+        ArgumentNullException.ThrowIfNull(view);
+        List<Guid> owners = [view.UserId, .. view.SharedOwnerIds];
+
+        Dictionary<Guid, string> accountNames = await context.BankAccounts.InView(view)
             .ToDictionaryAsync(static x => x.Id, static x => x.DisplayName, cancellationToken);
 
         Dictionary<Guid, string> householdMemberNames =
-            await LoadHouseholdMemberNamesAsync(context, userId, transactions, cancellationToken);
+            await LoadHouseholdMemberNamesAsync(context, owners, transactions, cancellationToken);
 
         Dictionary<Guid, BankTransaction> partners =
-            await LoadPartnersAsync(context, userId, transactions, cancellationToken);
+            await LoadPartnersAsync(context, view, transactions, cancellationToken);
 
-        Dictionary<Guid, string> ruleNames = await LoadRuleNamesAsync(context, userId, transactions, cancellationToken);
+        Dictionary<Guid, string> ruleNames = await LoadRuleNamesAsync(context, owners, transactions, cancellationToken);
 
-        Dictionary<Guid, Bill> bills = await LoadBillsAsync(context, userId, transactions, cancellationToken);
+        Dictionary<Guid, Bill> bills = await LoadBillsAsync(context, owners, transactions, cancellationToken);
 
-        Dictionary<Guid, string> debtNames = await LoadDebtNamesAsync(context, userId, transactions, cancellationToken);
+        Dictionary<Guid, string> debtNames = await LoadDebtNamesAsync(context, owners, transactions, cancellationToken);
 
-        List<SavingsGoal> savingsGoals = await LoadSavingsGoalsAsync(context, userId, cancellationToken);
+        // Only their own goals count transactions, sharing goals comes later
+        List<SavingsGoal> savingsGoals = await LoadSavingsGoalsAsync(context, view.UserId, cancellationToken);
+
+        Dictionary<Guid, string> sharedBy = await view.SharedByAsync(context, cancellationToken);
 
         return new TransactionMapper(customTags, accountNames, householdMemberNames, partners, ruleNames, bills,
-            debtNames, savingsGoals, timeZone);
+            debtNames, savingsGoals, timeZone, sharedBy);
     }
 
     /// <summary>
     /// Household members' full names by id, empty when none of <paramref name="transactions"/> moved money with one.
     /// </summary>
     private static async Task<Dictionary<Guid, string>> LoadHouseholdMemberNamesAsync(FinanceTrackerContext context,
-        Guid userId, IReadOnlyCollection<BankTransaction> transactions, CancellationToken cancellationToken)
+        List<Guid> owners, IReadOnlyCollection<BankTransaction> transactions, CancellationToken cancellationToken)
     {
         if (!transactions.Any(static x => x.Transfer?.PartnerHouseholdMemberId is not null))
         {
@@ -86,7 +115,7 @@ internal sealed class TransactionMapper
         }
 
         // Names are encrypted, so they're joined up once decrypted
-        List<HouseholdMember> members = await context.HouseholdMembers.OwnedBy(userId).AsNoTracking()
+        List<HouseholdMember> members = await context.HouseholdMembers.OwnedByAny(owners).AsNoTracking()
             .ToListAsync(cancellationToken);
 
         return members.ToDictionary(static x => x.Id, static x => $"{x.FirstName} {x.LastName}");
@@ -96,7 +125,7 @@ internal sealed class TransactionMapper
     /// Rule names by id, empty when no rule tagged or decided any of <paramref name="transactions"/>.
     /// </summary>
     private static async Task<Dictionary<Guid, string>> LoadRuleNamesAsync(FinanceTrackerContext context,
-        Guid userId, IReadOnlyCollection<BankTransaction> transactions, CancellationToken cancellationToken)
+        List<Guid> owners, IReadOnlyCollection<BankTransaction> transactions, CancellationToken cancellationToken)
     {
         if (!transactions.Any(static x => x.RuleTags.Count > 0 || x.Transfer?.RuleId is not null ||
                                           x.BillPayment?.RuleId is not null ||
@@ -107,7 +136,7 @@ internal sealed class TransactionMapper
         }
 
         // Names are encrypted, so they're read whole and decrypted
-        List<Rule> rules = await context.Rules.OwnedBy(userId).AsNoTracking().ToListAsync(cancellationToken);
+        List<Rule> rules = await context.Rules.OwnedByAny(owners).AsNoTracking().ToListAsync(cancellationToken);
 
         return rules.ToDictionary(static x => x.Id, static x => x.Name);
     }
@@ -117,7 +146,7 @@ internal sealed class TransactionMapper
     /// <paramref name="transactions"/> pays a bill.
     /// </summary>
     private static async Task<Dictionary<Guid, Bill>> LoadBillsAsync(FinanceTrackerContext context,
-        Guid userId, IReadOnlyCollection<BankTransaction> transactions, CancellationToken cancellationToken)
+        List<Guid> owners, IReadOnlyCollection<BankTransaction> transactions, CancellationToken cancellationToken)
     {
         if (!transactions.Any(static x => x.BillPayment?.BillId is not null))
         {
@@ -125,7 +154,7 @@ internal sealed class TransactionMapper
         }
 
         // Names are encrypted, so they're read whole and decrypted
-        List<Bill> bills = await context.Bills.OwnedBy(userId).AsNoTracking().ToListAsync(cancellationToken);
+        List<Bill> bills = await context.Bills.OwnedByAny(owners).AsNoTracking().ToListAsync(cancellationToken);
 
         return bills.ToDictionary(static x => x.Id);
     }
@@ -143,7 +172,7 @@ internal sealed class TransactionMapper
     /// Debt names by id, empty when none of <paramref name="transactions"/> pays off a debt.
     /// </summary>
     private static async Task<Dictionary<Guid, string>> LoadDebtNamesAsync(FinanceTrackerContext context,
-        Guid userId, IReadOnlyCollection<BankTransaction> transactions, CancellationToken cancellationToken)
+        List<Guid> owners, IReadOnlyCollection<BankTransaction> transactions, CancellationToken cancellationToken)
     {
         if (!transactions.Any(static x => x.DebtPayment?.DebtId is not null))
         {
@@ -151,7 +180,7 @@ internal sealed class TransactionMapper
         }
 
         // Names are encrypted, so they're read whole and decrypted
-        List<Debt> debts = await context.Debts.OwnedBy(userId).AsNoTracking().ToListAsync(cancellationToken);
+        List<Debt> debts = await context.Debts.OwnedByAny(owners).AsNoTracking().ToListAsync(cancellationToken);
 
         return debts.ToDictionary(static x => x.Id, static x => x.Name);
     }
@@ -161,7 +190,7 @@ internal sealed class TransactionMapper
     /// rest loaded.
     /// </summary>
     private static async Task<Dictionary<Guid, BankTransaction>> LoadPartnersAsync(FinanceTrackerContext context,
-        Guid userId, IReadOnlyCollection<BankTransaction> transactions, CancellationToken cancellationToken)
+        AccountsInView view, IReadOnlyCollection<BankTransaction> transactions, CancellationToken cancellationToken)
     {
         Dictionary<Guid, BankTransaction> partners = transactions.ToDictionary(static x => x.Id);
 
@@ -177,7 +206,7 @@ internal sealed class TransactionMapper
             return partners;
         }
 
-        List<BankTransaction> loaded = await context.BankTransactions.OwnedBy(userId).AsNoTracking()
+        List<BankTransaction> loaded = await context.BankTransactions.InView(view).AsNoTracking()
             .Where(x => missing.Contains(x.Id))
             .ToListAsync(cancellationToken);
 
@@ -203,6 +232,7 @@ internal sealed class TransactionMapper
         CountsAsIncomeOrSpending = transaction.CountsAsIncomeOrSpending,
         AccountId = transaction.AccountId,
         AccountName = _accountNames.GetValueOrDefault(transaction.AccountId, string.Empty),
+        SharedBy = _sharedBy.GetValueOrDefault(transaction.AccountId),
         Transfer = ToContract(transaction.Transfer),
         Bill = ToContract(transaction.BillPayment),
         Debt = ToContract(transaction.DebtPayment),

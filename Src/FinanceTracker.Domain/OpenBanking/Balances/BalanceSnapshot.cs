@@ -9,7 +9,7 @@ namespace FinanceTracker.Domain.OpenBanking.Balances;
 /// account per day. Taken from a synced account through <see cref="BankAccount.SnapshotBalance"/>, then kept up to
 /// date through the day with <see cref="Refresh"/>.
 /// </summary>
-public sealed class BalanceSnapshot : AggregateRoot
+public sealed class BalanceSnapshot : AggregateRoot, IBelongsToAccount
 {
     [Obsolete("EF Use Only")]
 #pragma warning disable CS8618 // EF Core sets the properties when it materialises the entity

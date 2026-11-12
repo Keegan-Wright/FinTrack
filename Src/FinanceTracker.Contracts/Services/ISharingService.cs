@@ -54,4 +54,14 @@ public interface ISharingService
     /// an account in the request isn't theirs.</exception>
     Task<LinkShares> ChangeAccountSharesAsync(Guid linkId, ChangeAccountShares request,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Whether the money views show accounts shared with the user, and whether any are.
+    /// </summary>
+    Task<SharingView> GetViewAsync(CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Chooses Everyone or Just mine for the money views, kept for the user wherever they sign in.
+    /// </summary>
+    Task<SharingView> ChangeViewAsync(ChangeSharingView request, CancellationToken cancellationToken);
 }

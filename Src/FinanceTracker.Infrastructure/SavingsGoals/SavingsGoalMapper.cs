@@ -3,6 +3,8 @@ using SavingsGoal = FinanceTracker.Contracts.SavingsGoals.SavingsGoal;
 using SavingsGoalSource = FinanceTracker.Contracts.SavingsGoals.SavingsGoalSource;
 using DomainSavingsGoal = FinanceTracker.Domain.SavingsGoals.SavingsGoal;
 using DomainSavingsGoalSource = FinanceTracker.Domain.SavingsGoals.SavingsGoalSource;
+using SavingsDirection = FinanceTracker.Contracts.SavingsGoals.SavingsDirection;
+using DomainSavingsDirection = FinanceTracker.Domain.SavingsGoals.SavingsDirection;
 
 namespace FinanceTracker.Infrastructure.SavingsGoals;
 
@@ -27,6 +29,7 @@ internal static class SavingsGoalMapper
             AccountName = accountName,
             TagIds = goal.TagIds.ToList(),
             TrackedFrom = goal.TrackedFrom,
+            Direction = Enum.Parse<SavingsDirection>(goal.Direction.ToString()),
             CoversNothing = goal.CoversNothing,
             ReachedBy = progress.ReachedBy,
             NeededPerMonth = progress.NeededPerMonth,
@@ -35,4 +38,7 @@ internal static class SavingsGoalMapper
 
     public static DomainSavingsGoalSource ToDomain(SavingsGoalSource source) =>
         Enum.Parse<DomainSavingsGoalSource>(source.ToString());
+
+    public static DomainSavingsDirection ToDomain(SavingsDirection direction) =>
+        Enum.Parse<DomainSavingsDirection>(direction.ToString());
 }

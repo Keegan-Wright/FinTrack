@@ -12,7 +12,7 @@ namespace FinanceTracker.Domain.OpenBanking.Transactions;
 /// <summary>
 /// A transaction on a <see cref="BankAccount"/>. Its own aggregate as the set is unbounded.
 /// </summary>
-public sealed class BankTransaction : AggregateRoot
+public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
 {
     private readonly List<string> _providerClassifications = [];
     private readonly List<Guid> _customClassificationIds = [];

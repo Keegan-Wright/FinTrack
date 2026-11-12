@@ -28,6 +28,8 @@ public class SaveSavingsGoalValidator : AbstractValidator<SaveSavingsGoal>
 
         RuleFor(x => x.Source).IsInEnum().WithMessage("Choose where the saved amount comes from");
 
+        RuleFor(x => x.Direction).IsInEnum().WithMessage("Choose where the money is saved");
+
         RuleFor(x => x.AccountId)
             .NotEmpty()
             .When(x => x.Source == SavingsGoalSource.Account)

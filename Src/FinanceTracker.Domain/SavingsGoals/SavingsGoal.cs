@@ -61,6 +61,11 @@ public sealed class SavingsGoal : AggregateRoot
     public DateOnly? TrackedFrom { get; private set; }
 
     /// <summary>
+    /// Which way tagged money moves when it's saved, for <see cref="SavingsGoalSource.Tags"/>. Money in for any other.
+    /// </summary>
+    public SavingsDirection Direction { get; private set; }
+
+    /// <summary>
     /// How much the user puts towards it each month.
     /// </summary>
     public decimal MonthlyContribution { get; private set; }
@@ -137,6 +142,7 @@ public sealed class SavingsGoal : AggregateRoot
         AccountId = null;
         _tagIds.Clear();
         TrackedFrom = null;
+        Direction = SavingsDirection.MoneyIn;
     }
 
     /// <summary>
@@ -154,6 +160,7 @@ public sealed class SavingsGoal : AggregateRoot
         AccountId = accountId;
         _tagIds.Clear();
         TrackedFrom = null;
+        Direction = SavingsDirection.MoneyIn;
     }
 
     /// <summary>
@@ -161,7 +168,10 @@ public sealed class SavingsGoal : AggregateRoot
     /// <paramref name="tagIds"/> from <paramref name="from"/> on.
     /// </summary>
     /// <exception cref="ArgumentException">There are no tags.</exception>
-    public void TrackTags(IEnumerable<Guid> tagIds, decimal startingAmount, DateOnly from)
+    /// <param name="direction">Which way tagged money moves when it's saved, money in unless it goes somewhere
+    /// FinTrack can't see.</param>
+    public void TrackTags(IEnumerable<Guid> tagIds, decimal startingAmount, DateOnly from,
+        SavingsDirection direction = SavingsDirection.MoneyIn)
     {
         ArgumentNullException.ThrowIfNull(tagIds);
         ArgumentOutOfRangeException.ThrowIfNegative(startingAmount);
@@ -178,6 +188,7 @@ public sealed class SavingsGoal : AggregateRoot
         _tagIds.Clear();
         _tagIds.AddRange(replacements);
         TrackedFrom = from;
+        Direction = direction;
     }
 
     /// <summary>

@@ -24,6 +24,7 @@
 <PageTitle>FinTrack - Dashboard</PageTitle>
 <PageHeader Title="@GetGreeting()" Subtitle="@GetRangeLabel()">
     <Actions>
+        <SharingViewSwitch/>
         <MudToggleGroup T="DashboardRangePreset" Value="@View.Preset" ValueChanged="@SetRangePresetAsync"
                         Size="Size.Small" Color="Color.Primary">
             <MudToggleItem Value="DashboardRangePreset.ThisMonth" Text="@ThisMonthText"/>
