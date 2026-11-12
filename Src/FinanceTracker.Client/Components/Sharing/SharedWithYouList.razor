@@ -1,0 +1,55 @@
+@* What the other person in a link shares with the user, by kind, and what they can do with each. *@
+@using FinanceTracker.Contracts.Sharing
+
+<div class="ft-from">
+    @if (Shares.TheirAccounts.Count == 0 && Shares.TheirItems.Count == 0)
+    {
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">@Shares.Name hasn't shared anything with you yet.</MudText>
+    }
+
+    @if (Shares.TheirAccounts.Count > 0)
+    {
+        <div>
+            <MudText Typo="Typo.overline" Class="mud-text-secondary">Accounts</MudText>
+            <div class="ft-list">
+                @foreach (AccountSharedWithYou account in Shares.TheirAccounts)
+                {
+                    <div class="ft-list__row">
+                        <div class="ft-list__main">
+                            <MudText Typo="Typo.body2" Class="text-truncate">@account.Name</MudText>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary text-truncate">
+                                @account.BankName · @SharingText.ModeText(account.Mode).ToLowerInvariant()
+                            </MudText>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    @foreach (IGrouping<SharedItemKind, ItemSharedWithYou> kind in Shares.TheirItems.GroupBy(static x => x.Kind))
+    {
+        <div>
+            <MudText Typo="Typo.overline" Class="mud-text-secondary">@($"{SharingText.KindText(kind.Key)}s")</MudText>
+            <div class="ft-list">
+                @foreach (ItemSharedWithYou item in kind)
+                {
+                    <div class="ft-list__row">
+                        <div class="ft-list__main">
+                            <MudText Typo="Typo.body2" Class="text-truncate">@item.Name</MudText>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary text-truncate">
+                                @SharingText.ModeText(item.Mode)
+                            </MudText>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+
+    [Parameter] [EditorRequired] public required LinkShares Shares { get; set; }
+
+}

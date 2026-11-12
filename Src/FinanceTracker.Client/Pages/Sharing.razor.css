@@ -15,7 +15,7 @@
     flex-wrap: wrap;
 }
 
-/* Wraps at narrow widths rather than squeezing, with Share, Joint accounts and End side by side */
+/* Wraps at narrow widths rather than squeezing, Accept and Decline side by side */
 .ft-sharing__actions {
     display: flex;
     flex-wrap: wrap;

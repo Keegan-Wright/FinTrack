@@ -1,10 +1,10 @@
 @page "/Sharing"
 @* The other users the signed in user shares with, invites waiting for them, inviting someone by username or email,
-   and everyone they're linked with or have invited. Nothing is shared by linking alone (ISharingService). *@
+   and everyone they're linked with or have invited. Nothing is shared by linking alone (ISharingService). What's
+   shared with each linked person is chosen on their own page, see SharingWith. *@
 @using System.Globalization
 @using FinanceTracker.Contracts.Sharing
 @using FinanceTracker.Contracts.Validation
-@using FinanceTracker.Client.Components.Dialogs
 @using Microsoft.AspNetCore.Authorization
 @inherits PageComponent
 
@@ -76,20 +76,18 @@
                             <MudText Typo="Typo.caption" Class="mud-text-secondary text-truncate">@StateText(link)</MudText>
                         </div>
                         <div class="ft-sharing__actions">
+                            @* What's shared, joint accounts and ending the link are on their own page *@
                             @if (link.State == LinkState.Linked)
                             {
-                                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
-                                           StartIcon="@Icons.Material.Outlined.Tune"
-                                           OnClick="@(() => ChooseSharesAsync(link))">Share</MudButton>
+                                <MudButton Href="@($"Sharing/{link.Id}")" Variant="Variant.Outlined"
+                                           Color="Color.Primary" Size="Size.Small"
+                                           StartIcon="@Icons.Material.Outlined.Tune">Open</MudButton>
                             }
-                            @if (HasJointAccounts(link))
+                            else
                             {
-                                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
-                                           StartIcon="@Icons.Material.Outlined.JoinInner"
-                                           OnClick="@(() => ManageJointAccountsAsync(link))">Joint accounts</MudButton>
+                                <MudButton Variant="Variant.Text" Color="Color.Error" Size="Size.Small"
+                                           OnClick="@(() => EndAsync(link))">@EndText(link)</MudButton>
                             }
-                            <MudButton Variant="Variant.Text" Color="Color.Error" Size="Size.Small"
-                                       OnClick="@(() => EndAsync(link))">@EndText(link)</MudButton>
                         </div>
                     </div>
                 }
@@ -179,19 +177,6 @@
     }
 
     /// <summary>
-    /// <paramref name="count"/> of <paramref name="what"/>, e.g. <c>1 tag</c> or <c>3 tags</c>.
-    /// </summary>
-    private static string CountText(int count, string what)
-    {
-        if (count == 1)
-        {
-            return $"1 {what}";
-        }
-
-        return $"{count} {what}s";
-    }
-
-    /// <summary>
     /// Their joint accounts, after what's shared, e.g. <c> · a joint account to merge</c>. Empty when there are none.
     /// </summary>
     internal static string JointSummary(UserLink link)
@@ -218,9 +203,6 @@
 
         return string.Empty;
     }
-
-    private static bool HasJointAccounts(UserLink link) =>
-        link.State == LinkState.Linked && (link.JointAccounts > 0 || link.JointSuggestions > 0);
 
     private static string AccountsText(int count)
     {
@@ -331,210 +313,6 @@
         }
 
         await AnswerAsync(link, SharingService.EndAsync, EndedText(link), "Couldn't do that, try again");
-    }
-
-    /// <summary>
-    /// Opens the choice of which accounts to share with them, and saves it.
-    /// </summary>
-    internal async Task ChooseSharesAsync(UserLink link)
-    {
-        LinkShares? shares;
-        try
-        {
-            SetLoadingState(true, $"Loading what you share with {link.Name}…");
-            shares = await SharingService.GetSharesAsync(link.Id, _cts.Token);
-        }
-        catch (Exception)
-        {
-            Snackbar.Add("Couldn't load what you share, try again", Severity.Error);
-            return;
-        }
-        finally
-        {
-            SetLoadingState(false);
-        }
-
-        if (shares is null)
-        {
-            Links = await LoadLinksAsync(_cts.Token);
-            Snackbar.Add($"You're no longer linked with {link.Name}", Severity.Info);
-            return;
-        }
-
-        DialogParameters<ShareDialog> parameters = new() { { x => x.Shares, shares } };
-        IDialogReference dialog = await DialogService.ShowAsync<ShareDialog>(null, parameters);
-        DialogResult? result = await dialog.Result;
-        if (result is null || result.Canceled)
-        {
-            return;
-        }
-
-        ShareChoices choices = (ShareChoices)result.Data!;
-        if (!choices.AccountsChanged && !choices.ItemsChanged)
-        {
-            return;
-        }
-
-        try
-        {
-            SetLoadingState(true, $"Saving what you share with {link.Name}…");
-            LinkShares saved = shares;
-            if (choices.AccountsChanged)
-            {
-                saved = await SharingService.ChangeAccountSharesAsync(link.Id, choices.Accounts, _cts.Token);
-            }
-
-            if (choices.ItemsChanged)
-            {
-                saved = await SharingService.ChangeItemSharesAsync(link.Id, choices.Items, _cts.Token);
-            }
-
-            Links = await LoadLinksAsync(_cts.Token);
-            Snackbar.Add(SharedText(saved), Severity.Success);
-        }
-        catch (Exception)
-        {
-            Snackbar.Add("Couldn't save what you share, try again", Severity.Error);
-        }
-        finally
-        {
-            SetLoadingState(false);
-        }
-    }
-
-    /// <summary>
-    /// Opens the joint accounts they could merge or have merged with them, each change saved as it's made.
-    /// </summary>
-    internal async Task ManageJointAccountsAsync(UserLink link)
-    {
-        LinkShares? shares;
-        try
-        {
-            SetLoadingState(true, $"Loading your joint accounts with {link.Name}…");
-            shares = await SharingService.GetSharesAsync(link.Id, _cts.Token);
-        }
-        catch (Exception)
-        {
-            Snackbar.Add("Couldn't load your joint accounts, try again", Severity.Error);
-            return;
-        }
-        finally
-        {
-            SetLoadingState(false);
-        }
-
-        if (shares is null)
-        {
-            Links = await LoadLinksAsync(_cts.Token);
-            Snackbar.Add($"You're no longer linked with {link.Name}", Severity.Info);
-            return;
-        }
-
-        DialogParameters<JointAccountsDialog> parameters = new()
-        {
-            { x => x.Shares, shares },
-            { x => x.OnMerge, suggestions => ChangeJointAsync(() => SharingService.MergeJointAccountsAsync(link.Id,
-                MergeRequest(suggestions), _cts.Token), MergedText(suggestions)) },
-            { x => x.OnSplit, joint => ChangeJointAsync(() => SharingService.SplitJointAccountAsync(link.Id,
-                joint.JointAccountId, _cts.Token), $"Split {joint.Name}, you each see your own copy again") }
-        };
-
-        IDialogReference dialog = await DialogService.ShowAsync<JointAccountsDialog>(null, parameters);
-        DialogResult? result = await dialog.Result;
-        if (result?.Data is true)
-        {
-            Links = await LoadLinksAsync(_cts.Token);
-        }
-    }
-
-    private static MergeJointAccounts MergeRequest(IReadOnlyList<JointAccountSuggestion> suggestions) => new()
-    {
-        Accounts = suggestions
-            .Select(static x => new MergeJointAccount
-            {
-                YourAccountId = x.YourAccountId, TheirAccountId = x.TheirAccountId
-            })
-            .ToList()
-    };
-
-    /// <summary>
-    /// What merging did, e.g. <c>Merged Christmas, it's counted once now</c>.
-    /// </summary>
-    internal static string MergedText(IReadOnlyList<JointAccountSuggestion> suggestions)
-    {
-        if (suggestions.Count == 1)
-        {
-            return $"Merged {suggestions[0].YourAccountName}, it's counted once now";
-        }
-
-        return $"Merged {suggestions.Count} accounts, each is counted once now";
-    }
-
-    /// <summary>
-    /// Merges or splits joint accounts, saying so, and gives what's shared after, or null when it failed.
-    /// </summary>
-    private async Task<LinkShares?> ChangeJointAsync(Func<Task<LinkShares>> change, string done)
-    {
-        try
-        {
-            LinkShares after = await change();
-            Snackbar.Add(done, Severity.Success);
-            return after;
-        }
-        catch (Exception)
-        {
-            Snackbar.Add("Couldn't do that, try again", Severity.Error);
-            return null;
-        }
-    }
-
-    /// <summary>
-    /// How many accounts and other things they now share, once saved, e.g. <c>Sharing 2 accounts, 3 tags and 1 rule
-    /// with Sam</c>.
-    /// </summary>
-    internal static string SharedText(LinkShares shares)
-    {
-        List<string> parts = [];
-        int accounts = shares.YourAccounts.Count(static x => x.Mode is not null);
-        if (accounts > 0)
-        {
-            parts.Add(AccountsText(accounts));
-        }
-
-        AddCount(parts, shares, SharedItemKind.Classification, "tag");
-        AddCount(parts, shares, SharedItemKind.Rule, "rule");
-        AddCount(parts, shares, SharedItemKind.Bill, "bill");
-        if (parts.Count == 0)
-        {
-            return $"Nothing shared with {shares.Name}";
-        }
-
-        return $"Sharing {ListText(parts)} with {shares.Name}";
-    }
-
-    /// <summary>
-    /// Adds how many of <paramref name="kind"/> they share to <paramref name="parts"/>, when any.
-    /// </summary>
-    private static void AddCount(List<string> parts, LinkShares shares, SharedItemKind kind, string what)
-    {
-        int count = shares.YourItems.Count(x => x.Kind == kind && x.Mode is not null);
-        if (count > 0)
-        {
-            parts.Add(CountText(count, what));
-        }
-    }
-
-    /// <summary>
-    /// <paramref name="parts"/> as a list, e.g. <c>a, b and c</c>.
-    /// </summary>
-    private static string ListText(List<string> parts)
-    {
-        if (parts.Count == 1)
-        {
-            return parts[0];
-        }
-
-        return $"{string.Join(", ", parts[..^1])} and {parts[^1]}";
     }
 
     private static string ConfirmTitle(UserLink link)

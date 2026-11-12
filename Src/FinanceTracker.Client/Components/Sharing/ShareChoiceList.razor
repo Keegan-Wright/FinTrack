@@ -1,0 +1,200 @@
+@* The user's things of one kind to tick for sharing with the other person in a link, each with what they can do with
+   it. Ones going with a shared account show ticked but can't be chosen apart from it. A search narrows a long list,
+   and Select all ticks those listed. Changes go to Chosen, the page saves them. *@
+@using FinanceTracker.Contracts.Sharing
+
+<div class="ft-choices">
+    @if (Items.Count == 0)
+    {
+        <MudText Typo="Typo.body2">@None</MudText>
+    }
+    else
+    {
+        <div class="ft-choices__tools">
+            @if (Choosable.Count > 0)
+            {
+                <MudCheckBox T="bool?" Value="@AllChosen" ValueChanged="@ChooseAllAsync" TriState="true"
+                             Label="Select all" Color="Color.Primary" Dense="true"/>
+            }
+            <MudText Typo="Typo.caption" Class="mud-text-secondary ft-choices__count">@CountText</MudText>
+            @if (Items.Count > SearchFrom)
+            {
+                <SearchField @bind-Value="_search" Placeholder="@($"Search {What}")"/>
+            }
+        </div>
+
+        @if (Listed.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">Nothing matches that search.</MudText>
+        }
+
+        @foreach (IGrouping<string?, ShareChoiceItem> group in Listed.GroupBy(static x => x.Group))
+        {
+            <div class="ft-choices__group">
+                @if (group.Key is { } heading)
+                {
+                    <MudText Typo="Typo.overline" Class="mud-text-secondary">@heading</MudText>
+                }
+                <div class="ft-list">
+                    @foreach (ShareChoiceItem item in group)
+                    {
+                        @if (item.CanChoose)
+                        {
+                            bool isChosen = Chosen.TryGetValue(item.Id, out ShareMode mode);
+                            <div class="ft-list__row ft-choices__row">
+                                <MudCheckBox T="bool" Value="@isChosen" ValueChanged="@(x => ChooseAsync(item, x))"
+                                             Color="Color.Primary" Dense="true" aria-label="@($"Share {item.Name}")"/>
+                                <MudText Typo="Typo.body2" Class="ft-list__main text-truncate">@item.Name</MudText>
+                                @* Always takes its room, so ticking a row doesn't move anything *@
+                                <div class="ft-choices__mode">
+                                    @if (isChosen)
+                                    {
+                                        <MudToggleGroup T="ShareMode" Value="@mode"
+                                                        ValueChanged="@(x => ChangeModeAsync(item, x))"
+                                                        Size="Size.Small" Color="Color.Primary" Outlined="true"
+                                                        aria-label="@($"What {Person} can do with {item.Name}")">
+                                            <MudToggleItem Value="ShareMode.ReadOnly" Text="See"/>
+                                            <MudToggleItem Value="ShareMode.AllowChanges" Text="Change"/>
+                                        </MudToggleGroup>
+                                    }
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="ft-list__row ft-choices__row">
+                                <MudCheckBox T="bool" Value="true" Disabled="true" Color="Color.Primary" Dense="true"
+                                             aria-label="@($"{item.Name} goes with {item.FollowsAccount}")"/>
+                                <div class="ft-list__main">
+                                    <MudText Typo="Typo.body2" Class="text-truncate">@item.Name</MudText>
+                                    <MudText Typo="Typo.caption" Class="mud-text-secondary text-truncate">
+                                        @SharingText.FollowsText(item.FollowsAccount!, item.FollowsMode)
+                                    </MudText>
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+
+    /// <summary>
+    /// How many there have to be before there's a search.
+    /// </summary>
+    internal const int SearchFrom = 8;
+
+    /// <summary>
+    /// In the order they're listed, grouped by <see cref="ShareChoiceItem.Group"/> where they have one.
+    /// </summary>
+    [Parameter] [EditorRequired] public required IReadOnlyList<ShareChoiceItem> Items { get; set; }
+
+    /// <summary>
+    /// Those ticked and what the other person can do with each, changed in place.
+    /// </summary>
+    [Parameter] [EditorRequired] public required Dictionary<Guid, ShareMode> Chosen { get; set; }
+
+    /// <summary>
+    /// The other person's name, for what the toggles are labelled.
+    /// </summary>
+    [Parameter] [EditorRequired] public required string Person { get; set; }
+
+    /// <summary>
+    /// What they are, plural and lower case, e.g. <c>tags</c>, for the search and count.
+    /// </summary>
+    [Parameter] [EditorRequired] public required string What { get; set; }
+
+    /// <summary>
+    /// Said when the user has none.
+    /// </summary>
+    [Parameter] [EditorRequired] public required string None { get; set; }
+
+    /// <summary>
+    /// Something was ticked, unticked or its mode changed.
+    /// </summary>
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private string _search = string.Empty;
+
+    private List<ShareChoiceItem> Choosable => Items.Where(static x => x.CanChoose).ToList();
+
+    private List<ShareChoiceItem> Listed => Items
+        .Where(x => string.IsNullOrWhiteSpace(_search) ||
+                    x.Name.Contains(_search.Trim(), StringComparison.CurrentCultureIgnoreCase))
+        .ToList();
+
+    private string CountText
+    {
+        get
+        {
+            int shared = Chosen.Count + Items.Count(static x => !x.CanChoose);
+            return $"{shared} of {Items.Count} {What} shared";
+        }
+    }
+
+    /// <summary>
+    /// Ticked when every one that can be chosen is, empty when none are, and in between otherwise.
+    /// </summary>
+    private bool? AllChosen
+    {
+        get
+        {
+            int choosable = Choosable.Count;
+            int chosen = Choosable.Count(x => Chosen.ContainsKey(x.Id));
+            if (chosen == 0)
+            {
+                return false;
+            }
+
+            if (chosen == choosable)
+            {
+                return true;
+            }
+
+            return null;
+        }
+    }
+
+    private async Task ChooseAsync(ShareChoiceItem item, bool isChosen)
+    {
+        if (isChosen)
+        {
+            Chosen.TryAdd(item.Id, ShareMode.ReadOnly);
+        }
+        else
+        {
+            Chosen.Remove(item.Id);
+        }
+
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task ChangeModeAsync(ShareChoiceItem item, ShareMode mode)
+    {
+        Chosen[item.Id] = mode;
+        await OnChanged.InvokeAsync();
+    }
+
+    // Ticks those that can be chosen, read only unless already chosen otherwise. It's not a standing choice, ones added
+    // later still start private
+    private async Task ChooseAllAsync(bool? all)
+    {
+        if (all == true)
+        {
+            foreach (ShareChoiceItem item in Choosable)
+            {
+                Chosen.TryAdd(item.Id, ShareMode.ReadOnly);
+            }
+        }
+        else
+        {
+            Chosen.Clear();
+        }
+
+        await OnChanged.InvokeAsync();
+    }
+
+}

@@ -1,3 +1,4 @@
+using FinanceTracker.Client.Components.Sharing;
 using FinanceTracker.Client.Pages;
 using FinanceTracker.Contracts.Sharing;
 
@@ -38,6 +39,38 @@ public class SharingTests
     [Arguments(InviteRefusal.AlreadyInvited, "There's already an invite waiting between you")]
     public async Task RefusalText_SaysWhyItDidntGo(InviteRefusal refusal, string expected) =>
         await Assert.That(FinanceTracker.Client.Pages.Sharing.RefusalText(refusal, "sam")).IsEqualTo(expected);
+
+    [Test]
+    [Arguments(0, 0, "")]
+    [Arguments(1, 0, " · a joint account to merge")]
+    [Arguments(2, 1, " · 2 joint accounts to merge")]
+    [Arguments(0, 1, " · 1 joint account")]
+    [Arguments(0, 3, " · 3 joint accounts")]
+    public async Task JointSummary_SaysWhatsToMergeFirst(int suggestions, int merged, string expected) =>
+        await Assert.That(FinanceTracker.Client.Pages.Sharing.JointSummary(Link(LinkState.Linked) with
+        {
+            JointSuggestions = suggestions, JointAccounts = merged
+        })).IsEqualTo(expected);
+
+    [Test]
+    [Arguments(true, "Counted once, from your connection")]
+    [Arguments(false, "Counted once, from Sam Taylor's connection")]
+    public async Task MergedText_SaysWhoseConnectionItCountsFrom(bool yours, string expected) =>
+        await Assert.That(SharingText.MergedText(
+            new MergedJointAccount { JointAccountId = Guid.NewGuid(), Name = "Joint", ShownIsYours = yours },
+            "Sam Taylor")).IsEqualTo(expected);
+
+    [Test]
+    [Arguments(ShareMode.ReadOnly, "Can see")]
+    [Arguments(ShareMode.AllowChanges, "Can see and change")]
+    public async Task ModeText_SaysWhatTheyCanDo(ShareMode mode, string expected) =>
+        await Assert.That(SharingText.ModeText(mode)).IsEqualTo(expected);
+
+    [Test]
+    [Arguments("Accounts", 2, 5, "Accounts · 2/5")]
+    [Arguments("Rules", 0, 0, "Rules")]
+    public async Task TabText_SaysHowManyAreShared(string name, int shared, int all, string expected) =>
+        await Assert.That(SharingWith.TabText(name, shared, all)).IsEqualTo(expected);
 
     private static UserLink Link(LinkState state) => new()
     {
