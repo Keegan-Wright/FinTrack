@@ -115,7 +115,7 @@ public class BankTransactionTests
         BankAccount account = BuildAccount();
         var transaction = BankTransaction.Import(account, Details("tx-1"));
         var classification = new CustomClassification(account.UserId, "Holiday");
-        transaction.Classify(classification);
+        transaction.Classify(classification, transaction.UserId);
 
         transaction.UpdateFromSync(Details("tx-1"));
 
@@ -129,8 +129,8 @@ public class BankTransactionTests
         var transaction = BankTransaction.Import(account, Details("tx-1"));
         var classification = new CustomClassification(account.UserId, "Holiday");
 
-        transaction.Classify(classification);
-        transaction.Classify(classification);
+        transaction.Classify(classification, transaction.UserId);
+        transaction.Classify(classification, transaction.UserId);
 
         await Assert.That(transaction.CustomClassificationIds).IsEquivalentTo([classification.Id]);
     }
@@ -142,7 +142,7 @@ public class BankTransactionTests
         var classification = new CustomClassification(Guid.NewGuid(), "Holiday");
 
         Assert.Throws<InvalidOperationException>(() =>
-            transaction.Classify(classification));
+            transaction.Classify(classification, transaction.UserId));
     }
 
     [Test]
@@ -151,7 +151,7 @@ public class BankTransactionTests
         var transaction = BankTransaction.Import(BuildAccount(), Details("tx-1"));
 
         Assert.Throws<ArgumentNullException>(() =>
-            transaction.Classify(null!));
+            transaction.Classify(null!, transaction.UserId));
     }
 
     [Test]
@@ -161,8 +161,8 @@ public class BankTransactionTests
         var transaction = BankTransaction.Import(account, Details("tx-1"));
         var holiday = new CustomClassification(account.UserId, "Holiday");
         var food = new CustomClassification(account.UserId, "Food");
-        transaction.Classify(holiday);
-        transaction.Classify(food);
+        transaction.Classify(holiday, transaction.UserId);
+        transaction.Classify(food, transaction.UserId);
 
         transaction.Unclassify(holiday.Id);
 

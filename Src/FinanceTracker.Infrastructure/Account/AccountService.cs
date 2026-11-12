@@ -69,10 +69,10 @@ public class AccountService : ServiceBase<AccountService>, IAccountService
                 Transactions = transactions[account.Id]
                     .OrderByDescending(static x => x.OccurredAt)
                     .Take(transactionsToReturn)
-                    .Select(static transaction => new AccountTransaction
+                    .Select(transaction => new AccountTransaction
                     {
                         Amount = transaction.Amount,
-                        Description = transaction.Description,
+                        Description = view.DescriptionOf(transaction),
                         Status = transaction.IsPending ? "Pending" : "Complete",
                         Time = transaction.OccurredAt
                     }).ToImmutableList()

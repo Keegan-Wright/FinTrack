@@ -7,9 +7,11 @@ using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.PayPeriods;
 using FinanceTracker.Domain.Rules;
+using FinanceTracker.Domain.Sharing;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using FinanceTracker.Infrastructure.PayPeriods;
+using FinanceTracker.Infrastructure.Sharing;
 using FinanceTracker.Infrastructure.Transactions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -29,14 +31,16 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
 {
     private readonly IBillSyncService _billSyncService;
     private readonly TimeProvider _timeProvider;
+    private readonly IAccountScope _accountScope;
 
     public BillsService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<BillsService> logger,
-        IBillSyncService billSyncService, TimeProvider timeProvider)
+        IBillSyncService billSyncService, TimeProvider timeProvider, IAccountScope accountScope)
         : base(currentUser, financeTrackerContextFactory, logger)
     {
         _billSyncService = billSyncService;
         _timeProvider = timeProvider;
+        _accountScope = accountScope;
     }
 
     public async Task<BillMonthOverview> GetMonthAsync(int year, int month, CancellationToken cancellationToken)
@@ -200,7 +204,8 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
                 "A bill from a standing order or direct debit can only be ended, the next sync would add it again.");
         }
 
-        List<BankTransaction> payments = await context.BankTransactions.OwnedBy(UserId)
+        // Whoever's transaction pays it, they may have let the user say theirs does
+        List<BankTransaction> payments = await context.BankTransactions
             .Where(x => x.BillPayment != null && x.BillPayment.BillId == id)
             .ToListAsync(cancellationToken);
         foreach (BankTransaction payment in payments)
@@ -226,7 +231,10 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        BankTransaction transaction = await context.BankTransactions.OwnedBy(UserId)
+        // Their own, or one on an account shared with them with changes allowed, paying one of their own bills. The
+        // owner is shared that bill, so they see what it's called
+        AccountsInView changeable = await _accountScope.ResolveChangeableAsync(context, cancellationToken);
+        BankTransaction transaction = await context.BankTransactions.ChangeableIn(changeable)
             .SingleAsync(x => x.Id == transactionId, cancellationToken);
 
         if (payment.BillId is not { } billId)
@@ -237,17 +245,17 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
         {
             DomainBill bill = await context.Bills.OwnedBy(UserId).AsNoTracking()
                 .SingleAsync(x => x.Id == billId, cancellationToken);
-            transaction.PayBill(bill, _timeProvider.UtcNow);
+            transaction.PayBill(bill, UserId, _timeProvider.UtcNow);
+            await AnnotationShares.ShareWithOwnerAsync(context, UserId, transaction, ShareItemType.Bill, bill.Id,
+                _timeProvider.UtcNow, cancellationToken);
         }
 
         await context.SaveChangesAsync(cancellationToken);
         Logger.LogChanged(UserId, "set the bill paid by", "transaction", transactionId);
 
-        Dictionary<Guid, string> customTags = await context.CustomClassifications.OwnedBy(UserId)
-            .ToDictionaryAsync(static x => x.Id, static x => x.Tag, cancellationToken);
-        TransactionMapper mapper =
-            await TransactionMapper.LoadAsync(context, UserId, customTags, [transaction],
-                _timeProvider.LocalTimeZone, cancellationToken);
+        AccountsInView view = await _accountScope.ResolveAllAsync(context, cancellationToken);
+        TransactionMapper mapper = await TransactionMapper.LoadAsync(context, view, [transaction],
+            _timeProvider.LocalTimeZone, cancellationToken);
 
         return mapper.ToContract(transaction);
     }
@@ -383,7 +391,9 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
     private async Task<Bill> ToContractAsync(FinanceTrackerContext context, DomainBill bill,
         CancellationToken cancellationToken)
     {
-        List<BankTransaction> payments = await context.BankTransactions.OwnedBy(UserId).AsNoTracking()
+        // From any account it may be paid from, see LoadPaymentsAsync
+        AccountsInView all = await _accountScope.ResolveAllAsync(context, cancellationToken);
+        List<BankTransaction> payments = await context.BankTransactions.InView(all).AsNoTracking()
             .Where(x => x.BillPayment != null && x.BillPayment.BillId == bill.Id)
             .ToListAsync(cancellationToken);
 
@@ -396,13 +406,22 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
     }
 
     /// <summary>
-    /// Every transaction that pays one of the user's bills. Indexed by bill, so no dates are needed.
+    /// Every transaction that pays one of the user's bills, from their own accounts or any shared with them,
+    /// whichever view they chose, as the bill is theirs wherever it's paid from. Indexed by bill, so no dates are
+    /// needed.
     /// </summary>
     private async Task<List<BankTransaction>> LoadPaymentsAsync(FinanceTrackerContext context,
-        CancellationToken cancellationToken) =>
-        await context.BankTransactions.OwnedBy(UserId).AsNoTracking()
-            .Where(static x => x.BillPayment != null && x.BillPayment.BillId != null)
+        CancellationToken cancellationToken)
+    {
+        AccountsInView all = await _accountScope.ResolveAllAsync(context, cancellationToken);
+        List<Guid> billIds = await context.Bills.OwnedBy(UserId).Select(static x => x.Id)
             .ToListAsync(cancellationToken);
+
+        return await context.BankTransactions.InView(all).AsNoTracking()
+            .Where(x => x.BillPayment != null && x.BillPayment.BillId != null &&
+                        billIds.Contains(x.BillPayment.BillId.Value))
+            .ToListAsync(cancellationToken);
+    }
 
     private async Task<Dictionary<Guid, string>> LoadAccountNamesAsync(FinanceTrackerContext context,
         CancellationToken cancellationToken) =>

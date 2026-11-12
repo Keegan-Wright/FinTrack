@@ -1,4 +1,5 @@
 using System.Globalization;
+using FinanceTracker.Client.Components.Bills;
 using FinanceTracker.Client.Components.Common;
 using FinanceTracker.Contracts.Debts;
 using FinanceTracker.Contracts.Transactions;
@@ -151,14 +152,15 @@ public static class DebtText
     /// <summary>
     /// Who said a transaction pays a debt, e.g. <c>Chosen by you</c> or <c>By your rule Car loan</c>.
     /// </summary>
-    public static string Reason(TransferDecidedBy decidedBy, string? ruleName)
+    /// <param name="ownerName">Whose debt it is when it's the other person's, null when it's the user's.</param>
+    public static string Reason(TransferDecidedBy decidedBy, string? ruleName, string? ownerName = null)
     {
         if (decidedBy == TransferDecidedBy.Rule)
         {
-            return $"By your rule {ruleName}";
+            return $"By {BillText.Whose(ownerName)} rule {ruleName}";
         }
 
-        return "Chosen by you";
+        return $"Chosen by {BillText.Who(ownerName)}";
     }
 
     /// <summary>

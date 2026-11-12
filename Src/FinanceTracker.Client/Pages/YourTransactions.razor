@@ -99,7 +99,7 @@
                     </PropertyColumn>
                     <TemplateColumn T="Transaction" Title="Counts as" Sortable="true" SortBy="@CountsAs">
                         <CellTemplate>
-                            @if (context.Item.Transfer is { } transfer && context.Item.SharedBy is not null)
+                            @if (context.Item.Transfer is { } transfer && context.Item.IsReadOnly)
                             {
                                 <span class="mud-text-secondary">@TransferText.Label(transfer)</span>
                             }
@@ -145,8 +145,8 @@
                             <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true"
                                      AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
                                      AriaLabel="@($"Actions for {context.Item.Description}")">
-                                @* Another person's shared transaction is theirs to change, so only its details *@
-                                @if (context.Item.SharedBy is null)
+                                @* Another person's transaction they haven't let the user change, so only its details *@
+                                @if (!context.Item.IsReadOnly)
                                 {
                                 @* A split transaction's tags are its parts' *@
                                 @if (context.Item.Splits.Count == 0)
@@ -174,10 +174,14 @@
                                              OnClick="@(() => PayBillAsync(context.Item))">Pays a bill</MudMenuItem>
                                 <MudMenuItem Icon="@Icons.Material.Outlined.CreditScore"
                                              OnClick="@(() => PayDebtAsync(context.Item))">Pays off a debt</MudMenuItem>
-                                <MudMenuItem Icon="@Icons.Material.Outlined.Rule"
-                                             OnClick="@(() => CreateRuleFrom(context.Item))">
-                                    Create rule from this
-                                </MudMenuItem>
+                                @* Rules only run on the user's own accounts for now *@
+                                @if (context.Item.SharedBy is null)
+                                {
+                                    <MudMenuItem Icon="@Icons.Material.Outlined.Rule"
+                                                 OnClick="@(() => CreateRuleFrom(context.Item))">
+                                        Create rule from this
+                                    </MudMenuItem>
+                                }
                                 }
                                 <MudMenuItem Icon="@Icons.Material.Outlined.Info"
                                              OnClick="@(() => ShowDetailsAsync(context.Item))">
@@ -498,12 +502,12 @@
     /// </summary>
     private async Task SplitAsync(Transaction transaction)
     {
-        List<Classification> tags = await ClassificationsService.GetAllCustomClassificationsAsync(_cts.Token)
+        List<Classification> own = await ClassificationsService.GetAllCustomClassificationsAsync(_cts.Token)
             .ToListAsync(_cts.Token);
         DialogParameters<SplitTransactionDialog> parameters = new()
         {
             { x => x.Transaction, transaction },
-            { x => x.Tags, tags }
+            { x => x.Tags, SplitText.TagChoices(own, transaction) }
         };
         DialogOptions options = new() { MaxWidth = MaxWidth.Medium, FullWidth = true };
 

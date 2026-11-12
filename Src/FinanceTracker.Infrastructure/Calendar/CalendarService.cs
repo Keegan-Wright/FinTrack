@@ -57,11 +57,11 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
         List<CalendarTransactionItem> transactionItems = (await context.BankTransactions.InView(view)
                 .WhereEncryptedDayBetween(x => x.OccurredAt, startDate, endDate, context)
                 .Where(static x => x.Transfer == null || x.Transfer.Decision != TransferDecision.Transfer)
-                .Select(static x => new { x.Description, x.Amount, x.Type, x.OccurredAt })
+                .AsNoTracking()
                 .ToListAsync(cancellationToken))
-            .Select(static x => new CalendarTransactionItem
+            .Select(x => new CalendarTransactionItem
             {
-                Description = x.Description,
+                Description = view.DescriptionOf(x),
                 Amount = x.Amount,
                 TransactionType = x.Type.ToString(),
                 TransactionTime = x.OccurredAt

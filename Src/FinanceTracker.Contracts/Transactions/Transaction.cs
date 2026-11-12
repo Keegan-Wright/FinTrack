@@ -86,6 +86,11 @@ public class Transaction
     public string? SharedBy { get; init; }
 
     /// <summary>
+    /// Whether the user can only look at it, on an account shared with them without changes allowed.
+    /// </summary>
+    public bool IsReadOnly { get; init; }
+
+    /// <summary>
     /// Whether it's a transfer and why, null when nothing suggests it is one.
     /// </summary>
     [Description("Whether the transaction is a transfer and why")]

@@ -38,14 +38,37 @@ public static class BillText
         $"{bill.AccountName} · {FrequencyName(bill.Frequency)} · {SourceName(bill.Source)}";
 
     /// <summary>
-    /// Who said a transaction pays its bill, e.g. <c>Matched by FinTrack</c> or <c>By your rule Rent</c>.
+    /// Who said a transaction pays its bill, e.g. <c>Matched by FinTrack</c> or <c>By your rule Rent</c>, or
+    /// <c>By Sam Taylor's rule Rent</c> for another person's bill.
     /// </summary>
-    public static string Reason(TransactionBill bill) => bill.DecidedBy switch
+    public static string Reason(TransactionBill bill)
     {
-        TransferDecidedBy.User => "Chosen by you",
-        TransferDecidedBy.Rule => $"By your rule {bill.RuleName}",
-        _ => "Matched by FinTrack"
-    };
+        ArgumentNullException.ThrowIfNull(bill);
+        return bill.DecidedBy switch
+        {
+            TransferDecidedBy.User => $"Chosen by {Who(bill.OwnerName)}",
+            TransferDecidedBy.Rule => $"By {Whose(bill.OwnerName)} rule {bill.RuleName}",
+            _ => "Matched by FinTrack"
+        };
+    }
+
+    /// <summary>
+    /// <c>you</c>, or the other person's name when it's theirs.
+    /// </summary>
+    internal static string Who(string? ownerName) => ownerName ?? "you";
+
+    /// <summary>
+    /// <c>your</c>, or <c>Sam Taylor's</c> when it's theirs.
+    /// </summary>
+    internal static string Whose(string? ownerName)
+    {
+        if (ownerName is null)
+        {
+            return "your";
+        }
+
+        return $"{ownerName}'s";
+    }
 
     /// <summary>
     /// How a bill reads where one is picked, telling apart bills with the same name, e.g.

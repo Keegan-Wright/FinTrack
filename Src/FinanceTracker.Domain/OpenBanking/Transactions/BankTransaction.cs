@@ -275,11 +275,12 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
     /// <summary>
     /// The user says this pays <paramref name="bill"/>, which matching and rules then leave alone.
     /// </summary>
-    /// <exception cref="InvalidOperationException">The bill belongs to another user.</exception>
-    public void PayBill(Bill bill, DateTime decidedAt)
+    /// <param name="by">Who says so, the owner or someone they let change it. Only their own bills can be paid.</param>
+    /// <exception cref="InvalidOperationException">The bill isn't <paramref name="by"/>'s.</exception>
+    public void PayBill(Bill bill, Guid by, DateTime decidedAt)
     {
         ArgumentNullException.ThrowIfNull(bill);
-        if (bill.UserId != UserId)
+        if (bill.UserId != by)
         {
             throw new InvalidOperationException("Cannot pay another user's bill with this transaction.");
         }
@@ -316,11 +317,12 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
     /// <summary>
     /// The user says this pays off <paramref name="debt"/>, which rules then leave alone.
     /// </summary>
-    /// <exception cref="InvalidOperationException">The debt belongs to another user.</exception>
-    public void PayDebt(Debt debt, DateTime decidedAt)
+    /// <param name="by">Who says so, the owner or someone they let change it. Only their own debts can be paid.</param>
+    /// <exception cref="InvalidOperationException">The debt isn't <paramref name="by"/>'s.</exception>
+    public void PayDebt(Debt debt, Guid by, DateTime decidedAt)
     {
         ArgumentNullException.ThrowIfNull(debt);
-        if (debt.UserId != UserId)
+        if (debt.UserId != by)
         {
             throw new InvalidOperationException("Cannot pay another user's debt with this transaction.");
         }
@@ -351,12 +353,13 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
     /// <summary>
     /// The user tags the transaction, which from now on rules leave its tags alone, see <see cref="TagsSetByUser"/>.
     /// </summary>
-    /// <exception cref="InvalidOperationException">The tag is another user's, or the transaction is split and its tags
-    /// are its parts.</exception>
-    public void Classify(CustomClassification classification)
+    /// <param name="by">Who tags it, the owner or someone they let change it. Only their own tags can be used.</param>
+    /// <exception cref="InvalidOperationException">The tag isn't <paramref name="by"/>'s, or the transaction is split
+    /// and its tags are its parts.</exception>
+    public void Classify(CustomClassification classification, Guid by)
     {
         ArgumentNullException.ThrowIfNull(classification);
-        if (classification.UserId != UserId)
+        if (classification.UserId != by)
         {
             throw new InvalidOperationException("Cannot apply another user's classification to this transaction.");
         }
@@ -413,11 +416,13 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
     /// </summary>
     /// <param name="parts">At least two, each signed like the transaction, adding up to its amount.</param>
     /// <param name="tags">The tags the parts count under.</param>
-    /// <exception cref="InvalidOperationException">It's pending, so its amount may still change, or a tag is another
-    /// user's.</exception>
+    /// <param name="by">Who splits it, the owner or someone they let change it. Parts can use their own tags, or a tag
+    /// already on the transaction, which may be the other person's.</param>
+    /// <exception cref="InvalidOperationException">It's pending, so its amount may still change, or a tag is neither
+    /// <paramref name="by"/>'s nor already on it.</exception>
     /// <exception cref="ArgumentException">The parts don't add up, are signed the other way or are zero, there's
     /// only one, or a part's tag isn't among <paramref name="tags"/>.</exception>
-    public void Split(IReadOnlyList<TransactionSplit> parts, IReadOnlyCollection<CustomClassification> tags)
+    public void Split(IReadOnlyList<TransactionSplit> parts, IReadOnlyCollection<CustomClassification> tags, Guid by)
     {
         ArgumentNullException.ThrowIfNull(parts);
         ArgumentNullException.ThrowIfNull(tags);
@@ -427,7 +432,7 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
             throw new InvalidOperationException("A pending transaction can't be split until the bank settles it.");
         }
 
-        if (tags.Any(x => x.UserId != UserId))
+        if (tags.Any(x => x.UserId != by && !HasTag(x.Id)))
         {
             throw new InvalidOperationException("Cannot apply another user's classification to this transaction.");
         }
@@ -457,6 +462,12 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
         _splits.Clear();
         return true;
     }
+
+    /// <summary>
+    /// Whether <paramref name="tagId"/> is on it already, on the whole or on one of its parts.
+    /// </summary>
+    private bool HasTag(Guid tagId) =>
+        _customClassificationIds.Contains(tagId) || _splits.Exists(x => x.TagId == tagId);
 
     private void CheckParts(IReadOnlyList<TransactionSplit> parts, IReadOnlyCollection<CustomClassification> tags)
     {

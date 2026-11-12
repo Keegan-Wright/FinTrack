@@ -59,13 +59,16 @@ public static class TransactionChips
         }
 
         string reason = LowerFirst(BillText.Reason(bill));
+
+        // Another person's bill isn't on the user's Bills page, so it's only named
+        string? href = bill.OwnerName is null ? "Bills" : null;
         if (bill.IsSubscription)
         {
-            return new TransactionChip(name, TransactionChipKind.Link, Icons.Material.Outlined.Autorenew, "Bills",
-                $"Pays your subscription {name}, {reason}");
+            return new TransactionChip(name, TransactionChipKind.Link, Icons.Material.Outlined.Autorenew, href,
+                $"Pays {BillText.Whose(bill.OwnerName)} subscription {name}, {reason}");
         }
 
-        return new TransactionChip(name, TransactionChipKind.Link, Icons.Material.Outlined.EventRepeat, "Bills",
+        return new TransactionChip(name, TransactionChipKind.Link, Icons.Material.Outlined.EventRepeat, href,
             $"Pays {name}, {reason}");
     }
 
@@ -79,9 +82,12 @@ public static class TransactionChips
             return null;
         }
 
-        string reason = LowerFirst(DebtText.Reason(debt.DecidedBy, debt.RuleName));
-        return new TransactionChip(name, TransactionChipKind.Link, Icons.Material.Outlined.CreditScore,
-            $"Debts/{debtId}", $"Pays off {name}, {reason}");
+        string reason = LowerFirst(DebtText.Reason(debt.DecidedBy, debt.RuleName, debt.OwnerName));
+
+        // Another person's debt has no page of the user's to open
+        string? href = debt.OwnerName is null ? $"Debts/{debtId}" : null;
+        return new TransactionChip(name, TransactionChipKind.Link, Icons.Material.Outlined.CreditScore, href,
+            $"Pays off {name}, {reason}");
     }
 
     private static TransactionChip Goal(TransactionSavingsGoal goal) =>

@@ -2,6 +2,7 @@ using FinanceTracker.Contracts.Transactions;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.SavingsGoals;
 using FinanceTracker.Infrastructure.Persistence;
+using FinanceTracker.Infrastructure.Sharing;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.Infrastructure.Transactions;
@@ -86,7 +87,10 @@ internal sealed record TransactionCriteria(
     /// <summary>
     /// Filters on encrypted columns, which can only be compared once decrypted.
     /// </summary>
-    public bool MatchesClientFilters(BankTransaction transaction, IReadOnlyDictionary<Guid, string> customTags)
+    /// <param name="view">What the user sees, so a search only finds a description they'd be shown, see
+    /// <see cref="PrivateTransfers"/>.</param>
+    public bool MatchesClientFilters(BankTransaction transaction, IReadOnlyDictionary<Guid, string> customTags,
+        AccountsInView view)
     {
         if (Types is { Count: > 0 } &&
             !Types.Any(x => Enum.TryParse(x, true, out TransactionType type) && type == transaction.Type))
@@ -100,7 +104,7 @@ internal sealed record TransactionCriteria(
         }
 
         if (SearchTerm is not null &&
-            !transaction.Description.Contains(SearchTerm, StringComparison.CurrentCultureIgnoreCase))
+            !view.DescriptionOf(transaction).Contains(SearchTerm, StringComparison.CurrentCultureIgnoreCase))
         {
             return false;
         }

@@ -7,6 +7,7 @@ using FinanceTracker.Domain.Rules;
 using FinanceTracker.Domain.SavingsGoals;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Classification;
+using FinanceTracker.Infrastructure.Sharing;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.EntityFrameworkCore;
@@ -460,7 +461,8 @@ public class ClassificationServiceTests : InfrastructureTestBase
     }
 
     private ClassificationService BuildSubject() =>
-        new(CurrentUserFor(Username), DbContextFactory, NullLogger<ClassificationService>.Instance);
+        new(CurrentUserFor(Username), DbContextFactory, NullLogger<ClassificationService>.Instance,
+            new AccountScope(CurrentUserFor(Username)), TimeProvider.System);
 
     private Rule TagRule(Guid userId, params string[] tagNames) =>
         new(userId, "Tags", 0, RuleMatchMode.All,

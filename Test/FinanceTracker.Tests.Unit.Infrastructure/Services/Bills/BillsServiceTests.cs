@@ -3,6 +3,7 @@ using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.Rules;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Bills;
+using FinanceTracker.Infrastructure.Sharing;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.EntityFrameworkCore;
@@ -537,6 +538,6 @@ public class BillsServiceTests : InfrastructureTestBase
         FixedTimeProvider time = new(Now);
         return new BillsService(CurrentUserFor(username), DbContextFactory, NullLogger<BillsService>.Instance,
             new BillSyncService(CurrentUserFor(username), DbContextFactory, NullLogger<BillSyncService>.Instance,
-                time, TestMetrics.Unobserved), time);
+                time, TestMetrics.Unobserved), time, new AccountScope(CurrentUserFor(username)));
     }
 }

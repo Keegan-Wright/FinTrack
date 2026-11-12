@@ -289,9 +289,7 @@ public class ReportService : ServiceBase<ReportService>, IReportService
             .WithSavingsGoalsAsync(context, UserId, _timeProvider.LocalTimeZone, cancellationToken);
 
         // A shared transaction's tags are its owner's, so theirs are named too
-        Dictionary<Guid, string> customTags = await context.CustomClassifications
-            .OwnedByAny([UserId, .. view.SharedOwnerIds])
-            .ToDictionaryAsync(static x => x.Id, static x => x.Tag, cancellationToken);
+        Dictionary<Guid, string> customTags = await TagNames.LoadAsync(context, view, cancellationToken);
 
         List<BankTransaction> transactions = await criteria
             .ApplyServerFilters(context.BankTransactions.InView(view), context)
@@ -301,7 +299,7 @@ public class ReportService : ServiceBase<ReportService>, IReportService
         // Category and timestamps are encrypted, so filter and sort after decryption
         return (transactions
             .Where(x => includeTransfers || x.CountsAsIncomeOrSpending)
-            .Where(x => criteria.MatchesClientFilters(x, customTags))
+            .Where(x => criteria.MatchesClientFilters(x, customTags, view))
             .OrderByDescending(static x => x.OccurredAt)
             .ToList(), customTags);
     }

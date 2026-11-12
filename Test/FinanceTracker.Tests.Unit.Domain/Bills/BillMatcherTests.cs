@@ -179,7 +179,7 @@ public class BillMatcherTests
         // Arrange
         Bill bill = Streaming();
         BankTransaction usersPayment = Payment("NETFLIX GIFT", -5m, new DateTime(2026, 2, 9));
-        usersPayment.PayBill(bill, At);
+        usersPayment.PayBill(bill, usersPayment.UserId, At);
         BankTransaction another = Payment("NETFLIX", -10.99m, new DateTime(2026, 2, 10));
 
         // Act

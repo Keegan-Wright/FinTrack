@@ -7,6 +7,8 @@ using FinanceTracker.Domain.Classifications;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.Rules;
 using FinanceTracker.Domain.SavingsGoals;
+using FinanceTracker.Domain.Sharing;
+using FinanceTracker.Infrastructure.Sharing;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -18,10 +20,15 @@ namespace FinanceTracker.Infrastructure.Classification;
 [Scoped<IClassificationService>]
 public class ClassificationService : ServiceBase<ClassificationService>, IClassificationService
 {
+    private readonly IAccountScope _accountScope;
+    private readonly TimeProvider _timeProvider;
+
     public ClassificationService(ICurrentUser currentUser,
-        IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<ClassificationService> logger) : base(currentUser,
-        financeTrackerContextFactory, logger)
+        IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<ClassificationService> logger,
+        IAccountScope accountScope, TimeProvider timeProvider) : base(currentUser, financeTrackerContextFactory, logger)
     {
+        _accountScope = accountScope;
+        _timeProvider = timeProvider;
     }
 
     public async IAsyncEnumerable<Contracts.Classifications.Classification> GetAllCustomClassificationsAsync(
@@ -92,7 +99,10 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        BankTransaction transaction = await context.BankTransactions.OwnedBy(UserId)
+        // Their own, or one on an account shared with them with changes allowed, tagged with their own tags. The
+        // owner is shared those, so they see what they're called
+        AccountsInView changeable = await _accountScope.ResolveChangeableAsync(context, cancellationToken);
+        BankTransaction transaction = await context.BankTransactions.ChangeableIn(changeable)
             .SingleAsync(x => x.Id == model.TransactionId, cancellationToken);
 
         List<Guid> classificationIds = model.Classifications.Select(static x => x.ClassificationId).ToList();
@@ -102,7 +112,9 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
 
         foreach (CustomClassification classification in classifications)
         {
-            transaction.Classify(classification);
+            transaction.Classify(classification, UserId);
+            await AnnotationShares.ShareWithOwnerAsync(context, UserId, transaction, ShareItemType.Classification,
+                classification.Id, _timeProvider.UtcNow, cancellationToken);
         }
 
         await context.SaveChangesAsync(cancellationToken);
@@ -117,7 +129,8 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
         CustomClassification classificationToRemove = await context.CustomClassifications.OwnedBy(UserId)
             .SingleAsync(x => x.Id == id, cancellationToken);
 
-        List<BankTransaction> classifiedTransactions = await context.BankTransactions.OwnedBy(UserId)
+        // Whoever's transaction it's on, they may have let the user tag theirs
+        List<BankTransaction> classifiedTransactions = await context.BankTransactions
             .Where(x => x.CustomClassificationIds.Contains(id))
             .ToListAsync(cancellationToken);
 

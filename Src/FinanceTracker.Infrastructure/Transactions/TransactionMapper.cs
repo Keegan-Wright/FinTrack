@@ -7,11 +7,11 @@ using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.OpenBanking.Transfers;
 using FinanceTracker.Domain.Rules;
 using FinanceTracker.Domain.SavingsGoals;
+using FinanceTracker.Domain.Sharing;
 using FinanceTracker.Infrastructure.Debts;
+using FinanceTracker.Infrastructure.Sharing;
 using Microsoft.EntityFrameworkCore;
 using Transaction = FinanceTracker.Contracts.Transactions.Transaction;
-
-using FinanceTracker.Infrastructure.Sharing;
 
 namespace FinanceTracker.Infrastructure.Transactions;
 
@@ -28,17 +28,22 @@ internal sealed class TransactionMapper
     private readonly Dictionary<Guid, BankTransaction> _partners;
     private readonly Dictionary<Guid, string> _ruleNames;
     private readonly Dictionary<Guid, Bill> _bills;
-    private readonly Dictionary<Guid, string> _debtNames;
+    private readonly Dictionary<Guid, Debt> _debts;
     private readonly List<SavingsGoal> _savingsGoals;
     private readonly TimeZoneInfo _timeZone;
+    private readonly AccountsInView _view;
 
     // Who shares each shared account in view, by account
     private readonly Dictionary<Guid, string> _sharedBy;
 
+    // The names of the other people whose bills and debts the transactions pay, by user
+    private readonly Dictionary<Guid, string> _ownerNames;
+
     private TransactionMapper(IReadOnlyDictionary<Guid, string> customTags, Dictionary<Guid, string> accountNames,
         Dictionary<Guid, string> householdMemberNames, Dictionary<Guid, BankTransaction> partners,
-        Dictionary<Guid, string> ruleNames, Dictionary<Guid, Bill> bills, Dictionary<Guid, string> debtNames,
-        List<SavingsGoal> savingsGoals, TimeZoneInfo timeZone, Dictionary<Guid, string> sharedBy)
+        Dictionary<Guid, string> ruleNames, Dictionary<Guid, Bill> bills, Dictionary<Guid, Debt> debts,
+        List<SavingsGoal> savingsGoals, TimeZoneInfo timeZone, AccountsInView view, Dictionary<Guid, string> sharedBy,
+        Dictionary<Guid, string> ownerNames)
     {
         _customTags = customTags;
         _accountNames = accountNames;
@@ -46,10 +51,12 @@ internal sealed class TransactionMapper
         _partners = partners;
         _ruleNames = ruleNames;
         _bills = bills;
-        _debtNames = debtNames;
+        _debts = debts;
         _savingsGoals = savingsGoals;
         _timeZone = timeZone;
+        _view = view;
         _sharedBy = sharedBy;
+        _ownerNames = ownerNames;
     }
 
     /// <summary>
@@ -61,13 +68,28 @@ internal sealed class TransactionMapper
     public static Task<TransactionMapper> LoadAsync(FinanceTrackerContext context, Guid userId,
         IReadOnlyDictionary<Guid, string> customTags, IReadOnlyCollection<BankTransaction> transactions,
         TimeZoneInfo timeZone, CancellationToken cancellationToken) =>
-        LoadAsync(context, new AccountsInView(userId, [], new Dictionary<Guid, Guid>()), customTags, transactions,
+        LoadAsync(context, AccountsInView.Mine(userId), customTags, transactions,
             timeZone, cancellationToken);
+
+    /// <summary>
+    /// A mapper for the transactions in <paramref name="view"/>, with the tag names they can carry, see
+    /// <see cref="TagNames"/>.
+    /// </summary>
+    /// <param name="transactions">What will be mapped. Partners outside it are loaded.</param>
+    /// <param name="timeZone">Where the user is, for the day a tag savings goal tracks from.</param>
+    public static async Task<TransactionMapper> LoadAsync(FinanceTrackerContext context, AccountsInView view,
+        IReadOnlyCollection<BankTransaction> transactions, TimeZoneInfo timeZone, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(view);
+        Dictionary<Guid, string> customTags = await TagNames.LoadAsync(context, view, cancellationToken);
+        return await LoadAsync(context, view, customTags, transactions, timeZone, cancellationToken);
+    }
 
     /// <summary>
     /// A mapper for the transactions in <paramref name="view"/>, the user's own and those of accounts shared with
     /// them. A shared transaction's tags, bills, debts, rules and household members are its owner's, so their names
-    /// come from whoever owns them. Transfer partners only from accounts in view, never another's private account.
+    /// come from whoever owns them, as do those the other person put on the user's own and shared with them. Transfer
+    /// partners only from accounts in view, never another's private account.
     /// </summary>
     /// <param name="customTags">Custom classifications by id, for the tags, the sharers' included.</param>
     /// <param name="transactions">What will be mapped. Partners outside it are loaded.</param>
@@ -90,17 +112,40 @@ internal sealed class TransactionMapper
 
         Dictionary<Guid, string> ruleNames = await LoadRuleNamesAsync(context, owners, transactions, cancellationToken);
 
-        Dictionary<Guid, Bill> bills = await LoadBillsAsync(context, owners, transactions, cancellationToken);
+        Dictionary<Guid, Bill> bills = await LoadBillsAsync(context, view.UserId, owners, transactions,
+            cancellationToken);
 
-        Dictionary<Guid, string> debtNames = await LoadDebtNamesAsync(context, owners, transactions, cancellationToken);
+        Dictionary<Guid, Debt> debts = await LoadDebtsAsync(context, view.UserId, owners, transactions,
+            cancellationToken);
 
         // Only their own goals count transactions, sharing goals comes later
         List<SavingsGoal> savingsGoals = await LoadSavingsGoalsAsync(context, view.UserId, cancellationToken);
 
         Dictionary<Guid, string> sharedBy = await view.SharedByAsync(context, cancellationToken);
 
+        Dictionary<Guid, string> ownerNames = await LoadOwnerNamesAsync(context, view.UserId,
+            [.. bills.Values.Select(static x => x.UserId), .. debts.Values.Select(static x => x.UserId)],
+            cancellationToken);
+
         return new TransactionMapper(customTags, accountNames, householdMemberNames, partners, ruleNames, bills,
-            debtNames, savingsGoals, timeZone, sharedBy);
+            debts, savingsGoals, timeZone, view, sharedBy, ownerNames);
+    }
+
+    /// <summary>
+    /// The first and last names of <paramref name="userIds"/> other than the user, by user, empty when there are none.
+    /// </summary>
+    private static async Task<Dictionary<Guid, string>> LoadOwnerNamesAsync(FinanceTrackerContext context,
+        Guid userId, List<Guid> userIds, CancellationToken cancellationToken)
+    {
+        List<Guid> others = userIds.Where(x => x != userId).Distinct().ToList();
+        if (others.Count == 0)
+        {
+            return [];
+        }
+
+        return await context.Users.AsNoTracking()
+            .Where(x => others.Contains(x.Id))
+            .ToDictionaryAsync(static x => x.Id, static x => $"{x.FirstName} {x.LastName}".Trim(), cancellationToken);
     }
 
     /// <summary>
@@ -142,10 +187,10 @@ internal sealed class TransactionMapper
     }
 
     /// <summary>
-    /// The user's bills by id, for their names and whether each is a subscription, empty when none of
-    /// <paramref name="transactions"/> pays a bill.
+    /// The owners' bills, and those shared with the user, by id, for their names and whether each is a subscription,
+    /// empty when none of <paramref name="transactions"/> pays a bill.
     /// </summary>
-    private static async Task<Dictionary<Guid, Bill>> LoadBillsAsync(FinanceTrackerContext context,
+    private static async Task<Dictionary<Guid, Bill>> LoadBillsAsync(FinanceTrackerContext context, Guid userId,
         List<Guid> owners, IReadOnlyCollection<BankTransaction> transactions, CancellationToken cancellationToken)
     {
         if (!transactions.Any(static x => x.BillPayment?.BillId is not null))
@@ -154,7 +199,9 @@ internal sealed class TransactionMapper
         }
 
         // Names are encrypted, so they're read whole and decrypted
-        List<Bill> bills = await context.Bills.OwnedByAny(owners).AsNoTracking().ToListAsync(cancellationToken);
+        IQueryable<Guid> shared = context.SharedWith(userId, ShareItemType.Bill);
+        List<Bill> bills = await context.Bills.OwnedByAnyOrShared(owners, shared).AsNoTracking()
+            .ToListAsync(cancellationToken);
 
         return bills.ToDictionary(static x => x.Id);
     }
@@ -169,9 +216,10 @@ internal sealed class TransactionMapper
             .ToListAsync(cancellationToken);
 
     /// <summary>
-    /// Debt names by id, empty when none of <paramref name="transactions"/> pays off a debt.
+    /// The owners' debts, and those shared with the user, by id, for their names and whose they are, empty when none
+    /// of <paramref name="transactions"/> pays off a debt.
     /// </summary>
-    private static async Task<Dictionary<Guid, string>> LoadDebtNamesAsync(FinanceTrackerContext context,
+    private static async Task<Dictionary<Guid, Debt>> LoadDebtsAsync(FinanceTrackerContext context, Guid userId,
         List<Guid> owners, IReadOnlyCollection<BankTransaction> transactions, CancellationToken cancellationToken)
     {
         if (!transactions.Any(static x => x.DebtPayment?.DebtId is not null))
@@ -180,9 +228,11 @@ internal sealed class TransactionMapper
         }
 
         // Names are encrypted, so they're read whole and decrypted
-        List<Debt> debts = await context.Debts.OwnedByAny(owners).AsNoTracking().ToListAsync(cancellationToken);
+        IQueryable<Guid> shared = context.SharedWith(userId, ShareItemType.Debt);
+        List<Debt> debts = await context.Debts.OwnedByAnyOrShared(owners, shared).AsNoTracking()
+            .ToListAsync(cancellationToken);
 
-        return debts.ToDictionary(static x => x.Id, static x => x.Name);
+        return debts.ToDictionary(static x => x.Id);
     }
 
     /// <summary>
@@ -222,7 +272,7 @@ internal sealed class TransactionMapper
     {
         Amount = transaction.Amount,
         Currency = transaction.Currency,
-        Description = transaction.Description,
+        Description = _view.DescriptionOf(transaction),
         Pending = transaction.IsPending,
         TransactionCategory = transaction.Category,
         TransactionId = transaction.Id,
@@ -233,6 +283,7 @@ internal sealed class TransactionMapper
         AccountId = transaction.AccountId,
         AccountName = _accountNames.GetValueOrDefault(transaction.AccountId, string.Empty),
         SharedBy = _sharedBy.GetValueOrDefault(transaction.AccountId),
+        IsReadOnly = _view.IsReadOnly(transaction.AccountId),
         Transfer = ToContract(transaction.Transfer),
         Bill = ToContract(transaction.BillPayment),
         Debt = ToContract(transaction.DebtPayment),
@@ -331,8 +382,22 @@ internal sealed class TransactionMapper
                 DecisionSource.Rule => TransferDecidedBy.Rule,
                 _ => TransferDecidedBy.FinTrack
             },
-            RuleName = payment.RuleId is { } ruleId ? _ruleNames.GetValueOrDefault(ruleId) : null
+            RuleName = payment.RuleId is { } ruleId ? _ruleNames.GetValueOrDefault(ruleId) : null,
+            OwnerName = OwnerName(Bill(payment)?.UserId)
         };
+    }
+
+    /// <summary>
+    /// Whose it is when it isn't the user's, null when it's theirs or isn't known.
+    /// </summary>
+    private string? OwnerName(Guid? ownerId)
+    {
+        if (ownerId is not { } id || id == _view.UserId)
+        {
+            return null;
+        }
+
+        return _ownerNames.GetValueOrDefault(id);
     }
 
     private Bill? Bill(BillPayment payment)
@@ -352,12 +417,14 @@ internal sealed class TransactionMapper
             return null;
         }
 
+        Debt? debt = payment.DebtId is { } debtId ? _debts.GetValueOrDefault(debtId) : null;
         return new TransactionDebt
         {
             DebtId = payment.DebtId,
-            DebtName = payment.DebtId is { } debtId ? _debtNames.GetValueOrDefault(debtId) : null,
+            DebtName = debt?.Name,
             DecidedBy = DebtMapper.DecidedBy(payment.Source),
-            RuleName = payment.RuleId is { } ruleId ? _ruleNames.GetValueOrDefault(ruleId) : null
+            RuleName = payment.RuleId is { } ruleId ? _ruleNames.GetValueOrDefault(ruleId) : null,
+            OwnerName = OwnerName(debt?.UserId)
         };
     }
 }

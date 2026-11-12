@@ -989,7 +989,7 @@ public class TransactionsServiceTests : InfrastructureTestBase
         await LinkAsync(context, "streaming", x => x.DecideBillPayment(
             BillPayment.Matched(Scenario.BillMappings["streaming"], day)));
         Debt loan = await context.Debts.SingleAsync(CancellationToken);
-        await LinkAsync(context, "car", x => x.PayDebt(loan, day));
+        await LinkAsync(context, "car", x => x.PayDebt(loan, x.UserId, day));
         await context.SaveChangesAsync(CancellationToken);
         return Scenario;
     }

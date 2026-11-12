@@ -22,11 +22,33 @@ public sealed class AccountScope : IAccountScope
             .SingleOrDefaultAsync(x => x.UserId == userId, cancellationToken);
         if (settings is { IncludeShared: false })
         {
-            return Mine(userId);
+            return AccountsInView.Mine(userId);
         }
 
-        // Shared with them by the other person in an accepted link, and still that person's own account, so a share
-        // left behind by an account changing hands never shows it
+        return await SharedAsync(context, userId, onlyChangeable: false, cancellationToken);
+    }
+
+    public Task<AccountsInView> ResolveAllAsync(FinanceTrackerContext context, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        return SharedAsync(context, _currentUser.UserId, onlyChangeable: false, cancellationToken);
+    }
+
+    public Task<AccountsInView> ResolveChangeableAsync(FinanceTrackerContext context,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        return SharedAsync(context, _currentUser.UserId, onlyChangeable: true, cancellationToken);
+    }
+
+    /// <summary>
+    /// Their own accounts, and those the other person in an accepted link shares with them that are still that
+    /// person's own, so a share left behind by an account changing hands never shows it.
+    /// </summary>
+    /// <param name="onlyChangeable">Only the shared accounts they're allowed to change.</param>
+    private static async Task<AccountsInView> SharedAsync(FinanceTrackerContext context, Guid userId,
+        bool onlyChangeable, CancellationToken cancellationToken)
+    {
         var shared = await (
                 from share in context.Shares
                 join link in context.UserLinks on share.LinkId equals link.Id
@@ -36,13 +58,22 @@ public sealed class AccountScope : IAccountScope
                       && (link.UserId == userId || link.InviteeId == userId)
                       && share.UserId != userId
                       && account.UserId == share.UserId
-                select new { AccountId = account.Id, OwnerId = account.UserId })
+                      && (!onlyChangeable || share.Mode == ShareMode.AllowChanges)
+                select new { AccountId = account.Id, OwnerId = account.UserId, share.Mode })
             .Distinct()
             .ToListAsync(cancellationToken);
 
-        return new AccountsInView(userId, shared.Select(static x => x.AccountId).ToList(),
-            shared.ToDictionary(static x => x.AccountId, static x => x.OwnerId));
-    }
+        Dictionary<Guid, Guid> owners = [];
+        HashSet<Guid> changeable = [];
+        foreach (var account in shared)
+        {
+            owners[account.AccountId] = account.OwnerId;
+            if (account.Mode == ShareMode.AllowChanges)
+            {
+                changeable.Add(account.AccountId);
+            }
+        }
 
-    private static AccountsInView Mine(Guid userId) => new(userId, [], new Dictionary<Guid, Guid>());
+        return new AccountsInView(userId, owners, changeable);
+    }
 }

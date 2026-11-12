@@ -43,7 +43,7 @@ public class BankTransactionRuleTests
         CustomClassification shopping = Tag("Shopping");
         CustomClassification food = Tag("Food");
         BankTransaction transaction = Transaction();
-        transaction.Classify(food);
+        transaction.Classify(food, transaction.UserId);
 
         bool changed = transaction.ApplyRules(new RuleOutcome([new RuleTag(shopping.Id, Guid.NewGuid())], null), At);
 
@@ -81,7 +81,7 @@ public class BankTransactionRuleTests
         BankTransaction transaction = Transaction();
         transaction.ApplyRules(new RuleOutcome([new RuleTag(shopping.Id, Guid.NewGuid())], null), At);
 
-        transaction.Classify(shopping);
+        transaction.Classify(shopping, transaction.UserId);
 
         using (Assert.Multiple())
         {

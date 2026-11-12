@@ -602,7 +602,7 @@ public class ReportServiceTests : InfrastructureTestBase
             .ToListAsync(CancellationToken);
 
         transaction.Split(parts.Select(x => new TransactionSplit(x.Amount,
-            x.Tag is null ? null : Scenario.ClassificationMappings[x.Tag], null)).ToList(), tags);
+            x.Tag is null ? null : Scenario.ClassificationMappings[x.Tag], null)).ToList(), tags, transaction.UserId);
         await context.SaveChangesAsync(CancellationToken);
     }
 

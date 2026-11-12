@@ -274,7 +274,7 @@ public class SavingsGoalCalculatorTests
         goal.TrackTags([carFund.Id], 0m, new DateOnly(2026, 3, 1));
         BankTransaction paidIn = Tagged(Savings, 100m, new DateTime(2026, 3, 2));
         paidIn.Split([new TransactionSplit(70m, carFund.Id, null), new TransactionSplit(30m, holiday.Id, null)],
-            [carFund, holiday]);
+            [carFund, holiday], paidIn.UserId);
 
         // Act
         SavingsGoalProgress progress = Calculate(goal, transactions: [paidIn]);

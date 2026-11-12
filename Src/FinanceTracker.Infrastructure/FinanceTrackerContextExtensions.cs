@@ -21,8 +21,26 @@ public static class FinanceTrackerContextExtensions
         public IQueryable<T> OwnedByAny(IReadOnlyCollection<Guid> userIds) => query.Where(x => userIds.Contains(x.UserId));
     }
 
+    extension<T>(IQueryable<T> query) where T : AggregateRoot
+    {
+        /// <summary>
+        /// Restricts to those owned by any of <paramref name="userIds"/> or among <paramref name="sharedIds"/>, for
+        /// naming what transactions point at, which may be the other person's tag or bill put on one of the user's.
+        /// For reading only.
+        /// </summary>
+        /// <param name="sharedIds">Those shared with the user, see <see cref="SharedItems"/>.</param>
+        public IQueryable<T> OwnedByAnyOrShared(IReadOnlyCollection<Guid> userIds, IQueryable<Guid> sharedIds) =>
+            query.Where(x => userIds.Contains(x.UserId) || sharedIds.Contains(x.Id));
+    }
+
     extension<T>(IQueryable<T> query) where T : class, IUserOwned, IBelongsToAccount
     {
+        /// <summary>
+        /// Restricts to what belongs to the accounts the user can change, <paramref name="changeable"/> from
+        /// <see cref="IAccountScope.ResolveChangeableAsync"/>: their own, and those shared with changes allowed.
+        /// </summary>
+        public IQueryable<T> ChangeableIn(AccountsInView changeable) => query.InView(changeable);
+
         /// <summary>
         /// Restricts to what belongs to the accounts <paramref name="view"/> covers: the user's own, and those shared
         /// with them. For reading only, changes go through <see cref="OwnedBy"/>.

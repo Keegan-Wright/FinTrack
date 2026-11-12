@@ -113,7 +113,7 @@ public class RulePayDebtTests
         BankTransaction transaction = Transaction();
         if (paysADebt)
         {
-            transaction.PayDebt(usersDebt, At);
+            transaction.PayDebt(usersDebt, transaction.UserId, At);
         }
         else
         {
@@ -148,10 +148,14 @@ public class RulePayDebtTests
     }
 
     [Test]
-    public async Task PayDebt_AnotherUsersDebt_Throws() =>
-        await Assert.That(() => Transaction().PayDebt(
-                new Debt(Guid.NewGuid(), "Loan", null, 1000m, new DateOnly(2026, 1, 1), 0m, 100m), At))
+    public async Task PayDebt_AnotherUsersDebt_Throws()
+    {
+        BankTransaction transaction = Transaction();
+        await Assert.That(() => transaction.PayDebt(
+                new Debt(Guid.NewGuid(), "Loan", null, 1000m, new DateOnly(2026, 1, 1), 0m, 100m), transaction.UserId,
+                At))
             .Throws<InvalidOperationException>();
+    }
 
     [Test]
     public async Task RemoveDeletedDebt_OnlyThatDebtsPayment_IsDropped()
@@ -160,9 +164,9 @@ public class RulePayDebtTests
         Debt deleted = Debt();
         Debt kept = Debt();
         BankTransaction paysDeleted = Transaction();
-        paysDeleted.PayDebt(deleted, At);
+        paysDeleted.PayDebt(deleted, paysDeleted.UserId, At);
         BankTransaction paysKept = Transaction();
-        paysKept.PayDebt(kept, At);
+        paysKept.PayDebt(kept, paysKept.UserId, At);
 
         // Act
         bool removed = paysDeleted.RemoveDeletedDebt(deleted.Id);

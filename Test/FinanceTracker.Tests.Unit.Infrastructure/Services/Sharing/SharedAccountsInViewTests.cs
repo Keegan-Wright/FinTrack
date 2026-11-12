@@ -228,7 +228,7 @@ public class SharedAccountsInViewTests : InfrastructureTestBase
         FixedTimeProvider time = new(Now);
         CalendarService subject = new(alex, DbContextFactory, NullLogger<CalendarService>.Instance, time,
             new SavingsGoalsService(alex, DbContextFactory, NullLogger<SavingsGoalsService>.Instance, time),
-            new DebtsService(alex, DbContextFactory, NullLogger<DebtsService>.Instance, time), Scope(Alex));
+            new DebtsService(alex, DbContextFactory, NullLogger<DebtsService>.Instance, time, Scope(Alex)), Scope(Alex));
 
         // Act
         List<CalendarItems> month = await subject.GetMonthItemsAsync(3, 2026, CancellationToken)

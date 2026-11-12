@@ -74,7 +74,7 @@
                             <div class="ft-chips">
                                 @foreach (string classification in Shown.BankClassifications)
                                 {
-                                    @if (IsShared)
+                                    @if (IsReadOnly)
                                     {
                                         <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@classification</MudChip>
                                     }
@@ -90,14 +90,14 @@
                         {
                             <div class="ft-details__hidden">
                                 <MudText Typo="Typo.caption" Class="mud-text-secondary">@HiddenText(hidden)</MudText>
-                                @if (hidden.RuleName is null && !IsShared)
+                                @if (hidden.RuleName is null && !IsReadOnly)
                                 {
                                     <MudButton Variant="Variant.Text" Size="Size.Small" Color="Color.Primary"
                                                OnClick="@(() => ShowAsync(hidden.Classification))">Show</MudButton>
                                 }
                             </div>
                         }
-                        @if (!IsShared)
+                        @if (!IsReadOnly)
                         {
                             <MudText Typo="Typo.caption" Class="mud-text-secondary">
                                 Hide any your bank got wrong, they're left out of your tags and reports.
@@ -135,13 +135,13 @@
                     <dd>
                         <span>@DebtText.Label(debt)</span>
                         <MudText Typo="Typo.caption" Class="mud-text-secondary">
-                            @DebtText.Reason(debt.DecidedBy, debt.RuleName)
+                            @DebtText.Reason(debt.DecidedBy, debt.RuleName, debt.OwnerName)
                         </MudText>
                     </dd>
                 }
             </dl>
 
-            @if (Shown.SharedBy is { } owner)
+            @if (Shown is { IsReadOnly: true, SharedBy: { } owner })
             {
                 <MudText Typo="Typo.body2" Class="mud-text-secondary">
                     Only @owner can change this, it's on an account they share with you.
@@ -149,6 +149,12 @@
             }
             else
             {
+            @if (Shown.SharedBy is { } sharer)
+            {
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                    @sharer lets you change this. They'll see the names of any tags, bills or debts you add.
+                </MudText>
+            }
             @* A list rather than footer buttons, so actions rules add later are just more rows *@
             <div class="ft-details__actions">
                 <div class="ft-details__heading">Actions</div>
@@ -177,8 +183,12 @@
                            Class="ft-details__action" OnClick="@PayBillAsync">Pays a bill</MudButton>
                 <MudButton Variant="Variant.Text" FullWidth="true" StartIcon="@Icons.Material.Outlined.CreditScore"
                            Class="ft-details__action" OnClick="@PayDebtAsync">Pays off a debt</MudButton>
-                <MudButton Variant="Variant.Text" FullWidth="true" StartIcon="@Icons.Material.Outlined.Rule"
-                           Class="ft-details__action" OnClick="@CreateRuleAsync">Create rule from this</MudButton>
+                @* Rules only run on the user's own accounts for now *@
+                @if (Shown.SharedBy is null)
+                {
+                    <MudButton Variant="Variant.Text" FullWidth="true" StartIcon="@Icons.Material.Outlined.Rule"
+                               Class="ft-details__action" OnClick="@CreateRuleAsync">Create rule from this</MudButton>
+                }
             </div>
             }
         </div>
@@ -188,9 +198,9 @@
 @code {
 
     /// <summary>
-    /// On an account another person shares with the user, so it's theirs to change and only shown here.
+    /// On an account another person shares with the user without letting them change it, so only shown here.
     /// </summary>
-    private bool IsShared => Shown.SharedBy is not null;
+    private bool IsReadOnly => Shown.IsReadOnly;
 
 
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;

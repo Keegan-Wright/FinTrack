@@ -5,6 +5,7 @@ using FinanceTracker.Domain.Identity;
 using FinanceTracker.Domain.Notifications;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Connections;
+using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.Sharing;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
@@ -175,7 +176,9 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
         link.End(UserId, _timeProvider.GetUtcNow().UtcDateTime);
 
         // Both ways, so linking again later shares nothing until each of them chooses it again
-        context.Shares.RemoveRange(await context.Shares.Where(x => x.LinkId == link.Id).ToListAsync(cancellationToken));
+        List<Share> shares = await context.Shares.Where(x => x.LinkId == link.Id).ToListAsync(cancellationToken);
+        await TakeOffAnnotationsAsync(context, link, shares, cancellationToken);
+        context.Shares.RemoveRange(shares);
         await context.SaveChangesAsync(cancellationToken);
         Logger.LogChanged(UserId, "ended", "user link", link.Id);
         return true;
@@ -285,6 +288,62 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
                                        (l.UserId == UserId || l.InviteeId == UserId)), cancellationToken);
 
         return new SharingView { IncludesShared = includesShared, HasSharedAccounts = hasShared };
+    }
+
+    /// <summary>
+    /// Takes each person's tags, bills and debts off the other's transactions, those they put on while allowed to
+    /// change them. Neither could see the other's afterwards, and a payment to a bill they can't see would keep their
+    /// own bills from matching it.
+    /// </summary>
+    /// <param name="shares">The link's shares, those for what was put on each transaction among them, see
+    /// <see cref="AnnotationShares"/>.</param>
+    private static async Task TakeOffAnnotationsAsync(FinanceTrackerContext context, DomainLink link,
+        List<Share> shares, CancellationToken cancellationToken)
+    {
+        foreach (Share share in shares.Where(static x => x.ItemType != ShareItemType.BankAccount))
+        {
+            Guid itemId = share.ItemId;
+            IQueryable<BankTransaction> theirs = context.BankTransactions.OwnedBy(link.OtherThan(share.UserId));
+
+            List<BankTransaction> carrying = await Carrying(theirs, share.ItemType, itemId)
+                .ToListAsync(cancellationToken);
+            foreach (BankTransaction transaction in carrying)
+            {
+                TakeOff(transaction, share.ItemType, itemId);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Those of <paramref name="transactions"/> that carry the tag, bill or debt <paramref name="itemId"/>.
+    /// </summary>
+    private static IQueryable<BankTransaction> Carrying(IQueryable<BankTransaction> transactions,
+        ShareItemType itemType, Guid itemId) => itemType switch
+    {
+        ShareItemType.Classification => transactions.Where(x => x.CustomClassificationIds.Contains(itemId)),
+        ShareItemType.Bill => transactions.Where(x => x.BillPayment != null && x.BillPayment.BillId == itemId),
+        ShareItemType.Debt => transactions.Where(x => x.DebtPayment != null && x.DebtPayment.DebtId == itemId),
+        _ => transactions.Where(static _ => false)
+    };
+
+    /// <summary>
+    /// Takes the tag, bill or debt <paramref name="itemId"/> off <paramref name="transaction"/>, as if it had been
+    /// deleted, so matching and rules can decide about it again.
+    /// </summary>
+    private static void TakeOff(BankTransaction transaction, ShareItemType itemType, Guid itemId)
+    {
+        switch (itemType)
+        {
+            case ShareItemType.Classification:
+                transaction.RemoveDeletedClassification(itemId);
+                break;
+            case ShareItemType.Bill:
+                transaction.RemoveDeletedBill(itemId);
+                break;
+            case ShareItemType.Debt:
+                transaction.RemoveDeletedDebt(itemId);
+                break;
+        }
     }
 
     /// <summary>
