@@ -12,6 +12,7 @@ using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Account;
 using FinanceTracker.Infrastructure.NetWorth;
 using FinanceTracker.Infrastructure.Notifications;
+using FinanceTracker.Infrastructure.Rules;
 using FinanceTracker.Infrastructure.Sharing;
 using FinanceTracker.Infrastructure.Transactions;
 using FinanceTracker.Tests.Unit.Shared;
@@ -248,6 +249,36 @@ public class JointAccountsTests : InfrastructureTestBase
             await Assert.That((await LoadAsync("shop-sam")).CustomClassificationIds)
                 .IsEquivalentTo([Tag("groceries")]);
         }
+    }
+
+    [Test]
+    public async Task Merged_AlexsRulesReachTheShownCopy()
+    {
+        // Arrange, a coffee nobody has tagged by hand
+        await ShareSamsJointAsync();
+        await MergeAsync();
+        await Scenario.Do(s => s.TransactionScenario.WithTransaction("coffee-sam", "sam-joint",
+            Details(-3m, "TESCO EXPRESS")));
+        await using (FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken))
+        {
+            context.Rules.Add(new FinanceTracker.Domain.Rules.Rule(Scenario.UserMappings[Alex], "Shops", 0,
+                FinanceTracker.Domain.Rules.RuleMatchMode.All,
+                [new FinanceTracker.Domain.Rules.RuleCondition(FinanceTracker.Domain.Rules.RuleField.Description,
+                    FinanceTracker.Domain.Rules.RuleOperator.Contains, "TESCO")],
+                [FinanceTracker.Domain.Rules.RuleAction.AddTag(
+                    await context.CustomClassifications.SingleAsync(x => x.Id == Tag("food"), CancellationToken))]));
+            await context.SaveChangesAsync(CancellationToken);
+        }
+
+        // Act
+        await using AsyncServiceScope scope = _services.GetRequiredService<IServiceScopeFactory>()
+            .CreateUserScope(Scenario.UserMappings[Alex]);
+        await scope.ServiceProvider.GetRequiredService<IRuleApplicationService>()
+            .ApplyChangesAsync(DateTime.UtcNow.AddYears(-1), CancellationToken);
+
+        // Assert
+        await Assert.That((await LoadAsync("coffee-sam")).RuleTags.Select(static x => x.ClassificationId))
+            .IsEquivalentTo([Tag("food")]);
     }
 
     [Test]

@@ -3,6 +3,7 @@ using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.OpenBanking.Transfers;
 using FinanceTracker.Infrastructure.Rules;
+using FinanceTracker.Infrastructure.Sharing;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Fakers;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
@@ -641,9 +642,9 @@ public class RulesServiceTests : InfrastructureTestBase
         new(CurrentUserFor(username), DbContextFactory, NullLogger<RuleApplicationService>.Instance,
             new TransferMatchingService(CurrentUserFor(username), DbContextFactory,
                 NullLogger<TransferMatchingService>.Instance, TimeProvider.System, TestMetrics.Unobserved),
-            TimeProvider.System, TestMetrics.Unobserved);
+            new AccountScope(CurrentUserFor(username)), TimeProvider.System, TestMetrics.Unobserved);
 
     private RulesService BuildSubject(string username, ILogger<RulesService>? logger = null) =>
         new(CurrentUserFor(username), DbContextFactory, logger ?? NullLogger<RulesService>.Instance,
-            BuildApplication(username), TimeProvider.System);
+            BuildApplication(username), new AccountScope(CurrentUserFor(username)), TimeProvider.System);
 }

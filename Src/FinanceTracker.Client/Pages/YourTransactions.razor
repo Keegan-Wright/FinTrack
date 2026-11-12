@@ -174,14 +174,11 @@
                                              OnClick="@(() => PayBillAsync(context.Item))">Pays a bill</MudMenuItem>
                                 <MudMenuItem Icon="@Icons.Material.Outlined.CreditScore"
                                              OnClick="@(() => PayDebtAsync(context.Item))">Pays off a debt</MudMenuItem>
-                                @* Rules only run on the user's own accounts for now *@
-                                @if (context.Item.SharedBy is null)
-                                {
-                                    <MudMenuItem Icon="@Icons.Material.Outlined.Rule"
-                                                 OnClick="@(() => CreateRuleFrom(context.Item))">
-                                        Create rule from this
-                                    </MudMenuItem>
-                                }
+                                @* Their rules run on any account they can change, a shared one too *@
+                                <MudMenuItem Icon="@Icons.Material.Outlined.Rule"
+                                             OnClick="@(() => CreateRuleFrom(context.Item))">
+                                    Create rule from this
+                                </MudMenuItem>
                                 }
                                 <MudMenuItem Icon="@Icons.Material.Outlined.Info"
                                              OnClick="@(() => ShowDetailsAsync(context.Item))">

@@ -183,12 +183,9 @@
                            Class="ft-details__action" OnClick="@PayBillAsync">Pays a bill</MudButton>
                 <MudButton Variant="Variant.Text" FullWidth="true" StartIcon="@Icons.Material.Outlined.CreditScore"
                            Class="ft-details__action" OnClick="@PayDebtAsync">Pays off a debt</MudButton>
-                @* Rules only run on the user's own accounts for now *@
-                @if (Shown.SharedBy is null)
-                {
-                    <MudButton Variant="Variant.Text" FullWidth="true" StartIcon="@Icons.Material.Outlined.Rule"
-                               Class="ft-details__action" OnClick="@CreateRuleAsync">Create rule from this</MudButton>
-                }
+                @* Their rules run on any account they can change, a shared one too *@
+                <MudButton Variant="Variant.Text" FullWidth="true" StartIcon="@Icons.Material.Outlined.Rule"
+                           Class="ft-details__action" OnClick="@CreateRuleAsync">Create rule from this</MudButton>
             </div>
             }
         </div>

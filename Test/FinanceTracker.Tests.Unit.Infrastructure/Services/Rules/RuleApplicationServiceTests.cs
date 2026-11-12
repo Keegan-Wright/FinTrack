@@ -5,6 +5,7 @@ using FinanceTracker.Domain.Rules;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.OpenBanking.Transfers;
 using FinanceTracker.Infrastructure.Rules;
+using FinanceTracker.Infrastructure.Sharing;
 using FinanceTracker.Telemetry;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Fakers;
@@ -291,5 +292,5 @@ public class RuleApplicationServiceTests : InfrastructureTestBase
         new(CurrentUserFor(username), DbContextFactory, logger ?? NullLogger<RuleApplicationService>.Instance,
             new TransferMatchingService(CurrentUserFor(username), DbContextFactory,
                 NullLogger<TransferMatchingService>.Instance, TimeProvider.System, TestMetrics.Unobserved),
-            TimeProvider.System, TestMetrics.Unobserved);
+            new AccountScope(CurrentUserFor(username)), TimeProvider.System, TestMetrics.Unobserved);
 }

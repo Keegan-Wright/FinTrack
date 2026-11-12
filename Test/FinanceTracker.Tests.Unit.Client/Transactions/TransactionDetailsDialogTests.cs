@@ -65,7 +65,7 @@ public class TransactionDetailsDialogTests : ComponentTestBase
     }
 
     [Test]
-    public async Task Render_SharedWithChangesAllowed_OffersChangesButNotRules()
+    public async Task Render_SharedWithChangesAllowed_OffersChangesAndRules()
     {
         // Arrange
         using CultureScope culture = new();
@@ -84,7 +84,7 @@ public class TransactionDetailsDialogTests : ComponentTestBase
             await Assert.That(details).DoesNotContain("Only Sam Taylor can change this");
             await Assert.That(buttons).Contains("Add tags");
             await Assert.That(buttons).Contains("Pays a bill");
-            await Assert.That(buttons).DoesNotContain("Create rule from this");
+            await Assert.That(buttons).Contains("Create rule from this");
         }
     }
 

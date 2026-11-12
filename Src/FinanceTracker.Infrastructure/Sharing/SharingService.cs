@@ -11,6 +11,7 @@ using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using FinanceTracker.Infrastructure.Notifications;
 using FinanceTracker.Infrastructure.OpenBanking.Transfers;
+using FinanceTracker.Infrastructure.Rules;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -193,6 +194,9 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
             return false;
         }
 
+        // Afterwards neither's rules reach the other's accounts
+        List<(Guid OwnerId, Guid AccountId)> changeable = await ChangeableAcrossAsync(context, link, cancellationToken);
+
         // Each gets their own copy of a joint account back first, with its tags as they stand, while the link still
         // lets each see the other's names. Then the other person's come off with everything else of theirs
         await SplitJointAccountsAsync(context, link, cancellationToken);
@@ -211,6 +215,7 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
             await RematchTransfersAsync(context, link, cancellationToken);
         }
 
+        await RerunRulesAsync(changeable, cancellationToken);
         return true;
     }
 
@@ -251,6 +256,15 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
             request.Accounts.ToDictionary(static x => x.AccountId, static x => ToDomain(x.Mode));
         List<Share> existing = await OwnAccountShares(context, link.Id).ToListAsync(cancellationToken);
 
+        // The other person's rules reach an account only while they can change it
+        HashSet<Guid> changeableBefore = existing.Where(static x => x.Mode == DomainShareMode.AllowChanges)
+            .Select(static x => x.ItemId)
+            .ToHashSet();
+        HashSet<Guid> changeableAfter = wanted.Where(static x => x.Value == DomainShareMode.AllowChanges)
+            .Select(static x => x.Key)
+            .ToHashSet();
+        changeableBefore.SymmetricExceptWith(changeableAfter);
+
         foreach (Share share in existing)
         {
             if (wanted.Remove(share.ItemId, out DomainShareMode mode))
@@ -273,6 +287,7 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
         Logger.LogChanged(UserId, "changed account shares in", "user link", link.Id);
 
         await RematchTransfersAsync(context, link, cancellationToken);
+        await RerunRulesAsync(changeableBefore.Select(x => (UserId, x)).ToList(), cancellationToken);
 
         return await LinkSharesAsync(context, link, cancellationToken);
     }
@@ -317,6 +332,7 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
 
         // Once for all of them, it matches everything both of them have
         await RematchTransfersAsync(context, link, cancellationToken);
+        await RerunRulesAsync(await CopiesOfAsync(context, merged, cancellationToken), cancellationToken);
 
         string name = await MergedNamesAsync(context, merged, cancellationToken);
         await NotifyOtherAsync(context, link, $"joint-account:{merged[0].Id}:merged",
@@ -357,12 +373,14 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
                              ?? throw new InvalidOperationException($"No joint account {jointAccountId} was found.");
 
         string name = await AccountNameAsync(context, joint.ShownAccountId, cancellationToken);
+        List<(Guid OwnerId, Guid AccountId)> copies = await CopiesOfAsync(context, [joint], cancellationToken);
         await JointAccounts.SplitAsync(context, link, joint, _timeProvider.GetUtcNow().UtcDateTime,
             cancellationToken);
         await context.SaveChangesAsync(cancellationToken);
         Logger.LogChanged(UserId, "split", "joint account", joint.Id);
 
         await RematchTransfersAsync(context, link, cancellationToken);
+        await RerunRulesAsync(copies, cancellationToken);
 
         await NotifyOtherAsync(context, link, $"joint-account:{joint.Id}:split",
             person => $"{person} split your joint account {name}",
@@ -458,6 +476,60 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
                                        (l.UserId == UserId || l.InviteeId == UserId)), cancellationToken);
 
         return new SharingView { IncludesShared = includesShared, HasSharedAccounts = hasShared };
+    }
+
+    /// <summary>
+    /// The accounts in <paramref name="link"/> one person lets the other change, so the other's rules reach them. Those
+    /// shared with changes allowed, and both copies of each merged joint account. Each with its owner.
+    /// </summary>
+    private static async Task<List<(Guid OwnerId, Guid AccountId)>> ChangeableAcrossAsync(
+        FinanceTrackerContext context, DomainLink link, CancellationToken cancellationToken)
+    {
+        var shared = await context.Shares.AsNoTracking()
+            .Where(x => x.LinkId == link.Id && x.ItemType == ShareItemType.BankAccount &&
+                        x.Mode == DomainShareMode.AllowChanges)
+            .Select(static x => new { x.UserId, x.ItemId })
+            .ToListAsync(cancellationToken);
+
+        List<JointAccount> joints = await context.JointAccounts.AsNoTracking()
+            .Where(x => x.LinkId == link.Id)
+            .ToListAsync(cancellationToken);
+
+        return
+        [
+            .. shared.Select(static x => (x.UserId, x.ItemId)),
+            .. await CopiesOfAsync(context, joints, cancellationToken)
+        ];
+    }
+
+    /// <summary>
+    /// Both copies of each of <paramref name="joints"/>, each with its owner.
+    /// </summary>
+    private static async Task<List<(Guid OwnerId, Guid AccountId)>> CopiesOfAsync(FinanceTrackerContext context,
+        List<JointAccount> joints, CancellationToken cancellationToken)
+    {
+        List<Guid> accountIds = joints.SelectMany(static x => new[] { x.ShownAccountId, x.HiddenAccountId }).ToList();
+        var owners = await context.BankAccounts.AsNoTracking()
+            .Where(x => accountIds.Contains(x.Id))
+            .Select(static x => new { x.Id, x.UserId })
+            .ToListAsync(cancellationToken);
+
+        return owners.Select(static x => (x.UserId, x.Id)).ToList();
+    }
+
+    /// <summary>
+    /// Runs the rules again over <paramref name="accounts"/>, each as its owner, once who can change them changed. Rules
+    /// that no longer reach them take back what they gave, and those that now do run.
+    /// </summary>
+    private async Task RerunRulesAsync(List<(Guid OwnerId, Guid AccountId)> accounts,
+        CancellationToken cancellationToken)
+    {
+        foreach (IGrouping<Guid, Guid> owner in accounts.GroupBy(static x => x.OwnerId, static x => x.AccountId))
+        {
+            await using AsyncServiceScope scope = _scopeFactory.CreateUserScope(owner.Key);
+            await scope.ServiceProvider.GetRequiredService<IRuleApplicationService>()
+                .ReapplyToAccountsAsync(owner.Distinct().ToList(), cancellationToken);
+        }
     }
 
     /// <summary>

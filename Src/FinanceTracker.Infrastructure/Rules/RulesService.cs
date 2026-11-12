@@ -4,6 +4,7 @@ using FinanceTracker.Contracts.Services;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
+using FinanceTracker.Infrastructure.Sharing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using DomainRule = FinanceTracker.Domain.Rules.Rule;
@@ -17,14 +18,16 @@ namespace FinanceTracker.Infrastructure.Rules;
 public class RulesService : ServiceBase<RulesService>, IRulesService
 {
     private readonly IRuleApplicationService _ruleApplicationService;
+    private readonly IAccountScope _accountScope;
     private readonly TimeProvider _timeProvider;
 
     public RulesService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<RulesService> logger,
-        IRuleApplicationService ruleApplicationService, TimeProvider timeProvider)
+        IRuleApplicationService ruleApplicationService, IAccountScope accountScope, TimeProvider timeProvider)
         : base(currentUser, financeTrackerContextFactory, logger)
     {
         _ruleApplicationService = ruleApplicationService;
+        _accountScope = accountScope;
         _timeProvider = timeProvider;
     }
 
@@ -145,24 +148,29 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
         List<DomainRule> saved = await context.Rules.OwnedBy(UserId).AsNoTracking().ToListAsync(cancellationToken);
         DomainRule draft = DraftOf(id, rule, saved);
 
-        List<DomainRule> running = saved
-            .Where(x => x.IsEnabled && x.Id != draft.Id)
+        // Conditions test encrypted fields, so every transaction they can change is loaded and checked once decrypted
+        AccountsInView changeable = await _accountScope.ResolveChangeableAsync(context, cancellationToken);
+        List<BankTransaction> transactions = await context.BankTransactions.ChangeableIn(changeable).AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        // Each transaction with every rule that reaches it, the draft standing in for its saved self
+        RuleReach reach = await RuleReach.ForAsync(context, transactions, cancellationToken);
+        Func<BankTransaction, IReadOnlyList<DomainRule>> rulesFor = transaction => reach.RulesFor(transaction)
+            .Where(x => x.Id != draft.Id)
             .Append(draft)
             .ToList();
 
-        Dictionary<Guid, string> tagNames = await context.CustomClassifications.OwnedBy(UserId)
+        // Anyone's whose rules reach them may change them
+        List<Guid> people = reach.Rules.Select(static x => x.UserId).Append(UserId).Distinct().ToList();
+        Dictionary<Guid, string> tagNames = await context.CustomClassifications.OwnedByAny(people)
             .ToDictionaryAsync(static x => x.Id, static x => x.Tag, cancellationToken);
-        Dictionary<Guid, string> billNames = await context.Bills.OwnedBy(UserId)
+        Dictionary<Guid, string> billNames = await context.Bills.OwnedByAny(people)
             .ToDictionaryAsync(static x => x.Id, static x => x.Name, cancellationToken);
-        Dictionary<Guid, string> debtNames = await context.Debts.OwnedBy(UserId)
+        Dictionary<Guid, string> debtNames = await context.Debts.OwnedByAny(people)
             .ToDictionaryAsync(static x => x.Id, static x => x.Name, cancellationToken);
-
-        // Conditions test encrypted fields, so every transaction is loaded and checked once decrypted
-        List<BankTransaction> transactions = await context.BankTransactions.OwnedBy(UserId).AsNoTracking()
-            .ToListAsync(cancellationToken);
 
         RulePreviewNames names = new(tagNames, billNames, debtNames);
-        return RulePreviewer.Preview(running, draft, transactions, names, _timeProvider.UtcNow);
+        return RulePreviewer.Preview(rulesFor, draft, transactions, names, _timeProvider.UtcNow);
     }
 
     public Task<int> ApplyRuleToExistingAsync(Guid id, CancellationToken cancellationToken) =>
@@ -174,7 +182,9 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        BankTransaction transaction = await context.BankTransactions.OwnedBy(UserId).AsNoTracking()
+        // Their own, or one they can change on an account shared with them, which their rules now reach too
+        AccountsInView changeable = await _accountScope.ResolveChangeableAsync(context, cancellationToken);
+        BankTransaction transaction = await context.BankTransactions.ChangeableIn(changeable).AsNoTracking()
             .SingleAsync(x => x.Id == transactionId, cancellationToken);
 
         List<Guid> tagIds = await context.CustomClassifications.OwnedBy(UserId)
@@ -200,7 +210,8 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
     }
 
     /// <summary>
-    /// The page only offers the user's own tags and accounts, this covers calls that don't come from it.
+    /// The page only offers the user's own tags, bills and debts and the accounts they see, this covers calls that
+    /// don't come from it.
     /// </summary>
     /// <exception cref="InvalidOperationException">An action adds a tag or pays a bill or debt, or a condition names
     /// an account, that doesn't exist or isn't the user's.</exception>
@@ -297,12 +308,14 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
             return;
         }
 
-        int owned = await context.BankAccounts.OwnedBy(UserId)
+        // Any they can see, a rule only reaches the transactions they can change though
+        AccountsInView all = await _accountScope.ResolveAllAsync(context, cancellationToken);
+        int seen = await context.BankAccounts.InView(all)
             .CountAsync(x => accountIds.Contains(x.Id), cancellationToken);
 
-        if (owned != accountIds.Count)
+        if (seen != accountIds.Count)
         {
-            throw new InvalidOperationException("A rule can only look at the user's own accounts.");
+            throw new InvalidOperationException("A rule can only look at the accounts the user can see.");
         }
     }
 
