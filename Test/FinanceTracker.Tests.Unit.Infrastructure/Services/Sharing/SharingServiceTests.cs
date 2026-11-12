@@ -28,6 +28,7 @@ public class SharingServiceTests : InfrastructureTestBase
         ServiceCollection services = new();
         services.AddCurrentUser();
         services.AddScoped<INotifier>(sp => new RecordingNotifier(sp.GetRequiredService<ICurrentUser>(), _raised));
+        services.AddTransferMatching(DbContextFactory);
         _services = services.BuildServiceProvider();
     }
 

@@ -110,7 +110,7 @@
                     @if (Shown.Transfer is { } transfer)
                     {
                         <span>@TransferText.Label(transfer)</span>
-                        <MudText Typo="Typo.caption" Class="mud-text-secondary">@TransferText.Reason(transfer)</MudText>
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary">@TransferText.Reason(transfer, Shown.SharedBy)</MudText>
                         @if (TransferText.OtherHalf(transfer) is { } otherHalf)
                         {
                             <MudText Typo="Typo.caption" Class="mud-text-secondary">Other half: @otherHalf</MudText>

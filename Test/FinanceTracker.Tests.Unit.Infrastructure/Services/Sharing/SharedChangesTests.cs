@@ -55,9 +55,7 @@ public class SharedChangesTests : InfrastructureTestBase
         ServiceCollection services = new();
         services.AddCurrentUser();
         services.AddScoped<INotifier>(sp => new RecordingNotifier(sp.GetRequiredService<ICurrentUser>(), raised));
-        services.AddScoped<ITransferMatchingService>(sp => new TransferMatchingService(
-            sp.GetRequiredService<ICurrentUser>(), DbContextFactory, NullLogger<TransferMatchingService>.Instance,
-            TimeProvider.System, TestMetrics.Unobserved));
+        services.AddTransferMatching(DbContextFactory);
         _services = services.BuildServiceProvider();
 
         await Scenario.Do(s => s.UserScenario.WithUser("Alex", "Smith", "alex@example.test", Alex))
@@ -310,6 +308,47 @@ public class SharedChangesTests : InfrastructureTestBase
     }
 
     [Test]
+    public async Task TransferWithNoOtherHalfFound_WhileTheyKeepAnAccountPrivate_HidesTheDescription()
+    {
+        // Arrange, the bank calls it a transfer but the other half hasn't synced, it may be into Gift fund
+        await SeedUnpairedTransferAsync();
+
+        // Act
+        Transaction asAlex = await SeenBy(Alex, "sam-unpaired");
+        List<Transaction> found = await Transactions(Alex)
+            .GetAllTransactionsAsync(new FilterTransactions { SearchTerm = "savings" }, CancellationToken)
+            .ToListAsync(CancellationToken);
+        Transaction asSam = await SeenBy(Sam, "sam-unpaired");
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(asAlex.Description).IsEqualTo(PrivateTransfers.MaybeToPrivateAccount);
+            await Assert.That(asAlex.Amount).IsEqualTo(-15m);
+            await Assert.That(found).IsEmpty();
+            await Assert.That(asSam.Description).IsEqualTo("Birthday savings");
+        }
+    }
+
+    [Test]
+    public async Task TransferWithNoOtherHalfFound_WhenEveryAccountIsShared_ShowsTheDescription()
+    {
+        // Arrange, nothing of Sam's is hidden from Alex, so it can't have gone anywhere private
+        await SeedUnpairedTransferAsync();
+        await Sharing(Sam).ChangeAccountSharesAsync(_linkId, new ChangeAccountShares
+        {
+            Accounts =
+            [
+                new AccountShareChoice { AccountId = Account("sam-joint"), Mode = ShareMode.AllowChanges },
+                new AccountShareChoice { AccountId = Account("sam-private"), Mode = ShareMode.ReadOnly }
+            ]
+        }, CancellationToken);
+
+        // Act and assert
+        await Assert.That((await SeenBy(Alex, "sam-unpaired")).Description).IsEqualTo("Birthday savings");
+    }
+
+    [Test]
     public async Task MarkingNotATransfer_OnASharedHalf_ShowsTheirChangeAndNothingPrivate()
     {
         // Arrange
@@ -351,6 +390,19 @@ public class SharedChangesTests : InfrastructureTestBase
         {
             throw new InvalidOperationException("The transfer to the gift fund wasn't matched.");
         }
+    }
+
+    /// <summary>
+    /// Money out of Joint the bank calls a transfer, with no other half on any of Sam's accounts.
+    /// </summary>
+    private async Task SeedUnpairedTransferAsync()
+    {
+        await Scenario.Do(s => s.TransactionScenario.WithTransaction("sam-unpaired", "sam-joint",
+            Details(-15m, "Birthday savings") with { LabelledAsTransfer = true }));
+
+        await new TransferMatchingService(CurrentUserFor(Sam), DbContextFactory,
+                NullLogger<TransferMatchingService>.Instance, TimeProvider.System, TestMetrics.Unobserved)
+            .MatchAsync(CancellationToken);
     }
 
     private Task<LinkShares> ShareJointAsync(ShareMode mode) =>

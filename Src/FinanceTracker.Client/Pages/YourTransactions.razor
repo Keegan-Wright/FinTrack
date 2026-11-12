@@ -105,7 +105,7 @@
                             }
                             else if (context.Item.Transfer is { } ownTransfer)
                             {
-                                <TransferChip Transfer="@ownTransfer"
+                                <TransferChip Transfer="@ownTransfer" SharedBy="@context.Item.SharedBy"
                                               OnAction="@(action => DecideTransferAsync(context.Item, action))"/>
                             }
                             else

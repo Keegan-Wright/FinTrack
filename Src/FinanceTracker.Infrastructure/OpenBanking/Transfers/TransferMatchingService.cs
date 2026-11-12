@@ -34,10 +34,12 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
 
         // Amounts and dates are encrypted, so matching happens in memory. Tracked, so saving writes only the
         // transactions the matcher changed
+        TransferGroup group = await TransferGroup.ForAsync(context, UserId, cancellationToken);
         List<BankTransaction> transactions =
-            await context.BankTransactions.OwnedBy(UserId).ToListAsync(cancellationToken);
+            await context.BankTransactions.OwnedByAny(group.UserIds).ToListAsync(cancellationToken);
 
-        return await MatchAndSaveAsync(context, transactions, startedAt, recordCheckpoint: true, cancellationToken);
+        return await MatchAndSaveAsync(context, group, transactions, startedAt, recordCheckpoint: true,
+            cancellationToken);
     }
 
     public async Task<TransferMatchSummary?> MatchChangesAsync(CancellationToken cancellationToken)
@@ -48,11 +50,13 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
 
         TransferMatchCheckpoint? checkpoint = await context.TransferMatchCheckpoints.OwnedBy(UserId)
             .SingleOrDefaultAsync(cancellationToken);
+        TransferGroup group = await TransferGroup.ForAsync(context, UserId, cancellationToken);
         if (checkpoint is null)
         {
             List<BankTransaction> everything =
-                await context.BankTransactions.OwnedBy(UserId).ToListAsync(cancellationToken);
-            return await MatchAndSaveAsync(context, everything, startedAt, recordCheckpoint: true, cancellationToken);
+                await context.BankTransactions.OwnedByAny(group.UserIds).ToListAsync(cancellationToken);
+            return await MatchAndSaveAsync(context, group, everything, startedAt, recordCheckpoint: true,
+                cancellationToken);
         }
 
         DateTime since = checkpoint.MatchedFrom;
@@ -68,7 +72,7 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
             return null;
         }
 
-        return await MatchAroundAsync(context, changed, startedAt, recordCheckpoint: true, cancellationToken);
+        return await MatchAroundAsync(context, group, changed, startedAt, recordCheckpoint: true, cancellationToken);
     }
 
     public async Task<TransferMatchSummary> MatchAroundAsync(IReadOnlyCollection<Guid> transactionIds,
@@ -79,7 +83,9 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
 
         DateTime startedAt = _timeProvider.UtcNow;
 
-        List<DateTime> dates = await context.BankTransactions.OwnedBy(UserId)
+        // The other half of a pair may be someone else's in the group
+        TransferGroup group = await TransferGroup.ForAsync(context, UserId, cancellationToken);
+        List<DateTime> dates = await context.BankTransactions.OwnedByAny(group.UserIds)
             .Where(x => transactionIds.Contains(x.Id))
             .Select(static x => x.OccurredAt)
             .ToListAsync(cancellationToken);
@@ -91,7 +97,7 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
         }
 
         // A sync saved since the last run hasn't been matched yet, so the checkpoint stays put for that run to find it
-        return await MatchAroundAsync(context, dates, startedAt, recordCheckpoint: false, cancellationToken);
+        return await MatchAroundAsync(context, group, dates, startedAt, recordCheckpoint: false, cancellationToken);
     }
 
     // The span still says what matching did when there was nothing to look at
@@ -107,19 +113,19 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
     /// close enough to be its mirror, so the window runs that far either side, and up to now as late ones are the
     /// likeliest to change.
     /// </summary>
-    private async Task<TransferMatchSummary> MatchAroundAsync(FinanceTrackerContext context, List<DateTime> dates,
-        DateTime startedAt, bool recordCheckpoint, CancellationToken cancellationToken)
+    private async Task<TransferMatchSummary> MatchAroundAsync(FinanceTrackerContext context, TransferGroup group,
+        List<DateTime> dates, DateTime startedAt, bool recordCheckpoint, CancellationToken cancellationToken)
     {
         DateTime from = dates.Min().AddDays(-TransferMatcher.MaxDaysApart);
         DateTime to = (dates.Max() > startedAt ? dates.Max() : startedAt).AddDays(TransferMatcher.MaxDaysApart);
 
-        List<BankTransaction> transactions = await context.BankTransactions.OwnedBy(UserId)
+        List<BankTransaction> transactions = await context.BankTransactions.OwnedByAny(group.UserIds)
             .WhereEncryptedDayBetween(x => x.OccurredAt, from, to, context)
             .ToListAsync(cancellationToken);
 
-        transactions.AddRange(await LoadPartnersOutsideAsync(context, transactions, cancellationToken));
+        transactions.AddRange(await LoadPartnersOutsideAsync(context, group, transactions, cancellationToken));
 
-        return await MatchAndSaveAsync(context, transactions, startedAt, recordCheckpoint, cancellationToken);
+        return await MatchAndSaveAsync(context, group, transactions, startedAt, recordCheckpoint, cancellationToken);
     }
 
     /// <summary>
@@ -127,8 +133,8 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
     /// treats what it's given as the whole picture, without them it would clear a match whose other half is outside
     /// the window, and could pair a user's confirmed partner with something else.
     /// </summary>
-    private async Task<List<BankTransaction>> LoadPartnersOutsideAsync(FinanceTrackerContext context,
-        List<BankTransaction> loaded, CancellationToken cancellationToken)
+    private static async Task<List<BankTransaction>> LoadPartnersOutsideAsync(FinanceTrackerContext context,
+        TransferGroup group, List<BankTransaction> loaded, CancellationToken cancellationToken)
     {
         HashSet<Guid> loadedIds = loaded.Select(static x => x.Id).ToHashSet();
 
@@ -139,7 +145,7 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
             .Distinct()
             .ToList();
 
-        return await context.BankTransactions.OwnedBy(UserId)
+        return await context.BankTransactions.OwnedByAny(group.UserIds)
             .Where(x => !loadedIds.Contains(x.Id) &&
                         (partnerIds.Contains(x.Id) ||
                          (x.Transfer != null && x.Transfer.PartnerTransactionId != null &&
@@ -148,20 +154,21 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
     }
 
     /// <summary>
-    /// Matches <paramref name="transactions"/>, saves the decisions and, with <paramref name="recordCheckpoint"/>,
-    /// records that it ran from <paramref name="startedAt"/>.
+    /// Matches <paramref name="transactions"/>, the group's, saves the decisions and, with
+    /// <paramref name="recordCheckpoint"/>, records that the user's run started from <paramref name="startedAt"/>.
     /// </summary>
-    private async Task<TransferMatchSummary> MatchAndSaveAsync(FinanceTrackerContext context,
+    private async Task<TransferMatchSummary> MatchAndSaveAsync(FinanceTrackerContext context, TransferGroup group,
         List<BankTransaction> transactions, DateTime startedAt, bool recordCheckpoint,
         CancellationToken cancellationToken)
     {
-        List<BankAccount> accounts = await context.BankAccounts.OwnedBy(UserId).ToListAsync(cancellationToken);
+        List<BankAccount> accounts = await context.BankAccounts.OwnedByAny(group.UserIds)
+            .ToListAsync(cancellationToken);
 
         List<HouseholdMember> householdMembers =
-            await context.HouseholdMembers.OwnedBy(UserId).ToListAsync(cancellationToken);
+            await context.HouseholdMembers.OwnedByAny(group.UserIds).ToListAsync(cancellationToken);
 
-        TransferMatchSummary summary =
-            TransferMatcher.Match(accounts, householdMembers, transactions, _timeProvider.UtcNow);
+        TransferMatchSummary summary = TransferMatcher.Match(accounts, householdMembers, transactions,
+            _timeProvider.UtcNow, group.Pairing);
 
         if (recordCheckpoint)
         {

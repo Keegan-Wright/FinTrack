@@ -22,7 +22,7 @@ public sealed class AccountScope : IAccountScope
             .SingleOrDefaultAsync(x => x.UserId == userId, cancellationToken);
         if (settings is { IncludeShared: false })
         {
-            return AccountsInView.Mine(userId);
+            return AccountsInView.Mine(userId, await OwnAccountIdsAsync(context, userId, cancellationToken));
         }
 
         return await SharedAsync(context, userId, onlyChangeable: false, cancellationToken);
@@ -74,6 +74,34 @@ public sealed class AccountScope : IAccountScope
             }
         }
 
-        return new AccountsInView(userId, owners, changeable);
+        return new AccountsInView(userId, await OwnAccountIdsAsync(context, userId, cancellationToken), owners,
+            changeable, await OwnersWithPrivateAccountsAsync(context, owners, cancellationToken));
     }
+
+    /// <summary>
+    /// Which of the owners of <paramref name="shared"/> have other accounts, not among them.
+    /// </summary>
+    private static async Task<IReadOnlySet<Guid>> OwnersWithPrivateAccountsAsync(FinanceTrackerContext context,
+        Dictionary<Guid, Guid> shared, CancellationToken cancellationToken)
+    {
+        if (shared.Count == 0)
+        {
+            return new HashSet<Guid>();
+        }
+
+        List<Guid> ownerIds = shared.Values.Distinct().ToList();
+        List<Guid> sharedIds = shared.Keys.ToList();
+        List<Guid> withPrivate = await context.BankAccounts
+            .Where(x => ownerIds.Contains(x.UserId) && !sharedIds.Contains(x.Id))
+            .Select(static x => x.UserId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        return withPrivate.ToHashSet();
+    }
+
+    private static async Task<IReadOnlySet<Guid>> OwnAccountIdsAsync(FinanceTrackerContext context, Guid userId,
+        CancellationToken cancellationToken) =>
+        (await context.BankAccounts.OwnedBy(userId).Select(static x => x.Id).ToListAsync(cancellationToken))
+        .ToHashSet();
 }

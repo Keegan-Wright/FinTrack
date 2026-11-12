@@ -48,7 +48,10 @@ public class TransfersService : ServiceBase<TransfersService>, ITransfersService
             .OrderByDescending(static x => x.OccurredAt)
             .ToList();
 
-        TransactionMapper mapper = await LoadMapperAsync(context, toReview, cancellationToken);
+        // Every account shared with them, so another person's half shows when it's on one they can see
+        AccountsInView view = await _accountScope.ResolveAllAsync(context, cancellationToken);
+        TransactionMapper mapper = await TransactionMapper.LoadAsync(context, view, toReview,
+            _timeProvider.LocalTimeZone, cancellationToken);
 
         foreach (BankTransaction transaction in toReview)
         {
@@ -116,11 +119,10 @@ public class TransfersService : ServiceBase<TransfersService>, ITransfersService
                                           ?? throw new InvalidOperationException($"Transaction {id} was not found.");
             ownerId = transaction.UserId;
 
-            // Transfers are matched between one person's accounts, so the other half is the owner's, maybe on an
-            // account they keep private. It's half of the same pair, so it's answered with it
+            // The other half may be on an account the user can't see, one the owner keeps private, or the other
+            // person's across a link. It's half of the same pair, so it's answered with it, checked below
             BankTransaction? partner = transaction.Transfer?.PartnerTransactionId is { } partnerId
-                ? await context.BankTransactions.OwnedBy(ownerId)
-                    .SingleOrDefaultAsync(x => x.Id == partnerId, cancellationToken)
+                ? await context.BankTransactions.SingleOrDefaultAsync(x => x.Id == partnerId, cancellationToken)
                 : null;
 
             // Only a partner that names this one back is half of the same pair
@@ -193,15 +195,5 @@ public class TransfersService : ServiceBase<TransfersService>, ITransfersService
         TransactionMapper mapper = await TransactionMapper.LoadAsync(context, view, transactions,
             _timeProvider.LocalTimeZone, cancellationToken);
         return transactions.Select(mapper.ToContract).ToList();
-    }
-
-    private async Task<TransactionMapper> LoadMapperAsync(FinanceTrackerContext context,
-        List<BankTransaction> transactions, CancellationToken cancellationToken)
-    {
-        Dictionary<Guid, string> customTags = await context.CustomClassifications.OwnedBy(UserId)
-            .ToDictionaryAsync(static x => x.Id, static x => x.Tag, cancellationToken);
-
-        return await TransactionMapper.LoadAsync(context, UserId, customTags, transactions,
-            _timeProvider.LocalTimeZone, cancellationToken);
     }
 }

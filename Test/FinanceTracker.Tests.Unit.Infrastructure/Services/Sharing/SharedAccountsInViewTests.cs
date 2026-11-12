@@ -52,6 +52,7 @@ public class SharedAccountsInViewTests : InfrastructureTestBase
         ServiceCollection services = new();
         services.AddCurrentUser();
         services.AddScoped<INotifier>(sp => new RecordingNotifier(sp.GetRequiredService<ICurrentUser>(), raised));
+        services.AddTransferMatching(DbContextFactory);
         _services = services.BuildServiceProvider();
 
         await Scenario.Do(s => s.UserScenario.WithUser("Alex", "Smith", "alex@example.test", Alex))

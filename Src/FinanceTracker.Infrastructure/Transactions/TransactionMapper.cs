@@ -36,14 +36,18 @@ internal sealed class TransactionMapper
     // Who shares each shared account in view, by account
     private readonly Dictionary<Guid, string> _sharedBy;
 
-    // The names of the other people whose bills and debts the transactions pay, by user
+    // The names of the other people whose bills and debts the transactions pay, or whose accounts the user's own
+    // transfers moved money with, by user
     private readonly Dictionary<Guid, string> _ownerNames;
+
+    // Who owns the other half's account, for the user's own transfers with someone else's account, by account
+    private readonly Dictionary<Guid, Guid> _partnerAccountOwners;
 
     private TransactionMapper(IReadOnlyDictionary<Guid, string> customTags, Dictionary<Guid, string> accountNames,
         Dictionary<Guid, string> householdMemberNames, Dictionary<Guid, BankTransaction> partners,
         Dictionary<Guid, string> ruleNames, Dictionary<Guid, Bill> bills, Dictionary<Guid, Debt> debts,
         List<SavingsGoal> savingsGoals, TimeZoneInfo timeZone, AccountsInView view, Dictionary<Guid, string> sharedBy,
-        Dictionary<Guid, string> ownerNames)
+        Dictionary<Guid, string> ownerNames, Dictionary<Guid, Guid> partnerAccountOwners)
     {
         _customTags = customTags;
         _accountNames = accountNames;
@@ -57,19 +61,8 @@ internal sealed class TransactionMapper
         _view = view;
         _sharedBy = sharedBy;
         _ownerNames = ownerNames;
+        _partnerAccountOwners = partnerAccountOwners;
     }
-
-    /// <summary>
-    /// A mapper for the user's own transactions only.
-    /// </summary>
-    /// <param name="customTags">The user's custom classifications by id, for the tags.</param>
-    /// <param name="transactions">What will be mapped. Partners outside it are loaded.</param>
-    /// <param name="timeZone">Where the user is, for the day a tag savings goal tracks from.</param>
-    public static Task<TransactionMapper> LoadAsync(FinanceTrackerContext context, Guid userId,
-        IReadOnlyDictionary<Guid, string> customTags, IReadOnlyCollection<BankTransaction> transactions,
-        TimeZoneInfo timeZone, CancellationToken cancellationToken) =>
-        LoadAsync(context, AccountsInView.Mine(userId), customTags, transactions,
-            timeZone, cancellationToken);
 
     /// <summary>
     /// A mapper for the transactions in <paramref name="view"/>, with the tag names they can carry, see
@@ -123,12 +116,43 @@ internal sealed class TransactionMapper
 
         Dictionary<Guid, string> sharedBy = await view.SharedByAsync(context, cancellationToken);
 
+        Dictionary<Guid, Guid> partnerAccountOwners =
+            await LoadPartnerAccountOwnersAsync(context, view, transactions, cancellationToken);
+
         Dictionary<Guid, string> ownerNames = await LoadOwnerNamesAsync(context, view.UserId,
-            [.. bills.Values.Select(static x => x.UserId), .. debts.Values.Select(static x => x.UserId)],
+            [
+                .. bills.Values.Select(static x => x.UserId), .. debts.Values.Select(static x => x.UserId),
+                .. partnerAccountOwners.Values
+            ],
             cancellationToken);
 
         return new TransactionMapper(customTags, accountNames, householdMemberNames, partners, ruleNames, bills,
-            debts, savingsGoals, timeZone, view, sharedBy, ownerNames);
+            debts, savingsGoals, timeZone, view, sharedBy, ownerNames, partnerAccountOwners);
+    }
+
+    /// <summary>
+    /// Who owns the account at the other end of the user's own transfers that moved money with someone else's
+    /// account, by account. Only their owner, not the account itself unless it's shared with them.
+    /// </summary>
+    private static async Task<Dictionary<Guid, Guid>> LoadPartnerAccountOwnersAsync(FinanceTrackerContext context,
+        AccountsInView view, IReadOnlyCollection<BankTransaction> transactions, CancellationToken cancellationToken)
+    {
+        List<Guid> accountIds = transactions
+            .Where(x => x.UserId == view.UserId)
+            .Select(static x => x.Transfer?.PartnerAccountId)
+            .OfType<Guid>()
+            .Where(x => !view.OwnAccountIds.Contains(x))
+            .Distinct()
+            .ToList();
+
+        if (accountIds.Count == 0)
+        {
+            return [];
+        }
+
+        return await context.BankAccounts.AsNoTracking()
+            .Where(x => accountIds.Contains(x.Id))
+            .ToDictionaryAsync(static x => x.Id, static x => x.UserId, cancellationToken);
     }
 
     /// <summary>
@@ -284,7 +308,7 @@ internal sealed class TransactionMapper
         AccountName = _accountNames.GetValueOrDefault(transaction.AccountId, string.Empty),
         SharedBy = _sharedBy.GetValueOrDefault(transaction.AccountId),
         IsReadOnly = _view.IsReadOnly(transaction.AccountId),
-        Transfer = ToContract(transaction.Transfer),
+        Transfer = TransferOf(transaction),
         Bill = ToContract(transaction.BillPayment),
         Debt = ToContract(transaction.DebtPayment),
         TagsFromRules = transaction.RuleTags
@@ -324,9 +348,9 @@ internal sealed class TransactionMapper
         Note = split.Note
     };
 
-    private TransactionTransfer? ToContract(TransferInfo? transfer)
+    private TransactionTransfer? TransferOf(BankTransaction transaction)
     {
-        if (transfer is null)
+        if (transaction.Transfer is not { } transfer)
         {
             return null;
         }
@@ -360,6 +384,7 @@ internal sealed class TransactionMapper
             PartnerHouseholdMemberName = transfer.PartnerHouseholdMemberId is { } memberId
                 ? _householdMemberNames.GetValueOrDefault(memberId)
                 : null,
+            PartnerOwnerName = PartnerOwnerName(transaction),
             RuleName = transfer.RuleId is { } ruleId ? _ruleNames.GetValueOrDefault(ruleId) : null
         };
     }
@@ -385,6 +410,21 @@ internal sealed class TransactionMapper
             RuleName = payment.RuleId is { } ruleId ? _ruleNames.GetValueOrDefault(ruleId) : null,
             OwnerName = OwnerName(Bill(payment)?.UserId)
         };
+    }
+
+    /// <summary>
+    /// Whose account the other half of the user's own transfer is on, when it's someone else's.
+    /// </summary>
+    private string? PartnerOwnerName(BankTransaction transaction)
+    {
+        // Only on their own, the other person's say nothing of who else it moved money with
+        if (transaction.UserId != _view.UserId || transaction.Transfer?.PartnerAccountId is not { } accountId ||
+            !_partnerAccountOwners.TryGetValue(accountId, out Guid ownerId))
+        {
+            return null;
+        }
+
+        return OwnerName(ownerId);
     }
 
     /// <summary>

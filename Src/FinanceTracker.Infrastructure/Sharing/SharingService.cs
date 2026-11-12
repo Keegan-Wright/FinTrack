@@ -10,6 +10,7 @@ using FinanceTracker.Domain.Sharing;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using FinanceTracker.Infrastructure.Notifications;
+using FinanceTracker.Infrastructure.OpenBanking.Transfers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -181,6 +182,12 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
         context.Shares.RemoveRange(shares);
         await context.SaveChangesAsync(cancellationToken);
         Logger.LogChanged(UserId, "ended", "user link", link.Id);
+
+        if (shares.Count > 0)
+        {
+            await RematchTransfersAsync(context, link, cancellationToken);
+        }
+
         return true;
     }
 
@@ -242,6 +249,8 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
         await context.SaveChangesAsync(cancellationToken);
         Logger.LogChanged(UserId, "changed account shares in", "user link", link.Id);
 
+        await RematchTransfersAsync(context, link, cancellationToken);
+
         return await LinkSharesAsync(context, link, cancellationToken);
     }
 
@@ -288,6 +297,24 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
                                        (l.UserId == UserId || l.InviteeId == UserId)), cancellationToken);
 
         return new SharingView { IncludesShared = includesShared, HasSharedAccounts = hasShared };
+    }
+
+    /// <summary>
+    /// Matches both people's transfers again once what's shared between them changed. Money moved between their
+    /// accounts is a transfer only while one of the two accounts is shared, so pairs come and go with the shares.
+    /// </summary>
+    private async Task RematchTransfersAsync(FinanceTrackerContext context, DomainLink link,
+        CancellationToken cancellationToken)
+    {
+        await CrossLinkTransfers.ClearUnpairableAsync(context, link.UserId, link.InviteeId, cancellationToken);
+        await context.SaveChangesAsync(cancellationToken);
+
+        // Each as themselves, they're in different groups once the link has ended
+        foreach (Guid userId in new[] { link.UserId, link.InviteeId })
+        {
+            await using AsyncServiceScope scope = _scopeFactory.CreateUserScope(userId);
+            await scope.ServiceProvider.GetRequiredService<ITransferMatchingService>().MatchAsync(cancellationToken);
+        }
     }
 
     /// <summary>

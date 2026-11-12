@@ -14,47 +14,82 @@ public static class PrivateTransfers
 
     public const string FromPrivateAccount = "Transfer from a private account";
 
+    public const string MaybeToPrivateAccount = "Possible transfer to a private account";
+
+    public const string MaybeFromPrivateAccount = "Possible transfer from a private account";
+
     extension(AccountsInView view)
     {
         /// <summary>
         /// Whether <paramref name="transaction"/> is on an account shared with the user, and is, or may be, a transfer
-        /// with one of its owner's accounts that isn't. Partners are always the owner's own accounts, transfers are
-        /// matched between one person's accounts.
+        /// with an account they can't see: one its owner keeps private, or someone else's. Not one of the user's own,
+        /// money they moved into the shared account themselves. See <see cref="IsPossiblePrivateTransfer"/> for one
+        /// whose other half isn't known.
         /// </summary>
         public bool IsPrivateTransfer(BankTransaction transaction)
         {
             ArgumentNullException.ThrowIfNull(transaction);
-            if (!view.IsShared(transaction.AccountId))
+            if (SharedTransfer(view, transaction) is not { PartnerAccountId: { } partnerAccountId })
             {
                 return false;
             }
 
-            if (transaction.Transfer is not { PartnerAccountId: { } partnerAccountId } transfer ||
-                transfer.Decision == TransferDecision.NotATransfer)
+            return !view.Contains(partnerAccountId);
+        }
+
+        /// <summary>
+        /// Whether <paramref name="transaction"/> is on an account shared with the user and is, or may be, a transfer
+        /// whose other half isn't known, while its owner has accounts the user can't see. The other half may not have
+        /// synced yet, or several could fit, so it may have gone to one of them. A payment to someone else the bank
+        /// calls a transfer is hidden too, there's no telling them apart.
+        /// </summary>
+        public bool IsPossiblePrivateTransfer(BankTransaction transaction)
+        {
+            ArgumentNullException.ThrowIfNull(transaction);
+            if (SharedTransfer(view, transaction) is not { PartnerAccountId: null, PartnerHouseholdMemberId: null })
             {
                 return false;
             }
 
-            return !view.IsShared(partnerAccountId);
+            return view.OwnersWithPrivateAccounts.Contains(transaction.UserId);
         }
 
         /// <summary>
         /// The description the user sees, the bank's unless it's a <see cref="IsPrivateTransfer">private
-        /// transfer</see>.
+        /// transfer</see> or a <see cref="IsPossiblePrivateTransfer">possible one</see>.
         /// </summary>
         public string DescriptionOf(BankTransaction transaction)
         {
-            if (!view.IsPrivateTransfer(transaction))
+            bool moneyOut = transaction.Amount < 0;
+            if (view.IsPrivateTransfer(transaction))
             {
-                return transaction.Description;
+                return moneyOut ? ToPrivateAccount : FromPrivateAccount;
             }
 
-            if (transaction.Amount < 0)
+            if (view.IsPossiblePrivateTransfer(transaction))
             {
-                return ToPrivateAccount;
+                return moneyOut ? MaybeToPrivateAccount : MaybeFromPrivateAccount;
             }
 
-            return FromPrivateAccount;
+            return transaction.Description;
         }
+    }
+
+    /// <summary>
+    /// <paramref name="transaction"/>'s transfer when it's on an account shared with the user and is, or may be, one.
+    /// </summary>
+    private static TransferInfo? SharedTransfer(AccountsInView view, BankTransaction transaction)
+    {
+        if (!view.IsShared(transaction.AccountId))
+        {
+            return null;
+        }
+
+        if (transaction.Transfer is not { } transfer || transfer.Decision == TransferDecision.NotATransfer)
+        {
+            return null;
+        }
+
+        return transfer;
     }
 }
