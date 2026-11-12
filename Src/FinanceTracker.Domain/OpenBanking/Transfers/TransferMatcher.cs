@@ -48,6 +48,8 @@ public static class TransferMatcher
     /// </summary>
     /// <param name="pairing">Which of them may pair, when they're several people's. One person's own accounts only
     /// when null.</param>
+    /// <param name="membersOwnAccounts">The accounts each member who's a user connected themselves, by member, see
+    /// <see cref="HouseholdMember.Recognises"/>. Only their identifiers, the accounts stay theirs.</param>
     /// <remarks>
     /// Several people's transactions are matched together when they share accounts, the same group whoever's run it
     /// is, so every run comes to the same decisions. One person's own pairs come out the same however many others
@@ -55,7 +57,8 @@ public static class TransferMatcher
     /// </remarks>
     public static TransferMatchSummary Match(IReadOnlyCollection<BankAccount> accounts,
         IReadOnlyCollection<HouseholdMember> householdMembers, IReadOnlyCollection<BankTransaction> transactions,
-        DateTime decidedAt, TransferPairing? pairing = null)
+        DateTime decidedAt, TransferPairing? pairing = null,
+        IReadOnlyDictionary<Guid, IReadOnlyCollection<AccountIdentifier>>? membersOwnAccounts = null)
     {
         ArgumentNullException.ThrowIfNull(accounts);
         ArgumentNullException.ThrowIfNull(householdMembers);
@@ -91,7 +94,8 @@ public static class TransferMatcher
         MatchMirrorPairs(accounts, open, decisions, pairing, decidedAt);
 
         // Step 3
-        MatchHouseholdMembers(householdMembers, open, decisions, decidedAt);
+        MatchHouseholdMembers(householdMembers, membersOwnAccounts ?? new Dictionary<Guid,
+            IReadOnlyCollection<AccountIdentifier>>(), open, decisions, decidedAt);
 
         // Step 4, labelled a transfer but nothing on the user's accounts matches it. Often a real payment to someone
         // else, so it stays counted until the user says otherwise
@@ -217,6 +221,7 @@ public static class TransferMatcher
     /// accounts so a pair found there always wins, e.g. once the member's account is connected.
     /// </summary>
     private static void MatchHouseholdMembers(IReadOnlyCollection<HouseholdMember> householdMembers,
+        IReadOnlyDictionary<Guid, IReadOnlyCollection<AccountIdentifier>> membersOwnAccounts,
         List<BankTransaction> open, Dictionary<Guid, TransferInfo> decisions, DateTime decidedAt)
     {
         foreach (BankTransaction transaction in open.Where(x => !decisions.ContainsKey(x.Id)))
@@ -225,7 +230,8 @@ public static class TransferMatcher
             // stops at two and only one counts. Only the transaction owner's household, each person keeps their own
             if (householdMembers
                     .Where(x => x.UserId == transaction.UserId &&
-                                x.Recognises(transaction.Description, transaction.Metadata.ProviderReference))
+                                x.Recognises(transaction.Description, transaction.Metadata.ProviderReference,
+                                    membersOwnAccounts.GetValueOrDefault(x.Id)))
                     .Take(2)
                     .ToList() is [var member])
             {

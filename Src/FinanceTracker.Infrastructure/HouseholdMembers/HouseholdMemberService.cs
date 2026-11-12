@@ -164,6 +164,9 @@ public class HouseholdMemberService : ServiceBase<HouseholdMemberService>, IHous
             householdMember.UnlinkUser();
             await context.SaveChangesAsync(cancellationToken);
             Logger.LogChanged(UserId, "unlinked", "household member", id);
+
+            // Money to or from their accounts is no longer theirs unless the owner's own recognition says so
+            await _transferMatchingService.MatchAsync(cancellationToken);
             return ToContract(householdMember, []);
         }
 
@@ -195,6 +198,9 @@ public class HouseholdMemberService : ServiceBase<HouseholdMemberService>, IHous
         await NameCheck.SaveKeepingNamesApartAsync(context, NameTakenException.Person, FullName(firstName, lastName),
             cancellationToken);
         Logger.LogChanged(UserId, "linked", "household member", id);
+
+        // Money to or from any of their accounts is theirs now, applied to the transactions already there
+        await _transferMatchingService.MatchAsync(cancellationToken);
 
         return ToContract(householdMember,
             new Dictionary<Guid, string> { [personId] = person.UserName ?? string.Empty });

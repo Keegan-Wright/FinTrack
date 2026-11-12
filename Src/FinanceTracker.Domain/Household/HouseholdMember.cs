@@ -148,15 +148,19 @@ public sealed class HouseholdMember : AggregateRoot
 
     /// <summary>
     /// Whether a transaction is money to or from this member, its reference names one of their linked accounts or
-    /// its description starts with one of their payee names.
+    /// one of <paramref name="theirOwnAccounts"/>, or its description starts with one of their payee names.
     /// </summary>
+    /// <param name="theirOwnAccounts">For a member who's a user, see <see cref="LinkedUserId"/>, the accounts they've
+    /// connected themselves, so money to or from any of them is recognised without the owner adding them.</param>
     /// <remarks>
     /// Starts with rather than equals, as banks add to the name, e.g. <c>J SMITH 01JAN26</c>, and ignoring
     /// case as banks often use capitals. The name has to end at a word boundary, so <c>J Smith</c> doesn't recognise
     /// <c>J SMITHSON LTD</c>.
     /// </remarks>
-    public bool Recognises(string? description, string? reference) =>
+    public bool Recognises(string? description, string? reference,
+        IReadOnlyCollection<AccountIdentifier>? theirOwnAccounts = null) =>
         _linkedAccounts.Any(x => x.IsNamedIn(reference)) ||
+        (theirOwnAccounts ?? []).Any(x => x.IsNamedIn(reference)) ||
         _payeeNames.Any(x => StartsWithName(description, x));
 
     private static bool StartsWithName(string? description, string payeeName)

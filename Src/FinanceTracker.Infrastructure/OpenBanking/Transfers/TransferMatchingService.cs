@@ -166,8 +166,11 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
         List<HouseholdMember> householdMembers =
             await context.HouseholdMembers.OwnedByAny(group.UserIds).ToListAsync(cancellationToken);
 
+        Dictionary<Guid, IReadOnlyCollection<AccountIdentifier>> membersOwnAccounts =
+            await MembersOwnAccountsAsync(context, householdMembers, cancellationToken);
+
         TransferMatchSummary summary = TransferMatcher.Match(accounts, householdMembers, transactions,
-            _timeProvider.UtcNow, group.Pairing);
+            _timeProvider.UtcNow, group.Pairing, membersOwnAccounts);
 
         if (recordCheckpoint)
         {
@@ -184,6 +187,35 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
         _metrics.TransfersMatched(summary.Transfers, summary.ToReview, summary.Cleared);
 
         return summary;
+    }
+
+    /// <summary>
+    /// The identifiers of the accounts each member who's a user connected themselves, by member, so money to or from
+    /// them is recognised. Their own, whether or not they share them, as only the match is shown, never the account.
+    /// </summary>
+    private static async Task<Dictionary<Guid, IReadOnlyCollection<AccountIdentifier>>> MembersOwnAccountsAsync(
+        FinanceTrackerContext context, List<HouseholdMember> householdMembers, CancellationToken cancellationToken)
+    {
+        List<Guid> linkedUserIds = householdMembers.Select(static x => x.LinkedUserId).OfType<Guid>().ToList();
+        if (linkedUserIds.Count == 0)
+        {
+            return [];
+        }
+
+        List<BankAccount> theirs = await context.BankAccounts.AsNoTracking()
+            .Where(x => linkedUserIds.Contains(x.UserId))
+            .ToListAsync(cancellationToken);
+
+        Dictionary<Guid, IReadOnlyCollection<AccountIdentifier>> byMember = [];
+        foreach (HouseholdMember member in householdMembers.Where(static x => x.LinkedUserId is not null))
+        {
+            byMember[member.Id] = theirs
+                .Where(x => x.UserId == member.LinkedUserId && x.Identifier is not null)
+                .Select(static x => x.Identifier!)
+                .ToList();
+        }
+
+        return byMember;
     }
 
     /// <summary>
