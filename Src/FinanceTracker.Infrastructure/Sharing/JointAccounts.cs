@@ -36,51 +36,97 @@ internal static class JointAccounts
                 .ToListAsync(cancellationToken))
             .ToHashSet();
 
-        Dictionary<Guid, string> banks = await BanksAsync(context, accounts, cancellationToken);
-        ILookup<Guid, (DateOnly, decimal, string)> transactions =
-            await TransactionsOfUnnumberedAsync(context, accounts, cancellationToken);
+        return await PairAsync(context,
+            accounts.Where(x => x.UserId == userId).ToList(),
+            accounts.Where(x => x.UserId == otherId).ToList(),
+            (yours, theirs) => shared.Contains(yours.Id) || shared.Contains(theirs.Id),
+            cancellationToken);
+    }
 
-        List<(BankAccount Yours, BankAccount Theirs)> suggestions = [];
-        HashSet<Guid> taken = [];
-        foreach (BankAccount yours in accounts.Where(x => x.UserId == userId))
+    /// <summary>
+    /// Pairs each of <paramref name="yours"/> with the first of <paramref name="theirs"/> that <paramref
+    /// name="allowed"/> lets it pair with and is the same account, see <see cref="IsSameAccount"/>. Each account in
+    /// one pair at most.
+    /// </summary>
+    private static async Task<List<(BankAccount Yours, BankAccount Theirs)>> PairAsync(
+        FinanceTrackerContext context, List<BankAccount> yours, List<BankAccount> theirs,
+        Func<BankAccount, BankAccount, bool> allowed, CancellationToken cancellationToken)
+    {
+        if (yours.Count == 0 || theirs.Count == 0)
         {
-            foreach (BankAccount theirs in accounts.Where(x => x.UserId == otherId && !taken.Contains(x.Id)))
+            return [];
+        }
+
+        Dictionary<Guid, string> banks = await BanksAsync(context, [.. yours, .. theirs], cancellationToken);
+
+        // Transactions are only read for the pots that could be the same, by bank, name, currency and kind
+        List<(BankAccount Yours, BankAccount Theirs)> candidates = [];
+        foreach (BankAccount your in yours)
+        {
+            foreach (BankAccount their in theirs)
             {
-                bool eitherShared = shared.Contains(yours.Id) || shared.Contains(theirs.Id);
-                if (eitherShared && IsSameAccount(yours, theirs, banks, transactions))
+                if (allowed(your, their) && LooksAlike(your, their, banks))
                 {
-                    suggestions.Add((yours, theirs));
-                    taken.Add(theirs.Id);
-                    break;
+                    candidates.Add((your, their));
                 }
             }
         }
 
-        return suggestions;
+        ILookup<Guid, (DateOnly, decimal, string)> transactions = await TransactionsOfUnnumberedAsync(context,
+            candidates.SelectMany(static x => new[] { x.Yours, x.Theirs }).DistinctBy(static x => x.Id).ToList(),
+            cancellationToken);
+
+        List<(BankAccount Yours, BankAccount Theirs)> pairs = [];
+        HashSet<Guid> taken = [];
+        foreach ((BankAccount your, BankAccount their) in candidates)
+        {
+            if (taken.Contains(your.Id) || taken.Contains(their.Id))
+            {
+                continue;
+            }
+
+            if (IsSameAccount(your, their, transactions))
+            {
+                pairs.Add((your, their));
+                taken.Add(your.Id);
+                taken.Add(their.Id);
+            }
+        }
+
+        return pairs;
     }
 
     /// <summary>
-    /// Whether two people's accounts are one account they've both connected. By sort code and number or IBAN when
-    /// both have one. A savings pot has neither, so then by its bank, name and currency, and having the same
-    /// transactions, or the same balance when neither has any yet. Someone confirms each merge, so a near miss costs
-    /// them a look rather than a wrong merge.
+    /// Whether two people's accounts could be one account they've both connected, before their transactions are
+    /// compared. The same sort code and number or IBAN when either has one, that settles it. A savings pot has
+    /// neither, so then the same bank, name, currency and kind.
     /// </summary>
-    private static bool IsSameAccount(BankAccount yours, BankAccount theirs, Dictionary<Guid, string> banks,
-        ILookup<Guid, (DateOnly, decimal, string)> transactions)
+    private static bool LooksAlike(BankAccount yours, BankAccount theirs, Dictionary<Guid, string> banks)
     {
         if (yours.Identifier is not null || theirs.Identifier is not null)
         {
             return yours.Identifier?.IsSameAccountAs(theirs.Identifier) == true;
         }
 
-        bool alike = banks.GetValueOrDefault(yours.ConnectionId) == banks.GetValueOrDefault(theirs.ConnectionId) &&
-                     string.Equals(yours.DisplayName.Trim(), theirs.DisplayName.Trim(),
-                         StringComparison.OrdinalIgnoreCase) &&
-                     string.Equals(yours.Currency, theirs.Currency, StringComparison.OrdinalIgnoreCase) &&
-                     yours.Kind == theirs.Kind;
-        if (!alike)
+        return banks.GetValueOrDefault(yours.ConnectionId) == banks.GetValueOrDefault(theirs.ConnectionId) &&
+               string.Equals(yours.DisplayName.Trim(), theirs.DisplayName.Trim(),
+                   StringComparison.OrdinalIgnoreCase) &&
+               string.Equals(yours.Currency, theirs.Currency, StringComparison.OrdinalIgnoreCase) &&
+               yours.Kind == theirs.Kind;
+    }
+
+    /// <summary>
+    /// Whether two accounts that <see cref="LooksAlike">look alike</see> are one account they've both connected. By
+    /// sort code and number or IBAN when they have one. A savings pot, with neither, also needs the same transactions,
+    /// or the same balance when neither has any yet. Someone confirms each merge, so a near miss costs them a look
+    /// rather than a wrong merge.
+    /// </summary>
+    private static bool IsSameAccount(BankAccount yours, BankAccount theirs,
+        ILookup<Guid, (DateOnly, decimal, string)> transactions)
+    {
+        if (yours.Identifier is not null)
         {
-            return false;
+            return true;
         }
 
         List<(DateOnly, decimal, string)> ours = transactions[yours.Id].ToList();
