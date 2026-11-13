@@ -97,6 +97,30 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
         }
     }
 
+    public async IAsyncEnumerable<ContractLink> GetPeopleAsync(
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        await using FinanceTrackerContext context =
+            await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+
+        List<DomainLink> links = await LiveLinksOf(context, UserId)
+            .Where(static x => x.Status == UserLinkStatus.Accepted)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        List<Guid> otherIds = links.Select(x => x.OtherThan(UserId)).ToList();
+
+        Dictionary<Guid, FinanceTrackerUser> others = await context.Users
+            .Where(x => otherIds.Contains(x.Id))
+            .AsNoTracking()
+            .ToDictionaryAsync(static x => x.Id, cancellationToken);
+
+        foreach (DomainLink link in links.OrderBy(static x => x.InvitedAt))
+        {
+            yield return ToContract(link, others[link.OtherThan(UserId)]);
+        }
+    }
+
     public async Task<InviteOutcome> InviteAsync(InviteToShare request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -788,6 +812,8 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
         {
             LinkId = link.Id,
             Name = FullName(other),
+            Username = other.UserName ?? string.Empty,
+            Since = link.AnsweredAt ?? link.InvitedAt,
             YourAccounts = yourAccounts,
             TheirAccounts = theirAccounts,
             YourItems = await ItemShares.YoursAsync(context, link, UserId, cancellationToken),

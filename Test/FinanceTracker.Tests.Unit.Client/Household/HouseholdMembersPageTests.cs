@@ -63,7 +63,7 @@ public class HouseholdMembersPageTests : ComponentTestBase
             Since = new DateTime(2026, 11, 3, 12, 0, 0, DateTimeKind.Utc)
         };
         ISharingService sharing = Substitute.For<ISharingService>();
-        sharing.GetLinksAsync(Arg.Any<CancellationToken>()).Returns(_ => new[] { sam }.ToAsyncEnumerable());
+        sharing.GetPeopleAsync(Arg.Any<CancellationToken>()).Returns(_ => new[] { sam }.ToAsyncEnumerable());
         Services.AddSingleton(sharing);
         _householdMemberService.LinkHouseholdMemberAsync(_partner.Id, Arg.Any<LinkHouseholdMember>(),
                 Arg.Any<CancellationToken>())

@@ -171,12 +171,6 @@ else
     [PersistentState]
     public LinkShares? Shares { get; set; }
 
-    /// <summary>
-    /// The link, for the other person's username and since when.
-    /// </summary>
-    [PersistentState]
-    public UserLink? Link { get; set; }
-
     private readonly Dictionary<Guid, ShareMode> _accounts = [];
     private readonly Dictionary<SharedItemKind, Dictionary<Guid, ShareMode>> _items = [];
 
@@ -189,13 +183,13 @@ else
     {
         get
         {
-            if (Link is null)
+            if (Shares is null)
             {
                 return null;
             }
 
-            string since = Link.Since.ToLocalTime().ToString("d MMM yyyy", CultureInfo.CurrentCulture);
-            return $"@{Link.Username} · linked since {since}";
+            string since = Shares.Since.ToLocalTime().ToString("d MMM yyyy", CultureInfo.CurrentCulture);
+            return $"@{Shares.Username} · linked since {since}";
         }
     }
 
@@ -237,7 +231,6 @@ else
         try
         {
             Shares = await SharingService.GetSharesAsync(LinkId, _cts.Token);
-            Link = await SharingService.GetLinksAsync(_cts.Token).FirstOrDefaultAsync(x => x.Id == LinkId, _cts.Token);
         }
         finally
         {

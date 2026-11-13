@@ -62,7 +62,6 @@ public class SharingWithPageTests : ComponentTestBase
     {
         AddBunitPersistentComponentState();
         Services.AddSingleton(_sharingService);
-        _sharingService.GetLinksAsync(Arg.Any<CancellationToken>()).Returns(_ => new[] { _linked }.ToAsyncEnumerable());
         _sharingService.GetSharesAsync(_linked.Id, Arg.Any<CancellationToken>()).Returns(Shares());
         _sharingService.ChangeAccountSharesAsync(_linked.Id, Arg.Any<ChangeAccountShares>(),
             Arg.Any<CancellationToken>()).Returns(Shares());
@@ -305,6 +304,8 @@ public class SharingWithPageTests : ComponentTestBase
     {
         LinkId = _linked.Id,
         Name = _linked.Name,
+        Username = _linked.Username,
+        Since = _linked.Since,
         YourAccounts = [_current, _savings, _birthday],
         TheirAccounts = [new AccountSharedWithYou { Name = "Joint", BankName = "Bank", Mode = ShareMode.ReadOnly }],
         YourItems = [_holiday, _kids, _shops, _rent, _cardDebt],

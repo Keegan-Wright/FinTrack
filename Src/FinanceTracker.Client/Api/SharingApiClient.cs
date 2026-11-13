@@ -23,6 +23,9 @@ public sealed class SharingApiClient : ISharingService
     public IAsyncEnumerable<UserLink> GetLinksAsync(CancellationToken cancellationToken) =>
         _http.GetStreamAsync<UserLink>(ApiRoutes.SharingLinks, cancellationToken);
 
+    public IAsyncEnumerable<UserLink> GetPeopleAsync(CancellationToken cancellationToken) =>
+        _http.GetStreamAsync<UserLink>(ApiRoutes.SharingPeople, cancellationToken);
+
     public Task<InviteOutcome> InviteAsync(InviteToShare request, CancellationToken cancellationToken) =>
         _http.PostReadAsync<InviteToShare, InviteOutcome>(ApiRoutes.SharingLinks, request, cancellationToken);
 

@@ -28,6 +28,9 @@ public static class SharingEndpoints
             links.MapGet(string.Empty, (ISharingService service, CancellationToken cancellationToken) =>
                 service.GetLinksAsync(cancellationToken));
 
+            api.MapGet(ApiRoutes.SharingPeople, (ISharingService service, CancellationToken cancellationToken) =>
+                service.GetPeopleAsync(cancellationToken));
+
             links.MapPost(string.Empty, async Task<Ok<InviteOutcome>> (InviteToShare request,
                         ISharingService service, CancellationToken cancellationToken) =>
                     TypedResults.Ok(await service.InviteAsync(request, cancellationToken)))

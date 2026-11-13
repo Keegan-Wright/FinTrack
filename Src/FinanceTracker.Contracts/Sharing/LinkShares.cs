@@ -17,6 +17,16 @@ public sealed record LinkShares
     public required string Name { get; init; }
 
     /// <summary>
+    /// The other person's username.
+    /// </summary>
+    public string Username { get; init; } = string.Empty;
+
+    /// <summary>
+    /// When they linked, in UTC.
+    /// </summary>
+    public DateTime Since { get; init; }
+
+    /// <summary>
     /// Every account of the user's own, shared or not, so they can choose.
     /// </summary>
     public required IReadOnlyList<ShareableAccount> YourAccounts { get; init; }

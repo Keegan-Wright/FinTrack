@@ -36,8 +36,9 @@ public sealed class HouseholdMember : AggregateRoot
     public decimal? YearlyIncome { get; private set; }
 
     /// <summary>
-    /// The FinTrack user the member is, once the owner links them, someone they're linked with. Their name follows
-    /// that user's, their income stays the owner's to give. Null for a member who isn't a user.
+    /// The FinTrack user the member is, once the owner links them, someone they're linked with. Linking gives the
+    /// member that user's name at the time, which the owner can still change. Their income stays the owner's to give.
+    /// Null for a member who isn't a user.
     /// </summary>
     public Guid? LinkedUserId { get; private set; }
 

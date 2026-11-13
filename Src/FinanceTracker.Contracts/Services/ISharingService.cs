@@ -14,6 +14,12 @@ public interface ISharingService
     IAsyncEnumerable<UserLink> GetLinksAsync(CancellationToken cancellationToken);
 
     /// <summary>
+    /// Everyone they're linked with, who they are and since when, without what's shared or joint accounts to merge,
+    /// for where only the people are needed. Invites waiting for an answer aren't included.
+    /// </summary>
+    IAsyncEnumerable<UserLink> GetPeopleAsync(CancellationToken cancellationToken);
+
+    /// <summary>
     /// Invites another user to share, and tells them. Validate the request with
     /// <see cref="Validation.InviteToShareValidator"/> first.
     /// </summary>

@@ -59,18 +59,18 @@ public sealed class AccountScope : IAccountScope
     private static async Task<AccountsInView> ResolveAsync(FinanceTrackerContext context, Guid userId,
         bool onlyChangeable, bool justMine, CancellationToken cancellationToken)
     {
-        List<Guid> hidden = await context.JointAccounts.AsNoTracking()
-            .Select(static x => x.HiddenAccountId)
-            .ToListAsync(cancellationToken);
+        // Read once, every view needs to know which copies are hidden
+        List<JointCopies> joints = await JointCopiesAsync(context, cancellationToken);
+        List<Guid> hidden = joints.Select(static x => x.HiddenId).ToList();
 
         Dictionary<Guid, Guid> owners = [];
         HashSet<Guid> changeable = [];
 
         // Their copy of a joint account is hidden, the shown one is theirs to change as much as the other person's
-        foreach ((Guid AccountId, Guid OwnerId) joint in await JointAccountsOfAsync(context, userId, cancellationToken))
+        foreach (JointCopies joint in joints.Where(x => x.HiddenOwner == userId))
         {
-            owners[joint.AccountId] = joint.OwnerId;
-            changeable.Add(joint.AccountId);
+            owners[joint.ShownId] = joint.ShownOwner;
+            changeable.Add(joint.ShownId);
         }
 
         if (!justMine)
@@ -96,16 +96,15 @@ public sealed class AccountScope : IAccountScope
         HashSet<Guid> ownHidden = ownIds.Intersect(hidden).ToHashSet();
         HashSet<Guid> ownShown = ownIds.Except(ownHidden).ToHashSet();
 
-        List<(Guid HiddenId, Guid ShownId, Guid HiddenOwner)> filling =
-            (await FillingCopiesAsync(context, cancellationToken))
+        List<JointCopies> filling = joints
             .Where(x => ownShown.Contains(x.ShownId) || owners.ContainsKey(x.ShownId))
             .ToList();
 
         // Another person's hidden copy filling in for an account here may move money to their private accounts
         Dictionary<Guid, Guid> othersAccounts = new(owners);
-        foreach ((Guid hiddenId, _, Guid hiddenOwner) in filling.Where(x => x.HiddenOwner != userId))
+        foreach (JointCopies joint in filling.Where(x => x.HiddenOwner != userId))
         {
-            othersAccounts[hiddenId] = hiddenOwner;
+            othersAccounts[joint.HiddenId] = joint.HiddenOwner;
         }
 
         return new AccountsInView(userId, ownShown, owners, changeable,
@@ -114,37 +113,26 @@ public sealed class AccountScope : IAccountScope
     }
 
     /// <summary>
-    /// Every joint account's hidden copy, with its shown copy and who owns the hidden one.
+    /// Every joint account's two copies and who owns each.
     /// </summary>
-    private static async Task<List<(Guid HiddenId, Guid ShownId, Guid HiddenOwner)>> FillingCopiesAsync(
-        FinanceTrackerContext context, CancellationToken cancellationToken)
+    private static async Task<List<JointCopies>> JointCopiesAsync(FinanceTrackerContext context,
+        CancellationToken cancellationToken)
     {
         var joints = await (
                 from joint in context.JointAccounts
                 join hiddenCopy in context.BankAccounts on joint.HiddenAccountId equals hiddenCopy.Id
-                select new { joint.HiddenAccountId, joint.ShownAccountId, hiddenCopy.UserId })
+                join shownCopy in context.BankAccounts on joint.ShownAccountId equals shownCopy.Id
+                select new
+                {
+                    joint.HiddenAccountId, HiddenOwner = hiddenCopy.UserId, joint.ShownAccountId,
+                    ShownOwner = shownCopy.UserId
+                })
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
-        return joints.Select(static x => (x.HiddenAccountId, x.ShownAccountId, x.UserId)).ToList();
-    }
-
-    /// <summary>
-    /// The shown copies of joint accounts whose other copy is the user's, and who owns each.
-    /// </summary>
-    private static async Task<List<(Guid AccountId, Guid OwnerId)>> JointAccountsOfAsync(
-        FinanceTrackerContext context, Guid userId, CancellationToken cancellationToken)
-    {
-        var joints = await (
-                from joint in context.JointAccounts
-                join hiddenCopy in context.BankAccounts on joint.HiddenAccountId equals hiddenCopy.Id
-                join shown in context.BankAccounts on joint.ShownAccountId equals shown.Id
-                where hiddenCopy.UserId == userId
-                select new { AccountId = shown.Id, OwnerId = shown.UserId })
-            .AsNoTracking()
-            .ToListAsync(cancellationToken);
-
-        return joints.Select(static x => (x.AccountId, x.OwnerId)).ToList();
+        return joints
+            .Select(static x => new JointCopies(x.HiddenAccountId, x.HiddenOwner, x.ShownAccountId, x.ShownOwner))
+            .ToList();
     }
 
     /// <summary>

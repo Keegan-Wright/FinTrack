@@ -37,10 +37,20 @@ public static class FinanceTrackerContextExtensions
     extension<T>(IQueryable<T> query) where T : class, IUserOwned, IBelongsToAccount
     {
         /// <summary>
-        /// Restricts to what belongs to the accounts the user can change, <paramref name="changeable"/> from
-        /// <see cref="IAccountScope.ResolveChangeableAsync"/>: their own, and those shared with changes allowed.
+        /// Restricts to what belongs to the accounts the user can change in <paramref name="view"/>: their own, and
+        /// those shared with changes allowed. Whichever view is passed, a shared account that only lets them see it is
+        /// left out.
         /// </summary>
-        public IQueryable<T> ChangeableIn(AccountsInView changeable) => query.InView(changeable);
+        public IQueryable<T> ChangeableIn(AccountsInView view)
+        {
+            ArgumentNullException.ThrowIfNull(view);
+            Guid userId = view.UserId;
+            List<Guid> changeable = view.ChangeableSharedAccountIds();
+            List<Guid> hidden = view.HiddenAccountIds.ToList();
+
+            return query.Where(x =>
+                (x.UserId == userId && !hidden.Contains(x.AccountId)) || changeable.Contains(x.AccountId));
+        }
 
         /// <summary>
         /// Restricts to what belongs to the accounts <paramref name="view"/> covers: the user's own, their copies of
@@ -61,9 +71,23 @@ public static class FinanceTrackerContextExtensions
     extension(IQueryable<BankTransaction> query)
     {
         /// <summary>
-        /// <see cref="ChangeableIn{T}"/> for transactions, with the hidden copies' that fill a joint account's gap.
+        /// <see cref="ChangeableIn{T}"/> for transactions, with the hidden copies' that fill a gap in a joint account
+        /// the user can change.
         /// </summary>
-        public IQueryable<BankTransaction> ChangeableIn(AccountsInView changeable) => query.InView(changeable);
+        public IQueryable<BankTransaction> ChangeableIn(AccountsInView view)
+        {
+            ArgumentNullException.ThrowIfNull(view);
+            Guid userId = view.UserId;
+            List<Guid> changeable = view.ChangeableSharedAccountIds();
+            List<Guid> hidden = view.HiddenAccountIds.ToList();
+            List<Guid> filling = view.FillingAccounts
+                .Where(x => view.OwnAccountIds.Contains(x.Value) || view.ChangeableAccountIds.Contains(x.Value))
+                .Select(static x => x.Key)
+                .ToList();
+            return query.Where(x =>
+                (x.UserId == userId && !hidden.Contains(x.AccountId)) || changeable.Contains(x.AccountId) ||
+                (x.FillsJointGap && filling.Contains(x.AccountId)));
+        }
 
         /// <summary>
         /// <see cref="InView{T}"/> for transactions, with the hidden copies' that fill a joint account's gap, see

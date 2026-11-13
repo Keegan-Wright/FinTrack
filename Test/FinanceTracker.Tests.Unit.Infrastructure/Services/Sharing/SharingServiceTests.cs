@@ -150,6 +150,28 @@ public class SharingServiceTests : InfrastructureTestBase
     }
 
     [Test]
+    public async Task GetPeopleAsync_OnlyThoseLinked_AndSharesSayWhoAndSinceWhen()
+    {
+        // Arrange, linked with Sam, and an invite waiting for Jo
+        await SeedUsersAsync();
+        Guid linkId = await LinkAsync(Alex, Sam);
+        await Subject(Alex).InviteAsync(new InviteToShare { Who = Jo }, CancellationToken);
+
+        // Act
+        List<UserLink> people = await Subject(Alex).GetPeopleAsync(CancellationToken).ToListAsync(CancellationToken);
+        LinkShares shares = (await Subject(Alex).GetSharesAsync(linkId, CancellationToken))!;
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(people.Select(static x => (x.Username, x.State)))
+                .IsEquivalentTo([(Sam, LinkState.Linked)]);
+            await Assert.That(shares.Username).IsEqualTo(Sam);
+            await Assert.That(shares.Since).IsEqualTo(people.Single().Since);
+        }
+    }
+
+    [Test]
     public async Task InviteAsync_NoOneByThatName_IsRefused()
     {
         // Arrange

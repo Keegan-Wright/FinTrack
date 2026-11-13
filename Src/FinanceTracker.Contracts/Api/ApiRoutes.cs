@@ -82,6 +82,11 @@ public static class ApiRoutes
     public const string SharingLinks = "api/sharing/links";
 
     /// <summary>
+    /// <see cref="Services.ISharingService"/>'s people the user is linked with, names only.
+    /// </summary>
+    public const string SharingPeople = "api/sharing/people";
+
+    /// <summary>
     /// <see cref="Services.ISharingService"/>'s Everyone or Just mine choice.
     /// </summary>
     public const string SharingView = "api/sharing/view";

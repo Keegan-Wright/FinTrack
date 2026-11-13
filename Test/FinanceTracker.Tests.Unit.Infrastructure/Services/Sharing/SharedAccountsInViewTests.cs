@@ -22,6 +22,7 @@ using FinanceTracker.Infrastructure.Transactions;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Fakers;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NotificationKind = FinanceTracker.Domain.Notifications.NotificationKind;
@@ -82,6 +83,31 @@ public class SharedAccountsInViewTests : InfrastructureTestBase
 
     [After(Test)]
     public async Task TearDownAsync() => await _services.DisposeAsync();
+
+    [Test]
+    [Arguments(ShareMode.ReadOnly, false)]
+    [Arguments(ShareMode.AllowChanges, true)]
+    public async Task ChangeableIn_GivenTheWholeView_StillOnlyChangesAllowed(ShareMode mode, bool changeable)
+    {
+        // Arrange, the view of everything Alex sees, not the changeable one
+        await Sharing(Sam).ChangeAccountSharesAsync(_linkId, new ChangeAccountShares
+        {
+            Accounts = [new AccountShareChoice { AccountId = Account("sam-joint"), Mode = mode }]
+        }, CancellationToken);
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        AccountsInView all = await Scope(Alex).ResolveAllAsync(context, CancellationToken);
+
+        // Act
+        List<Guid> ids = await context.BankTransactions.ChangeableIn(all).Select(static x => x.Id)
+            .ToListAsync(CancellationToken);
+
+        // Assert, Alex's own always
+        using (Assert.Multiple())
+        {
+            await Assert.That(ids).Contains(Scenario.TransactionMappings["alex-coffee"]);
+            await Assert.That(ids.Contains(Scenario.TransactionMappings["sam-shop"])).IsEqualTo(changeable);
+        }
+    }
 
     [Test]
     public async Task Accounts_ShowTheSharedAccountAndWhoSharesIt_NeverThePrivateOne()

@@ -175,9 +175,7 @@
         Members = await LoadOnceAsync(Members, "Loading your household", cancellationToken =>
             HouseholdMemberService.GetHouseholdMembersAsync(cancellationToken).ToListAsync(cancellationToken).AsTask());
         People = await LoadOnceAsync(People, "Loading your household", cancellationToken =>
-            SharingService.GetLinksAsync(cancellationToken)
-                .Where(static x => x.State == LinkState.Linked)
-                .ToListAsync(cancellationToken).AsTask());
+            SharingService.GetPeopleAsync(cancellationToken).ToListAsync(cancellationToken).AsTask());
     }
 
     /// <summary>

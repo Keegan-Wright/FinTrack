@@ -39,6 +39,12 @@ public sealed record AccountsInView(
     public bool IsShared(Guid accountId) => SharedOwners.ContainsKey(accountId);
 
     /// <summary>
+    /// The accounts other people share with them that they're allowed to change, see
+    /// <see cref="ChangeableAccountIds"/>.
+    /// </summary>
+    public List<Guid> ChangeableSharedAccountIds() => SharedAccountIds.Where(ChangeableAccountIds.Contains).ToList();
+
+    /// <summary>
     /// The hidden copies in <see cref="FillingAccounts"/>, for queries.
     /// </summary>
     public IReadOnlyList<Guid> FillingAccountIds { get; } = FillingAccounts.Keys.ToList();
