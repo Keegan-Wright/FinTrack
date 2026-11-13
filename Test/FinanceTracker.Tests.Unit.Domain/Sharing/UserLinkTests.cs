@@ -158,4 +158,78 @@ public class UserLinkTests
 
         Assert.Throws<InvalidOperationException>(() => link.End(Inviter, Later));
     }
+
+    [Test]
+    public async Task PairOf_IsTheSameWhoeverIsFirst_AndSetOnTheLinkEitherWay()
+    {
+        UserLink forward = new(Inviter, Invitee, InvitedAt);
+        UserLink backward = new(Invitee, Inviter, InvitedAt);
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(UserLink.PairOf(Inviter, Invitee)).IsEqualTo(UserLink.PairOf(Invitee, Inviter));
+            await Assert.That((forward.FirstOfPair, forward.SecondOfPair))
+                .IsEqualTo((backward.FirstOfPair, backward.SecondOfPair));
+            await Assert.That(forward.InvitedBy).IsEqualTo(Inviter);
+        }
+    }
+
+    [Test]
+    public async Task InviteAgain_AfterADecline_ByTheOtherOfThem_TheyAnswerItNow()
+    {
+        // Arrange
+        UserLink link = new(Inviter, Invitee, InvitedAt);
+        link.Decline(Invitee, Later);
+
+        // Act
+        link.InviteAgain(Invitee, Later.AddDays(1));
+
+        // Assert, the first inviter answers this time, and the first invitee can't
+        using (Assert.Multiple())
+        {
+            await Assert.That((link.Status, link.InvitedBy, link.InvitedUserId, link.InvitedAt, link.AnsweredAt))
+                .IsEqualTo((UserLinkStatus.Pending, Invitee, Inviter, Later.AddDays(1), (DateTime?)null));
+            await Assert.That(() => link.Accept(Invitee, Later)).Throws<InvalidOperationException>();
+            await Assert.That(() => link.End(Inviter, Later)).Throws<InvalidOperationException>();
+        }
+
+        link.Accept(Inviter, Later.AddDays(2));
+        await Assert.That(link.Status).IsEqualTo(UserLinkStatus.Accepted);
+    }
+
+    [Test]
+    public async Task InviteAgain_AfterItEnded_ClearsTheEnd()
+    {
+        UserLink link = new(Inviter, Invitee, InvitedAt);
+        link.Accept(Invitee, Later);
+        link.End(Invitee, Later.AddDays(1));
+
+        link.InviteAgain(Inviter, Later.AddDays(2));
+
+        await Assert.That((link.Status, link.EndedAt, link.EndedBy))
+            .IsEqualTo((UserLinkStatus.Pending, (DateTime?)null, (Guid?)null));
+    }
+
+    [Test]
+    [Arguments(true)]
+    [Arguments(false)]
+    public void InviteAgain_WhileWaitingOrLinked_Throws(bool linked)
+    {
+        UserLink link = new(Inviter, Invitee, InvitedAt);
+        if (linked)
+        {
+            link.Accept(Invitee, Later);
+        }
+
+        Assert.Throws<InvalidOperationException>(() => link.InviteAgain(Invitee, Later));
+    }
+
+    [Test]
+    public void InviteAgain_ByAStranger_Throws()
+    {
+        UserLink link = new(Inviter, Invitee, InvitedAt);
+        link.Decline(Invitee, Later);
+
+        Assert.Throws<InvalidOperationException>(() => link.InviteAgain(Stranger, Later));
+    }
 }

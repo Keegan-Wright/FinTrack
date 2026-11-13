@@ -4,8 +4,10 @@ namespace FinanceTracker.Domain.Sharing;
 
 /// <summary>
 /// Two users on the instance who've agreed to share with each other. One invites, the other accepts, and either can
-/// end it. Owned by the user who invited, <see cref="AggregateRoot.UserId"/>, though it belongs to both, so it's
-/// looked up by <see cref="Involves"/> rather than by owner.
+/// end it. There's one link between two people, whichever of them invites. Inviting again after a decline or an end
+/// opens the same link again, see <see cref="InviteAgain"/>. Owned by whoever first invited,
+/// <see cref="AggregateRoot.UserId"/>, though it belongs to both, so it's looked up by <see cref="Involves"/> or
+/// <see cref="PairOf"/> rather than by owner.
 /// </summary>
 public sealed class UserLink : AggregateRoot
 {
@@ -26,14 +28,38 @@ public sealed class UserLink : AggregateRoot
         }
 
         InviteeId = inviteeId;
+        (FirstOfPair, SecondOfPair) = PairOf(inviterId, inviteeId);
+        InvitedBy = inviterId;
         InvitedAt = invitedAt;
         Status = UserLinkStatus.Pending;
     }
 
     /// <summary>
-    /// The user who was invited.
+    /// The user first invited, the other of the two beside <see cref="AggregateRoot.UserId"/>. Whoever invites now is
+    /// <see cref="InvitedBy"/>.
     /// </summary>
     public Guid InviteeId { get; private set; }
+
+    /// <summary>
+    /// The first of the two people, in the order <see cref="PairOf"/> puts them, so the pair is the same whoever
+    /// invited whom.
+    /// </summary>
+    public Guid FirstOfPair { get; private set; }
+
+    /// <summary>
+    /// The second of the two people, see <see cref="FirstOfPair"/>.
+    /// </summary>
+    public Guid SecondOfPair { get; private set; }
+
+    /// <summary>
+    /// Who sent the invite last, either of them.
+    /// </summary>
+    public Guid InvitedBy { get; private set; }
+
+    /// <summary>
+    /// Who the invite last went to, the one who answers it.
+    /// </summary>
+    public Guid InvitedUserId => OtherThan(InvitedBy);
 
     public UserLinkStatus Status { get; private set; }
 
@@ -60,6 +86,45 @@ public sealed class UserLink : AggregateRoot
     public bool IsLive => Status is UserLinkStatus.Pending or UserLinkStatus.Accepted;
 
     public bool Involves(Guid userId) => userId == UserId || userId == InviteeId;
+
+    /// <summary>
+    /// Two people in a set order, the same whichever is given first, as their link is stored.
+    /// </summary>
+    public static (Guid First, Guid Second) PairOf(Guid oneUserId, Guid otherUserId)
+    {
+        if (oneUserId.CompareTo(otherUserId) < 0)
+        {
+            return (oneUserId, otherUserId);
+        }
+
+        return (otherUserId, oneUserId);
+    }
+
+    /// <summary>
+    /// <paramref name="inviterId"/>, either of them, invites the other again after the invite was declined or
+    /// withdrawn or the link ended. Waiting for the other to answer as a new invite.
+    /// </summary>
+    /// <exception cref="InvalidOperationException"><paramref name="inviterId"/> isn't in the link, or it's waiting or
+    /// linked already.</exception>
+    public void InviteAgain(Guid inviterId, DateTime now)
+    {
+        if (!Involves(inviterId))
+        {
+            throw new InvalidOperationException("Only the two people in a link can invite each other.");
+        }
+
+        if (IsLive)
+        {
+            throw new InvalidOperationException("They're already invited or linked.");
+        }
+
+        InvitedBy = inviterId;
+        InvitedAt = now;
+        Status = UserLinkStatus.Pending;
+        AnsweredAt = null;
+        EndedAt = null;
+        EndedBy = null;
+    }
 
     /// <summary>
     /// The other person in the link from <paramref name="userId"/>'s side.
@@ -122,7 +187,7 @@ public sealed class UserLink : AggregateRoot
             throw new InvalidOperationException("The link has already ended.");
         }
 
-        if (Status == UserLinkStatus.Pending && userId == InviteeId)
+        if (Status == UserLinkStatus.Pending && userId == InvitedUserId)
         {
             throw new InvalidOperationException("The person invited declines an invite rather than ending it.");
         }
@@ -134,7 +199,7 @@ public sealed class UserLink : AggregateRoot
 
     private void EnsureAnswerableBy(Guid userId)
     {
-        if (userId != InviteeId)
+        if (userId != InvitedUserId)
         {
             throw new InvalidOperationException("Only the person invited can answer an invite.");
         }

@@ -7,6 +7,11 @@ namespace FinanceTracker.Infrastructure.Persistence.Configurations;
 
 internal sealed class UserLinkConfiguration : AggregateRootConfiguration<UserLink>
 {
+    /// <summary>
+    /// The index keeping two people to one link, which saving a second breaks.
+    /// </summary>
+    public const string OneLinkPerPairIndex = "IX_UserLinks_OneLinkPerPair";
+
     protected override void ConfigureAggregate(EntityTypeBuilder<UserLink> builder)
     {
         builder.ToTable("UserLinks");
@@ -21,5 +26,11 @@ internal sealed class UserLinkConfiguration : AggregateRootConfiguration<UserLin
 
         // Looked up from either side
         builder.HasIndex(x => x.InviteeId);
+
+        // One link between two people, whoever invited whom, see UserLink.PairOf. Two inviting each other at the same
+        // moment can't both be saved
+        builder.HasIndex(x => new { x.FirstOfPair, x.SecondOfPair })
+            .IsUnique()
+            .HasDatabaseName(OneLinkPerPairIndex);
     }
 }

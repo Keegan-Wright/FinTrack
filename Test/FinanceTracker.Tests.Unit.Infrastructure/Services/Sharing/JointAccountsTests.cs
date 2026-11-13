@@ -251,6 +251,35 @@ public class JointAccountsTests : InfrastructureTestBase
     }
 
     [Test]
+    public async Task EndingTheLink_WithNothingShared_StillPairsAlexsTransferWithTheirOwnCopyAgain()
+    {
+        // Arrange, merged, then Sam stops sharing their copy, which leaves it merged and the link sharing nothing
+        await Scenario
+            .Do(s => s.TransactionScenario.WithTransaction("alex-out", "alex-current",
+                Details(-100m, "To joint", labelled: true)))
+            .Do(s => s.TransactionScenario.WithTransaction("in-sam", "sam-joint",
+                Details(100m, "From Alex", labelled: true)))
+            .Do(s => s.TransactionScenario.WithTransaction("in-alex", "alex-joint",
+                Details(100m, "From Alex", labelled: true)));
+        await ShareSamsJointAsync();
+        await MergeAsync();
+        await Sharing(Sam).ChangeAccountSharesAsync(_linkId, new ChangeAccountShares { Accounts = [] },
+            CancellationToken);
+
+        // Act
+        await Sharing(Sam).EndAsync(_linkId, CancellationToken);
+
+        // Assert, Alex's own copy is back, and the money into it pairs with Alex's payment
+        using (Assert.Multiple())
+        {
+            await Assert.That((await LoadAsync("alex-out")).Transfer?.PartnerTransactionId)
+                .IsEqualTo(Transaction("in-alex"));
+            await Assert.That((await LoadAsync("in-alex")).Transfer?.PartnerTransactionId)
+                .IsEqualTo(Transaction("alex-out"));
+        }
+    }
+
+    [Test]
     public async Task EndingTheLink_SplitsIt_AndTakesSamsTagsOffAlexsCopy()
     {
         // Arrange

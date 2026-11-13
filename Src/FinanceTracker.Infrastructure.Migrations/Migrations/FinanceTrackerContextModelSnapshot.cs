@@ -1610,8 +1610,14 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.Property<Guid?>("EndedBy")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid>("FirstOfPair")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("InvitedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("InvitedBy")
+                        .HasColumnType("uuid");
 
                     b.Property<Guid>("InviteeId")
                         .HasColumnType("uuid");
@@ -1621,6 +1627,9 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("xid")
                         .HasColumnName("xmin");
+
+                    b.Property<Guid>("SecondOfPair")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -1637,6 +1646,10 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.HasIndex("InviteeId");
 
                     b.HasIndex("UserId");
+
+                    b.HasIndex("FirstOfPair", "SecondOfPair")
+                        .IsUnique()
+                        .HasDatabaseName("IX_UserLinks_OneLinkPerPair");
 
                     b.ToTable("UserLinks", (string)null);
                 });

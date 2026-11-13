@@ -71,6 +71,85 @@ public class SharingServiceTests : InfrastructureTestBase
     }
 
     [Test]
+    public async Task InviteAsync_AUsernameThatsAlsoSomeoneElsesEmail_FindsTheUsername()
+    {
+        // Arrange, Jo's email is Sam's username
+        await SeedUsersAsync();
+        await Scenario.Do(s => s.UserScenario.WithEmail(Jo, Sam));
+
+        // Act
+        InviteOutcome outcome = await Subject(Alex).InviteAsync(new InviteToShare { Who = Sam }, CancellationToken);
+
+        // Assert
+        await Assert.That(outcome.Link!.Username).IsEqualTo(Sam);
+    }
+
+    [Test]
+    public async Task InviteAsync_BothInvitingEachOtherAtOnce_OnlyOneLinkIsMade()
+    {
+        // Arrange
+        await SeedUsersAsync();
+
+        // Act
+        InviteOutcome[] outcomes = await Task.WhenAll(
+            Subject(Alex).InviteAsync(new InviteToShare { Who = Sam }, CancellationToken),
+            Subject(Sam).InviteAsync(new InviteToShare { Who = Alex }, CancellationToken));
+
+        // Assert
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        using (Assert.Multiple())
+        {
+            await Assert.That(outcomes.Count(static x => x.Link is not null)).IsEqualTo(1);
+            await Assert.That(outcomes.Count(static x => x.Refusal == InviteRefusal.AlreadyInvited)).IsEqualTo(1);
+            await Assert.That(await context.UserLinks.CountAsync(CancellationToken)).IsEqualTo(1);
+        }
+    }
+
+    [Test]
+    public async Task TwoLinksBetweenThePairEitherWay_CantBeSaved()
+    {
+        // Arrange
+        await SeedUsersAsync();
+        Guid alex = Scenario.UserMappings[Alex];
+        Guid sam = Scenario.UserMappings[Sam];
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        context.UserLinks.Add(new DomainLink(alex, sam, DateTime.UtcNow));
+        await context.SaveChangesAsync(CancellationToken);
+
+        // Act
+        context.UserLinks.Add(new DomainLink(sam, alex, DateTime.UtcNow));
+
+        // Assert
+        await Assert.ThrowsAsync<DbUpdateException>(() => context.SaveChangesAsync(CancellationToken));
+    }
+
+    [Test]
+    public async Task InviteAsync_AfterTheyDeclined_TheOtherInvites_OpensTheSameLinkAgain()
+    {
+        // Arrange
+        await SeedUsersAsync();
+        InviteOutcome first = await Subject(Alex).InviteAsync(new InviteToShare { Who = Sam }, CancellationToken);
+        await Subject(Sam).DeclineAsync(first.Link!.Id, CancellationToken);
+        _raised.Clear();
+
+        // Act
+        InviteOutcome again = await Subject(Sam).InviteAsync(new InviteToShare { Who = Alex }, CancellationToken);
+        List<UserLink> alexs = await Subject(Alex).GetLinksAsync(CancellationToken).ToListAsync(CancellationToken);
+
+        // Assert, Alex answers this time, and is told of it again
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        using (Assert.Multiple())
+        {
+            await Assert.That(again.Link!.Id).IsEqualTo(first.Link.Id);
+            await Assert.That(alexs.Select(static x => x.State)).IsEquivalentTo([LinkState.InvitedYou]);
+            await Assert.That(await context.UserLinks.CountAsync(CancellationToken)).IsEqualTo(1);
+            await Assert.That(_raised.Select(static x => (x.UserId, x.Kind)))
+                .IsEquivalentTo([(Scenario.UserMappings[Alex], NotificationKind.SharingInvite)]);
+            await Assert.That(await Subject(Alex).AcceptAsync(first.Link.Id, CancellationToken)).IsTrue();
+        }
+    }
+
+    [Test]
     public async Task InviteAsync_NoOneByThatName_IsRefused()
     {
         // Arrange
@@ -208,14 +287,17 @@ public class SharingServiceTests : InfrastructureTestBase
 
         // Act
         bool declined = await Subject(Sam).DeclineAsync(sent.Link!.Id, CancellationToken);
+        UserLinkStatus afterDeclining = await StatusOfAsync(sent.Link.Id);
         InviteOutcome again = await Subject(Alex).InviteAsync(new InviteToShare { Who = Sam }, CancellationToken);
 
-        // Assert
+        // Assert, sent again as the same link, their one link
         using (Assert.Multiple())
         {
             await Assert.That(declined).IsTrue();
-            await Assert.That(await StatusOfAsync(sent.Link.Id)).IsEqualTo(UserLinkStatus.Declined);
+            await Assert.That(afterDeclining).IsEqualTo(UserLinkStatus.Declined);
             await Assert.That(again.Refusal).IsNull();
+            await Assert.That(again.Link!.Id).IsEqualTo(sent.Link.Id);
+            await Assert.That(await StatusOfAsync(sent.Link.Id)).IsEqualTo(UserLinkStatus.Pending);
         }
     }
 

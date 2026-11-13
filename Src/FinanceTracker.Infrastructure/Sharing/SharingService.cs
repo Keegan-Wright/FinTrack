@@ -103,11 +103,7 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        // Identity stores names and emails upper cased for lookups, so either matches in any case
-        string normalised = request.Who.Trim().ToUpperInvariant();
-        FinanceTrackerUser? invitee = await context.Users
-            .SingleOrDefaultAsync(x => x.NormalizedUserName == normalised || x.NormalizedEmail == normalised,
-                cancellationToken);
+        FinanceTrackerUser? invitee = await InviteeAsync(context, request.Who, cancellationToken);
 
         if (invitee is null)
         {
@@ -119,26 +115,95 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
             return InviteOutcome.Refused(InviteRefusal.Yourself);
         }
 
-        DomainLink? existing = await LiveLinksOf(context, UserId)
-            .FirstOrDefaultAsync(x => x.UserId == invitee.Id || x.InviteeId == invitee.Id, cancellationToken);
-
-        if (existing is not null)
+        // Their one link, whoever invited whom, opened again when it was declined, withdrawn or ended
+        DomainLink? link = await PairsLinkAsync(context, invitee.Id, cancellationToken);
+        if (link is { IsLive: true })
         {
-            return InviteOutcome.Refused(RefusalFor(existing));
+            return InviteOutcome.Refused(RefusalFor(link));
         }
 
-        DomainLink link = new(UserId, invitee.Id, _timeProvider.GetUtcNow().UtcDateTime);
-        context.UserLinks.Add(link);
-        await context.SaveChangesAsync(cancellationToken);
+        DateTime now = _timeProvider.GetUtcNow().UtcDateTime;
+        if (link is null)
+        {
+            link = new DomainLink(UserId, invitee.Id, now);
+            context.UserLinks.Add(link);
+        }
+        else
+        {
+            link.InviteAgain(UserId, now);
+        }
+
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            // They invited the user at the same moment, and theirs was saved first, see
+            // UserLinkConfiguration.OneLinkPerPairIndex, or the row version for a link opened again. Refused as if
+            // theirs had been there all along
+            if (await LiveLinkWithAsync(invitee.Id, cancellationToken) is not { } theirs)
+            {
+                throw;
+            }
+
+            return InviteOutcome.Refused(RefusalFor(theirs));
+        }
+
         Logger.LogChanged(UserId, "invited", "user link", link.Id);
 
         FinanceTrackerUser inviter = await context.Users.SingleAsync(x => x.Id == UserId, cancellationToken);
-        await NotifyAsync(invitee.Id, NotificationKind.SharingInvite, $"sharing-invite:{link.Id}",
+        await NotifyAsync(invitee.Id, NotificationKind.SharingInvite, RoundKey("sharing-invite", link),
             $"{FullName(inviter)} wants to share with you",
             "Accept on the Sharing page to link with them. Nothing is shared until each of you chooses what to share.",
             cancellationToken);
 
         return InviteOutcome.Sent(ToContract(link, invitee));
+    }
+
+    /// <summary>
+    /// The user <paramref name="who"/> names, by username or email in any case. A username that's also someone
+    /// else's email is the username's, as that's what's shown to people.
+    /// </summary>
+    private static async Task<FinanceTrackerUser?> InviteeAsync(FinanceTrackerContext context, string who,
+        CancellationToken cancellationToken)
+    {
+        // Identity stores names and emails upper cased for lookups
+        string normalised = who.Trim().ToUpperInvariant();
+        List<FinanceTrackerUser> named = await context.Users
+            .Where(x => x.NormalizedUserName == normalised || x.NormalizedEmail == normalised)
+            .ToListAsync(cancellationToken);
+
+        return named.Find(x => x.NormalizedUserName == normalised) ??
+               named.Find(x => x.NormalizedEmail == normalised);
+    }
+
+    /// <summary>
+    /// The user's one link with <paramref name="otherId"/>, live or not, null when they've never had one.
+    /// </summary>
+    private async Task<DomainLink?> PairsLinkAsync(FinanceTrackerContext context, Guid otherId,
+        CancellationToken cancellationToken)
+    {
+        (Guid first, Guid second) = DomainLink.PairOf(UserId, otherId);
+        return await context.UserLinks
+            .SingleOrDefaultAsync(x => x.FirstOfPair == first && x.SecondOfPair == second, cancellationToken);
+    }
+
+    /// <summary>
+    /// A notification's key for one round of <paramref name="link"/>, from its invite, so inviting again after it's
+    /// over is told afresh, e.g. <c>sharing-invite:{link}:{invited at}</c>.
+    /// </summary>
+    private static string RoundKey(string what, DomainLink link) => $"{what}:{link.Id:N}:{link.InvitedAt.Ticks}";
+
+    /// <summary>
+    /// The user's live link with <paramref name="otherId"/>, read afresh, null when there's none.
+    /// </summary>
+    private async Task<DomainLink?> LiveLinkWithAsync(Guid otherId, CancellationToken cancellationToken)
+    {
+        await using FinanceTrackerContext context =
+            await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+        return await LiveLinksOf(context, UserId)
+            .FirstOrDefaultAsync(x => x.UserId == otherId || x.InviteeId == otherId, cancellationToken);
     }
 
     public async Task<bool> AcceptAsync(Guid id, CancellationToken cancellationToken)
@@ -157,7 +222,7 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
         Logger.LogChanged(UserId, "accepted", "user link", link.Id);
 
         FinanceTrackerUser invitee = await context.Users.SingleAsync(x => x.Id == UserId, cancellationToken);
-        await NotifyAsync(link.UserId, NotificationKind.SharingAccepted, $"sharing-accepted:{link.Id}",
+        await NotifyAsync(link.InvitedBy, NotificationKind.SharingAccepted, RoundKey("sharing-accepted", link),
             $"{FullName(invitee)} accepted your invite to share",
             "You're linked. Choose what to share with them on the Sharing page.", cancellationToken);
 
@@ -179,7 +244,7 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
         await context.SaveChangesAsync(cancellationToken);
         Logger.LogChanged(UserId, "declined", "user link", link.Id);
 
-        await NotifyOtherAsync(context, link, $"sharing-declined:{link.Id:N}",
+        await NotifyOtherAsync(context, link, RoundKey("sharing-declined", link),
             person => $"{person} declined your invite to share", "Nothing is shared between you.",
             cancellationToken, NotificationKind.SharingChanged);
         return true;
@@ -203,7 +268,7 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
 
         // Each gets their own copy of a joint account back first, with its tags as they stand, while the link still
         // lets each see the other's names. Then the other person's come off with everything else of theirs
-        await SplitJointAccountsAsync(context, link, cancellationToken);
+        bool splitAny = await SplitJointAccountsAsync(context, link, cancellationToken);
 
         bool wasLinked = link.Status == UserLinkStatus.Accepted;
         link.End(UserId, _timeProvider.GetUtcNow().UtcDateTime);
@@ -227,8 +292,9 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
         await context.SaveChangesAsync(cancellationToken);
         Logger.LogChanged(UserId, "ended", "user link", link.Id);
 
-        // A linked household member's accounts recognised their transfers until now
-        if (shares.Count > 0 || linkedMembers.Count > 0)
+        // A linked household member's accounts recognised their transfers until now, and a split copy's transfers
+        // were cleared when it was merged
+        if (shares.Count > 0 || linkedMembers.Count > 0 || splitAny)
         {
             await RematchTransfersAsync(context, link, cancellationToken);
         }
@@ -246,7 +312,7 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
     {
         if (wasLinked)
         {
-            await NotifyOtherAsync(context, link, $"sharing-ended:{link.Id:N}",
+            await NotifyOtherAsync(context, link, RoundKey("sharing-ended", link),
                 person => $"{person} stopped sharing with you",
                 "Nothing of theirs is shared with you now, and nothing of yours with them. Joint accounts you'd " +
                 "merged are split, each of you keeping your own copy.",
@@ -254,7 +320,7 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
             return;
         }
 
-        await NotifyOtherAsync(context, link, $"sharing-withdrawn:{link.Id:N}",
+        await NotifyOtherAsync(context, link, RoundKey("sharing-withdrawn", link),
             person => $"{person} withdrew their invite to share", "Nothing is shared between you.",
             cancellationToken, NotificationKind.SharingChanged);
     }
@@ -450,14 +516,15 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
     /// <summary>
     /// Splits every joint account merged in <paramref name="link"/>, and saves.
     /// </summary>
-    private async Task SplitJointAccountsAsync(FinanceTrackerContext context, DomainLink link,
+    /// <returns>Whether there were any to split.</returns>
+    private async Task<bool> SplitJointAccountsAsync(FinanceTrackerContext context, DomainLink link,
         CancellationToken cancellationToken)
     {
         List<JointAccount> joints = await context.JointAccounts.Where(x => x.LinkId == link.Id)
             .ToListAsync(cancellationToken);
         if (joints.Count == 0)
         {
-            return;
+            return false;
         }
 
         DateTime now = _timeProvider.GetUtcNow().UtcDateTime;
@@ -467,6 +534,7 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
         }
 
         await context.SaveChangesAsync(cancellationToken);
+        return true;
     }
 
     private static async Task<string> AccountNameAsync(FinanceTrackerContext context, Guid accountId,
@@ -787,7 +855,8 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
     private Task<DomainLink?> InviteWaitingFor(FinanceTrackerContext context, Guid id,
         CancellationToken cancellationToken) =>
         context.UserLinks.SingleOrDefaultAsync(
-            x => x.Id == id && x.InviteeId == UserId && x.Status == UserLinkStatus.Pending, cancellationToken);
+            x => x.Id == id && x.Status == UserLinkStatus.Pending && x.InvitedBy != UserId &&
+                 (x.UserId == UserId || x.InviteeId == UserId), cancellationToken);
 
     private static InviteRefusal RefusalFor(DomainLink existing)
     {
@@ -826,7 +895,7 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
             return LinkState.Linked;
         }
 
-        if (link.UserId == UserId)
+        if (link.InvitedBy == UserId)
         {
             return LinkState.Invited;
         }
