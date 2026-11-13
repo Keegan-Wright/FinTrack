@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using FinanceTracker.Contracts.Services;
+using FinanceTracker.Contracts;
 using FinanceTracker.Domain.Common;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.OpenBanking.Transfers;
@@ -116,7 +117,7 @@ public class TransfersService : ServiceBase<TransfersService>, ITransfersService
             AccountsInView changeable = await _accountScope.ResolveChangeableAsync(context, cancellationToken);
             BankTransaction transaction = await context.BankTransactions.ChangeableIn(changeable)
                                               .SingleOrDefaultAsync(x => x.Id == id, cancellationToken)
-                                          ?? throw new InvalidOperationException($"Transaction {id} was not found.");
+                                          ?? throw new NotFoundException($"Transaction {id} was not found.");
             ownerId = transaction.UserId;
 
             // The other half may be on an account the user can't see, one the owner keeps private, or the other

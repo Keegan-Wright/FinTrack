@@ -45,8 +45,7 @@ public static class AutomationEndpoints
 
                     return TypedResults.NoContent();
                 })
-                .Validated<UpdateCronJob>()
-                .NotFoundWhenMissing();
+                .Validated<UpdateCronJob>();
 
             // Runs the job now on top of its schedule, unless a run is already going
             jobs.MapPost("{function}/run", async Task<Results<Accepted, ProblemHttpResult>> (string function,
@@ -62,8 +61,7 @@ public static class AutomationEndpoints
                     }
 
                     return TypedResults.Accepted((string?)null);
-                })
-                .NotFoundWhenMissing();
+                });
 
             RouteGroupBuilder runs = api.MapGroup(ApiRoutes.AutomationRuns)
                 .RequireAuthorization(policy => policy.RequireRole(FinTrackRoles.Admin));

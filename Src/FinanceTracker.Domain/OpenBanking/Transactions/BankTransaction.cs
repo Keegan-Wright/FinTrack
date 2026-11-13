@@ -215,7 +215,7 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
         ArgumentNullException.ThrowIfNull(transfer);
         if (transfer.PartnerTransactionId == Id)
         {
-            throw new InvalidOperationException($"Transaction {Id} cannot be its own transfer partner.");
+            throw new DomainRuleException($"Transaction {Id} cannot be its own transfer partner.");
         }
 
         if (Transfer is not null && Transfer.Source > transfer.Source)
@@ -308,7 +308,7 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
         ArgumentNullException.ThrowIfNull(bill);
         if (bill.UserId != by && !sharedWithThem)
         {
-            throw new InvalidOperationException("Cannot pay another user's bill with this transaction.");
+            throw new DomainRuleException("Cannot pay another user's bill with this transaction.");
         }
 
         EnsureEitherOfTheirs(bill.UserId, by, "bill");
@@ -331,7 +331,7 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
             return;
         }
 
-        throw new InvalidOperationException(
+        throw new DomainRuleException(
             $"Only your own {what} or the transaction owner's can go on another person's transaction.");
     }
 
@@ -374,7 +374,7 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
         ArgumentNullException.ThrowIfNull(debt);
         if (debt.UserId != by && !sharedWithThem)
         {
-            throw new InvalidOperationException("Cannot pay another user's debt with this transaction.");
+            throw new DomainRuleException("Cannot pay another user's debt with this transaction.");
         }
 
         EnsureEitherOfTheirs(debt.UserId, by, "debt");
@@ -416,14 +416,14 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
         ArgumentNullException.ThrowIfNull(classification);
         if (classification.UserId != by && sharedWithThem?.Contains(classification.Id) != true)
         {
-            throw new InvalidOperationException("Cannot apply another user's classification to this transaction.");
+            throw new DomainRuleException("Cannot apply another user's classification to this transaction.");
         }
 
         EnsureEitherOfTheirs(classification.UserId, by, "tag");
 
         if (IsSplit)
         {
-            throw new InvalidOperationException($"Transaction {Id} is split, tag its parts instead.");
+            throw new DomainRuleException($"Transaction {Id} is split, tag its parts instead.");
         }
 
         if (!_customClassificationIds.Contains(classification.Id))
@@ -443,7 +443,7 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
     {
         if (IsSplit)
         {
-            throw new InvalidOperationException($"Transaction {Id} is split, tag its parts instead.");
+            throw new DomainRuleException($"Transaction {Id} is split, tag its parts instead.");
         }
 
         RemoveClassification(customClassificationId);
@@ -488,12 +488,12 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
 
         if (IsPending)
         {
-            throw new InvalidOperationException("A pending transaction can't be split until the bank settles it.");
+            throw new DomainRuleException("A pending transaction can't be split until the bank settles it.");
         }
 
         if (tags.Any(x => x.UserId != by && !HasTag(x.Id) && sharedWithThem?.Contains(x.Id) != true))
         {
-            throw new InvalidOperationException("Cannot apply another user's classification to this transaction.");
+            throw new DomainRuleException("Cannot apply another user's classification to this transaction.");
         }
 
         foreach (CustomClassification tag in tags.Where(x => !HasTag(x.Id)))

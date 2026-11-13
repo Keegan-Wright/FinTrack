@@ -23,8 +23,7 @@ public static class ClassificationEndpoints
 
             classifications.MapGet("{id:guid}", async Task<Ok<GetClassification>> (Guid id,
                         IClassificationService service, CancellationToken cancellationToken) =>
-                    TypedResults.Ok(await service.GetClassificationAsync(id, cancellationToken)))
-                .NotFoundWhenMissing();
+                    TypedResults.Ok(await service.GetClassificationAsync(id, cancellationToken)));
 
             classifications.MapPost(string.Empty, async Task<Ok<Classification>> (AddClassifications request,
                         IClassificationService service, CancellationToken cancellationToken) =>
@@ -37,8 +36,7 @@ public static class ClassificationEndpoints
                         CancellationToken cancellationToken) =>
                     TypedResults.Ok(await service.RenameCustomClassificationAsync(id, request, cancellationToken)))
                 .Validated<RenameClassification>()
-                .ConflictWhenNameTaken()
-                .NotFoundWhenMissing();
+                .ConflictWhenNameTaken();
 
             classifications.MapPost("transactions", async Task<NoContent> (
                     AddCustomClassificationsToTransaction request, IClassificationService service,
@@ -47,16 +45,14 @@ public static class ClassificationEndpoints
                     await service.AddCustomClassificationsToTransactionAsync(request, cancellationToken);
                     return TypedResults.NoContent();
                 })
-                .Validated<AddCustomClassificationsToTransaction>()
-                .NotFoundWhenMissing();
+                .Validated<AddCustomClassificationsToTransaction>();
 
             classifications.MapDelete("{id:guid}", async Task<NoContent> (Guid id, IClassificationService service,
                     CancellationToken cancellationToken) =>
                 {
                     await service.RemoveCustomClassificationAsync(id, cancellationToken);
                     return TypedResults.NoContent();
-                })
-                .NotFoundWhenMissing();
+                });
 
             return api;
         }

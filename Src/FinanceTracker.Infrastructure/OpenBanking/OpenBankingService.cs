@@ -241,7 +241,7 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
         BankConnection connection = await context.BankConnections.OwnedBy(UserId)
             .AsNoTracking()
             .Include(x => x.AccessTokens.OrderByDescending(t => t.IssuedAt).Take(1))
-            .SingleAsync(x => x.Id == connectionId, cancellationToken);
+            .SingleOrNotFoundAsync(x => x.Id == connectionId, "connection", cancellationToken);
 
         return await _openBankingApiService.GetReauthenticationUrlAsync(connection.RefreshTokenForRenewal(),
             cancellationToken);
@@ -286,7 +286,7 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
 
         BankConnection connection = await context.BankConnections.OwnedBy(UserId)
             .Include(x => x.AccessTokens.Where(t => t.RevokedAt == null))
-            .SingleAsync(x => x.Id == connectionId, cancellationToken);
+            .SingleOrNotFoundAsync(x => x.Id == connectionId, "connection", cancellationToken);
 
         string? authToken = await GetValidAccessTokenAsync(context, connection, cancellationToken);
         if (authToken is null)

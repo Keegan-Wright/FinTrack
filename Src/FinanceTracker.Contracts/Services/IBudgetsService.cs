@@ -26,7 +26,7 @@ public interface IBudgetsService
     /// <summary>
     /// One of the user's budgets.
     /// </summary>
-    /// <exception cref="InvalidOperationException">The user has no budget with <paramref name="id"/>.</exception>
+    /// <exception cref="NotFoundException">The user has no budget with <paramref name="id"/>.</exception>
     Task<Budget> GetBudgetAsync(Guid id, CancellationToken cancellationToken);
 
     /// <summary>
@@ -48,6 +48,6 @@ public interface IBudgetsService
     /// <summary>
     /// Deletes one of the user's budgets. Its transactions keep their tags.
     /// </summary>
-    /// <exception cref="InvalidOperationException">The user has no budget with <paramref name="id"/>.</exception>
+    /// <exception cref="NotFoundException">The user has no budget with <paramref name="id"/>.</exception>
     Task DeleteBudgetAsync(Guid id, CancellationToken cancellationToken);
 }

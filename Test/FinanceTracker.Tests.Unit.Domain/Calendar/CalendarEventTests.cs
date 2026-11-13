@@ -1,4 +1,5 @@
 using FinanceTracker.Domain.Calendar;
+using FinanceTracker.Domain.Common;
 using FinanceTracker.Domain.SavingsGoals;
 
 namespace FinanceTracker.Tests.Unit.Domain.Calendar;
@@ -239,4 +240,35 @@ public class CalendarEventTests
 
     private static SavingsGoal Goal(Guid userId, DateTime? targetDate) =>
         new(userId, "Birthday", 0m, 0m, 60m, targetDate);
+
+    [Test]
+    public async Task EnsureSavingsAreUnchangedFor_SomeoneElse_LeavingThemAsTheyAre_IsAllowed()
+    {
+        CalendarEvent calendarEvent = new(UserId, "Mum's birthday", Birthday, EventRecurrence.Yearly);
+        calendarEvent.SetSavingsTarget(100m);
+
+        await Assert.That(() => calendarEvent.EnsureSavingsAreUnchangedFor(Guid.NewGuid(), 100m, null, false, false))
+            .ThrowsNothing();
+    }
+
+    [Test]
+    [Arguments(150, false)]
+    [Arguments(100, true)]
+    public async Task EnsureSavingsAreUnchangedFor_SomeoneElse_ChangingThem_IsRefused(int target, bool newGoal)
+    {
+        CalendarEvent calendarEvent = new(UserId, "Mum's birthday", Birthday, EventRecurrence.Yearly);
+        calendarEvent.SetSavingsTarget(100m);
+
+        await Assert.That(() => calendarEvent.EnsureSavingsAreUnchangedFor(Guid.NewGuid(), target, null, newGoal,
+            false)).Throws<DomainRuleException>();
+    }
+
+    [Test]
+    public async Task EnsureSavingsAreUnchangedFor_ItsOwner_MayChangeThem()
+    {
+        CalendarEvent calendarEvent = new(UserId, "Mum's birthday", Birthday, EventRecurrence.Yearly);
+
+        await Assert.That(() => calendarEvent.EnsureSavingsAreUnchangedFor(UserId, 250m, null, true, false))
+            .ThrowsNothing();
+    }
 }

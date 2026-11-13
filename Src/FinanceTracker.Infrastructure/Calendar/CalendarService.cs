@@ -171,6 +171,10 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
 
         updated.Rename(calendarEvent.Title);
         updated.Reschedule(calendarEvent.Date, CalendarEventMapper.ToDomain(calendarEvent.Recurrence));
+
+        // After rescheduling, which stops a one-off event moving its goal on, so that isn't counted as a change
+        updated.EnsureSavingsAreUnchangedFor(UserId, calendarEvent.SavingsTarget, calendarEvent.SavingsGoalId,
+            calendarEvent.CreateSavingsGoal, calendarEvent.RollsGoalOn);
         string? goalName;
         if (visible.IsOwn)
         {
@@ -207,7 +211,7 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
         DomainCalendarEvent? calendarEvent = await context.CalendarEvents.OwnedBy(UserId)
             .SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
 
-        return calendarEvent ?? throw new InvalidOperationException($"The user has no event {id}.");
+        return calendarEvent ?? throw new NotFoundException($"The user has no event {id}.");
     }
 
     /// <summary>
@@ -258,7 +262,7 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
         DomainSavingsGoal? goal = await context.SavingsGoals.OwnedBy(UserId)
             .SingleOrDefaultAsync(x => x.Id == goalId, cancellationToken);
 
-        return goal ?? throw new InvalidOperationException($"The user has no savings goal {goalId}.");
+        return goal ?? throw new NotFoundException($"The user has no savings goal {goalId}.");
     }
 
     /// <summary>
@@ -349,7 +353,7 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
             .SingleOrDefault(x => x.Item.Id == id);
         if (found is null || (mustChange && !found.CanChange))
         {
-            throw new InvalidOperationException($"No event {id} the user can see or change was found.");
+            throw new NotFoundException($"No event {id} the user can see or change was found.");
         }
 
         return found;

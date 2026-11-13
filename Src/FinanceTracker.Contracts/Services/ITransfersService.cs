@@ -26,14 +26,14 @@ public interface ITransfersService
     /// The user says it's a transfer. A suggested other half that names it back is confirmed with it.
     /// </summary>
     /// <returns>The transactions whose transfer changed, as they are now.</returns>
-    /// <exception cref="InvalidOperationException">The user has no transaction with <paramref name="id"/>.</exception>
+    /// <exception cref="NotFoundException">The user has no transaction with <paramref name="id"/>.</exception>
     Task<IReadOnlyList<Transaction>> MarkAsTransferAsync(Guid id, CancellationToken cancellationToken);
 
     /// <summary>
     /// The user says it counts as income or spending.
     /// </summary>
     /// <returns>The transactions whose transfer changed, as they are now.</returns>
-    /// <exception cref="InvalidOperationException">The user has no transaction with <paramref name="id"/>.</exception>
+    /// <exception cref="NotFoundException">The user has no transaction with <paramref name="id"/>.</exception>
     Task<IReadOnlyList<Transaction>> MarkNotATransferAsync(Guid id, CancellationToken cancellationToken);
 
     /// <summary>
@@ -41,6 +41,6 @@ public interface ITransfersService
     /// decides again.
     /// </summary>
     /// <returns>The transactions whose transfer changed, as they are now.</returns>
-    /// <exception cref="InvalidOperationException">The user has no transaction with <paramref name="id"/>.</exception>
+    /// <exception cref="NotFoundException">The user has no transaction with <paramref name="id"/>.</exception>
     Task<IReadOnlyList<Transaction>> ResetTransferAsync(Guid id, CancellationToken cancellationToken);
 }

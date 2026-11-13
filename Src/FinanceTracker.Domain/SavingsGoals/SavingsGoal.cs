@@ -209,4 +209,48 @@ public sealed class SavingsGoal : AggregateRoot
         Target = target;
         TargetDate = targetDate;
     }
+
+    /// <summary>
+    /// Someone the goal is shared with, allowed to change it, can change its name, target and contributions, but what
+    /// it tracks stays its owner's to choose. Nothing to check for its owner.
+    /// </summary>
+    /// <param name="by">Who's changing it.</param>
+    /// <exception cref="DomainRuleException">Someone other than its owner would have it track something else.
+    /// </exception>
+    public void EnsureTrackingIsUnchangedFor(Guid by, SavingsGoalSource source, Guid? accountId,
+        IReadOnlyCollection<Guid> tagIds, DateOnly? trackedFrom, SavingsDirection direction)
+    {
+        ArgumentNullException.ThrowIfNull(tagIds);
+        if (by == UserId || TracksTheSame(source, accountId, tagIds, trackedFrom, direction))
+        {
+            return;
+        }
+
+        throw new DomainRuleException("Only its owner can change what a shared goal tracks.");
+    }
+
+    /// <summary>
+    /// Whether tracking this would track what the goal tracks now. Only what its source uses counts, e.g. the tags
+    /// don't for a goal tracking an account.
+    /// </summary>
+    private bool TracksTheSame(SavingsGoalSource source, Guid? accountId, IReadOnlyCollection<Guid> tagIds,
+        DateOnly? trackedFrom, SavingsDirection direction)
+    {
+        if (source != Source)
+        {
+            return false;
+        }
+
+        if (Source == SavingsGoalSource.Account)
+        {
+            return accountId == AccountId;
+        }
+
+        if (Source == SavingsGoalSource.Tags)
+        {
+            return tagIds.ToHashSet().SetEquals(_tagIds) && trackedFrom == TrackedFrom && direction == Direction;
+        }
+
+        return true;
+    }
 }

@@ -1,4 +1,5 @@
 using FinanceTracker.Contracts.Sharing;
+using FinanceTracker.Domain.Common;
 using FinanceTracker.Domain.Sharing;
 using Microsoft.EntityFrameworkCore;
 using DomainLink = FinanceTracker.Domain.Sharing.UserLink;
@@ -176,7 +177,7 @@ internal static class ItemShares
             .ToHashSet();
         if (request.Items.Any(x => !own.Contains((ToDomain(x.Kind), x.ItemId))))
         {
-            throw new InvalidOperationException("Only your own things can be shared.");
+            throw new DomainRuleException("Only your own things can be shared.");
         }
 
         // What goes with an account shared here isn't chosen on its own

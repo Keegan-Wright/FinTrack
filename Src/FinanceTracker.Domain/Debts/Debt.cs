@@ -123,7 +123,7 @@ public sealed class Debt : AggregateRoot
         ArgumentNullException.ThrowIfNull(account);
         if (account.UserId != UserId)
         {
-            throw new InvalidOperationException("A debt can only follow the user's own accounts.");
+            throw new DomainRuleException("A debt can only follow the user's own accounts.");
         }
 
         AccountId = account.Id;

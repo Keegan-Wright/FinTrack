@@ -33,8 +33,7 @@ public static class OpenBankingEndpoints
 
             openBanking.MapPost("connections/{id:guid}/renewal-url", async Task<Ok<string>> (Guid id,
                         IOpenBankingService service, CancellationToken cancellationToken) =>
-                    TypedResults.Ok(await service.GetRenewalUrlAsync(id, cancellationToken)))
-                .NotFoundWhenMissing();
+                    TypedResults.Ok(await service.GetRenewalUrlAsync(id, cancellationToken)));
 
             return api;
         }

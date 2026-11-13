@@ -63,25 +63,21 @@ public static class SharingEndpoints
             links.MapPut("{id:guid}/shares/accounts", async Task<Ok<LinkShares>> (Guid id,
                         ChangeAccountShares request, ISharingService service, CancellationToken cancellationToken) =>
                     TypedResults.Ok(await service.ChangeAccountSharesAsync(id, request, cancellationToken)))
-                .Validated<ChangeAccountShares>()
-                .NotFoundWhenMissing();
+                .Validated<ChangeAccountShares>();
 
             links.MapPut("{id:guid}/shares/items", async Task<Ok<LinkShares>> (Guid id,
                         ChangeItemShares request, ISharingService service, CancellationToken cancellationToken) =>
                     TypedResults.Ok(await service.ChangeItemSharesAsync(id, request, cancellationToken)))
-                .Validated<ChangeItemShares>()
-                .NotFoundWhenMissing();
+                .Validated<ChangeItemShares>();
 
             links.MapPost("{id:guid}/joint-accounts", async Task<Ok<LinkShares>> (Guid id,
                         MergeJointAccounts request, ISharingService service, CancellationToken cancellationToken) =>
                     TypedResults.Ok(await service.MergeJointAccountsAsync(id, request, cancellationToken)))
-                .Validated<MergeJointAccounts>()
-                .NotFoundWhenMissing();
+                .Validated<MergeJointAccounts>();
 
             links.MapDelete("{id:guid}/joint-accounts/{jointAccountId:guid}", async Task<Ok<LinkShares>> (Guid id,
                         Guid jointAccountId, ISharingService service, CancellationToken cancellationToken) =>
-                    TypedResults.Ok(await service.SplitJointAccountAsync(id, jointAccountId, cancellationToken)))
-                .NotFoundWhenMissing();
+                    TypedResults.Ok(await service.SplitJointAccountAsync(id, jointAccountId, cancellationToken)));
 
             return api;
         }

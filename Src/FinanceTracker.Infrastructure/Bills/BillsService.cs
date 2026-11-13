@@ -1,8 +1,10 @@
 using System.Runtime.CompilerServices;
 using FinanceTracker.Contracts.Bills;
 using FinanceTracker.Contracts.Services;
+using FinanceTracker.Contracts;
 using FinanceTracker.Domain.Bills;
 using FinanceTracker.Domain.Budgeting;
+using FinanceTracker.Domain.Common;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.PayPeriods;
@@ -169,7 +171,7 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
 
             if (!visible.IsOwn && bill.AccountId != updated.AccountId)
             {
-                throw new InvalidOperationException("Only its owner can move a shared bill to another account.");
+                throw new DomainRuleException("Only its owner can move a shared bill to another account.");
             }
 
             // A seeded bill belongs to its standing order or direct debit's account
@@ -206,7 +208,7 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        DomainBill bill = await context.Bills.OwnedBy(UserId).SingleAsync(x => x.Id == id, cancellationToken);
+        DomainBill bill = await context.Bills.OwnedBy(UserId).SingleOrNotFoundAsync(x => x.Id == id, "bill", cancellationToken);
         if (bill.SourceId is not null)
         {
             throw new NotSupportedException(
@@ -244,7 +246,7 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
         // owner is shared that bill, so they see what it's called
         AccountsInView changeable = await _accountScope.ResolveChangeableAsync(context, cancellationToken);
         BankTransaction transaction = await context.BankTransactions.ChangeableIn(changeable)
-            .SingleAsync(x => x.Id == transactionId, cancellationToken);
+            .SingleOrNotFoundAsync(x => x.Id == transactionId, "transaction", cancellationToken);
 
         if (payment.BillId is not { } billId)
         {
@@ -317,7 +319,7 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
                      await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken))
         {
             DomainBillSuggestion suggestion = await context.BillSuggestions.OwnedBy(UserId)
-                .SingleAsync(x => x.Id == id && !x.IsDismissed, cancellationToken);
+                .SingleOrNotFoundAsync(x => x.Id == id && !x.IsDismissed, "bill suggestion", cancellationToken);
 
             List<Guid> paymentIds = suggestion.PaymentIds.ToList();
             List<BankTransaction> payments = await context.BankTransactions.OwnedBy(UserId)
@@ -378,7 +380,7 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
         DomainBillSuggestion suggestion = await context.BillSuggestions.OwnedBy(UserId)
-            .SingleAsync(x => x.Id == id && !x.IsDismissed, cancellationToken);
+            .SingleOrNotFoundAsync(x => x.Id == id && !x.IsDismissed, "bill suggestion", cancellationToken);
 
         suggestion.Dismiss();
         await context.SaveChangesAsync(cancellationToken);
@@ -421,7 +423,7 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
 
         if (bill is null || (mustChange && !bill.CanChange))
         {
-            throw new InvalidOperationException($"No bill {id} the user can see or change was found.");
+            throw new NotFoundException($"No bill {id} the user can see or change was found.");
         }
 
         return bill;
@@ -460,7 +462,7 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
         bool owned = await context.BankAccounts.OwnedBy(UserId).AnyAsync(x => x.Id == accountId, cancellationToken);
         if (!owned)
         {
-            throw new InvalidOperationException("A bill can only be paid from the user's own accounts.");
+            throw new DomainRuleException("A bill can only be paid from the user's own accounts.");
         }
     }
 }

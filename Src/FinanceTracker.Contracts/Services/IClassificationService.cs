@@ -19,7 +19,7 @@ public interface IClassificationService
     /// <summary>
     /// One of the user's custom classifications.
     /// </summary>
-    /// <exception cref="InvalidOperationException">The user has no classification with <paramref name="id"/>.</exception>
+    /// <exception cref="NotFoundException">The user has no classification with <paramref name="id"/>.</exception>
     Task<GetClassification> GetClassificationAsync(Guid id, CancellationToken cancellationToken);
 
     /// <summary>
@@ -35,7 +35,7 @@ public interface IClassificationService
     /// Renames one of the user's custom classifications, wherever it's used.
     /// </summary>
     /// <returns>The classification as stored.</returns>
-    /// <exception cref="InvalidOperationException">The user has no classification with <paramref name="id"/>.</exception>
+    /// <exception cref="NotFoundException">The user has no classification with <paramref name="id"/>.</exception>
     /// <exception cref="NameTakenException">The user already has another tag called that, in any case.</exception>
     Task<Classification> RenameCustomClassificationAsync(Guid id, RenameClassification request,
         CancellationToken cancellationToken);
@@ -54,6 +54,6 @@ public interface IClassificationService
     /// from every rule that adds it and every budget and savings goal that covers it. A rule left with nothing to do is
     /// disabled, a budget or goal left with no tags covers nothing until it's given one.
     /// </summary>
-    /// <exception cref="InvalidOperationException">The user has no classification with <paramref name="id"/>.</exception>
+    /// <exception cref="NotFoundException">The user has no classification with <paramref name="id"/>.</exception>
     Task RemoveCustomClassificationAsync(Guid id, CancellationToken cancellationToken);
 }

@@ -1,13 +1,14 @@
 using System.Runtime.CompilerServices;
 using FinanceTracker.Contracts.Automation;
 using FinanceTracker.Contracts.Services;
+using FinanceTracker.Contracts;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using FinanceTracker.Infrastructure.OpenBanking;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Quartz;
 using Quartz.Extensibility;
+using Quartz;
 
 namespace FinanceTracker.Infrastructure.Automation;
 
@@ -119,7 +120,7 @@ public class AutomationService : ServiceBase<AutomationService>, IAutomationServ
         TriggerKey key = JobSchedules.KeyFor(request.Function);
         if (await scheduler.GetTrigger(key, cancellationToken) is null)
         {
-            throw new InvalidOperationException($"{request.Function} has no schedule");
+            throw new NotFoundException($"{request.Function} has no schedule");
         }
 
         ITrigger schedule = JobSchedules.Build(request.Function, request.Description, request.Expression,
@@ -144,7 +145,7 @@ public class AutomationService : ServiceBase<AutomationService>, IAutomationServ
         IScheduler scheduler = await _schedulerFactory.GetScheduler(cancellationToken);
         if (await scheduler.GetTrigger(JobSchedules.KeyFor(function), cancellationToken) is null)
         {
-            throw new InvalidOperationException($"{function} has no schedule");
+            throw new NotFoundException($"{function} has no schedule");
         }
 
         JobKey job = new(function);

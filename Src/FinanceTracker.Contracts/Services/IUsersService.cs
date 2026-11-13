@@ -17,7 +17,7 @@ public interface IUsersService
     /// A one-time link for <paramref name="userId"/> to choose a new password with.
     /// </summary>
     /// <returns>The link, null when they have no password here to reset, signing in through the identity provider.</returns>
-    /// <exception cref="InvalidOperationException">There's no such user.</exception>
+    /// <exception cref="NotFoundException">There's no such user.</exception>
     Task<ResetLink?> CreateResetLinkAsync(Guid userId, CancellationToken cancellationToken);
 
     /// <summary>
@@ -25,12 +25,12 @@ public interface IUsersService
     /// and their banks aren't synced meanwhile.
     /// </summary>
     /// <returns>Whether they were locked, not when they're the admin asking, who can't lock themselves out.</returns>
-    /// <exception cref="InvalidOperationException">There's no such user.</exception>
+    /// <exception cref="NotFoundException">There's no such user.</exception>
     Task<bool> LockAsync(Guid userId, CancellationToken cancellationToken);
 
     /// <summary>
     /// Lets <paramref name="userId"/> sign in again, lifting a lock and any lockout from wrong passwords.
     /// </summary>
-    /// <exception cref="InvalidOperationException">There's no such user.</exception>
+    /// <exception cref="NotFoundException">There's no such user.</exception>
     Task UnlockAsync(Guid userId, CancellationToken cancellationToken);
 }

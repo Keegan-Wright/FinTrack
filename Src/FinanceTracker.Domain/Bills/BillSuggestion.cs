@@ -110,7 +110,7 @@ public sealed class BillSuggestion : AggregateRoot
     {
         if (IsDismissed)
         {
-            throw new InvalidOperationException("A dismissed suggestion can't become a bill.");
+            throw new DomainRuleException("A dismissed suggestion can't become a bill.");
         }
 
         Bill bill = new(UserId, AccountId, Name, Name, Frequency, Amount, FirstPaidOn, BillSource.Detected);

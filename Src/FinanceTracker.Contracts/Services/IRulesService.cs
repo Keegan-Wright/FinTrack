@@ -21,7 +21,7 @@ public interface IRulesService
     /// <summary>
     /// One of the user's rules.
     /// </summary>
-    /// <exception cref="InvalidOperationException">The user has no rule with <paramref name="id"/>.</exception>
+    /// <exception cref="NotFoundException">The user has no rule with <paramref name="id"/>.</exception>
     Task<Rule> GetRuleAsync(Guid id, CancellationToken cancellationToken);
 
     /// <summary>
@@ -65,7 +65,7 @@ public interface IRulesService
     /// <see cref="PreviewRuleAsync"/> for the rule as saved.
     /// </summary>
     /// <returns>How many transactions changed, 0 when the rule is off.</returns>
-    /// <exception cref="InvalidOperationException">The user has no rule with <paramref name="id"/>.</exception>
+    /// <exception cref="NotFoundException">The user has no rule with <paramref name="id"/>.</exception>
     Task<int> ApplyRuleToExistingAsync(Guid id, CancellationToken cancellationToken);
 
     /// <summary>
@@ -79,6 +79,6 @@ public interface IRulesService
     /// <summary>
     /// Deletes one of the user's rules and takes back the tags and transfer answers it gave.
     /// </summary>
-    /// <exception cref="InvalidOperationException">The user has no rule with <paramref name="id"/>.</exception>
+    /// <exception cref="NotFoundException">The user has no rule with <paramref name="id"/>.</exception>
     Task DeleteRuleAsync(Guid id, CancellationToken cancellationToken);
 }

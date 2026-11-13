@@ -191,7 +191,7 @@ internal static class JointAccounts
         {
             if (!suggestions.Exists(x => x.Yours.Id == yourAccountId && x.Theirs.Id == theirAccountId))
             {
-                throw new InvalidOperationException("Those two accounts can't be merged.");
+                throw new DomainRuleException("Those two accounts can't be merged.");
             }
 
             (BankAccount yours, BankAccount theirs) = suggestions.Single(x => x.Yours.Id == yourAccountId);

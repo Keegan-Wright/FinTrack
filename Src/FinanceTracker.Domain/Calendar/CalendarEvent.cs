@@ -99,7 +99,7 @@ public sealed class CalendarEvent : AggregateRoot
         ArgumentNullException.ThrowIfNull(goal);
         if (goal.UserId != UserId)
         {
-            throw new InvalidOperationException("An event can only save in the user's own goals.");
+            throw new DomainRuleException("An event can only save in the user's own goals.");
         }
 
         SavingsGoalId = goal.Id;
@@ -120,7 +120,7 @@ public sealed class CalendarEvent : AggregateRoot
     {
         if (rollsGoalOn && (Recurrence != EventRecurrence.Yearly || SavingsGoalId is null))
         {
-            throw new InvalidOperationException("Only a yearly event with a savings goal can move its goal on.");
+            throw new DomainRuleException("Only a yearly event with a savings goal can move its goal on.");
         }
 
         RollsGoalOn = rollsGoalOn;
@@ -176,7 +176,7 @@ public sealed class CalendarEvent : AggregateRoot
         ArgumentNullException.ThrowIfNull(goal);
         if (goal.Id != SavingsGoalId)
         {
-            throw new InvalidOperationException("Only the event's own goal can be moved on.");
+            throw new DomainRuleException("Only the event's own goal can be moved on.");
         }
 
         if (!RollsGoalOn)
@@ -192,5 +192,29 @@ public sealed class CalendarEvent : AggregateRoot
         DateOnly next = NextOn(today)!.Value;
         goal.SetTarget(SavingsTarget ?? goal.Target, next.ToDateTime(TimeOnly.MinValue));
         return true;
+    }
+
+    /// <summary>
+    /// Someone the event is shared with, allowed to change it, can change its title, date, repeat and notes, but what's
+    /// saved for it stays its owner's to set. Nothing to check for its owner.
+    /// </summary>
+    /// <param name="by">Who's changing it.</param>
+    /// <param name="newGoal">Whether the change makes it a new savings goal.</param>
+    /// <exception cref="DomainRuleException">Someone other than its owner would change what's saved for it.
+    /// </exception>
+    public void EnsureSavingsAreUnchangedFor(Guid by, decimal? savingsTarget, Guid? savingsGoalId, bool newGoal,
+        bool rollsGoalOn)
+    {
+        if (by == UserId)
+        {
+            return;
+        }
+
+        bool unchanged = !newGoal && savingsTarget == SavingsTarget && savingsGoalId == SavingsGoalId &&
+                         rollsGoalOn == RollsGoalOn;
+        if (!unchanged)
+        {
+            throw new DomainRuleException("Only its owner can change what's saved for a shared event.");
+        }
     }
 }

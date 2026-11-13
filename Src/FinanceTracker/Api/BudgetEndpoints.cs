@@ -27,28 +27,24 @@ public static class BudgetEndpoints
 
             budgets.MapGet("{id:guid}", async Task<Ok<Budget>> (Guid id, IBudgetsService service,
                         CancellationToken cancellationToken) =>
-                    TypedResults.Ok(await service.GetBudgetAsync(id, cancellationToken)))
-                .NotFoundWhenMissing();
+                    TypedResults.Ok(await service.GetBudgetAsync(id, cancellationToken)));
 
             budgets.MapPost(string.Empty, async Task<Ok<Budget>> (SaveBudget request, IBudgetsService service,
                         CancellationToken cancellationToken) =>
                     TypedResults.Ok(await service.AddBudgetAsync(request, cancellationToken)))
-                .Validated<SaveBudget>()
-                .NotFoundWhenMissing();
+                .Validated<SaveBudget>();
 
             budgets.MapPut("{id:guid}", async Task<Ok<Budget>> (Guid id, SaveBudget request, IBudgetsService service,
                         CancellationToken cancellationToken) =>
                     TypedResults.Ok(await service.UpdateBudgetAsync(id, request, cancellationToken)))
-                .Validated<SaveBudget>()
-                .NotFoundWhenMissing();
+                .Validated<SaveBudget>();
 
             budgets.MapDelete("{id:guid}", async Task<NoContent> (Guid id, IBudgetsService service,
                     CancellationToken cancellationToken) =>
                 {
                     await service.DeleteBudgetAsync(id, cancellationToken);
                     return TypedResults.NoContent();
-                })
-                .NotFoundWhenMissing();
+                });
 
             return api;
         }

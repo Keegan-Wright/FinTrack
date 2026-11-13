@@ -54,6 +54,6 @@ public interface ICalendarService
     /// <summary>
     /// Deletes one of the user's events. Its savings goal stays.
     /// </summary>
-    /// <exception cref="InvalidOperationException">The user has no event with <paramref name="id"/>.</exception>
+    /// <exception cref="NotFoundException">The user has no event with <paramref name="id"/>.</exception>
     Task DeleteEventAsync(Guid id, CancellationToken cancellationToken);
 }

@@ -27,15 +27,13 @@ public static class TransactionEndpoints
                         ChangeBankClassification request, ITransactionsService service,
                         CancellationToken cancellationToken) =>
                     TypedResults.Ok(await service.HideBankClassificationAsync(id, request, cancellationToken)))
-                .Validated<ChangeBankClassification>()
-                .NotFoundWhenMissing();
+                .Validated<ChangeBankClassification>();
 
             transactions.MapPost("{id:guid}/bank-classifications/show", async Task<Ok<Transaction>> (Guid id,
                         ChangeBankClassification request, ITransactionsService service,
                         CancellationToken cancellationToken) =>
                     TypedResults.Ok(await service.ShowBankClassificationAsync(id, request, cancellationToken)))
-                .Validated<ChangeBankClassification>()
-                .NotFoundWhenMissing();
+                .Validated<ChangeBankClassification>();
 
             // 409 with the reason when the transaction can't be split that way, e.g. it's pending
             transactions.MapPut("{id:guid}/splits", async Task<Results<Ok<Transaction>, ProblemHttpResult>> (Guid id,
@@ -51,13 +49,11 @@ public static class TransactionEndpoints
                             return TypedResults.Problem(ex.Message, statusCode: StatusCodes.Status409Conflict);
                         }
                     })
-                .Validated<SplitTransaction>()
-                .NotFoundWhenMissing();
+                .Validated<SplitTransaction>();
 
             transactions.MapDelete("{id:guid}/splits", async Task<Ok<Transaction>> (Guid id,
                         ITransactionsService service, CancellationToken cancellationToken) =>
-                    TypedResults.Ok(await service.UnsplitAsync(id, cancellationToken)))
-                .NotFoundWhenMissing();
+                    TypedResults.Ok(await service.UnsplitAsync(id, cancellationToken)));
 
             RouteGroupBuilder filters = transactions.MapGroup("filters");
 

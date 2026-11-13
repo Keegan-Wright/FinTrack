@@ -23,7 +23,7 @@ public interface IBillsService
     /// </summary>
     IAsyncEnumerable<Bill> GetBillsAsync(CancellationToken cancellationToken);
 
-    /// <exception cref="InvalidOperationException">The user has no bill with <paramref name="id"/>.</exception>
+    /// <exception cref="NotFoundException">The user has no bill with <paramref name="id"/>.</exception>
     Task<Bill> GetBillAsync(Guid id, CancellationToken cancellationToken);
 
     /// <summary>
@@ -47,20 +47,20 @@ public interface IBillsService
     /// <summary>
     /// Ends one of the user's bills today, so nothing more is due. A sync won't reopen it.
     /// </summary>
-    /// <exception cref="InvalidOperationException">The user has no bill with <paramref name="id"/>.</exception>
+    /// <exception cref="NotFoundException">The user has no bill with <paramref name="id"/>.</exception>
     Task<Bill> EndBillAsync(Guid id, CancellationToken cancellationToken);
 
     /// <summary>
     /// Makes an ended bill due again. A sync ends it again if its standing order or direct debit has gone.
     /// </summary>
-    /// <exception cref="InvalidOperationException">The user has no bill with <paramref name="id"/>.</exception>
+    /// <exception cref="NotFoundException">The user has no bill with <paramref name="id"/>.</exception>
     Task<Bill> ReopenBillAsync(Guid id, CancellationToken cancellationToken);
 
     /// <summary>
     /// Deletes one of the user's bills, see <see cref="Bill.CanDelete"/>. Its payments pay nothing until matched
     /// again, and rules that paid it no longer do.
     /// </summary>
-    /// <exception cref="InvalidOperationException">The user has no bill with <paramref name="id"/>.</exception>
+    /// <exception cref="NotFoundException">The user has no bill with <paramref name="id"/>.</exception>
     /// <exception cref="NotSupportedException">It was seeded from a standing order or direct debit, so it can only
     /// be ended.</exception>
     Task DeleteBillAsync(Guid id, CancellationToken cancellationToken);

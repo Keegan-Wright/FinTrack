@@ -1,8 +1,9 @@
 using System.Runtime.CompilerServices;
-using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.NetWorth;
 using FinanceTracker.Contracts.SavingsGoals;
 using FinanceTracker.Contracts.Services;
+using FinanceTracker.Contracts;
+using FinanceTracker.Domain.Common;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Balances;
 using FinanceTracker.Domain.OpenBanking.Transactions;
@@ -146,10 +147,9 @@ public class SavingsGoalsService : ServiceBase<SavingsGoalsService>, ISavingsGoa
         {
             await EnsureSourceIsTheUsersAsync(context, id, goal, cancellationToken);
         }
-        else
-        {
-            EnsureTrackingIsUnchanged(updated, goal);
-        }
+
+        updated.EnsureTrackingIsUnchangedFor(UserId, SavingsGoalMapper.ToDomain(goal.Source), goal.AccountId,
+            goal.TagIds, goal.TrackedFrom, SavingsGoalMapper.ToDomain(goal.Direction));
 
         await SavingsGoalNames.EnsureFreeAsync(context, updated.UserId, goal.Name, id, cancellationToken);
 
@@ -338,29 +338,12 @@ public class SavingsGoalsService : ServiceBase<SavingsGoalsService>, ISavingsGoa
             .SingleOrDefault(x => x.Item.Id == id);
         if (goal is null || (mustChange && !goal.CanChange))
         {
-            throw new InvalidOperationException($"No savings goal {id} the user can see or change was found.");
+            throw new NotFoundException($"No savings goal {id} the user can see or change was found.");
         }
 
         return goal;
     }
 
-    /// <summary>
-    /// Someone else's goal keeps tracking what its owner chose.
-    /// </summary>
-    /// <exception cref="InvalidOperationException">The edit tracks something else.</exception>
-    private static void EnsureTrackingIsUnchanged(DomainSavingsGoal existing, SaveSavingsGoal goal)
-    {
-        bool sameSource = SavingsGoalMapper.ToDomain(goal.Source) == existing.Source;
-        bool sameAccount = existing.Source != DomainSavingsGoalSource.Account || goal.AccountId == existing.AccountId;
-        bool sameTags = existing.Source != DomainSavingsGoalSource.Tags ||
-                        (goal.TagIds.ToHashSet().SetEquals(existing.TagIds) &&
-                         goal.TrackedFrom == existing.TrackedFrom &&
-                         SavingsGoalMapper.ToDomain(goal.Direction) == existing.Direction);
-        if (!sameSource || !sameAccount || !sameTags)
-        {
-            throw new InvalidOperationException("Only its owner can change what a shared goal tracks.");
-        }
-    }
 
     /// <exception cref="InvalidOperationException">The account isn't the user's, is a card or backs another goal, or a
     /// tag isn't the user's.</exception>
@@ -385,14 +368,14 @@ public class SavingsGoalsService : ServiceBase<SavingsGoalsService>, ISavingsGoa
             .AnyAsync(x => x.Id == accountId && x.Kind != BankAccountKind.Card, cancellationToken);
         if (!usable)
         {
-            throw new InvalidOperationException("A goal can only track one of the user's accounts that isn't a card.");
+            throw new DomainRuleException("A goal can only track one of the user's accounts that isn't a card.");
         }
 
         bool taken = await context.SavingsGoals.OwnedBy(UserId)
             .AnyAsync(x => x.AccountId == accountId && x.Id != goalId, cancellationToken);
         if (taken)
         {
-            throw new InvalidOperationException("That account already backs another goal.");
+            throw new DomainRuleException("That account already backs another goal.");
         }
     }
 
@@ -406,7 +389,7 @@ public class SavingsGoalsService : ServiceBase<SavingsGoalsService>, ISavingsGoa
 
         if (owned != distinct.Count)
         {
-            throw new InvalidOperationException("A goal can only track the user's own tags.");
+            throw new DomainRuleException("A goal can only track the user's own tags.");
         }
     }
 }

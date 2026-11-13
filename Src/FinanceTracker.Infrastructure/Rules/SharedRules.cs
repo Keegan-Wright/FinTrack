@@ -1,4 +1,5 @@
 using FinanceTracker.Contracts.Rules;
+using FinanceTracker.Domain.Common;
 using FinanceTracker.Domain.Sharing;
 using FinanceTracker.Infrastructure.Bills;
 using FinanceTracker.Infrastructure.Debts;
@@ -115,21 +116,21 @@ internal static class SharedRules
         HashSet<Guid> tags = (await TagChoicesAsync(context, userId, existing, cancellationToken)).Keys.ToHashSet();
         if (rule.Actions.Any(x => x.ClassificationId is { } tagId && !tags.Contains(tagId)))
         {
-            throw new InvalidOperationException("A shared rule can only add its owner's tags shared with you.");
+            throw new DomainRuleException("A shared rule can only add its owner's tags shared with you.");
         }
 
         HashSet<Guid> bills = (await BillChoicesAsync(context, userId, seen, existing, cancellationToken)).Keys
             .ToHashSet();
         if (rule.Actions.Any(x => x.BillId is { } billId && !bills.Contains(billId)))
         {
-            throw new InvalidOperationException("A shared rule can only pay its owner's bills shared with you.");
+            throw new DomainRuleException("A shared rule can only pay its owner's bills shared with you.");
         }
 
         HashSet<Guid> debts = (await DebtChoicesAsync(context, userId, seen, existing, cancellationToken)).Keys
             .ToHashSet();
         if (rule.Actions.Any(x => x.DebtId is { } debtId && !debts.Contains(debtId)))
         {
-            throw new InvalidOperationException("A shared rule can only pay off its owner's debts shared with you.");
+            throw new DomainRuleException("A shared rule can only pay off its owner's debts shared with you.");
         }
 
         HashSet<Guid> accounts = AccountsOf(existing).ToHashSet();
@@ -147,7 +148,7 @@ internal static class SharedRules
         int visible = await context.BankAccounts.InView(seen).CountAsync(x => named.Contains(x.Id), cancellationToken);
         if (visible != named.Count)
         {
-            throw new InvalidOperationException("A rule can only look at the accounts you can see.");
+            throw new DomainRuleException("A rule can only look at the accounts you can see.");
         }
     }
 
