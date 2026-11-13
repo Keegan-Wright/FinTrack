@@ -37,4 +37,11 @@ public class TransactionBill
     /// </summary>
     [Description("Name of the rule that decided, for a rule's decision")]
     public string? RuleName { get; init; }
+
+    /// <summary>
+    /// Whose bill it is, their first and last name, null when it's the user's own. Another person's is only seen by
+    /// name here, it isn't on the user's own pages, and they're the one who chose it or whose rule did.
+    /// </summary>
+    [Description("Name of whoever the bill belongs to, null when it's the user's own")]
+    public string? OwnerName { get; init; }
 }

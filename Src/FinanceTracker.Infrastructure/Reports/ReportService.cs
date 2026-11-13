@@ -10,6 +10,7 @@ using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.PayPeriods;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
+using FinanceTracker.Infrastructure.Sharing;
 using FinanceTracker.Infrastructure.PayPeriods;
 using FinanceTracker.Infrastructure.Transactions;
 using Microsoft.EntityFrameworkCore;
@@ -23,11 +24,14 @@ public class ReportService : ServiceBase<ReportService>, IReportService
 {
     private readonly TimeProvider _timeProvider;
 
+    private readonly IAccountScope _accountScope;
+
     public ReportService(ICurrentUser currentUser, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
-        ILogger<ReportService> logger, TimeProvider timeProvider)
+        ILogger<ReportService> logger, TimeProvider timeProvider, IAccountScope accountScope)
         : base(currentUser, financeTrackerContextFactory, logger)
     {
         _timeProvider = timeProvider;
+        _accountScope = accountScope;
     }
 
     public async IAsyncEnumerable<SpentInTimePeriodReport> GetSpentInTimePeriodReportAsync(
@@ -179,11 +183,13 @@ public class ReportService : ServiceBase<ReportService>, IReportService
         PayCalendar calendar =
             await PayCalendars.ForUserAsync(context, UserId, _timeProvider.Today, cancellationToken);
 
-        Dictionary<Guid, string> accountNames = await context.BankAccounts.OwnedBy(UserId)
+        AccountsInView view = await _accountScope.ResolveAsync(context, cancellationToken);
+        Dictionary<Guid, string> accountNames = await context.BankAccounts.InView(view)
             .ToDictionaryAsync(static x => x.Id, static x => x.DisplayName, cancellationToken);
 
+        // A hidden copy's transactions filling a joint account's gap count as the shown copy's
         List<ReportAmount> amounts = openBankingTransactions
-            .Select(x => Matching(x, request.Tags, customTags))
+            .Select(x => Matching(x, request.Tags, customTags) with { AccountId = view.ShownAs(x.AccountId) })
             .ToList();
 
         // By id, display names aren't unique across providers
@@ -279,20 +285,22 @@ public class ReportService : ServiceBase<ReportService>, IReportService
         GetTransactionsForReportAsync(FilterTransactions request, FinanceTrackerContext context,
             CancellationToken cancellationToken, bool includeTransfers = false)
     {
+        AccountsInView view = await _accountScope.ResolveAsync(context, cancellationToken);
         TransactionCriteria criteria = await TransactionCriteria.From(request)
             .WithSavingsGoalsAsync(context, UserId, _timeProvider.LocalTimeZone, cancellationToken);
-        Dictionary<Guid, string> customTags = await context.CustomClassifications.OwnedBy(UserId)
-            .ToDictionaryAsync(static x => x.Id, static x => x.Tag, cancellationToken);
+
+        // A shared transaction's tags are its owner's, so theirs are named too
+        Dictionary<Guid, string> customTags = await TagNames.LoadAsync(context, view, cancellationToken);
 
         List<BankTransaction> transactions = await criteria
-            .ApplyServerFilters(context.BankTransactions.OwnedBy(UserId), context)
+            .ApplyServerFilters(context.BankTransactions.InView(view), context, view)
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
         // Category and timestamps are encrypted, so filter and sort after decryption
         return (transactions
             .Where(x => includeTransfers || x.CountsAsIncomeOrSpending)
-            .Where(x => criteria.MatchesClientFilters(x, customTags))
+            .Where(x => criteria.MatchesClientFilters(x, customTags, view))
             .OrderByDescending(static x => x.OccurredAt)
             .ToList(), customTags);
     }

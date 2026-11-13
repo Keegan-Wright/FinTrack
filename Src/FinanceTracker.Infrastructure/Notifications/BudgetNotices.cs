@@ -68,11 +68,12 @@ public sealed class BudgetNotices : ServiceBase<BudgetNotices>, ISyncNotices
         CancellationToken cancellationToken)
     {
         string spent = $"{NoticeText.Money(budget.Spent)} of {NoticeText.Money(budget.Available)} spent this month.";
+        string name = NoticeText.Named(budget.Name, budget.SharedBy);
 
         if (budget.Spent > budget.Available)
         {
             await _notifier.NotifyAsync(NotificationKind.BudgetOverLimit, Key("budget-over", budget, month),
-                $"{budget.Name} is {NoticeText.Money(budget.Spent - budget.Available)} over", spent, BudgetsLink,
+                $"{name} is {NoticeText.Money(budget.Spent - budget.Available)} over", spent, BudgetsLink,
                 cancellationToken);
             return;
         }
@@ -80,7 +81,7 @@ public sealed class BudgetNotices : ServiceBase<BudgetNotices>, ISyncNotices
         if (budget.Available > 0 && budget.Spent >= budget.Available * warningPercent / 100)
         {
             await _notifier.NotifyAsync(NotificationKind.BudgetNearLimit, Key("budget-near", budget, month),
-                $"{budget.Name} has {NoticeText.Money(budget.Remaining)} left", spent, BudgetsLink,
+                $"{name} has {NoticeText.Money(budget.Remaining)} left", spent, BudgetsLink,
                 cancellationToken);
         }
     }

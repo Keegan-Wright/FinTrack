@@ -9,7 +9,10 @@ internal static class CalendarEventMapper
 {
     /// <param name="goalName">Its savings goal's name, null without one.</param>
     /// <param name="today">Today where the user is, for when it's next on.</param>
-    public static CalendarEvent ToContract(DomainCalendarEvent calendarEvent, string? goalName, DateOnly today) => new()
+    /// <param name="sharedBy">Whoever shares it with the user, null when it's theirs.</param>
+    /// <param name="canChange">Whether the user can edit it.</param>
+    public static CalendarEvent ToContract(DomainCalendarEvent calendarEvent, string? goalName, DateOnly today,
+        string? sharedBy = null, bool canChange = true) => new()
     {
         Id = calendarEvent.Id,
         Title = calendarEvent.Title,
@@ -20,12 +23,16 @@ internal static class CalendarEventMapper
         SavingsGoalId = calendarEvent.SavingsGoalId,
         SavingsGoalName = goalName,
         RollsGoalOn = calendarEvent.RollsGoalOn,
-        NextOn = calendarEvent.NextOn(today)
+        NextOn = calendarEvent.NextOn(today),
+        SharedBy = sharedBy,
+        CanChange = canChange
     };
 
     /// <param name="goalName">Its savings goal's name, null without one.</param>
     /// <param name="saved">What's saved in that goal, null without one.</param>
-    public static CalendarEventItem ToItem(DomainCalendarEvent calendarEvent, string? goalName, decimal? saved) => new()
+    /// <param name="sharedBy">Whoever shares it with the user, null when it's theirs.</param>
+    public static CalendarEventItem ToItem(DomainCalendarEvent calendarEvent, string? goalName, decimal? saved,
+        string? sharedBy = null) => new()
     {
         EventId = calendarEvent.Id,
         Title = calendarEvent.Title,
@@ -33,7 +40,8 @@ internal static class CalendarEventMapper
         IsYearly = calendarEvent.Recurrence == DomainEventRecurrence.Yearly,
         SavingsTarget = calendarEvent.SavingsTarget,
         SavingsGoalName = goalName,
-        Saved = saved
+        Saved = saved,
+        SharedBy = sharedBy
     };
 
     public static EventRecurrence ToContract(DomainEventRecurrence recurrence) => recurrence switch

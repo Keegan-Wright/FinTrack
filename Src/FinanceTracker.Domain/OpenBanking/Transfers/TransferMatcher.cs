@@ -6,7 +6,8 @@ using FinanceTracker.Domain.OpenBanking.Transactions;
 namespace FinanceTracker.Domain.OpenBanking.Transfers;
 
 /// <summary>
-/// Decides which of a user's transactions are money moved between their own accounts, recording the decision on both
+/// Decides which of a user's transactions are money moved between their own accounts, or between theirs and an
+/// account shared across one of their links (see <see cref="TransferPairing"/>), recording the decision on both
 /// halves of a pair. Four steps, each only looking at what the steps before it left undecided:
 /// <list type="number">
 /// <item>The bank's reference names another of the user's accounts, a transfer, paired with its mirror in that
@@ -43,15 +44,26 @@ public static class TransferMatcher
 
     /// <summary>
     /// Matches <paramref name="transactions"/> against their
-    /// <paramref name="accounts"/> and the user's <paramref name="householdMembers"/>.
+    /// <paramref name="accounts"/> and their owners' <paramref name="householdMembers"/>.
     /// </summary>
+    /// <param name="pairing">Which of them may pair, when they're several people's. One person's own accounts only
+    /// when null.</param>
+    /// <param name="membersOwnAccounts">The accounts each member who's a user connected themselves, by member, see
+    /// <see cref="HouseholdMember.Recognises"/>. Only their identifiers, the accounts stay theirs.</param>
+    /// <remarks>
+    /// Several people's transactions are matched together when they share accounts, the same group whoever's run it
+    /// is, so every run comes to the same decisions. One person's own pairs come out the same however many others
+    /// are in the run, other people's transactions are never candidates unless <paramref name="pairing"/> allows it.
+    /// </remarks>
     public static TransferMatchSummary Match(IReadOnlyCollection<BankAccount> accounts,
         IReadOnlyCollection<HouseholdMember> householdMembers, IReadOnlyCollection<BankTransaction> transactions,
-        DateTime decidedAt)
+        DateTime decidedAt, TransferPairing? pairing = null,
+        IReadOnlyDictionary<Guid, IReadOnlyCollection<AccountIdentifier>>? membersOwnAccounts = null)
     {
         ArgumentNullException.ThrowIfNull(accounts);
         ArgumentNullException.ThrowIfNull(householdMembers);
         ArgumentNullException.ThrowIfNull(transactions);
+        pairing ??= TransferPairing.OwnAccountsOnly;
 
         // A decision the user or a rule made can name a partner, e.g. when the user confirms a match. That partner
         // still carries the matcher's decision, but belongs to the user's pair now, so it mustn't be re-decided or
@@ -76,13 +88,14 @@ public static class TransferMatcher
         Dictionary<Guid, TransferInfo> decisions = [];
 
         // Step 1
-        MatchOwnAccountReferences(accounts, open, decisions, decidedAt);
+        MatchOwnAccountReferences(accounts, open, decisions, pairing, decidedAt);
 
         // Step 2
-        MatchMirrorPairs(accounts, open, decisions, decidedAt);
+        MatchMirrorPairs(accounts, open, decisions, pairing, decidedAt);
 
         // Step 3
-        MatchHouseholdMembers(householdMembers, open, decisions, decidedAt);
+        MatchHouseholdMembers(householdMembers, membersOwnAccounts ?? new Dictionary<Guid,
+            IReadOnlyCollection<AccountIdentifier>>(), open, decisions, decidedAt);
 
         // Step 4, labelled a transfer but nothing on the user's accounts matches it. Often a real payment to someone
         // else, so it stays counted until the user says otherwise
@@ -100,12 +113,13 @@ public static class TransferMatcher
     /// transfer whether or not its other half has arrived yet.
     /// </summary>
     private static void MatchOwnAccountReferences(IReadOnlyCollection<BankAccount> accounts,
-        List<BankTransaction> open, Dictionary<Guid, TransferInfo> decisions, DateTime decidedAt)
+        List<BankTransaction> open, Dictionary<Guid, TransferInfo> decisions, TransferPairing pairing,
+        DateTime decidedAt)
     {
         foreach (BankTransaction transaction in open)
         {
             // Already decided as the mirror of an earlier transaction in this loop, or names none of the accounts
-            if (decisions.ContainsKey(transaction.Id) || NamedAccount(accounts, transaction) is not { } named)
+            if (decisions.ContainsKey(transaction.Id) || NamedAccount(accounts, transaction, pairing) is not { } named)
             {
                 continue;
             }
@@ -114,7 +128,7 @@ public static class TransferMatcher
             // closest, it's linked to the account alone, and a later run pairs it once the mirror arrives or the tie
             // is gone
             List<BankTransaction> mirrors =
-                ClosestMirrors(transaction, open.Where(x => x.AccountId == named.Id), decisions);
+                ClosestMirrors(transaction, open.Where(x => x.AccountId == named.Id), decisions, pairing);
             BankTransaction? mirror = mirrors.Count == 1 ? mirrors[0] : null;
 
             decisions[transaction.Id] =
@@ -139,7 +153,7 @@ public static class TransferMatcher
     /// fits another better.
     /// </example>
     private static void MatchMirrorPairs(IReadOnlyCollection<BankAccount> accounts, List<BankTransaction> open,
-        Dictionary<Guid, TransferInfo> decisions, DateTime decidedAt)
+        Dictionary<Guid, TransferInfo> decisions, TransferPairing pairing, DateTime decidedAt)
     {
         HashSet<Guid> cards = accounts
             .Where(static x => x.Kind == BankAccountKind.Card)
@@ -154,7 +168,7 @@ public static class TransferMatcher
                 continue;
             }
 
-            List<BankTransaction> incoming = ClosestMirrors(outgoing, open, decisions);
+            List<BankTransaction> incoming = ClosestMirrors(outgoing, open, decisions, pairing);
             if (incoming.Count == 0)
             {
                 continue;
@@ -163,7 +177,7 @@ public static class TransferMatcher
             // Look back from the incoming side, which outgoing ones is it closest to? Only worked out when there's a
             // single incoming candidate, with several it's a tie whatever the answer
             List<BankTransaction> rivals = incoming.Count == 1
-                ? ClosestMirrors(incoming[0], open, decisions)
+                ? ClosestMirrors(incoming[0], open, decisions, pairing)
                 : [];
 
             // A tie on either side, several equally close incoming ones, or this outgoing one and another equally
@@ -207,14 +221,17 @@ public static class TransferMatcher
     /// accounts so a pair found there always wins, e.g. once the member's account is connected.
     /// </summary>
     private static void MatchHouseholdMembers(IReadOnlyCollection<HouseholdMember> householdMembers,
+        IReadOnlyDictionary<Guid, IReadOnlyCollection<AccountIdentifier>> membersOwnAccounts,
         List<BankTransaction> open, Dictionary<Guid, TransferInfo> decisions, DateTime decidedAt)
     {
         foreach (BankTransaction transaction in open.Where(x => !decisions.ContainsKey(x.Id)))
         {
             // Several members recognising it, e.g. sharing a payee name, would be a guess, so like NamedAccount it
-            // stops at two and only one counts
+            // stops at two and only one counts. Only the transaction owner's household, each person keeps their own
             if (householdMembers
-                    .Where(x => x.Recognises(transaction.Description, transaction.Metadata.ProviderReference))
+                    .Where(x => x.UserId == transaction.UserId &&
+                                x.Recognises(transaction.Description, transaction.Metadata.ProviderReference,
+                                    membersOwnAccounts.GetValueOrDefault(x.Id)))
                     .Take(2)
                     .ToList() is [var member])
             {
@@ -233,19 +250,29 @@ public static class TransferMatcher
 
     /// <summary>
     /// The undecided mirrors of <paramref name="transaction"/> among <paramref name="candidates"/> that are closest
-    /// in time, more than one when they're equally close.
+    /// in time, more than one when they're equally close. Its owner's own come first, see below.
     /// </summary>
     /// <remarks>
     /// Closeness is the exact time apart, while <see cref="IsMirror"/> limits candidates by calendar day. For a bank
     /// that only gives dates every transaction sits at midnight, so two on the same day are equally close and tie.
     /// </remarks>
     private static List<BankTransaction> ClosestMirrors(BankTransaction transaction,
-        IEnumerable<BankTransaction> candidates, Dictionary<Guid, TransferInfo> decisions)
+        IEnumerable<BankTransaction> candidates, Dictionary<Guid, TransferInfo> decisions, TransferPairing pairing)
     {
         List<(BankTransaction Candidate, TimeSpan Apart)> mirrors = candidates
-            .Where(x => !decisions.ContainsKey(x.Id) && IsMirror(transaction, x))
+            .Where(x => !decisions.ContainsKey(x.Id) && IsMirror(transaction, x) && pairing.CanPair(transaction, x))
             .Select(x => (x, (x.OccurredAt - transaction.OccurredAt).Duration()))
             .ToList();
+
+        // Its owner's own accounts first, another person's only when none of theirs fits. Two people who've both
+        // connected the same account each have a copy of every transaction on it, which would otherwise tie with
+        // their own and send both to review
+        List<(BankTransaction Candidate, TimeSpan Apart)> own =
+            mirrors.Where(x => x.Candidate.UserId == transaction.UserId).ToList();
+        if (own.Count > 0)
+        {
+            mirrors = own;
+        }
 
         if (mirrors.Count == 0)
         {
@@ -272,14 +299,17 @@ public static class TransferMatcher
         Math.Abs((candidate.OccurredAt.Date - transaction.OccurredAt.Date).Days) <= MaxDaysApart;
 
     /// <summary>
-    /// The one other account of the user's that the transaction's reference names, null when none or several do.
+    /// The one other account the transaction's reference names, of the user's or one it can pair with across a link,
+    /// null when none or several do.
     /// </summary>
-    private static BankAccount? NamedAccount(IReadOnlyCollection<BankAccount> accounts, BankTransaction transaction)
+    private static BankAccount? NamedAccount(IReadOnlyCollection<BankAccount> accounts, BankTransaction transaction,
+        TransferPairing pairing)
     {
         // Several accounts sharing an identifier, e.g. pots reporting their parent's number, would be a guess. Two is
         // enough to know it isn't exactly one, so it stops looking there
         return accounts
             .Where(x => x.Id != transaction.AccountId &&
+                        pairing.CanReach(transaction, x) &&
                         x.Identifier?.IsNamedIn(transaction.Metadata.ProviderReference) == true)
             .Take(2)
             .ToList() is [var only] ? only : null;

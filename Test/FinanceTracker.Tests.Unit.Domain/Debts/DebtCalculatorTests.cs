@@ -255,7 +255,7 @@ public class DebtCalculatorTests
     private static BankTransaction Paying(Debt debt, decimal amount, DateTime occurredAt)
     {
         BankTransaction transaction = Payment(amount, occurredAt);
-        transaction.PayDebt(debt, At);
+        transaction.PayDebt(debt, transaction.UserId, At);
         return transaction;
     }
 

@@ -3,6 +3,8 @@ using SavingsGoal = FinanceTracker.Contracts.SavingsGoals.SavingsGoal;
 using SavingsGoalSource = FinanceTracker.Contracts.SavingsGoals.SavingsGoalSource;
 using DomainSavingsGoal = FinanceTracker.Domain.SavingsGoals.SavingsGoal;
 using DomainSavingsGoalSource = FinanceTracker.Domain.SavingsGoals.SavingsGoalSource;
+using SavingsDirection = FinanceTracker.Contracts.SavingsGoals.SavingsDirection;
+using DomainSavingsDirection = FinanceTracker.Domain.SavingsGoals.SavingsDirection;
 
 namespace FinanceTracker.Infrastructure.SavingsGoals;
 
@@ -12,7 +14,10 @@ namespace FinanceTracker.Infrastructure.SavingsGoals;
 internal static class SavingsGoalMapper
 {
     /// <param name="accountName">The backing account's name, null when it has none or it's been removed.</param>
-    public static SavingsGoal ToContract(DomainSavingsGoal goal, SavingsGoalProgress progress, string? accountName) =>
+    /// <param name="sharedBy">Whoever shares it with the user, null when it's theirs.</param>
+    /// <param name="canChange">Whether the user can edit it.</param>
+    public static SavingsGoal ToContract(DomainSavingsGoal goal, SavingsGoalProgress progress, string? accountName,
+        string? sharedBy = null, bool canChange = true, Dictionary<Guid, string>? tagNames = null) =>
         new()
         {
             Id = goal.Id,
@@ -27,12 +32,19 @@ internal static class SavingsGoalMapper
             AccountName = accountName,
             TagIds = goal.TagIds.ToList(),
             TrackedFrom = goal.TrackedFrom,
+            Direction = Enum.Parse<SavingsDirection>(goal.Direction.ToString()),
             CoversNothing = goal.CoversNothing,
             ReachedBy = progress.ReachedBy,
             NeededPerMonth = progress.NeededPerMonth,
-            OnTrack = progress.OnTrack
+            OnTrack = progress.OnTrack,
+            SharedBy = sharedBy,
+            CanChange = canChange,
+            TagNames = tagNames ?? []
         };
 
     public static DomainSavingsGoalSource ToDomain(SavingsGoalSource source) =>
         Enum.Parse<DomainSavingsGoalSource>(source.ToString());
+
+    public static DomainSavingsDirection ToDomain(SavingsDirection direction) =>
+        Enum.Parse<DomainSavingsDirection>(direction.ToString());
 }

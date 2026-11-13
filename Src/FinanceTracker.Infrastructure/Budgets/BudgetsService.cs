@@ -8,6 +8,8 @@ using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using FinanceTracker.Infrastructure.PayPeriods;
 using FinanceTracker.Infrastructure.Persistence;
+using FinanceTracker.Infrastructure.Sharing;
+using FinanceTracker.Domain.Sharing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Budget = FinanceTracker.Contracts.Budgets.Budget;
@@ -47,22 +49,31 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        List<DomainBudget> running = (await context.Budgets.OwnedBy(UserId).AsNoTracking()
-                .ToListAsync(cancellationToken))
-            .Where(x => x.FirstMonth <= target)
+        // Their own and those shared with them, in their own pay periods
+        List<VisibleItem<DomainBudget>> running = (await VisibleAsync(context, cancellationToken))
+            .Where(x => x.Item.FirstMonth <= target)
             .ToList();
+        Dictionary<Guid, BudgetSharing> sharing = await SharingAsync(context, running, cancellationToken);
 
         TimeZoneInfo timeZone = _timeProvider.LocalTimeZone;
         DateOnly today = _timeProvider.Today;
         PayCalendar calendar = await PayCalendars.ForUserAsync(context, UserId, today, cancellationToken);
-        List<BankTransaction> transactions =
-            await LoadTransactionsAsync(context, running, target, calendar, cancellationToken);
+        List<DomainBudget> budgets = running.Select(static x => x.Item).ToList();
+        Dictionary<Guid, List<BankTransaction>> spending =
+            await SpendingAsync(context, running, sharing, target, calendar, cancellationToken);
 
         List<BudgetStatus> statuses = running
-            .Select(budget => BudgetMapper.ToContract(budget,
-                BudgetCalculator.ForMonth(budget, transactions, target, timeZone, today, calendar)!))
+            .Select(x => BudgetMapper.ToContract(x.Item,
+                BudgetCalculator.ForMonth(x.Item, spending[x.Item.Id], target, timeZone, today, calendar)!,
+                sharing[x.Item.Id]))
             .OrderBy(static x => x.Name, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
+
+        // What's left unbudgeted is theirs, from their own spending and budgets
+        List<DomainBudget> own = running.Where(static x => x.IsOwn).Select(static x => x.Item).ToList();
+        List<BankTransaction> ownSpending =
+            await LoadTransactionsAsync(context, OwnTransactions(context), budgets, target, calendar,
+                cancellationToken);
 
         PayPeriod period = calendar.Named(target.Year, target.Month);
         return new BudgetMonthOverview
@@ -72,7 +83,7 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
             End = period.End,
             IsCurrent = target == BudgetCalculator.MonthOf(today, calendar),
             Budgets = statuses,
-            Unbudgeted = BudgetCalculator.Unbudgeted(running, transactions, target, timeZone, calendar)
+            Unbudgeted = BudgetCalculator.Unbudgeted(own, ownSpending, target, timeZone, calendar)
         };
     }
 
@@ -81,14 +92,15 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        // Names are encrypted, so they're ordered once decrypted
-        List<DomainBudget> budgets = await context.Budgets.OwnedBy(UserId).AsNoTracking()
-            .ToListAsync(cancellationToken);
+        // Their own and those shared with them. Names are encrypted, so they're ordered once decrypted
+        List<VisibleItem<DomainBudget>> budgets = await VisibleAsync(context, cancellationToken);
+        Dictionary<Guid, BudgetSharing> sharing = await SharingAsync(context, budgets, cancellationToken);
         BudgetMonth currentMonth = await CurrentMonthAsync(context, cancellationToken);
 
-        foreach (DomainBudget budget in budgets.OrderBy(static x => x.Name, StringComparer.CurrentCultureIgnoreCase))
+        foreach (VisibleItem<DomainBudget> budget in budgets
+                     .OrderBy(static x => x.Item.Name, StringComparer.CurrentCultureIgnoreCase))
         {
-            yield return BudgetMapper.ToContract(budget, currentMonth);
+            yield return BudgetMapper.ToContract(budget.Item, currentMonth, sharing[budget.Item.Id]);
         }
     }
 
@@ -97,10 +109,11 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        DomainBudget budget = await context.Budgets.OwnedBy(UserId).AsNoTracking()
-            .SingleAsync(x => x.Id == id, cancellationToken);
+        VisibleItem<DomainBudget> budget = await VisibleAsync(context, id, mustChange: false, cancellationToken);
+        Dictionary<Guid, BudgetSharing> sharing = await SharingAsync(context, [budget], cancellationToken);
 
-        return BudgetMapper.ToContract(budget, await CurrentMonthAsync(context, cancellationToken));
+        return BudgetMapper.ToContract(budget.Item, await CurrentMonthAsync(context, cancellationToken),
+            sharing[id]);
     }
 
     public async Task<Budget> AddBudgetAsync(SaveBudget budget, CancellationToken cancellationToken)
@@ -127,8 +140,17 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        DomainBudget updated = await context.Budgets.OwnedBy(UserId).SingleAsync(x => x.Id == id, cancellationToken);
-        await EnsureTagsAreTheUsersAsync(context, budget.TagIds, cancellationToken);
+        // Their own, or one shared with them with changes allowed, covering only tags they may
+        VisibleItem<DomainBudget> visible = await VisibleAsync(context, id, mustChange: true, cancellationToken);
+        DomainBudget updated = await context.Budgets.SingleAsync(x => x.Id == id, cancellationToken);
+        if (visible.IsOwn)
+        {
+            await EnsureTagsAreTheUsersAsync(context, budget.TagIds, cancellationToken);
+        }
+        else
+        {
+            await EnsureTagsAreChoicesAsync(context, visible.Item, budget.TagIds, cancellationToken);
+        }
 
         // From this month on, the months before keep the limit they had
         BudgetMonth currentMonth = await CurrentMonthAsync(context, cancellationToken);
@@ -140,7 +162,9 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
         await context.SaveChangesAsync(cancellationToken);
         Logger.LogChanged(UserId, "updated", "budget", id);
 
-        return BudgetMapper.ToContract(updated, currentMonth);
+        Dictionary<Guid, BudgetSharing> sharing =
+            await SharingAsync(context, [visible with { Item = updated }], cancellationToken);
+        return BudgetMapper.ToContract(updated, currentMonth, sharing[id]);
     }
 
     public async Task DeleteBudgetAsync(Guid id, CancellationToken cancellationToken)
@@ -155,12 +179,13 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
     }
 
     /// <summary>
-    /// The user's transactions from the start of the earliest running budget's first period to the end of
-    /// <paramref name="target"/>'s, a day either side for time zones. Dates are encrypted, so this narrows by their
-    /// day index.
+    /// <paramref name="source"/>'s transactions from the start of the earliest running budget's first period to the
+    /// end of <paramref name="target"/>'s, a day either side for time zones. Dates are encrypted, so this narrows by
+    /// their day index.
     /// </summary>
-    private async Task<List<BankTransaction>> LoadTransactionsAsync(FinanceTrackerContext context,
-        List<DomainBudget> running, BudgetMonth target, PayCalendar calendar, CancellationToken cancellationToken)
+    private static async Task<List<BankTransaction>> LoadTransactionsAsync(FinanceTrackerContext context,
+        IQueryable<BankTransaction> source, List<DomainBudget> running, BudgetMonth target, PayCalendar calendar,
+        CancellationToken cancellationToken)
     {
         BudgetMonth first = target;
         foreach (DomainBudget budget in running)
@@ -176,10 +201,144 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
         DateTime from = start.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc).AddDays(-1);
         DateTime to = end.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc).AddDays(2);
 
-        return await context.BankTransactions.OwnedBy(UserId)
+        return await source
             .WhereEncryptedDayBetween(x => x.OccurredAt, from, to, context)
             .AsNoTracking()
             .ToListAsync(cancellationToken);
+    }
+
+    private IQueryable<BankTransaction> OwnTransactions(FinanceTrackerContext context) =>
+        context.BankTransactions.OwnedBy(UserId);
+
+    /// <summary>
+    /// The transactions each of <paramref name="running"/> counts, by budget. A household budget's from every account
+    /// its owner sees, the same for whoever looks, otherwise the user's own.
+    /// </summary>
+    private async Task<Dictionary<Guid, List<BankTransaction>>> SpendingAsync(FinanceTrackerContext context,
+        List<VisibleItem<DomainBudget>> running, Dictionary<Guid, BudgetSharing> sharing, BudgetMonth target,
+        PayCalendar calendar, CancellationToken cancellationToken)
+    {
+        Dictionary<Guid, List<BankTransaction>> spending = [];
+
+        List<DomainBudget> ownOnly = running
+            .Where(x => !sharing[x.Item.Id].IsHousehold)
+            .Select(static x => x.Item)
+            .ToList();
+        if (ownOnly.Count > 0)
+        {
+            List<BankTransaction> own = await LoadTransactionsAsync(context, OwnTransactions(context), ownOnly,
+                target, calendar, cancellationToken);
+            foreach (DomainBudget budget in ownOnly)
+            {
+                spending[budget.Id] = own;
+            }
+        }
+
+        foreach (IGrouping<Guid, DomainBudget> owner in running
+                     .Where(x => sharing[x.Item.Id].IsHousehold)
+                     .Select(static x => x.Item)
+                     .GroupBy(static x => x.UserId))
+        {
+            AccountsInView ownersView = await AccountScope.ResolveAllForAsync(context, owner.Key, cancellationToken);
+            List<DomainBudget> budgets = owner.ToList();
+            List<BankTransaction> household = await LoadTransactionsAsync(context,
+                context.BankTransactions.InView(ownersView), budgets, target, calendar, cancellationToken);
+            foreach (DomainBudget budget in budgets)
+            {
+                spending[budget.Id] = household;
+            }
+        }
+
+        return spending;
+    }
+
+    /// <summary>
+    /// Every budget the user sees, their own and those shared with them.
+    /// </summary>
+    private Task<List<VisibleItem<DomainBudget>>> VisibleAsync(FinanceTrackerContext context,
+        CancellationToken cancellationToken) =>
+        SharedChosenItems.ForAsync(context, context.Budgets, UserId, ShareItemType.Budget, justMine: false,
+            cancellationToken);
+
+    /// <summary>
+    /// Budget <paramref name="id"/>, the user's own or one shared with them.
+    /// </summary>
+    /// <param name="mustChange">Whether they must be allowed to change it.</param>
+    /// <exception cref="InvalidOperationException">They can't see it, or can't change it.</exception>
+    private async Task<VisibleItem<DomainBudget>> VisibleAsync(FinanceTrackerContext context, Guid id,
+        bool mustChange, CancellationToken cancellationToken)
+    {
+        VisibleItem<DomainBudget>? budget = (await VisibleAsync(context, cancellationToken))
+            .SingleOrDefault(x => x.Item.Id == id);
+        if (budget is null || (mustChange && !budget.CanChange))
+        {
+            throw new InvalidOperationException($"No budget {id} the user can see or change was found.");
+        }
+
+        return budget;
+    }
+
+    /// <summary>
+    /// How each of <paramref name="budgets"/> is shared, by budget. Their own is a household budget once they share
+    /// it, someone else's always is.
+    /// </summary>
+    private async Task<Dictionary<Guid, BudgetSharing>> SharingAsync(FinanceTrackerContext context,
+        IReadOnlyCollection<VisibleItem<DomainBudget>> budgets, CancellationToken cancellationToken)
+    {
+        Dictionary<Guid, BudgetSharing> sharing = [];
+        foreach (VisibleItem<DomainBudget> budget in budgets)
+        {
+            if (budget.IsOwn)
+            {
+                bool shared = await SharedChosenItems.IsSharedAsync(context, UserId, ShareItemType.Budget,
+                    budget.Item.Id, cancellationToken);
+                sharing[budget.Item.Id] = new BudgetSharing(null, true, shared, [], []);
+                continue;
+            }
+
+            List<Guid> tagIds = budget.Item.TagIds.ToList();
+            Dictionary<Guid, string> tagNames = await context.CustomClassifications.AsNoTracking()
+                .Where(x => tagIds.Contains(x.Id))
+                .ToDictionaryAsync(static x => x.Id, static x => x.Tag, cancellationToken);
+            Dictionary<Guid, string> choices = [];
+            if (budget.CanChange)
+            {
+                choices = await TagChoicesAsync(context, budget.Item, cancellationToken);
+            }
+
+            sharing[budget.Item.Id] = new BudgetSharing(budget.SharedBy, budget.CanChange, true, tagNames, choices);
+        }
+
+        return sharing;
+    }
+
+    /// <summary>
+    /// The tags the user can have <paramref name="budget"/>, someone else's, cover, its owner's tags shared with them,
+    /// and those it already covers.
+    /// </summary>
+    private async Task<Dictionary<Guid, string>> TagChoicesAsync(FinanceTrackerContext context, DomainBudget budget,
+        CancellationToken cancellationToken)
+    {
+        Guid ownerId = budget.UserId;
+        List<Guid> onIt = budget.TagIds.ToList();
+        IQueryable<Guid> shared = context.ChosenSharesWith(UserId, ShareItemType.Classification)
+            .Select(static x => x.ItemId);
+
+        return await context.CustomClassifications.AsNoTracking()
+            .Where(x => x.UserId == ownerId && (onIt.Contains(x.Id) || shared.Contains(x.Id)))
+            .ToDictionaryAsync(static x => x.Id, static x => x.Tag, cancellationToken);
+    }
+
+    /// <exception cref="InvalidOperationException">A tag isn't one the user can give <paramref name="budget"/>,
+    /// someone else's.</exception>
+    private async Task EnsureTagsAreChoicesAsync(FinanceTrackerContext context, DomainBudget budget,
+        List<Guid> tagIds, CancellationToken cancellationToken)
+    {
+        Dictionary<Guid, string> choices = await TagChoicesAsync(context, budget, cancellationToken);
+        if (tagIds.Exists(x => !choices.ContainsKey(x)))
+        {
+            throw new InvalidOperationException("A shared budget can only cover its owner's tags shared with you.");
+        }
     }
 
     /// <exception cref="InvalidOperationException">A tag doesn't exist or isn't the user's.</exception>

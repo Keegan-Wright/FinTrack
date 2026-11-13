@@ -8,6 +8,7 @@ using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.Rules;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Debts;
+using FinanceTracker.Infrastructure.Sharing;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.EntityFrameworkCore;
@@ -336,5 +337,6 @@ public class DebtsServiceTests : InfrastructureTestBase
     }
 
     private DebtsService BuildSubject(string username) =>
-        new(CurrentUserFor(username), DbContextFactory, NullLogger<DebtsService>.Instance, new FixedTimeProvider(Now));
+        new(CurrentUserFor(username), DbContextFactory, NullLogger<DebtsService>.Instance, new FixedTimeProvider(Now),
+            new AccountScope(CurrentUserFor(username)));
 }

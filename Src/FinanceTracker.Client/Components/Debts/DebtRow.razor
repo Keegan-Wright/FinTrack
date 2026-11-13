@@ -1,18 +1,22 @@
 @* One debt. What's left of it, how much is paid off, its terms, when it's paid off and how that stands against the
-   goal. Its name opens its detail. *@
+   goal. Its name opens its detail. Someone else's says whose, and can only be edited when the user can change it. *@
 @using FinanceTracker.Contracts.Debts
 
 <div class="ft-debt">
     <div class="ft-debt__line">
         <MudLink Href="@($"Debts/{Debt.Id}")" Typo="Typo.body2" Class="ft-debt__name">@Debt.Name</MudLink>
         <MoneyText Value="@Debt.Owed"/>
-        @if (Editable)
+        @if (Editable && Debt.CanChange)
         {
             <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true"
                      AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
                      AriaLabel="@($"Actions for {Debt.Name}")">
                 <MudMenuItem Icon="@Icons.Material.Outlined.Edit" OnClick="@OnEdit">Edit</MudMenuItem>
-                <MudMenuItem Icon="@Icons.Material.Outlined.Delete" OnClick="@OnDelete">Delete</MudMenuItem>
+                @* Only its owner deletes it *@
+                @if (Debt.SharedBy is null)
+                {
+                    <MudMenuItem Icon="@Icons.Material.Outlined.Delete" OnClick="@OnDelete">Delete</MudMenuItem>
+                }
             </MudMenu>
         }
     </div>
@@ -31,6 +35,10 @@
     </div>
 
     <MudText Typo="Typo.caption" Class="mud-text-secondary">@DebtText.Terms(Debt)</MudText>
+    @if (Debt.SharedBy is { } sharedBy)
+    {
+        <MudText Typo="Typo.caption" Class="mud-text-secondary">@DebtText.SharedText(sharedBy, Debt.CanChange)</MudText>
+    }
 </div>
 
 @code {

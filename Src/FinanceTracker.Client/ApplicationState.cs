@@ -178,6 +178,12 @@ public sealed class ApplicationState : INotifyPropertyChanged
     }
 
     /// <summary>
+    /// The user switched between Everyone and Just mine, so the page showing refreshes what it shows as it does after a
+    /// sync, see <see cref="Synced"/>.
+    /// </summary>
+    public Task NotifyViewChangedAsync() => NotifySyncedAsync();
+
+    /// <summary>
     /// Raised when a property actually changes.
     /// </summary>
     public event PropertyChangedEventHandler? PropertyChanged;

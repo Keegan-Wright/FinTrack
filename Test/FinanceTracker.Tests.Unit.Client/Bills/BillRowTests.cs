@@ -106,4 +106,39 @@ public class BillRowTests : ComponentTestBase
                 .Add(x => x.Bill, BillTextTests.Bill())
                 .Add(x => x.Today, Today))
             .FindAll("[aria-label='Actions for Energy']")).IsEmpty();
+
+    [Test]
+    [Arguments(true, "Sam Taylor's · you can change it", 1)]
+    [Arguments(false, "Sam Taylor's · you can see it", 0)]
+    public async Task SomeoneElses_SaysWhose_AndOnlyHasActionsWhenTheyCanChangeIt(bool canChange, string says,
+        int menus)
+    {
+        // Arrange
+        Bill shared = new()
+        {
+            Id = Guid.NewGuid(),
+            Name = "Energy",
+            Payee = "ENERGY",
+            AccountName = "Joint",
+            Frequency = BillFrequency.Monthly,
+            StartsOn = new DateOnly(2026, 1, 12),
+            NextDue = new DateOnly(2026, 11, 12),
+            ExpectedAmount = 40m,
+            SharedBy = "Sam Taylor",
+            CanChange = canChange
+        };
+
+        // Act
+        IRenderedComponent<BillRow> cut = Render<BillRow>(p => p
+            .Add(x => x.Bill, shared)
+            .Add(x => x.Today, Today)
+            .Add(x => x.Editable, true));
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(cut.Markup).Contains(says);
+            await Assert.That(cut.FindAll("[aria-label='Actions for Energy']")).Count().IsEqualTo(menus);
+        }
+    }
 }

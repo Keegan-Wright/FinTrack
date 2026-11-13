@@ -62,4 +62,9 @@ public class SaveSavingsGoal
     /// </summary>
     [Description("The first day tagged transactions count")]
     public DateOnly? TrackedFrom { get; set; }
+
+    /// <summary>
+    /// Which way tagged money moves when it's saved, for <see cref="SavingsGoalSource.Tags"/>.
+    /// </summary>
+    public SavingsDirection Direction { get; set; } = SavingsDirection.MoneyIn;
 }

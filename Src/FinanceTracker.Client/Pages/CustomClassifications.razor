@@ -1,6 +1,6 @@
 @page "/Classifications"
 @* Adds and removes the user's custom classifications, the tags they can put on transactions
-   (IClassificationService). *@
+   (IClassificationService), and lists those another person shares with them, which they can use and maybe rename. *@
 @using FinanceTracker.Client.Components.Dialogs
 @using FinanceTracker.Contracts
 @using FinanceTracker.Contracts.Classifications
@@ -50,15 +50,31 @@
                         <MudIcon Icon="@Icons.Material.Outlined.Sell" Size="Size.Small" Class="mud-text-secondary"/>
                         <div class="ft-list__main">
                             <MudText Typo="Typo.body2" Class="text-truncate">@classification.Tag</MudText>
+                            @if (classification.SharedBy is { } sharedBy)
+                            {
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary text-truncate">
+                                    Shared by @sharedBy
+                                </MudText>
+                            }
                         </div>
-                        <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true"
-                                 AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
-                                 AriaLabel="@($"Actions for {classification.Tag}")">
-                            <MudMenuItem Icon="@Icons.Material.Outlined.Edit"
-                                         OnClick="@(() => RenameAsync(classification))">Rename</MudMenuItem>
-                            <MudMenuItem Icon="@Icons.Material.Outlined.Delete"
-                                         OnClick="@(() => DeleteAsync(classification))">Delete</MudMenuItem>
-                        </MudMenu>
+                        @if (classification.CanChange || classification.SharedBy is null)
+                        {
+                            <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true"
+                                     AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
+                                     AriaLabel="@($"Actions for {classification.Tag}")">
+                                @if (classification.CanChange)
+                                {
+                                    <MudMenuItem Icon="@Icons.Material.Outlined.Edit"
+                                                 OnClick="@(() => RenameAsync(classification))">Rename</MudMenuItem>
+                                }
+                                @* Only its owner can delete it, it'd come off their transactions too *@
+                                @if (classification.SharedBy is null)
+                                {
+                                    <MudMenuItem Icon="@Icons.Material.Outlined.Delete"
+                                                 OnClick="@(() => DeleteAsync(classification))">Delete</MudMenuItem>
+                                }
+                            </MudMenu>
+                        }
                     </div>
                 }
             </div>
@@ -140,7 +156,15 @@
             RenameClassification rename = new() { Tag = ((AddClassifications)result.Data!).Tag };
             Classification renamed = await ClassificationService.RenameCustomClassificationAsync(
                 classification.ClassificationId, rename, _cts.Token);
-            Classifications![Classifications.IndexOf(classification)] = renamed;
+
+            // Still shared as it was, the rename only changes its name
+            Classifications![Classifications.IndexOf(classification)] = new Classification
+            {
+                Tag = renamed.Tag,
+                ClassificationId = renamed.ClassificationId,
+                SharedBy = classification.SharedBy,
+                CanChange = classification.CanChange
+            };
             Snackbar.Add($"Renamed to \"{renamed.Tag}\"", Severity.Success);
         }
         catch (NameTakenException ex)

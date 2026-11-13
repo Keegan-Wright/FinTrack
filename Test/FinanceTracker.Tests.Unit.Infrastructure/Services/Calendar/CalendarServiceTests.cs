@@ -9,9 +9,10 @@ using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Calendar;
 using FinanceTracker.Infrastructure.Debts;
 using FinanceTracker.Infrastructure.SavingsGoals;
+using FinanceTracker.Infrastructure.Sharing;
+using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Fakers;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
-using FinanceTracker.Tests.Unit.Shared;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using TUnit.Assertions.Enums;
@@ -507,6 +508,8 @@ public class CalendarServiceTests : InfrastructureTestBase
         return new CalendarService(currentUser, DbContextFactory, NullLogger<CalendarService>.Instance, timeProvider,
             new SavingsGoalsService(currentUser, DbContextFactory, NullLogger<SavingsGoalsService>.Instance,
                 timeProvider),
-            new DebtsService(currentUser, DbContextFactory, NullLogger<DebtsService>.Instance, timeProvider));
+            new DebtsService(currentUser, DbContextFactory, NullLogger<DebtsService>.Instance, timeProvider,
+                new AccountScope(currentUser)),
+            new AccountScope(currentUser));
     }
 }

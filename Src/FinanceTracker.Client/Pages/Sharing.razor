@@ -1,0 +1,378 @@
+@page "/Sharing"
+@* The other users the signed in user shares with, invites waiting for them, inviting someone by username or email,
+   and everyone they're linked with or have invited. Nothing is shared by linking alone (ISharingService). What's
+   shared with each linked person is chosen on their own page, see SharingWith. *@
+@using System.Globalization
+@using FinanceTracker.Contracts.Sharing
+@using FinanceTracker.Contracts.Validation
+@using Microsoft.AspNetCore.Authorization
+@inherits PageComponent
+
+@attribute [Authorize]
+@inject ISharingService SharingService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>FinTrack - Sharing</PageTitle>
+<PageHeader Title="Sharing" Subtitle="The people you share your finances with"/>
+
+<div class="ft-stack">
+    @if (WaitingForYou.Count > 0)
+    {
+        <Section Title="Waiting for you" Caption="Accept to link with them, nothing's shared until you each choose">
+            <div class="ft-list">
+                @foreach (UserLink link in WaitingForYou)
+                {
+                    <div class="ft-list__row ft-sharing__row">
+                        <MudAvatar Color="Color.Primary" Variant="Variant.Outlined" Size="Size.Medium">
+                            @Initials(link)
+                        </MudAvatar>
+                        <div class="ft-list__main">
+                            <MudText Typo="Typo.body2" Class="text-truncate">@link.Name</MudText>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary text-truncate">@StateText(link)</MudText>
+                        </div>
+                        <div class="ft-sharing__actions">
+                            <MudButton Variant="Variant.Text" Size="Size.Small"
+                                       OnClick="@(() => DeclineAsync(link))">Decline</MudButton>
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                                       OnClick="@(() => AcceptAsync(link))">Accept</MudButton>
+                        </div>
+                    </div>
+                }
+            </div>
+        </Section>
+    }
+
+    <Section Title="Invite someone" Caption="They need an account on this FinTrack">
+        <div class="ft-sharing__invite">
+            <MudTextField T="string" @bind-Value="_who" Label="Username or email" Immediate="true"
+                          Variant="Variant.Outlined" Margin="Margin.Dense"
+                          MaxLength="@InviteToShareValidator.MaxLength"
+                          Error="@(_inviteError is not null)" ErrorText="@_inviteError"
+                          OnKeyUp="@OnInviteKeyUp"/>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.PersonAdd"
+                       Disabled="@string.IsNullOrWhiteSpace(_who)" OnClick="@InviteAsync">Invite</MudButton>
+        </div>
+    </Section>
+
+    <Section Title="People" Caption="@PeopleCaption">
+        @if (Others.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                No one yet. Invite someone above to start sharing with them.
+            </MudText>
+        }
+        else
+        {
+            <div class="ft-list">
+                @foreach (UserLink link in Others)
+                {
+                    <div class="ft-list__row ft-sharing__row">
+                        <MudAvatar Color="Color.Primary" Variant="@AvatarVariant(link)" Size="Size.Medium">
+                            @Initials(link)
+                        </MudAvatar>
+                        <div class="ft-list__main">
+                            <MudText Typo="Typo.body2" Class="text-truncate">@link.Name</MudText>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary text-truncate">@StateText(link)</MudText>
+                        </div>
+                        <div class="ft-sharing__actions">
+                            @* What's shared, joint accounts and ending the link are on their own page *@
+                            @if (link.State == LinkState.Linked)
+                            {
+                                <MudButton Href="@($"Sharing/{link.Id}")" Variant="Variant.Outlined"
+                                           Color="Color.Primary" Size="Size.Small"
+                                           StartIcon="@Icons.Material.Outlined.Tune">Open</MudButton>
+                            }
+                            else
+                            {
+                                <MudButton Variant="Variant.Text" Color="Color.Error" Size="Size.Small"
+                                           OnClick="@(() => EndAsync(link))">@EndText(link)</MudButton>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </Section>
+</div>
+
+@code {
+
+    /// <summary>
+    /// The user's links and invites, loaded once, see <see cref="PageComponent.LoadOnceAsync{T}"/>.
+    /// </summary>
+    [PersistentState]
+    public List<UserLink>? Links { get; set; }
+
+    private string? _who;
+    private string? _inviteError;
+
+    private List<UserLink> WaitingForYou =>
+        (Links ?? []).Where(static x => x.State == LinkState.InvitedYou).ToList();
+
+    /// <summary>
+    /// Everyone they're linked with, then the invites they've sent.
+    /// </summary>
+    private List<UserLink> Others => (Links ?? [])
+        .Where(static x => x.State != LinkState.InvitedYou)
+        .OrderBy(static x => x.State == LinkState.Invited)
+        .ThenBy(static x => x.Name)
+        .ToList();
+
+    private string PeopleCaption
+    {
+        get
+        {
+            int linked = (Links ?? []).Count(static x => x.State == LinkState.Linked);
+            if (linked == 1)
+            {
+                return "Linked with 1 person";
+            }
+
+            return $"Linked with {linked} people";
+        }
+    }
+
+    /// <summary>
+    /// Where the link stands and since when, beside their name.
+    /// </summary>
+    internal static string StateText(UserLink link)
+    {
+        string date = link.Since.ToLocalTime().ToString("d MMM yyyy", CultureInfo.CurrentCulture);
+        return link.State switch
+        {
+            LinkState.Linked => $"@{link.Username} · linked since {date} · {SharedSummary(link)}{JointSummary(link)}",
+            LinkState.Invited => $"@{link.Username} · invited {date}, waiting for them",
+            _ => $"@{link.Username} · invited you {date}"
+        };
+    }
+
+    /// <summary>
+    /// What's shared both ways in a link, e.g. <c>you share 3 accounts, they share 1</c>.
+    /// </summary>
+    internal static string SharedSummary(UserLink link)
+    {
+        if (link.AccountsYouShare == 0 && link.AccountsTheyShare == 0 && link.ItemsYouShare == 0 &&
+            link.ItemsTheyShare == 0)
+        {
+            return "nothing shared yet";
+        }
+
+        string yours = $"you share {AccountsText(link.AccountsYouShare)}{MoreText(link.ItemsYouShare)}";
+        return $"{yours}, they share {link.AccountsTheyShare}{MoreText(link.ItemsTheyShare)}";
+    }
+
+    /// <summary>
+    /// The other things shared besides accounts, after the accounts, e.g. <c> and 2 more</c>. Empty when there are
+    /// none.
+    /// </summary>
+    private static string MoreText(int items)
+    {
+        if (items == 0)
+        {
+            return string.Empty;
+        }
+
+        return $" and {items} more";
+    }
+
+    /// <summary>
+    /// Their joint accounts, after what's shared, e.g. <c> · a joint account to merge</c>. Empty when there are none.
+    /// </summary>
+    internal static string JointSummary(UserLink link)
+    {
+        if (link.JointSuggestions == 1)
+        {
+            return " · a joint account to merge";
+        }
+
+        if (link.JointSuggestions > 1)
+        {
+            return $" · {link.JointSuggestions} joint accounts to merge";
+        }
+
+        if (link.JointAccounts == 1)
+        {
+            return " · 1 joint account";
+        }
+
+        if (link.JointAccounts > 1)
+        {
+            return $" · {link.JointAccounts} joint accounts";
+        }
+
+        return string.Empty;
+    }
+
+    private static string AccountsText(int count)
+    {
+        if (count == 1)
+        {
+            return "1 account";
+        }
+
+        return $"{count} accounts";
+    }
+
+    /// <summary>
+    /// What ending it means from their side: withdrawing an invite they sent, or ending a link.
+    /// </summary>
+    internal static string EndText(UserLink link)
+    {
+        if (link.State == LinkState.Invited)
+        {
+            return "Withdraw";
+        }
+
+        return "End link";
+    }
+
+    /// <summary>
+    /// Why an invite didn't go, under the field.
+    /// </summary>
+    internal static string RefusalText(InviteRefusal refusal, string who) => refusal switch
+    {
+        InviteRefusal.NoSuchUser => $"No one here has the username or email {who}",
+        InviteRefusal.Yourself => "That's you",
+        InviteRefusal.AlreadyLinked => "You're already linked with them",
+        _ => "There's already an invite waiting between you"
+    };
+
+    // Filled once linked, outlined while an invite waits
+    private static Variant AvatarVariant(UserLink link) =>
+        link.State == LinkState.Linked ? Variant.Filled : Variant.Outlined;
+
+    private static string Initials(UserLink link) =>
+        string.Concat(link.Name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(static x => x[0]))
+            .ToUpperInvariant();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        Links = await LoadOnceAsync(Links, "Loading who you share with", LoadLinksAsync);
+    }
+
+    private Task<List<UserLink>> LoadLinksAsync(CancellationToken cancellationToken) =>
+        SharingService.GetLinksAsync(cancellationToken).ToListAsync(cancellationToken).AsTask();
+
+    private async Task OnInviteKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(_who))
+        {
+            await InviteAsync();
+        }
+    }
+
+    internal async Task InviteAsync()
+    {
+        string who = (_who ?? string.Empty).Trim();
+        _inviteError = null;
+        try
+        {
+            SetLoadingState(true, $"Inviting {who}…");
+            InviteOutcome outcome = await SharingService.InviteAsync(new InviteToShare { Who = who }, _cts.Token);
+            if (outcome.Refusal is { } refusal)
+            {
+                _inviteError = RefusalText(refusal, who);
+                return;
+            }
+
+            (Links ??= []).Add(outcome.Link!);
+            _who = null;
+            Snackbar.Add($"Invited {outcome.Link!.Name}, they'll see it next time they're in", Severity.Success);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't send the invite, try again", Severity.Error);
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
+    internal async Task AcceptAsync(UserLink link)
+    {
+        await AnswerAsync(link, SharingService.AcceptAsync, $"Linked with {link.Name}",
+            "Couldn't accept, try again");
+    }
+
+    internal async Task DeclineAsync(UserLink link)
+    {
+        await AnswerAsync(link, SharingService.DeclineAsync, $"Declined {link.Name}'s invite",
+            "Couldn't decline, try again");
+    }
+
+    internal async Task EndAsync(UserLink link)
+    {
+        bool? confirmed = await DialogService.ShowMessageBoxAsync(ConfirmTitle(link), ConfirmMessage(link),
+            yesText: EndText(link), cancelText: "Cancel");
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        await AnswerAsync(link, SharingService.EndAsync, EndedText(link), "Couldn't do that, try again");
+    }
+
+    private static string ConfirmTitle(UserLink link)
+    {
+        if (link.State == LinkState.Invited)
+        {
+            return $"Withdraw your invite to {link.Name}?";
+        }
+
+        return $"End your link with {link.Name}?";
+    }
+
+    private static string ConfirmMessage(UserLink link)
+    {
+        if (link.State == LinkState.Invited)
+        {
+            return "They won't be able to accept it. You can invite them again later.";
+        }
+
+        return "Anything you share stops being shared, both ways. You can invite each other again later.";
+    }
+
+    private static string EndedText(UserLink link)
+    {
+        if (link.State == LinkState.Invited)
+        {
+            return $"Invite to {link.Name} withdrawn";
+        }
+
+        return $"No longer linked with {link.Name}";
+    }
+
+    /// <summary>
+    /// Runs one of the link's actions, then reloads, as the other person may have changed it meanwhile.
+    /// </summary>
+    private async Task AnswerAsync(UserLink link, Func<Guid, CancellationToken, Task<bool>> action, string done,
+        string failed)
+    {
+        try
+        {
+            SetLoadingState(true, $"Updating your link with {link.Name}…");
+            bool found = await action(link.Id, _cts.Token);
+            Links = await LoadLinksAsync(_cts.Token);
+            if (found)
+            {
+                Snackbar.Add(done, Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add($"That's changed since you opened the page, {link.Name} may have answered", Severity.Info);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(failed, Severity.Error);
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
+}

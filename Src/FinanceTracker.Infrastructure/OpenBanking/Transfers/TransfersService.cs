@@ -5,8 +5,10 @@ using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.OpenBanking.Transfers;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
+using FinanceTracker.Infrastructure.Sharing;
 using FinanceTracker.Infrastructure.Transactions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Transaction = FinanceTracker.Contracts.Transactions.Transaction;
 
@@ -18,14 +20,19 @@ public class TransfersService : ServiceBase<TransfersService>, ITransfersService
 {
     private readonly ITransferMatchingService _transferMatchingService;
     private readonly TimeProvider _timeProvider;
+    private readonly IAccountScope _accountScope;
+    private readonly IServiceScopeFactory _scopeFactory;
 
     public TransfersService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<TransfersService> logger,
-        ITransferMatchingService transferMatchingService, TimeProvider timeProvider)
+        ITransferMatchingService transferMatchingService, TimeProvider timeProvider, IAccountScope accountScope,
+        IServiceScopeFactory scopeFactory)
         : base(currentUser, financeTrackerContextFactory, logger)
     {
         _transferMatchingService = transferMatchingService;
         _timeProvider = timeProvider;
+        _accountScope = accountScope;
+        _scopeFactory = scopeFactory;
     }
 
     public async IAsyncEnumerable<Transaction> GetTransfersToReviewAsync(
@@ -41,7 +48,10 @@ public class TransfersService : ServiceBase<TransfersService>, ITransfersService
             .OrderByDescending(static x => x.OccurredAt)
             .ToList();
 
-        TransactionMapper mapper = await LoadMapperAsync(context, toReview, cancellationToken);
+        // Every account shared with them, so another person's half shows when it's on one they can see
+        AccountsInView view = await _accountScope.ResolveAllAsync(context, cancellationToken);
+        TransactionMapper mapper = await TransactionMapper.LoadAsync(context, view, toReview,
+            _timeProvider.LocalTimeZone, cancellationToken);
 
         foreach (BankTransaction transaction in toReview)
         {
@@ -88,25 +98,31 @@ public class TransfersService : ServiceBase<TransfersService>, ITransfersService
 
     /// <summary>
     /// Applies the user's <paramref name="decide"/> to the transaction and the other half that names it back, then
-    /// re-matches around them so the pairs they affect update.
+    /// re-matches around them so the pairs they affect update. The transaction is the user's own, or on an account
+    /// shared with them with changes allowed.
     /// </summary>
     /// <param name="action">What the user decided, for the log, e.g. <c>marked as a transfer</c>.</param>
-    /// <returns>The transaction and its other halves before and after, as they are now.</returns>
+    /// <returns>The transaction and its other halves before and after, as they are now, those the user can see.
+    /// </returns>
     private async Task<IReadOnlyList<Transaction>> DecideAsync(Guid id, string action,
         Action<BankTransaction, BankTransaction?, DateTime> decide, CancellationToken cancellationToken)
     {
         HashSet<Guid> affected = [id];
+        Guid ownerId;
 
         await using (FinanceTrackerContext context =
                      await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken))
         {
-            BankTransaction transaction = await context.BankTransactions.OwnedBy(UserId)
+            AccountsInView changeable = await _accountScope.ResolveChangeableAsync(context, cancellationToken);
+            BankTransaction transaction = await context.BankTransactions.ChangeableIn(changeable)
                                               .SingleOrDefaultAsync(x => x.Id == id, cancellationToken)
                                           ?? throw new InvalidOperationException($"Transaction {id} was not found.");
+            ownerId = transaction.UserId;
 
+            // The other half may be on an account the user can't see, one the owner keeps private, or the other
+            // person's across a link. It's half of the same pair, so it's answered with it, checked below
             BankTransaction? partner = transaction.Transfer?.PartnerTransactionId is { } partnerId
-                ? await context.BankTransactions.OwnedBy(UserId)
-                    .SingleOrDefaultAsync(x => x.Id == partnerId, cancellationToken)
+                ? await context.BankTransactions.SingleOrDefaultAsync(x => x.Id == partnerId, cancellationToken)
                 : null;
 
             // Only a partner that names this one back is half of the same pair
@@ -125,13 +141,31 @@ public class TransfersService : ServiceBase<TransfersService>, ITransfersService
             Logger.LogChanged(UserId, action, "transaction", id);
         }
 
-        await _transferMatchingService.MatchAroundAsync(affected, cancellationToken);
+        await MatchAroundAsOwnerAsync(ownerId, affected, cancellationToken);
 
         return await LoadAffectedAsync(affected, cancellationToken);
     }
 
     /// <summary>
-    /// <paramref name="ids"/> and whatever they're paired with now, mapped.
+    /// Re-matches around <paramref name="affected"/> as <paramref name="ownerId"/>, whose transactions they are, so
+    /// it's among their accounts, the other person's included only on their side.
+    /// </summary>
+    private async Task MatchAroundAsOwnerAsync(Guid ownerId, HashSet<Guid> affected,
+        CancellationToken cancellationToken)
+    {
+        if (ownerId == UserId)
+        {
+            await _transferMatchingService.MatchAroundAsync(affected, cancellationToken);
+            return;
+        }
+
+        await using AsyncServiceScope scope = _scopeFactory.CreateUserScope(ownerId);
+        await scope.ServiceProvider.GetRequiredService<ITransferMatchingService>()
+            .MatchAroundAsync(affected, cancellationToken);
+    }
+
+    /// <summary>
+    /// <paramref name="ids"/> and whatever they're paired with now, mapped, those on accounts the user can see.
     /// </summary>
     private async Task<IReadOnlyList<Transaction>> LoadAffectedAsync(HashSet<Guid> ids,
         CancellationToken cancellationToken)
@@ -139,7 +173,8 @@ public class TransfersService : ServiceBase<TransfersService>, ITransfersService
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        List<BankTransaction> transactions = await context.BankTransactions.OwnedBy(UserId).AsNoTracking()
+        AccountsInView view = await _accountScope.ResolveAllAsync(context, cancellationToken);
+        List<BankTransaction> transactions = await context.BankTransactions.InView(view).AsNoTracking()
             .Where(x => ids.Contains(x.Id))
             .ToListAsync(cancellationToken);
 
@@ -151,23 +186,14 @@ public class TransfersService : ServiceBase<TransfersService>, ITransfersService
 
         if (partners.Count > 0)
         {
-            transactions.AddRange(await context.BankTransactions.OwnedBy(UserId)
+            transactions.AddRange(await context.BankTransactions.InView(view)
                 .AsNoTracking()
                 .Where(x => partners.Contains(x.Id))
                 .ToListAsync(cancellationToken));
         }
 
-        TransactionMapper mapper = await LoadMapperAsync(context, transactions, cancellationToken);
-        return transactions.Select(mapper.ToContract).ToList();
-    }
-
-    private async Task<TransactionMapper> LoadMapperAsync(FinanceTrackerContext context,
-        List<BankTransaction> transactions, CancellationToken cancellationToken)
-    {
-        Dictionary<Guid, string> customTags = await context.CustomClassifications.OwnedBy(UserId)
-            .ToDictionaryAsync(static x => x.Id, static x => x.Tag, cancellationToken);
-
-        return await TransactionMapper.LoadAsync(context, UserId, customTags, transactions,
+        TransactionMapper mapper = await TransactionMapper.LoadAsync(context, view, transactions,
             _timeProvider.LocalTimeZone, cancellationToken);
+        return transactions.Select(mapper.ToContract).ToList();
     }
 }

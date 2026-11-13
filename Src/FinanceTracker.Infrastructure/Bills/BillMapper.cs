@@ -24,8 +24,10 @@ internal static class BillMapper
 {
     /// <param name="payments">The transactions paying the bill, for its latest payment.</param>
     /// <param name="today">Today where the user is, for the next due date and monthly cost.</param>
+    /// <param name="sharedBy">Whoever shares it with the user, null when it's theirs.</param>
+    /// <param name="canChange">Whether the user can edit it.</param>
     public static Bill ToContract(DomainBill bill, string accountName, IEnumerable<BankTransaction> payments,
-        TimeZoneInfo timeZone, DateOnly today)
+        TimeZoneInfo timeZone, DateOnly today, string? sharedBy = null, bool canChange = true)
     {
         BankTransaction? latest = payments
             .Where(x => x.PaysBill(bill.Id))
@@ -50,7 +52,9 @@ internal static class BillMapper
             LastPaid = latest is null ? null : -latest.Amount,
             LastPaidOn = latest is null ? null : latest.OccurredAt.LocalDayIn(timeZone),
             FollowsTheBank = bill.Source == DomainBillSource.StandingOrder,
-            CanDelete = bill.SourceId is null
+            CanDelete = bill.SourceId is null && sharedBy is null,
+            SharedBy = sharedBy,
+            CanChange = canChange
         };
     }
 

@@ -115,4 +115,18 @@ public class Bill
     /// </summary>
     [Description("Whether the bill can be deleted rather than only ended")]
     public bool CanDelete { get; init; }
+
+    /// <summary>
+    /// The first and last name of whoever shares it with the user, null when it's their own. Shared because it's paid
+    /// from an account they share, or because they chose to share it.
+    /// </summary>
+    [Description("Who shares the bill with the user, empty when it's their own")]
+    public string? SharedBy { get; init; }
+
+    /// <summary>
+    /// Whether the user can edit, end and reopen it: their own, or shared with them with changes allowed. Only its owner
+    /// deletes it.
+    /// </summary>
+    [Description("Whether the user can edit the bill")]
+    public bool CanChange { get; init; } = true;
 }

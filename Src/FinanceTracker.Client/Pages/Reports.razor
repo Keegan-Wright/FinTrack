@@ -27,6 +27,7 @@
 <PageTitle>FinTrack - Reports</PageTitle>
 <PageHeader Title="Reports" Subtitle="Where your money came from and where it went">
     <Actions>
+        <SharingViewSwitch/>
         <MudToggleGroup T="ReportBreakdown" Value="@_breakdown" ValueChanged="@OnBreakdownChanged"
                         Size="Size.Small" Color="Color.Primary">
             <MudToggleItem Value="ReportBreakdown.OverTime" Text="Over time"/>

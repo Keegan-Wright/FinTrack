@@ -1,3 +1,4 @@
+using FinanceTracker.Infrastructure.Sharing;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Transactions;
 using FinanceTracker.Domain.Bills;
@@ -988,7 +989,7 @@ public class TransactionsServiceTests : InfrastructureTestBase
         await LinkAsync(context, "streaming", x => x.DecideBillPayment(
             BillPayment.Matched(Scenario.BillMappings["streaming"], day)));
         Debt loan = await context.Debts.SingleAsync(CancellationToken);
-        await LinkAsync(context, "car", x => x.PayDebt(loan, day));
+        await LinkAsync(context, "car", x => x.PayDebt(loan, x.UserId, day));
         await context.SaveChangesAsync(CancellationToken);
         return Scenario;
     }
@@ -1014,5 +1015,5 @@ public class TransactionsServiceTests : InfrastructureTestBase
         subject.GetAllTransactionsAsync(filter, CancellationToken).ToListAsync(CancellationToken).AsTask();
 
     private TransactionsService BuildSubject() => new(CurrentUserFor(Username), DbContextFactory,
-        NullLogger<TransactionsService>.Instance, TimeProvider.System);
+        NullLogger<TransactionsService>.Instance, TimeProvider.System, new AccountScope(CurrentUserFor(Username)));
 }

@@ -1,3 +1,4 @@
+using FinanceTracker.Infrastructure.Sharing;
 using FinanceTracker.Contracts.Account;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Domain.OpenBanking.Accounts;
@@ -216,5 +217,6 @@ public class AccountServiceTests : InfrastructureTestBase
         await Assert.That(accounts.Count).IsEqualTo(0);
     }
 
-    private AccountService BuildSubject(string username) => new(CurrentUserFor(username), DbContextFactory, NullLogger<AccountService>.Instance);
+    private AccountService BuildSubject(string username) => new(CurrentUserFor(username), DbContextFactory,
+        NullLogger<AccountService>.Instance, new AccountScope(CurrentUserFor(username)));
 }

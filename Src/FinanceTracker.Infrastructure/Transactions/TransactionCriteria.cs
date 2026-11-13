@@ -2,6 +2,7 @@ using FinanceTracker.Contracts.Transactions;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.SavingsGoals;
 using FinanceTracker.Infrastructure.Persistence;
+using FinanceTracker.Infrastructure.Sharing;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.Infrastructure.Transactions;
@@ -53,12 +54,15 @@ internal sealed record TransactionCriteria(
         return this with { _savingsGoals = goals, _timeZone = timeZone };
     }
 
+    /// <param name="view">What the user sees, so choosing a joint account takes in the hidden copy's transactions
+    /// that fill in for it.</param>
     public IQueryable<BankTransaction> ApplyServerFilters(IQueryable<BankTransaction> query,
-        FinanceTrackerContext context)
+        FinanceTrackerContext context, AccountsInView view)
     {
-        if (AccountIds is { Count: > 0 })
+        ArgumentNullException.ThrowIfNull(view);
+        if (view.WithFillingCopies(AccountIds) is { Count: > 0 } accountIds)
         {
-            query = query.Where(x => AccountIds.Contains(x.AccountId));
+            query = query.Where(x => accountIds.Contains(x.AccountId));
         }
 
         if (BillIds is { Count: > 0 })
@@ -73,10 +77,15 @@ internal sealed record TransactionCriteria(
                                      DebtIds.Contains(x.DebtPayment.DebtId.Value));
         }
 
+        // A hidden copy filling a gap is at its shown copy's bank, as far as the user's concerned
         if (ProviderIds is { Count: > 0 })
         {
+            IReadOnlyList<Guid> filling = view.FillingAccountIds;
             query = query.Where(x =>
-                context.BankAccounts.Any(a => a.Id == x.AccountId && ProviderIds.Contains(a.ConnectionId)));
+                context.BankAccounts.Any(a => a.Id == x.AccountId && ProviderIds.Contains(a.ConnectionId)) ||
+                (filling.Contains(x.AccountId) && context.JointAccounts.Any(j =>
+                    j.HiddenAccountId == x.AccountId &&
+                    context.BankAccounts.Any(a => a.Id == j.ShownAccountId && ProviderIds.Contains(a.ConnectionId)))));
         }
 
         // exact range is filtered once decrypted
@@ -86,7 +95,10 @@ internal sealed record TransactionCriteria(
     /// <summary>
     /// Filters on encrypted columns, which can only be compared once decrypted.
     /// </summary>
-    public bool MatchesClientFilters(BankTransaction transaction, IReadOnlyDictionary<Guid, string> customTags)
+    /// <param name="view">What the user sees, so a search only finds a description they'd be shown, see
+    /// <see cref="PrivateTransfers"/>.</param>
+    public bool MatchesClientFilters(BankTransaction transaction, IReadOnlyDictionary<Guid, string> customTags,
+        AccountsInView view)
     {
         if (Types is { Count: > 0 } &&
             !Types.Any(x => Enum.TryParse(x, true, out TransactionType type) && type == transaction.Type))
@@ -100,7 +112,7 @@ internal sealed record TransactionCriteria(
         }
 
         if (SearchTerm is not null &&
-            !transaction.Description.Contains(SearchTerm, StringComparison.CurrentCultureIgnoreCase))
+            !view.DescriptionOf(transaction).Contains(SearchTerm, StringComparison.CurrentCultureIgnoreCase))
         {
             return false;
         }

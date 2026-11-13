@@ -38,23 +38,51 @@ public static class BillText
         $"{bill.AccountName} · {FrequencyName(bill.Frequency)} · {SourceName(bill.Source)}";
 
     /// <summary>
-    /// Who said a transaction pays its bill, e.g. <c>Matched by FinTrack</c> or <c>By your rule Rent</c>.
+    /// Who said a transaction pays its bill, e.g. <c>Matched by FinTrack</c> or <c>By your rule Rent</c>, or
+    /// <c>By Jane Doe's rule Rent</c> for another person's bill.
     /// </summary>
-    public static string Reason(TransactionBill bill) => bill.DecidedBy switch
+    public static string Reason(TransactionBill bill)
     {
-        TransferDecidedBy.User => "Chosen by you",
-        TransferDecidedBy.Rule => $"By your rule {bill.RuleName}",
-        _ => "Matched by FinTrack"
-    };
+        ArgumentNullException.ThrowIfNull(bill);
+        return bill.DecidedBy switch
+        {
+            TransferDecidedBy.User => $"Chosen by {Who(bill.OwnerName)}",
+            TransferDecidedBy.Rule => $"By {Whose(bill.OwnerName)} rule {bill.RuleName}",
+            _ => "Matched by FinTrack"
+        };
+    }
+
+    /// <summary>
+    /// <c>you</c>, or the other person's name when it's theirs.
+    /// </summary>
+    internal static string Who(string? ownerName) => ownerName ?? "you";
+
+    /// <summary>
+    /// <c>your</c>, or <c>Jane Doe's</c> when it's theirs.
+    /// </summary>
+    internal static string Whose(string? ownerName)
+    {
+        if (ownerName is null)
+        {
+            return "your";
+        }
+
+        return $"{ownerName}'s";
+    }
 
     /// <summary>
     /// How a bill reads where one is picked, telling apart bills with the same name, e.g.
-    /// <c>Phone · Joint · £12.00 monthly</c>, or <c>… · ended</c> once it has.
+    /// <c>Phone · Joint · £12.00 monthly</c>, with whose it is when someone else's, and <c>… · ended</c> once it has.
     /// </summary>
     public static string PickerLabel(Bill bill)
     {
         string label = $"{bill.Name} · {bill.AccountName} · {CurrencyFormatter.Format(bill.ExpectedAmount)} " +
                        FrequencyName(bill.Frequency).ToLowerInvariant();
+        if (bill.SharedBy is { } sharedBy)
+        {
+            label = $"{label} · {sharedBy}'s";
+        }
+
         if (bill.EndedOn is not null)
         {
             return $"{label} · ended";
@@ -149,4 +177,17 @@ public static class BillText
     /// </summary>
     public static string PaidOfDue(BillMonthOverview overview) =>
         $"{CurrencyFormatter.Format(overview.Paid)} of {CurrencyFormatter.Format(overview.Due)} paid";
+
+    /// <summary>
+    /// Whose a shared bill is and what the user can do, e.g. <c>Jane Doe's · you can change it</c>.
+    /// </summary>
+    public static string SharedText(string sharedBy, bool canChange)
+    {
+        if (canChange)
+        {
+            return $"{sharedBy}'s · you can change it";
+        }
+
+        return $"{sharedBy}'s · you can see it";
+    }
 }

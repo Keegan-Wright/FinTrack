@@ -141,13 +141,36 @@ public class RuleEvaluatorTests
     }
 
     [Test]
-    public void Evaluate_AnotherUsersRule_Throws()
+    public async Task Evaluate_SomeoneElsesRulesToo_TheOwnersRunFirst()
     {
+        // Theirs comes first in their own order, but the owner's answer wins
         Rule theirs = new(Guid.NewGuid(), "Theirs", 0, RuleMatchMode.All, [DescriptionContains("GROCER")],
             [RuleAction.MarkAsTransfer()]);
+        Rule owners = Rule("Owner's", 7, DescriptionContains("GROCER"), RuleAction.MarkNotATransfer());
 
-        Assert.Throws<InvalidOperationException>(() =>
-            RuleEvaluator.Evaluate([theirs], Transaction("GROCER STORE 123")));
+        RuleOutcome outcome = RuleEvaluator.Evaluate([theirs, owners], Transaction("GROCER STORE 123"));
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(outcome.Transfer).IsEqualTo(new RuleTransfer(TransferDecision.NotATransfer, owners.Id));
+            await Assert.That(outcome.MatchedRuleIds).IsEquivalentTo([owners.Id, theirs.Id],
+                TUnit.Assertions.Enums.CollectionOrdering.Matching);
+        }
+    }
+
+    [Test]
+    public async Task Evaluate_TheOwnersRuleStopsProcessing_SomeoneElsesStillRun()
+    {
+        CustomClassification theirTag = new(Guid.NewGuid(), "Theirs");
+        Rule owners = Rule("Owner's", 0, DescriptionContains("GROCER"), RuleAction.MarkAsTransfer());
+        owners.StopProcessingAfterMatch(true);
+        Rule ownersLater = Rule("Owner's later", 1, DescriptionContains("GROCER"), RuleAction.AddTag(Tag("Food")));
+        Rule theirs = new(theirTag.UserId, "Theirs", 0, RuleMatchMode.All, [DescriptionContains("GROCER")],
+            [RuleAction.AddTag(theirTag)]);
+
+        RuleOutcome outcome = RuleEvaluator.Evaluate([owners, ownersLater, theirs], Transaction("GROCER STORE 123"));
+
+        await Assert.That(outcome.MatchedRuleIds).IsEquivalentTo([owners.Id, theirs.Id]);
     }
 
     [Test]

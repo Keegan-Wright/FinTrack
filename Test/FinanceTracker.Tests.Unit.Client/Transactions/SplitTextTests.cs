@@ -1,4 +1,5 @@
 using FinanceTracker.Client.Components.Transactions;
+using FinanceTracker.Contracts.Classifications;
 using FinanceTracker.Contracts.Transactions;
 
 namespace FinanceTracker.Tests.Unit.Client.Transactions;
@@ -117,5 +118,27 @@ public class SplitTextTests
 
         // Act & Assert
         await Assert.That(SplitText.Summary(transaction)).IsEqualTo("Split into £60.00 Groceries, £40.00 untagged");
+    }
+
+    [Test]
+    public async Task TagChoices_AddsTagsAlreadyOnItsPartsOnce_TheOtherPersonsOnASharedOne()
+    {
+        // Arrange
+        Classification groceries = new() { ClassificationId = Guid.NewGuid(), Tag = "Groceries" };
+        Guid theirs = Guid.NewGuid();
+        Transaction transaction = TransactionListTests.Transaction("Supermarket", -100m, sharedBy: "Sam Taylor",
+            splits:
+            [
+                new TransactionSplitPart { Amount = -50m, TagId = groceries.ClassificationId, Tag = "Groceries" },
+                new TransactionSplitPart { Amount = -30m, TagId = theirs, Tag = "Household" },
+                new TransactionSplitPart { Amount = -20m }
+            ]);
+
+        // Act
+        List<Classification> choices = SplitText.TagChoices([groceries], transaction);
+
+        // Assert
+        await Assert.That(choices.Select(static x => (x.ClassificationId, x.Tag ?? string.Empty)))
+            .IsEquivalentTo([(groceries.ClassificationId, "Groceries"), (theirs, "Household")]);
     }
 }

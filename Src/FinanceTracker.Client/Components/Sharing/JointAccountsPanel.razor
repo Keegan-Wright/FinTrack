@@ -1,0 +1,102 @@
+@* The joint accounts the user and the other person in a link both connected. Those that could be merged so they're
+   counted once, and those merged, which can be split again. Each is done straight away. *@
+@using FinanceTracker.Contracts.Sharing
+
+<div class="ft-joint">
+    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+        When you've both connected the same account, merge it so it's counted once. You'll both see and tag the copy
+        connected first, and the other keeps syncing in the background.
+    </MudText>
+
+    @if (Disabled)
+    {
+        <MudAlert Severity="Severity.Info" Dense="true">Save or discard your changes first.</MudAlert>
+    }
+
+    @if (Shares.JointSuggestions.Count > 0)
+    {
+        <div>
+            <div class="ft-joint__heading">
+                <MudText Typo="Typo.subtitle2">Could be merged</MudText>
+                @if (Shares.JointSuggestions.Count > 1)
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                               Disabled="@(Disabled || Busy)"
+                               OnClick="@(() => OnMerge.InvokeAsync(Shares.JointSuggestions))">Merge all</MudButton>
+                }
+            </div>
+            <div class="ft-list">
+                @foreach (JointAccountSuggestion suggestion in Shares.JointSuggestions)
+                {
+                    <div class="ft-list__row ft-joint__row">
+                        <div class="ft-list__main">
+                            <MudText Typo="Typo.body2" Class="text-truncate">@suggestion.YourAccountName</MudText>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary text-truncate">
+                                @SharingText.SuggestionText(suggestion)
+                            </MudText>
+                        </div>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                                   Disabled="@(Disabled || Busy)"
+                                   OnClick="@(() => OnMerge.InvokeAsync([suggestion]))">Merge</MudButton>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    @if (Shares.JointAccounts.Count > 0)
+    {
+        <div>
+            <MudText Typo="Typo.subtitle2">Merged</MudText>
+            <div class="ft-list">
+                @foreach (MergedJointAccount joint in Shares.JointAccounts)
+                {
+                    <div class="ft-list__row ft-joint__row">
+                        <div class="ft-list__main">
+                            <MudText Typo="Typo.body2" Class="text-truncate">@joint.Name</MudText>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary text-truncate">
+                                @SharingText.MergedText(joint, Shares.Name)
+                            </MudText>
+                        </div>
+                        <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                                   Disabled="@(Disabled || Busy)"
+                                   OnClick="@(() => OnSplit.InvokeAsync(joint))">Split</MudButton>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    @if (Shares.JointSuggestions.Count == 0 && Shares.JointAccounts.Count == 0)
+    {
+        <MudText Typo="Typo.body2">
+            Nothing to merge. An account you've both connected shows here once one of you shares it.
+        </MudText>
+    }
+</div>
+
+@code {
+
+    [Parameter] [EditorRequired] public required LinkShares Shares { get; set; }
+
+    /// <summary>
+    /// Whether merging and splitting wait, as there are choices not yet saved.
+    /// </summary>
+    [Parameter] public bool Disabled { get; set; }
+
+    /// <summary>
+    /// Whether a merge or split is under way.
+    /// </summary>
+    [Parameter] public bool Busy { get; set; }
+
+    /// <summary>
+    /// Suggestions to merge, one or all of them.
+    /// </summary>
+    [Parameter] public EventCallback<IReadOnlyList<JointAccountSuggestion>> OnMerge { get; set; }
+
+    /// <summary>
+    /// A merged account to split.
+    /// </summary>
+    [Parameter] public EventCallback<MergedJointAccount> OnSplit { get; set; }
+
+}

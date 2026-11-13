@@ -1,4 +1,5 @@
 using FinanceTracker.Client.Components.Common;
+using FinanceTracker.Contracts.Classifications;
 using FinanceTracker.Contracts.Transactions;
 
 namespace FinanceTracker.Client.Components.Transactions;
@@ -105,6 +106,29 @@ public static class SplitText
     /// <summary>
     /// e.g. <c>£60.00 Groceries</c>, or <c>£10.00 untagged</c>.
     /// </summary>
+    /// <summary>
+    /// The tags a part can have: the user's own, and those already on <paramref name="transaction"/>'s parts, which on
+    /// a shared one may be the other person's.
+    /// </summary>
+    public static List<Classification> TagChoices(IReadOnlyList<Classification> own, Transaction transaction)
+    {
+        ArgumentNullException.ThrowIfNull(own);
+        ArgumentNullException.ThrowIfNull(transaction);
+
+        List<Classification> choices = own.ToList();
+        foreach (TransactionSplitPart part in transaction.Splits)
+        {
+            if (part is not { TagId: { } tagId, Tag: { } tag } || choices.Exists(x => x.ClassificationId == tagId))
+            {
+                continue;
+            }
+
+            choices.Add(new Classification { ClassificationId = tagId, Tag = tag });
+        }
+
+        return choices;
+    }
+
     public static string PartText(TransactionSplitPart part) =>
         $"{CurrencyFormatter.Format(Math.Abs(part.Amount))} {part.Tag ?? "untagged"}";
 

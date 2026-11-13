@@ -88,20 +88,30 @@ public sealed class BackupWriter
             _transactionsService.GetAllTransactionsAsync(new FilterTransactions(), cancellationToken),
             cancellationToken);
         files["transactions.csv"] = await WriteTransactionsCsvAsync(zip, cancellationToken);
+        // Their own, not those someone else shares with them
         files["bills.json"] = await WriteListAsync(zip, "bills.json",
-            _billsService.GetBillsAsync(cancellationToken), cancellationToken);
+            _billsService.GetBillsAsync(cancellationToken).Where(static x => x.SharedBy is null),
+            cancellationToken);
         files["budgets.json"] = await WriteListAsync(zip, "budgets.json",
-            _budgetsService.GetBudgetsAsync(cancellationToken), cancellationToken);
+            _budgetsService.GetBudgetsAsync(cancellationToken).Where(static x => x.SharedBy is null),
+            cancellationToken);
+        // Their own, not those someone else shares with them
         files["debts.json"] = await WriteListAsync(zip, "debts.json",
-            _debtsService.GetDebtsAsync(cancellationToken), cancellationToken);
+            _debtsService.GetDebtsAsync(cancellationToken).Where(static x => x.SharedBy is null),
+            cancellationToken);
         files["savings-goals.json"] = await WriteListAsync(zip, "savings-goals.json",
-            _savingsGoalsService.GetSavingsGoalsAsync(cancellationToken), cancellationToken);
+            _savingsGoalsService.GetSavingsGoalsAsync(cancellationToken).Where(static x => x.SharedBy is null),
+            cancellationToken);
+        // Their own, not those someone else shares with them
         files["rules.json"] = await WriteListAsync(zip, "rules.json",
-            _rulesService.GetRulesAsync(cancellationToken), cancellationToken);
+            _rulesService.GetRulesAsync(cancellationToken).Where(static x => x.SharedBy is null), cancellationToken);
+        // Their own, not those someone else shares with them
         files["tags.json"] = await WriteListAsync(zip, "tags.json",
-            _classificationService.GetAllCustomClassificationsAsync(cancellationToken), cancellationToken);
+            _classificationService.GetAllCustomClassificationsAsync(cancellationToken)
+                .Where(static x => x.SharedBy is null), cancellationToken);
         files["calendar-events.json"] = await WriteListAsync(zip, "calendar-events.json",
-            _calendarService.GetEventsAsync(cancellationToken), cancellationToken);
+            _calendarService.GetEventsAsync(cancellationToken).Where(static x => x.SharedBy is null),
+            cancellationToken);
         files["household.json"] = await WriteListAsync(zip, "household.json",
             _householdMemberService.GetHouseholdMembersAsync(cancellationToken), cancellationToken);
         files["pay.json"] = await WriteOneAsync(zip, "pay.json",

@@ -31,8 +31,14 @@
                           HelperText="What you put towards it each month, to see if you're on track"
                           Validation="@(Validator.ValidateValue(_model, nameof(SaveSavingsGoal.MonthlyContribution)))"/>
 
+            @if (TrackingLocked)
+            {
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                    Only @Goal!.SharedBy can change what it tracks.
+                </MudText>
+            }
             <MudSelect T="SavingsGoalSource" Label="What's saved comes from" @bind-Value="_model.Source"
-                       For="@(() => _model.Source)" ToStringFunc="@(static x => SavingsGoalText.SourceName(x))">
+                       Disabled="@TrackingLocked" For="@(() => _model.Source)" ToStringFunc="@(static x => SavingsGoalText.SourceName(x))">
                 @foreach (SavingsGoalSource source in Enum.GetValues<SavingsGoalSource>())
                 {
                     <MudSelectItem T="SavingsGoalSource" Value="@source">
@@ -45,6 +51,7 @@
             {
                 case SavingsGoalSource.Account:
                     <MudSelect T="Guid?" Label="Account" @bind-Value="_model.AccountId" For="@(() => _model.AccountId)"
+                               Disabled="@TrackingLocked"
                                ToStringFunc="@AccountName"
                                Validation="@(Validator.ValidateValue(_model, nameof(SaveSavingsGoal.AccountId)))"
                                HelperText="Its balance is what's saved. Each account backs one goal">
@@ -62,8 +69,9 @@
                     break;
                 case SavingsGoalSource.Tags:
                     <MudSelect T="Guid" Label="Tags" MultiSelection="true" @bind-SelectedValues="_tagIds"
+                               Disabled="@TrackingLocked"
                                MultiSelectionTextFunc="@TagsText"
-                               HelperText="Money in with any of these adds to it, money out takes from it">
+                               HelperText="@TagsHelperText(_model.Direction)">
                         @foreach ((Guid tagId, string tagName) in TagNames.OrderBy(static x => x.Value))
                         {
                             <MudSelectItem T="Guid" Value="@tagId">@tagName</MudSelectItem>
@@ -73,10 +81,19 @@
                     {
                         <MudText Typo="Typo.caption" Color="Color.Error">@error</MudText>
                     }
+                    <MudSelect T="SavingsDirection" @bind-Value="_model.Direction" Label="Where's the money saved?"
+                               Disabled="@TrackingLocked"
+                               For="@(() => _model.Direction)"
+                               ToStringFunc="@(static x => SavingsGoalText.DirectionName(x))">
+                        @foreach (SavingsDirection direction in Enum.GetValues<SavingsDirection>())
+                        {
+                            <MudSelectItem T="SavingsDirection" Value="@direction">@SavingsGoalText.DirectionName(direction)</MudSelectItem>
+                        }
+                    </MudSelect>
                     <div class="ft-goal-form__pair">
-                        <MudDatePicker @bind-Date="_trackedFrom" Label="Counting from"
+                        <MudDatePicker @bind-Date="_trackedFrom" Label="Counting from" Disabled="@TrackingLocked"
                                        HelperText="Tagged transactions from this day count"/>
-                        <MudTextField T="decimal" @bind-Value="_model.Saved" Label="Saved before then"
+                        <MudTextField T="decimal" @bind-Value="_model.Saved" Label="Saved before then" Disabled="@TrackingLocked"
                                       For="@(() => _model.Saved)" InputMode="@(InputMode.@decimal)"
                                       Adornment="Adornment.Start" AdornmentText="@CurrencySymbol" Immediate="true"
                                       Validation="@(Validator.ValidateValue(_model, nameof(SaveSavingsGoal.Saved)))"/>
@@ -104,6 +121,11 @@
     /// The goal to change, null for a new one.
     /// </summary>
     [Parameter] public SavingsGoal? Goal { get; set; }
+
+    /// <summary>
+    /// Someone else's goal keeps tracking what its owner chose.
+    /// </summary>
+    private bool TrackingLocked => Goal?.SharedBy is not null;
 
     /// <summary>
     /// The user's accounts that could back a goal.
@@ -146,10 +168,24 @@
             Source = Goal.Source,
             Saved = Goal.StartingAmount,
             AccountId = Goal.AccountId,
-            TagIds = tagIds
+            TagIds = tagIds,
+            Direction = Goal.Direction
         };
         _tagIds = tagIds;
         _trackedFrom = Goal.TrackedFrom?.ToDateTime(TimeOnly.MinValue) ?? DateTime.Today;
+    }
+
+    /// <summary>
+    /// What the tags do to the goal, which way round depending on where the money's saved.
+    /// </summary>
+    internal static string TagsHelperText(SavingsDirection direction)
+    {
+        if (direction == SavingsDirection.MoneyOut)
+        {
+            return "Money out with any of these adds to it, money back in takes from it";
+        }
+
+        return "Money in with any of these adds to it, money out takes from it";
     }
 
     private string? AccountName(Guid? accountId) =>

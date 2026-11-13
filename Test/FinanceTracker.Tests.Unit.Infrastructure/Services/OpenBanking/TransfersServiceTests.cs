@@ -4,10 +4,12 @@ using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.OpenBanking.Transfers;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.OpenBanking.Transfers;
+using FinanceTracker.Infrastructure.Sharing;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Fakers;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Transaction = FinanceTracker.Contracts.Transactions.Transaction;
 
@@ -204,5 +206,6 @@ public class TransfersServiceTests : InfrastructureTestBase
         new(CurrentUserFor(username), DbContextFactory, NullLogger<TransfersService>.Instance,
             new TransferMatchingService(CurrentUserFor(username), DbContextFactory,
                 NullLogger<TransferMatchingService>.Instance, TimeProvider.System, TestMetrics.Unobserved),
-            TimeProvider.System);
+            TimeProvider.System, new AccountScope(CurrentUserFor(username)),
+            new ServiceCollection().BuildServiceProvider().GetRequiredService<IServiceScopeFactory>());
 }

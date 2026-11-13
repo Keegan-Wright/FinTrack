@@ -48,4 +48,10 @@ public class CalendarEventItem
     /// </summary>
     [Description("What's saved in the savings goal")]
     public decimal? Saved { get; init; }
+
+    /// <summary>
+    /// The first and last name of whoever shares it with the user, null when it's their own.
+    /// </summary>
+    [Description("Who shares the event with the user, empty when it's their own")]
+    public string? SharedBy { get; init; }
 }

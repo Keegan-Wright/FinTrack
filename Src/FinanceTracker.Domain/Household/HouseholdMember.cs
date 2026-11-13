@@ -36,6 +36,13 @@ public sealed class HouseholdMember : AggregateRoot
     public decimal? YearlyIncome { get; private set; }
 
     /// <summary>
+    /// The FinTrack user the member is, once the owner links them, someone they're linked with. Linking gives the
+    /// member that user's name at the time, which the owner can still change. Their income stays the owner's to give.
+    /// Null for a member who isn't a user.
+    /// </summary>
+    public Guid? LinkedUserId { get; private set; }
+
+    /// <summary>
     /// The member's own accounts, which aren't connected to the app. Money to or from them is a household transfer.
     /// </summary>
     public IReadOnlyList<AccountIdentifier> LinkedAccounts => _linkedAccounts.AsReadOnly();
@@ -54,6 +61,27 @@ public sealed class HouseholdMember : AggregateRoot
         FirstName = firstName;
         LastName = lastName;
     }
+
+    /// <summary>
+    /// The member is <paramref name="userId"/>, taking their name.
+    /// </summary>
+    /// <exception cref="ArgumentException">It's the member's owner, who can't be in their own household.</exception>
+    public void LinkToUser(Guid userId, string firstName, string lastName)
+    {
+        ArgumentOutOfRangeException.ThrowIfEqual(userId, Guid.Empty);
+        if (userId == UserId)
+        {
+            throw new ArgumentException("A household member can't be its owner.", nameof(userId));
+        }
+
+        Rename(firstName, lastName);
+        LinkedUserId = userId;
+    }
+
+    /// <summary>
+    /// The member is no longer known to be a user, keeping the name they had.
+    /// </summary>
+    public void UnlinkUser() => LinkedUserId = null;
 
     public void ChangeYearlyIncome(decimal? yearlyIncome)
     {
@@ -121,15 +149,19 @@ public sealed class HouseholdMember : AggregateRoot
 
     /// <summary>
     /// Whether a transaction is money to or from this member, its reference names one of their linked accounts or
-    /// its description starts with one of their payee names.
+    /// one of <paramref name="theirOwnAccounts"/>, or its description starts with one of their payee names.
     /// </summary>
+    /// <param name="theirOwnAccounts">For a member who's a user, see <see cref="LinkedUserId"/>, the accounts they've
+    /// connected themselves, so money to or from any of them is recognised without the owner adding them.</param>
     /// <remarks>
     /// Starts with rather than equals, as banks add to the name, e.g. <c>J SMITH 01JAN26</c>, and ignoring
     /// case as banks often use capitals. The name has to end at a word boundary, so <c>J Smith</c> doesn't recognise
     /// <c>J SMITHSON LTD</c>.
     /// </remarks>
-    public bool Recognises(string? description, string? reference) =>
+    public bool Recognises(string? description, string? reference,
+        IReadOnlyCollection<AccountIdentifier>? theirOwnAccounts = null) =>
         _linkedAccounts.Any(x => x.IsNamedIn(reference)) ||
+        (theirOwnAccounts ?? []).Any(x => x.IsNamedIn(reference)) ||
         _payeeNames.Any(x => StartsWithName(description, x));
 
     private static bool StartsWithName(string? description, string payeeName)

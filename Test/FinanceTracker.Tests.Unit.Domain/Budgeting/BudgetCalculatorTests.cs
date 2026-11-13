@@ -333,7 +333,7 @@ public class BudgetCalculatorTests
     {
         BankTransaction transaction = Tagged(parts.Sum(static x => x.Amount), occurredAt);
         transaction.Split(parts.Select(static x => new TransactionSplit(x.Amount, x.Tag?.Id, null)).ToList(),
-            parts.Select(static x => x.Tag).OfType<CustomClassification>().ToList());
+            parts.Select(static x => x.Tag).OfType<CustomClassification>().ToList(), transaction.UserId);
 
         return transaction;
     }

@@ -10,6 +10,9 @@ namespace FinanceTracker.Tests.Unit.Domain.OpenBanking.Transfers;
 public class TransferMatcherTests
 {
     private static readonly Guid UserId = Guid.NewGuid();
+
+    // Someone the user is linked with
+    private static readonly Guid Partner = Guid.NewGuid();
     private static readonly DateTime Monday = new(2026, 10, 19, 9, 0, 0, DateTimeKind.Utc);
     private static readonly DateTime DecidedAt = new(2026, 10, 27, 12, 0, 0, DateTimeKind.Utc);
 
@@ -449,12 +452,153 @@ public class TransferMatcherTests
             TransferInfo.ToReview(TransferReason.MirrorPair, moneyIn.Id, _current.Id, DecidedAt));
     }
 
+    [Test]
+    public async Task Match_IntoAnotherPersonsAccountTheyShare_PairsAcrossTheLink()
+    {
+        // Paying into a partner's joint account they share
+        BankAccount theirJoint = Account("Their joint", "555555", "55555555", Partner);
+        BankTransaction outgoing = Transaction(_current, -50m, Monday, labelled: true);
+        BankTransaction incoming = Transaction(theirJoint, 50m, Monday);
+
+        TransferMatcher.Match([_current, theirJoint], [], [outgoing, incoming], DecidedAt,
+            new TransferPairing([(theirJoint.Id, UserId)]));
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(outgoing.Transfer).IsEqualTo(
+                TransferInfo.Matched(TransferReason.MirrorPair, incoming.Id, theirJoint.Id, DecidedAt));
+            await Assert.That(incoming.Transfer).IsEqualTo(
+                TransferInfo.Matched(TransferReason.MirrorPair, outgoing.Id, _current.Id, DecidedAt));
+        }
+    }
+
+    [Test]
+    public async Task Match_ReferenceNamesAnotherPersonsSharedAccount_IsATransferToIt()
+    {
+        BankAccount theirJoint = Account("Their joint", "555555", "55555555", Partner);
+        BankTransaction outgoing = Transaction(_current, -50m, Monday, reference: "555555 55555555");
+
+        TransferMatcher.Match([_current, theirJoint], [], [outgoing], DecidedAt,
+            new TransferPairing([(theirJoint.Id, UserId)]));
+
+        await Assert.That(outgoing.Transfer).IsEqualTo(
+            TransferInfo.Matched(TransferReason.OwnAccountReference, null, theirJoint.Id, DecidedAt));
+    }
+
+    [Test]
+    public async Task Match_TheirCopyOfTheSameTransfer_DoesntTieWithTheUsersOwn()
+    {
+        // Both connected a joint account and its pot, each copy has the same move into the pot. The user's own pair
+        // comes first rather than all four going to review as a tie
+        BankAccount theirJoint = Account("Their joint", "555555", "55555555", Partner);
+        BankAccount theirPot = new(Partner, Guid.NewGuid(), "ext-their-pot", "SAVINGS", "Christmas", "GBP");
+        BankTransaction outgoing = Transaction(_joint, -36m, Monday, labelled: true);
+        BankTransaction intoPot = Transaction(_savings, 36m, Monday, labelled: true);
+        BankTransaction theirOutgoing = Transaction(theirJoint, -36m, Monday, labelled: true);
+        BankTransaction intoTheirPot = Transaction(theirPot, 36m, Monday, labelled: true);
+
+        TransferMatcher.Match([_joint, _savings, theirJoint, theirPot], [],
+            [outgoing, intoPot, theirOutgoing, intoTheirPot], DecidedAt,
+            new TransferPairing([(theirJoint.Id, UserId), (theirPot.Id, UserId), (_joint.Id, Partner)]));
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(outgoing.Transfer).IsEqualTo(
+                TransferInfo.Matched(TransferReason.MirrorPair, intoPot.Id, _savings.Id, DecidedAt));
+            await Assert.That(theirOutgoing.Transfer).IsEqualTo(
+                TransferInfo.Matched(TransferReason.MirrorPair, intoTheirPot.Id, theirPot.Id, DecidedAt));
+        }
+    }
+
+    [Test]
+    public async Task Match_AnotherPersonsAccountNotSharedEitherWay_NeverPairs()
+    {
+        // A payment to someone and theirs coming in stay spending and income, nothing between them is shared
+        BankAccount theirs = Account("Theirs", "555555", "55555555", Partner);
+        BankTransaction outgoing = Transaction(_current, -50m, Monday, labelled: true, reference: "555555 55555555");
+        BankTransaction incoming = Transaction(theirs, 50m, Monday);
+
+        TransferMatcher.Match([_current, theirs], [], [outgoing, incoming], DecidedAt,
+            new TransferPairing([(Guid.NewGuid(), UserId)]));
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(outgoing.Transfer).IsEqualTo(
+                TransferInfo.ToReview(TransferReason.BankTransferLabel, null, null, DecidedAt));
+            await Assert.That(incoming.Transfer).IsNull();
+        }
+    }
+
+    [Test]
+    public async Task Match_SomeoneElsesTransactions_DontChangeTheUsersOwnPairs()
+    {
+        // Their £50 in would tie with savings if it could pair, it can't, so the user's own pair stands
+        BankAccount theirs = Account("Theirs", "555555", "55555555", Partner);
+        BankTransaction outgoing = Transaction(_current, -50m, Monday, labelled: true);
+        BankTransaction intoSavings = Transaction(_savings, 50m, Monday);
+        BankTransaction intoTheirs = Transaction(theirs, 50m, Monday);
+
+        TransferMatcher.Match([_current, _savings, theirs], [], [outgoing, intoSavings, intoTheirs], DecidedAt,
+            TransferPairing.OwnAccountsOnly);
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(outgoing.Transfer).IsEqualTo(
+                TransferInfo.Matched(TransferReason.MirrorPair, intoSavings.Id, _savings.Id, DecidedAt));
+            await Assert.That(intoTheirs.Transfer).IsNull();
+        }
+    }
+
+    [Test]
+    public async Task Match_AnotherPersonsHouseholdMember_DoesntRecogniseTheUsersTransaction()
+    {
+        // The partner's own household lists Jane Smith too, only the user's recognises the user's payments
+        HouseholdMember theirMember = new(Partner, "Jane", "Smith", null);
+        theirMember.AddPayeeName("J Smith");
+        BankTransaction payment = Transaction(_current, -30m, Monday, description: "J Smith");
+
+        TransferMatcher.Match([_current], [theirMember], [payment], DecidedAt);
+
+        await Assert.That(payment.Transfer).IsNull();
+    }
+
+    [Test]
+    public async Task Match_MemberWhoIsALinkedUser_RecognisesMoneyToAnyOfTheirOwnAccounts()
+    {
+        // Arrange, Sam's own account, which the user hasn't added to the member
+        HouseholdMember sam = new(UserId, "Sam", "Taylor", null);
+        sam.LinkToUser(Partner, "Sam", "Taylor");
+        BankTransaction payment = Transaction(_current, -50m, Monday, reference: "777777 77777777");
+        Dictionary<Guid, IReadOnlyCollection<AccountIdentifier>> theirs = new()
+        {
+            [sam.Id] = [AccountIdentifier.Create("777777", "77777777", null)!]
+        };
+
+        // Act
+        TransferMatcher.Match([_current], [sam], [payment], DecidedAt, membersOwnAccounts: theirs);
+
+        // Assert
+        await Assert.That(payment.Transfer).IsEqualTo(TransferInfo.WithHouseholdMember(sam.Id, DecidedAt));
+    }
+
+    [Test]
+    public async Task Match_MemberWhoIsALinkedUser_OnlyTheirAccountsGivenCount()
+    {
+        HouseholdMember sam = new(UserId, "Sam", "Taylor", null);
+        sam.LinkToUser(Partner, "Sam", "Taylor");
+        BankTransaction payment = Transaction(_current, -50m, Monday, reference: "777777 77777777");
+
+        TransferMatcher.Match([_current], [sam], [payment], DecidedAt);
+
+        await Assert.That(payment.Transfer).IsNull();
+    }
+
     private TransferMatchSummary Match(params BankTransaction[] transactions) =>
         TransferMatcher.Match([_current, _savings, _joint, _card], [_partner], transactions, DecidedAt);
 
-    private static BankAccount Account(string name, string sortCode, string number)
+    private static BankAccount Account(string name, string sortCode, string number, Guid? owner = null)
     {
-        BankAccount account = new(UserId, Guid.NewGuid(), $"ext-{name}", "TRANSACTION", name, "GBP");
+        BankAccount account = new(owner ?? UserId, Guid.NewGuid(), $"ext-{name}", "TRANSACTION", name, "GBP");
         account.UpdateIdentifier(AccountIdentifier.Create(sortCode, number, null));
         return account;
     }

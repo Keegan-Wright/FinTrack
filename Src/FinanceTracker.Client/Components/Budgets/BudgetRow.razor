@@ -1,21 +1,30 @@
 @* One budget in one month what's spent of what's available, a bar with where a steady pace would be, and what's
-   left. Pace only shows for the current month, and past months can't be edited. *@
+   left. Pace only shows for the current month, and past months can't be edited. A shared one says it's a household
+   budget, and whose. *@
 @using FinanceTracker.Contracts.Budgets
 
 <div class="ft-budget">
     <div class="ft-budget__line">
         <MudText Typo="Typo.body2" Class="ft-budget__name">@Status.Name</MudText>
         <MudText Typo="Typo.body2" Class="ft-money" Color="@RemainingColor">@BudgetText.Remaining(Status)</MudText>
-        @if (Editable)
+        @if (Editable && Status.CanChange)
         {
             <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true"
                      AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
                      AriaLabel="@($"Actions for {Status.Name}")">
                 <MudMenuItem Icon="@Icons.Material.Outlined.Edit" OnClick="@OnEdit">Edit</MudMenuItem>
-                <MudMenuItem Icon="@Icons.Material.Outlined.Delete" OnClick="@OnDelete">Delete</MudMenuItem>
+                @* Only its owner deletes it *@
+                @if (Status.SharedBy is null)
+                {
+                    <MudMenuItem Icon="@Icons.Material.Outlined.Delete" OnClick="@OnDelete">Delete</MudMenuItem>
+                }
             </MudMenu>
         }
     </div>
+    @if (BudgetText.SharedText(Status) is { } shared)
+    {
+        <MudText Typo="Typo.caption" Class="mud-text-secondary">@shared</MudText>
+    }
 
     <div class="ft-budget__bar">
         <MudProgressLinear Value="@(BudgetText.Progress(Status) * 100)" Color="@BarColor" Rounded="true"

@@ -59,8 +59,8 @@ public static class TransferText
         string.Equals(transaction.TransactionCategory, "PURCHASE", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
-    /// Who or where the money moved to or from, e.g. <c>Rainy Day, 4 Oct</c> or <c>Jane Smith</c>. Null when
-    /// nothing is known.
+    /// Who or where the money moved to or from, e.g. <c>Rainy Day, 4 Oct</c>, <c>John Doe</c>, or
+    /// <c>Jane Doe's Joint</c> for an account someone shares. Null when nothing is known.
     /// </summary>
     public static string? Partner(TransactionTransfer transfer, bool withDate = true)
     {
@@ -69,7 +69,8 @@ public static class TransferText
             return member;
         }
 
-        if (transfer.PartnerAccountName is not { } account)
+        string? account = PartnerAccount(transfer);
+        if (account is null)
         {
             return null;
         }
@@ -77,6 +78,25 @@ public static class TransferText
         return withDate && transfer.PartnerTime is { } time
             ? $"{account}, {time.ToLocalTime().ToString("d MMM", CultureInfo.CurrentCulture)}"
             : account;
+    }
+
+    /// <summary>
+    /// The other half's account, named as whose it is when it's another person's, or just whose when they don't
+    /// share it, e.g. <c>Jane Doe</c>.
+    /// </summary>
+    private static string? PartnerAccount(TransactionTransfer transfer)
+    {
+        if (transfer.PartnerOwnerName is not { } owner)
+        {
+            return transfer.PartnerAccountName;
+        }
+
+        if (transfer.PartnerAccountName is not { } account)
+        {
+            return owner;
+        }
+
+        return $"{owner}'s {account}";
     }
 
     /// <summary>
@@ -89,6 +109,11 @@ public static class TransferText
             return $"Paired with {otherHalf}";
         }
 
+        if (transfer.PartnerOwnerName is { } owner)
+        {
+            return $"The other half is on one of {owner}'s accounts";
+        }
+
         return transfer.Reason == TransferMatchReason.AmbiguousMirrorPair
             ? "Several transactions could be the other half"
             : "The other half isn't on any of your accounts";
@@ -97,8 +122,15 @@ public static class TransferText
     /// <summary>
     /// Why it was decided, a sentence.
     /// </summary>
-    public static string Reason(TransactionTransfer transfer)
+    /// <param name="sharedBy">Who shares the account it's on, when it isn't the user's own, so it reads as theirs.
+    /// </param>
+    public static string Reason(TransactionTransfer transfer, string? sharedBy = null)
     {
+        if (sharedBy is not null)
+        {
+            return SharedReason(transfer, sharedBy);
+        }
+
         if (transfer.DecidedBy == TransferDecidedBy.User)
         {
             return transfer.State == TransferState.NotATransfer
@@ -111,6 +143,11 @@ public static class TransferText
             return transfer.RuleName is null
                 ? "Decided by one of your rules."
                 : $"Decided by your rule {transfer.RuleName}.";
+        }
+
+        if (transfer.PartnerOwnerName is { } owner)
+        {
+            return LinkedReason(transfer, owner);
         }
 
         return transfer.Reason switch
@@ -130,6 +167,64 @@ public static class TransferText
             TransferMatchReason.HouseholdMember => "Money to or from someone in your household.",
             _ => "Decided by a rule."
         };
+    }
+
+    /// <summary>
+    /// Why it was decided, on a transaction of <paramref name="owner"/>'s they share with the user. Their accounts
+    /// and rules, not the user's. Either of them may have answered by hand, so that doesn't say who.
+    /// </summary>
+    private static string SharedReason(TransactionTransfer transfer, string owner)
+    {
+        if (transfer.DecidedBy == TransferDecidedBy.User)
+        {
+            return transfer.State == TransferState.NotATransfer
+                ? "Marked as counting as income or spending."
+                : "Marked as a transfer.";
+        }
+
+        if (transfer.DecidedBy == TransferDecidedBy.Rule)
+        {
+            return transfer.RuleName is null
+                ? $"Decided by one of {owner}'s rules."
+                : $"Decided by {owner}'s rule {transfer.RuleName}.";
+        }
+
+        return transfer.Reason switch
+        {
+            TransferMatchReason.OwnAccountReference => $"The bank's reference names another of {owner}'s accounts.",
+            TransferMatchReason.MirrorPair when transfer.State == TransferState.Transfer =>
+                $"The same amount moved the other way between {owner}'s accounts, and the bank called it a transfer.",
+            TransferMatchReason.MirrorPair =>
+                $"The same amount moved the other way between {owner}'s accounts, but the bank didn't call it a " +
+                "transfer. It still counts until it's decided.",
+            TransferMatchReason.AmbiguousMirrorPair =>
+                $"Several of the same amount moved the other way on {owner}'s accounts at the same time, so " +
+                "FinTrack didn't guess which. It still counts until it's decided.",
+            TransferMatchReason.BankTransferLabel =>
+                "The bank called it a transfer, but FinTrack hasn't found the other half. It still counts until " +
+                "it's decided.",
+            TransferMatchReason.HouseholdMember => $"Money to or from someone in {owner}'s household.",
+            _ => $"Decided by one of {owner}'s rules."
+        };
+    }
+
+    /// <summary>
+    /// Why FinTrack paired it with an account of <paramref name="owner"/>'s, someone the user shares with.
+    /// </summary>
+    private static string LinkedReason(TransactionTransfer transfer, string owner)
+    {
+        if (transfer.Reason == TransferMatchReason.OwnAccountReference)
+        {
+            return $"The bank's reference names one of {owner}'s accounts.";
+        }
+
+        if (transfer.State == TransferState.Transfer)
+        {
+            return $"The same amount moved the other way on {owner}'s account, and the bank called it a transfer.";
+        }
+
+        return $"The same amount moved the other way on {owner}'s account, but the bank didn't call it a " +
+               "transfer. It still counts until one of you decides.";
     }
 
     /// <summary>

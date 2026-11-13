@@ -1,0 +1,10 @@
+.ft-from {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.ft-from ::deep .mud-typography-overline {
+    display: block;
+    line-height: 1.5;
+}

@@ -1,0 +1,486 @@
+@page "/Sharing/{LinkId:guid}"
+@* Everything shared with one linked person (ISharingService). The user's accounts, tags, rules and bills to tick and
+   say what they can do with each, their joint accounts to merge or split, and what the other person shares with them.
+   Ticks are held until saved from the bar at the bottom, and leaving with some unsaved asks first. Merging and
+   splitting happen straight away. *@
+@using System.Globalization
+@using FinanceTracker.Client.Components.Sharing
+@using FinanceTracker.Contracts.Sharing
+@using Microsoft.AspNetCore.Authorization
+@inherits PageComponent
+
+@attribute [Authorize]
+@inject ISharingService SharingService
+@inject IDialogService DialogService
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+<PageTitle>FinTrack - @Title</PageTitle>
+<PageHeader Title="@Title" Subtitle="@Subtitle">
+    <Actions>
+        <MudButton Href="Sharing" Variant="Variant.Text" StartIcon="@Icons.Material.Outlined.ArrowBack">
+            Everyone
+        </MudButton>
+        @if (Shares is not null)
+        {
+            <MudButton Variant="Variant.Text" Color="Color.Error" OnClick="@EndAsync">End link</MudButton>
+        }
+    </Actions>
+</PageHeader>
+
+<NavigationLock OnBeforeInternalNavigation="@ConfirmLeavingAsync" ConfirmExternalNavigation="@HasChanges"/>
+
+@if (Shares is null)
+{
+    @if (_loaded)
+    {
+        <Section>
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                You're not linked with them any more.
+                <MudLink Href="Sharing" Typo="Typo.body2">Back to everyone you share with</MudLink>
+            </MudText>
+        </Section>
+    }
+}
+else
+{
+    <Section Class="ft-sharing-with">
+        <MudTabs Elevation="0" Rounded="true" TabPanelsClass="pt-4" Color="Color.Transparent" SliderColor="Color.Primary"
+                 ActiveTabClass="mud-primary-text" ApplyEffectsToContainer="true">
+            <MudTabPanel Text="@TabText("Accounts", _accounts.Count, Shares.YourAccounts.Count)">
+                <div class="ft-sharing-with__tab">
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        Tick the accounts @Shares.Name can see. <strong>Change</strong> also lets them tag and split
+                        their transactions.
+                    </MudText>
+                    <ShareChoiceList Items="@AccountItems" Chosen="@_accounts" Person="@Shares.Name" What="accounts"
+                                     None="You haven't connected any accounts yet." OnChanged="@StateHasChanged"/>
+                </div>
+            </MudTabPanel>
+            <MudTabPanel Text="@ItemsTabText("Tags", SharedItemKind.Classification)">
+                <div class="ft-sharing-with__tab">
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        Tick the tags @Shares.Name can put on their own transactions. <strong>Change</strong> also lets
+                        them rename them.
+                    </MudText>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        Untick one and it comes off their transactions again.
+                    </MudText>
+                    @ItemList(SharedItemKind.Classification, "tags", "You haven't made any tags yet.")
+                </div>
+            </MudTabPanel>
+            <MudTabPanel Text="@ItemsTabText("Rules", SharedItemKind.Rule)">
+                <div class="ft-sharing-with__tab">
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        Tick the rules @Shares.Name can see. <strong>Change</strong> also lets them edit them and switch
+                        them on or off.
+                    </MudText>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        They stay yours, and only run on accounts you can change.
+                    </MudText>
+                    @ItemList(SharedItemKind.Rule, "rules", "You haven't made any rules yet.")
+                </div>
+            </MudTabPanel>
+            <MudTabPanel Text="@ItemsTabText("Bills", SharedItemKind.Bill)">
+                <div class="ft-sharing-with__tab">
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        Bills paid from an account you share go with it. Tick others @Shares.Name can see.
+                    </MudText>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        <strong>Change</strong> also lets them edit, end and reopen them.
+                    </MudText>
+                    @ItemList(SharedItemKind.Bill, "bills", "You haven't any bills yet.")
+                </div>
+            </MudTabPanel>
+            <MudTabPanel Text="@ItemsTabText("Debts", SharedItemKind.Debt)">
+                <div class="ft-sharing-with__tab">
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        A debt following a loan or card you share goes with it. Tick others @Shares.Name can see.
+                    </MudText>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        <strong>Change</strong> also lets them edit them. Shared debts count in their net worth too.
+                    </MudText>
+                    @ItemList(SharedItemKind.Debt, "debts", "You haven't any debts yet.")
+                </div>
+            </MudTabPanel>
+            <MudTabPanel Text="@ItemsTabText("Budgets", SharedItemKind.Budget)">
+                <div class="ft-sharing-with__tab">
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        A shared budget is a household one. It counts tagged spending on your accounts and those shared
+                        with you, and @Shares.Name sees the same figures.
+                    </MudText>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        <strong>Change</strong> also lets them edit it, with your tags shared with them.
+                    </MudText>
+                    @ItemList(SharedItemKind.Budget, "budgets", "You haven't made any budgets yet.")
+                </div>
+            </MudTabPanel>
+            <MudTabPanel Text="@ItemsTabText("Goals", SharedItemKind.SavingsGoal)">
+                <div class="ft-sharing-with__tab">
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        A goal tracking an account you share goes with it. Tick others @Shares.Name can see.
+                    </MudText>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        <strong>Change</strong> also lets them edit its name, target and monthly amount.
+                    </MudText>
+                    @ItemList(SharedItemKind.SavingsGoal, "goals", "You haven't set any savings goals yet.")
+                </div>
+            </MudTabPanel>
+            <MudTabPanel Text="@ItemsTabText("Events", SharedItemKind.CalendarEvent)">
+                <div class="ft-sharing-with__tab">
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        Tick the calendar events @Shares.Name can see on their calendar.
+                    </MudText>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        <strong>Change</strong> also lets them move or rename them.
+                    </MudText>
+                    @ItemList(SharedItemKind.CalendarEvent, "events", "You haven't added any events yet.")
+                </div>
+            </MudTabPanel>
+            @if (Shares.JointSuggestions.Count > 0 || Shares.JointAccounts.Count > 0)
+            {
+                <MudTabPanel Text="@JointTabText">
+                    <JointAccountsPanel Shares="@Shares" Disabled="@HasChanges" Busy="@_busy" OnMerge="@MergeAsync"
+                                        OnSplit="@SplitAsync"/>
+                </MudTabPanel>
+            }
+            <MudTabPanel Text="@($"From {FirstName}")">
+                <SharedWithYouList Shares="@Shares"/>
+            </MudTabPanel>
+        </MudTabs>
+    </Section>
+
+    @if (HasChanges)
+    {
+        <div class="ft-save-bar" role="region" aria-label="Unsaved changes">
+            <MudText Typo="Typo.body2">@SharingText.ChangesText(ChangeCount) not saved</MudText>
+            <span class="ft-save-bar__spacer"></span>
+            <MudButton Variant="Variant.Text" OnClick="@Discard">Discard</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@SaveAsync">Save</MudButton>
+        </div>
+    }
+}
+
+@code {
+
+    [Parameter] public Guid LinkId { get; set; }
+
+    /// <summary>
+    /// What's shared both ways, as last loaded or saved. Null when they aren't linked.
+    /// </summary>
+    [PersistentState]
+    public LinkShares? Shares { get; set; }
+
+    private readonly Dictionary<Guid, ShareMode> _accounts = [];
+    private readonly Dictionary<SharedItemKind, Dictionary<Guid, ShareMode>> _items = [];
+
+    private bool _loaded;
+    private bool _busy;
+
+    private string Title => Shares is null ? "Sharing" : $"Sharing with {Shares.Name}";
+
+    private string? Subtitle
+    {
+        get
+        {
+            if (Shares is null)
+            {
+                return null;
+            }
+
+            string since = Shares.Since.ToLocalTime().ToString("d MMM yyyy", CultureInfo.CurrentCulture);
+            return $"@{Shares.Username} · linked since {since}";
+        }
+    }
+
+    private string FirstName => Shares?.Name.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "them";
+
+    private List<ShareChoiceItem> AccountItems => Shares!.YourAccounts
+        .Select(static x => new ShareChoiceItem(x.AccountId, x.Name, x.BankName))
+        .ToList();
+
+    private string JointTabText
+    {
+        get
+        {
+            int toMerge = Shares!.JointSuggestions.Count;
+            if (toMerge > 0)
+            {
+                return $"Joint accounts · {toMerge} to merge";
+            }
+
+            return "Joint accounts";
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        if (Shares is null)
+        {
+            await LoadAsync();
+        }
+
+        _loaded = true;
+        Reset();
+    }
+
+    private async Task LoadAsync()
+    {
+        SetLoadingState(true, "Loading what you share");
+        try
+        {
+            Shares = await SharingService.GetSharesAsync(LinkId, _cts.Token);
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
+    /// <summary>
+    /// The ticks back to what's shared now, as loaded or just saved.
+    /// </summary>
+    private void Reset()
+    {
+        _accounts.Clear();
+        _items.Clear();
+        if (Shares is null)
+        {
+            return;
+        }
+
+        foreach (ShareableAccount account in Shares.YourAccounts.Where(static x => x.Mode is not null))
+        {
+            _accounts[account.AccountId] = account.Mode!.Value;
+        }
+
+        foreach (ShareableItem item in Shares.YourItems.Where(static x => x.Mode is not null && x.FollowsAccount is null))
+        {
+            ChosenOf(item.Kind)[item.ItemId] = item.Mode!.Value;
+        }
+    }
+
+    private Dictionary<Guid, ShareMode> ChosenOf(SharedItemKind kind)
+    {
+        if (!_items.TryGetValue(kind, out Dictionary<Guid, ShareMode>? chosen))
+        {
+            chosen = [];
+            _items[kind] = chosen;
+        }
+
+        return chosen;
+    }
+
+    private List<ShareChoiceItem> ItemsOf(SharedItemKind kind) => Shares!.YourItems
+        .Where(x => x.Kind == kind)
+        .Select(static x => new ShareChoiceItem(x.ItemId, x.Name, FollowsAccount: x.FollowsAccount,
+            FollowsMode: x.Mode ?? ShareMode.ReadOnly))
+        .ToList();
+
+    private RenderFragment ItemList(SharedItemKind kind, string what, string none) => __builder =>
+    {
+        <ShareChoiceList Items="@ItemsOf(kind)" Chosen="@ChosenOf(kind)" Person="@Shares!.Name" What="@what"
+                         None="@none" OnChanged="@StateHasChanged"/>
+    };
+
+    /// <summary>
+    /// A tab's name with how many are shared, e.g. <c>Accounts · 2/5</c>, or just its name when there are none.
+    /// </summary>
+    internal static string TabText(string name, int shared, int all)
+    {
+        if (all == 0)
+        {
+            return name;
+        }
+
+        return $"{name} · {shared}/{all}";
+    }
+
+    private string ItemsTabText(string name, SharedItemKind kind)
+    {
+        List<ShareableItem> items = Shares!.YourItems.Where(x => x.Kind == kind).ToList();
+        int following = items.Count(static x => x.FollowsAccount is not null);
+        return TabText(name, ChosenOf(kind).Count + following, items.Count);
+    }
+
+    /// <summary>
+    /// How many things are ticked, unticked or changed mode since loading or saving.
+    /// </summary>
+    private int ChangeCount
+    {
+        get
+        {
+            if (Shares is null)
+            {
+                return 0;
+            }
+
+            Dictionary<Guid, ShareMode> accountsBefore = Shares.YourAccounts
+                .Where(static x => x.Mode is not null)
+                .ToDictionary(static x => x.AccountId, static x => x.Mode!.Value);
+            int changes = Differences(accountsBefore, _accounts);
+
+            foreach (SharedItemKind kind in Enum.GetValues<SharedItemKind>())
+            {
+                Dictionary<Guid, ShareMode> before = Shares.YourItems
+                    .Where(x => x.Kind == kind && x.Mode is not null && x.FollowsAccount is null)
+                    .ToDictionary(static x => x.ItemId, static x => x.Mode!.Value);
+                changes += Differences(before, ChosenOf(kind));
+            }
+
+            return changes;
+        }
+    }
+
+    private bool HasChanges => ChangeCount > 0;
+
+    /// <summary>
+    /// How many ids are in one and not the other, or in both with another mode.
+    /// </summary>
+    private static int Differences(Dictionary<Guid, ShareMode> before, Dictionary<Guid, ShareMode> now)
+    {
+        int changed = before.Count(x => !now.TryGetValue(x.Key, out ShareMode mode) || mode != x.Value);
+        return changed + now.Keys.Count(x => !before.ContainsKey(x));
+    }
+
+    private void Discard() => Reset();
+
+    internal async Task SaveAsync()
+    {
+        LinkShares before = Shares!;
+        Dictionary<Guid, ShareMode> accountsBefore = before.YourAccounts
+            .Where(static x => x.Mode is not null)
+            .ToDictionary(static x => x.AccountId, static x => x.Mode!.Value);
+        bool accountsChanged = Differences(accountsBefore, _accounts) > 0;
+        bool itemsChanged = ChangeCount > Differences(accountsBefore, _accounts);
+
+        try
+        {
+            SetLoadingState(true, $"Saving what you share with {before.Name}…");
+            LinkShares saved = before;
+            if (accountsChanged)
+            {
+                saved = await SharingService.ChangeAccountSharesAsync(LinkId, new ChangeAccountShares
+                {
+                    Accounts = _accounts
+                        .Select(static x => new AccountShareChoice { AccountId = x.Key, Mode = x.Value })
+                        .ToList()
+                }, _cts.Token);
+            }
+
+            if (itemsChanged)
+            {
+                saved = await SharingService.ChangeItemSharesAsync(LinkId, new ChangeItemShares
+                {
+                    Items = _items
+                        .SelectMany(static kind => kind.Value.Select(x => new ItemShareChoice
+                        {
+                            Kind = kind.Key, ItemId = x.Key, Mode = x.Value
+                        }))
+                        .ToList()
+                }, _cts.Token);
+            }
+
+            Shares = saved;
+            Reset();
+            Snackbar.Add(SharingText.SharedText(saved), Severity.Success);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't save what you share, try again", Severity.Error);
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
+    private async Task MergeAsync(IReadOnlyList<JointAccountSuggestion> suggestions) =>
+        await ChangeJointAsync(() => SharingService.MergeJointAccountsAsync(LinkId, new MergeJointAccounts
+        {
+            Accounts = suggestions
+                .Select(static x => new MergeJointAccount
+                {
+                    YourAccountId = x.YourAccountId, TheirAccountId = x.TheirAccountId
+                })
+                .ToList()
+        }, _cts.Token), SharingText.MergeDoneText(suggestions));
+
+    private async Task SplitAsync(MergedJointAccount joint) =>
+        await ChangeJointAsync(() => SharingService.SplitJointAccountAsync(LinkId, joint.JointAccountId, _cts.Token),
+            $"Split {joint.Name}, you each see your own copy again");
+
+    /// <summary>
+    /// Merges or splits joint accounts straight away, saying so. Only with nothing unsaved, which it would replace.
+    /// </summary>
+    private async Task ChangeJointAsync(Func<Task<LinkShares>> change, string done)
+    {
+        _busy = true;
+        try
+        {
+            Shares = await change();
+            Reset();
+            Snackbar.Add(done, Severity.Success);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't do that, try again", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    internal async Task EndAsync()
+    {
+        string name = Shares!.Name;
+        bool? confirmed = await DialogService.ShowMessageBoxAsync($"End your link with {name}?",
+            "Anything you share stops being shared, both ways. You can invite each other again later.",
+            yesText: "End link", cancelText: "Cancel");
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        try
+        {
+            SetLoadingState(true, $"Ending your link with {name}…");
+            await SharingService.EndAsync(LinkId, _cts.Token);
+
+            // Nothing left to save, so leaving doesn't ask
+            Shares = null;
+            Snackbar.Add($"No longer linked with {name}", Severity.Success);
+            NavigationManager.NavigateTo("Sharing");
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't end the link, try again", Severity.Error);
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
+    /// <summary>
+    /// Asks before leaving with ticks not saved, staying when they'd rather.
+    /// </summary>
+    private async Task ConfirmLeavingAsync(LocationChangingContext context)
+    {
+        if (!HasChanges)
+        {
+            return;
+        }
+
+        bool? leave = await DialogService.ShowMessageBoxAsync("Leave without saving?",
+            $"What you changed about sharing with {Shares!.Name} isn't saved.", yesText: "Leave",
+            cancelText: "Stay");
+        if (leave != true)
+        {
+            context.PreventNavigation();
+        }
+    }
+
+}

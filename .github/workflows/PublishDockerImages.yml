@@ -244,3 +244,17 @@ jobs:
           # GitHub's Actions cache, kept between runs unlike the runner's disk
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+
+  all-checks:
+    name: All checks passed
+    needs: [ build, unit-tests, integration-tests, published-image, build-and-push-image ]
+    if: always()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Every job passed
+        if: >-
+          contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') ||
+          contains(needs.*.result, 'skipped')
+        run: exit 1

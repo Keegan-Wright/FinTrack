@@ -44,6 +44,37 @@ public class RulesPageTests : ComponentTestBase
     }
 
     [Test]
+    public async Task SharedRules_ListedApart_OnlyThoseTheyCanChangeOpen_AndReorderingLeavesThemOut()
+    {
+        // Arrange
+        Guid samsTag = Guid.NewGuid();
+        Rule canChange = Shared("Sam's shops", canChange: true, samsTag);
+        Rule canSee = Shared("Sam's savings", canChange: false, samsTag);
+        _rules.AddRange([canChange, canSee]);
+        IRenderedComponent<MudPopoverProvider> popovers = Render<MudPopoverProvider>();
+        IRenderedComponent<RulesPage> cut = RenderPage();
+
+        // Act
+        await RowMenu.ChooseAsync(cut, popovers, "Second", "Move up");
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(Names(cut)).IsEquivalentTo(["Second", "First"],
+                TUnit.Assertions.Enums.CollectionOrdering.Matching);
+            await Assert.That(cut.Markup).Contains("Shared with you");
+            await Assert.That(cut.Markup).Contains("Sam Taylor's · you can change it");
+            await Assert.That(cut.Markup).Contains("Sam Taylor's · you can see it");
+            await Assert.That(cut.Markup).Contains("Groceries");
+            await Assert.That(cut.FindAll($"a[href='Rules/{canChange.Id}']")).IsNotEmpty();
+            await Assert.That(cut.FindAll($"a[href='Rules/{canSee.Id}']")).IsEmpty();
+            await _rulesService.Received(1).ReorderRulesAsync(
+                Arg.Is<ReorderRules>(x => x.RuleIds.SequenceEqual(new[] { _rules[1].Id, _rules[0].Id })),
+                Arg.Any<CancellationToken>());
+        }
+    }
+
+    [Test]
     public async Task Reorder_Saves_TheRulesInTheirNewOrder()
     {
         // Arrange
@@ -177,6 +208,19 @@ public class RulesPageTests : ComponentTestBase
 
     private static IEnumerable<string> Names(IRenderedComponent<RulesPage> cut) =>
         cut.FindAll(".ft-rule__name").Select(static x => x.TextContent);
+
+    private static Rule Shared(string name, bool canChange, Guid tagId) => new()
+    {
+        Id = Guid.NewGuid(),
+        Name = name,
+        IsEnabled = true,
+        Conditions = [new RuleCondition { Field = RuleField.Description, Operator = RuleOperator.Contains,
+            Value = "SHOP" }],
+        Actions = [new RuleAction { Type = RuleActionType.AddTag, ClassificationId = tagId }],
+        SharedBy = "Sam Taylor",
+        CanChange = canChange,
+        Names = new Dictionary<Guid, string> { [tagId] = "Groceries" }
+    };
 
     private static Rule Rule(string name, bool enabled = true) => new()
     {

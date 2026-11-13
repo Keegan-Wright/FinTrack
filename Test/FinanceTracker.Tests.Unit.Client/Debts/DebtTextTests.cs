@@ -140,6 +140,26 @@ public class DebtTextTests
         await Assert.That(progress).IsEqualTo(0.4);
     }
 
+    [Test]
+    [Arguments(null, "Car loan")]
+    [Arguments("Sam Taylor", "Car loan · Sam Taylor's")]
+    public async Task PickerLabel_SaysWhoseItIsWhenSomeoneElses(string? sharedBy, string expected)
+    {
+        Debt debt = Debt();
+        Debt shown = new()
+        {
+            Id = debt.Id, Name = debt.Name, Forecast = debt.Forecast, SharedBy = sharedBy
+        };
+
+        await Assert.That(DebtText.PickerLabel(shown)).IsEqualTo(expected);
+    }
+
+    [Test]
+    [Arguments(true, "Sam Taylor's · you can change it")]
+    [Arguments(false, "Sam Taylor's · you can see it")]
+    public async Task SharedText_SaysWhoseItIsAndWhatTheyCanDo(bool canChange, string expected) =>
+        await Assert.That(DebtText.SharedText("Sam Taylor", canChange)).IsEqualTo(expected);
+
     internal static Debt Debt(string name = "Car loan", decimal owed = 900m, string? lender = null,
         decimal rate = 0m, Guid? accountId = null, string? accountName = null, DateOnly? payOffGoal = null,
         bool? onTrack = null, decimal paidOffPercent = 10m, DebtForecast? forecast = null) => new()

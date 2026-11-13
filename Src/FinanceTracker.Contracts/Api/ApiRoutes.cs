@@ -77,6 +77,21 @@ public static class ApiRoutes
     public const string Notifications = "api/notifications";
 
     /// <summary>
+    /// <see cref="Services.ISharingService"/>'s links with other users.
+    /// </summary>
+    public const string SharingLinks = "api/sharing/links";
+
+    /// <summary>
+    /// <see cref="Services.ISharingService"/>'s people the user is linked with, names only.
+    /// </summary>
+    public const string SharingPeople = "api/sharing/people";
+
+    /// <summary>
+    /// <see cref="Services.ISharingService"/>'s Everyone or Just mine choice.
+    /// </summary>
+    public const string SharingView = "api/sharing/view";
+
+    /// <summary>
     /// <see cref="Services.IUsersService"/>, admins only.
     /// </summary>
     public const string Users = "api/users";

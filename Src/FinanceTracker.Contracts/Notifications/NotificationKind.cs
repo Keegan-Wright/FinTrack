@@ -53,5 +53,25 @@ public enum NotificationKind
     /// <summary>
     /// An account's available balance went below the amount the user set for it.
     /// </summary>
-    LowBalance = 9
+    LowBalance = 9,
+
+    /// <summary>
+    /// Another user invited them to share.
+    /// </summary>
+    SharingInvite = 10,
+
+    /// <summary>
+    /// Someone they invited to share accepted.
+    /// </summary>
+    SharingAccepted = 11,
+
+    /// <summary>
+    /// The other person merged a joint account they both connected, or split it again.
+    /// </summary>
+    JointAccount = 12,
+
+    /// <summary>
+    /// Someone they're linked with changed what they share with them, declined their invite, or ended the link.
+    /// </summary>
+    SharingChanged = 13
 }

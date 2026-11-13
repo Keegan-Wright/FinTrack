@@ -32,6 +32,9 @@
 
 <PageTitle>FinTrack - Transactions</PageTitle>
 <PageHeader Title="Transactions" Subtitle="@Subtitle">
+    <Actions>
+        <SharingViewSwitch/>
+    </Actions>
     <FileActions>
         <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Download"
                    Disabled="@(_loading || _exporting)" OnClick="@ExportAsync">
@@ -96,9 +99,13 @@
                     </PropertyColumn>
                     <TemplateColumn T="Transaction" Title="Counts as" Sortable="true" SortBy="@CountsAs">
                         <CellTemplate>
-                            @if (context.Item.Transfer is { } transfer)
+                            @if (context.Item.Transfer is { } transfer && context.Item.IsReadOnly)
                             {
-                                <TransferChip Transfer="@transfer"
+                                <span class="mud-text-secondary">@TransferText.Label(transfer)</span>
+                            }
+                            else if (context.Item.Transfer is { } ownTransfer)
+                            {
+                                <TransferChip Transfer="@ownTransfer" SharedBy="@context.Item.SharedBy"
                                               OnAction="@(action => DecideTransferAsync(context.Item, action))"/>
                             }
                             else
@@ -110,6 +117,10 @@
                     <PropertyColumn Property="x => x.AccountName" Title="Account" Sortable="true">
                         <CellTemplate>
                             <span class="mud-text-secondary">@context.Item.AccountName</span>
+                            @if (context.Item.SharedBy is { } sharedBy)
+                            {
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary d-block">Shared by @sharedBy</MudText>
+                            }
                         </CellTemplate>
                     </PropertyColumn>
                     <PropertyColumn Property="x => x.TransactionCategory" Title="Category" Sortable="true">
@@ -134,6 +145,9 @@
                             <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true"
                                      AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
                                      AriaLabel="@($"Actions for {context.Item.Description}")">
+                                @* Another person's transaction they haven't let the user change, so only its details *@
+                                @if (!context.Item.IsReadOnly)
+                                {
                                 @* A split transaction's tags are its parts' *@
                                 @if (context.Item.Splits.Count == 0)
                                 {
@@ -160,10 +174,12 @@
                                              OnClick="@(() => PayBillAsync(context.Item))">Pays a bill</MudMenuItem>
                                 <MudMenuItem Icon="@Icons.Material.Outlined.CreditScore"
                                              OnClick="@(() => PayDebtAsync(context.Item))">Pays off a debt</MudMenuItem>
+                                @* Their rules run on any account they can change, a shared one too *@
                                 <MudMenuItem Icon="@Icons.Material.Outlined.Rule"
                                              OnClick="@(() => CreateRuleFrom(context.Item))">
                                     Create rule from this
                                 </MudMenuItem>
+                                }
                                 <MudMenuItem Icon="@Icons.Material.Outlined.Info"
                                              OnClick="@(() => ShowDetailsAsync(context.Item))">
                                     Details and bank classifications
@@ -395,7 +411,8 @@
     /// </summary>
     private async Task PayBillAsync(Transaction transaction)
     {
-        List<Bill> bills = await BillsService.GetBillsAsync(_cts.Token).ToListAsync(_cts.Token);
+        List<Bill> bills = TransactionChoices.For(await BillsService.GetBillsAsync(_cts.Token).ToListAsync(_cts.Token),
+            static x => x.SharedBy, transaction);
         DialogParameters<PayBillDialog> parameters = new()
         {
             { x => x.Transaction, transaction },
@@ -439,7 +456,8 @@
     /// </summary>
     private async Task PayDebtAsync(Transaction transaction)
     {
-        List<Debt> debts = await DebtsService.GetDebtsAsync(_cts.Token).ToListAsync(_cts.Token);
+        List<Debt> debts = TransactionChoices.For(await DebtsService.GetDebtsAsync(_cts.Token).ToListAsync(_cts.Token),
+            static x => x.SharedBy, transaction);
         DialogParameters<PayDebtDialog> parameters = new()
         {
             { x => x.Transaction, transaction },
@@ -483,12 +501,12 @@
     /// </summary>
     private async Task SplitAsync(Transaction transaction)
     {
-        List<Classification> tags = await ClassificationsService.GetAllCustomClassificationsAsync(_cts.Token)
-            .ToListAsync(_cts.Token);
+        List<Classification> own = TransactionChoices.For(await ClassificationsService
+            .GetAllCustomClassificationsAsync(_cts.Token).ToListAsync(_cts.Token), static x => x.SharedBy, transaction);
         DialogParameters<SplitTransactionDialog> parameters = new()
         {
             { x => x.Transaction, transaction },
-            { x => x.Tags, tags }
+            { x => x.Tags, SplitText.TagChoices(own, transaction) }
         };
         DialogOptions options = new() { MaxWidth = MaxWidth.Medium, FullWidth = true };
 
@@ -563,11 +581,8 @@
 
     private async Task AddClassificationsAsync(Transaction transaction)
     {
-        var classifications = new List<Classification>();
-        await foreach (var classification in ClassificationsService.GetAllCustomClassificationsAsync(_cts.Token))
-        {
-            classifications.Add(classification);
-        }
+        List<Classification> classifications = TransactionChoices.For(await ClassificationsService
+            .GetAllCustomClassificationsAsync(_cts.Token).ToListAsync(_cts.Token), static x => x.SharedBy, transaction);
 
         if (classifications.Count == 0)
         {

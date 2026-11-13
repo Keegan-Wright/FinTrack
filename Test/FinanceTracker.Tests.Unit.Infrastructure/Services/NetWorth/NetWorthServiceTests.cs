@@ -1,3 +1,4 @@
+using FinanceTracker.Infrastructure.Sharing;
 using FinanceTracker.Contracts.NetWorth;
 using FinanceTracker.Domain.Debts;
 using FinanceTracker.Domain.OpenBanking.Accounts;
@@ -178,5 +179,5 @@ public class NetWorthServiceTests : InfrastructureTestBase
 
     private NetWorthService BuildSubject(string username) =>
         new(CurrentUserFor(username), DbContextFactory, NullLogger<NetWorthService>.Instance,
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now), new AccountScope(CurrentUserFor(username)));
 }

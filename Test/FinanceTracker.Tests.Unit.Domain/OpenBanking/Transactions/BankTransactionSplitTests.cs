@@ -28,7 +28,7 @@ public class BankTransactionSplitTests
         ];
 
         // Act
-        transaction.Split(parts, [_groceries, _household]);
+        transaction.Split(parts, [_groceries, _household], transaction.UserId);
 
         // Assert
         using (Assert.Multiple())
@@ -49,7 +49,7 @@ public class BankTransactionSplitTests
         transaction.ApplyRules(new RuleOutcome([new RuleTag(fromRule.Id, Guid.NewGuid())], null), OccurredAt);
 
         // Act
-        transaction.Split([new(-50m, _groceries.Id, null), new(-50m, null, null)], [_groceries]);
+        transaction.Split([new(-50m, _groceries.Id, null), new(-50m, null, null)], [_groceries], transaction.UserId);
 
         // Assert
         using (Assert.Multiple())
@@ -64,11 +64,11 @@ public class BankTransactionSplitTests
     {
         // Arrange
         BankTransaction transaction = Build(-100m);
-        transaction.Split([new(-50m, _groceries.Id, null), new(-50m, null, null)], [_groceries]);
+        transaction.Split([new(-50m, _groceries.Id, null), new(-50m, null, null)], [_groceries], transaction.UserId);
         TransactionSplit[] parts = [new(-70m, _household.Id, null), new(-30m, null, null)];
 
         // Act
-        transaction.Split(parts, [_household]);
+        transaction.Split(parts, [_household], transaction.UserId);
 
         // Assert
         using (Assert.Multiple())
@@ -85,7 +85,7 @@ public class BankTransactionSplitTests
         BankTransaction transaction = Build(40m);
 
         // Act
-        transaction.Split([new(25m, _groceries.Id, null), new(15m, _household.Id, null)], [_groceries, _household]);
+        transaction.Split([new(25m, _groceries.Id, null), new(15m, _household.Id, null)], [_groceries, _household], transaction.UserId);
 
         // Assert
         await Assert.That(transaction.Splits.Sum(static x => x.Amount)).IsEqualTo(40m);
@@ -97,7 +97,7 @@ public class BankTransactionSplitTests
         BankTransaction transaction = Build(-100m);
 
         Assert.Throws<ArgumentException>(() =>
-            transaction.Split([new(-60m, null, null), new(-30m, null, null)], []));
+            transaction.Split([new(-60m, null, null), new(-30m, null, null)], [], transaction.UserId));
     }
 
     [Test]
@@ -108,7 +108,7 @@ public class BankTransactionSplitTests
         BankTransaction transaction = Build(-100m);
 
         Assert.Throws<ArgumentException>(() =>
-            transaction.Split([new((decimal)first, null, null), new((decimal)second, null, null)], []));
+            transaction.Split([new((decimal)first, null, null), new((decimal)second, null, null)], [], transaction.UserId));
     }
 
     [Test]
@@ -116,7 +116,7 @@ public class BankTransactionSplitTests
     {
         BankTransaction transaction = Build(-100m);
 
-        Assert.Throws<ArgumentException>(() => transaction.Split([new(-100m, null, null)], []));
+        Assert.Throws<ArgumentException>(() => transaction.Split([new(-100m, null, null)], [], transaction.UserId));
     }
 
     [Test]
@@ -125,7 +125,7 @@ public class BankTransactionSplitTests
         BankTransaction transaction = Build(-100m);
 
         Assert.Throws<ArgumentException>(() =>
-            transaction.Split([new(-50m, Guid.NewGuid(), null), new(-50m, null, null)], []));
+            transaction.Split([new(-50m, Guid.NewGuid(), null), new(-50m, null, null)], [], transaction.UserId));
     }
 
     [Test]
@@ -135,7 +135,7 @@ public class BankTransactionSplitTests
         CustomClassification theirs = new(Guid.NewGuid(), "Groceries");
 
         Assert.Throws<InvalidOperationException>(() =>
-            transaction.Split([new(-50m, theirs.Id, null), new(-50m, null, null)], [theirs]));
+            transaction.Split([new(-50m, theirs.Id, null), new(-50m, null, null)], [theirs], transaction.UserId));
     }
 
     [Test]
@@ -144,7 +144,7 @@ public class BankTransactionSplitTests
         BankTransaction transaction = BankTransaction.Import(Account, Details(-100m) with { IsPending = true });
 
         Assert.Throws<InvalidOperationException>(() =>
-            transaction.Split([new(-50m, null, null), new(-50m, null, null)], []));
+            transaction.Split([new(-50m, null, null), new(-50m, null, null)], [], transaction.UserId));
     }
 
     [Test]
@@ -152,7 +152,7 @@ public class BankTransactionSplitTests
     {
         // Arrange
         BankTransaction transaction = Build(-100m);
-        transaction.Split([new(-60m, _groceries.Id, null), new(-40m, _household.Id, null)], [_groceries, _household]);
+        transaction.Split([new(-60m, _groceries.Id, null), new(-40m, _household.Id, null)], [_groceries, _household], transaction.UserId);
 
         // Act
         bool unsplit = transaction.Unsplit();
@@ -178,9 +178,9 @@ public class BankTransactionSplitTests
     public void Classify_Split_Throws()
     {
         BankTransaction transaction = Build(-100m);
-        transaction.Split([new(-50m, null, null), new(-50m, null, null)], []);
+        transaction.Split([new(-50m, null, null), new(-50m, null, null)], [], transaction.UserId);
 
-        Assert.Throws<InvalidOperationException>(() => transaction.Classify(_groceries));
+        Assert.Throws<InvalidOperationException>(() => transaction.Classify(_groceries, transaction.UserId));
     }
 
     [Test]
@@ -189,7 +189,7 @@ public class BankTransactionSplitTests
         // Arrange
         BankTransaction transaction = Build(-100m);
         transaction.Split([new(-60m, _groceries.Id, "Food"), new(-40m, _household.Id, null)],
-            [_groceries, _household]);
+            [_groceries, _household], transaction.UserId);
 
         // Act
         transaction.RemoveDeletedClassification(_groceries.Id);
@@ -208,7 +208,7 @@ public class BankTransactionSplitTests
     {
         // Arrange
         BankTransaction transaction = Build(-100m);
-        transaction.Split([new(-50m, _groceries.Id, null), new(-50m, null, null)], [_groceries]);
+        transaction.Split([new(-50m, _groceries.Id, null), new(-50m, null, null)], [_groceries], transaction.UserId);
 
         // Act
         transaction.UpdateFromSync(Details(-100m) with { Description = "Renamed" });
@@ -222,7 +222,7 @@ public class BankTransactionSplitTests
     {
         // Arrange
         BankTransaction transaction = Build(-100m);
-        transaction.Split([new(-50m, _groceries.Id, null), new(-50m, null, null)], [_groceries]);
+        transaction.Split([new(-50m, _groceries.Id, null), new(-50m, null, null)], [_groceries], transaction.UserId);
 
         // Act
         transaction.UpdateFromSync(Details(-105m));
@@ -240,7 +240,7 @@ public class BankTransactionSplitTests
     {
         // Arrange
         BankTransaction transaction = Build(-100m);
-        transaction.Split([new(-50m, _groceries.Id, null), new(-50m, null, null)], [_groceries]);
+        transaction.Split([new(-50m, _groceries.Id, null), new(-50m, null, null)], [_groceries], transaction.UserId);
 
         // Act
         transaction.ApplyRules(new RuleOutcome([new RuleTag(_household.Id, Guid.NewGuid())], null), OccurredAt);
@@ -255,7 +255,7 @@ public class BankTransactionSplitTests
         // Arrange
         BankTransaction transaction = Build(-100m);
         transaction.Split([new(-60m, _groceries.Id, null), new(-30m, _household.Id, null), new(-10m, null, null)],
-            [_groceries, _household]);
+            [_groceries, _household], transaction.UserId);
 
         // Act & Assert
         using (Assert.Multiple())
@@ -271,13 +271,55 @@ public class BankTransactionSplitTests
     {
         // Arrange
         BankTransaction transaction = Build(-100m);
-        transaction.Classify(_groceries);
+        transaction.Classify(_groceries, transaction.UserId);
 
         // Act & Assert
         using (Assert.Multiple())
         {
             await Assert.That(transaction.AmountUnder([_groceries.Id, _household.Id])).IsEqualTo(-100m);
             await Assert.That(transaction.AmountUnder([_household.Id])).IsEqualTo(0m);
+        }
+    }
+
+    [Test]
+    public async Task TakeAnnotationsFrom_AddsTheOtherCopysTagsToItsOwn()
+    {
+        // Arrange, the same shop on the other person's copy of a joint account
+        BankTransaction transaction = Build(-100m);
+        transaction.Classify(_groceries, UserId);
+        BankTransaction other = Build(-100m);
+        other.Classify(_household, UserId);
+
+        // Act
+        transaction.TakeAnnotationsFrom(other, withSplit: false);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(transaction.CustomClassificationIds).IsEquivalentTo([_groceries.Id, _household.Id]);
+            await Assert.That(transaction.TagsSetByUser).IsTrue();
+        }
+    }
+
+    [Test]
+    [Arguments(true)]
+    [Arguments(false)]
+    public async Task TakeAnnotationsFrom_ASplitCopy_TakesTheSplitOnlyWhenAsked(bool withSplit)
+    {
+        // Arrange
+        BankTransaction transaction = Build(-100m);
+        BankTransaction other = Build(-100m);
+        other.Split([new(-60m, _groceries.Id, null), new(-40m, _household.Id, null)], [_groceries, _household],
+            UserId);
+
+        // Act
+        transaction.TakeAnnotationsFrom(other, withSplit);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(transaction.IsSplit).IsEqualTo(withSplit);
+            await Assert.That(transaction.CustomClassificationIds).IsEquivalentTo([_groceries.Id, _household.Id]);
         }
     }
 

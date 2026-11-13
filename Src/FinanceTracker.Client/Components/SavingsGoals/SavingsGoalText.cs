@@ -41,6 +41,11 @@ public static class SavingsGoalText
                 return $"Balance of {goal.AccountName ?? "a removed account"}";
             case SavingsGoalSource.Tags:
                 string tags = string.Join(", ", goal.TagIds.Select(tagNames.GetValueOrDefault).OfType<string>());
+                if (goal.Direction == SavingsDirection.MoneyOut)
+                {
+                    return $"Tagged {tags} going out since {Day(goal.TrackedFrom)}";
+                }
+
                 return $"Tagged {tags} since {Day(goal.TrackedFrom)}";
             default:
                 return "Typed in";
@@ -106,4 +111,26 @@ public static class SavingsGoalText
 
     private static string Day(DateOnly? day) =>
         day?.ToString("d MMM yyyy", CultureInfo.CurrentCulture) ?? string.Empty;
+
+    /// <summary>
+    /// Where a tag goal's money is saved, as the choice reads.
+    /// </summary>
+    public static string DirectionName(SavingsDirection direction) => direction switch
+    {
+        SavingsDirection.MoneyOut => "Somewhere FinTrack can't see",
+        _ => "Into an account here"
+    };
+
+    /// <summary>
+    /// Whose a shared goal is and what the user can do, e.g. <c>Jane Doe's · you can change it</c>.
+    /// </summary>
+    public static string SharedText(string sharedBy, bool canChange)
+    {
+        if (canChange)
+        {
+            return $"{sharedBy}'s · you can change it";
+        }
+
+        return $"{sharedBy}'s · you can see it";
+    }
 }

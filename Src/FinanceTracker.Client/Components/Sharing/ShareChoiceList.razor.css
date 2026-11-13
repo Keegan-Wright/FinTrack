@@ -1,0 +1,44 @@
+.ft-choices {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* Select all and the count on one line, the search taking the room left, wrapping under them on a phone */
+.ft-choices__tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 16px;
+}
+
+.ft-choices__tools ::deep .ft-search {
+    flex: 1 1 200px;
+    margin-left: auto;
+}
+
+.ft-choices__group ::deep .mud-typography-overline {
+    display: block;
+    line-height: 1.5;
+}
+
+.ft-choices__row {
+    padding: 4px 0;
+    min-height: 44px;
+}
+
+/* One width for every row, empty until the thing is ticked, so the toggles line up and nothing shifts */
+.ft-choices__mode {
+    flex: 0 0 148px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.ft-choices__mode ::deep .mud-toggle-group {
+    width: 100%;
+}
+
+.ft-choices__mode ::deep .mud-toggle-item {
+    flex: 1 1 0;
+    min-width: 0;
+}

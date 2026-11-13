@@ -1,0 +1,81 @@
+@* Rules other people share with the user, after their own. Each runs where its owner's rules run, so it can't be moved
+   among the user's. One shared with changes allowed can be opened to edit and switched on or off. *@
+@using FinanceTracker.Contracts.Rules
+
+<div class="ft-list">
+    @foreach (Rule rule in Rules)
+    {
+        <div class="ft-list__row ft-shared-rule">
+            <div class="ft-list__main">
+                @if (rule.CanChange)
+                {
+                    <MudLink Href="@($"Rules/{rule.Id}")" Typo="Typo.body2">
+                        <span class="ft-shared-rule__text">@rule.Name</span>
+                    </MudLink>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" Class="ft-shared-rule__text">@rule.Name</MudText>
+                }
+                <MudText Typo="Typo.caption" Class="mud-text-secondary ft-shared-rule__summary">
+                    @RuleText.Summary(rule, AccountNames, TagNames, BillNames, DebtNames)
+                </MudText>
+                <MudText Typo="Typo.caption" Class="mud-text-secondary ft-shared-rule__text">
+                    @OwnerText(rule)
+                </MudText>
+            </div>
+            @if (rule.CanChange)
+            {
+                <MudSwitch T="bool" Value="@rule.IsEnabled" Color="Color.Primary"
+                           Disabled="@(rule.Actions.Count == 0)"
+                           ValueChanged="@(_ => OnToggle.InvokeAsync(rule))"
+                           aria-label="@($"Run {rule.Name}")"/>
+            }
+            else
+            {
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@(rule.IsEnabled ? "On" : "Off")</MudChip>
+            }
+        </div>
+    }
+</div>
+
+@code {
+
+    /// <summary>
+    /// Rules other people share with the user.
+    /// </summary>
+    [Parameter] [EditorRequired] public required IReadOnlyList<Rule> Rules { get; set; }
+
+    /// <summary>
+    /// Account names by id, the user's and those the rules name.
+    /// </summary>
+    [Parameter] [EditorRequired] public required IReadOnlyDictionary<Guid, string> AccountNames { get; set; }
+
+    /// <summary>
+    /// Tag names by id, the user's and those the rules name.
+    /// </summary>
+    [Parameter] [EditorRequired] public required IReadOnlyDictionary<Guid, string> TagNames { get; set; }
+
+    [Parameter] public IReadOnlyDictionary<Guid, string> BillNames { get; set; } = new Dictionary<Guid, string>();
+
+    [Parameter] public IReadOnlyDictionary<Guid, string> DebtNames { get; set; } = new Dictionary<Guid, string>();
+
+    /// <summary>
+    /// A rule they can change to switch on if it's off, or off if it's on.
+    /// </summary>
+    [Parameter] public EventCallback<Rule> OnToggle { get; set; }
+
+    /// <summary>
+    /// Whose it is and what the user can do, e.g. <c>Jane Doe's · you can see it</c>.
+    /// </summary>
+    internal static string OwnerText(Rule rule)
+    {
+        if (rule.CanChange)
+        {
+            return $"{rule.SharedBy}'s · you can change it";
+        }
+
+        return $"{rule.SharedBy}'s · you can see it";
+    }
+
+}

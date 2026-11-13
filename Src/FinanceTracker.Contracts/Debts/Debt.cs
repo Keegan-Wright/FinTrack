@@ -96,4 +96,18 @@ public class Debt
     /// </summary>
     [Description("Whether the forecast meets the pay-off goal, null without a goal")]
     public bool? OnTrack { get; init; }
+
+    /// <summary>
+    /// The first and last name of whoever shares it with the user, null when it's their own. Shared because it follows
+    /// an account they share, or because they chose to share it.
+    /// </summary>
+    [Description("Who shares the debt with the user, empty when it's their own")]
+    public string? SharedBy { get; init; }
+
+    /// <summary>
+    /// Whether the user can edit it: their own, or shared with them with changes allowed. Only its owner deletes it or
+    /// changes which account it follows.
+    /// </summary>
+    [Description("Whether the user can edit the debt")]
+    public bool CanChange { get; init; } = true;
 }

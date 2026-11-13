@@ -12,7 +12,7 @@ namespace FinanceTracker.Domain.OpenBanking.Transactions;
 /// <summary>
 /// A transaction on a <see cref="BankAccount"/>. Its own aggregate as the set is unbounded.
 /// </summary>
-public sealed class BankTransaction : AggregateRoot
+public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
 {
     private readonly List<string> _providerClassifications = [];
     private readonly List<Guid> _customClassificationIds = [];
@@ -53,6 +53,27 @@ public sealed class BankTransaction : AggregateRoot
     public DateTime OccurredAt { get; private set; }
 
     public bool IsPending { get; private set; }
+
+    /// <summary>
+    /// Whether it's on the hidden copy of a joint account and stands in for the shown copy, in a stretch the shown copy
+    /// missed while its connection lapsed, see <see cref="Sharing.JointAccount.Gaps"/>.
+    /// </summary>
+    public bool FillsJointGap { get; private set; }
+
+    /// <summary>
+    /// Sets whether it fills a joint account's gap, see <see cref="FillsJointGap"/>.
+    /// </summary>
+    /// <returns>Whether that changed.</returns>
+    public bool MarkFillsJointGap(bool fills)
+    {
+        if (FillsJointGap == fills)
+        {
+            return false;
+        }
+
+        FillsJointGap = fills;
+        return true;
+    }
 
     /// <summary>
     /// Whether the provider labels it a transfer. Only a hint, many aren't between the user's own accounts.
@@ -275,16 +296,43 @@ public sealed class BankTransaction : AggregateRoot
     /// <summary>
     /// The user says this pays <paramref name="bill"/>, which matching and rules then leave alone.
     /// </summary>
-    /// <exception cref="InvalidOperationException">The bill belongs to another user.</exception>
-    public void PayBill(Bill bill, DateTime decidedAt)
+    /// <param name="by">Who says so, the owner or someone they let change it. Only their own bills can be paid, or
+    /// one shared with them.</param>
+    /// <param name="sharedWithThem">Whether the bill is shared with <paramref name="by"/>.</param>
+    /// <exception cref="InvalidOperationException">The bill is neither <paramref name="by"/>'s nor shared with them.
+    /// </exception>
+    /// <remarks>On another person's transaction, only <paramref name="by"/>'s own or the owner's, see
+    /// <see cref="EnsureEitherOfTheirs"/>.</remarks>
+    public void PayBill(Bill bill, Guid by, DateTime decidedAt, bool sharedWithThem = false)
     {
         ArgumentNullException.ThrowIfNull(bill);
-        if (bill.UserId != UserId)
+        if (bill.UserId != by && !sharedWithThem)
         {
             throw new InvalidOperationException("Cannot pay another user's bill with this transaction.");
         }
 
+        EnsureEitherOfTheirs(bill.UserId, by, "bill");
+
         BillPayment = new BillPayment(bill.Id, DecisionSource.User, decidedAt);
+    }
+
+    /// <summary>
+    /// On another person's transaction, what <paramref name="by"/> puts on it is theirs or the transaction owner's.
+    /// Not a third person's shared with them, which would tell that person of a transaction they can't see, such as
+    /// paying their bill, and the owner couldn't name it.
+    /// </summary>
+    /// <param name="itemOwnerId">Whose the tag, bill or debt is.</param>
+    /// <param name="what">What it is, for the message, e.g. <c>bill</c>.</param>
+    /// <exception cref="InvalidOperationException">It's a third person's.</exception>
+    private void EnsureEitherOfTheirs(Guid itemOwnerId, Guid by, string what)
+    {
+        if (by == UserId || itemOwnerId == by || itemOwnerId == UserId)
+        {
+            return;
+        }
+
+        throw new InvalidOperationException(
+            $"Only your own {what} or the transaction owner's can go on another person's transaction.");
     }
 
     /// <summary>
@@ -316,14 +364,20 @@ public sealed class BankTransaction : AggregateRoot
     /// <summary>
     /// The user says this pays off <paramref name="debt"/>, which rules then leave alone.
     /// </summary>
-    /// <exception cref="InvalidOperationException">The debt belongs to another user.</exception>
-    public void PayDebt(Debt debt, DateTime decidedAt)
+    /// <param name="by">Who says so, the owner or someone they let change it. Only their own debts can be paid, or
+    /// one shared with them.</param>
+    /// <param name="sharedWithThem">Whether the debt is shared with <paramref name="by"/>.</param>
+    /// <exception cref="InvalidOperationException">The debt is neither <paramref name="by"/>'s nor shared with them.
+    /// </exception>
+    public void PayDebt(Debt debt, Guid by, DateTime decidedAt, bool sharedWithThem = false)
     {
         ArgumentNullException.ThrowIfNull(debt);
-        if (debt.UserId != UserId)
+        if (debt.UserId != by && !sharedWithThem)
         {
             throw new InvalidOperationException("Cannot pay another user's debt with this transaction.");
         }
+
+        EnsureEitherOfTheirs(debt.UserId, by, "debt");
 
         DebtPayment = new DebtPayment(debt.Id, DecisionSource.User, decidedAt);
     }
@@ -351,15 +405,21 @@ public sealed class BankTransaction : AggregateRoot
     /// <summary>
     /// The user tags the transaction, which from now on rules leave its tags alone, see <see cref="TagsSetByUser"/>.
     /// </summary>
-    /// <exception cref="InvalidOperationException">The tag is another user's, or the transaction is split and its tags
-    /// are its parts.</exception>
-    public void Classify(CustomClassification classification)
+    /// <param name="by">Who tags it, the owner or someone they let change it. Only their own tags can be used, or
+    /// those shared with them.</param>
+    /// <param name="sharedWithThem">The tags another person has shared with <paramref name="by"/>.</param>
+    /// <exception cref="InvalidOperationException">The tag is neither <paramref name="by"/>'s nor shared with them,
+    /// or the transaction is split and its tags are its parts.</exception>
+    public void Classify(CustomClassification classification, Guid by,
+        IReadOnlyCollection<Guid>? sharedWithThem = null)
     {
         ArgumentNullException.ThrowIfNull(classification);
-        if (classification.UserId != UserId)
+        if (classification.UserId != by && sharedWithThem?.Contains(classification.Id) != true)
         {
             throw new InvalidOperationException("Cannot apply another user's classification to this transaction.");
         }
+
+        EnsureEitherOfTheirs(classification.UserId, by, "tag");
 
         if (IsSplit)
         {
@@ -413,11 +473,15 @@ public sealed class BankTransaction : AggregateRoot
     /// </summary>
     /// <param name="parts">At least two, each signed like the transaction, adding up to its amount.</param>
     /// <param name="tags">The tags the parts count under.</param>
-    /// <exception cref="InvalidOperationException">It's pending, so its amount may still change, or a tag is another
-    /// user's.</exception>
+    /// <param name="by">Who splits it, the owner or someone they let change it. Parts can use their own tags, those
+    /// shared with them, or a tag already on the transaction, which may be the other person's.</param>
+    /// <param name="sharedWithThem">The tags another person has shared with <paramref name="by"/>.</param>
+    /// <exception cref="InvalidOperationException">It's pending, so its amount may still change, or a tag is neither
+    /// <paramref name="by"/>'s nor already on it.</exception>
     /// <exception cref="ArgumentException">The parts don't add up, are signed the other way or are zero, there's
     /// only one, or a part's tag isn't among <paramref name="tags"/>.</exception>
-    public void Split(IReadOnlyList<TransactionSplit> parts, IReadOnlyCollection<CustomClassification> tags)
+    public void Split(IReadOnlyList<TransactionSplit> parts, IReadOnlyCollection<CustomClassification> tags, Guid by,
+        IReadOnlyCollection<Guid>? sharedWithThem = null)
     {
         ArgumentNullException.ThrowIfNull(parts);
         ArgumentNullException.ThrowIfNull(tags);
@@ -427,9 +491,14 @@ public sealed class BankTransaction : AggregateRoot
             throw new InvalidOperationException("A pending transaction can't be split until the bank settles it.");
         }
 
-        if (tags.Any(x => x.UserId != UserId))
+        if (tags.Any(x => x.UserId != by && !HasTag(x.Id) && sharedWithThem?.Contains(x.Id) != true))
         {
             throw new InvalidOperationException("Cannot apply another user's classification to this transaction.");
+        }
+
+        foreach (CustomClassification tag in tags.Where(x => !HasTag(x.Id)))
+        {
+            EnsureEitherOfTheirs(tag.UserId, by, "tag");
         }
 
         CheckParts(parts, tags);
@@ -457,6 +526,52 @@ public sealed class BankTransaction : AggregateRoot
         _splits.Clear();
         return true;
     }
+
+    /// <summary>
+    /// Takes the tags and hidden bank classifications on <paramref name="other"/>, the same transaction as another
+    /// person's copy of a joint account has it, adding to its own. With <paramref name="withSplit"/>, its split too
+    /// when it isn't split itself. For merging the two copies of a joint account and splitting them again, the tags
+    /// may be either person's.
+    /// </summary>
+    /// <param name="withSplit">Whether to take the split, which only the copy being shown decides.</param>
+    public void TakeAnnotationsFrom(BankTransaction other, bool withSplit)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+
+        if (withSplit && !IsSplit && other.IsSplit && other.Amount == Amount)
+        {
+            _splits.AddRange(other._splits);
+            _customClassificationIds.Clear();
+        }
+
+        if (IsSplit)
+        {
+            _customClassificationIds.AddRange(_splits.Select(static x => x.TagId).OfType<Guid>()
+                .Except(_customClassificationIds));
+        }
+        else
+        {
+            _customClassificationIds.AddRange(other._customClassificationIds.Except(_customClassificationIds));
+        }
+
+        foreach (HiddenClassification hidden in other._hiddenClassifications.Where(static x => x.HiddenByUser))
+        {
+            if (_providerClassifications.Contains(hidden.Classification, StringComparer.OrdinalIgnoreCase) &&
+                !_hiddenClassifications.Exists(x => string.Equals(x.Classification, hidden.Classification,
+                    StringComparison.OrdinalIgnoreCase)))
+            {
+                _hiddenClassifications.Add(hidden);
+            }
+        }
+
+        TagsSetByUser |= other.TagsSetByUser;
+    }
+
+    /// <summary>
+    /// Whether <paramref name="tagId"/> is on it already, on the whole or on one of its parts.
+    /// </summary>
+    private bool HasTag(Guid tagId) =>
+        _customClassificationIds.Contains(tagId) || _splits.Exists(x => x.TagId == tagId);
 
     private void CheckParts(IReadOnlyList<TransactionSplit> parts, IReadOnlyCollection<CustomClassification> tags)
     {

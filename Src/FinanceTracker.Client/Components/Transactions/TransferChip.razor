@@ -21,7 +21,7 @@
             </ActivatorContent>
             <ChildContent>
                 <div class="ft-transfer">
-                    <MudText Typo="Typo.body2">@TransferText.Reason(Transfer)</MudText>
+                    <MudText Typo="Typo.body2">@TransferText.Reason(Transfer, SharedBy)</MudText>
                     @if (TransferText.OtherHalf(Transfer) is { } otherHalf)
                     {
                         <MudText Typo="Typo.caption" Class="mud-text-secondary">Other half: @otherHalf</MudText>
@@ -44,6 +44,11 @@
 @code {
 
     [Parameter] public TransactionTransfer? Transfer { get; set; }
+
+    /// <summary>
+    /// Who shares the account the transaction is on, null when it's the user's own.
+    /// </summary>
+    [Parameter] public string? SharedBy { get; set; }
 
     /// <summary>
     /// The user chose a decision from the menu.

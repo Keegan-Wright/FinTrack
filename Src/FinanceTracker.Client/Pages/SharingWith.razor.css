@@ -1,0 +1,24 @@
+.ft-sharing-with__tab {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* Stays at the bottom of the window while there's something to save, over the page rather than at its end */
+.ft-save-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+    padding: 12px 16px;
+    border-top: 1px solid var(--mud-palette-lines-default);
+    background: var(--mud-palette-surface);
+}
+
+.ft-save-bar__spacer {
+    flex: 1 1 auto;
+}

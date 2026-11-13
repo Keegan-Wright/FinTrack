@@ -90,7 +90,7 @@ public class RulePayBillTests
         Bill usersBill = Bill();
         Rule rule = Rule("Streaming", 0, RuleAction.PayBill(Bill()));
         BankTransaction transaction = Transaction();
-        transaction.PayBill(usersBill, At);
+        transaction.PayBill(usersBill, transaction.UserId, At);
 
         // Act
         bool changed = RuleEvaluator.Apply([rule], transaction, At);

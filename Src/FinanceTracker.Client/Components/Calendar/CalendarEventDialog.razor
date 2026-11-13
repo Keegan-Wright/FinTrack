@@ -30,13 +30,20 @@
             <MudTextField T="string" @bind-Value="_model.Notes" Label="Notes" Lines="2" Sizing="InputSizing.Auto"
                           HelperText="Optional, anything to remember"/>
 
+            @if (SavingsLocked)
+            {
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                    Only @Event!.SharedBy can change what's saved for it.
+                </MudText>
+            }
             <div class="ft-event-form__pair">
-                <MudTextField T="decimal?" @bind-Value="_model.SavingsTarget" Label="Save for it"
+                <MudTextField T="decimal?" @bind-Value="_model.SavingsTarget" Label="Save for it" Disabled="@SavingsLocked"
                               For="@(() => _model.SavingsTarget)" InputMode="@(InputMode.@decimal)"
                               Adornment="Adornment.Start" AdornmentText="@CurrencySymbol" Clearable="true"
                               Validation="@(Validator.ValidateValue(_model, nameof(SaveCalendarEvent.SavingsTarget)))"
                               HelperText="Optional, what you'd like put by" Immediate="true"/>
                 <MudSelect T="string" Label="Savings goal" Value="@_goal" ValueChanged="@OnGoalChanged"
+                           Disabled="@SavingsLocked"
                            ToStringFunc="@GoalName" HelperText="Where you're saving for it">
                     <MudSelectItem T="string" Value="@NoGoal">None</MudSelectItem>
                     <MudSelectItem T="string" Value="@NewGoal">Create a new goal</MudSelectItem>
@@ -59,7 +66,7 @@
 
             @if (IsYearly && _goal != NoGoal)
             {
-                <MudSwitch T="bool" @bind-Value="_model.RollsGoalOn" Color="Color.Primary"
+                <MudSwitch T="bool" @bind-Value="_model.RollsGoalOn" Color="Color.Primary" Disabled="@SavingsLocked"
                            Label="Move the goal on to next year once it's passed"/>
                 <MudText Typo="Typo.caption" Class="mud-text-secondary">
                     The day after, the goal aims for its next date, with what to save as its target.
@@ -83,6 +90,11 @@
     /// The event to change, null for a new one.
     /// </summary>
     [Parameter] public CalendarEvent? Event { get; set; }
+
+    /// <summary>
+    /// Someone else's event saves towards what its owner chose.
+    /// </summary>
+    private bool SavingsLocked => Event?.SharedBy is not null;
 
     /// <summary>
     /// The day a new event is on.

@@ -61,6 +61,36 @@ public class TransactionChipsTests : ComponentTestBase
     }
 
     [Test]
+    public async Task For_AnotherPersonsBillAndDebt_NamesThemWithoutALinkAndSaysWhoseTheyAre()
+    {
+        // Arrange
+        Transaction shared = TransactionListTests.Transaction("RENT", -650m, sharedBy: "Sam Taylor",
+            bill: new TransactionBill
+            {
+                BillId = Guid.NewGuid(), BillName = "Rent", IsSubscription = true, DecidedBy = TransferDecidedBy.Rule,
+                RuleName = "Landlord", OwnerName = "Sam Taylor"
+            },
+            debt: new TransactionDebt
+            {
+                DebtId = Guid.NewGuid(), DebtName = "Loan", DecidedBy = TransferDecidedBy.User,
+                OwnerName = "Sam Taylor"
+            });
+
+        // Act
+        Dictionary<string, TransactionChip> chips = TransactionChips.For(shared).ToDictionary(static x => x.Text);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(chips["Rent"].Href).IsNull();
+            await Assert.That(chips["Rent"].Title)
+                .IsEqualTo("Pays Sam Taylor's subscription Rent, by Sam Taylor's rule Landlord");
+            await Assert.That(chips["Loan"].Href).IsNull();
+            await Assert.That(chips["Loan"].Title).IsEqualTo("Pays off Loan, chosen by Sam Taylor");
+        }
+    }
+
+    [Test]
     public async Task For_SaidToPayNoBillOrDebt_HasNoChipForThem()
     {
         // Arrange

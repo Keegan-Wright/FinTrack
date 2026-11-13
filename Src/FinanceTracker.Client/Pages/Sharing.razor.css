@@ -1,0 +1,32 @@
+/* The username field takes the room left beside the button, and wraps above it when there isn't enough */
+.ft-sharing__invite {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.ft-sharing__invite ::deep .mud-input-control {
+    flex: 1 1 220px;
+    margin-top: 0;
+}
+
+.ft-sharing__row {
+    flex-wrap: wrap;
+}
+
+/* Wraps at narrow widths rather than squeezing, Accept and Decline side by side */
+.ft-sharing__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-left: auto;
+}
+
+/* On a phone the answers go under the name, full width, so both buttons stay easy to hit */
+@media (max-width: 599.98px) {
+    .ft-sharing__actions {
+        flex-basis: 100%;
+        justify-content: flex-end;
+    }
+}

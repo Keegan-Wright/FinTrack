@@ -3,6 +3,7 @@ using System.Linq.Expressions;
 using FinanceTracker.Contracts;
 using FinanceTracker.Domain.Identity;
 using FinanceTracker.Domain.OpenBanking.Connections;
+using FinanceTracker.Domain.Sharing;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Bills;
 using FinanceTracker.Infrastructure.Notifications;
@@ -12,13 +13,14 @@ using FinanceTracker.Infrastructure.OpenBanking.Balances;
 using FinanceTracker.Infrastructure.OpenBanking.Transfers;
 using FinanceTracker.Infrastructure.PayPeriods;
 using FinanceTracker.Infrastructure.Rules;
+using FinanceTracker.Infrastructure.Sharing;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.BackgroundJobs;
 
 /// <summary>
-/// Syncs a set of connections, each as its owner, updates each owner's balance snapshots for the day, applies their
-/// rules and matches their transfers. Tells those owners as the sync starts and once it has finished. Connections of
+/// Syncs a set of connections, each as its owner, fills in their joint accounts whose shown copy has stopped syncing,
+/// updates each owner's balance snapshots for the day, applies their rules and matches their transfers. Tells those owners as the sync starts and once it has finished. Connections of
 /// a user an admin has locked are skipped.
 /// </summary>
 public abstract class OpenBankingSyncJob
@@ -116,6 +118,11 @@ public abstract class OpenBankingSyncJob
             using Activity? ownerActivity = FinTrackActivitySources.App.StartUserActivity("Update owner", userId);
             using IDisposable? logScope = _logger.BeginUserScope(userId);
 
+            // First, so a joint account whose shown copy has stopped syncing is filled in from the other copy before
+            // anything reads it
+            await RunAsOwnerAsync<IJointAccountGapService>(userId, "Fill joint account gaps",
+                x => x.RefreshAsync(cancellationToken));
+
             // Rules on what the sync brought in or changed, before transfers so the matcher sees what they decided
             await RunAsOwnerAsync<IRuleApplicationService>(userId, "Apply rules",
                 x => x.ApplyChangesAsync(startedAt, cancellationToken));
@@ -138,6 +145,14 @@ public abstract class OpenBankingSyncJob
                 x => x.BackfillAsync(cancellationToken));
 
             // Last, so they're told about bills, budgets, payments and balances as everything above left them
+            await NotifyOwnerAsync(userId, cancellationToken);
+        }
+
+        // Whoever's linked with them sees what they share, so is told about it too, by their own settings. Those
+        // who synced themselves were told above
+        foreach (Guid userId in await LinkedWithAsync(owners, cancellationToken))
+        {
+            using IDisposable? logScope = _logger.BeginUserScope(userId);
             await NotifyOwnerAsync(userId, cancellationToken);
         }
 
@@ -181,6 +196,25 @@ public abstract class OpenBankingSyncJob
         {
             activity?.AddException(ex);
         }
+    }
+
+    /// <summary>
+    /// The people linked with any of <paramref name="owners"/> who aren't owners themselves.
+    /// </summary>
+    private async Task<List<Guid>> LinkedWithAsync(HashSet<Guid> owners, CancellationToken cancellationToken)
+    {
+        List<Guid> ownerIds = owners.ToList();
+        await using FinanceTrackerContext dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+        List<UserLink> links = await dbContext.UserLinks.AsNoTracking()
+            .Where(x => x.Status == UserLinkStatus.Accepted &&
+                        (ownerIds.Contains(x.UserId) || ownerIds.Contains(x.InviteeId)))
+            .ToListAsync(cancellationToken);
+
+        return links
+            .SelectMany(static x => new[] { x.UserId, x.InviteeId })
+            .Where(x => !owners.Contains(x))
+            .Distinct()
+            .ToList();
     }
 
     /// <summary>

@@ -62,7 +62,7 @@ public static class SavingsGoalCalculator
 
         Dictionary<DateOnly, decimal> savedOn = Counted(goal, transactions, timeZone)
             .GroupBy(x => x.OccurredAt.LocalDayIn(timeZone))
-            .ToDictionary(static x => x.Key, x => x.Sum(t => t.AmountUnder(goal.TagIds)));
+            .ToDictionary(static x => x.Key, x => x.Sum(t => SavedBy(goal, t)));
 
         List<SavedOn> history = [];
         decimal saved = goal.Saved;
@@ -76,14 +76,29 @@ public static class SavingsGoalCalculator
     }
 
     /// <summary>
-    /// Tagged money in less tagged money out, of a split transaction only the parts with the goal's tags.
+    /// What the tagged transactions saved, of a split transaction only the parts with the goal's tags. Saving into an
+    /// account here, money in less money out. Saving somewhere FinTrack can't see, money out less money back in.
     /// </summary>
     private static decimal Tagged(SavingsGoal goal, IEnumerable<BankTransaction> transactions, TimeZoneInfo timeZone) =>
-        Counted(goal, transactions, timeZone).Sum(x => x.AmountUnder(goal.TagIds));
+        Counted(goal, transactions, timeZone).Sum(x => SavedBy(goal, x));
 
     /// <summary>
-    /// The transactions that count towards the goal. When both halves of a transfer are tagged, only the money in
-    /// counts, so a rule tagging both sides doesn't cancel itself out.
+    /// How much <paramref name="transaction"/> adds to the goal, less than nothing when it takes from it.
+    /// </summary>
+    private static decimal SavedBy(SavingsGoal goal, BankTransaction transaction)
+    {
+        decimal amount = transaction.AmountUnder(goal.TagIds);
+        if (goal.Direction == SavingsDirection.MoneyOut)
+        {
+            return -amount;
+        }
+
+        return amount;
+    }
+
+    /// <summary>
+    /// The transactions that count towards the goal. When both halves of a transfer are tagged, only the half going the
+    /// way the goal saves counts, money in or money out, so a rule tagging both sides doesn't cancel itself out.
     /// </summary>
     private static List<BankTransaction> Counted(SavingsGoal goal, IEnumerable<BankTransaction> transactions,
         TimeZoneInfo timeZone)
@@ -91,13 +106,27 @@ public static class SavingsGoalCalculator
         List<BankTransaction> tagged = transactions.Where(x => goal.Counts(x, timeZone)).ToList();
         HashSet<Guid> taggedIds = tagged.Select(static x => x.Id).ToHashSet();
 
-        return tagged.Where(x => !IsOutgoingHalfOfTaggedTransfer(x, taggedIds)).ToList();
+        return tagged.Where(x => !IsOtherHalfOfTaggedTransfer(goal, x, taggedIds)).ToList();
     }
 
+    /// <summary>
+    /// The half of a transfer whose other half is tagged too that goes against the goal's direction.
+    /// </summary>
+    private static bool IsOtherHalfOfTaggedTransfer(SavingsGoal goal, BankTransaction transaction,
+        HashSet<Guid> taggedIds)
+    {
+        if (transaction.Transfer?.PartnerTransactionId is not { } partnerId || !taggedIds.Contains(partnerId))
+        {
+            return false;
+        }
 
-    private static bool IsOutgoingHalfOfTaggedTransfer(BankTransaction transaction, HashSet<Guid> taggedIds) =>
-        transaction.Amount < 0 && transaction.Transfer?.PartnerTransactionId is { } partnerId &&
-        taggedIds.Contains(partnerId);
+        if (goal.Direction == SavingsDirection.MoneyOut)
+        {
+            return transaction.Amount > 0;
+        }
+
+        return transaction.Amount < 0;
+    }
 
     /// <summary>
     /// Saving the monthly contribution from next month on.

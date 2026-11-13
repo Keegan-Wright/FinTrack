@@ -1,0 +1,24 @@
+.ft-shared-rule {
+    padding: 10px 0;
+}
+
+.ft-shared-rule__text {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* A phone keeps the name and switch, the summary wraps rather than vanishing off the edge */
+.ft-list__main ::deep .ft-shared-rule__summary {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+@media (max-width: 599.98px) {
+    .ft-list__main ::deep .ft-shared-rule__summary {
+        white-space: normal;
+    }
+}

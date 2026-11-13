@@ -63,6 +63,13 @@ public class TransactionTransfer
     public string? PartnerHouseholdMemberName { get; init; }
 
     /// <summary>
+    /// Whose account the other half is on, their first and last name, when the user's own transaction moved money
+    /// with someone they're linked with. Null for their own accounts, and on the other person's transactions.
+    /// </summary>
+    [Description("Name of the linked person whose account the other half is on")]
+    public string? PartnerOwnerName { get; init; }
+
+    /// <summary>
     /// The rule that decided, when <see cref="DecidedBy"/> is <see cref="TransferDecidedBy.Rule"/>.
     /// </summary>
     [Description("The name of the rule that decided, when a rule decided")]

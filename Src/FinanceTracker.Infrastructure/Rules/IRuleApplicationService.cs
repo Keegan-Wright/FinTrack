@@ -3,8 +3,10 @@ using FinanceTracker.Domain.Rules;
 namespace FinanceTracker.Infrastructure.Rules;
 
 /// <summary>
-/// Applies the current user's rules to their transactions, see <see cref="RuleEvaluator"/>. The background sync
-/// and <see cref="Contracts.Services.IRulesService"/> call it.
+/// Applies rules to the transactions the current user can change. Their own, and those on accounts shared with them
+/// with changes allowed. Each transaction gets every rule that reaches it, its owner's and those of anyone allowed to
+/// change it, see <see cref="RuleEvaluator"/>, so whoever's run it is comes to the same decisions. The background sync,
+/// <see cref="Contracts.Services.IRulesService"/> and sharing call it.
 /// </summary>
 /// <remarks>
 /// Rules only reach the transactions that arrive or change after they're saved. A user's history is only changed in
@@ -37,4 +39,13 @@ public interface IRuleApplicationService
     /// <returns>How many transactions changed, 0 when the rule is off.</returns>
     /// <exception cref="InvalidOperationException">The user has no rule with <paramref name="ruleId"/>.</exception>
     Task<int> ApplyToExistingAsync(Guid ruleId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Applies the rules to every transaction on <paramref name="accountIds"/>, once who can change those accounts
+    /// has changed, so rules that no longer reach them take back what they gave and those that now do run. Transfers
+    /// are then re-matched around any whose transfer answer changed.
+    /// </summary>
+    /// <param name="accountIds">Accounts the user can change, others are left alone.</param>
+    /// <returns>How many transactions changed.</returns>
+    Task<int> ReapplyToAccountsAsync(IReadOnlyCollection<Guid> accountIds, CancellationToken cancellationToken);
 }

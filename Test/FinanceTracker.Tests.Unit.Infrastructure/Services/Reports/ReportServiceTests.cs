@@ -1,3 +1,4 @@
+using FinanceTracker.Infrastructure.Sharing;
 using System.Globalization;
 using FinanceTracker.Contracts.Reports;
 using FinanceTracker.Contracts.Reports.Account;
@@ -601,11 +602,11 @@ public class ReportServiceTests : InfrastructureTestBase
             .ToListAsync(CancellationToken);
 
         transaction.Split(parts.Select(x => new TransactionSplit(x.Amount,
-            x.Tag is null ? null : Scenario.ClassificationMappings[x.Tag], null)).ToList(), tags);
+            x.Tag is null ? null : Scenario.ClassificationMappings[x.Tag], null)).ToList(), tags, transaction.UserId);
         await context.SaveChangesAsync(CancellationToken);
     }
 
     private ReportService BuildSubject(TimeProvider? timeProvider = null) =>
         new(CurrentUserFor(Username), DbContextFactory, NullLogger<ReportService>.Instance,
-            timeProvider ?? TimeProvider.System);
+            timeProvider ?? TimeProvider.System, new AccountScope(CurrentUserFor(Username)));
 }

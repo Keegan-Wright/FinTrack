@@ -15,6 +15,7 @@ using FinanceTracker.Domain.OpenBanking.Transfers;
 using FinanceTracker.Domain.PayPeriods;
 using FinanceTracker.Domain.Rules;
 using FinanceTracker.Domain.SavingsGoals;
+using FinanceTracker.Domain.Sharing;
 using FinanceTracker.Infrastructure.Encryption;
 using FinanceTracker.Infrastructure.Persistence;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
@@ -75,6 +76,10 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
     public DbSet<Debt> Debts { get; private set; }
     public DbSet<CalendarEvent> CalendarEvents { get; private set; }
     public DbSet<HouseholdMember> HouseholdMembers { get; private set; }
+    public DbSet<UserLink> UserLinks { get; private set; }
+    public DbSet<Share> Shares { get; private set; }
+    public DbSet<SharingSettings> SharingSettings { get; private set; }
+    public DbSet<JointAccount> JointAccounts { get; private set; }
     public DbSet<TransferMatchCheckpoint> TransferMatchCheckpoints { get; private set; }
     public DbSet<BalanceSnapshot> BalanceSnapshots { get; private set; }
     public DbSet<NetWorthSnapshot> NetWorthSnapshots { get; private set; }

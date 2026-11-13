@@ -1,4 +1,5 @@
 using System.Globalization;
+using FinanceTracker.Client.Components.Bills;
 using FinanceTracker.Client.Components.Common;
 using FinanceTracker.Contracts.Debts;
 using FinanceTracker.Contracts.Transactions;
@@ -151,14 +152,15 @@ public static class DebtText
     /// <summary>
     /// Who said a transaction pays a debt, e.g. <c>Chosen by you</c> or <c>By your rule Car loan</c>.
     /// </summary>
-    public static string Reason(TransferDecidedBy decidedBy, string? ruleName)
+    /// <param name="ownerName">Whose debt it is when it's the other person's, null when it's the user's.</param>
+    public static string Reason(TransferDecidedBy decidedBy, string? ruleName, string? ownerName = null)
     {
         if (decidedBy == TransferDecidedBy.Rule)
         {
-            return $"By your rule {ruleName}";
+            return $"By {BillText.Whose(ownerName)} rule {ruleName}";
         }
 
-        return "Chosen by you";
+        return $"Chosen by {BillText.Who(ownerName)}";
     }
 
     /// <summary>
@@ -169,4 +171,32 @@ public static class DebtText
     public static string Month(DateOnly day) => day.ToString("MMM yyyy", CultureInfo.CurrentCulture);
 
     public static string Day(DateOnly day) => day.ToString("d MMM yyyy", CultureInfo.CurrentCulture);
+
+    /// <summary>
+    /// Whose a shared debt is and what the user can do, e.g. <c>Jane Doe's · you can change it</c>.
+    /// </summary>
+    public static string SharedText(string sharedBy, bool canChange)
+    {
+        if (canChange)
+        {
+            return $"{sharedBy}'s · you can change it";
+        }
+
+        return $"{sharedBy}'s · you can see it";
+    }
+
+    /// <summary>
+    /// How a debt reads where one is picked, with whose it is when it's someone else's, e.g. <c>Car loan · Jane
+    /// Doe's</c>.
+    /// </summary>
+    public static string PickerLabel(Debt debt)
+    {
+        ArgumentNullException.ThrowIfNull(debt);
+        if (debt.SharedBy is { } sharedBy)
+        {
+            return $"{debt.Name} · {sharedBy}'s";
+        }
+
+        return debt.Name;
+    }
 }

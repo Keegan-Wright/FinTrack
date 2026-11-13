@@ -65,6 +65,25 @@ public sealed record AccountIdentifier
         (SortCode is not null && Digits(reference).Contains(SortCode + Number, StringComparison.Ordinal)) ||
         (Iban is not null && Alphanumeric(reference).Contains(Iban, StringComparison.Ordinal));
 
+    /// <summary>
+    /// Whether <paramref name="other"/> is the same account, by sort code and number when both have them, otherwise by
+    /// IBAN. Two people connecting a joint account each get it with the same identifier.
+    /// </summary>
+    public bool IsSameAccountAs(AccountIdentifier? other)
+    {
+        if (other is null)
+        {
+            return false;
+        }
+
+        if (SortCode is not null && other.SortCode is not null)
+        {
+            return SortCode == other.SortCode && Number == other.Number;
+        }
+
+        return Iban is not null && Iban == other.Iban;
+    }
+
     // Only a 22 character GB IBAN whose last 14 characters are all digits, anything else (another country's, or a
     // malformed one) keeps its sort code and number unknown
     private static (string? SortCode, string? Number) FromUkIban(string? iban) =>

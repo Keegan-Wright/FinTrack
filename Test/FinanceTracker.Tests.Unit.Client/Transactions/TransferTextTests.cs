@@ -8,6 +8,64 @@ public class TransferTextTests
     private static readonly DateTime October4 = new(2026, 10, 4, 12, 0, 0, DateTimeKind.Utc);
 
     [Test]
+    [Arguments(TransferDecidedBy.FinTrack, TransferMatchReason.MirrorPair, TransferState.NeedsReview,
+        "The same amount moved the other way between Sam Taylor's accounts, but the bank didn't call it a " +
+        "transfer. It still counts until it's decided.")]
+    [Arguments(TransferDecidedBy.FinTrack, TransferMatchReason.HouseholdMember, TransferState.Transfer,
+        "Money to or from someone in Sam Taylor's household.")]
+    [Arguments(TransferDecidedBy.Rule, null, TransferState.Transfer, "Decided by Sam Taylor's rule Savings.")]
+    [Arguments(TransferDecidedBy.User, null, TransferState.Transfer, "Marked as a transfer.")]
+    public async Task Reason_OnSomeoneElsesSharedTransaction_ReadsAsTheirs(TransferDecidedBy decidedBy,
+        TransferMatchReason? reason, TransferState state, string expected)
+    {
+        // Arrange
+        TransactionTransfer transfer = new()
+        {
+            State = state, DecidedBy = decidedBy, Reason = reason, RuleName = "Savings"
+        };
+
+        // Act & Assert
+        await Assert.That(TransferText.Reason(transfer, sharedBy: "Sam Taylor")).IsEqualTo(expected);
+    }
+
+    [Test]
+    [Arguments("Joint", "Transfer · Sam Taylor's Joint")]
+    [Arguments(null, "Transfer · Sam Taylor")]
+    public async Task Label_WithALinkedPersonsAccount_SaysWhose(string? account, string expected)
+    {
+        // Arrange
+        TransactionTransfer transfer = new()
+        {
+            State = TransferState.Transfer, DecidedBy = TransferDecidedBy.FinTrack, PartnerAccountName = account,
+            PartnerOwnerName = "Sam Taylor"
+        };
+
+        // Act & Assert
+        await Assert.That(TransferText.Label(transfer)).IsEqualTo(expected);
+    }
+
+    [Test]
+    public async Task ReasonAndMissingHalf_WithALinkedPersonsAccount_SayWhoseNotYours()
+    {
+        // Arrange
+        TransactionTransfer transfer = new()
+        {
+            State = TransferState.NeedsReview, DecidedBy = TransferDecidedBy.FinTrack,
+            Reason = TransferMatchReason.MirrorPair, PartnerOwnerName = "Alex Smith"
+        };
+
+        // Act & Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(TransferText.Reason(transfer)).IsEqualTo(
+                "The same amount moved the other way on Alex Smith's account, but the bank didn't call it a " +
+                "transfer. It still counts until one of you decides.");
+            await Assert.That(TransferText.MissingHalf(transfer))
+                .IsEqualTo("The other half is on one of Alex Smith's accounts");
+        }
+    }
+
+    [Test]
     [Arguments(TransferState.Transfer, "Rainy Day", null, "Transfer · Rainy Day")]
     [Arguments(TransferState.Transfer, null, "Jane Smith", "Transfer · Jane Smith")]
     [Arguments(TransferState.Transfer, null, null, "Transfer")]

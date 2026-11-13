@@ -24,7 +24,7 @@
                           Immediate="true"/>
 
             <MudSelect T="Guid" Label="Paid from" @bind-Value="_model.AccountId" For="@(() => _model.AccountId)"
-                       ToStringFunc="@AccountName" Disabled="@FromTheBank"
+                       ToStringFunc="@AccountName" Disabled="@AccountLocked"
                        Validation="@(Validator.ValidateValue(_model, nameof(SaveBill.AccountId)))"
                        HelperText="@AccountHelp">
                 @foreach (TransactionAccountFilter account in Accounts)
@@ -99,11 +99,30 @@
     /// <summary>
     /// Seeded from a standing order or direct debit, so it stays on that account.
     /// </summary>
-    private bool FromTheBank => Bill is { CanDelete: false };
+    private bool FromTheBank => Bill is { CanDelete: false, SharedBy: null };
 
-    private string AccountHelp => FromTheBank
-        ? "It stays with its standing order or direct debit's account"
-        : "Payments from this account are matched to it";
+    /// <summary>
+    /// It stays on its account. One from the bank, or someone else's, which only they move.
+    /// </summary>
+    private bool AccountLocked => FromTheBank || Bill?.SharedBy is not null;
+
+    private string AccountHelp
+    {
+        get
+        {
+            if (Bill?.SharedBy is { } owner)
+            {
+                return $"Only {owner} can move it to another account";
+            }
+
+            if (FromTheBank)
+            {
+                return "It stays with its standing order or direct debit's account";
+            }
+
+            return "Payments from this account are matched to it";
+        }
+    }
 
     private string AmountHelp => Bill is null
         ? "What it costs each time"

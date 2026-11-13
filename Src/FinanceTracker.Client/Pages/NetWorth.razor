@@ -15,6 +15,7 @@
 <PageTitle>FinTrack - Net worth</PageTitle>
 <PageHeader Title="Net worth" Subtitle="What you have, less what you owe">
     <Actions>
+        <SharingViewSwitch/>
         <MudToggleGroup T="int" Value="@_months" ValueChanged="@SetRangeAsync" Size="Size.Small"
                         Color="Color.Primary">
             <MudToggleItem Value="3" Text="3 months"/>

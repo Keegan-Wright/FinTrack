@@ -93,4 +93,23 @@ public class AccountIdentifierTests
     [Arguments(null)]
     public async Task AccountIdentifier_IsNamedIn_AnyOtherReference_IsFalse(string? reference) =>
         await Assert.That(AccountIdentifier.Create("123456", "12345678", UkIban)!.IsNamedIn(reference)).IsFalse();
+
+    [Test]
+    [Arguments("11-22-33", "12345678", null, "112233", "12345678", null, true)]
+    [Arguments("11-22-33", "12345678", null, "112233", "87654321", null, false)]
+    [Arguments(null, null, "GB29NWBK11223312345678", "112233", "12345678", null, true)]
+    [Arguments(null, null, "DE89370400440532013000", null, null, "DE89 3704 0044 0532 0130 00", true)]
+    [Arguments(null, null, "DE89370400440532013000", null, null, "DE89370400440532013001", false)]
+    public async Task IsSameAccountAs_BySortCodeAndNumberElseIban(string? sortCode, string? number, string? iban,
+        string? otherSortCode, string? otherNumber, string? otherIban, bool expected)
+    {
+        AccountIdentifier identifier = AccountIdentifier.Create(sortCode, number, iban)!;
+        AccountIdentifier? other = AccountIdentifier.Create(otherSortCode, otherNumber, otherIban);
+
+        await Assert.That(identifier.IsSameAccountAs(other)).IsEqualTo(expected);
+    }
+
+    [Test]
+    public async Task IsSameAccountAs_Nothing_IsFalse() =>
+        await Assert.That(AccountIdentifier.Create("112233", "12345678", null)!.IsSameAccountAs(null)).IsFalse();
 }

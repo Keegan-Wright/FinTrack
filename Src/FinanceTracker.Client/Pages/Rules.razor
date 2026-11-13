@@ -1,5 +1,5 @@
 @page "/Rules"
-@* The user's rules in the order they run, to reorder, switch on and off. *@
+@* The user's rules in the order they run, to reorder, switch on and off, then those other people share with them. *@
 @using FinanceTracker.Client.Components.Rules
 @using FinanceTracker.Contracts.Bills
 @using FinanceTracker.Contracts.Classifications
@@ -33,13 +33,27 @@
             No rules yet. Make one to tag what you buy as it syncs, like Shopping for anything from your supermarket.
         </MudText>
     }
+    else if (OwnRules.Count == 0)
+    {
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+            None of your own yet. Make one to tag what you buy as it syncs.
+        </MudText>
+    }
     else
     {
-        <RuleList Rules="@RuleList" AccountNames="@AccountNames" TagNames="@TagNames" BillNames="@BillNames"
+        <RuleList Rules="@OwnRules" AccountNames="@AccountNames" TagNames="@TagNames" BillNames="@BillNames"
                   DebtNames="@DebtNames" OnReorder="@ReorderAsync" OnToggle="@ToggleAsync"
                   OnDelete="@DeleteAsync"/>
     }
 </Section>
+
+@if (SharedRules.Count > 0)
+{
+    <Section Title="Shared with you" Caption="Each runs on the accounts its owner can change, after their own rules">
+        <SharedRuleList Rules="@SharedRules" AccountNames="@AccountNames" TagNames="@TagNames" BillNames="@BillNames"
+                        DebtNames="@DebtNames" OnToggle="@ToggleAsync"/>
+    </Section>
+}
 
 @code {
 
@@ -73,19 +87,24 @@
     [PersistentState]
     public List<Debt>? DebtList { get; set; }
 
+    private List<Rule> OwnRules => (RuleList ?? []).Where(static x => x.SharedBy is null).ToList();
+
+    private List<Rule> SharedRules => (RuleList ?? []).Where(static x => x.SharedBy is not null).ToList();
+
+    // Each with the names shared rules carry, for what's another person's
     private IReadOnlyDictionary<Guid, string> AccountNames =>
-        (Accounts ?? []).ToDictionary(static x => x.AccountId, static x => x.AccountName);
+        WithSharedNames((Accounts ?? []).ToDictionary(static x => x.AccountId, static x => x.AccountName));
 
     private IReadOnlyDictionary<Guid, string> TagNames =>
-        (Tags ?? []).ToDictionary(static x => x.ClassificationId, static x => x.Tag ?? string.Empty);
+        WithSharedNames((Tags ?? []).ToDictionary(static x => x.ClassificationId, static x => x.Tag ?? string.Empty));
 
     private IReadOnlyDictionary<Guid, string> BillNames =>
-        (BillList ?? []).ToDictionary(static x => x.Id, static x => x.Name);
+        WithSharedNames((BillList ?? []).ToDictionary(static x => x.Id, static x => x.Name));
 
     private IReadOnlyDictionary<Guid, string> DebtNames =>
-        (DebtList ?? []).ToDictionary(static x => x.Id, static x => x.Name);
+        WithSharedNames((DebtList ?? []).ToDictionary(static x => x.Id, static x => x.Name));
 
-    private string SectionTitle => RuleList?.Count == 1 ? "1 rule" : $"{RuleList?.Count ?? 0} rules";
+    private string SectionTitle => OwnRules.Count == 1 ? "1 rule" : $"{OwnRules.Count} rules";
 
     protected override async Task OnInitializedAsync()
     {
@@ -115,16 +134,33 @@
     }
 
     /// <summary>
-    /// Shown in the new order straight away, and put back if it can't be saved.
+    /// <paramref name="names"/> with the names the shared rules carry added, ids being unique across both.
+    /// </summary>
+    private Dictionary<Guid, string> WithSharedNames(Dictionary<Guid, string> names)
+    {
+        foreach (Rule rule in SharedRules)
+        {
+            foreach ((Guid id, string name) in rule.Names)
+            {
+                names.TryAdd(id, name);
+            }
+        }
+
+        return names;
+    }
+
+    /// <summary>
+    /// Shown in the new order straight away, and put back if it can't be saved. Only their own move, the shared ones
+    /// stay after them.
     /// </summary>
     internal async Task ReorderAsync(IReadOnlyList<Rule> reordered)
     {
         List<Rule>? previous = RuleList;
-        RuleList = reordered.ToList();
+        RuleList = [.. reordered, .. SharedRules];
 
         try
         {
-            ReorderRules order = new() { RuleIds = RuleList.Select(static x => x.Id).ToList() };
+            ReorderRules order = new() { RuleIds = reordered.Select(static x => x.Id).ToList() };
             await RulesService.ReorderRulesAsync(order, _cts.Token);
         }
         catch (Exception)

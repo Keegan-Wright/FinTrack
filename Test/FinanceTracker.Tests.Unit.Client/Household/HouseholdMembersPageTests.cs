@@ -4,6 +4,7 @@ using FinanceTracker.Client;
 using FinanceTracker.Client.Pages;
 using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.HouseholdMember;
+using FinanceTracker.Contracts.Sharing;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Validation;
 using FluentValidation;
@@ -50,6 +51,42 @@ public class HouseholdMembersPageTests : ComponentTestBase
         // Assert
         await Assert.That(items.Select(static x => x.Text)).IsEquivalentTo(
             ["Edit", "Recognise their payments", "Delete"], TUnit.Assertions.Enums.CollectionOrdering.Matching);
+    }
+
+    [Test]
+    public async Task LinkingToSomeoneTheyShareWith_SavesIt_AndOffersToUnlink()
+    {
+        // Arrange
+        UserLink sam = new()
+        {
+            Id = Guid.NewGuid(), Name = "Sam Taylor", Username = "sam", State = LinkState.Linked,
+            Since = new DateTime(2026, 11, 3, 12, 0, 0, DateTimeKind.Utc)
+        };
+        ISharingService sharing = Substitute.For<ISharingService>();
+        sharing.GetPeopleAsync(Arg.Any<CancellationToken>()).Returns(_ => new[] { sam }.ToAsyncEnumerable());
+        Services.AddSingleton(sharing);
+        _householdMemberService.LinkHouseholdMemberAsync(_partner.Id, Arg.Any<LinkHouseholdMember>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new HouseholdMember
+            {
+                Id = _partner.Id, FirstName = "Sam", LastName = "Taylor", YearlyIncome = 24_000m,
+                LinkedUserId = Guid.NewGuid(), LinkedUsername = "sam"
+            });
+        IRenderedComponent<MudPopoverProvider> popovers = Render<MudPopoverProvider>();
+        IRenderedComponent<HouseholdMembers> cut = Render<HouseholdMembers>(p => p.AddCascadingValue(_applicationState));
+
+        // Act
+        await RowMenu.ChooseAsync(cut, popovers, "Jane Smith", "This is Sam Taylor");
+        cut.WaitForState(() => cut.Markup.Contains("This is @sam"));
+        IReadOnlyList<(string Text, bool Disabled)> after = await RowMenu.ItemsAsync(cut, popovers, "Sam Taylor");
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await _householdMemberService.Received(1).LinkHouseholdMemberAsync(_partner.Id,
+                Arg.Is<LinkHouseholdMember>(x => x.LinkId == sam.Id), Arg.Any<CancellationToken>());
+            await Assert.That(after.Select(static x => x.Text)).Contains("Not @sam any more");
+        }
     }
 
     [Test]

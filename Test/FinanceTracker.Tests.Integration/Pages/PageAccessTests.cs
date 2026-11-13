@@ -25,6 +25,7 @@ public class PageAccessTests : IntegrationTestBase
         "/Rules",
         "/Rules/new",
         "/SavingsGoals",
+        "/Sharing",
         "/Transactions"
     ];
 

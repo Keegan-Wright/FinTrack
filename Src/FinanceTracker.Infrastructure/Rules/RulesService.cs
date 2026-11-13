@@ -4,6 +4,7 @@ using FinanceTracker.Contracts.Services;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
+using FinanceTracker.Infrastructure.Sharing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using DomainRule = FinanceTracker.Domain.Rules.Rule;
@@ -17,14 +18,16 @@ namespace FinanceTracker.Infrastructure.Rules;
 public class RulesService : ServiceBase<RulesService>, IRulesService
 {
     private readonly IRuleApplicationService _ruleApplicationService;
+    private readonly IAccountScope _accountScope;
     private readonly TimeProvider _timeProvider;
 
     public RulesService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<RulesService> logger,
-        IRuleApplicationService ruleApplicationService, TimeProvider timeProvider)
+        IRuleApplicationService ruleApplicationService, IAccountScope accountScope, TimeProvider timeProvider)
         : base(currentUser, financeTrackerContextFactory, logger)
     {
         _ruleApplicationService = ruleApplicationService;
+        _accountScope = accountScope;
         _timeProvider = timeProvider;
     }
 
@@ -44,6 +47,19 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
         {
             yield return RuleMapper.ToContract(rule);
         }
+
+        // Then those other people share with them, which run where their owner's rules run
+        List<VisibleItem<DomainRule>> shared = await SharedRules.WithAsync(context, UserId, cancellationToken);
+        if (shared.Count == 0)
+        {
+            yield break;
+        }
+
+        AccountsInView seen = await _accountScope.ResolveAllAsync(context, cancellationToken);
+        foreach (VisibleItem<DomainRule> rule in shared)
+        {
+            yield return await SharedRules.ToContractAsync(context, UserId, seen, rule, cancellationToken);
+        }
     }
 
     public async Task<Rule> GetRuleAsync(Guid id, CancellationToken cancellationToken)
@@ -51,11 +67,17 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        DomainRule rule = await context.Rules.OwnedBy(UserId)
+        DomainRule? rule = await context.Rules.OwnedBy(UserId)
             .AsNoTracking()
-            .SingleAsync(x => x.Id == id, cancellationToken);
+            .SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
+        if (rule is not null)
+        {
+            return RuleMapper.ToContract(rule);
+        }
 
-        return RuleMapper.ToContract(rule);
+        VisibleItem<DomainRule> shared = await SharedRuleAsync(context, id, mustChange: false, cancellationToken);
+        AccountsInView seen = await _accountScope.ResolveAllAsync(context, cancellationToken);
+        return await SharedRules.ToContractAsync(context, UserId, seen, shared, cancellationToken);
     }
 
     public async Task<Rule> AddRuleAsync(SaveRule rule, CancellationToken cancellationToken)
@@ -90,9 +112,18 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        updated = await context.Rules.OwnedBy(UserId).SingleAsync(x => x.Id == id, cancellationToken);
-
-        await EnsureTheUsersOwnAsync(context, rule, cancellationToken);
+        // Their own, or one shared with them with changes allowed, using only what they may
+        updated = await context.Rules.SingleAsync(x => x.Id == id, cancellationToken);
+        if (updated.UserId == UserId)
+        {
+            await EnsureTheUsersOwnAsync(context, rule, cancellationToken);
+        }
+        else
+        {
+            VisibleItem<DomainRule> shared = await SharedRuleAsync(context, id, mustChange: true, cancellationToken);
+            AccountsInView seen = await _accountScope.ResolveAllAsync(context, cancellationToken);
+            await SharedRules.EnsureAllowedAsync(context, UserId, seen, shared.Item, rule, cancellationToken);
+        }
 
         Overwrite(updated, rule);
 
@@ -110,7 +141,15 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
 
         await _ruleApplicationService.ReapplyAsync(id, cancellationToken);
 
-        return RuleMapper.ToContract(updated);
+        if (updated.UserId == UserId)
+        {
+            return RuleMapper.ToContract(updated);
+        }
+
+        // Still shared as it was, as they'll see it
+        VisibleItem<DomainRule> saved = await SharedRuleAsync(context, id, mustChange: true, cancellationToken);
+        AccountsInView visible = await _accountScope.ResolveAllAsync(context, cancellationToken);
+        return await SharedRules.ToContractAsync(context, UserId, visible, saved, cancellationToken);
     }
 
     public async Task ReorderRulesAsync(ReorderRules order, CancellationToken cancellationToken)
@@ -139,30 +178,38 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
     {
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
-        await EnsureTheUsersOwnAsync(context, rule, cancellationToken);
 
         // Untracked, the draft and the transactions are changed in memory and never saved
-        List<DomainRule> saved = await context.Rules.OwnedBy(UserId).AsNoTracking().ToListAsync(cancellationToken);
-        DomainRule draft = DraftOf(id, rule, saved);
+        DomainRule draft = await PreviewDraftAsync(context, id, rule, cancellationToken);
 
-        List<DomainRule> running = saved
-            .Where(x => x.IsEnabled && x.Id != draft.Id)
+        // Conditions test encrypted fields, so every transaction they can change is loaded and checked once decrypted
+        AccountsInView changeable = await _accountScope.ResolveChangeableAsync(context, cancellationToken);
+        List<BankTransaction> loaded = await context.BankTransactions.ChangeableIn(changeable).AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        // Only those the draft's owner's rules reach. Each with every rule that reaches it, the draft standing in for
+        // its saved self
+        RuleReach reach = await RuleReach.ForAsync(context, loaded, cancellationToken);
+        List<BankTransaction> transactions = loaded.Where(x => reach.Reaches(draft.UserId, x)).ToList();
+        Func<BankTransaction, IReadOnlyList<DomainRule>> rulesFor = transaction => reach.RulesFor(transaction)
+            .Where(x => x.Id != draft.Id)
             .Append(draft)
             .ToList();
 
-        Dictionary<Guid, string> tagNames = await context.CustomClassifications.OwnedBy(UserId)
+        // Anyone's whose rules reach them may change them
+        List<Guid> people = reach.Rules.Select(static x => x.UserId).Append(UserId).Append(draft.UserId)
+            .Distinct()
+            .ToList();
+        Dictionary<Guid, string> tagNames = await context.CustomClassifications.OwnedByAny(people)
             .ToDictionaryAsync(static x => x.Id, static x => x.Tag, cancellationToken);
-        Dictionary<Guid, string> billNames = await context.Bills.OwnedBy(UserId)
+        Dictionary<Guid, string> billNames = await context.Bills.OwnedByAny(people)
             .ToDictionaryAsync(static x => x.Id, static x => x.Name, cancellationToken);
-        Dictionary<Guid, string> debtNames = await context.Debts.OwnedBy(UserId)
+        Dictionary<Guid, string> debtNames = await context.Debts.OwnedByAny(people)
             .ToDictionaryAsync(static x => x.Id, static x => x.Name, cancellationToken);
-
-        // Conditions test encrypted fields, so every transaction is loaded and checked once decrypted
-        List<BankTransaction> transactions = await context.BankTransactions.OwnedBy(UserId).AsNoTracking()
-            .ToListAsync(cancellationToken);
 
         RulePreviewNames names = new(tagNames, billNames, debtNames);
-        return RulePreviewer.Preview(running, draft, transactions, names, _timeProvider.UtcNow);
+        return RulePreviewer.Preview(rulesFor, draft, transactions, names, changeable.DescriptionOf,
+            _timeProvider.UtcNow);
     }
 
     public Task<int> ApplyRuleToExistingAsync(Guid id, CancellationToken cancellationToken) =>
@@ -174,7 +221,9 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        BankTransaction transaction = await context.BankTransactions.OwnedBy(UserId).AsNoTracking()
+        // Their own, or one they can change on an account shared with them, which their rules now reach too
+        AccountsInView changeable = await _accountScope.ResolveChangeableAsync(context, cancellationToken);
+        BankTransaction transaction = await context.BankTransactions.ChangeableIn(changeable).AsNoTracking()
             .SingleAsync(x => x.Id == transactionId, cancellationToken);
 
         List<Guid> tagIds = await context.CustomClassifications.OwnedBy(UserId)
@@ -200,7 +249,8 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
     }
 
     /// <summary>
-    /// The page only offers the user's own tags and accounts, this covers calls that don't come from it.
+    /// The page only offers the user's own tags, bills and debts and the accounts they see, this covers calls that
+    /// don't come from it.
     /// </summary>
     /// <exception cref="InvalidOperationException">An action adds a tag or pays a bill or debt, or a condition names
     /// an account, that doesn't exist or isn't the user's.</exception>
@@ -297,13 +347,57 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
             return;
         }
 
-        int owned = await context.BankAccounts.OwnedBy(UserId)
+        // Any they can see, a rule only reaches the transactions they can change though
+        AccountsInView all = await _accountScope.ResolveAllAsync(context, cancellationToken);
+        int seen = await context.BankAccounts.InView(all)
             .CountAsync(x => accountIds.Contains(x.Id), cancellationToken);
 
-        if (owned != accountIds.Count)
+        if (seen != accountIds.Count)
         {
-            throw new InvalidOperationException("A rule can only look at the user's own accounts.");
+            throw new InvalidOperationException("A rule can only look at the accounts the user can see.");
         }
+    }
+
+    /// <summary>
+    /// The rule to preview. One of theirs or a new one, see <see cref="DraftOf"/>, or one shared with them with changes
+    /// allowed, with the edit checked as for saving.
+    /// </summary>
+    private async Task<DomainRule> PreviewDraftAsync(FinanceTrackerContext context, Guid? id, SaveRule rule,
+        CancellationToken cancellationToken)
+    {
+        List<DomainRule> saved = await context.Rules.OwnedBy(UserId).AsNoTracking().ToListAsync(cancellationToken);
+        if (id is not { } ruleId || saved.Exists(x => x.Id == ruleId))
+        {
+            await EnsureTheUsersOwnAsync(context, rule, cancellationToken);
+            return DraftOf(id, rule, saved);
+        }
+
+        VisibleItem<DomainRule> shared = await SharedRuleAsync(context, ruleId, mustChange: true, cancellationToken);
+        AccountsInView seen = await _accountScope.ResolveAllAsync(context, cancellationToken);
+        await SharedRules.EnsureAllowedAsync(context, UserId, seen, shared.Item, rule, cancellationToken);
+
+        DomainRule draft = shared.Item;
+        Overwrite(draft, rule);
+        draft.Enable();
+        return draft;
+    }
+
+    /// <summary>
+    /// Rule <paramref name="id"/>, shared with the user.
+    /// </summary>
+    /// <param name="mustChange">Whether they must be allowed to change it.</param>
+    /// <exception cref="InvalidOperationException">It isn't shared with them, or not so they can change it.</exception>
+    private async Task<VisibleItem<DomainRule>> SharedRuleAsync(FinanceTrackerContext context, Guid id, bool mustChange,
+        CancellationToken cancellationToken)
+    {
+        VisibleItem<DomainRule>? shared = (await SharedRules.WithAsync(context, UserId, cancellationToken))
+            .SingleOrDefault(x => x.Item.Id == id);
+        if (shared is null || (mustChange && !shared.CanChange))
+        {
+            throw new InvalidOperationException($"No rule {id} the user can change was found.");
+        }
+
+        return shared;
     }
 
     /// <summary>

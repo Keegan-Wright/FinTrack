@@ -2,13 +2,15 @@ using FinanceTracker.Domain.Notifications;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
+using FinanceTracker.Infrastructure.Sharing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Infrastructure.Notifications;
 
 /// <summary>
-/// Tells the current user when an account they watch goes below the amount they set for it.
+/// Tells the current user when an account they watch goes below the amount they set for it, their own or one shared
+/// with them.
 /// </summary>
 /// <remarks>
 /// Said as an account goes below, once until it's back above, see <see cref="NotificationSettings.RecordBalance"/>.
@@ -38,6 +40,7 @@ public sealed class BalanceNotices : ServiceBase<BalanceNotices>, ISyncNotices
     public async Task NotifyAsync(CancellationToken cancellationToken)
     {
         List<(BankAccount Account, decimal Available, LowBalanceAlert Alert)> wentLow = [];
+        Dictionary<Guid, string> labels;
         await using (FinanceTrackerContext context =
                      await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken))
         {
@@ -48,8 +51,10 @@ public sealed class BalanceNotices : ServiceBase<BalanceNotices>, ISyncNotices
                 return;
             }
 
-            List<BankAccount> accounts = await context.BankAccounts.OwnedBy(UserId).AsNoTracking()
+            AccountsInView all = await AccountScope.ResolveAllForAsync(context, UserId, cancellationToken);
+            List<BankAccount> accounts = await context.BankAccounts.InView(all).AsNoTracking()
                 .ToListAsync(cancellationToken);
+            labels = await all.LabelsAsync(context, cancellationToken);
 
             wentLow = RecordBalances(settings, accounts);
 
@@ -61,7 +66,7 @@ public sealed class BalanceNotices : ServiceBase<BalanceNotices>, ISyncNotices
         {
             await _notifier.NotifyAsync(NotificationKind.LowBalance,
                 $"low-balance:{account.Id:N}:{alert.LowSince:yyyyMMddHHmmss}",
-                $"{account.DisplayName} is below {NoticeText.Money(alert.Below)}",
+                $"{labels.GetValueOrDefault(account.Id, account.DisplayName)} is below {NoticeText.Money(alert.Below)}",
                 $"Its available balance is {NoticeText.Money(available)}.", AccountsLink,
                 cancellationToken);
         }

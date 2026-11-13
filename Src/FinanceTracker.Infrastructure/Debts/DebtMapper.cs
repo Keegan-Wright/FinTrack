@@ -13,7 +13,10 @@ namespace FinanceTracker.Infrastructure.Debts;
 internal static class DebtMapper
 {
     /// <param name="accountName">The linked account's name, null when it isn't linked.</param>
-    public static Debt ToContract(DomainDebt debt, string? accountName, DebtProgress progress) => new()
+    /// <param name="sharedBy">Whoever shares it with the user, null when it's theirs.</param>
+    /// <param name="canChange">Whether the user can edit it.</param>
+    public static Debt ToContract(DomainDebt debt, string? accountName, DebtProgress progress,
+        string? sharedBy = null, bool canChange = true) => new()
     {
         Id = debt.Id,
         Name = debt.Name,
@@ -29,7 +32,9 @@ internal static class DebtMapper
         Paid = progress.Paid,
         PaidOffPercent = progress.PaidOffPercent,
         Forecast = ToContract(progress.Forecast),
-        OnTrack = progress.OnTrack
+        OnTrack = progress.OnTrack,
+        SharedBy = sharedBy,
+        CanChange = canChange
     };
 
     public static DebtForecast ToContract(DomainDebtForecast forecast) => new()

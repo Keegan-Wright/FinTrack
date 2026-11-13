@@ -7,8 +7,10 @@ using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Balances;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.Rules;
+using FinanceTracker.Domain.Sharing;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
+using FinanceTracker.Infrastructure.Sharing;
 using FinanceTracker.Infrastructure.Transactions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -24,12 +26,14 @@ namespace FinanceTracker.Infrastructure.Debts;
 public class DebtsService : ServiceBase<DebtsService>, IDebtsService
 {
     private readonly TimeProvider _timeProvider;
+    private readonly IAccountScope _accountScope;
 
     public DebtsService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<DebtsService> logger,
-        TimeProvider timeProvider) : base(currentUser, financeTrackerContextFactory, logger)
+        TimeProvider timeProvider, IAccountScope accountScope) : base(currentUser, financeTrackerContextFactory, logger)
     {
         _timeProvider = timeProvider;
+        _accountScope = accountScope;
     }
 
     public async IAsyncEnumerable<Debt> GetDebtsAsync([EnumeratorCancellation] CancellationToken cancellationToken)
@@ -37,14 +41,15 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        // Names are encrypted, so they're ordered once decrypted
-        List<DomainDebt> debts = await context.Debts.OwnedBy(UserId).AsNoTracking().ToListAsync(cancellationToken);
-        List<BankTransaction> payments = await LoadPaymentsAsync(context, cancellationToken);
-        Dictionary<Guid, BankAccount> accounts = await LoadAccountsAsync(context, cancellationToken);
+        // Their own and those shared with them. Names are encrypted, so they're ordered once decrypted
+        AccountsInView all = await _accountScope.ResolveAllAsync(context, cancellationToken);
+        List<VisibleItem<DomainDebt>> debts = await SharedDebts.ForAsync(context, UserId, all, cancellationToken);
+        Dictionary<Guid, DebtFigures> figures = await SharedDebts.FiguresAsync(context, all, debts, cancellationToken);
+        Dictionary<Guid, string> accountNames = await AccountNamesAsync(context, all, cancellationToken);
 
-        foreach (DomainDebt debt in debts.OrderBy(static x => x.Name, StringComparer.CurrentCultureIgnoreCase))
+        foreach (VisibleItem<DomainDebt> debt in debts.OrderBy(static x => x.Item.Name, StringComparer.CurrentCultureIgnoreCase))
         {
-            yield return ToContract(debt, accounts, payments);
+            yield return ToContract(debt, figures[debt.Item.Id], accountNames);
         }
     }
 
@@ -53,24 +58,31 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        DomainDebt debt = await context.Debts.OwnedBy(UserId).AsNoTracking()
-            .SingleAsync(x => x.Id == id, cancellationToken);
-        List<BankTransaction> payments = await LoadPaymentsAsync(context, id, cancellationToken);
-        Dictionary<Guid, BankAccount> accounts = await LoadAccountsAsync(context, cancellationToken);
-        Dictionary<Guid, string> ruleNames = await LoadRuleNamesAsync(context, payments, cancellationToken);
+        AccountsInView all = await _accountScope.ResolveAllAsync(context, cancellationToken);
+        VisibleItem<DomainDebt> visible = await VisibleAsync(context, all, id, mustChange: false, cancellationToken);
+        DebtFigures figures = (await SharedDebts.FiguresAsync(context, all, [visible], cancellationToken))[id];
+        Dictionary<Guid, string> accountNames = await AccountNamesAsync(context, all, cancellationToken);
+
+        // Its figures come from all its payments, but only those on accounts the user sees are listed
+        List<BankTransaction> seen = await context.BankTransactions.InView(all).AsNoTracking()
+            .Where(x => x.DebtPayment != null && x.DebtPayment.DebtId == id)
+            .ToListAsync(cancellationToken);
+        Dictionary<Guid, string> ruleNames = await LoadRuleNamesAsync(context, [visible.Item.UserId, UserId], seen,
+            cancellationToken);
 
         // Dates are encrypted, so they're ordered once decrypted
-        List<DebtPaymentItem> items = payments
+        List<DebtPaymentItem> items = seen
             .OrderByDescending(static x => x.OccurredAt)
-            .Select(x => DebtMapper.ToItem(x, AccountName(accounts, x.AccountId) ?? string.Empty,
+            .Select(x => DebtMapper.ToItem(x, accountNames.GetValueOrDefault(x.AccountId) ?? string.Empty,
                 RuleName(ruleNames, x.DebtPayment!.RuleId)))
             .ToList();
 
-        IReadOnlyList<DebtBalance> history = await HistoryAsync(context, debt, payments, cancellationToken);
+        IReadOnlyList<DebtBalance> history = await HistoryAsync(context, visible.Item, figures.Payments,
+            cancellationToken);
 
         return new DebtDetail
         {
-            Debt = ToContract(debt, accounts, payments),
+            Debt = ToContract(visible, figures, accountNames),
             Payments = items,
             History = history.Select(DebtMapper.ToContract).ToList()
         };
@@ -81,7 +93,7 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        await EnsureNameIsFreeAsync(context, debt.Name, null, cancellationToken);
+        await EnsureNameIsFreeAsync(context, UserId, debt.Name, null, cancellationToken);
 
         DomainDebt added = new(UserId, debt.Name, debt.Lender, debt.StartingBalance, debt.StartedOn,
             debt.InterestRate, debt.MonthlyPayment);
@@ -92,7 +104,7 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
         await NameCheck.SaveKeepingNamesApartAsync(context, NameTakenException.Debt, debt.Name, cancellationToken);
         Logger.LogChanged(UserId, "created", "debt", added.Id);
 
-        return await ToContractAsync(context, added, cancellationToken);
+        return await ToContractAsync(context, new VisibleItem<DomainDebt>(added, null, true), cancellationToken);
     }
 
     public async Task<Debt> UpdateDebtAsync(Guid id, SaveDebt debt, CancellationToken cancellationToken)
@@ -100,9 +112,16 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        DomainDebt updated = await context.Debts.OwnedBy(UserId).SingleAsync(x => x.Id == id, cancellationToken);
+        // Their own, or one shared with them with changes allowed, which keeps the account its owner chose
+        AccountsInView all = await _accountScope.ResolveAllAsync(context, cancellationToken);
+        VisibleItem<DomainDebt> visible = await VisibleAsync(context, all, id, mustChange: true, cancellationToken);
+        DomainDebt updated = await context.Debts.SingleAsync(x => x.Id == id, cancellationToken);
+        if (!visible.IsOwn && debt.AccountId != updated.AccountId)
+        {
+            throw new InvalidOperationException("Only its owner can change which account a shared debt follows.");
+        }
 
-        await EnsureNameIsFreeAsync(context, debt.Name, id, cancellationToken);
+        await EnsureNameIsFreeAsync(context, updated.UserId, debt.Name, id, cancellationToken);
         updated.Rename(debt.Name);
         updated.ChangeLender(debt.Lender);
         updated.ChangeStartingBalance(debt.StartingBalance, debt.StartedOn);
@@ -110,23 +129,26 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
         updated.ChangeMonthlyPayment(debt.MonthlyPayment);
         updated.SetPayOffGoal(debt.PayOffGoal);
 
-        await LinkAsync(context, updated, debt.AccountId, cancellationToken);
+        if (visible.IsOwn)
+        {
+            await LinkAsync(context, updated, debt.AccountId, cancellationToken);
+        }
 
         await NameCheck.SaveKeepingNamesApartAsync(context, NameTakenException.Debt, debt.Name, cancellationToken);
         Logger.LogChanged(UserId, "updated", "debt", id);
 
-        return await ToContractAsync(context, updated, cancellationToken);
+        return await ToContractAsync(context, visible with { Item = updated }, cancellationToken);
     }
 
     /// <summary>
     /// Paid off debts count, as their payments still name them.
     /// </summary>
-    /// <exception cref="NameTakenException">Another of the user's debts is called <paramref name="name"/>.
-    /// </exception>
-    private async Task EnsureNameIsFreeAsync(FinanceTrackerContext context, string name, Guid? exceptId,
-        CancellationToken cancellationToken)
+    /// <exception cref="NameTakenException">Another of <paramref name="ownerId"/>'s debts is called
+    /// <paramref name="name"/>.</exception>
+    private static async Task EnsureNameIsFreeAsync(FinanceTrackerContext context, Guid ownerId, string name,
+        Guid? exceptId, CancellationToken cancellationToken)
     {
-        List<DomainDebt> existing = await context.Debts.OwnedBy(UserId).AsNoTracking().ToListAsync(cancellationToken);
+        List<DomainDebt> existing = await context.Debts.OwnedBy(ownerId).AsNoTracking().ToListAsync(cancellationToken);
         NameCheck.EnsureFree(existing.Select(static x => (x.Id, x.Name)), name, exceptId, NameTakenException.Debt);
     }
 
@@ -137,7 +159,8 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
 
         DomainDebt debt = await context.Debts.OwnedBy(UserId).SingleAsync(x => x.Id == id, cancellationToken);
 
-        List<BankTransaction> payments = await context.BankTransactions.OwnedBy(UserId)
+        // Whoever's transaction pays it, they may have let the user say theirs does
+        List<BankTransaction> payments = await context.BankTransactions
             .Where(x => x.DebtPayment != null && x.DebtPayment.DebtId == id)
             .ToListAsync(cancellationToken);
         foreach (BankTransaction payment in payments)
@@ -170,14 +193,13 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        DomainDebt debt = await context.Debts.OwnedBy(UserId).AsNoTracking()
-            .SingleAsync(x => x.Id == id, cancellationToken);
+        AccountsInView all = await _accountScope.ResolveAllAsync(context, cancellationToken);
+        VisibleItem<DomainDebt> visible = await VisibleAsync(context, all, id, mustChange: false, cancellationToken);
+        DebtFigures figures = (await SharedDebts.FiguresAsync(context, all, [visible], cancellationToken))[id];
+        DebtProgress progress = Progress(visible.Item, figures);
 
-        BankAccount? account = await LoadAccountAsync(context, debt, cancellationToken);
-        DebtProgress progress = await ProgressAsync(context, debt, account, cancellationToken);
-
-        return DebtMapper.ToContract(DebtCalculator.Forecast(progress.Owed, debt.InterestRate, monthlyPayment,
-            _timeProvider.Today));
+        return DebtMapper.ToContract(DebtCalculator.Forecast(progress.Owed, visible.Item.InterestRate,
+            monthlyPayment, _timeProvider.Today));
     }
 
     public async Task<Transaction> PayDebtAsync(Guid transactionId, PayDebt payment,
@@ -186,7 +208,10 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        BankTransaction transaction = await context.BankTransactions.OwnedBy(UserId)
+        // Their own, or one on an account shared with them with changes allowed, paying one of their own debts or one
+        // shared with them. Their own is shared with the transaction's owner, so they see what it's called
+        AccountsInView changeable = await _accountScope.ResolveChangeableAsync(context, cancellationToken);
+        BankTransaction transaction = await context.BankTransactions.ChangeableIn(changeable)
             .SingleAsync(x => x.Id == transactionId, cancellationToken);
 
         if (payment.DebtId is not { } debtId)
@@ -195,19 +220,22 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
         }
         else
         {
-            DomainDebt debt = await context.Debts.OwnedBy(UserId).AsNoTracking()
-                .SingleAsync(x => x.Id == debtId, cancellationToken);
-            transaction.PayDebt(debt, _timeProvider.UtcNow);
+            AccountsInView all = await _accountScope.ResolveAllAsync(context, cancellationToken);
+            VisibleItem<DomainDebt> debt = await VisibleAsync(context, all, debtId, mustChange: false, cancellationToken);
+            transaction.PayDebt(debt.Item, UserId, _timeProvider.UtcNow, sharedWithThem: !debt.IsOwn);
+            if (debt.IsOwn)
+            {
+                await AnnotationShares.ShareWithOwnerAsync(context, UserId, transaction, ShareItemType.Debt, debtId,
+                    _timeProvider.UtcNow, cancellationToken);
+            }
         }
 
         await context.SaveChangesAsync(cancellationToken);
         Logger.LogChanged(UserId, "set the debt paid by", "transaction", transactionId);
 
-        Dictionary<Guid, string> customTags = await context.CustomClassifications.OwnedBy(UserId)
-            .ToDictionaryAsync(static x => x.Id, static x => x.Tag, cancellationToken);
-        TransactionMapper mapper =
-            await TransactionMapper.LoadAsync(context, UserId, customTags, [transaction],
-                _timeProvider.LocalTimeZone, cancellationToken);
+        AccountsInView view = await _accountScope.ResolveAllAsync(context, cancellationToken);
+        TransactionMapper mapper = await TransactionMapper.LoadAsync(context, view, [transaction],
+            _timeProvider.LocalTimeZone, cancellationToken);
 
         return mapper.ToContract(transaction);
     }
@@ -249,7 +277,8 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
             return DebtCalculator.History(debt, payments, _timeProvider.LocalTimeZone, today);
         }
 
-        List<BalanceSnapshot> snapshots = await context.BalanceSnapshots.OwnedBy(UserId).AsNoTracking()
+        // The account it follows is always its owner's
+        List<BalanceSnapshot> snapshots = await context.BalanceSnapshots.OwnedBy(debt.UserId).AsNoTracking()
             .Where(x => x.AccountId == accountId && x.Date >= debt.StartedOn && x.Date <= today)
             .ToListAsync(cancellationToken);
 
@@ -271,75 +300,69 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
         return history;
     }
 
-    /// <param name="account">The debt's linked account, null when it isn't linked or has gone.</param>
-    private async Task<DebtProgress> ProgressAsync(FinanceTrackerContext context, DomainDebt debt,
-        BankAccount? account, CancellationToken cancellationToken)
-    {
-        List<BankTransaction> payments = await LoadPaymentsAsync(context, debt.Id, cancellationToken);
-
-        return DebtCalculator.Progress(debt, account, payments, _timeProvider.LocalTimeZone, _timeProvider.Today);
-    }
-
-    private async Task<Debt> ToContractAsync(FinanceTrackerContext context, DomainDebt debt,
-        CancellationToken cancellationToken)
-    {
-        BankAccount? account = await LoadAccountAsync(context, debt, cancellationToken);
-        DebtProgress progress = await ProgressAsync(context, debt, account, cancellationToken);
-
-        return DebtMapper.ToContract(debt, account?.DisplayName, progress);
-    }
-
-    private Debt ToContract(DomainDebt debt, Dictionary<Guid, BankAccount> accounts, List<BankTransaction> payments)
-    {
-        BankAccount? account = null;
-        if (debt.AccountId is { } accountId)
-        {
-            account = accounts.GetValueOrDefault(accountId);
-        }
-
-        DebtProgress progress = DebtCalculator.Progress(debt, account, payments, _timeProvider.LocalTimeZone,
+    private DebtProgress Progress(DomainDebt debt, DebtFigures figures) =>
+        DebtCalculator.Progress(debt, figures.Account, figures.Payments, _timeProvider.LocalTimeZone,
             _timeProvider.Today);
 
-        return DebtMapper.ToContract(debt, account?.DisplayName, progress);
+    private async Task<Debt> ToContractAsync(FinanceTrackerContext context, VisibleItem<DomainDebt> debt,
+        CancellationToken cancellationToken)
+    {
+        AccountsInView all = await _accountScope.ResolveAllAsync(context, cancellationToken);
+        DebtFigures figures = (await SharedDebts.FiguresAsync(context, all, [debt], cancellationToken))[debt.Item.Id];
+        Dictionary<Guid, string> accountNames = await AccountNamesAsync(context, all, cancellationToken);
+        return ToContract(debt, figures, accountNames);
     }
 
-    private async Task<BankAccount?> LoadAccountAsync(FinanceTrackerContext context, DomainDebt debt,
-        CancellationToken cancellationToken)
+    private Debt ToContract(VisibleItem<DomainDebt> debt, DebtFigures figures, Dictionary<Guid, string> accountNames) =>
+        DebtMapper.ToContract(debt.Item, AccountNameOf(debt.Item, accountNames), Progress(debt.Item, figures),
+            debt.SharedBy, debt.CanChange);
+
+    /// <summary>
+    /// The name of the account <paramref name="debt"/> follows, private when the user can't see it, null when it
+    /// follows none.
+    /// </summary>
+    private static string? AccountNameOf(DomainDebt debt, Dictionary<Guid, string> accountNames)
     {
         if (debt.AccountId is not { } accountId)
         {
             return null;
         }
 
-        return await context.BankAccounts.OwnedBy(UserId).AsNoTracking()
-            .SingleOrDefaultAsync(x => x.Id == accountId, cancellationToken);
+        return accountNames.GetValueOrDefault(accountId, Rules.SharedRules.PrivateAccountName);
     }
 
     /// <summary>
-    /// Every transaction that pays off one of the user's debts. Indexed by debt, so no dates are needed.
+    /// The names of the accounts the user sees.
     /// </summary>
-    private async Task<List<BankTransaction>> LoadPaymentsAsync(FinanceTrackerContext context,
-        CancellationToken cancellationToken) =>
-        await context.BankTransactions.OwnedBy(UserId).AsNoTracking()
-            .Where(static x => x.DebtPayment != null && x.DebtPayment.DebtId != null)
-            .ToListAsync(cancellationToken);
-
-    private async Task<List<BankTransaction>> LoadPaymentsAsync(FinanceTrackerContext context, Guid debtId,
-        CancellationToken cancellationToken) =>
-        await context.BankTransactions.OwnedBy(UserId).AsNoTracking()
-            .Where(x => x.DebtPayment != null && x.DebtPayment.DebtId == debtId)
-            .ToListAsync(cancellationToken);
-
-    private async Task<Dictionary<Guid, BankAccount>> LoadAccountsAsync(FinanceTrackerContext context,
-        CancellationToken cancellationToken) =>
-        await context.BankAccounts.OwnedBy(UserId).AsNoTracking()
-            .ToDictionaryAsync(static x => x.Id, cancellationToken);
+    private static async Task<Dictionary<Guid, string>> AccountNamesAsync(FinanceTrackerContext context,
+        AccountsInView all, CancellationToken cancellationToken) =>
+        await context.BankAccounts.InView(all).AsNoTracking()
+            .ToDictionaryAsync(static x => x.Id, static x => x.DisplayName, cancellationToken);
 
     /// <summary>
-    /// The names of the rules that linked <paramref name="payments"/>, empty when none did.
+    /// Debt <paramref name="id"/>, the user's own or one shared with them.
     /// </summary>
-    private async Task<Dictionary<Guid, string>> LoadRuleNamesAsync(FinanceTrackerContext context,
-        List<BankTransaction> payments, CancellationToken cancellationToken)
+    /// <param name="mustChange">Whether they must be allowed to change it.</param>
+    /// <exception cref="InvalidOperationException">They can't see it, or can't change it.</exception>
+    private async Task<VisibleItem<DomainDebt>> VisibleAsync(FinanceTrackerContext context, AccountsInView all, Guid id,
+        bool mustChange, CancellationToken cancellationToken)
+    {
+        VisibleItem<DomainDebt>? debt = (await SharedDebts.ForAsync(context, UserId, all, cancellationToken))
+            .SingleOrDefault(x => x.Item.Id == id);
+        if (debt is null || (mustChange && !debt.CanChange))
+        {
+            throw new InvalidOperationException($"No debt {id} the user can see or change was found.");
+        }
+
+        return debt;
+    }
+
+    /// <summary>
+    /// The names of the rules that linked <paramref name="payments"/>, <paramref name="people"/>'s, as a debt's
+    /// owner's rules and those of anyone they let change its accounts may have. Empty when none did.
+    /// </summary>
+    private static async Task<Dictionary<Guid, string>> LoadRuleNamesAsync(FinanceTrackerContext context,
+        IReadOnlyCollection<Guid> people, List<BankTransaction> payments, CancellationToken cancellationToken)
     {
         if (!payments.Exists(static x => x.DebtPayment?.RuleId is not null))
         {
@@ -347,12 +370,9 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
         }
 
         // Names are encrypted, so they're read whole and decrypted
-        List<Rule> rules = await context.Rules.OwnedBy(UserId).AsNoTracking().ToListAsync(cancellationToken);
+        List<Rule> rules = await context.Rules.OwnedByAny(people).AsNoTracking().ToListAsync(cancellationToken);
         return rules.ToDictionary(static x => x.Id, static x => x.Name);
     }
-
-    private static string? AccountName(Dictionary<Guid, BankAccount> accounts, Guid accountId) =>
-        accounts.GetValueOrDefault(accountId)?.DisplayName;
 
     private static string? RuleName(Dictionary<Guid, string> ruleNames, Guid? ruleId)
     {

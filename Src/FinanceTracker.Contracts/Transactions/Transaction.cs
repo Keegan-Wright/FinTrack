@@ -81,6 +81,16 @@ public class Transaction
     public string AccountName { get; init; } = string.Empty;
 
     /// <summary>
+    /// Who shares the account it's on with the user, their first and last name, null when it's their own.
+    /// </summary>
+    public string? SharedBy { get; init; }
+
+    /// <summary>
+    /// Whether the user can only look at it, on an account shared with them without changes allowed.
+    /// </summary>
+    public bool IsReadOnly { get; init; }
+
+    /// <summary>
     /// Whether it's a transfer and why, null when nothing suggests it is one.
     /// </summary>
     [Description("Whether the transaction is a transfer and why")]

@@ -1,9 +1,11 @@
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.OpenBanking.Transfers;
 using FinanceTracker.Domain.Rules;
+using FinanceTracker.Domain.Sharing;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using FinanceTracker.Infrastructure.OpenBanking.Transfers;
+using FinanceTracker.Infrastructure.Sharing;
 using FinanceTracker.Telemetry;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -15,16 +17,19 @@ namespace FinanceTracker.Infrastructure.Rules;
 public class RuleApplicationService : ServiceBase<RuleApplicationService>, IRuleApplicationService
 {
     private readonly ITransferMatchingService _transferMatchingService;
+    private readonly IAccountScope _accountScope;
     private readonly TimeProvider _timeProvider;
     private readonly FinTrackMetrics _metrics;
 
     public RuleApplicationService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<RuleApplicationService> logger,
-        ITransferMatchingService transferMatchingService, TimeProvider timeProvider, FinTrackMetrics metrics)
+        ITransferMatchingService transferMatchingService, IAccountScope accountScope, TimeProvider timeProvider,
+        FinTrackMetrics metrics)
         : base(currentUser, financeTrackerContextFactory, logger)
     {
         _metrics = metrics;
         _transferMatchingService = transferMatchingService;
+        _accountScope = accountScope;
         _timeProvider = timeProvider;
     }
 
@@ -38,20 +43,15 @@ public class RuleApplicationService : ServiceBase<RuleApplicationService>, IRule
             .SingleOrDefaultAsync(cancellationToken);
         DateTime since = checkpoint?.AppliedFrom ?? firstRunFrom;
 
-        List<Rule> rules = await LoadEnabledRulesAsync(context, cancellationToken);
-        RuleRun run = RuleRun.Nothing;
+        // Someone else's rules may reach their transactions, so they're run even when the user has none
+        List<BankTransaction> transactions = await (await ChangeableAsync(context, cancellationToken))
+            .Where(x => x.Created > since || x.Updated > since)
+            .ToListAsync(cancellationToken);
+        RuleReach reach = await RuleReach.ForAsync(context, transactions, cancellationToken);
+        RuleRun run = await ApplyAsync(context, reach, transactions, cancellationToken);
 
-        // Without rules there's nothing to apply, but the checkpoint still moves on so enabling one later doesn't
-        // reach back over the transactions synced in the meantime
-        if (rules.Count > 0)
-        {
-            List<BankTransaction> transactions = await context.BankTransactions.OwnedBy(UserId)
-                .Where(x => x.Created > since || x.Updated > since)
-                .ToListAsync(cancellationToken);
-
-            run = Apply(rules, transactions);
-        }
-
+        // The checkpoint moves on even when nothing ran, so enabling a rule later doesn't reach back over the
+        // transactions synced in the meantime
         if (checkpoint is null)
         {
             context.RuleCheckpoints.Add(new RuleCheckpoint(UserId, startedAt));
@@ -62,7 +62,7 @@ public class RuleApplicationService : ServiceBase<RuleApplicationService>, IRule
         }
 
         await context.SaveChangesAsync(cancellationToken);
-        Logger.LogAppliedRules(UserId, rules.Count, run.Considered, run.Changed);
+        Logger.LogAppliedRules(UserId, run.Rules, run.Considered, run.Changed);
         Report(run);
 
         return run.Changed;
@@ -73,7 +73,11 @@ public class RuleApplicationService : ServiceBase<RuleApplicationService>, IRule
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        List<BankTransaction> transactions = await context.BankTransactions.OwnedBy(UserId)
+        // Its owner's reach, the user may be someone they let edit it
+        Guid ownerId = await context.Rules.Where(x => x.Id == ruleId).Select(static x => (Guid?)x.UserId)
+            .SingleOrDefaultAsync(cancellationToken) ?? UserId;
+        AccountsInView ownersReach = await AccountScope.ResolveChangeableForAsync(context, ownerId, cancellationToken);
+        List<BankTransaction> transactions = await context.BankTransactions.ChangeableIn(ownersReach)
             .Where(x => x.RuleTags.Any(t => t.RuleId == ruleId) ||
                         (x.Transfer != null && x.Transfer.RuleId == ruleId) ||
                         (x.BillPayment != null && x.BillPayment.RuleId == ruleId) ||
@@ -91,8 +95,8 @@ public class RuleApplicationService : ServiceBase<RuleApplicationService>, IRule
             .Select(static x => x.Id)
             .ToList();
 
-        List<Rule> rules = await LoadEnabledRulesAsync(context, cancellationToken);
-        RuleRun run = Apply(rules, transactions);
+        RuleReach reach = await RuleReach.ForAsync(context, transactions, cancellationToken);
+        RuleRun run = await ApplyAsync(context, reach, transactions, cancellationToken);
 
         await context.SaveChangesAsync(cancellationToken);
         Logger.LogReappliedRules(UserId, ruleId, run.Considered, run.Changed);
@@ -119,22 +123,64 @@ public class RuleApplicationService : ServiceBase<RuleApplicationService>, IRule
         }
 
         // Conditions test encrypted fields, so every transaction is loaded and checked once decrypted
-        List<BankTransaction> transactions = await context.BankTransactions.OwnedBy(UserId)
+        List<BankTransaction> transactions = await (await ChangeableAsync(context, cancellationToken))
             .ToListAsync(cancellationToken);
-
         List<BankTransaction> reached = transactions.Where(rule.Reaches).ToList();
 
-        Dictionary<Guid, TransferInfo?> transfersBefore =
-            reached.ToDictionary(static x => x.Id, static x => x.Transfer);
+        int changed = await ApplyAndRematchAsync(context, reached, cancellationToken);
+        Logger.LogAppliedRuleToExisting(UserId, ruleId, reached.Count, changed);
+        return changed;
+    }
 
-        List<Rule> rules = await LoadEnabledRulesAsync(context, cancellationToken);
-        RuleRun run = Apply(rules, reached);
+    public async Task<int> ReapplyToAccountsAsync(IReadOnlyCollection<Guid> accountIds,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(accountIds);
+        if (accountIds.Count == 0)
+        {
+            return 0;
+        }
+
+        await using FinanceTrackerContext context =
+            await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+
+        List<BankTransaction> transactions = await (await ChangeableAsync(context, cancellationToken))
+            .Where(x => accountIds.Contains(x.AccountId))
+            .ToListAsync(cancellationToken);
+
+        int changed = await ApplyAndRematchAsync(context, transactions, cancellationToken);
+        Logger.LogChangedTheir(UserId, "re-applied rules to", "shared accounts");
+        return changed;
+    }
+
+    /// <summary>
+    /// The transactions the user can change: their own, and those on accounts shared with them with changes allowed.
+    /// </summary>
+    private async Task<IQueryable<BankTransaction>> ChangeableAsync(FinanceTrackerContext context,
+        CancellationToken cancellationToken)
+    {
+        AccountsInView changeable = await _accountScope.ResolveChangeableAsync(context, cancellationToken);
+        return context.BankTransactions.ChangeableIn(changeable);
+    }
+
+    /// <summary>
+    /// Applies the rules that reach <paramref name="transactions"/>, saves, then re-matches transfers around those
+    /// whose transfer answer changed.
+    /// </summary>
+    /// <returns>How many changed.</returns>
+    private async Task<int> ApplyAndRematchAsync(FinanceTrackerContext context, List<BankTransaction> transactions,
+        CancellationToken cancellationToken)
+    {
+        Dictionary<Guid, TransferInfo?> transfersBefore =
+            transactions.ToDictionary(static x => x.Id, static x => x.Transfer);
+
+        RuleReach reach = await RuleReach.ForAsync(context, transactions, cancellationToken);
+        RuleRun run = await ApplyAsync(context, reach, transactions, cancellationToken);
 
         await context.SaveChangesAsync(cancellationToken);
-        Logger.LogAppliedRuleToExisting(UserId, ruleId, run.Considered, run.Changed);
         Report(run);
 
-        List<Guid> transferChanged = reached
+        List<Guid> transferChanged = transactions
             .Where(x => TransferChanged(transfersBefore[x.Id], x.Transfer))
             .Select(static x => x.Id)
             .ToList();
@@ -157,21 +203,22 @@ public class RuleApplicationService : ServiceBase<RuleApplicationService>, IRule
         return !before.IsSameAs(after);
     }
 
-    private async Task<List<Rule>> LoadEnabledRulesAsync(FinanceTrackerContext context,
-        CancellationToken cancellationToken) =>
-        await context.Rules.OwnedBy(UserId)
-            .Where(x => x.IsEnabled)
-            .ToListAsync(cancellationToken);
-
-    private RuleRun Apply(List<Rule> rules, List<BankTransaction> transactions)
+    /// <summary>
+    /// Runs the rules that reach each of <paramref name="transactions"/> over it. Another person's tag, bill or debt
+    /// their rule puts on a transaction is shared with its owner, so they see its name. Tracked changes, saved by the
+    /// caller.
+    /// </summary>
+    private async Task<RuleRun> ApplyAsync(FinanceTrackerContext context, RuleReach reach,
+        List<BankTransaction> transactions, CancellationToken cancellationToken)
     {
+        // Even with no rules left, so what a disabled or deleted one gave is taken back
         DateTime decidedAt = _timeProvider.UtcNow;
         int changed = 0;
         Dictionary<Guid, int> matches = [];
 
         foreach (BankTransaction transaction in transactions)
         {
-            RuleOutcome outcome = RuleEvaluator.Evaluate(rules, transaction);
+            RuleOutcome outcome = RuleEvaluator.Evaluate(reach.RulesFor(transaction), transaction);
             foreach (Guid ruleId in outcome.MatchedRuleIds)
             {
                 matches[ruleId] = matches.GetValueOrDefault(ruleId) + 1;
@@ -180,10 +227,43 @@ public class RuleApplicationService : ServiceBase<RuleApplicationService>, IRule
             if (transaction.ApplyRules(outcome, decidedAt))
             {
                 changed++;
+                await ShareWhatOthersRulesPutOnAsync(context, reach, transaction, decidedAt, cancellationToken);
             }
         }
 
-        return new RuleRun(rules.Count, transactions.Count, changed, matches);
+        return new RuleRun(reach.Rules.Count, transactions.Count, changed, matches);
+    }
+
+    /// <summary>
+    /// Shares the tags, bill and debt another person's rules put on <paramref name="transaction"/> with its owner, as
+    /// when that person puts them on by hand.
+    /// </summary>
+    private static async Task ShareWhatOthersRulesPutOnAsync(FinanceTrackerContext context, RuleReach reach,
+        BankTransaction transaction, DateTime now, CancellationToken cancellationToken)
+    {
+        List<(Guid RuleId, ShareItemType ItemType, Guid ItemId)> fromRules =
+        [
+            .. transaction.RuleTags.Select(static x => (x.RuleId, ShareItemType.Classification, x.ClassificationId))
+        ];
+
+        if (transaction.BillPayment is { RuleId: { } billRuleId, BillId: { } billId })
+        {
+            fromRules.Add((billRuleId, ShareItemType.Bill, billId));
+        }
+
+        if (transaction.DebtPayment is { RuleId: { } debtRuleId, DebtId: { } debtId })
+        {
+            fromRules.Add((debtRuleId, ShareItemType.Debt, debtId));
+        }
+
+        foreach ((Guid ruleId, ShareItemType itemType, Guid itemId) in fromRules)
+        {
+            if (reach.OwnerOf(ruleId) is { } ruleOwner && ruleOwner != transaction.UserId)
+            {
+                await AnnotationShares.ShareWithOwnerAsync(context, ruleOwner, transaction, itemType, itemId, now,
+                    cancellationToken);
+            }
+        }
     }
 
     /// <summary>

@@ -41,6 +41,54 @@ public class TransactionDetailsDialogTests : ComponentTestBase
     }
 
     [Test]
+    public async Task Render_SharedWithThem_SaysWhoSharesItAndOffersNoChanges()
+    {
+        // Arrange
+        using CultureScope culture = new();
+        Transaction shared =
+            TransactionListTests.Transaction("Groceries", -40m, sharedBy: "Sam Taylor", isReadOnly: true);
+
+        // Act
+        await OpenAsync(shared);
+
+        // Assert
+        string details = _provider.Find(".ft-details").TextContent;
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(details).Contains("Shared by");
+            await Assert.That(details).Contains("Only Sam Taylor can change this");
+            await Assert.That(_provider.FindAll("button").Select(static x => x.TextContent.Trim()))
+                .DoesNotContain("Add tags");
+            await Assert.That(_provider.FindAll(".ft-details__actions")).IsEmpty();
+        }
+    }
+
+    [Test]
+    public async Task Render_SharedWithChangesAllowed_OffersChangesAndRules()
+    {
+        // Arrange
+        using CultureScope culture = new();
+        Transaction shared = TransactionListTests.Transaction("Groceries", -40m, sharedBy: "Sam Taylor");
+
+        // Act
+        await OpenAsync(shared);
+
+        // Assert
+        string details = _provider.Find(".ft-details").TextContent;
+        List<string> buttons = _provider.FindAll("button").Select(static x => x.TextContent.Trim()).ToList();
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(details).Contains("Sam Taylor lets you change this");
+            await Assert.That(details).DoesNotContain("Only Sam Taylor can change this");
+            await Assert.That(buttons).Contains("Add tags");
+            await Assert.That(buttons).Contains("Pays a bill");
+            await Assert.That(buttons).Contains("Create rule from this");
+        }
+    }
+
+    [Test]
     public async Task Choose_TransferAction_ClosesAndRaisesIt()
     {
         // Arrange

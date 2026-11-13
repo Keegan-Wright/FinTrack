@@ -60,7 +60,7 @@ public sealed class TransactionScenario : ScenarioBuilder
             BankTransaction transaction = await context.BankTransactions
                 .SingleAsync(x => x.Id == transactionId, Scenario.CancellationToken);
             Bill bill = await context.Bills.SingleAsync(x => x.Id == billId, Scenario.CancellationToken);
-            transaction.PayBill(bill, DateTime.UtcNow);
+            transaction.PayBill(bill, transaction.UserId, DateTime.UtcNow);
         });
 
     public Task<TestingScenario> WithCustomClassification(string transactionName, string classificationName) =>
@@ -74,7 +74,7 @@ public sealed class TransactionScenario : ScenarioBuilder
             CustomClassification classification = await context.CustomClassifications
                 .SingleAsync(x => x.Id == classificationId, Scenario.CancellationToken);
 
-            transaction.Classify(classification);
+            transaction.Classify(classification, transaction.UserId);
         });
 
     /// <summary>

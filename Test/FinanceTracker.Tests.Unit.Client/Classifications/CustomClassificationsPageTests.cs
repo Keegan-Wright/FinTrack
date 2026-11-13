@@ -20,6 +20,16 @@ public class CustomClassificationsPageTests : ComponentTestBase
     private readonly Classification _holiday = new() { ClassificationId = Guid.NewGuid(), Tag = "Holiday" };
     private readonly Classification _kids = new() { ClassificationId = Guid.NewGuid(), Tag = "Kids" };
 
+    private readonly Classification _trips = new()
+    {
+        ClassificationId = Guid.NewGuid(), Tag = "Trips", SharedBy = "Sam Taylor", CanChange = true
+    };
+
+    private readonly Classification _gifts = new()
+    {
+        ClassificationId = Guid.NewGuid(), Tag = "Gifts", SharedBy = "Sam Taylor", CanChange = false
+    };
+
     private readonly ApplicationState _applicationState = new();
 
     public CustomClassificationsPageTests()
@@ -27,8 +37,28 @@ public class CustomClassificationsPageTests : ComponentTestBase
         AddBunitPersistentComponentState();
         Services.AddScoped<IValidator<AddClassifications>, AddClassificationsRequestValidator>();
         _classificationService.GetAllCustomClassificationsAsync(Arg.Any<CancellationToken>())
-            .Returns(_ => new[] { _holiday, _kids }.ToAsyncEnumerable());
+            .Returns(_ => new[] { _holiday, _kids, _trips, _gifts }.ToAsyncEnumerable());
         Services.AddSingleton(_classificationService);
+    }
+
+    [Test]
+    public async Task SharedTag_SaysWhoSharesIt_AndCanOnlyBeRenamedWhenAllowed()
+    {
+        // Arrange
+        IRenderedComponent<MudPopoverProvider> popovers = Render<MudPopoverProvider>();
+        IRenderedComponent<CustomClassifications> cut =
+            Render<CustomClassifications>(p => p.AddCascadingValue(_applicationState));
+
+        // Act
+        IReadOnlyList<(string Text, bool Disabled)> tripsItems = await RowMenu.ItemsAsync(cut, popovers, "Trips");
+
+        // Assert, only its owner deletes it, and one they can only see has no menu at all
+        using (Assert.Multiple())
+        {
+            await Assert.That(cut.Markup).Contains("Shared by Sam Taylor");
+            await Assert.That(tripsItems.Select(static x => x.Text)).IsEquivalentTo(["Rename"]);
+            await Assert.That(cut.FindAll("button[aria-label='Actions for Gifts']")).IsEmpty();
+        }
     }
 
     [Test]

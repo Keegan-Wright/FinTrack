@@ -1,7 +1,7 @@
 namespace FinanceTracker.Infrastructure.Rules;
 
 /// <summary>
-/// What one run of a user's rules did, for its log and span.
+/// What one run of rules did, for its log and span.
 /// </summary>
 /// <param name="Rules">The enabled rules that ran.</param>
 /// <param name="Considered">The transactions they ran over.</param>

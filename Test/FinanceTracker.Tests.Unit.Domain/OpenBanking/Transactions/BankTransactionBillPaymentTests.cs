@@ -66,7 +66,7 @@ public class BankTransactionBillPaymentTests
         // Arrange
         BankTransaction transaction = Build();
         Bill bill = Bill(UserId);
-        transaction.PayBill(bill, At);
+        transaction.PayBill(bill, transaction.UserId, At);
 
         // Act
         bool replaced = transaction.DecideBillPayment(BillPayment.Matched(Guid.NewGuid(), At));
@@ -81,8 +81,12 @@ public class BankTransactionBillPaymentTests
     }
 
     [Test]
-    public async Task PayBill_AnotherUsersBill_Throws() =>
-        await Assert.That(() => Build().PayBill(Bill(Guid.NewGuid()), At)).Throws<InvalidOperationException>();
+    public async Task PayBill_AnotherUsersBill_Throws()
+    {
+        BankTransaction transaction = Build();
+        await Assert.That(() => transaction.PayBill(Bill(Guid.NewGuid()), transaction.UserId, At))
+            .Throws<InvalidOperationException>();
+    }
 
     [Test]
     public async Task PayNoBill_ByTheUser_PaysNoneAndMatchingCantLinkIt()
@@ -111,7 +115,7 @@ public class BankTransactionBillPaymentTests
         // Arrange
         BankTransaction transaction = Build();
         Bill bill = Bill(UserId);
-        transaction.PayBill(bill, At);
+        transaction.PayBill(bill, transaction.UserId, At);
 
         // Act
         bool removed = transaction.RemoveDeletedBill(bill.Id);
@@ -130,7 +134,7 @@ public class BankTransactionBillPaymentTests
         // Arrange
         BankTransaction transaction = Build();
         Bill bill = Bill(UserId);
-        transaction.PayBill(bill, At);
+        transaction.PayBill(bill, transaction.UserId, At);
 
         // Act
         bool removed = transaction.RemoveDeletedBill(Guid.NewGuid());

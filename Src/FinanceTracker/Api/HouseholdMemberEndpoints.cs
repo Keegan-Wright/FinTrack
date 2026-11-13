@@ -40,6 +40,12 @@ public static class HouseholdMemberEndpoints
                 .Validated<UpdateHouseholdMemberRecognition>()
                 .NotFoundWhenMissing();
 
+            members.MapPut("{id:guid}/link", async Task<Ok<HouseholdMember>> (Guid id, LinkHouseholdMember request,
+                        IHouseholdMemberService service, CancellationToken cancellationToken) =>
+                    TypedResults.Ok(await service.LinkHouseholdMemberAsync(id, request, cancellationToken)))
+                .ConflictWhenNameTaken()
+                .NotFoundWhenMissing();
+
             members.MapDelete("{id:guid}", async Task<Results<NoContent, NotFound>> (Guid id,
                     IHouseholdMemberService service, CancellationToken cancellationToken) =>
                 await service.DeleteHouseholdMemberAsync(id, cancellationToken)

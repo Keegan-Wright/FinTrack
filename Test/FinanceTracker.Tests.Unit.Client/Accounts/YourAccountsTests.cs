@@ -95,6 +95,25 @@ public class YourAccountsTests : ComponentTestBase
         }
     }
 
+    [Test]
+    public async Task Render_AJointAccount_SaysWhoWithRatherThanWhoSharesIt()
+    {
+        // Arrange
+        Accounts(Account(900m, "Joint", "Bank one", sharedBy: "Sam Taylor", jointWith: "Sam Taylor"),
+            Account(50m, "Savings", "Bank one", sharedBy: "Sam Taylor"));
+
+        // Act
+        IRenderedComponent<YourAccounts> cut = RenderPage();
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(cut.Markup).Contains("Joint with Sam Taylor");
+            await Assert.That(cut.FindAll(".mud-typography-caption").Count(static x =>
+                x.TextContent.Trim() == "Shared by Sam Taylor")).IsEqualTo(1);
+        }
+    }
+
     private void Accounts(params AccountAndTransactions[] accounts) =>
         _accountService.GetAccountsAndMostRecentTransactionsAsync(5, Arg.Any<CancellationToken>())
             .Returns(_ => accounts.ToAsyncEnumerable());
@@ -117,8 +136,10 @@ public class YourAccountsTests : ComponentTestBase
             .Select(static x => x.TextContent.Trim()).ToList();
 
     private static AccountAndTransactions Account(decimal balance, string name = "Current",
-        string provider = "Bank one") => new()
+        string provider = "Bank one", string? sharedBy = null, string? jointWith = null) => new()
     {
+        SharedBy = sharedBy,
+        JointWith = jointWith,
         AccountId = Guid.NewGuid(),
         AccountName = name,
         ProviderName = provider,
