@@ -90,7 +90,10 @@ public sealed class FinTrackAppFixture : AspireFixture<Projects.FinanceTracker_A
             // Lets each test's requests move the clock, see TestClock
             .WithEnvironment(FinTrackEnvironment.TestClock, "true")
             // Webhooks go to a catcher on this machine, see WebhookCatcher
-            .WithEnvironment(FinTrackEnvironment.WebhookAllowPrivate, "true");
+            .WithEnvironment(FinTrackEnvironment.WebhookAllowPrivate, "true")
+            // Every test signs in and invites from this machine, more than the limits let one address
+            .WithEnvironment(FinTrackEnvironment.SignInsPerMinute, "100000")
+            .WithEnvironment(FinTrackEnvironment.InvitesPerHour, "100000");
     }
 
     public override async Task InitializeAsync()

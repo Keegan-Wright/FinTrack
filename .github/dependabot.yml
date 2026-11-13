@@ -1,0 +1,12 @@
+# Keeps the workflows' actions current. They're pinned to commits, see the workflows, and Dependabot moves the pin
+# and its version comment together in a pull request
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      actions:
+        patterns:
+          - "*"
