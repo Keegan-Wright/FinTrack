@@ -68,5 +68,10 @@ public enum NotificationKind
     /// <summary>
     /// The other person merged a joint account they both connected, or split it again.
     /// </summary>
-    JointAccount = 12
+    JointAccount = 12,
+
+    /// <summary>
+    /// Someone they're linked with changed what they share with them, declined their invite, or ended the link.
+    /// </summary>
+    SharingChanged = 13
 }

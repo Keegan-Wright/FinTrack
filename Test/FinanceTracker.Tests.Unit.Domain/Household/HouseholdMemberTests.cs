@@ -209,4 +209,17 @@ public class HouseholdMemberTests
 
         await Assert.That(householdMember.Recognises(description, reference)).IsEqualTo(recognised);
     }
+
+    [Test]
+    [Arguments("112233 87654321", true)]
+    [Arguments("112233 99999999", false)]
+    public async Task HouseholdMember_Recognises_TheirOwnAccountsWhenGiven(string reference, bool recognised)
+    {
+        var householdMember = new HouseholdMember(Guid.NewGuid(), "Sam", "Taylor", null);
+
+        bool result = householdMember.Recognises("Bills", reference,
+            [AccountIdentifier.Create("112233", "87654321", null)!]);
+
+        await Assert.That(result).IsEqualTo(recognised);
+    }
 }

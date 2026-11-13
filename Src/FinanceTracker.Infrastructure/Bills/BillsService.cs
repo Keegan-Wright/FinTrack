@@ -65,7 +65,7 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
             .OrderBy(static x => x.Item.Name, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
 
-        List<BankTransaction> payments = await LoadPaymentsAsync(context, all, running, cancellationToken);
+        List<BankTransaction> payments = await SharedBills.PaymentsAsync(context, running, cancellationToken);
         Dictionary<Guid, string> accountNames = await LoadAccountNamesAsync(context, all, cancellationToken);
         TimeZoneInfo timeZone = _timeProvider.LocalTimeZone;
 
@@ -112,7 +112,7 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
         // Their own and those shared with them. Names are encrypted, so they're ordered once decrypted
         AccountsInView all = await _accountScope.ResolveAllAsync(context, cancellationToken);
         List<VisibleItem<DomainBill>> bills = await SharedBills.ForAsync(context, UserId, all, cancellationToken);
-        List<BankTransaction> payments = await LoadPaymentsAsync(context, all, bills, cancellationToken);
+        List<BankTransaction> payments = await SharedBills.PaymentsAsync(context, bills, cancellationToken);
         Dictionary<Guid, string> accountNames = await LoadAccountNamesAsync(context, all, cancellationToken);
 
         DateOnly today = _timeProvider.Today;
@@ -430,28 +430,13 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
     private async Task<Bill> ToContractAsync(FinanceTrackerContext context, VisibleItem<DomainBill> visible,
         CancellationToken cancellationToken)
     {
-        // From any account it may be paid from, see LoadPaymentsAsync
+        // From any account it may be paid from, see SharedBills.PaymentsAsync
         AccountsInView all = await _accountScope.ResolveAllAsync(context, cancellationToken);
-        List<BankTransaction> payments = await LoadPaymentsAsync(context, all, [visible], cancellationToken);
+        List<BankTransaction> payments = await SharedBills.PaymentsAsync(context, [visible], cancellationToken);
         Dictionary<Guid, string> accountNames = await LoadAccountNamesAsync(context, all, cancellationToken);
 
         return BillMapper.ToContract(visible.Item, AccountName(accountNames, visible.Item.AccountId), payments,
             _timeProvider.LocalTimeZone, _timeProvider.Today, visible.SharedBy, visible.CanChange);
-    }
-
-    /// <summary>
-    /// Every transaction that pays one of <paramref name="bills"/>, from the user's own accounts or any shared with
-    /// them, whichever view they chose, as a bill is the same wherever it's paid from. Indexed by bill, so no dates
-    /// are needed.
-    /// </summary>
-    private static async Task<List<BankTransaction>> LoadPaymentsAsync(FinanceTrackerContext context,
-        AccountsInView all, IEnumerable<VisibleItem<DomainBill>> bills, CancellationToken cancellationToken)
-    {
-        List<Guid> billIds = bills.Select(static x => x.Item.Id).ToList();
-        return await context.BankTransactions.InView(all).AsNoTracking()
-            .Where(x => x.BillPayment != null && x.BillPayment.BillId != null &&
-                        billIds.Contains(x.BillPayment.BillId.Value))
-            .ToListAsync(cancellationToken);
     }
 
     /// <summary>

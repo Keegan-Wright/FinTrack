@@ -4,13 +4,15 @@ using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using FinanceTracker.Infrastructure.Persistence;
+using FinanceTracker.Infrastructure.Sharing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Infrastructure.Notifications;
 
 /// <summary>
-/// Tells the current user about money going out over the amount they asked to hear about.
+/// Tells the current user about money going out over the amount they asked to hear about, from their own accounts
+/// and those shared with them.
 /// </summary>
 /// <remarks>
 /// Money out only, as that's what the user wants to catch. Pending payments are left until they book, as a pending
@@ -56,9 +58,9 @@ public sealed class TransactionNotices : ServiceBase<TransactionNotices>, ISyncN
                 return;
             }
 
-            large = await LoadLargeAsync(context, over, cancellationToken);
-            accountNames = await context.BankAccounts.OwnedBy(UserId).AsNoTracking()
-                .ToDictionaryAsync(static x => x.Id, static x => x.DisplayName, cancellationToken);
+            AccountsInView all = await AccountScope.ResolveAllForAsync(context, UserId, cancellationToken);
+            large = await LoadLargeAsync(context, all, over, cancellationToken);
+            accountNames = await all.LabelsAsync(context, cancellationToken);
         }
 
         TimeZoneInfo timeZone = _timeProvider.LocalTimeZone;
@@ -81,12 +83,12 @@ public sealed class TransactionNotices : ServiceBase<TransactionNotices>, ISyncN
     /// Booked money out of <paramref name="over"/> or more in the last <see cref="LookBackDays"/>, leaving out
     /// transfers. Dates are encrypted, so the day index narrows them and the decrypted dates give the exact range.
     /// </summary>
-    private async Task<List<BankTransaction>> LoadLargeAsync(FinanceTrackerContext context, decimal over,
-        CancellationToken cancellationToken)
+    private async Task<List<BankTransaction>> LoadLargeAsync(FinanceTrackerContext context, AccountsInView all,
+        decimal over, CancellationToken cancellationToken)
     {
         DateTime from = _timeProvider.UtcNow.AddDays(-LookBackDays);
 
-        List<BankTransaction> recent = await context.BankTransactions.OwnedBy(UserId)
+        List<BankTransaction> recent = await context.BankTransactions.InView(all)
             .WhereEncryptedDayWithin(x => x.OccurredAt, from.AddDays(-1), null, context)
             .AsNoTracking()
             .ToListAsync(cancellationToken);

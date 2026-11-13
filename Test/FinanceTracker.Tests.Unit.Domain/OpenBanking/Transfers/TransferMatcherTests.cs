@@ -562,6 +562,37 @@ public class TransferMatcherTests
         await Assert.That(payment.Transfer).IsNull();
     }
 
+    [Test]
+    public async Task Match_MemberWhoIsALinkedUser_RecognisesMoneyToAnyOfTheirOwnAccounts()
+    {
+        // Arrange, Sam's own account, which the user hasn't added to the member
+        HouseholdMember sam = new(UserId, "Sam", "Taylor", null);
+        sam.LinkToUser(Partner, "Sam", "Taylor");
+        BankTransaction payment = Transaction(_current, -50m, Monday, reference: "777777 77777777");
+        Dictionary<Guid, IReadOnlyCollection<AccountIdentifier>> theirs = new()
+        {
+            [sam.Id] = [AccountIdentifier.Create("777777", "77777777", null)!]
+        };
+
+        // Act
+        TransferMatcher.Match([_current], [sam], [payment], DecidedAt, membersOwnAccounts: theirs);
+
+        // Assert
+        await Assert.That(payment.Transfer).IsEqualTo(TransferInfo.WithHouseholdMember(sam.Id, DecidedAt));
+    }
+
+    [Test]
+    public async Task Match_MemberWhoIsALinkedUser_OnlyTheirAccountsGivenCount()
+    {
+        HouseholdMember sam = new(UserId, "Sam", "Taylor", null);
+        sam.LinkToUser(Partner, "Sam", "Taylor");
+        BankTransaction payment = Transaction(_current, -50m, Monday, reference: "777777 77777777");
+
+        TransferMatcher.Match([_current], [sam], [payment], DecidedAt);
+
+        await Assert.That(payment.Transfer).IsNull();
+    }
+
     private TransferMatchSummary Match(params BankTransaction[] transactions) =>
         TransferMatcher.Match([_current, _savings, _joint, _card], [_partner], transactions, DecidedAt);
 

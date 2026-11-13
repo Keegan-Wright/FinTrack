@@ -203,14 +203,16 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
         var shared = await (
                 from share in context.ChosenSharesWith(UserId, ShareItemType.Classification)
                 join tag in context.CustomClassifications on share.ItemId equals tag.Id
-                join owner in context.Users on tag.UserId equals owner.Id
                 where tag.UserId == share.UserId
-                select new { Tag = tag, owner.FirstName, owner.LastName, share.Mode })
+                select new { Tag = tag, share.Mode })
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
+        Dictionary<Guid, string> names = await SharedChosenItems.OwnerNamesAsync(context,
+            shared.Select(static x => x.Tag.UserId).Distinct().ToList(), cancellationToken);
         return shared
-            .Select(static x => (x.Tag, $"{x.FirstName} {x.LastName}".Trim(), x.Mode == ShareMode.AllowChanges))
+            .Select(x => (x.Tag, names.GetValueOrDefault(x.Tag.UserId, string.Empty),
+                x.Mode == ShareMode.AllowChanges))
             .ToList();
     }
 

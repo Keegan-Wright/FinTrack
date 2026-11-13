@@ -178,6 +178,10 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
         link.Decline(UserId, _timeProvider.GetUtcNow().UtcDateTime);
         await context.SaveChangesAsync(cancellationToken);
         Logger.LogChanged(UserId, "declined", "user link", link.Id);
+
+        await NotifyOtherAsync(context, link, $"sharing-declined:{link.Id:N}",
+            person => $"{person} declined your invite to share", "Nothing is shared between you.",
+            cancellationToken, NotificationKind.SharingChanged);
         return true;
     }
 
@@ -201,6 +205,7 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
         // lets each see the other's names. Then the other person's come off with everything else of theirs
         await SplitJointAccountsAsync(context, link, cancellationToken);
 
+        bool wasLinked = link.Status == UserLinkStatus.Accepted;
         link.End(UserId, _timeProvider.GetUtcNow().UtcDateTime);
 
         // A household member either of them said is the other is a plain name again, kept as it is
@@ -222,13 +227,36 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
         await context.SaveChangesAsync(cancellationToken);
         Logger.LogChanged(UserId, "ended", "user link", link.Id);
 
-        if (shares.Count > 0)
+        // A linked household member's accounts recognised their transfers until now
+        if (shares.Count > 0 || linkedMembers.Count > 0)
         {
             await RematchTransfersAsync(context, link, cancellationToken);
         }
 
         await RerunRulesAsync(changeable, cancellationToken);
+        await NotifyEndedAsync(context, link, wasLinked, cancellationToken);
         return true;
+    }
+
+    /// <summary>
+    /// Tells the other person the link has ended, or that the invite they had was withdrawn.
+    /// </summary>
+    private async Task NotifyEndedAsync(FinanceTrackerContext context, DomainLink link, bool wasLinked,
+        CancellationToken cancellationToken)
+    {
+        if (wasLinked)
+        {
+            await NotifyOtherAsync(context, link, $"sharing-ended:{link.Id:N}",
+                person => $"{person} stopped sharing with you",
+                "Nothing of theirs is shared with you now, and nothing of yours with them. Joint accounts you'd " +
+                "merged are split, each of you keeping your own copy.",
+                cancellationToken, NotificationKind.SharingChanged);
+            return;
+        }
+
+        await NotifyOtherAsync(context, link, $"sharing-withdrawn:{link.Id:N}",
+            person => $"{person} withdrew their invite to share", "Nothing is shared between you.",
+            cancellationToken, NotificationKind.SharingChanged);
     }
 
     public async Task<LinkShares?> GetSharesAsync(Guid linkId, CancellationToken cancellationToken)
@@ -264,8 +292,12 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
             throw new InvalidOperationException("Only your own accounts can be shared.");
         }
 
+        Dictionary<(ShareItemType Kind, Guid ItemId), DomainShareMode> sharedBefore =
+            await ShareChanges.ChosenAsync(context, link.Id, UserId, cancellationToken);
+
         Dictionary<Guid, DomainShareMode> wanted =
             request.Accounts.ToDictionary(static x => x.AccountId, static x => ToDomain(x.Mode));
+
         List<Share> existing = await OwnAccountShares(context, link.Id).ToListAsync(cancellationToken);
 
         // An account's bills and debts go with it
@@ -276,9 +308,11 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
         HashSet<Guid> changeableBefore = existing.Where(static x => x.Mode == DomainShareMode.AllowChanges)
             .Select(static x => x.ItemId)
             .ToHashSet();
+
         HashSet<Guid> changeableAfter = wanted.Where(static x => x.Value == DomainShareMode.AllowChanges)
             .Select(static x => x.Key)
             .ToHashSet();
+
         changeableBefore.SymmetricExceptWith(changeableAfter);
 
         foreach (Share share in existing)
@@ -306,6 +340,7 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
 
         await RematchTransfersAsync(context, link, cancellationToken);
         await RerunRulesAsync(changeableBefore.Select(x => (UserId, x)).ToList(), cancellationToken);
+        await NotifySharesChangedAsync(context, link, sharedBefore, cancellationToken);
 
         return await LinkSharesAsync(context, link, cancellationToken);
     }
@@ -320,10 +355,13 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
         DomainLink link = await AcceptedLinkAsync(context, linkId, cancellationToken)
                           ?? throw new InvalidOperationException($"No accepted link {linkId} was found.");
 
+        Dictionary<(ShareItemType Kind, Guid ItemId), DomainShareMode> sharedBefore =
+            await ShareChanges.ChosenAsync(context, link.Id, UserId, cancellationToken);
         await ItemShares.ChangeAsync(context, link, UserId, request, _timeProvider.GetUtcNow().UtcDateTime,
             cancellationToken);
         await context.SaveChangesAsync(cancellationToken);
         Logger.LogChanged(UserId, "changed item shares in", "user link", link.Id);
+        await NotifySharesChangedAsync(context, link, sharedBefore, cancellationToken);
 
         return await LinkSharesAsync(context, link, cancellationToken);
     }
@@ -443,12 +481,34 @@ public sealed class SharingService : ServiceBase<SharingService>, ISharingServic
     /// </summary>
     /// <param name="title">The title, given the user's name.</param>
     private async Task NotifyOtherAsync(FinanceTrackerContext context, DomainLink link, string key,
-        Func<string, string> title, string message, CancellationToken cancellationToken)
+        Func<string, string> title, string message, CancellationToken cancellationToken,
+        NotificationKind kind = NotificationKind.JointAccount)
     {
         FinanceTrackerUser user = await context.Users.AsNoTracking().SingleAsync(x => x.Id == UserId,
             cancellationToken);
-        await NotifyAsync(link.OtherThan(UserId), NotificationKind.JointAccount, key, title(FullName(user)), message,
-            cancellationToken);
+        await NotifyAsync(link.OtherThan(UserId), kind, key, title(FullName(user)), message, cancellationToken);
+    }
+
+    /// <summary>
+    /// Tells the other person in <paramref name="link"/> what the user changed in what they share with them, when
+    /// anything did.
+    /// </summary>
+    /// <param name="before">What the user chose to share before, see <see cref="ShareChanges.ChosenAsync"/>.</param>
+    private async Task NotifySharesChangedAsync(FinanceTrackerContext context, DomainLink link,
+        Dictionary<(ShareItemType Kind, Guid ItemId), DomainShareMode> before, CancellationToken cancellationToken)
+    {
+        Dictionary<(ShareItemType Kind, Guid ItemId), DomainShareMode> after =
+            await ShareChanges.ChosenAsync(context, link.Id, UserId, cancellationToken);
+
+        if (ShareChanges.Describe(before, after) is not { } message)
+        {
+            return;
+        }
+
+        await NotifyOtherAsync(context, link,
+            $"sharing-changed:{link.Id:N}:{UserId:N}:{_timeProvider.GetUtcNow().UtcTicks}",
+            person => $"{person} changed what they share with you", message, cancellationToken,
+            NotificationKind.SharingChanged);
     }
 
     public async Task<SharingView> GetViewAsync(CancellationToken cancellationToken)

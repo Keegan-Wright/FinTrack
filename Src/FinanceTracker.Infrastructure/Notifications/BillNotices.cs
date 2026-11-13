@@ -4,6 +4,8 @@ using FinanceTracker.Domain.Notifications;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Generated.Attributes;
+using FinanceTracker.Infrastructure.Bills;
+using FinanceTracker.Infrastructure.Sharing;
 using FinanceTracker.Generated.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -12,7 +14,8 @@ namespace FinanceTracker.Infrastructure.Notifications;
 
 /// <summary>
 /// Tells the current user about their bills: one gone unpaid past its due date, one paid a different amount than
-/// expected, and one coming up within the days they asked to be reminded.
+/// expected, and one coming up within the days they asked to be reminded. Those shared with them too, see
+/// <see cref="SharedBills"/>, by their own settings, whichever view they chose.
 /// </summary>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<ISyncNotices>]
@@ -45,23 +48,25 @@ public sealed class BillNotices : ServiceBase<BillNotices>, ISyncNotices
         DateOnly today = _timeProvider.Today;
         TimeZoneInfo timeZone = _timeProvider.LocalTimeZone;
 
-        List<Bill> bills;
+        List<VisibleItem<Bill>> bills;
         List<BankTransaction> payments;
         Dictionary<Guid, BankAccount> accounts;
         int reminderDays;
         await using (FinanceTrackerContext context =
                      await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken))
         {
-            bills = await context.Bills.OwnedBy(UserId).AsNoTracking().ToListAsync(cancellationToken);
-            payments = await LoadPaymentsAsync(context, cancellationToken);
-            accounts = await context.BankAccounts.OwnedBy(UserId).AsNoTracking()
+            AccountsInView all = await AccountScope.ResolveAllForAsync(context, UserId, cancellationToken);
+            bills = await SharedBills.ForAsync(context, UserId, all, cancellationToken);
+            payments = await SharedBills.PaymentsAsync(context, bills, cancellationToken);
+            accounts = await context.BankAccounts.InView(all).AsNoTracking()
                 .ToDictionaryAsync(static x => x.Id, cancellationToken);
             reminderDays = await ReminderDaysAsync(context, cancellationToken);
         }
 
-        foreach (Bill bill in bills)
+        foreach (VisibleItem<Bill> bill in bills)
         {
-            BankAccount? account = accounts.GetValueOrDefault(bill.AccountId);
+            // Null for a bill shared with them paid from an account they can't see, which isn't named
+            BankAccount? account = accounts.GetValueOrDefault(bill.Item.AccountId);
             await NotifyPastAsync(bill, account, payments, today, timeZone, cancellationToken);
             await RemindAsync(bill, account, payments, reminderDays, today, timeZone, cancellationToken);
         }
@@ -71,9 +76,11 @@ public sealed class BillNotices : ServiceBase<BillNotices>, ISyncNotices
     /// Says each recent period that went unpaid or was paid a different amount. Only periods due since the bill was
     /// added, so adding one doesn't bring up its past.
     /// </summary>
-    private async Task NotifyPastAsync(Bill bill, BankAccount? account, List<BankTransaction> payments,
+    private async Task NotifyPastAsync(VisibleItem<Bill> visible, BankAccount? account, List<BankTransaction> payments,
         DateOnly today, TimeZoneInfo timeZone, CancellationToken cancellationToken)
     {
+        Bill bill = visible.Item;
+        string name = NoticeText.Named(bill.Name, visible.SharedBy);
         DateOnly from = today.AddDays(-LookBackDays);
         DateOnly added = bill.Created.LocalDayIn(timeZone);
         if (added > from)
@@ -86,7 +93,7 @@ public sealed class BillNotices : ServiceBase<BillNotices>, ISyncNotices
             if (period.State == BillState.Late)
             {
                 await _notifier.NotifyAsync(NotificationKind.BillLate, Key("bill-late", bill, period.Due),
-                    $"{bill.Name} hasn't been paid",
+                    $"{name} hasn't been paid",
                     $"{NoticeText.Money(period.Expected)} was due {FromAccount(account)}on {NoticeText.Day(period.Due)}.",
                     BillsLink, cancellationToken);
             }
@@ -94,7 +101,7 @@ public sealed class BillNotices : ServiceBase<BillNotices>, ISyncNotices
             if (period.State == BillState.Changed)
             {
                 await _notifier.NotifyAsync(NotificationKind.BillChanged, Key("bill-changed", bill, period.Due),
-                    $"{bill.Name} was {NoticeText.Money(period.Paid)}",
+                    $"{name} was {NoticeText.Money(period.Paid)}",
                     $"{NoticeText.Money(period.Expected)} was expected for {NoticeText.Day(period.Due)}.",
                     BillsLink, cancellationToken);
             }
@@ -105,9 +112,10 @@ public sealed class BillNotices : ServiceBase<BillNotices>, ISyncNotices
     /// Reminds them of each period due within <paramref name="reminderDays"/> that isn't paid yet, saying when the
     /// account's available balance won't cover it.
     /// </summary>
-    private async Task RemindAsync(Bill bill, BankAccount? account, List<BankTransaction> payments, int reminderDays,
-        DateOnly today, TimeZoneInfo timeZone, CancellationToken cancellationToken)
+    private async Task RemindAsync(VisibleItem<Bill> visible, BankAccount? account, List<BankTransaction> payments,
+        int reminderDays, DateOnly today, TimeZoneInfo timeZone, CancellationToken cancellationToken)
     {
+        Bill bill = visible.Item;
         DateOnly to = today.AddDays(reminderDays);
         foreach (BillPeriod period in BillCalculator.Periods(bill, payments, today, to, timeZone, today))
         {
@@ -120,7 +128,8 @@ public sealed class BillNotices : ServiceBase<BillNotices>, ISyncNotices
                              $"{NoticeText.Day(period.Due)}.{WontCover(account, period.Expected)}";
 
             await _notifier.NotifyAsync(NotificationKind.BillDueSoon, Key("bill-due", bill, period.Due),
-                $"{bill.Name} is due {NoticeText.DueIn(period.Due, today)}", message, BillsLink, cancellationToken);
+                $"{NoticeText.Named(bill.Name, visible.SharedBy)} is due {NoticeText.DueIn(period.Due, today)}",
+                message, BillsLink, cancellationToken);
         }
     }
 
@@ -154,15 +163,6 @@ public sealed class BillNotices : ServiceBase<BillNotices>, ISyncNotices
     /// Keyed by the bill and the due date, so each period is said once.
     /// </summary>
     private static string Key(string what, Bill bill, DateOnly due) => $"{what}:{bill.Id:N}:{due:yyyyMMdd}";
-
-    /// <summary>
-    /// Every transaction that pays one of the user's bills. Indexed by bill, so no dates are needed.
-    /// </summary>
-    private async Task<List<BankTransaction>> LoadPaymentsAsync(FinanceTrackerContext context,
-        CancellationToken cancellationToken) =>
-        await context.BankTransactions.OwnedBy(UserId).AsNoTracking()
-            .Where(static x => x.BillPayment != null && x.BillPayment.BillId != null)
-            .ToListAsync(cancellationToken);
 
     private async Task<int> ReminderDaysAsync(FinanceTrackerContext context, CancellationToken cancellationToken)
     {

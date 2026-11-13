@@ -19,10 +19,8 @@ public static class AccountsInViewExtensions
                 return [];
             }
 
-            List<Guid> ownerIds = view.SharedOwnerIds.ToList();
-            Dictionary<Guid, string> names = await context.Users.AsNoTracking()
-                .Where(x => ownerIds.Contains(x.Id))
-                .ToDictionaryAsync(static x => x.Id, static x => $"{x.FirstName} {x.LastName}".Trim(), cancellationToken);
+            Dictionary<Guid, string> names = await SharedChosenItems.OwnerNamesAsync(context,
+                view.SharedOwnerIds.ToList(), cancellationToken);
 
             return view.SharedOwners.ToDictionary(static x => x.Key, x => names.GetValueOrDefault(x.Value, string.Empty));
         }
@@ -53,13 +51,39 @@ public static class AccountsInViewExtensions
 
             Dictionary<Guid, Guid> others = joints.ToDictionary(static x => x.AccountId,
                 x => x.ShownOwner == userId ? x.HiddenOwner : x.ShownOwner);
-            List<Guid> otherIds = others.Values.Distinct().ToList();
-            Dictionary<Guid, string> names = await context.Users.AsNoTracking()
-                .Where(x => otherIds.Contains(x.Id))
-                .ToDictionaryAsync(static x => x.Id, static x => $"{x.FirstName} {x.LastName}".Trim(),
-                    cancellationToken);
+            Dictionary<Guid, string> names = await SharedChosenItems.OwnerNamesAsync(context,
+                others.Values.Distinct().ToList(), cancellationToken);
 
             return others.ToDictionary(static x => x.Key, x => names.GetValueOrDefault(x.Value, string.Empty));
+        }
+
+        /// <summary>
+        /// Each account in view by what it's called where the user's told about it, e.g. in a notification. Their
+        /// own and merged joint accounts by name, another person's saying whose, e.g. <c>Joint · Sam Taylor's</c>.
+        /// </summary>
+        public async Task<Dictionary<Guid, string>> LabelsAsync(FinanceTrackerContext context,
+            CancellationToken cancellationToken)
+        {
+            ArgumentNullException.ThrowIfNull(context);
+            Dictionary<Guid, string> names = await context.BankAccounts.InView(view).AsNoTracking()
+                .ToDictionaryAsync(static x => x.Id, static x => x.DisplayName, cancellationToken);
+            Dictionary<Guid, string> sharedBy = await view.SharedByAsync(context, cancellationToken);
+            Dictionary<Guid, string> jointWith = await view.JointWithAsync(context, cancellationToken);
+
+            Dictionary<Guid, string> labels = [];
+            foreach ((Guid accountId, string name) in names)
+            {
+                if (sharedBy.TryGetValue(accountId, out string? owner) && !jointWith.ContainsKey(accountId))
+                {
+                    labels[accountId] = $"{name} · {owner}'s";
+                }
+                else
+                {
+                    labels[accountId] = name;
+                }
+            }
+
+            return labels;
         }
     }
 }

@@ -169,9 +169,7 @@ internal sealed class TransactionMapper
             return [];
         }
 
-        return await context.Users.AsNoTracking()
-            .Where(x => others.Contains(x.Id))
-            .ToDictionaryAsync(static x => x.Id, static x => $"{x.FirstName} {x.LastName}".Trim(), cancellationToken);
+        return await SharedChosenItems.OwnerNamesAsync(context, others, cancellationToken);
     }
 
     /// <summary>

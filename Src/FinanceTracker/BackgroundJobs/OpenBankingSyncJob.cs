@@ -3,6 +3,7 @@ using System.Linq.Expressions;
 using FinanceTracker.Contracts;
 using FinanceTracker.Domain.Identity;
 using FinanceTracker.Domain.OpenBanking.Connections;
+using FinanceTracker.Domain.Sharing;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Bills;
 using FinanceTracker.Infrastructure.Notifications;
@@ -147,6 +148,14 @@ public abstract class OpenBankingSyncJob
             await NotifyOwnerAsync(userId, cancellationToken);
         }
 
+        // Whoever's linked with them sees what they share, so is told about it too, by their own settings. Those
+        // who synced themselves were told above
+        foreach (Guid userId in await LinkedWithAsync(owners, cancellationToken))
+        {
+            using IDisposable? logScope = _logger.BeginUserScope(userId);
+            await NotifyOwnerAsync(userId, cancellationToken);
+        }
+
         await RecordConnectionHealthAsync(performingBackgroundSyncActivity, cancellationToken);
         return owners;
     }
@@ -187,6 +196,25 @@ public abstract class OpenBankingSyncJob
         {
             activity?.AddException(ex);
         }
+    }
+
+    /// <summary>
+    /// The people linked with any of <paramref name="owners"/> who aren't owners themselves.
+    /// </summary>
+    private async Task<List<Guid>> LinkedWithAsync(HashSet<Guid> owners, CancellationToken cancellationToken)
+    {
+        List<Guid> ownerIds = owners.ToList();
+        await using FinanceTrackerContext dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+        List<UserLink> links = await dbContext.UserLinks.AsNoTracking()
+            .Where(x => x.Status == UserLinkStatus.Accepted &&
+                        (ownerIds.Contains(x.UserId) || ownerIds.Contains(x.InviteeId)))
+            .ToListAsync(cancellationToken);
+
+        return links
+            .SelectMany(static x => new[] { x.UserId, x.InviteeId })
+            .Where(x => !owners.Contains(x))
+            .Distinct()
+            .ToList();
     }
 
     /// <summary>

@@ -288,7 +288,8 @@ internal static class JointAccounts
     /// <summary>
     /// Each of <paramref name="from"/> with the same transaction in <paramref name="to"/>. The two copies come from
     /// different connections, whose ids for a transaction differ, so they're paired by day, amount and description.
-    /// Settled ones only, a pending one may still change.
+    /// Two logins can describe one transaction differently, so what's left is paired by day and amount when that's
+    /// the only one on each side. Settled ones only, a pending one may still change.
     /// </summary>
     internal static List<(BankTransaction From, BankTransaction To)> SameTransactions(List<BankTransaction> from,
         List<BankTransaction> to)
@@ -309,8 +310,43 @@ internal static class JointAccounts
             }
         }
 
+        pairs.AddRange(OnlyOnesOfTheirDayAndAmount(from, to, pairs));
         return pairs;
     }
+
+    /// <summary>
+    /// Pairs of <paramref name="from"/> and <paramref name="to"/> not in <paramref name="paired"/> that are each the
+    /// only one left on their side with that day and amount, so their descriptions differing can't mix two up.
+    /// </summary>
+    private static List<(BankTransaction From, BankTransaction To)> OnlyOnesOfTheirDayAndAmount(
+        List<BankTransaction> from, List<BankTransaction> to, List<(BankTransaction From, BankTransaction To)> paired)
+    {
+        HashSet<Guid> pairedIds = paired.SelectMany(static x => new[] { x.From.Id, x.To.Id }).ToHashSet();
+        Dictionary<(DateOnly, decimal), List<BankTransaction>> leftOnTo = to
+            .Where(x => !x.IsPending && !pairedIds.Contains(x.Id))
+            .GroupBy(DayAndAmount)
+            .ToDictionary(static x => x.Key, static x => x.ToList());
+
+        List<(BankTransaction From, BankTransaction To)> pairs = [];
+        IEnumerable<IGrouping<(DateOnly, decimal), BankTransaction>> leftOnFrom = from
+            .Where(x => !x.IsPending && !pairedIds.Contains(x.Id))
+            .GroupBy(DayAndAmount);
+        foreach (IGrouping<(DateOnly, decimal), BankTransaction> sources in leftOnFrom)
+        {
+            if (sources.Count() != 1 || !leftOnTo.TryGetValue(sources.Key, out List<BankTransaction>? targets) ||
+                targets.Count != 1)
+            {
+                continue;
+            }
+
+            pairs.Add((sources.Single(), targets[0]));
+        }
+
+        return pairs;
+    }
+
+    private static (DateOnly Day, decimal Amount) DayAndAmount(BankTransaction transaction) =>
+        (DateOnly.FromDateTime(transaction.OccurredAt), transaction.Amount);
 
     private static (DateOnly Day, decimal Amount, string Description) Key(BankTransaction transaction) =>
         (DateOnly.FromDateTime(transaction.OccurredAt), transaction.Amount,

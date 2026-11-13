@@ -1,5 +1,7 @@
 using FinanceTracker.BackgroundJobs;
 using FinanceTracker.Contracts;
+using FinanceTracker.Domain.Sharing;
+using FinanceTracker.Infrastructure;
 using FinanceTracker.Telemetry;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
@@ -252,6 +254,37 @@ public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
         await Assert.That(Told).IsEquivalentTo([
             (mine, "bills", true), (mine, "budgets", true), (mine, "payments", true), (mine, "balances", true),
             (theirs, "bills", true), (theirs, "budgets", true), (theirs, "payments", true), (theirs, "balances", true)
+        ], TUnit.Assertions.Enums.CollectionOrdering.Matching);
+    }
+
+    [Test]
+    public async Task Execute_Synced_AlsoTellsWhoeverTheyreLinkedWith_ButNotSomeoneOnlyInvited()
+    {
+        // Arrange, the partner has no connection of their own, so is only told through the link
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.UserScenario.WithUser("partner"))
+            .Do(s => s.UserScenario.WithUser("invited"))
+            .Do(s => s.BankConnectionScenario.WithConnection("mine", Username));
+        Guid mine = Scenario.UserMappings[Username];
+        Guid partner = Scenario.UserMappings["partner"];
+        await using (FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken))
+        {
+            UserLink linked = new(mine, partner, Now);
+            linked.Accept(partner, Now);
+            context.UserLinks.AddRange(linked, new UserLink(mine, Scenario.UserMappings["invited"], Now));
+            await context.SaveChangesAsync(CancellationToken);
+        }
+
+        SyncAllOpenBankingDetailsAsync subject = BuildSubject();
+
+        // Act
+        await subject.Execute(JobContexts.Scheduled(), CancellationToken);
+
+        // Assert, the partner after the owner, with nothing of their own snapshot
+        await Assert.That(Told).IsEquivalentTo([
+            (mine, "bills", true), (mine, "budgets", true), (mine, "payments", true), (mine, "balances", true),
+            (partner, "bills", false), (partner, "budgets", false), (partner, "payments", false),
+            (partner, "balances", false)
         ], TUnit.Assertions.Enums.CollectionOrdering.Matching);
     }
 

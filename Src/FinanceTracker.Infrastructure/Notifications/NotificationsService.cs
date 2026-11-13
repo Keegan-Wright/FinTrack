@@ -5,6 +5,7 @@ using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using FinanceTracker.Infrastructure.Notifications.Email;
 using FinanceTracker.Infrastructure.Notifications.Webhooks;
+using FinanceTracker.Infrastructure.Sharing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using DomainNotificationSettings = FinanceTracker.Domain.Notifications.NotificationSettings;
@@ -277,12 +278,13 @@ public sealed class NotificationsService : ServiceBase<NotificationsService>, IN
     }
 
     /// <summary>
-    /// The amounts set for the user's own accounts, others passed over.
+    /// The amounts set for the accounts the user sees, their own and those shared with them, others passed over.
     /// </summary>
     private async Task<Dictionary<Guid, decimal>> BelowByAccountAsync(FinanceTrackerContext context,
         IEnumerable<LowBalanceThreshold> thresholds, CancellationToken cancellationToken)
     {
-        HashSet<Guid> theirs = (await context.BankAccounts.OwnedBy(UserId).Select(static x => x.Id)
+        AccountsInView all = await AccountScope.ResolveAllForAsync(context, UserId, cancellationToken);
+        HashSet<Guid> theirs = (await context.BankAccounts.InView(all).Select(static x => x.Id)
             .ToListAsync(cancellationToken)).ToHashSet();
 
         Dictionary<Guid, decimal> belowByAccount = [];
@@ -298,7 +300,7 @@ public sealed class NotificationsService : ServiceBase<NotificationsService>, IN
     }
 
     /// <summary>
-    /// Each of the user's accounts by name, with the amount it's watched for.
+    /// Each account the user sees by name, saying whose another person's is, with the amount it's watched for.
     /// </summary>
     private async Task<List<AccountLowBalance>> LowBalanceAsync(FinanceTrackerContext context,
         DomainNotificationSettings settings, CancellationToken cancellationToken)
@@ -306,10 +308,9 @@ public sealed class NotificationsService : ServiceBase<NotificationsService>, IN
         Dictionary<Guid, decimal> belowByAccount =
             settings.LowBalanceAlerts.ToDictionary(static x => x.AccountId, static x => x.Below);
 
-        List<(Guid Id, string Name)> accounts = (await context.BankAccounts.OwnedBy(UserId).AsNoTracking()
-                .Select(static x => new { x.Id, x.DisplayName })
-                .ToListAsync(cancellationToken))
-            .Select(static x => (x.Id, x.DisplayName))
+        AccountsInView all = await AccountScope.ResolveAllForAsync(context, UserId, cancellationToken);
+        List<(Guid Id, string Name)> accounts = (await all.LabelsAsync(context, cancellationToken))
+            .Select(static x => (x.Key, x.Value))
             .ToList();
 
         return accounts

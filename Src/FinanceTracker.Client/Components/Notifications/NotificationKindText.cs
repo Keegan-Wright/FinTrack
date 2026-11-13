@@ -31,6 +31,7 @@ public static class NotificationKindText
         NotificationKind.SharingInvite => "Someone inviting you to share",
         NotificationKind.SharingAccepted => "Someone accepting your invite to share",
         NotificationKind.JointAccount => "A joint account being merged or split",
+        NotificationKind.SharingChanged => "Someone changing what they share with you",
         _ => kind.ToString()
     };
 
@@ -49,6 +50,7 @@ public static class NotificationKindText
         NotificationKind.SharingInvite => Icons.Material.Outlined.GroupAdd,
         NotificationKind.SharingAccepted => Icons.Material.Outlined.Handshake,
         NotificationKind.JointAccount => Icons.Material.Outlined.JoinInner,
+        NotificationKind.SharingChanged => Icons.Material.Outlined.Share,
         _ => Icons.Material.Outlined.Notifications
     };
 }

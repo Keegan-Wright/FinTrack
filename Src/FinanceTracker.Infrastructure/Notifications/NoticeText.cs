@@ -12,6 +12,20 @@ public static class NoticeText
     public static string Day(DateOnly day) => day.ToString("d MMMM", CultureInfo.CurrentCulture);
 
     /// <summary>
+    /// Something's name, saying whose when another person shares it, e.g. <c>Rent</c> or <c>Jane Doe's Rent</c>.
+    /// </summary>
+    /// <param name="sharedBy">Its owner's name when it's someone else's, null when it's the user's.</param>
+    public static string Named(string name, string? sharedBy)
+    {
+        if (string.IsNullOrEmpty(sharedBy))
+        {
+            return name;
+        }
+
+        return $"{sharedBy}'s {name}";
+    }
+
+    /// <summary>
     /// When something is due from <paramref name="today"/>, e.g. <c>today</c>, <c>tomorrow</c> or
     /// <c>in 3 days</c>.
     /// </summary>

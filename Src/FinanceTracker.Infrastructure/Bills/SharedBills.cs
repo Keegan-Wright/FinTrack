@@ -1,3 +1,4 @@
+using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.Sharing;
 using FinanceTracker.Infrastructure.Sharing;
 using Microsoft.EntityFrameworkCore;
@@ -33,6 +34,22 @@ internal static class SharedBills
         List<VisibleItem<DomainBill>> bills = await SharedChosenItems.WithFollowingAsync(context, chosen,
             followingAccounts, static x => x.AccountId, view, cancellationToken);
         return bills.Where(x => !x.IsOwn || !StandsInForIt(x.Item, view, followingAccounts)).ToList();
+    }
+
+    /// <summary>
+    /// Every transaction that pays one of <paramref name="bills"/>, wherever it's paid from, as a bill is the same
+    /// whoever sees it. One shared with the user may be paid from its owner's account they can't see, which only gives
+    /// its amounts and days, never the account. Indexed by bill, so no dates are needed.
+    /// </summary>
+    public static async Task<List<BankTransaction>> PaymentsAsync(FinanceTrackerContext context,
+        IEnumerable<VisibleItem<DomainBill>> bills, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        List<Guid> billIds = bills.Select(static x => x.Item.Id).ToList();
+        return await context.BankTransactions.AsNoTracking()
+            .Where(x => x.BillPayment != null && x.BillPayment.BillId != null &&
+                        billIds.Contains(x.BillPayment.BillId.Value))
+            .ToListAsync(cancellationToken);
     }
 
     /// <summary>
