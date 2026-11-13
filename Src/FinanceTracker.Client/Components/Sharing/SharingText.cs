@@ -52,7 +52,7 @@ public static class SharingText
 
     /// <summary>
     /// How many accounts and other things they share once saved, e.g. <c>Sharing 2 accounts, 3 tags and 1 rule with
-    /// Sam</c>.
+    /// Jane</c>.
     /// </summary>
     public static string SharedText(LinkShares shares)
     {

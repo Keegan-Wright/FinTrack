@@ -59,7 +59,7 @@ public static class AccountsInViewExtensions
 
         /// <summary>
         /// Each account in view by what it's called where the user's told about it, e.g. in a notification. Their
-        /// own and merged joint accounts by name, another person's saying whose, e.g. <c>Joint · Sam Taylor's</c>.
+        /// own and merged joint accounts by name, another person's saying whose, e.g. <c>Joint · Jane Doe's</c>.
         /// </summary>
         public async Task<Dictionary<Guid, string>> LabelsAsync(FinanceTrackerContext context,
             CancellationToken cancellationToken)

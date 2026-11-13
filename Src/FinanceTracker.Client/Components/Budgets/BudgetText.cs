@@ -112,7 +112,7 @@ public static class BudgetText
     public static string Month(DateOnly month) => month.ToString("MMMM yyyy", CultureInfo.CurrentCulture);
 
     /// <summary>
-    /// How a household budget is shared, e.g. <c>Household · Sam Taylor's</c>, or <c>Household</c> for the user's own.
+    /// How a household budget is shared, e.g. <c>Household · Jane Doe's</c>, or <c>Household</c> for the user's own.
     /// Null for one that isn't shared.
     /// </summary>
     public static string? SharedText(BudgetStatus status)

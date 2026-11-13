@@ -186,8 +186,8 @@ public static class DebtText
     }
 
     /// <summary>
-    /// How a debt reads where one is picked, with whose it is when it's someone else's, e.g. <c>Car loan · Sam
-    /// Taylor's</c>.
+    /// How a debt reads where one is picked, with whose it is when it's someone else's, e.g. <c>Car loan · Jane
+    /// Doe's</c>.
     /// </summary>
     public static string PickerLabel(Debt debt)
     {

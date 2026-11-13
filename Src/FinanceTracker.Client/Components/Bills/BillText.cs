@@ -39,7 +39,7 @@ public static class BillText
 
     /// <summary>
     /// Who said a transaction pays its bill, e.g. <c>Matched by FinTrack</c> or <c>By your rule Rent</c>, or
-    /// <c>By Sam Taylor's rule Rent</c> for another person's bill.
+    /// <c>By Jane Doe's rule Rent</c> for another person's bill.
     /// </summary>
     public static string Reason(TransactionBill bill)
     {
@@ -58,7 +58,7 @@ public static class BillText
     internal static string Who(string? ownerName) => ownerName ?? "you";
 
     /// <summary>
-    /// <c>your</c>, or <c>Sam Taylor's</c> when it's theirs.
+    /// <c>your</c>, or <c>Jane Doe's</c> when it's theirs.
     /// </summary>
     internal static string Whose(string? ownerName)
     {
@@ -179,7 +179,7 @@ public static class BillText
         $"{CurrencyFormatter.Format(overview.Paid)} of {CurrencyFormatter.Format(overview.Due)} paid";
 
     /// <summary>
-    /// Whose a shared bill is and what the user can do, e.g. <c>Sam Taylor's · you can change it</c>.
+    /// Whose a shared bill is and what the user can do, e.g. <c>Jane Doe's · you can change it</c>.
     /// </summary>
     public static string SharedText(string sharedBy, bool canChange)
     {

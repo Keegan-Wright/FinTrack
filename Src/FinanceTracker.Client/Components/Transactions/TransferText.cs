@@ -59,8 +59,8 @@ public static class TransferText
         string.Equals(transaction.TransactionCategory, "PURCHASE", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
-    /// Who or where the money moved to or from, e.g. <c>Rainy Day, 4 Oct</c>, <c>Jane Smith</c>, or
-    /// <c>Sam Taylor's Joint</c> for an account someone shares. Null when nothing is known.
+    /// Who or where the money moved to or from, e.g. <c>Rainy Day, 4 Oct</c>, <c>John Doe</c>, or
+    /// <c>Jane Doe's Joint</c> for an account someone shares. Null when nothing is known.
     /// </summary>
     public static string? Partner(TransactionTransfer transfer, bool withDate = true)
     {
@@ -82,7 +82,7 @@ public static class TransferText
 
     /// <summary>
     /// The other half's account, named as whose it is when it's another person's, or just whose when they don't
-    /// share it, e.g. <c>Sam Taylor</c>.
+    /// share it, e.g. <c>Jane Doe</c>.
     /// </summary>
     private static string? PartnerAccount(TransactionTransfer transfer)
     {
