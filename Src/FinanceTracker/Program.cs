@@ -31,6 +31,9 @@ public partial class Program
         builder.Services.AddCascadingValue(_ => new ApplicationState());
 
         builder.Services.AddSingleton<AppUpdate>();
+        builder.Services.AddSecurityHeaders();
+        builder.AddFinTrackRateLimiting();
+        builder.AddFinTrackForwardedHeaders();
 
         builder.AddFinTrackAuthentication()
             .AddFinTrackPersistence()
@@ -51,6 +54,9 @@ public partial class Program
 
         WebApplication app = builder.Build();
 
+        // First, so HTTPS redirection, the rate limits and logging see the client rather than the proxy
+        app.UseFinTrackForwardedHeaders();
+
         if (app.Environment.IsDevelopment())
         {
             app.UseMigrationsEndPoint();
@@ -64,6 +70,7 @@ public partial class Program
         }
 
         app.UseHttpsRedirection();
+        app.UseSecurityHeaders();
 
         await app.MigrateDatabaseAsync();
         await app.EnsureAdminAsync();
@@ -71,6 +78,7 @@ public partial class Program
         app.UseAppVersionHeader();
         app.MapDefaultEndpoints();
         app.UseCurrentUser();
+        app.UseRateLimiter();
         app.MapOidcChallenge();
 
         app.UseAntiforgery();

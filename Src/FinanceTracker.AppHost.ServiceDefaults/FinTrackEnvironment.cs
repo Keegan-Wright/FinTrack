@@ -70,6 +70,22 @@ public static class FinTrackEnvironment
     /// </summary>
     public const string WebhookAllowPrivate = "WEBHOOK_ALLOW_PRIVATE";
 
+    /// <summary>
+    /// How many times a minute one address may post a sign in, register or password reset form, 10 when not set.
+    /// </summary>
+    public const string SignInsPerMinute = "RATE_LIMIT_SIGN_INS_PER_MINUTE";
+
+    /// <summary>
+    /// How many people one user may invite to share an hour, 20 when not set.
+    /// </summary>
+    public const string InvitesPerHour = "RATE_LIMIT_INVITES_PER_HOUR";
+
+    /// <summary>
+    /// The reverse proxies in front of the app, addresses or networks comma separated, e.g. <c>172.18.0.0/16</c>.
+    /// Their forwarded headers give the client's address and whether it came over HTTPS. Not set, none are read.
+    /// </summary>
+    public const string TrustedProxies = "TRUSTED_PROXIES";
+
     public const string OidcAuthority = "OIDC_Authority";
     public const string OidcClientId = "OIDC_ClientId";
     public const string OidcClientSecret = "OIDC_ClientSecret";

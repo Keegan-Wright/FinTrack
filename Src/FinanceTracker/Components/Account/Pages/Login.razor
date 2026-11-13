@@ -23,11 +23,13 @@
     <MudAlert Severity="MudBlazor.Severity.Error" Variant="Variant.Text" Dense="true" Class="mb-4">@_errorMessage</MudAlert>
 }
 
+@* A full page load rather than Blazor's enhanced navigation, which fetches the page and can't follow the redirect
+   on to the provider, a site the content security policy doesn't let it connect to *@
 @if (Configuration.IsOidcEnabled())
 {
     <MudButton Href="@(NavigationManager.GetUriWithQueryParameters("auth/oidc", new Dictionary<string, object?> { ["returnUrl"] = ReturnUrl }))"
                Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true"
-               StartIcon="@Icons.Material.Outlined.Key">
+               StartIcon="@Icons.Material.Outlined.Key" data-enhance-nav="false">
         Sign in with single sign on
     </MudButton>
     <AuthDivider Text="or with your username"/>
