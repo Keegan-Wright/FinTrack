@@ -411,7 +411,8 @@
     /// </summary>
     private async Task PayBillAsync(Transaction transaction)
     {
-        List<Bill> bills = await BillsService.GetBillsAsync(_cts.Token).ToListAsync(_cts.Token);
+        List<Bill> bills = TransactionChoices.For(await BillsService.GetBillsAsync(_cts.Token).ToListAsync(_cts.Token),
+            static x => x.SharedBy, transaction);
         DialogParameters<PayBillDialog> parameters = new()
         {
             { x => x.Transaction, transaction },
@@ -455,7 +456,8 @@
     /// </summary>
     private async Task PayDebtAsync(Transaction transaction)
     {
-        List<Debt> debts = await DebtsService.GetDebtsAsync(_cts.Token).ToListAsync(_cts.Token);
+        List<Debt> debts = TransactionChoices.For(await DebtsService.GetDebtsAsync(_cts.Token).ToListAsync(_cts.Token),
+            static x => x.SharedBy, transaction);
         DialogParameters<PayDebtDialog> parameters = new()
         {
             { x => x.Transaction, transaction },
@@ -499,8 +501,8 @@
     /// </summary>
     private async Task SplitAsync(Transaction transaction)
     {
-        List<Classification> own = await ClassificationsService.GetAllCustomClassificationsAsync(_cts.Token)
-            .ToListAsync(_cts.Token);
+        List<Classification> own = TransactionChoices.For(await ClassificationsService
+            .GetAllCustomClassificationsAsync(_cts.Token).ToListAsync(_cts.Token), static x => x.SharedBy, transaction);
         DialogParameters<SplitTransactionDialog> parameters = new()
         {
             { x => x.Transaction, transaction },
@@ -579,11 +581,8 @@
 
     private async Task AddClassificationsAsync(Transaction transaction)
     {
-        var classifications = new List<Classification>();
-        await foreach (var classification in ClassificationsService.GetAllCustomClassificationsAsync(_cts.Token))
-        {
-            classifications.Add(classification);
-        }
+        List<Classification> classifications = TransactionChoices.For(await ClassificationsService
+            .GetAllCustomClassificationsAsync(_cts.Token).ToListAsync(_cts.Token), static x => x.SharedBy, transaction);
 
         if (classifications.Count == 0)
         {

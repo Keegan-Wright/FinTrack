@@ -122,6 +122,31 @@ public class RuleSharingTests : InfrastructureTestBase
     }
 
     [Test]
+    public async Task ATagAndBillItUsesThatArentShared_AreNamedPrivate()
+    {
+        // Arrange, it also tags Secret and pays the Gift bill from Gift fund, neither of which Sam shares
+        await Scenario.Do(s => s.BillScenario.WithBill("gift", Sam, "sam-private", (userId, accountId) =>
+            new Domain.Bills.Bill(userId, accountId, "Gift", "GIFT SHOP", Domain.Bills.BillFrequency.Monthly, 20m,
+                DateOnly.FromDateTime(DateTime.UtcNow), Domain.Bills.BillSource.Manual)));
+        SaveRule more = Shops("groceries");
+        more.Actions.Add(new RuleAction { Type = RuleActionType.AddTag, ClassificationId = Tag("secret") });
+        more.Actions.Add(new RuleAction { Type = RuleActionType.PayBill, BillId = Scenario.BillMappings["gift"] });
+        await Rules(Sam).UpdateRuleAsync(_shopsId, more, CancellationToken);
+
+        // Act
+        await ShareAsync(ShareMode.ReadOnly);
+
+        // Assert, Groceries is shared so keeps its name
+        Rule shared = await Rules(Alex).GetRuleAsync(_shopsId, CancellationToken);
+        using (Assert.Multiple())
+        {
+            await Assert.That(shared.Names[Tag("groceries")]).IsEqualTo("Groceries");
+            await Assert.That(shared.Names[Tag("secret")]).IsEqualTo(SharedRules.PrivateTagName);
+            await Assert.That(shared.Names[Scenario.BillMappings["gift"]]).IsEqualTo(SharedRules.PrivateBillName);
+        }
+    }
+
+    [Test]
     public async Task ReadOnly_AlexCantChangeIt()
     {
         // Arrange

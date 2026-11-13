@@ -20,6 +20,21 @@ internal static class SharedRules
     public const string PrivateAccountName = "A private account";
 
     /// <summary>
+    /// What a tag a shared rule uses is called when it isn't shared with the user, its name being its owner's.
+    /// </summary>
+    public const string PrivateTagName = "A private tag";
+
+    /// <summary>
+    /// What a bill a shared rule pays is called when the user can't see it.
+    /// </summary>
+    public const string PrivateBillName = "A private bill";
+
+    /// <summary>
+    /// What a debt a shared rule pays is called when the user can't see it.
+    /// </summary>
+    public const string PrivateDebtName = "A private debt";
+
+    /// <summary>
     /// The rules shared with <paramref name="userId"/>, untracked, each with whoever shares it and whether they can
     /// change it, by sharer then in the order they run.
     /// </summary>
@@ -57,7 +72,7 @@ internal static class SharedRules
     {
         DomainRule rule = shared.Item;
         Rule contract = RuleMapper.ToContract(rule);
-        Dictionary<Guid, string> names = await NamesAsync(context, seen, rule, cancellationToken);
+        Dictionary<Guid, string> names = await NamesAsync(context, userId, seen, rule, cancellationToken);
 
         Dictionary<Guid, string> tagChoices = [];
         Dictionary<Guid, string> billChoices = [];
@@ -203,10 +218,33 @@ internal static class SharedRules
     }
 
     /// <summary>
-    /// The names of the accounts, tags, bills and debts <paramref name="rule"/> uses, by id. An account the user can't
-    /// see is named as private.
+    /// Those of <paramref name="tagIds"/> the user sees by name: their own, and those shared with them, whether chosen
+    /// or for being on a transaction of theirs.
     /// </summary>
-    private static async Task<Dictionary<Guid, string>> NamesAsync(FinanceTrackerContext context,
+    private static async Task<HashSet<Guid>> SeenTagIdsAsync(FinanceTrackerContext context, Guid userId,
+        List<Guid> tagIds, CancellationToken cancellationToken)
+    {
+        List<Guid> own = await context.CustomClassifications.OwnedBy(userId)
+            .Where(x => tagIds.Contains(x.Id))
+            .Select(static x => x.Id)
+            .ToListAsync(cancellationToken);
+        List<Guid> shared = await (
+                from share in context.Shares
+                join link in context.UserLinks on share.LinkId equals link.Id
+                where share.ItemType == ShareItemType.Classification && tagIds.Contains(share.ItemId) &&
+                      share.UserId != userId && link.Status == UserLinkStatus.Accepted &&
+                      (link.UserId == userId || link.InviteeId == userId)
+                select share.ItemId)
+            .ToListAsync(cancellationToken);
+
+        return [.. own, .. shared];
+    }
+
+    /// <summary>
+    /// The names of the accounts, tags, bills and debts <paramref name="rule"/> uses, by id. Any the user can't see
+    /// otherwise is named as private, its real name being its owner's to share.
+    /// </summary>
+    private static async Task<Dictionary<Guid, string>> NamesAsync(FinanceTrackerContext context, Guid userId,
         AccountsInView seen, DomainRule rule, CancellationToken cancellationToken)
     {
         List<Guid> tagIds = rule.Actions.Select(static x => x.ClassificationId).OfType<Guid>().ToList();
@@ -214,19 +252,34 @@ internal static class SharedRules
         List<Guid> debtIds = rule.Actions.Select(static x => x.DebtId).OfType<Guid>().ToList();
         List<Guid> accountIds = AccountsOf(rule).ToList();
 
-        Dictionary<Guid, string> names = await context.CustomClassifications.AsNoTracking()
+        Dictionary<Guid, string> names = [];
+        HashSet<Guid> seenTags = await SeenTagIdsAsync(context, userId, tagIds, cancellationToken);
+        Dictionary<Guid, string> tags = await context.CustomClassifications.AsNoTracking()
             .Where(x => tagIds.Contains(x.Id))
             .ToDictionaryAsync(static x => x.Id, static x => x.Tag, cancellationToken);
-        foreach (var bill in await context.Bills.AsNoTracking().Where(x => billIds.Contains(x.Id))
-                     .Select(static x => new { x.Id, x.Name }).ToListAsync(cancellationToken))
+        foreach ((Guid tagId, string tag) in tags)
         {
-            names[bill.Id] = bill.Name;
+            names[tagId] = seenTags.Contains(tagId) ? tag : PrivateTagName;
         }
 
-        foreach (var debt in await context.Debts.AsNoTracking().Where(x => debtIds.Contains(x.Id))
-                     .Select(static x => new { x.Id, x.Name }).ToListAsync(cancellationToken))
+        if (billIds.Count > 0)
         {
-            names[debt.Id] = debt.Name;
+            Dictionary<Guid, string> bills = (await SharedBills.ForAsync(context, userId, seen, cancellationToken))
+                .ToDictionary(static x => x.Item.Id, static x => x.Item.Name);
+            foreach (Guid billId in billIds)
+            {
+                names[billId] = bills.GetValueOrDefault(billId, PrivateBillName);
+            }
+        }
+
+        if (debtIds.Count > 0)
+        {
+            Dictionary<Guid, string> debts = (await SharedDebts.ForAsync(context, userId, seen, cancellationToken))
+                .ToDictionary(static x => x.Item.Id, static x => x.Item.Name);
+            foreach (Guid debtId in debtIds)
+            {
+                names[debtId] = debts.GetValueOrDefault(debtId, PrivateDebtName);
+            }
         }
 
         Dictionary<Guid, string> visible = await context.BankAccounts.InView(seen)

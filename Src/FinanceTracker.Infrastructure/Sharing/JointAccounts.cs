@@ -14,8 +14,8 @@ internal static class JointAccounts
 {
     /// <summary>
     /// Pairs of <paramref name="userId"/>'s accounts and the other person's in <paramref name="link"/> that are the
-    /// same account, see <see cref="IsSameAccount"/>, one of them shared in the link, and neither already merged. Each
-    /// account in one pair at most.
+    /// same account, see <see cref="IsSameAccount"/>, the other person's shared with them in the link, and neither
+    /// already merged. Each account in one pair at most.
     /// </summary>
     public static async Task<List<(BankAccount Yours, BankAccount Theirs)>> SuggestionsAsync(
         FinanceTrackerContext context, UserLink link, Guid userId, CancellationToken cancellationToken)
@@ -39,7 +39,9 @@ internal static class JointAccounts
         return await PairAsync(context,
             accounts.Where(x => x.UserId == userId).ToList(),
             accounts.Where(x => x.UserId == otherId).ToList(),
-            (yours, theirs) => shared.Contains(yours.Id) || shared.Contains(theirs.Id),
+            // Theirs has to be shared with the user, else it would name their private account and let the user merge
+            // it without them. The user's own needn't be, they're the one choosing to merge it
+            (_, theirs) => shared.Contains(theirs.Id),
             cancellationToken);
     }
 

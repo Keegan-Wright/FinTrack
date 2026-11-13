@@ -301,6 +301,8 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
     /// <param name="sharedWithThem">Whether the bill is shared with <paramref name="by"/>.</param>
     /// <exception cref="InvalidOperationException">The bill is neither <paramref name="by"/>'s nor shared with them.
     /// </exception>
+    /// <remarks>On another person's transaction, only <paramref name="by"/>'s own or the owner's, see
+    /// <see cref="EnsureEitherOfTheirs"/>.</remarks>
     public void PayBill(Bill bill, Guid by, DateTime decidedAt, bool sharedWithThem = false)
     {
         ArgumentNullException.ThrowIfNull(bill);
@@ -309,7 +311,28 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
             throw new InvalidOperationException("Cannot pay another user's bill with this transaction.");
         }
 
+        EnsureEitherOfTheirs(bill.UserId, by, "bill");
+
         BillPayment = new BillPayment(bill.Id, DecisionSource.User, decidedAt);
+    }
+
+    /// <summary>
+    /// On another person's transaction, what <paramref name="by"/> puts on it is theirs or the transaction owner's.
+    /// Not a third person's shared with them, which would tell that person of a transaction they can't see, such as
+    /// paying their bill, and the owner couldn't name it.
+    /// </summary>
+    /// <param name="itemOwnerId">Whose the tag, bill or debt is.</param>
+    /// <param name="what">What it is, for the message, e.g. <c>bill</c>.</param>
+    /// <exception cref="InvalidOperationException">It's a third person's.</exception>
+    private void EnsureEitherOfTheirs(Guid itemOwnerId, Guid by, string what)
+    {
+        if (by == UserId || itemOwnerId == by || itemOwnerId == UserId)
+        {
+            return;
+        }
+
+        throw new InvalidOperationException(
+            $"Only your own {what} or the transaction owner's can go on another person's transaction.");
     }
 
     /// <summary>
@@ -354,6 +377,8 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
             throw new InvalidOperationException("Cannot pay another user's debt with this transaction.");
         }
 
+        EnsureEitherOfTheirs(debt.UserId, by, "debt");
+
         DebtPayment = new DebtPayment(debt.Id, DecisionSource.User, decidedAt);
     }
 
@@ -393,6 +418,8 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
         {
             throw new InvalidOperationException("Cannot apply another user's classification to this transaction.");
         }
+
+        EnsureEitherOfTheirs(classification.UserId, by, "tag");
 
         if (IsSplit)
         {
@@ -467,6 +494,11 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
         if (tags.Any(x => x.UserId != by && !HasTag(x.Id) && sharedWithThem?.Contains(x.Id) != true))
         {
             throw new InvalidOperationException("Cannot apply another user's classification to this transaction.");
+        }
+
+        foreach (CustomClassification tag in tags.Where(x => !HasTag(x.Id)))
+        {
+            EnsureEitherOfTheirs(tag.UserId, by, "tag");
         }
 
         CheckParts(parts, tags);

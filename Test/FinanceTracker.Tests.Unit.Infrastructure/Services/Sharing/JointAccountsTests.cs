@@ -107,6 +107,29 @@ public class JointAccountsTests : InfrastructureTestBase
     }
 
     [Test]
+    public async Task OnlyTheirOwnCopyShared_IsSuggestedToTheOtherPerson_NotToThem()
+    {
+        // Arrange, Alex shares their copy, Sam keeps theirs private
+        await Sharing(Alex).ChangeAccountSharesAsync(_linkId, new ChangeAccountShares
+        {
+            Accounts = [new AccountShareChoice { AccountId = Account("alex-joint"), Mode = ShareMode.ReadOnly }]
+        }, CancellationToken);
+
+        // Act
+        LinkShares alexs = (await Sharing(Alex).GetSharesAsync(_linkId, CancellationToken))!;
+        LinkShares sams = (await Sharing(Sam).GetSharesAsync(_linkId, CancellationToken))!;
+
+        // Assert, Alex isn't told of Sam's private copy or able to merge it, Sam can choose to
+        using (Assert.Multiple())
+        {
+            await Assert.That(alexs.JointSuggestions).IsEmpty();
+            await Assert.That(sams.JointSuggestions.Select(static x => (x.YourAccountId, x.TheirAccountId)))
+                .IsEquivalentTo([(Account("sam-joint"), Account("alex-joint"))]);
+            await Assert.ThrowsAsync<InvalidOperationException>(MergeAsync);
+        }
+    }
+
+    [Test]
     public async Task Merging_ShowsTheFirstConnectedCopyToBoth_WithBothPeoplesTags()
     {
         // Arrange
