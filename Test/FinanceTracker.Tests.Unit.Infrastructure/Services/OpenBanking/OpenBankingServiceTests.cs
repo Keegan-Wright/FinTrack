@@ -258,18 +258,18 @@ public class OpenBankingServiceTests : InfrastructureTestBase
         await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
 
         // Assert
-        AccountIdentifier? stored = (await LoadAccountsAsync()).Single().Identifier;
+        AccountIdentifier stored = (await LoadAccountsAsync()).Single().Identifier;
 
         using (Assert.Multiple())
         {
-            await Assert.That(stored!.SortCode).IsEqualTo("123456");
+            await Assert.That(stored.SortCode).IsEqualTo("123456");
             await Assert.That(stored.Number).IsEqualTo("12345678");
             await Assert.That(stored.Iban).IsEqualTo("GB29NWBK12345612345678");
         }
     }
 
     [Test]
-    public async Task SyncConnectionAsync_AccountWithoutAnIdentifier_StoresNone()
+    public async Task SyncConnectionAsync_AccountWithoutAnIdentifier_LoadsAsUnknown()
     {
         // Arrange
         await SeedConnectionAsync();
@@ -281,7 +281,7 @@ public class OpenBankingServiceTests : InfrastructureTestBase
         await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
 
         // Assert
-        await Assert.That((await LoadAccountsAsync()).Single().Identifier).IsNull();
+        await Assert.That((await LoadAccountsAsync()).Single().Identifier.IsKnown).IsFalse();
     }
 
     [Test]
@@ -944,7 +944,7 @@ public class OpenBankingServiceTests : InfrastructureTestBase
             await Assert.That(card.Kind).IsEqualTo(BankAccountKind.Card);
             await Assert.That(card.ExternalId).IsEqualTo(externalCard.AccountId);
             await Assert.That(card.AccountType).IsEqualTo("CREDIT_CARD");
-            await Assert.That(card.Card!.PartialNumber).IsEqualTo(externalCard.PartialCardNumber);
+            await Assert.That(card.Card.PartialNumber).IsEqualTo(externalCard.PartialCardNumber);
             await Assert.That(card.Card.Network).IsEqualTo(externalCard.CardNetwork);
             await Assert.That(card.Balance).IsEqualTo(new AccountBalance(2700m, -300m, balanceAt, 3000m));
             await Assert.That(amounts["purchase"]).IsEqualTo(-24.25m);

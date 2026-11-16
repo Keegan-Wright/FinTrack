@@ -47,14 +47,15 @@ public sealed class BankAccount : AggregateRoot
     public AccountBalance? Balance { get; private set; }
 
     /// <summary>
-    /// The account's sort code and number or IBAN, null when the provider gives neither.
+    /// The account's sort code and number or IBAN, <see cref="AccountIdentifier.Unknown"/> when the provider gives
+    /// neither, see <see cref="AccountIdentifier.IsKnown"/>.
     /// </summary>
-    public AccountIdentifier? Identifier { get; private set; }
+    public AccountIdentifier Identifier { get; private set; } = AccountIdentifier.Unknown();
 
     /// <summary>
-    /// The card's network, number ending and so on, null for an account.
+    /// The card's network, number ending and so on, <see cref="CardDetails.None"/> for an account.
     /// </summary>
-    public CardDetails? Card { get; private set; }
+    public CardDetails Card { get; private set; } = CardDetails.None();
 
     /// <summary>
     /// Whether its past closing balances have been worked out, see <see cref="BalanceHistory"/>. Done once, after its
@@ -78,7 +79,9 @@ public sealed class BankAccount : AggregateRoot
         Currency = currency;
     }
 
-    public void UpdateIdentifier(AccountIdentifier? identifier) => Identifier = identifier;
+    /// <param name="identifier">Null when the provider gives no sort code, number or IBAN.</param>
+    public void UpdateIdentifier(AccountIdentifier? identifier) =>
+        Identifier = identifier ?? AccountIdentifier.Unknown();
 
     /// <exception cref="InvalidOperationException">The account isn't a card.</exception>
     public void UpdateCard(CardDetails card)

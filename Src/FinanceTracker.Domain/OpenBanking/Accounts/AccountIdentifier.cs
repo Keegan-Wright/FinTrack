@@ -33,6 +33,18 @@ public sealed record AccountIdentifier
     public string? Iban { get; }
 
     /// <summary>
+    /// Whether there's a sort code or IBAN to go on. An account the provider gives neither for is still kept as
+    /// <see cref="Unknown"/>, so this is how to tell.
+    /// </summary>
+    public bool IsKnown => SortCode is not null || Iban is not null;
+
+    /// <summary>
+    /// For an account the provider gives no sort code, number or IBAN for. A new one each time, as each account keeps
+    /// its own.
+    /// </summary>
+    public static AccountIdentifier Unknown() => new(null, null, null);
+
+    /// <summary>
     /// The identifier from the provider's values, which may be formatted e.g. <c>11-22-33</c>. Null when there's
     /// neither a sort code and number nor an IBAN, as for a card.
     /// </summary>

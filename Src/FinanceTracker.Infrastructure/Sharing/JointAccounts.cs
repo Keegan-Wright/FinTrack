@@ -105,9 +105,9 @@ internal static class JointAccounts
     /// </summary>
     private static bool LooksAlike(BankAccount yours, BankAccount theirs, Dictionary<Guid, string> banks)
     {
-        if (yours.Identifier is not null || theirs.Identifier is not null)
+        if (yours.Identifier.IsKnown || theirs.Identifier.IsKnown)
         {
-            return yours.Identifier?.IsSameAccountAs(theirs.Identifier) == true;
+            return yours.Identifier.IsSameAccountAs(theirs.Identifier);
         }
 
         return banks.GetValueOrDefault(yours.ConnectionId) == banks.GetValueOrDefault(theirs.ConnectionId) &&
@@ -126,7 +126,7 @@ internal static class JointAccounts
     private static bool IsSameAccount(BankAccount yours, BankAccount theirs,
         ILookup<Guid, (DateOnly, decimal, string)> transactions)
     {
-        if (yours.Identifier is not null)
+        if (yours.Identifier.IsKnown)
         {
             return true;
         }
@@ -160,7 +160,7 @@ internal static class JointAccounts
     private static async Task<ILookup<Guid, (DateOnly, decimal, string)>> TransactionsOfUnnumberedAsync(
         FinanceTrackerContext context, List<BankAccount> accounts, CancellationToken cancellationToken)
     {
-        List<Guid> unnumbered = accounts.Where(static x => x.Identifier is null).Select(static x => x.Id).ToList();
+        List<Guid> unnumbered = accounts.Where(static x => !x.Identifier.IsKnown).Select(static x => x.Id).ToList();
         if (unnumbered.Count == 0)
         {
             return Array.Empty<BankTransaction>().ToLookup(static x => x.AccountId, Key);

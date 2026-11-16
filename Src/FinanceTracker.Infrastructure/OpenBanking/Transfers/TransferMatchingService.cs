@@ -210,8 +210,8 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
         foreach (HouseholdMember member in householdMembers.Where(static x => x.LinkedUserId is not null))
         {
             byMember[member.Id] = theirs
-                .Where(x => x.UserId == member.LinkedUserId && x.Identifier is not null)
-                .Select(static x => x.Identifier!)
+                .Where(x => x.UserId == member.LinkedUserId && x.Identifier.IsKnown)
+                .Select(static x => x.Identifier)
                 .ToList();
         }
 

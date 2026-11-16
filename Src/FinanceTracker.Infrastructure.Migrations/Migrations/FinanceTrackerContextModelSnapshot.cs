@@ -2132,9 +2132,11 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
                     b.Navigation("Balance");
 
-                    b.Navigation("Card");
+                    b.Navigation("Card")
+                        .IsRequired();
 
-                    b.Navigation("Identifier");
+                    b.Navigation("Identifier")
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("FinanceTracker.Domain.OpenBanking.Accounts.DirectDebit", b =>

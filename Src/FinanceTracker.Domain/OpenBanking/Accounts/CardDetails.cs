@@ -13,4 +13,10 @@ public sealed record CardDetails(
     string? CardType,
     string? PartialNumber,
     string? NameOnCard,
-    DateTime? ValidTo);
+    DateTime? ValidTo)
+{
+    /// <summary>
+    /// For an account that isn't a card. A new one each time, as each account keeps its own.
+    /// </summary>
+    public static CardDetails None() => new(null, null, null, null, null);
+}
