@@ -26,27 +26,23 @@ public static class SavingsGoalEndpoints
 
             goals.MapGet("{id:guid}/history", async Task<Ok<List<BalancePoint>>> (Guid id,
                         ISavingsGoalsService service, CancellationToken cancellationToken) =>
-                    TypedResults.Ok(await service.GetSavingsGoalHistoryAsync(id, cancellationToken)))
-                .NotFoundWhenMissing();
+                    TypedResults.Ok(await service.GetSavingsGoalHistoryAsync(id, cancellationToken)));
 
             goals.MapGet("{id:guid}", async Task<Ok<SavingsGoal>> (Guid id, ISavingsGoalsService service,
                         CancellationToken cancellationToken) =>
-                    TypedResults.Ok(await service.GetSavingsGoalAsync(id, cancellationToken)))
-                .NotFoundWhenMissing();
+                    TypedResults.Ok(await service.GetSavingsGoalAsync(id, cancellationToken)));
 
             goals.MapPost(string.Empty, async Task<Ok<SavingsGoal>> (SaveSavingsGoal request,
                         ISavingsGoalsService service, CancellationToken cancellationToken) =>
                     TypedResults.Ok(await service.AddSavingsGoalAsync(request, cancellationToken)))
                 .Validated<SaveSavingsGoal>()
-                .ConflictWhenNameTaken()
-                .NotFoundWhenMissing();
+                .ConflictWhenNameTaken();
 
             goals.MapPut("{id:guid}", async Task<Ok<SavingsGoal>> (Guid id, SaveSavingsGoal request,
                         ISavingsGoalsService service, CancellationToken cancellationToken) =>
                     TypedResults.Ok(await service.UpdateSavingsGoalAsync(id, request, cancellationToken)))
                 .Validated<SaveSavingsGoal>()
-                .ConflictWhenNameTaken()
-                .NotFoundWhenMissing();
+                .ConflictWhenNameTaken();
 
             goals.MapDelete("{id:guid}", async Task<Results<NoContent, NotFound>> (Guid id,
                     ISavingsGoalsService service, CancellationToken cancellationToken) =>

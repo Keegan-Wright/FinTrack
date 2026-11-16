@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using FinanceTracker.Contracts.Auth;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Users;
+using FinanceTracker.Contracts;
 using FinanceTracker.Domain.Identity;
 using FinanceTracker.Infrastructure;
 using Microsoft.AspNetCore.Identity;
@@ -100,7 +101,7 @@ public sealed class UsersService : IUsersService
 
     private async Task<FinanceTrackerUser> FindAsync(Guid userId) =>
         await _userManager.FindByIdAsync(userId.ToString())
-        ?? throw new InvalidOperationException($"There's no user {userId}");
+        ?? throw new NotFoundException($"There's no user {userId}");
 
     private static void ThrowIfFailed(IdentityResult result)
     {

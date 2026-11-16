@@ -8,12 +8,9 @@ using PayPeriod = FinanceTracker.Domain.PayPeriods.PayPeriod;
 
 namespace FinanceTracker.Infrastructure.Exports.Statements;
 
-/// <summary>
-/// The pay periods there's a statement for today's back to the one the user's oldest transaction is in.
-/// </summary>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
-[Scoped<StatementPeriods>]
-public sealed class StatementPeriods : ServiceBase<StatementPeriods>
+[Scoped<IStatementPeriods>]
+public sealed class StatementPeriods : ServiceBase<StatementPeriods>, IStatementPeriods
 {
     private readonly TimeProvider _timeProvider;
 
@@ -24,9 +21,6 @@ public sealed class StatementPeriods : ServiceBase<StatementPeriods>
         _timeProvider = timeProvider;
     }
 
-    /// <summary>
-    /// Newest first, just today's when the user has no transactions yet.
-    /// </summary>
     public async Task<List<Contracts.PayPeriods.PayPeriod>> GetAsync(CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =

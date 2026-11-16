@@ -71,7 +71,7 @@ public class AccountService : ServiceBase<AccountService>, IAccountService
                 JointWith = jointWith.GetValueOrDefault(account.Id),
                 AccountType = account.AccountType,
                 AvailableBalance = balance?.Available ?? 0,
-                CardEnding = account.Card?.PartialNumber,
+                CardEnding = account.Card.PartialNumber,
                 CreditLimit = balance?.CreditLimit,
                 ProviderName = connections[account.ConnectionId].Name,
                 Logo = connections[account.ConnectionId].Logo,

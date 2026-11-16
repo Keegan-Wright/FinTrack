@@ -16,7 +16,8 @@ public static class ApiEndpoints
             RouteGroupBuilder api = endpoints.MapGroup(string.Empty)
                 .RequireAuthorization()
                 .DisableCookieRedirect()
-                .AddEndpointFilter<ApiRequestHeaderFilter>();
+                .AddEndpointFilter<ApiRequestHeaderFilter>()
+                .AddEndpointFilter<ExpectedFailureFilter>();
 
             api.MapAccountEndpoints()
                 .MapAutomationEndpoints()

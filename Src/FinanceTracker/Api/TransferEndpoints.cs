@@ -26,18 +26,15 @@ public static class TransferEndpoints
 
             transfers.MapPost("{id:guid}/transfer", async Task<Ok<IReadOnlyList<Transaction>>> (Guid id,
                         ITransfersService service, CancellationToken cancellationToken) =>
-                    TypedResults.Ok(await service.MarkAsTransferAsync(id, cancellationToken)))
-                .NotFoundWhenMissing();
+                    TypedResults.Ok(await service.MarkAsTransferAsync(id, cancellationToken)));
 
             transfers.MapPost("{id:guid}/not-a-transfer", async Task<Ok<IReadOnlyList<Transaction>>> (Guid id,
                         ITransfersService service, CancellationToken cancellationToken) =>
-                    TypedResults.Ok(await service.MarkNotATransferAsync(id, cancellationToken)))
-                .NotFoundWhenMissing();
+                    TypedResults.Ok(await service.MarkNotATransferAsync(id, cancellationToken)));
 
             transfers.MapDelete("{id:guid}/decision", async Task<Ok<IReadOnlyList<Transaction>>> (Guid id,
                         ITransfersService service, CancellationToken cancellationToken) =>
-                    TypedResults.Ok(await service.ResetTransferAsync(id, cancellationToken)))
-                .NotFoundWhenMissing();
+                    TypedResults.Ok(await service.ResetTransferAsync(id, cancellationToken)));
 
             return api;
         }

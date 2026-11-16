@@ -1,15 +1,17 @@
 using System.Runtime.CompilerServices;
 using FinanceTracker.Contracts.Budgets;
 using FinanceTracker.Contracts.Services;
+using FinanceTracker.Contracts;
 using FinanceTracker.Domain.Budgeting;
+using FinanceTracker.Domain.Common;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.PayPeriods;
+using FinanceTracker.Domain.Sharing;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using FinanceTracker.Infrastructure.PayPeriods;
 using FinanceTracker.Infrastructure.Persistence;
 using FinanceTracker.Infrastructure.Sharing;
-using FinanceTracker.Domain.Sharing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Budget = FinanceTracker.Contracts.Budgets.Budget;
@@ -143,19 +145,12 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
         // Their own, or one shared with them with changes allowed, covering only tags they may
         VisibleItem<DomainBudget> visible = await VisibleAsync(context, id, mustChange: true, cancellationToken);
         DomainBudget updated = await context.Budgets.SingleAsync(x => x.Id == id, cancellationToken);
-        if (visible.IsOwn)
-        {
-            await EnsureTagsAreTheUsersAsync(context, budget.TagIds, cancellationToken);
-        }
-        else
-        {
-            await EnsureTagsAreChoicesAsync(context, visible.Item, budget.TagIds, cancellationToken);
-        }
+        IReadOnlySet<Guid> choices = await TagChoicesForAsync(context, visible, cancellationToken);
 
         // From this month on, the months before keep the limit they had
         BudgetMonth currentMonth = await CurrentMonthAsync(context, cancellationToken);
         updated.Rename(budget.Name);
-        updated.ReplaceTags(budget.TagIds);
+        updated.ReplaceTags(budget.TagIds, choices);
         updated.ChangeRolloverMode(BudgetMapper.ToDomain(budget.RolloverMode));
         updated.ChangeLimit(budget.MonthlyLimit, currentMonth);
 
@@ -172,7 +167,7 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        DomainBudget budget = await context.Budgets.OwnedBy(UserId).SingleAsync(x => x.Id == id, cancellationToken);
+        DomainBudget budget = await context.Budgets.OwnedBy(UserId).SingleOrNotFoundAsync(x => x.Id == id, "budget", cancellationToken);
         context.Budgets.Remove(budget);
         await context.SaveChangesAsync(cancellationToken);
         Logger.LogChanged(UserId, "deleted", "budget", id);
@@ -272,7 +267,7 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
             .SingleOrDefault(x => x.Item.Id == id);
         if (budget is null || (mustChange && !budget.CanChange))
         {
-            throw new InvalidOperationException($"No budget {id} the user can see or change was found.");
+            throw new NotFoundException($"No budget {id} the user can see or change was found.");
         }
 
         return budget;
@@ -329,16 +324,22 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
             .ToDictionaryAsync(static x => x.Id, static x => x.Tag, cancellationToken);
     }
 
-    /// <exception cref="InvalidOperationException">A tag isn't one the user can give <paramref name="budget"/>,
-    /// someone else's.</exception>
-    private async Task EnsureTagsAreChoicesAsync(FinanceTrackerContext context, DomainBudget budget,
-        List<Guid> tagIds, CancellationToken cancellationToken)
+    /// <summary>
+    /// The tags the user may give <paramref name="visible"/>: their own for their own budget, or its owner's tags
+    /// shared with them for someone else's, see <see cref="DomainBudget.ReplaceTags"/>.
+    /// </summary>
+    private async Task<IReadOnlySet<Guid>> TagChoicesForAsync(FinanceTrackerContext context,
+        VisibleItem<DomainBudget> visible, CancellationToken cancellationToken)
     {
-        Dictionary<Guid, string> choices = await TagChoicesAsync(context, budget, cancellationToken);
-        if (tagIds.Exists(x => !choices.ContainsKey(x)))
+        if (visible.IsOwn)
         {
-            throw new InvalidOperationException("A shared budget can only cover its owner's tags shared with you.");
+            List<Guid> own = await context.CustomClassifications.OwnedBy(UserId).Select(static x => x.Id)
+                .ToListAsync(cancellationToken);
+            return own.ToHashSet();
         }
+
+        Dictionary<Guid, string> shared = await TagChoicesAsync(context, visible.Item, cancellationToken);
+        return shared.Keys.ToHashSet();
     }
 
     /// <exception cref="InvalidOperationException">A tag doesn't exist or isn't the user's.</exception>
@@ -352,7 +353,7 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
 
         if (owned != distinct.Count)
         {
-            throw new InvalidOperationException("A budget can only cover the user's own tags.");
+            throw new DomainRuleException("A budget can only cover the user's own tags.");
         }
     }
 }

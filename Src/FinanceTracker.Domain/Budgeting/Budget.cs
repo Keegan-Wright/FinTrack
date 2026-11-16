@@ -30,7 +30,7 @@ public sealed class Budget : AggregateRoot
         RolloverMode rolloverMode) : base(userId)
     {
         Rename(name);
-        ReplaceTags(tagIds);
+        SetTags(tagIds);
         ChangeRolloverMode(rolloverMode);
         ChangeLimit(monthlyLimit, from);
     }
@@ -66,8 +66,30 @@ public sealed class Budget : AggregateRoot
         Name = name;
     }
 
+    /// <summary>
+    /// Covers <paramref name="tagIds"/> from now on, each one of <paramref name="choices"/>. Its owner's own tags, or for
+    /// someone it's shared with, its owner's tags shared with them.
+    /// </summary>
+    /// <param name="choices">The tags whoever's changing it may give it.</param>
     /// <exception cref="ArgumentException">There are no tags.</exception>
-    public void ReplaceTags(IEnumerable<Guid> tagIds)
+    /// <exception cref="DomainRuleException">A tag isn't one of <paramref name="choices"/>.</exception>
+    public void ReplaceTags(IEnumerable<Guid> tagIds, IReadOnlySet<Guid> choices)
+    {
+        ArgumentNullException.ThrowIfNull(tagIds);
+        ArgumentNullException.ThrowIfNull(choices);
+
+        List<Guid> replacements = tagIds.Distinct().ToList();
+        if (replacements.Exists(x => !choices.Contains(x)))
+        {
+            throw new DomainRuleException(
+                "A budget can only cover its owner's tags, those shared with you when it's someone else's.");
+        }
+
+        SetTags(replacements);
+    }
+
+    /// <exception cref="ArgumentException">There are no tags.</exception>
+    private void SetTags(IEnumerable<Guid> tagIds)
     {
         ArgumentNullException.ThrowIfNull(tagIds);
 

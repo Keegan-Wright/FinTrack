@@ -1,7 +1,8 @@
 using System.Runtime.CompilerServices;
-using FinanceTracker.Contracts.Transactions;
 using FinanceTracker.Contracts.Services;
+using FinanceTracker.Contracts.Transactions;
 using FinanceTracker.Domain.Classifications;
+using FinanceTracker.Domain.Common;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.Sharing;
 using FinanceTracker.Generated.Attributes;
@@ -70,7 +71,7 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
         {
             if (!transaction.ProviderClassifications.Contains(request.Classification, StringComparer.OrdinalIgnoreCase))
             {
-                throw new InvalidOperationException(
+                throw new DomainRuleException(
                     $"Transaction {transactionId} isn't classified as '{request.Classification}' by the bank.");
             }
 
@@ -165,7 +166,7 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
 
         AccountsInView changeable = await _accountScope.ResolveChangeableAsync(context, cancellationToken);
         BankTransaction transaction = await context.BankTransactions.ChangeableIn(changeable)
-            .SingleAsync(x => x.Id == transactionId, cancellationToken);
+            .SingleOrNotFoundAsync(x => x.Id == transactionId, "transaction", cancellationToken);
 
         await change(context, transaction);
         await context.SaveChangesAsync(cancellationToken);

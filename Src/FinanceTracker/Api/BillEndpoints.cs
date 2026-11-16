@@ -29,30 +29,25 @@ public static class BillEndpoints
 
             bills.MapGet("{id:guid}", async Task<Ok<Bill>> (Guid id, IBillsService service,
                         CancellationToken cancellationToken) =>
-                    TypedResults.Ok(await service.GetBillAsync(id, cancellationToken)))
-                .NotFoundWhenMissing();
+                    TypedResults.Ok(await service.GetBillAsync(id, cancellationToken)));
 
             bills.MapPost(string.Empty, async Task<Ok<Bill>> (SaveBill request, IBillsService service,
                         CancellationToken cancellationToken) =>
                     TypedResults.Ok(await service.AddBillAsync(request, cancellationToken)))
-                .Validated<SaveBill>()
-                .NotFoundWhenMissing();
+                .Validated<SaveBill>();
 
             bills.MapPut("{id:guid}", async Task<Ok<Bill>> (Guid id, SaveBill request, IBillsService service,
                         CancellationToken cancellationToken) =>
                     TypedResults.Ok(await service.UpdateBillAsync(id, request, cancellationToken)))
-                .Validated<SaveBill>()
-                .NotFoundWhenMissing();
+                .Validated<SaveBill>();
 
             bills.MapPost("{id:guid}/end", async Task<Ok<Bill>> (Guid id, IBillsService service,
                         CancellationToken cancellationToken) =>
-                    TypedResults.Ok(await service.EndBillAsync(id, cancellationToken)))
-                .NotFoundWhenMissing();
+                    TypedResults.Ok(await service.EndBillAsync(id, cancellationToken)));
 
             bills.MapPost("{id:guid}/reopen", async Task<Ok<Bill>> (Guid id, IBillsService service,
                         CancellationToken cancellationToken) =>
-                    TypedResults.Ok(await service.ReopenBillAsync(id, cancellationToken)))
-                .NotFoundWhenMissing();
+                    TypedResults.Ok(await service.ReopenBillAsync(id, cancellationToken)));
 
             bills.MapDelete("{id:guid}", async Task<Results<NoContent, ProblemHttpResult>> (Guid id,
                     IBillsService service, CancellationToken cancellationToken) =>
@@ -66,13 +61,11 @@ public static class BillEndpoints
                     {
                         return TypedResults.Problem(ex.Message, statusCode: StatusCodes.Status409Conflict);
                     }
-                })
-                .NotFoundWhenMissing();
+                });
 
             bills.MapPut("payments/{transactionId:guid}", async Task<Ok<Transaction>> (Guid transactionId,
                         PayBill request, IBillsService service, CancellationToken cancellationToken) =>
-                    TypedResults.Ok(await service.PayBillAsync(transactionId, request, cancellationToken)))
-                .NotFoundWhenMissing();
+                    TypedResults.Ok(await service.PayBillAsync(transactionId, request, cancellationToken)));
 
             bills.MapGet("suggestions", (IBillsService service, CancellationToken cancellationToken) =>
                 service.GetSuggestionsAsync(cancellationToken));
@@ -93,16 +86,14 @@ public static class BillEndpoints
                         return TypedResults.Problem(ex.Message, statusCode: StatusCodes.Status409Conflict,
                             extensions: new Dictionary<string, object?> { [AlreadyABillException.BillNameField] = ex.BillName });
                     }
-                })
-                .NotFoundWhenMissing();
+                });
 
             bills.MapPost("suggestions/{id:guid}/dismiss", async Task<NoContent> (Guid id, IBillsService service,
                     CancellationToken cancellationToken) =>
                 {
                     await service.DismissSuggestionAsync(id, cancellationToken);
                     return TypedResults.NoContent();
-                })
-                .NotFoundWhenMissing();
+                });
 
             return api;
         }

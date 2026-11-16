@@ -69,7 +69,7 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
         IQueryable<Guid> shared = ChosenSharedIds(context);
         CustomClassification classification = await context.CustomClassifications.AsNoTracking()
             .Where(x => x.UserId == UserId || shared.Contains(x.Id))
-            .SingleAsync(x => x.Id == id, cancellationToken);
+            .SingleOrNotFoundAsync(x => x.Id == id, "tag", cancellationToken);
 
         return new GetClassification { Tag = classification.Tag, ClassificationId = classification.Id };
     }
@@ -104,7 +104,7 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
             .Select(static x => x.ItemId);
         CustomClassification classification = await context.CustomClassifications
             .Where(x => x.UserId == UserId || changeable.Contains(x.Id))
-            .SingleAsync(x => x.Id == id, cancellationToken);
+            .SingleOrNotFoundAsync(x => x.Id == id, "tag", cancellationToken);
         await EnsureTagIsFreeAsync(context, classification.UserId, request.Tag, id, cancellationToken);
         classification.Rename(request.Tag);
 
@@ -125,7 +125,7 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
         // shared with them. The owner is shared their own, so they see what they're called
         AccountsInView changeable = await _accountScope.ResolveChangeableAsync(context, cancellationToken);
         BankTransaction transaction = await context.BankTransactions.ChangeableIn(changeable)
-            .SingleAsync(x => x.Id == model.TransactionId, cancellationToken);
+            .SingleOrNotFoundAsync(x => x.Id == model.TransactionId, "transaction", cancellationToken);
 
         List<Guid> classificationIds = model.Classifications.Select(static x => x.ClassificationId).ToList();
         List<Guid> sharedWithThem = await ChosenSharedIds(context).ToListAsync(cancellationToken);
@@ -153,7 +153,7 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
         CustomClassification classificationToRemove = await context.CustomClassifications.OwnedBy(UserId)
-            .SingleAsync(x => x.Id == id, cancellationToken);
+            .SingleOrNotFoundAsync(x => x.Id == id, "tag", cancellationToken);
 
         // Whoever's transaction it's on, they may have let the user tag theirs
         List<BankTransaction> classifiedTransactions = await context.BankTransactions

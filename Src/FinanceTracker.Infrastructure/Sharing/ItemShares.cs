@@ -1,4 +1,5 @@
 using FinanceTracker.Contracts.Sharing;
+using FinanceTracker.Domain.Common;
 using FinanceTracker.Domain.Sharing;
 using Microsoft.EntityFrameworkCore;
 using DomainLink = FinanceTracker.Domain.Sharing.UserLink;
@@ -69,8 +70,20 @@ internal static class ItemShares
     {
         HashSet<Guid> accountIds = (await SharedAccountsAsync(context, link, userId, cancellationToken)).Keys
             .ToHashSet();
-        return (await AccountItemsAsync(context, userId, cancellationToken))
-            .Where(x => accountIds.Contains(x.AccountId))
+        return await FollowingAccountsAsync(context, userId, accountIds, cancellationToken);
+    }
+
+    /// <summary>
+    /// <paramref name="userId"/>'s bills and debts going with any of <paramref name="accountIds"/>, for when the
+    /// shared accounts are known without reading the shares back.
+    /// </summary>
+    private static async Task<HashSet<(ShareItemType ItemType, Guid Id)>> FollowingAccountsAsync(
+        FinanceTrackerContext context, Guid userId, IReadOnlySet<Guid> accountIds, CancellationToken cancellationToken)
+    {
+        List<(ShareItemType ItemType, Guid Id, Guid AccountId)> items =
+            await AccountItemsAsync(context, userId, cancellationToken);
+
+        return items.Where(x => accountIds.Contains(x.AccountId))
             .Select(static x => (x.ItemType, x.Id))
             .ToHashSet();
     }
@@ -81,11 +94,14 @@ internal static class ItemShares
     /// chosen or for being on their transaction. Tracked changes, saved by the caller.
     /// </summary>
     /// <param name="before">The bills and debts that went with a shared account before the change.</param>
+    /// <param name="sharedAccountIds">The accounts shared after the change, passed in as the change isn't saved
+    /// yet.</param>
     public static async Task TakeOffNoLongerSharedAsync(FinanceTrackerContext context, DomainLink link, Guid userId,
-        HashSet<(ShareItemType ItemType, Guid Id)> before, CancellationToken cancellationToken)
+        HashSet<(ShareItemType ItemType, Guid Id)> before, IReadOnlySet<Guid> sharedAccountIds,
+        CancellationToken cancellationToken)
     {
         HashSet<(ShareItemType ItemType, Guid Id)> after =
-            await FollowingAccountsAsync(context, link, userId, cancellationToken);
+            await FollowingAccountsAsync(context, userId, sharedAccountIds, cancellationToken);
         HashSet<(ShareItemType ItemType, Guid Id)> stillShared = (await context.Shares.AsNoTracking()
                 .Where(x => x.LinkId == link.Id && x.UserId == userId && x.ItemType != ShareItemType.BankAccount)
                 .Select(static x => new { x.ItemType, x.ItemId })
@@ -176,7 +192,7 @@ internal static class ItemShares
             .ToHashSet();
         if (request.Items.Any(x => !own.Contains((ToDomain(x.Kind), x.ItemId))))
         {
-            throw new InvalidOperationException("Only your own things can be shared.");
+            throw new DomainRuleException("Only your own things can be shared.");
         }
 
         // What goes with an account shared here isn't chosen on its own

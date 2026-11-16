@@ -1,4 +1,5 @@
 using FinanceTracker.Domain.Budgeting;
+using FinanceTracker.Domain.Common;
 
 namespace FinanceTracker.Tests.Unit.Domain.Budgeting;
 
@@ -103,4 +104,30 @@ public class BudgetTests
 
     private static Budget Groceries(decimal limit) =>
         new(UserId, "Groceries", [Shopping], limit, January, RolloverMode.None);
+
+    [Test]
+    public async Task ReplaceTags_FromItsChoices_CoversThem()
+    {
+        Guid groceries = Guid.NewGuid();
+        Guid household = Guid.NewGuid();
+        Budget budget = new(UserId, "Food", [groceries], 400m, January, RolloverMode.None);
+
+        budget.ReplaceTags([household, groceries], new HashSet<Guid> { groceries, household });
+
+        await Assert.That(budget.TagIds).IsEquivalentTo([household, groceries]);
+    }
+
+    [Test]
+    public async Task ReplaceTags_OneNotAChoice_IsRefusedAndKeepsItsTags()
+    {
+        Guid groceries = Guid.NewGuid();
+        Budget budget = new(UserId, "Food", [groceries], 400m, January, RolloverMode.None);
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(() => budget.ReplaceTags([Guid.NewGuid()], new HashSet<Guid> { groceries }))
+                .Throws<DomainRuleException>();
+            await Assert.That(budget.TagIds).IsEquivalentTo([groceries]);
+        }
+    }
 }

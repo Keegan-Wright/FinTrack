@@ -1,7 +1,8 @@
 using System.Runtime.CompilerServices;
-using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.Debts;
 using FinanceTracker.Contracts.Services;
+using FinanceTracker.Contracts;
+using FinanceTracker.Domain.Common;
 using FinanceTracker.Domain.Debts;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Balances;
@@ -118,7 +119,7 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
         DomainDebt updated = await context.Debts.SingleAsync(x => x.Id == id, cancellationToken);
         if (!visible.IsOwn && debt.AccountId != updated.AccountId)
         {
-            throw new InvalidOperationException("Only its owner can change which account a shared debt follows.");
+            throw new DomainRuleException("Only its owner can change which account a shared debt follows.");
         }
 
         await EnsureNameIsFreeAsync(context, updated.UserId, debt.Name, id, cancellationToken);
@@ -157,7 +158,7 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        DomainDebt debt = await context.Debts.OwnedBy(UserId).SingleAsync(x => x.Id == id, cancellationToken);
+        DomainDebt debt = await context.Debts.OwnedBy(UserId).SingleOrNotFoundAsync(x => x.Id == id, "debt", cancellationToken);
 
         // Whoever's transaction pays it, they may have let the user say theirs does
         List<BankTransaction> payments = await context.BankTransactions
@@ -212,7 +213,7 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
         // shared with them. Their own is shared with the transaction's owner, so they see what it's called
         AccountsInView changeable = await _accountScope.ResolveChangeableAsync(context, cancellationToken);
         BankTransaction transaction = await context.BankTransactions.ChangeableIn(changeable)
-            .SingleAsync(x => x.Id == transactionId, cancellationToken);
+            .SingleOrNotFoundAsync(x => x.Id == transactionId, "transaction", cancellationToken);
 
         if (payment.DebtId is not { } debtId)
         {
@@ -258,7 +259,7 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
             .SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (account is null)
         {
-            throw new InvalidOperationException("A debt can only follow the user's own accounts.");
+            throw new DomainRuleException("A debt can only follow the user's own accounts.");
         }
 
         debt.LinkAccount(account);
@@ -351,7 +352,7 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
             .SingleOrDefault(x => x.Item.Id == id);
         if (debt is null || (mustChange && !debt.CanChange))
         {
-            throw new InvalidOperationException($"No debt {id} the user can see or change was found.");
+            throw new NotFoundException($"No debt {id} the user can see or change was found.");
         }
 
         return debt;

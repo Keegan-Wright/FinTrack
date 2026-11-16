@@ -1,7 +1,10 @@
+using System.Linq.Expressions;
+using FinanceTracker.Contracts;
 using FinanceTracker.Domain.Common;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Infrastructure.Sharing;
+using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.Infrastructure;
 
@@ -20,6 +23,17 @@ public static class FinanceTrackerContextExtensions
         /// at, such as the tags and bills of whoever shared the account. For reading only.
         /// </summary>
         public IQueryable<T> OwnedByAny(IReadOnlyCollection<Guid> userIds) => query.Where(x => userIds.Contains(x.UserId));
+
+        /// <summary>
+        /// The one matching <paramref name="predicate"/>, for looking up what a request names by its id.
+        /// </summary>
+        /// <param name="what">What it is, as it reads in a sentence, e.g. <c>tag</c>.</param>
+        /// <exception cref="NotFoundException">None does, such as one that's gone or isn't the user's to see.
+        /// </exception>
+        public async Task<T> SingleOrNotFoundAsync(Expression<Func<T, bool>> predicate, string what,
+            CancellationToken cancellationToken) =>
+            await query.SingleOrDefaultAsync(predicate, cancellationToken)
+            ?? throw new NotFoundException($"No {what} the user can see or change was found.");
     }
 
     extension<T>(IQueryable<T> query) where T : AggregateRoot

@@ -114,6 +114,29 @@ public class BankAccountTests
     }
 
     [Test]
+    public async Task BankAccount_New_HasAnUnknownIdentifierAndNoCard()
+    {
+        var account = new BankAccount(Guid.NewGuid(), Guid.NewGuid(), "acc-1", "TRANSACTION", "Main", "GBP");
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(account.Identifier.IsKnown).IsFalse();
+            await Assert.That(account.Card).IsEqualTo(CardDetails.None());
+        }
+    }
+
+    [Test]
+    public async Task BankAccount_UpdateIdentifier_Nothing_IsUnknown()
+    {
+        var account = new BankAccount(Guid.NewGuid(), Guid.NewGuid(), "acc-1", "TRANSACTION", "Main", "GBP");
+        account.UpdateIdentifier(AccountIdentifier.Create("123456", "12345678", null));
+
+        account.UpdateIdentifier(null);
+
+        await Assert.That(account.Identifier.IsKnown).IsFalse();
+    }
+
+    [Test]
     public void BankAccount_UpdateCard_OnAnAccount_Throws_InvalidOperationException()
     {
         var account = new BankAccount(Guid.NewGuid(), Guid.NewGuid(), "acc-1", "TRANSACTION", "Main", "GBP");

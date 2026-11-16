@@ -78,7 +78,8 @@ public class BudgetPersistenceTests : InfrastructureTestBase
         {
             Budget tracked = await context.Budgets.SingleAsync(CancellationToken);
             tracked.ChangeLimit(500m, March);
-            tracked.ReplaceTags([TagId, Guid.CreateVersion7()]);
+            Guid another = Guid.CreateVersion7();
+            tracked.ReplaceTags([TagId, another], new HashSet<Guid> { TagId, another });
             await context.SaveChangesAsync(CancellationToken);
         }
 

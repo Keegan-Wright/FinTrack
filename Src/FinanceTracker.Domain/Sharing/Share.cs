@@ -58,7 +58,7 @@ public sealed class Share : AggregateRoot
     {
         if (Reason == ShareReason.OnTransaction && mode != ShareMode.ReadOnly)
         {
-            throw new InvalidOperationException("What's shared for being on a transaction is read only.");
+            throw new DomainRuleException("What's shared for being on a transaction is read only.");
         }
 
         Mode = mode;

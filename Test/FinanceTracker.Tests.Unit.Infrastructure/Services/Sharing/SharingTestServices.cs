@@ -5,12 +5,34 @@ using FinanceTracker.Infrastructure.Sharing;
 using FinanceTracker.Tests.Unit.Shared;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FinanceTracker.Tests.Unit.Infrastructure.Services.Sharing;
 
 public static class SharingTestServices
 {
+    /// <summary>
+    /// The sharing service acting as <paramref name="currentUser"/>, with its parts built as the app's container
+    /// would.
+    /// </summary>
+    /// <param name="scopeFactory">Scopes with <see cref="AddTransferMatching"/>, which sharing runs for both people
+    /// when shares change.</param>
+    public static SharingService Build(ICurrentUser currentUser,
+        IDbContextFactory<FinanceTrackerContext> contextFactory, IServiceScopeFactory scopeFactory)
+    {
+        ILogger<SharingService> logger = NullLogger<SharingService>.Instance;
+        TimeProvider timeProvider = TimeProvider.System;
+
+        SharingEffects effects = new(currentUser, contextFactory, logger, scopeFactory);
+        SharingChoices choices = new(currentUser, contextFactory, logger, timeProvider, effects);
+        SharingJointAccounts jointAccounts = new(currentUser, contextFactory, logger, timeProvider, effects, choices);
+        SharingLinks links = new(currentUser, contextFactory, logger, timeProvider, effects, jointAccounts);
+        SharingViews views = new(currentUser, contextFactory, logger);
+
+        return new SharingService(links, choices, jointAccounts, views);
+    }
+
     extension(IServiceCollection services)
     {
         /// <summary>

@@ -24,30 +24,26 @@ public static class DebtEndpoints
 
             debts.MapGet("{id:guid}", async Task<Ok<DebtDetail>> (Guid id, IDebtsService service,
                         CancellationToken cancellationToken) =>
-                    TypedResults.Ok(await service.GetDebtAsync(id, cancellationToken)))
-                .NotFoundWhenMissing();
+                    TypedResults.Ok(await service.GetDebtAsync(id, cancellationToken)));
 
             debts.MapPost(string.Empty, async Task<Ok<Debt>> (SaveDebt request, IDebtsService service,
                         CancellationToken cancellationToken) =>
                     TypedResults.Ok(await service.AddDebtAsync(request, cancellationToken)))
                 .Validated<SaveDebt>()
-                .ConflictWhenNameTaken()
-                .NotFoundWhenMissing();
+                .ConflictWhenNameTaken();
 
             debts.MapPut("{id:guid}", async Task<Ok<Debt>> (Guid id, SaveDebt request, IDebtsService service,
                         CancellationToken cancellationToken) =>
                     TypedResults.Ok(await service.UpdateDebtAsync(id, request, cancellationToken)))
                 .Validated<SaveDebt>()
-                .ConflictWhenNameTaken()
-                .NotFoundWhenMissing();
+                .ConflictWhenNameTaken();
 
             debts.MapDelete("{id:guid}", async Task<NoContent> (Guid id, IDebtsService service,
                     CancellationToken cancellationToken) =>
                 {
                     await service.DeleteDebtAsync(id, cancellationToken);
                     return TypedResults.NoContent();
-                })
-                .NotFoundWhenMissing();
+                });
 
             debts.MapGet("{id:guid}/forecast", async Task<Results<Ok<DebtForecast>, ProblemHttpResult>> (Guid id,
                     decimal monthlyPayment, IDebtsService service, CancellationToken cancellationToken) =>
@@ -59,13 +55,11 @@ public static class DebtEndpoints
                     }
 
                     return TypedResults.Ok(await service.ForecastAsync(id, monthlyPayment, cancellationToken));
-                })
-                .NotFoundWhenMissing();
+                });
 
             debts.MapPut("payments/{transactionId:guid}", async Task<Ok<Transaction>> (Guid transactionId,
                         PayDebt request, IDebtsService service, CancellationToken cancellationToken) =>
-                    TypedResults.Ok(await service.PayDebtAsync(transactionId, request, cancellationToken)))
-                .NotFoundWhenMissing();
+                    TypedResults.Ok(await service.PayDebtAsync(transactionId, request, cancellationToken)));
 
             return api;
         }

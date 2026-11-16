@@ -110,12 +110,12 @@ public sealed class UserLink : AggregateRoot
     {
         if (!Involves(inviterId))
         {
-            throw new InvalidOperationException("Only the two people in a link can invite each other.");
+            throw new DomainRuleException("Only the two people in a link can invite each other.");
         }
 
         if (IsLive)
         {
-            throw new InvalidOperationException("They're already invited or linked.");
+            throw new DomainRuleException("They're already invited or linked.");
         }
 
         InvitedBy = inviterId;
@@ -179,17 +179,17 @@ public sealed class UserLink : AggregateRoot
     {
         if (!Involves(userId))
         {
-            throw new InvalidOperationException("Only the two people in a link can end it.");
+            throw new DomainRuleException("Only the two people in a link can end it.");
         }
 
         if (!IsLive)
         {
-            throw new InvalidOperationException("The link has already ended.");
+            throw new DomainRuleException("The link has already ended.");
         }
 
         if (Status == UserLinkStatus.Pending && userId == InvitedUserId)
         {
-            throw new InvalidOperationException("The person invited declines an invite rather than ending it.");
+            throw new DomainRuleException("The person invited declines an invite rather than ending it.");
         }
 
         Status = UserLinkStatus.Ended;
@@ -201,12 +201,12 @@ public sealed class UserLink : AggregateRoot
     {
         if (userId != InvitedUserId)
         {
-            throw new InvalidOperationException("Only the person invited can answer an invite.");
+            throw new DomainRuleException("Only the person invited can answer an invite.");
         }
 
         if (Status != UserLinkStatus.Pending)
         {
-            throw new InvalidOperationException("The invite has already been answered or withdrawn.");
+            throw new DomainRuleException("The invite has already been answered or withdrawn.");
         }
     }
 }

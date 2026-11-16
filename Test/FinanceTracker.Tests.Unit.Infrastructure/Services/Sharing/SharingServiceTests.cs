@@ -7,7 +7,6 @@ using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging.Abstractions;
 using DomainLink = FinanceTracker.Domain.Sharing.UserLink;
 using UserLinkStatus = FinanceTracker.Domain.Sharing.UserLinkStatus;
 
@@ -430,6 +429,6 @@ public class SharingServiceTests : InfrastructureTestBase
     }
 
     private SharingService Subject(string username) =>
-        new(CurrentUserFor(username), DbContextFactory, NullLogger<SharingService>.Instance,
-            _services.GetRequiredService<IServiceScopeFactory>(), TimeProvider.System);
+        SharingTestServices.Build(CurrentUserFor(username), DbContextFactory,
+            _services.GetRequiredService<IServiceScopeFactory>());
 }

@@ -1,3 +1,4 @@
+using FinanceTracker.Domain.Common;
 using FinanceTracker.Domain.SavingsGoals;
 
 namespace FinanceTracker.Tests.Unit.Domain.SavingsGoals;
@@ -234,5 +235,47 @@ public class SavingsGoalTests
         goal.RemoveTag(tagId);
 
         await Assert.That(goal.CoversNothing).IsTrue();
+    }
+
+    [Test]
+    public async Task EnsureTrackingIsUnchangedFor_SomeoneElse_TrackingTheSame_IsAllowed()
+    {
+        SavingsGoal goal = TrackingAccount(out Guid owner, out Guid account);
+
+        await Assert.That(() => goal.EnsureTrackingIsUnchangedFor(Guid.NewGuid(), SavingsGoalSource.Account, account,
+            [], null, SavingsDirection.MoneyIn)).ThrowsNothing();
+        await Assert.That(goal.UserId).IsEqualTo(owner);
+    }
+
+    [Test]
+    public async Task EnsureTrackingIsUnchangedFor_SomeoneElse_TrackingSomethingElse_IsRefused()
+    {
+        SavingsGoal goal = TrackingAccount(out _, out _);
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(() => goal.EnsureTrackingIsUnchangedFor(Guid.NewGuid(), SavingsGoalSource.Account,
+                Guid.NewGuid(), [], null, SavingsDirection.MoneyIn)).Throws<DomainRuleException>();
+            await Assert.That(() => goal.EnsureTrackingIsUnchangedFor(Guid.NewGuid(), SavingsGoalSource.Manual, null,
+                [], null, SavingsDirection.MoneyIn)).Throws<DomainRuleException>();
+        }
+    }
+
+    [Test]
+    public async Task EnsureTrackingIsUnchangedFor_ItsOwner_MayTrackAnything()
+    {
+        SavingsGoal goal = TrackingAccount(out Guid owner, out _);
+
+        await Assert.That(() => goal.EnsureTrackingIsUnchangedFor(owner, SavingsGoalSource.Manual, null, [], null,
+            SavingsDirection.MoneyIn)).ThrowsNothing();
+    }
+
+    private static SavingsGoal TrackingAccount(out Guid owner, out Guid account)
+    {
+        owner = Guid.NewGuid();
+        account = Guid.NewGuid();
+        SavingsGoal goal = new(owner, "Holiday", 0m, 0m, 1_000m, null);
+        goal.TrackAccount(account);
+        return goal;
     }
 }

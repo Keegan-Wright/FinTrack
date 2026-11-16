@@ -26,8 +26,7 @@ public static class PayPeriodEndpoints
 
             payPeriods.MapPut("pay", async Task<Ok<YourPay>> (ChooseIncome request, IPayPeriodsService service,
                         CancellationToken cancellationToken) =>
-                    TypedResults.Ok(await service.ChooseAsync(request, cancellationToken)))
-                .NotFoundWhenMissing();
+                    TypedResults.Ok(await service.ChooseAsync(request, cancellationToken)));
 
             payPeriods.MapPut("off", async Task<Ok<YourPay>> (IPayPeriodsService service,
                     CancellationToken cancellationToken) =>
@@ -35,8 +34,7 @@ public static class PayPeriodEndpoints
 
             payPeriods.MapPut("on", async Task<Ok<YourPay>> (IPayPeriodsService service,
                         CancellationToken cancellationToken) =>
-                    TypedResults.Ok(await service.TurnOnAsync(cancellationToken)))
-                .NotFoundWhenMissing();
+                    TypedResults.Ok(await service.TurnOnAsync(cancellationToken)));
 
             return api;
         }

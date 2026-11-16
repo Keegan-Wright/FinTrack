@@ -32,8 +32,7 @@ public static class UsersEndpoints
                     }
 
                     return TypedResults.Ok(link);
-                })
-                .NotFoundWhenMissing();
+                });
 
             users.MapPost("{id:guid}/lock", async Task<Results<NoContent, Conflict>> (Guid id, IUsersService service,
                     CancellationToken cancellationToken) =>
@@ -44,16 +43,14 @@ public static class UsersEndpoints
                     }
 
                     return TypedResults.NoContent();
-                })
-                .NotFoundWhenMissing();
+                });
 
             users.MapPost("{id:guid}/unlock", async Task<NoContent> (Guid id, IUsersService service,
                     CancellationToken cancellationToken) =>
                 {
                     await service.UnlockAsync(id, cancellationToken);
                     return TypedResults.NoContent();
-                })
-                .NotFoundWhenMissing();
+                });
 
             return api;
         }

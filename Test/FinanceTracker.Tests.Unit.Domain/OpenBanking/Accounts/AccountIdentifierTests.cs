@@ -112,4 +112,27 @@ public class AccountIdentifierTests
     [Test]
     public async Task IsSameAccountAs_Nothing_IsFalse() =>
         await Assert.That(AccountIdentifier.Create("112233", "12345678", null)!.IsSameAccountAs(null)).IsFalse();
+
+    [Test]
+    [Arguments("12-34-56", "12345678", null)]
+    [Arguments(null, null, UkIban)]
+    public async Task AccountIdentifier_Create_WithEitherForm_IsKnown(string? sortCode, string? number, string? iban) =>
+        await Assert.That(AccountIdentifier.Create(sortCode, number, iban)!.IsKnown).IsTrue();
+
+    [Test]
+    public async Task AccountIdentifier_Unknown_IsNotKnownAndNamesNothing()
+    {
+        AccountIdentifier unknown = AccountIdentifier.Unknown();
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(unknown.IsKnown).IsFalse();
+            await Assert.That(unknown.IsNamedIn("123456 12345678")).IsFalse();
+            await Assert.That(unknown.IsSameAccountAs(AccountIdentifier.Unknown())).IsFalse();
+        }
+    }
+
+    [Test]
+    public async Task AccountIdentifier_Unknown_IsANewOneEachTime() =>
+        await Assert.That(AccountIdentifier.Unknown()).IsNotSameReferenceAs(AccountIdentifier.Unknown());
 }

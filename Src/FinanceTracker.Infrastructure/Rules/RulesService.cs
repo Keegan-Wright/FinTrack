@@ -1,6 +1,8 @@
 using System.Runtime.CompilerServices;
 using FinanceTracker.Contracts.Rules;
 using FinanceTracker.Contracts.Services;
+using FinanceTracker.Contracts;
+using FinanceTracker.Domain.Common;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
@@ -162,7 +164,7 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
 
         if (order.RuleIds.Count != rules.Count || !order.RuleIds.All(rules.ContainsKey))
         {
-            throw new InvalidOperationException("The order has to list each of the user's rules once.");
+            throw new DomainRuleException("The order has to list each of the user's rules once.");
         }
 
         for (int position = 0; position < order.RuleIds.Count; position++)
@@ -224,7 +226,7 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
         // Their own, or one they can change on an account shared with them, which their rules now reach too
         AccountsInView changeable = await _accountScope.ResolveChangeableAsync(context, cancellationToken);
         BankTransaction transaction = await context.BankTransactions.ChangeableIn(changeable).AsNoTracking()
-            .SingleAsync(x => x.Id == transactionId, cancellationToken);
+            .SingleOrNotFoundAsync(x => x.Id == transactionId, "transaction", cancellationToken);
 
         List<Guid> tagIds = await context.CustomClassifications.OwnedBy(UserId)
             .Select(static x => x.Id)
@@ -238,7 +240,7 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
         await using (FinanceTrackerContext context =
                      await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken))
         {
-            DomainRule rule = await context.Rules.OwnedBy(UserId).SingleAsync(x => x.Id == id, cancellationToken);
+            DomainRule rule = await context.Rules.OwnedBy(UserId).SingleOrNotFoundAsync(x => x.Id == id, "rule", cancellationToken);
             context.Rules.Remove(rule);
             await context.SaveChangesAsync(cancellationToken);
             Logger.LogChanged(UserId, "deleted", "rule", id);
@@ -282,7 +284,7 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
 
         if (owned != billIds.Count)
         {
-            throw new InvalidOperationException("A rule can only pay the user's own bills.");
+            throw new DomainRuleException("A rule can only pay the user's own bills.");
         }
     }
 
@@ -305,7 +307,7 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
 
         if (owned != debtIds.Count)
         {
-            throw new InvalidOperationException("A rule can only pay off the user's own debts.");
+            throw new DomainRuleException("A rule can only pay off the user's own debts.");
         }
     }
 
@@ -328,7 +330,7 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
 
         if (owned != tagIds.Count)
         {
-            throw new InvalidOperationException("A rule can only add the user's own tags.");
+            throw new DomainRuleException("A rule can only add the user's own tags.");
         }
     }
 
@@ -354,7 +356,7 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
 
         if (seen != accountIds.Count)
         {
-            throw new InvalidOperationException("A rule can only look at the accounts the user can see.");
+            throw new DomainRuleException("A rule can only look at the accounts the user can see.");
         }
     }
 
@@ -394,7 +396,7 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
             .SingleOrDefault(x => x.Item.Id == id);
         if (shared is null || (mustChange && !shared.CanChange))
         {
-            throw new InvalidOperationException($"No rule {id} the user can change was found.");
+            throw new NotFoundException($"No rule {id} the user can change was found.");
         }
 
         return shared;

@@ -20,7 +20,7 @@ public interface IDebtsService
     /// <summary>
     /// One of the user's debts with its payments and what it owed over time.
     /// </summary>
-    /// <exception cref="InvalidOperationException">The user has no debt with <paramref name="id"/>.</exception>
+    /// <exception cref="NotFoundException">The user has no debt with <paramref name="id"/>.</exception>
     Task<DebtDetail> GetDebtAsync(Guid id, CancellationToken cancellationToken);
 
     /// <summary>
@@ -44,14 +44,14 @@ public interface IDebtsService
     /// <summary>
     /// Deletes one of the user's debts. Its payments pay off nothing, and rules that paid it off no longer do.
     /// </summary>
-    /// <exception cref="InvalidOperationException">The user has no debt with <paramref name="id"/>.</exception>
+    /// <exception cref="NotFoundException">The user has no debt with <paramref name="id"/>.</exception>
     Task DeleteDebtAsync(Guid id, CancellationToken cancellationToken);
 
     /// <summary>
     /// When one of the user's debts would be paid off paying <paramref name="monthlyPayment"/> a month from today
     /// instead, to compare with its forecast.
     /// </summary>
-    /// <exception cref="InvalidOperationException">The user has no debt with <paramref name="id"/>.</exception>
+    /// <exception cref="NotFoundException">The user has no debt with <paramref name="id"/>.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="monthlyPayment"/> isn't more than 0.</exception>
     Task<DebtForecast> ForecastAsync(Guid id, decimal monthlyPayment, CancellationToken cancellationToken);
 

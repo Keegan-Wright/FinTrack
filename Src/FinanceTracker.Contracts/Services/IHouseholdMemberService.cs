@@ -25,7 +25,7 @@ public interface IHouseholdMemberService
     /// Changes one of the user's household members' name and income.
     /// </summary>
     /// <returns>The member as stored.</returns>
-    /// <exception cref="InvalidOperationException">The user has no member with <paramref name="id"/>.</exception>
+    /// <exception cref="NotFoundException">The user has no member with <paramref name="id"/>.</exception>
     /// <exception cref="NameTakenException">Someone else in the household already has that first and last name, in
     /// any case.</exception>
     Task<HouseholdMember.HouseholdMember> UpdateHouseholdMemberAsync(Guid id,
@@ -36,7 +36,7 @@ public interface IHouseholdMemberService
     /// transfers so it applies straight away. Validate the request with
     /// <see cref="Validation.UpdateHouseholdMemberRecognitionValidator"/> first.
     /// </summary>
-    /// <exception cref="InvalidOperationException">The user has no member with <paramref name="id"/>.</exception>
+    /// <exception cref="NotFoundException">The user has no member with <paramref name="id"/>.</exception>
     Task<HouseholdMember.HouseholdMemberRecognitionSaved> UpdateRecognitionAsync(Guid id,
         HouseholdMember.UpdateHouseholdMemberRecognition request, CancellationToken cancellationToken);
 

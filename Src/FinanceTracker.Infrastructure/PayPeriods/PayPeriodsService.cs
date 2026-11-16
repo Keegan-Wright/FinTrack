@@ -1,6 +1,8 @@
 using System.Runtime.CompilerServices;
 using FinanceTracker.Contracts.PayPeriods;
 using FinanceTracker.Contracts.Services;
+using FinanceTracker.Contracts;
+using FinanceTracker.Domain.Common;
 using FinanceTracker.Domain.PayPeriods;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
@@ -62,7 +64,7 @@ public class PayPeriodsService : ServiceBase<PayPeriodsService>, IPayPeriodsServ
             await PayTransactions.DetectAsync(context, UserId, _timeProvider, cancellationToken);
 
         DetectedPay chosen = detected.FirstOrDefault(x => x.AccountId == income.AccountId && x.Key == income.Key)
-                             ?? throw new InvalidOperationException("Nothing coming in like pay matches that income");
+                             ?? throw new DomainRuleException("Nothing coming in like pay matches that income");
 
         PaySchedule? schedule = await context.PaySchedules.OwnedBy(UserId).SingleOrDefaultAsync(cancellationToken);
         if (schedule is null)
@@ -99,7 +101,7 @@ public class PayPeriodsService : ServiceBase<PayPeriodsService>, IPayPeriodsServ
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
         PaySchedule schedule = await context.PaySchedules.OwnedBy(UserId).SingleOrDefaultAsync(cancellationToken)
-                               ?? throw new InvalidOperationException("No pay has been found yet");
+                               ?? throw new NotFoundException("No pay has been found yet");
 
         schedule.TurnOn();
         await context.SaveChangesAsync(cancellationToken);

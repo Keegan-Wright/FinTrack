@@ -72,7 +72,7 @@ public sealed class Rule : AggregateRoot
     {
         if (_actions.Count == 0)
         {
-            throw new InvalidOperationException("A rule needs an action before it can be enabled.");
+            throw new DomainRuleException("A rule needs an action before it can be enabled.");
         }
 
         IsEnabled = true;

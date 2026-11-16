@@ -10,14 +10,9 @@ using FinanceTracker.Generated.Enums;
 
 namespace FinanceTracker.Infrastructure.Exports;
 
-/// <summary>
-/// Writes a backup of everything the user has as a zip, see <see cref="IExportsService.WriteBackupAsync"/>. Each file
-/// is read through the service its page reads, so it holds what the user sees, decrypted, and only theirs. Files are
-/// written one at a time, transactions as they're read, and the manifest last so it can count them.
-/// </summary>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
-[Scoped<BackupWriter>]
-public sealed class BackupWriter
+[Scoped<IBackupWriter>]
+public sealed class BackupWriter : IBackupWriter
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {

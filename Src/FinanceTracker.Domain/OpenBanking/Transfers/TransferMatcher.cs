@@ -310,7 +310,7 @@ public static class TransferMatcher
         return accounts
             .Where(x => x.Id != transaction.AccountId &&
                         pairing.CanReach(transaction, x) &&
-                        x.Identifier?.IsNamedIn(transaction.Metadata.ProviderReference) == true)
+                        x.Identifier.IsNamedIn(transaction.Metadata.ProviderReference))
             .Take(2)
             .ToList() is [var only] ? only : null;
     }

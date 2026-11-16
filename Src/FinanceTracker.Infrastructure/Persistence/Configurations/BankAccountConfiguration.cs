@@ -42,12 +42,16 @@ internal sealed class BankAccountConfiguration : AggregateRootConfiguration<Bank
             card.Property(x => x.ValidTo).HasColumnName("Card_ValidTo").Encrypted();
         });
 
+        builder.Navigation(x => x.Card).IsRequired();
+
         builder.OwnsOne(x => x.Identifier, identifier =>
         {
             identifier.Property(x => x.SortCode).HasColumnName("Identifier_SortCode").Encrypted();
             identifier.Property(x => x.Number).HasColumnName("Identifier_Number").Encrypted();
             identifier.Property(x => x.Iban).HasColumnName("Identifier_Iban").Encrypted();
         });
+
+        builder.Navigation(x => x.Identifier).IsRequired();
 
         builder.HasMany(x => x.StandingOrders)
             .WithOne()

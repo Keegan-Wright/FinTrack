@@ -77,16 +77,22 @@ public static class ApiHttpClientExtensions
     extension(HttpResponseMessage response)
     {
         /// <summary>
-        /// For the services that throw <see cref="InvalidOperationException"/> when a record is missing or isn't the
-        /// user's, which the API answers with 404.
+        /// For the services that throw when a record is missing or isn't the user's, which the API answers with 404, or
+        /// when one of the app's rules refuses the change, which it answers with 422. Throws as the service would.
         /// </summary>
-        /// <exception cref="InvalidOperationException">The API answered 404.</exception>
+        /// <exception cref="NotFoundException">The API answered 404.</exception>
+        /// <exception cref="RuleBrokenException">The API answered 422.</exception>
         /// <exception cref="HttpRequestException">The API answered with any other failure.</exception>
         public void EnsureFound()
         {
             if (response.StatusCode == HttpStatusCode.NotFound)
             {
-                throw new InvalidOperationException($"{response.RequestMessage?.RequestUri} was not found.");
+                throw new NotFoundException($"{response.RequestMessage?.RequestUri} was not found.");
+            }
+
+            if (response.StatusCode == HttpStatusCode.UnprocessableEntity)
+            {
+                throw new RuleBrokenException($"{response.RequestMessage?.RequestUri} was refused by one of the rules.");
             }
 
             response.EnsureSuccessStatusCode();

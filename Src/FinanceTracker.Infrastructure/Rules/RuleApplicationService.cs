@@ -116,7 +116,7 @@ public class RuleApplicationService : ServiceBase<RuleApplicationService>, IRule
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
         Rule rule = await context.Rules.OwnedBy(UserId).AsNoTracking()
-            .SingleAsync(x => x.Id == ruleId, cancellationToken);
+            .SingleOrNotFoundAsync(x => x.Id == ruleId, "rule", cancellationToken);
         if (!rule.IsEnabled)
         {
             return 0;

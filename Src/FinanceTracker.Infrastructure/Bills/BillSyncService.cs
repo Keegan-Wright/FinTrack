@@ -45,6 +45,7 @@ public class BillSyncService : ServiceBase<BillSyncService>, IBillSyncService
         List<BankAccount> accounts = await context.BankAccounts.OwnedBy(UserId)
             .Include(static x => x.StandingOrders)
             .Include(static x => x.DirectDebits)
+            .AsSplitQuery()
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
