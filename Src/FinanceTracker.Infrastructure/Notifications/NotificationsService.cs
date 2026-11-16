@@ -23,20 +23,20 @@ public sealed class NotificationsService : ServiceBase<NotificationsService>, IN
 
     private readonly TimeProvider _timeProvider;
     private readonly IMailSender _mailSender;
-    private readonly INotificationEmails _emails;
+    private readonly INotificationEmails _notificationEmails;
     private readonly IWebhookSender _webhookSender;
     private readonly WebhookSettings _webhookSettings;
     private readonly PublicAddress _publicAddress;
 
     public NotificationsService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<NotificationsService> logger,
-        TimeProvider timeProvider, IMailSender mailSender, INotificationEmails emails, IWebhookSender webhookSender,
-        WebhookSettings webhookSettings, PublicAddress publicAddress)
+        TimeProvider timeProvider, IMailSender mailSender, INotificationEmails notificationEmails,
+        IWebhookSender webhookSender, WebhookSettings webhookSettings, PublicAddress publicAddress)
         : base(currentUser, financeTrackerContextFactory, logger)
     {
         _timeProvider = timeProvider;
         _mailSender = mailSender;
-        _emails = emails;
+        _notificationEmails = notificationEmails;
         _webhookSender = webhookSender;
         _webhookSettings = webhookSettings;
         _publicAddress = publicAddress;
@@ -164,7 +164,7 @@ public sealed class NotificationsService : ServiceBase<NotificationsService>, IN
         string? failure = null;
         try
         {
-            await _mailSender.SendAsync(await _emails.TestAsync(address), cancellationToken);
+            await _mailSender.SendAsync(await _notificationEmails.TestAsync(address), cancellationToken);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {

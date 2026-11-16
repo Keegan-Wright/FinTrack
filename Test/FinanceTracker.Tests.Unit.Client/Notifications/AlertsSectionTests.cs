@@ -15,12 +15,12 @@ public class AlertsSectionTests : ComponentTestBase
     private static readonly Guid Everyday = Guid.NewGuid();
     private static readonly Guid Savings = Guid.NewGuid();
 
-    private readonly INotificationsService _service = Substitute.For<INotificationsService>();
+    private readonly INotificationsService _notificationsService = Substitute.For<INotificationsService>();
     private NotificationSettings? _changed;
 
     public AlertsSectionTests()
     {
-        Services.AddSingleton(_service);
+        Services.AddSingleton(_notificationsService);
         Services.AddScoped<IValidator<ChangeAlertSettings>, ChangeAlertSettingsValidator>();
     }
 
@@ -47,7 +47,7 @@ public class AlertsSectionTests : ComponentTestBase
     {
         // Arrange
         NotificationSettings saved = Settings(everydayBelow: 50m);
-        _service.ChangeAlertsAsync(Arg.Any<ChangeAlertSettings>(), Arg.Any<CancellationToken>()).Returns(saved);
+        _notificationsService.ChangeAlertsAsync(Arg.Any<ChangeAlertSettings>(), Arg.Any<CancellationToken>()).Returns(saved);
         IRenderedComponent<MudSnackbarProvider> snackbars = Render<MudSnackbarProvider>();
         IRenderedComponent<AlertsSection> cut = RenderSection(Settings(everydayBelow: 100m));
 
@@ -62,7 +62,7 @@ public class AlertsSectionTests : ComponentTestBase
         snackbars.WaitForState(() => snackbars.Markup.Contains("Alerts saved", StringComparison.Ordinal));
         using (Assert.Multiple())
         {
-            await _service.Received(1).ChangeAlertsAsync(
+            await _notificationsService.Received(1).ChangeAlertsAsync(
                 Arg.Is<ChangeAlertSettings>(x => x.BudgetWarningPercent == 90 && x.BillReminderDays == 3
                                                  && x.LargeTransactionOver == 250m
                                                  && x.LowBalance.Single().AccountId == Everyday
@@ -84,7 +84,7 @@ public class AlertsSectionTests : ComponentTestBase
 
         // Assert
         cut.WaitForState(() => cut.Markup.Contains("Enter an amount", StringComparison.Ordinal));
-        await _service.DidNotReceive().ChangeAlertsAsync(Arg.Any<ChangeAlertSettings>(), Arg.Any<CancellationToken>());
+        await _notificationsService.DidNotReceive().ChangeAlertsAsync(Arg.Any<ChangeAlertSettings>(), Arg.Any<CancellationToken>());
     }
 
     [Test]

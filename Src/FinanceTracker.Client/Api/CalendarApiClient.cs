@@ -34,7 +34,7 @@ public sealed class CalendarApiClient : ICalendarService
         CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.PostAsJsonAsync(Events, calendarEvent, cancellationToken);
-        response.EnsureNameFree(NameTakenException.SavingsGoal, calendarEvent.Title);
+        await response.EnsureNameFreeAsync(NameTakenException.SavingsGoal, calendarEvent.Title, cancellationToken);
         return await response.ReadRequiredJsonAsync<CalendarEvent>(cancellationToken);
     }
 
@@ -43,13 +43,13 @@ public sealed class CalendarApiClient : ICalendarService
     {
         using HttpResponseMessage response =
             await _http.PutAsJsonAsync($"{Events}/{id}", calendarEvent, cancellationToken);
-        response.EnsureNameFree(NameTakenException.SavingsGoal, calendarEvent.Title);
+        await response.EnsureNameFreeAsync(NameTakenException.SavingsGoal, calendarEvent.Title, cancellationToken);
         return await response.ReadRequiredJsonAsync<CalendarEvent>(cancellationToken);
     }
 
     public async Task DeleteEventAsync(Guid id, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.DeleteAsync($"{Events}/{id}", cancellationToken);
-        response.EnsureFound();
+        await response.EnsureFoundAsync(cancellationToken);
     }
 }

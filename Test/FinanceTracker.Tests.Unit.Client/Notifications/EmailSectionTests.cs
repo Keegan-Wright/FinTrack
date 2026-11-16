@@ -13,13 +13,13 @@ public class EmailSectionTests : ComponentTestBase
 {
     private static readonly DateTime SentAt = new(2026, 11, 6, 9, 30, 0, DateTimeKind.Utc);
 
-    private readonly INotificationsService _service = Substitute.For<INotificationsService>();
-    private readonly IProfileService _profile = Substitute.For<IProfileService>();
+    private readonly INotificationsService _notificationsService = Substitute.For<INotificationsService>();
+    private readonly IProfileService _profileService = Substitute.For<IProfileService>();
 
     public EmailSectionTests()
     {
-        Services.AddSingleton(_service);
-        Services.AddSingleton(_profile);
+        Services.AddSingleton(_notificationsService);
+        Services.AddSingleton(_profileService);
         Services.AddSingleton(TimeProvider.System);
     }
 
@@ -77,7 +77,7 @@ public class EmailSectionTests : ComponentTestBase
     public async Task SendConfirmation_Sent_SaysWhereItWent()
     {
         // Arrange
-        _profile.SendEmailConfirmationAsync(Arg.Any<CancellationToken>()).Returns(true);
+        _profileService.SendEmailConfirmationAsync(Arg.Any<CancellationToken>()).Returns(true);
         IRenderedComponent<EmailSection> cut = RenderSection(Create(emailConfirmed: false));
 
         // Act
@@ -98,8 +98,8 @@ public class EmailSectionTests : ComponentTestBase
     {
         // Arrange, confirmed in another tab meanwhile
         NotificationSettings confirmed = Create();
-        _profile.SendEmailConfirmationAsync(Arg.Any<CancellationToken>()).Returns(false);
-        _service.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(confirmed);
+        _profileService.SendEmailConfirmationAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _notificationsService.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(confirmed);
         IRenderedComponent<EmailSection> cut = RenderSection(Create(emailConfirmed: false));
 
         // Act
@@ -115,7 +115,7 @@ public class EmailSectionTests : ComponentTestBase
     public async Task TestEmail_Sent_SaysSoAndWhenBesideTheButton()
     {
         // Arrange
-        _service.SendTestEmailAsync(Arg.Any<CancellationToken>())
+        _notificationsService.SendTestEmailAsync(Arg.Any<CancellationToken>())
             .Returns(Create(lastEmail: new DeliveryStatus { At = SentAt }));
         IRenderedComponent<MudSnackbarProvider> snackbars = Render<MudSnackbarProvider>();
         IRenderedComponent<EmailSection> cut = RenderSection(Create());
@@ -132,7 +132,7 @@ public class EmailSectionTests : ComponentTestBase
     public async Task TestEmail_Fails_SaysWhyBesideTheButton()
     {
         // Arrange
-        _service.SendTestEmailAsync(Arg.Any<CancellationToken>()).Returns(Create(lastEmail: new DeliveryStatus
+        _notificationsService.SendTestEmailAsync(Arg.Any<CancellationToken>()).Returns(Create(lastEmail: new DeliveryStatus
         {
             At = SentAt, Failure = "The mail server didn't accept FinTrack's sign in."
         }));
@@ -152,8 +152,8 @@ public class EmailSectionTests : ComponentTestBase
     public async Task TestEmail_EmailNoLongerPossible_ReloadsTheSettingsToSayWhy()
     {
         // Arrange
-        _service.SendTestEmailAsync(Arg.Any<CancellationToken>()).Returns((NotificationSettings?)null);
-        _service.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(Create(emailAvailable: false));
+        _notificationsService.SendTestEmailAsync(Arg.Any<CancellationToken>()).Returns((NotificationSettings?)null);
+        _notificationsService.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(Create(emailAvailable: false));
         IRenderedComponent<EmailSection> cut = RenderSection(Create());
 
         // Act

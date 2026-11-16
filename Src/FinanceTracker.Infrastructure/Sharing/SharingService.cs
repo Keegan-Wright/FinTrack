@@ -16,60 +16,60 @@ namespace FinanceTracker.Infrastructure.Sharing;
 [Scoped<ISharingService>]
 public sealed class SharingService : ISharingService
 {
-    private readonly ISharingLinks _links;
-    private readonly ISharingChoices _choices;
-    private readonly ISharingJointAccounts _jointAccounts;
-    private readonly ISharingViews _views;
+    private readonly ISharingLinks _sharingLinks;
+    private readonly ISharingChoices _sharingChoices;
+    private readonly ISharingJointAccounts _sharingJointAccounts;
+    private readonly ISharingViews _sharingViews;
 
-    public SharingService(ISharingLinks links, ISharingChoices choices, ISharingJointAccounts jointAccounts,
-        ISharingViews views)
+    public SharingService(ISharingLinks sharingLinks, ISharingChoices sharingChoices,
+        ISharingJointAccounts sharingJointAccounts, ISharingViews sharingViews)
     {
-        _links = links;
-        _choices = choices;
-        _jointAccounts = jointAccounts;
-        _views = views;
+        _sharingLinks = sharingLinks;
+        _sharingChoices = sharingChoices;
+        _sharingJointAccounts = sharingJointAccounts;
+        _sharingViews = sharingViews;
     }
 
     public IAsyncEnumerable<ContractLink> GetLinksAsync(CancellationToken cancellationToken) =>
-        _links.GetLinksAsync(cancellationToken);
+        _sharingLinks.GetLinksAsync(cancellationToken);
 
     public IAsyncEnumerable<ContractLink> GetPeopleAsync(CancellationToken cancellationToken) =>
-        _links.GetPeopleAsync(cancellationToken);
+        _sharingLinks.GetPeopleAsync(cancellationToken);
 
     public Task<InviteOutcome> InviteAsync(InviteToShare request, CancellationToken cancellationToken) =>
-        _links.InviteAsync(request, cancellationToken);
+        _sharingLinks.InviteAsync(request, cancellationToken);
 
     public Task<bool> AcceptAsync(Guid id, CancellationToken cancellationToken) =>
-        _links.AcceptAsync(id, cancellationToken);
+        _sharingLinks.AcceptAsync(id, cancellationToken);
 
     public Task<bool> DeclineAsync(Guid id, CancellationToken cancellationToken) =>
-        _links.DeclineAsync(id, cancellationToken);
+        _sharingLinks.DeclineAsync(id, cancellationToken);
 
     public Task<bool> EndAsync(Guid id, CancellationToken cancellationToken) =>
-        _links.EndAsync(id, cancellationToken);
+        _sharingLinks.EndAsync(id, cancellationToken);
 
     public Task<LinkShares?> GetSharesAsync(Guid linkId, CancellationToken cancellationToken) =>
-        _choices.GetSharesAsync(linkId, cancellationToken);
+        _sharingChoices.GetSharesAsync(linkId, cancellationToken);
 
     public Task<LinkShares> ChangeAccountSharesAsync(Guid linkId, ChangeAccountShares request,
         CancellationToken cancellationToken) =>
-        _choices.ChangeAccountSharesAsync(linkId, request, cancellationToken);
+        _sharingChoices.ChangeAccountSharesAsync(linkId, request, cancellationToken);
 
     public Task<LinkShares> ChangeItemSharesAsync(Guid linkId, ChangeItemShares request,
         CancellationToken cancellationToken) =>
-        _choices.ChangeItemSharesAsync(linkId, request, cancellationToken);
+        _sharingChoices.ChangeItemSharesAsync(linkId, request, cancellationToken);
 
     public Task<LinkShares> MergeJointAccountsAsync(Guid linkId, MergeJointAccounts request,
         CancellationToken cancellationToken) =>
-        _jointAccounts.MergeAsync(linkId, request, cancellationToken);
+        _sharingJointAccounts.MergeAsync(linkId, request, cancellationToken);
 
     public Task<LinkShares> SplitJointAccountAsync(Guid linkId, Guid jointAccountId,
         CancellationToken cancellationToken) =>
-        _jointAccounts.SplitAsync(linkId, jointAccountId, cancellationToken);
+        _sharingJointAccounts.SplitAsync(linkId, jointAccountId, cancellationToken);
 
     public Task<SharingView> GetViewAsync(CancellationToken cancellationToken) =>
-        _views.GetViewAsync(cancellationToken);
+        _sharingViews.GetViewAsync(cancellationToken);
 
     public Task<SharingView> ChangeViewAsync(ChangeSharingView request, CancellationToken cancellationToken) =>
-        _views.ChangeViewAsync(request, cancellationToken);
+        _sharingViews.ChangeViewAsync(request, cancellationToken);
 }

@@ -24,19 +24,19 @@ public class AutomationService : ServiceBase<AutomationService>, IAutomationServ
     private const int SuccessRateLookBack = AutomationJobSummary.SuccessRateRuns * 3;
 
     private readonly ISchedulerFactory _schedulerFactory;
-    private readonly IExecutionHistoryStore _history;
-    private readonly IOpenBankingSyncScheduler _syncScheduler;
+    private readonly IExecutionHistoryStore _executionHistoryStore;
+    private readonly IOpenBankingSyncScheduler _openBankingSyncScheduler;
     private readonly TimeProvider _timeProvider;
 
     public AutomationService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<AutomationService> logger,
-        ISchedulerFactory schedulerFactory, IExecutionHistoryStore history, IOpenBankingSyncScheduler syncScheduler,
-        TimeProvider timeProvider)
+        ISchedulerFactory schedulerFactory, IExecutionHistoryStore executionHistoryStore,
+        IOpenBankingSyncScheduler openBankingSyncScheduler, TimeProvider timeProvider)
         : base(currentUser, financeTrackerContextFactory, logger)
     {
         _schedulerFactory = schedulerFactory;
-        _history = history;
-        _syncScheduler = syncScheduler;
+        _executionHistoryStore = executionHistoryStore;
+        _openBankingSyncScheduler = openBankingSyncScheduler;
         _timeProvider = timeProvider;
     }
 
@@ -82,14 +82,16 @@ public class AutomationService : ServiceBase<AutomationService>, IAutomationServ
 
         IScheduler scheduler = await _schedulerFactory.GetScheduler(cancellationToken);
         JobKey job = new(function);
-        PagedResult<ExecutionHistoryEntry> history = await _history.QueryExecutions(new ExecutionHistoryQuery
+        ExecutionHistoryQuery query = new()
         {
             SchedulerName = scheduler.SchedulerName,
             Job = job,
             Skip = page * pageSize,
             Take = pageSize,
             IncludeTotalCount = true
-        }, cancellationToken);
+        };
+        PagedResult<ExecutionHistoryEntry> history =
+            await _executionHistoryStore.QueryExecutions(query, cancellationToken);
 
         List<AutomationRun> runs = history.Items.Select(ToRun).ToList();
         int total = history.TotalCount ?? runs.Count;
@@ -172,12 +174,14 @@ public class AutomationService : ServiceBase<AutomationService>, IAutomationServ
     private async Task<AutomationJobSummary> SummariseAsync(IScheduler scheduler, JobKey job, AutomationCron? cron,
         ICronTrigger? schedule, CancellationToken cancellationToken)
     {
-        PagedResult<ExecutionHistoryEntry> latest = await _history.QueryExecutions(new ExecutionHistoryQuery
+        ExecutionHistoryQuery query = new()
         {
             SchedulerName = scheduler.SchedulerName,
             Job = job,
             Take = SuccessRateLookBack
-        }, cancellationToken);
+        };
+        PagedResult<ExecutionHistoryEntry> latest =
+            await _executionHistoryStore.QueryExecutions(query, cancellationToken);
 
         // A failure that's being retried isn't finished, its retry says how it went
         List<ExecutionHistoryEntry> finished = latest.Items
@@ -291,5 +295,5 @@ public class AutomationService : ServiceBase<AutomationService>, IAutomationServ
 
     // The user comes from the scope, never the page, so nobody can queue a sync of someone else's connections
     public Task RequestSyncAsync(CancellationToken cancellationToken) =>
-        _syncScheduler.ScheduleUserSyncAsync(UserId, cancellationToken);
+        _openBankingSyncScheduler.ScheduleUserSyncAsync(UserId, cancellationToken);
 }

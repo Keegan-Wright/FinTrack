@@ -14,24 +14,24 @@ namespace FinanceTracker.Infrastructure.Notifications;
 [Scoped<INotifier>]
 public sealed class Notifier : ServiceBase<Notifier>, INotifier
 {
-    private readonly INotificationPublisher _publisher;
+    private readonly INotificationPublisher _notificationPublisher;
     private readonly IMailSender _mailSender;
-    private readonly INotificationEmails _emails;
+    private readonly INotificationEmails _notificationEmails;
     private readonly IWebhookSender _webhookSender;
     private readonly PublicAddress _publicAddress;
     private readonly TimeProvider _timeProvider;
     private readonly FinTrackMetrics _metrics;
 
     public Notifier(ICurrentUser currentUser, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
-        ILogger<Notifier> logger, INotificationPublisher publisher, IMailSender mailSender,
-        INotificationEmails emails, IWebhookSender webhookSender, PublicAddress publicAddress,
+        ILogger<Notifier> logger, INotificationPublisher notificationPublisher, IMailSender mailSender,
+        INotificationEmails notificationEmails, IWebhookSender webhookSender, PublicAddress publicAddress,
         TimeProvider timeProvider, FinTrackMetrics metrics)
         : base(currentUser, financeTrackerContextFactory, logger)
     {
         _metrics = metrics;
-        _publisher = publisher;
+        _notificationPublisher = notificationPublisher;
         _mailSender = mailSender;
-        _emails = emails;
+        _notificationEmails = notificationEmails;
         _webhookSender = webhookSender;
         _publicAddress = publicAddress;
         _timeProvider = timeProvider;
@@ -84,7 +84,7 @@ public sealed class Notifier : ServiceBase<Notifier>, INotifier
 
         if (inApp)
         {
-            await _publisher.NotificationAddedAsync(UserId);
+            await _notificationPublisher.NotificationAddedAsync(UserId);
         }
 
         await SendOnAsync(context, settings, notification, address, webhooked, cancellationToken);
@@ -163,7 +163,7 @@ public sealed class Notifier : ServiceBase<Notifier>, INotifier
     {
         try
         {
-            await _mailSender.SendAsync(await _emails.ForAsync(notification, address), cancellationToken);
+            await _mailSender.SendAsync(await _notificationEmails.ForAsync(notification, address), cancellationToken);
             return null;
         }
         catch (Exception exception) when (exception is not OperationCanceledException)

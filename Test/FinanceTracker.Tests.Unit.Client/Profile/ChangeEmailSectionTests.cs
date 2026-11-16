@@ -13,12 +13,12 @@ namespace FinanceTracker.Tests.Unit.Client.Profile;
 
 public class ChangeEmailSectionTests : ComponentTestBase
 {
-    private readonly IProfileService _service = Substitute.For<IProfileService>();
+    private readonly IProfileService _profileService = Substitute.For<IProfileService>();
     private int _changed;
 
     public ChangeEmailSectionTests()
     {
-        Services.AddSingleton(_service);
+        Services.AddSingleton(_profileService);
         Services.AddScoped<IValidator<ChangeEmail>, ChangeEmailValidator>();
     }
 
@@ -68,7 +68,7 @@ public class ChangeEmailSectionTests : ComponentTestBase
     public async Task Change_WithAMailServer_SaysWhereTheLinkWent()
     {
         // Arrange
-        _service.ChangeEmailAsync(Arg.Any<ChangeEmail>(), Arg.Any<CancellationToken>())
+        _profileService.ChangeEmailAsync(Arg.Any<ChangeEmail>(), Arg.Any<CancellationToken>())
             .Returns(new ProfileChange { LinkSent = true });
         IRenderedComponent<ChangeEmailSection> cut = RenderSection(Create());
 
@@ -80,7 +80,7 @@ public class ChangeEmailSectionTests : ComponentTestBase
         cut.WaitForState(() => cut.Markup.Contains("on its way", StringComparison.Ordinal));
         using (Assert.Multiple())
         {
-            await _service.Received(1).ChangeEmailAsync(Arg.Is<ChangeEmail>(x => x.NewEmail == "new@example.test"),
+            await _profileService.Received(1).ChangeEmailAsync(Arg.Is<ChangeEmail>(x => x.NewEmail == "new@example.test"),
                 Arg.Any<CancellationToken>());
             await Assert.That(cut.Find("[role='status']").TextContent)
                 .Contains("A link is on its way to new@example.test.");
@@ -92,7 +92,7 @@ public class ChangeEmailSectionTests : ComponentTestBase
     public async Task Change_WithoutAMailServer_TellsThePageItChanged()
     {
         // Arrange
-        _service.ChangeEmailAsync(Arg.Any<ChangeEmail>(), Arg.Any<CancellationToken>()).Returns(new ProfileChange());
+        _profileService.ChangeEmailAsync(Arg.Any<ChangeEmail>(), Arg.Any<CancellationToken>()).Returns(new ProfileChange());
         IRenderedComponent<MudSnackbarProvider> snackbars = Render<MudSnackbarProvider>();
         IRenderedComponent<ChangeEmailSection> cut = RenderSection(Create(mailAvailable: false));
 
@@ -109,7 +109,7 @@ public class ChangeEmailSectionTests : ComponentTestBase
     public async Task Change_Refused_SaysWhyOnTheField()
     {
         // Arrange
-        _service.ChangeEmailAsync(Arg.Any<ChangeEmail>(), Arg.Any<CancellationToken>())
+        _profileService.ChangeEmailAsync(Arg.Any<ChangeEmail>(), Arg.Any<CancellationToken>())
             .Returns(new ProfileChange { Errors = ["Another account uses that email"] });
         IRenderedComponent<ChangeEmailSection> cut = RenderSection(Create());
 
@@ -135,7 +135,7 @@ public class ChangeEmailSectionTests : ComponentTestBase
 
         // Assert
         cut.WaitForState(() => cut.Markup.Contains("Enter an email address", StringComparison.Ordinal));
-        await _service.DidNotReceive().ChangeEmailAsync(Arg.Any<ChangeEmail>(), Arg.Any<CancellationToken>());
+        await _profileService.DidNotReceive().ChangeEmailAsync(Arg.Any<ChangeEmail>(), Arg.Any<CancellationToken>());
     }
 
     private IRenderedComponent<ChangeEmailSection> RenderSection(ProfileDetails profile) =>

@@ -268,7 +268,7 @@ public class BankConnectionTests
     {
         BankConnection connection = BuildConnection();
 
-        await Assert.That(connection.IsWithinStrongAuthentication(IssuedAt.AddMinutes(minutesLater))).IsEqualTo(within);
+        await Assert.That(connection.IsWithinEnhancedAuthenticationWindow(IssuedAt.AddMinutes(minutesLater))).IsEqualTo(within);
     }
 
     [Test]
@@ -282,7 +282,7 @@ public class BankConnectionTests
         connection.Reauthenticate("new-code", ["accounts"], renewedAt, renewedAt.AddDays(90));
 
         // Assert
-        await Assert.That(connection.IsWithinStrongAuthentication(renewedAt.AddMinutes(1))).IsTrue();
+        await Assert.That(connection.IsWithinEnhancedAuthenticationWindow(renewedAt.AddMinutes(1))).IsTrue();
     }
 
     private static DateTime ExpiresAt => IssuedAt.AddDays(90);

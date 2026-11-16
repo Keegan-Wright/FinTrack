@@ -115,17 +115,4 @@ public class AuthenticationTests : IntegrationTestBase
             await Assert.That(home.Headers.Location!.ToString()).Contains("Account/Login");
         }
     }
-
-    [Test]
-    public async Task OidcChallenge_IsNotMapped_WhenOidcIsNotConfigured()
-    {
-        // Arrange, signed in, as signed out any address that isn't a page sends them to sign in first
-        SignedInUser user = await RegisterUserAsync();
-
-        // Act
-        HttpResponseMessage response = await user.Client.GetAsync("/auth/oidc", CancellationToken);
-
-        // Assert, the app's not found page rather than a challenge
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
-    }
 }

@@ -17,12 +17,12 @@ public sealed class NotificationEmails : INotificationEmails
 
     public const string TestSubject = TestEmailBody.Subject;
 
-    private readonly IEmailRenderer _renderer;
+    private readonly IEmailRenderer _emailRenderer;
     private readonly PublicAddress _publicAddress;
 
-    public NotificationEmails(IEmailRenderer renderer, PublicAddress publicAddress)
+    public NotificationEmails(IEmailRenderer emailRenderer, PublicAddress publicAddress)
     {
-        _renderer = renderer;
+        _emailRenderer = emailRenderer;
         _publicAddress = publicAddress;
     }
 
@@ -33,7 +33,7 @@ public sealed class NotificationEmails : INotificationEmails
         Uri? link = _publicAddress.LinkTo(notification.Link);
         Uri? settings = _publicAddress.LinkTo(SettingsPath);
 
-        string html = await _renderer.RenderAsync<NotificationEmailBody>(new Dictionary<string, object?>
+        string html = await _emailRenderer.RenderAsync<NotificationEmailBody>(new Dictionary<string, object?>
         {
             [nameof(NotificationEmailBody.Label)] = NotificationKindStyle.Label(notification.Kind),
             [nameof(NotificationEmailBody.Accent)] = NotificationKindStyle.Accent(notification.Kind),
@@ -54,7 +54,7 @@ public sealed class NotificationEmails : INotificationEmails
     {
         Uri? settings = _publicAddress.LinkTo(SettingsPath);
 
-        string html = await _renderer.RenderAsync<TestEmailBody>(new Dictionary<string, object?>
+        string html = await _emailRenderer.RenderAsync<TestEmailBody>(new Dictionary<string, object?>
         {
             [nameof(TestEmailBody.Settings)] = settings,
             [nameof(TestEmailBody.PublicUrl)] = _publicAddress.Url

@@ -29,7 +29,7 @@ public sealed class SavingsGoalsApiClient : ISavingsGoalsService
     {
         using HttpResponseMessage response =
             await _http.GetAsync($"{ApiRoutes.SavingsGoals}/{id}", cancellationToken);
-        response.EnsureFound();
+        await response.EnsureFoundAsync(cancellationToken);
         return await response.ReadRequiredJsonAsync<SavingsGoal>(cancellationToken);
     }
 
@@ -40,7 +40,7 @@ public sealed class SavingsGoalsApiClient : ISavingsGoalsService
     {
         using HttpResponseMessage response =
             await _http.GetAsync($"{ApiRoutes.SavingsGoals}/{id}/history", cancellationToken);
-        response.EnsureFound();
+        await response.EnsureFoundAsync(cancellationToken);
         return await response.ReadRequiredJsonAsync<List<BalancePoint>>(cancellationToken);
     }
 
@@ -48,7 +48,7 @@ public sealed class SavingsGoalsApiClient : ISavingsGoalsService
     {
         using HttpResponseMessage response =
             await _http.PostAsJsonAsync(ApiRoutes.SavingsGoals, goal, cancellationToken);
-        response.EnsureNameFree(NameTakenException.SavingsGoal, goal.Name);
+        await response.EnsureNameFreeAsync(NameTakenException.SavingsGoal, goal.Name, cancellationToken);
         return await response.ReadRequiredJsonAsync<SavingsGoal>(cancellationToken);
     }
 
@@ -57,7 +57,7 @@ public sealed class SavingsGoalsApiClient : ISavingsGoalsService
     {
         using HttpResponseMessage response =
             await _http.PutAsJsonAsync($"{ApiRoutes.SavingsGoals}/{id}", goal, cancellationToken);
-        response.EnsureNameFree(NameTakenException.SavingsGoal, goal.Name);
+        await response.EnsureNameFreeAsync(NameTakenException.SavingsGoal, goal.Name, cancellationToken);
         return await response.ReadRequiredJsonAsync<SavingsGoal>(cancellationToken);
     }
 

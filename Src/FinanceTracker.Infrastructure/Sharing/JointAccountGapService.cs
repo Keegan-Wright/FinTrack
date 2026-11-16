@@ -12,15 +12,15 @@ namespace FinanceTracker.Infrastructure.Sharing;
 public sealed class JointAccountGapService : ServiceBase<JointAccountGapService>, IJointAccountGapService
 {
     private readonly TimeProvider _timeProvider;
-    private readonly ITransferMatchingService _transferMatching;
+    private readonly ITransferMatchingService _transferMatchingService;
 
     public JointAccountGapService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<JointAccountGapService> logger,
-        TimeProvider timeProvider, ITransferMatchingService transferMatching)
+        TimeProvider timeProvider, ITransferMatchingService transferMatchingService)
         : base(currentUser, financeTrackerContextFactory, logger)
     {
         _timeProvider = timeProvider;
-        _transferMatching = transferMatching;
+        _transferMatchingService = transferMatchingService;
     }
 
     public async Task RefreshAsync(CancellationToken cancellationToken)
@@ -50,7 +50,7 @@ public sealed class JointAccountGapService : ServiceBase<JointAccountGapService>
         // The pairs either of them sees around what filled in or stopped filling in
         if (changed.Count > 0)
         {
-            await _transferMatching.MatchAroundAsync(changed.Distinct().ToList(), cancellationToken);
+            await _transferMatchingService.MatchAroundAsync(changed.Distinct().ToList(), cancellationToken);
         }
     }
 }

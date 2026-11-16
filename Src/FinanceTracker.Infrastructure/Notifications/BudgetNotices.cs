@@ -29,16 +29,16 @@ public sealed class BudgetNotices : ServiceBase<BudgetNotices>, ISyncNotices
     public const string BudgetsLink = "Budgets";
 
     private readonly TimeProvider _timeProvider;
-    private readonly IBudgetsService _budgets;
+    private readonly IBudgetsService _budgetsService;
     private readonly INotifier _notifier;
 
     public BudgetNotices(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<BudgetNotices> logger,
-        TimeProvider timeProvider, IBudgetsService budgets, INotifier notifier)
+        TimeProvider timeProvider, IBudgetsService budgetsService, INotifier notifier)
         : base(currentUser, financeTrackerContextFactory, logger)
     {
         _timeProvider = timeProvider;
-        _budgets = budgets;
+        _budgetsService = budgetsService;
         _notifier = notifier;
     }
 
@@ -53,7 +53,7 @@ public sealed class BudgetNotices : ServiceBase<BudgetNotices>, ISyncNotices
             warningPercent = await WarningPercentAsync(context, cancellationToken);
         }
 
-        BudgetMonthOverview overview = await _budgets.GetMonthAsync(month.Year, month.Month, cancellationToken);
+        BudgetMonthOverview overview = await _budgetsService.GetMonthAsync(month.Year, month.Month, cancellationToken);
         foreach (BudgetStatus budget in overview.Budgets)
         {
             await NotifyForAsync(budget, month, warningPercent, cancellationToken);

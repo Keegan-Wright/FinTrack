@@ -31,14 +31,14 @@ public sealed class DebtsApiClient : IDebtsService
     public async Task<DebtDetail> GetDebtAsync(Guid id, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.GetAsync($"{ApiRoutes.Debts}/{id}", cancellationToken);
-        response.EnsureFound();
+        await response.EnsureFoundAsync(cancellationToken);
         return await response.ReadRequiredJsonAsync<DebtDetail>(cancellationToken);
     }
 
     public async Task<Debt> AddDebtAsync(SaveDebt debt, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.PostAsJsonAsync(ApiRoutes.Debts, debt, cancellationToken);
-        response.EnsureNameFree(NameTakenException.Debt, debt.Name);
+        await response.EnsureNameFreeAsync(NameTakenException.Debt, debt.Name, cancellationToken);
         return await response.ReadRequiredJsonAsync<Debt>(cancellationToken);
     }
 
@@ -46,14 +46,14 @@ public sealed class DebtsApiClient : IDebtsService
     {
         using HttpResponseMessage response =
             await _http.PutAsJsonAsync($"{ApiRoutes.Debts}/{id}", debt, cancellationToken);
-        response.EnsureNameFree(NameTakenException.Debt, debt.Name);
+        await response.EnsureNameFreeAsync(NameTakenException.Debt, debt.Name, cancellationToken);
         return await response.ReadRequiredJsonAsync<Debt>(cancellationToken);
     }
 
     public async Task DeleteDebtAsync(Guid id, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.DeleteAsync($"{ApiRoutes.Debts}/{id}", cancellationToken);
-        response.EnsureFound();
+        await response.EnsureFoundAsync(cancellationToken);
     }
 
     public async Task<DebtForecast> ForecastAsync(Guid id, decimal monthlyPayment,
@@ -68,7 +68,7 @@ public sealed class DebtsApiClient : IDebtsService
                 "The monthly payment must be more than 0.");
         }
 
-        response.EnsureFound();
+        await response.EnsureFoundAsync(cancellationToken);
         return await response.ReadRequiredJsonAsync<DebtForecast>(cancellationToken);
     }
 
@@ -77,7 +77,7 @@ public sealed class DebtsApiClient : IDebtsService
     {
         using HttpResponseMessage response =
             await _http.PutAsJsonAsync($"{ApiRoutes.Debts}/payments/{transactionId}", payment, cancellationToken);
-        response.EnsureFound();
+        await response.EnsureFoundAsync(cancellationToken);
         return await response.ReadRequiredJsonAsync<Transaction>(cancellationToken);
     }
 }

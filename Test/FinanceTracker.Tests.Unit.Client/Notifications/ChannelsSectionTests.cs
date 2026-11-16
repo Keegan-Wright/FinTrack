@@ -10,10 +10,10 @@ namespace FinanceTracker.Tests.Unit.Client.Notifications;
 
 public class ChannelsSectionTests : ComponentTestBase
 {
-    private readonly INotificationsService _service = Substitute.For<INotificationsService>();
+    private readonly INotificationsService _notificationsService = Substitute.For<INotificationsService>();
     private NotificationSettings? _changed;
 
-    public ChannelsSectionTests() => Services.AddSingleton(_service);
+    public ChannelsSectionTests() => Services.AddSingleton(_notificationsService);
 
     [Test]
     public async Task Render_EmailOnly_HasInAppAndEmailColumnsAndNoWebhookOne()
@@ -71,7 +71,7 @@ public class ChannelsSectionTests : ComponentTestBase
         // Assert
         using (Assert.Multiple())
         {
-            await _service.Received(1).ChangeSettingsAsync(
+            await _notificationsService.Received(1).ChangeSettingsAsync(
                 Arg.Is<ChangeNotificationSettings>(x => !x.Emailed.Contains(NotificationKind.SyncFailed)
                                                         && x.Emailed.Count == Kinds - 1
                                                         && x.Webhooked.Count == Kinds && x.InApp.Count == Kinds),
@@ -91,7 +91,7 @@ public class ChannelsSectionTests : ComponentTestBase
         await Box(cut, "Webhook: A bank's access having ended").ChangeAsync(new() { Value = false });
 
         // Assert
-        await _service.Received(1).ChangeSettingsAsync(
+        await _notificationsService.Received(1).ChangeSettingsAsync(
             Arg.Is<ChangeNotificationSettings>(x => !x.Webhooked.Contains(NotificationKind.ConsentEnded)
                                                     && x.Webhooked.Count == Kinds - 1 && x.Emailed.Count == Kinds),
             Arg.Any<CancellationToken>());
@@ -108,7 +108,7 @@ public class ChannelsSectionTests : ComponentTestBase
         await Box(cut, "In app: A bill coming up").ChangeAsync(new() { Value = false });
 
         // Assert
-        await _service.Received(1).ChangeSettingsAsync(
+        await _notificationsService.Received(1).ChangeSettingsAsync(
             Arg.Is<ChangeNotificationSettings>(x => !x.InApp.Contains(NotificationKind.BillDueSoon)
                                                     && x.InApp.Count == Kinds - 1 && x.Emailed.Count == Kinds
                                                     && x.Webhooked.Count == Kinds),
@@ -124,7 +124,7 @@ public class ChannelsSectionTests : ComponentTestBase
     /// Changing the grid answers with what was asked for, as the server does.
     /// </summary>
     private void GivenChangeAnswered(string? webhookUrl = null) =>
-        _service.ChangeSettingsAsync(Arg.Any<ChangeNotificationSettings>(), Arg.Any<CancellationToken>())
+        _notificationsService.ChangeSettingsAsync(Arg.Any<ChangeNotificationSettings>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
                 ChangeNotificationSettings change = call.Arg<ChangeNotificationSettings>();

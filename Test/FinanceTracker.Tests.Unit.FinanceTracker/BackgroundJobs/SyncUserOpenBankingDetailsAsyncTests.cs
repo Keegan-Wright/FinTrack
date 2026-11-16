@@ -33,7 +33,7 @@ public class SyncUserOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
                 (userId, Scenario.ConnectionMappings["first"]),
                 (userId, Scenario.ConnectionMappings["second"])
             ]);
-            await OpenBankingService.Received(2)
+            await OpenBankingSyncService.Received(2)
                 .SyncConnectionAsync(Arg.Any<Guid>(), SyncTypes.All, CancellationToken);
         }
     }
@@ -71,7 +71,7 @@ public class SyncUserOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
             .Do(s => s.BankConnectionScenario.WithConnection("broken", Username))
             .Do(s => s.BankConnectionScenario.WithConnection("third", Username));
 
-        OpenBankingService.SyncConnectionAsync(Scenario.ConnectionMappings["broken"], SyncTypes.All, CancellationToken)
+        OpenBankingSyncService.SyncConnectionAsync(Scenario.ConnectionMappings["broken"], SyncTypes.All, CancellationToken)
             .ThrowsAsync(new InvalidOperationException("boom"));
 
         Guid userId = Scenario.UserMappings[Username];
@@ -83,7 +83,7 @@ public class SyncUserOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
         // Assert
         using (Assert.Multiple())
         {
-            await OpenBankingService.Received(3)
+            await OpenBankingSyncService.Received(3)
                 .SyncConnectionAsync(Arg.Any<Guid>(), SyncTypes.All, CancellationToken);
             await SyncNotifier.Received(1).NotifyAsync(userId);
         }
@@ -106,7 +106,7 @@ public class SyncUserOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
         // Assert
         using (Assert.Multiple())
         {
-            await OpenBankingService.DidNotReceiveWithAnyArgs().SyncConnectionAsync(default, default, default);
+            await OpenBankingSyncService.DidNotReceiveWithAnyArgs().SyncConnectionAsync(default, default, default);
             await SyncNotifier.Received(1).NotifyAsync(userId);
         }
     }

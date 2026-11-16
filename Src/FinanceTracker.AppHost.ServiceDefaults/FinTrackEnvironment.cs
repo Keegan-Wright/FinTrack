@@ -89,4 +89,10 @@ public static class FinTrackEnvironment
     public const string OidcAuthority = "OIDC_Authority";
     public const string OidcClientId = "OIDC_ClientId";
     public const string OidcClientSecret = "OIDC_ClientSecret";
+
+    /// <summary>
+    /// <c>true</c> to let the OIDC authority be plain http, for the integration tests' stand in provider. Off, the
+    /// default, its settings and keys are only read over https. Only the integration tests set it, never the AppHost.
+    /// </summary>
+    public const string OidcAllowHttp = "OIDC_AllowHttp";
 }

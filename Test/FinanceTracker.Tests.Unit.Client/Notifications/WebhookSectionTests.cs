@@ -17,12 +17,12 @@ public class WebhookSectionTests : ComponentTestBase
     private static readonly NotificationSettings Without = Settings(null);
     private static readonly NotificationSettings With = Settings(Url);
 
-    private readonly INotificationsService _service = Substitute.For<INotificationsService>();
+    private readonly INotificationsService _notificationsService = Substitute.For<INotificationsService>();
     private NotificationSettings? _changed;
 
     public WebhookSectionTests()
     {
-        Services.AddSingleton(_service);
+        Services.AddSingleton(_notificationsService);
         Services.AddSingleton(TimeProvider.System);
         Services.AddScoped<IValidator<SetWebhook>, SetWebhookValidator>();
     }
@@ -31,7 +31,7 @@ public class WebhookSectionTests : ComponentTestBase
     public async Task Save_WholeAddress_SetsItAndShowsTheSecretHidden()
     {
         // Arrange
-        _service.SetWebhookAsync(Arg.Any<SetWebhook>(), Arg.Any<CancellationToken>())
+        _notificationsService.SetWebhookAsync(Arg.Any<SetWebhook>(), Arg.Any<CancellationToken>())
             .Returns(new WebhookChange { Settings = With });
         IRenderedComponent<WebhookSection> cut = RenderSection(Without);
 
@@ -43,7 +43,7 @@ public class WebhookSectionTests : ComponentTestBase
         cut.WaitForState(() => cut.Markup.Contains("Signing secret", StringComparison.Ordinal));
         using (Assert.Multiple())
         {
-            await _service.Received(1).SetWebhookAsync(Arg.Is<SetWebhook>(x => x.Url == Url),
+            await _notificationsService.Received(1).SetWebhookAsync(Arg.Is<SetWebhook>(x => x.Url == Url),
                 Arg.Any<CancellationToken>());
             await Assert.That(_changed).IsSameReferenceAs(With);
             await Assert.That(cut.Find("input[type='password']").GetAttribute("value")).IsEqualTo("secret");
@@ -63,14 +63,14 @@ public class WebhookSectionTests : ComponentTestBase
 
         // Assert
         cut.WaitForState(() => cut.Markup.Contains("starting https://", StringComparison.Ordinal));
-        await _service.DidNotReceive().SetWebhookAsync(Arg.Any<SetWebhook>(), Arg.Any<CancellationToken>());
+        await _notificationsService.DidNotReceive().SetWebhookAsync(Arg.Any<SetWebhook>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
     public async Task Save_Refused_SaysWhyOnTheField()
     {
         // Arrange
-        _service.SetWebhookAsync(Arg.Any<SetWebhook>(), Arg.Any<CancellationToken>())
+        _notificationsService.SetWebhookAsync(Arg.Any<SetWebhook>(), Arg.Any<CancellationToken>())
             .Returns(new WebhookChange { Refusal = "This FinTrack doesn't post to addresses on a private network." });
         IRenderedComponent<WebhookSection> cut = RenderSection(Without);
 
@@ -100,7 +100,7 @@ public class WebhookSectionTests : ComponentTestBase
     public async Task Remove_Confirmed_RemovesIt()
     {
         // Arrange
-        _service.RemoveWebhookAsync(Arg.Any<CancellationToken>()).Returns(Without);
+        _notificationsService.RemoveWebhookAsync(Arg.Any<CancellationToken>()).Returns(Without);
         IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
         IRenderedComponent<WebhookSection> cut = RenderSection(With);
 
@@ -110,7 +110,7 @@ public class WebhookSectionTests : ComponentTestBase
         await removing;
 
         // Assert
-        await _service.Received(1).RemoveWebhookAsync(Arg.Any<CancellationToken>());
+        await _notificationsService.Received(1).RemoveWebhookAsync(Arg.Any<CancellationToken>());
         cut.WaitForState(() => !cut.Markup.Contains("Signing secret", StringComparison.Ordinal));
     }
 
@@ -118,7 +118,7 @@ public class WebhookSectionTests : ComponentTestBase
     public async Task NewSecret_Confirmed_ReplacesIt()
     {
         // Arrange
-        _service.ReplaceWebhookSecretAsync(Arg.Any<CancellationToken>()).Returns(Settings(Url, "secret-two"));
+        _notificationsService.ReplaceWebhookSecretAsync(Arg.Any<CancellationToken>()).Returns(Settings(Url, "secret-two"));
         IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
         IRenderedComponent<WebhookSection> cut = RenderSection(With);
 
@@ -140,7 +140,7 @@ public class WebhookSectionTests : ComponentTestBase
         {
             At = DateTime.UtcNow, Failure = "The webhook answered 404, not success."
         });
-        _service.SendTestWebhookAsync(Arg.Any<CancellationToken>()).Returns(failed);
+        _notificationsService.SendTestWebhookAsync(Arg.Any<CancellationToken>()).Returns(failed);
         IRenderedComponent<MudSnackbarProvider> snackbars = Render<MudSnackbarProvider>();
         IRenderedComponent<WebhookSection> cut = RenderSection(With);
 

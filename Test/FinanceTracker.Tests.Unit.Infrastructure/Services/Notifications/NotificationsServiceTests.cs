@@ -22,8 +22,8 @@ public class NotificationsServiceTests : InfrastructureTestBase
 
     private static readonly DateTime Now = new(2026, 11, 6, 12, 0, 0, DateTimeKind.Utc);
 
-    private readonly IMailSender _mail = Substitute.For<IMailSender>();
-    private readonly IWebhookSender _webhooks = Substitute.For<IWebhookSender>();
+    private readonly IMailSender _mailSender = Substitute.For<IMailSender>();
+    private readonly IWebhookSender _webhookSender = Substitute.For<IWebhookSender>();
 
     [Before(Test)]
     public async Task SetUpAsync() =>
@@ -158,7 +158,7 @@ public class NotificationsServiceTests : InfrastructureTestBase
     public async Task GetSettings_NeverChanged_EmailsEveryKindToTheirAddress()
     {
         // Arrange
-        _mail.IsAvailable.Returns(true);
+        _mailSender.IsAvailable.Returns(true);
 
         // Act
         NotificationSettings settings = await Subject(Username).GetSettingsAsync(CancellationToken);
@@ -313,7 +313,7 @@ public class NotificationsServiceTests : InfrastructureTestBase
         // Arrange
         WebhookChange set = await Subject(Username).SetWebhookAsync(
             new SetWebhook { Url = "https://hooks.example.test/fintrack" }, CancellationToken);
-        _webhooks.SendAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<WebhookPayload>(),
+        _webhookSender.SendAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<WebhookPayload>(),
                 Arg.Any<CancellationToken>())
             .ThrowsAsync(new HttpRequestException("No such host"));
 
@@ -323,7 +323,7 @@ public class NotificationsServiceTests : InfrastructureTestBase
         // Assert
         using (Assert.Multiple())
         {
-            await _webhooks.Received(1).SendAsync("https://hooks.example.test/fintrack", set.Settings!.WebhookSecret!,
+            await _webhookSender.Received(1).SendAsync("https://hooks.example.test/fintrack", set.Settings!.WebhookSecret!,
                 Arg.Is<WebhookPayload>(x => x.Event == WebhookPayload.TestEvent), Arg.Any<CancellationToken>());
             await Assert.That(settings!.LastWebhook!.At).IsEqualTo(Now);
             await Assert.That(settings.LastWebhook.Failure).IsEqualTo("FinTrack couldn't reach the webhook.");
@@ -340,7 +340,7 @@ public class NotificationsServiceTests : InfrastructureTestBase
         using (Assert.Multiple())
         {
             await Assert.That(settings).IsNull();
-            await _webhooks.DidNotReceive().SendAsync(Arg.Any<string>(), Arg.Any<string>(),
+            await _webhookSender.DidNotReceive().SendAsync(Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<WebhookPayload>(), Arg.Any<CancellationToken>());
         }
     }
@@ -349,7 +349,7 @@ public class NotificationsServiceTests : InfrastructureTestBase
     public async Task SendTestEmail_MailServerSetUp_EmailsThemAndRecordsItWasSent()
     {
         // Arrange
-        _mail.IsAvailable.Returns(true);
+        _mailSender.IsAvailable.Returns(true);
 
         // Act
         NotificationSettings? settings = await Subject(Username).SendTestEmailAsync(CancellationToken);
@@ -357,7 +357,7 @@ public class NotificationsServiceTests : InfrastructureTestBase
         // Assert
         using (Assert.Multiple())
         {
-            await _mail.Received(1).SendAsync(
+            await _mailSender.Received(1).SendAsync(
                 Arg.Is<MailMessage>(x => x.To == "sam@example.test" && x.Subject == NotificationEmails.TestSubject),
                 Arg.Any<CancellationToken>());
             await Assert.That(settings!.LastEmail!.At).IsEqualTo(Now);
@@ -370,7 +370,7 @@ public class NotificationsServiceTests : InfrastructureTestBase
     public async Task SendTestEmail_EmailNotConfirmed_SendsNothingAndSaysItIsnt()
     {
         // Arrange
-        _mail.IsAvailable.Returns(true);
+        _mailSender.IsAvailable.Returns(true);
         await Scenario.Do(s => s.UserScenario.WithUnconfirmedEmail(Username));
 
         // Act
@@ -381,7 +381,7 @@ public class NotificationsServiceTests : InfrastructureTestBase
         using (Assert.Multiple())
         {
             await Assert.That(sent).IsNull();
-            await _mail.DidNotReceive().SendAsync(Arg.Any<MailMessage>(), Arg.Any<CancellationToken>());
+            await _mailSender.DidNotReceive().SendAsync(Arg.Any<MailMessage>(), Arg.Any<CancellationToken>());
             await Assert.That(settings.EmailAddress).IsEqualTo("sam@example.test");
             await Assert.That(settings.EmailConfirmed).IsFalse();
         }
@@ -391,8 +391,8 @@ public class NotificationsServiceTests : InfrastructureTestBase
     public async Task SendTestEmail_Fails_RecordsWhyInWords()
     {
         // Arrange
-        _mail.IsAvailable.Returns(true);
-        _mail.SendAsync(Arg.Any<MailMessage>(), Arg.Any<CancellationToken>())
+        _mailSender.IsAvailable.Returns(true);
+        _mailSender.SendAsync(Arg.Any<MailMessage>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new MailKit.Security.AuthenticationException("535 bad credentials"));
 
         // Act
@@ -416,7 +416,7 @@ public class NotificationsServiceTests : InfrastructureTestBase
         using (Assert.Multiple())
         {
             await Assert.That(settings).IsNull();
-            await _mail.DidNotReceive().SendAsync(Arg.Any<MailMessage>(), Arg.Any<CancellationToken>());
+            await _mailSender.DidNotReceive().SendAsync(Arg.Any<MailMessage>(), Arg.Any<CancellationToken>());
         }
     }
 
@@ -424,7 +424,7 @@ public class NotificationsServiceTests : InfrastructureTestBase
     public async Task SendTestEmail_NoAddress_SendsNothing()
     {
         // Arrange
-        _mail.IsAvailable.Returns(true);
+        _mailSender.IsAvailable.Returns(true);
         await Scenario.Do(s => s.UserScenario.WithEmail(OtherUsername, ""));
 
         // Act
@@ -434,13 +434,13 @@ public class NotificationsServiceTests : InfrastructureTestBase
         using (Assert.Multiple())
         {
             await Assert.That(settings).IsNull();
-            await _mail.DidNotReceive().SendAsync(Arg.Any<MailMessage>(), Arg.Any<CancellationToken>());
+            await _mailSender.DidNotReceive().SendAsync(Arg.Any<MailMessage>(), Arg.Any<CancellationToken>());
         }
     }
 
     private NotificationsService Subject(string username, WebhookSettings? webhookSettings = null) =>
         new(CurrentUserFor(username), DbContextFactory, NullLogger<NotificationsService>.Instance,
-            new FixedTimeProvider(Now), _mail, TestEmails.Create(), _webhooks, webhookSettings ?? new WebhookSettings(),
+            new FixedTimeProvider(Now), _mailSender, TestEmails.Create(), _webhookSender, webhookSettings ?? new WebhookSettings(),
             PublicAddress.Unknown);
 
     private async Task<Guid> AddAsync(string username, string title, bool inApp = true)

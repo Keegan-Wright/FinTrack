@@ -29,15 +29,15 @@ public class UsersPageTests : ComponentTestBase
         HasPassword = false, UsesIdentityProvider = true, IsAdmin = false, IsLocked = true, IsYou = false
     };
 
-    private readonly IUsersService _service = Substitute.For<IUsersService>();
+    private readonly IUsersService _usersService = Substitute.For<IUsersService>();
 
     public UsersPageTests()
     {
         AddBunitPersistentComponentState();
-        Services.AddSingleton(_service);
+        Services.AddSingleton(_usersService);
         Services.AddSingleton(TimeProvider.System);
         JSInterop.Mode = JSRuntimeMode.Loose;
-        _service.GetUsersAsync(Arg.Any<CancellationToken>()).Returns(new[] { Provider, Local }.ToAsyncEnumerable());
+        _usersService.GetUsersAsync(Arg.Any<CancellationToken>()).Returns(new[] { Provider, Local }.ToAsyncEnumerable());
     }
 
     [Test]
@@ -73,7 +73,7 @@ public class UsersPageTests : ComponentTestBase
             Url = "https://fintrack.example.test/Account/ResetPassword?userId=1&code=abc",
             ExpiresAt = new DateTime(2026, 11, 11, 9, 0, 0, DateTimeKind.Utc)
         };
-        _service.CreateResetLinkAsync(Local.Id, Arg.Any<CancellationToken>()).Returns(link);
+        _usersService.CreateResetLinkAsync(Local.Id, Arg.Any<CancellationToken>()).Returns(link);
         IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
         IRenderedComponent<UsersPage> cut = RenderPage();
         cut.WaitForState(() => cut.FindAll(".ft-users__row").Count == 2);
@@ -96,9 +96,9 @@ public class UsersPageTests : ComponentTestBase
     public async Task Lock_Confirmed_LocksThemAndShowsThemLocked()
     {
         // Arrange
-        _service.GetUsersAsync(Arg.Any<CancellationToken>()).Returns(
+        _usersService.GetUsersAsync(Arg.Any<CancellationToken>()).Returns(
             new[] { Provider, Local }.ToAsyncEnumerable(), new[] { LockedProvider, Local }.ToAsyncEnumerable());
-        _service.LockAsync(Provider.Id, Arg.Any<CancellationToken>()).Returns(true);
+        _usersService.LockAsync(Provider.Id, Arg.Any<CancellationToken>()).Returns(true);
         IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
         IRenderedComponent<UsersPage> cut = RenderPage();
         cut.WaitForState(() => cut.FindAll(".ft-users__row").Count == 2);
@@ -112,7 +112,7 @@ public class UsersPageTests : ComponentTestBase
         cut.WaitForState(() => Row(cut, "alex").TextContent.Contains("Locked"));
         using (Assert.Multiple())
         {
-            await _service.Received(1).LockAsync(Provider.Id, Arg.Any<CancellationToken>());
+            await _usersService.Received(1).LockAsync(Provider.Id, Arg.Any<CancellationToken>());
             await Assert.That(ButtonTexts(Row(cut, "alex"))).IsEquivalentTo(["Unlock"]);
         }
     }
@@ -131,14 +131,14 @@ public class UsersPageTests : ComponentTestBase
         await locking.WaitAsync(TestTimeouts.Wait);
 
         // Assert
-        await _service.DidNotReceive().LockAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _usersService.DidNotReceive().LockAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
     public async Task Unlock_Clicked_UnlocksThemAndShowsTheLockAgain()
     {
         // Arrange
-        _service.GetUsersAsync(Arg.Any<CancellationToken>()).Returns(
+        _usersService.GetUsersAsync(Arg.Any<CancellationToken>()).Returns(
             new[] { LockedProvider, Local }.ToAsyncEnumerable(), new[] { Provider, Local }.ToAsyncEnumerable());
         IRenderedComponent<UsersPage> cut = RenderPage();
         cut.WaitForState(() => cut.FindAll(".ft-users__row").Count == 2);
@@ -150,7 +150,7 @@ public class UsersPageTests : ComponentTestBase
         cut.WaitForState(() => !Row(cut, "alex").TextContent.Contains("Locked"));
         using (Assert.Multiple())
         {
-            await _service.Received(1).UnlockAsync(Provider.Id, Arg.Any<CancellationToken>());
+            await _usersService.Received(1).UnlockAsync(Provider.Id, Arg.Any<CancellationToken>());
             await Assert.That(ButtonTexts(Row(cut, "alex"))).IsEquivalentTo(["Lock"]);
         }
     }

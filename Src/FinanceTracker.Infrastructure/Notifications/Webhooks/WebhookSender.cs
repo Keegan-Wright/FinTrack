@@ -31,12 +31,12 @@ public sealed class WebhookSender : IWebhookSender
     /// </summary>
     public static readonly TimeSpan Timeout = TimeSpan.FromSeconds(10);
 
-    private readonly IHttpClientFactory _clientFactory;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly TimeProvider _timeProvider;
 
-    public WebhookSender(IHttpClientFactory clientFactory, TimeProvider timeProvider)
+    public WebhookSender(IHttpClientFactory httpClientFactory, TimeProvider timeProvider)
     {
-        _clientFactory = clientFactory;
+        _httpClientFactory = httpClientFactory;
         _timeProvider = timeProvider;
     }
 
@@ -57,7 +57,7 @@ public sealed class WebhookSender : IWebhookSender
         request.Headers.Add(TimestampHeader, timestamp.ToString(CultureInfo.InvariantCulture));
         request.Headers.Add(SignatureHeader, WebhookSignature.Sign(secret, timestamp, body));
 
-        using HttpClient client = _clientFactory.CreateClient(ClientName);
+        using HttpClient client = _httpClientFactory.CreateClient(ClientName);
         using HttpResponseMessage response = await client.SendAsync(request, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {

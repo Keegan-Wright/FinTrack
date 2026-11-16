@@ -15,12 +15,12 @@ public sealed class AccountEmails : IAccountEmails
     public const string ResetPasswordSubject = "Reset your FinTrack password";
     public const string ChangeEmailSubject = "Confirm your new email for FinTrack";
 
-    private readonly IEmailRenderer _renderer;
+    private readonly IEmailRenderer _emailRenderer;
     private readonly PublicAddress _publicAddress;
 
-    public AccountEmails(IEmailRenderer renderer, PublicAddress publicAddress)
+    public AccountEmails(IEmailRenderer emailRenderer, PublicAddress publicAddress)
     {
-        _renderer = renderer;
+        _emailRenderer = emailRenderer;
         _publicAddress = publicAddress;
     }
 
@@ -56,7 +56,7 @@ public sealed class AccountEmails : IAccountEmails
     {
         ArgumentNullException.ThrowIfNull(link);
 
-        string html = await _renderer.RenderAsync<AccountEmailBody>(new Dictionary<string, object?>
+        string html = await _emailRenderer.RenderAsync<AccountEmailBody>(new Dictionary<string, object?>
         {
             [nameof(AccountEmailBody.Title)] = email.Title,
             [nameof(AccountEmailBody.Message)] = email.Message,

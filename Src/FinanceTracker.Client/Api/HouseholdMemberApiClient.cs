@@ -29,7 +29,8 @@ public sealed class HouseholdMemberApiClient : IHouseholdMemberService
     {
         using HttpResponseMessage response =
             await _http.PostAsJsonAsync(ApiRoutes.HouseholdMembers, categoryToAdd, cancellationToken);
-        response.EnsureNameFree(NameTakenException.Person, $"{categoryToAdd.FirstName} {categoryToAdd.LastName}");
+        await response.EnsureNameFreeAsync(NameTakenException.Person,
+            $"{categoryToAdd.FirstName} {categoryToAdd.LastName}", cancellationToken);
         return await response.ReadRequiredJsonAsync<HouseholdMember>(cancellationToken);
     }
 
@@ -38,7 +39,8 @@ public sealed class HouseholdMemberApiClient : IHouseholdMemberService
     {
         using HttpResponseMessage response =
             await _http.PutAsJsonAsync($"{ApiRoutes.HouseholdMembers}/{id}", request, cancellationToken);
-        response.EnsureNameFree(NameTakenException.Person, $"{request.FirstName} {request.LastName}");
+        await response.EnsureNameFreeAsync(NameTakenException.Person, $"{request.FirstName} {request.LastName}",
+            cancellationToken);
         return await response.ReadRequiredJsonAsync<HouseholdMember>(cancellationToken);
     }
 
@@ -47,7 +49,7 @@ public sealed class HouseholdMemberApiClient : IHouseholdMemberService
     {
         using HttpResponseMessage response = await _http.PutAsJsonAsync(
             $"{ApiRoutes.HouseholdMembers}/{id}/recognition", request, cancellationToken);
-        response.EnsureFound();
+        await response.EnsureFoundAsync(cancellationToken);
         return await response.ReadRequiredJsonAsync<HouseholdMemberRecognitionSaved>(cancellationToken);
     }
 
@@ -57,7 +59,7 @@ public sealed class HouseholdMemberApiClient : IHouseholdMemberService
         using HttpResponseMessage response = await _http.PutAsJsonAsync($"{ApiRoutes.HouseholdMembers}/{id}/link",
             request, cancellationToken);
         // The name that clashes is the linked person's, which the page knows
-        response.EnsureNameFree(NameTakenException.Person, "that person");
+        await response.EnsureNameFreeAsync(NameTakenException.Person, "that person", cancellationToken);
         return await response.ReadRequiredJsonAsync<HouseholdMember>(cancellationToken);
     }
 

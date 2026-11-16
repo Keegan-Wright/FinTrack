@@ -56,7 +56,7 @@ public sealed class SharingApiClient : ISharingService
     {
         using HttpResponseMessage response = await _http.PutAsJsonAsync(
             $"{ApiRoutes.SharingLinks}/{linkId}/shares/accounts", request, cancellationToken);
-        response.EnsureFound();
+        await response.EnsureFoundAsync(cancellationToken);
         return await response.ReadRequiredJsonAsync<LinkShares>(cancellationToken);
     }
 
@@ -65,7 +65,7 @@ public sealed class SharingApiClient : ISharingService
     {
         using HttpResponseMessage response = await _http.PutAsJsonAsync(
             $"{ApiRoutes.SharingLinks}/{linkId}/shares/items", request, cancellationToken);
-        response.EnsureFound();
+        await response.EnsureFoundAsync(cancellationToken);
         return await response.ReadRequiredJsonAsync<LinkShares>(cancellationToken);
     }
 
@@ -74,7 +74,7 @@ public sealed class SharingApiClient : ISharingService
     {
         using HttpResponseMessage response = await _http.PostAsJsonAsync(
             $"{ApiRoutes.SharingLinks}/{linkId}/joint-accounts", request, cancellationToken);
-        response.EnsureFound();
+        await response.EnsureFoundAsync(cancellationToken);
         return await response.ReadRequiredJsonAsync<LinkShares>(cancellationToken);
     }
 
@@ -83,7 +83,7 @@ public sealed class SharingApiClient : ISharingService
     {
         using HttpResponseMessage response = await _http.DeleteAsync(
             $"{ApiRoutes.SharingLinks}/{linkId}/joint-accounts/{jointAccountId}", cancellationToken);
-        response.EnsureFound();
+        await response.EnsureFoundAsync(cancellationToken);
         return await response.ReadRequiredJsonAsync<LinkShares>(cancellationToken);
     }
 

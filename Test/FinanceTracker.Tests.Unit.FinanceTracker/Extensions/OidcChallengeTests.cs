@@ -19,7 +19,7 @@ namespace FinanceTracker.Tests.Unit.FinanceTracker.Extensions;
 /// </summary>
 public sealed class OidcChallengeTests : IDisposable
 {
-    private readonly IAuthenticationService _authentication = Substitute.For<IAuthenticationService>();
+    private readonly IAuthenticationService _authenticationService = Substitute.For<IAuthenticationService>();
     private readonly TestMetrics _metrics = new();
 
     public static IEnumerable<Func<Exception>> ProviderFailures() =>
@@ -37,7 +37,7 @@ public sealed class OidcChallengeTests : IDisposable
     public async Task Challenge_ProviderRefuses_GoesToSignInSayingSingleSignOnFailed(Exception failure)
     {
         // Arrange
-        _authentication.ChallengeAsync(Arg.Any<HttpContext>(), Arg.Any<string?>(),
+        _authenticationService.ChallengeAsync(Arg.Any<HttpContext>(), Arg.Any<string?>(),
             Arg.Any<AuthenticationProperties?>()).ThrowsAsync(failure);
 
         // Act
@@ -53,7 +53,7 @@ public sealed class OidcChallengeTests : IDisposable
     {
         // Arrange
         using MetricCollector<long> failures = _metrics.Collect<long>(FinTrackMetrics.SingleSignOnFailuresName);
-        _authentication.ChallengeAsync(Arg.Any<HttpContext>(), Arg.Any<string?>(),
+        _authenticationService.ChallengeAsync(Arg.Any<HttpContext>(), Arg.Any<string?>(),
             Arg.Any<AuthenticationProperties?>()).ThrowsAsync(new HttpRequestException("Connection refused"));
 
         // Act
@@ -84,7 +84,7 @@ public sealed class OidcChallengeTests : IDisposable
         IResult result = await AuthenticationExtensions.ChallengeOidcAsync(Context(), "/Bills");
 
         // Assert, the handler has answered with the redirect to the provider
-        await _authentication.Received(1).ChallengeAsync(Arg.Any<HttpContext>(), "OpenIdConnect",
+        await _authenticationService.Received(1).ChallengeAsync(Arg.Any<HttpContext>(), "OpenIdConnect",
             Arg.Is<AuthenticationProperties?>(x =>
                 x!.RedirectUri == $"/auth/oidc/complete?returnUrl={Uri.EscapeDataString("/Bills")}"));
         await Assert.That(result).IsNotTypeOf<RedirectHttpResult>();
@@ -93,7 +93,7 @@ public sealed class OidcChallengeTests : IDisposable
     private DefaultHttpContext Context()
     {
         ServiceCollection services = new();
-        services.AddSingleton(_authentication);
+        services.AddSingleton(_authenticationService);
         services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
         services.AddSingleton(_metrics.Metrics);
         DefaultHttpContext context = new() { RequestServices = services.BuildServiceProvider() };

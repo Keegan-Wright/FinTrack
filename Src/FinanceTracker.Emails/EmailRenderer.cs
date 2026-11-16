@@ -17,19 +17,19 @@ namespace FinanceTracker.Emails;
 [Singleton<IEmailRenderer>]
 public sealed class EmailRenderer : IEmailRenderer
 {
-    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IServiceScopeFactory _serviceScopeFactory;
     private readonly ILoggerFactory _loggerFactory;
 
-    public EmailRenderer(IServiceScopeFactory scopeFactory, ILoggerFactory loggerFactory)
+    public EmailRenderer(IServiceScopeFactory serviceScopeFactory, ILoggerFactory loggerFactory)
     {
-        _scopeFactory = scopeFactory;
+        _serviceScopeFactory = serviceScopeFactory;
         _loggerFactory = loggerFactory;
     }
 
     public async Task<string> RenderAsync<TComponent>(IDictionary<string, object?> parameters)
         where TComponent : IComponent
     {
-        await using AsyncServiceScope scope = _scopeFactory.CreateAsyncScope();
+        await using AsyncServiceScope scope = _serviceScopeFactory.CreateAsyncScope();
         await using HtmlRenderer renderer = new(scope.ServiceProvider, _loggerFactory);
         return await renderer.Dispatcher.InvokeAsync(async () =>
         {

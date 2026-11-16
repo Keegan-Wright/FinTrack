@@ -14,9 +14,9 @@ public class IdentityEmailSenderTests
     private static readonly FinanceTrackerUser User = new("Sam", "Smith", "sam@example.test", "sam");
 
     private readonly IMailSender _mailSender = Substitute.For<IMailSender>();
-    private readonly IAccountEmails _emails = Substitute.For<IAccountEmails>();
+    private readonly IAccountEmails _accountEmails = Substitute.For<IAccountEmails>();
 
-    private IdentityEmailSender Subject => new(_mailSender, _emails, NullLogger<IdentityEmailSender>.Instance);
+    private IdentityEmailSender Subject => new(_mailSender, _accountEmails, NullLogger<IdentityEmailSender>.Instance);
 
     [Test]
     public async Task SendPasswordResetLink_MailServerSetUp_SendsTheResetEmail()
@@ -24,7 +24,7 @@ public class IdentityEmailSenderTests
         // Arrange
         MailMessage email = new("sam@example.test", "Reset", "text", "html");
         _mailSender.IsAvailable.Returns(true);
-        _emails.ResetPasswordAsync("sam@example.test", new Uri(Link)).Returns(email);
+        _accountEmails.ResetPasswordAsync("sam@example.test", new Uri(Link)).Returns(email);
 
         // Act
         await Subject.SendPasswordResetLinkAsync(User, "sam@example.test", Link);
@@ -39,7 +39,7 @@ public class IdentityEmailSenderTests
         // Arrange
         MailMessage email = new("sam@example.test", "Confirm", "text", "html");
         _mailSender.IsAvailable.Returns(true);
-        _emails.ConfirmEmailAsync("sam@example.test", new Uri(Link)).Returns(email);
+        _accountEmails.ConfirmEmailAsync("sam@example.test", new Uri(Link)).Returns(email);
 
         // Act
         await Subject.SendConfirmationLinkAsync(User, "sam@example.test", Link);
@@ -66,7 +66,7 @@ public class IdentityEmailSenderTests
     {
         // Arrange
         _mailSender.IsAvailable.Returns(true);
-        _emails.ResetPasswordAsync(Arg.Any<string>(), Arg.Any<Uri>())
+        _accountEmails.ResetPasswordAsync(Arg.Any<string>(), Arg.Any<Uri>())
             .Returns(new MailMessage("sam@example.test", "Reset", "text", "html"));
         _mailSender.SendAsync(Arg.Any<MailMessage>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException(new InvalidOperationException("Mail server down")));

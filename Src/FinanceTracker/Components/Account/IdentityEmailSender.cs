@@ -13,13 +13,14 @@ namespace FinanceTracker.Components.Account;
 public sealed class IdentityEmailSender : IEmailSender<FinanceTrackerUser>
 {
     private readonly IMailSender _mailSender;
-    private readonly IAccountEmails _emails;
+    private readonly IAccountEmails _accountEmails;
     private readonly ILogger<IdentityEmailSender> _logger;
 
-    public IdentityEmailSender(IMailSender mailSender, IAccountEmails emails, ILogger<IdentityEmailSender> logger)
+    public IdentityEmailSender(IMailSender mailSender, IAccountEmails accountEmails,
+        ILogger<IdentityEmailSender> logger)
     {
         _mailSender = mailSender;
-        _emails = emails;
+        _accountEmails = accountEmails;
         _logger = logger;
     }
 
@@ -27,7 +28,7 @@ public sealed class IdentityEmailSender : IEmailSender<FinanceTrackerUser>
     {
         if (CanSend(user))
         {
-            await _mailSender.SendAsync(await _emails.ConfirmEmailAsync(email, new Uri(confirmationLink)),
+            await _mailSender.SendAsync(await _accountEmails.ConfirmEmailAsync(email, new Uri(confirmationLink)),
                 CancellationToken.None);
         }
     }
@@ -36,7 +37,7 @@ public sealed class IdentityEmailSender : IEmailSender<FinanceTrackerUser>
     {
         if (CanSend(user))
         {
-            await _mailSender.SendAsync(await _emails.ResetPasswordAsync(email, new Uri(resetLink)),
+            await _mailSender.SendAsync(await _accountEmails.ResetPasswordAsync(email, new Uri(resetLink)),
                 CancellationToken.None);
         }
     }

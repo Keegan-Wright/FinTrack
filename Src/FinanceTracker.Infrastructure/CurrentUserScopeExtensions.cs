@@ -17,7 +17,7 @@ public static class CurrentUserScopeExtensions
         }
     }
 
-    extension(IServiceScopeFactory scopeFactory)
+    extension(IServiceScopeFactory serviceScopeFactory)
     {
         /// <summary>
         /// Creates a scope whose services act as <paramref name="userId"/>, for work outside a request such as
@@ -25,7 +25,7 @@ public static class CurrentUserScopeExtensions
         /// </summary>
         public AsyncServiceScope CreateUserScope(Guid userId)
         {
-            AsyncServiceScope scope = scopeFactory.CreateAsyncScope();
+            AsyncServiceScope scope = serviceScopeFactory.CreateAsyncScope();
             scope.ServiceProvider.GetRequiredService<CurrentUser>().Set(userId);
             return scope;
         }

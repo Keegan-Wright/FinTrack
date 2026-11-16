@@ -28,15 +28,15 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
     public const string DataHttpClientName = "OpenBankingDataClient";
 
     private readonly TrueLayerOpenBankingConfiguration _trueLayerOpenBankingConfiguration;
-    private readonly IHttpClientFactory _clientFactory;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<TrueLayerOpenBankingApiService> _logger;
 
     public TrueLayerOpenBankingApiService(TrueLayerOpenBankingConfiguration trueLayerOpenBankingConfiguration,
-        IHttpClientFactory clientFactory, TimeProvider timeProvider, ILogger<TrueLayerOpenBankingApiService> logger)
+        IHttpClientFactory httpClientFactory, TimeProvider timeProvider, ILogger<TrueLayerOpenBankingApiService> logger)
     {
         _trueLayerOpenBankingConfiguration = trueLayerOpenBankingConfiguration;
-        _clientFactory = clientFactory;
+        _httpClientFactory = httpClientFactory;
         _timeProvider = timeProvider;
         _logger = logger;
     }
@@ -325,7 +325,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
     public async Task<byte[]> GetProviderLogoAsync(string logoUri, CancellationToken cancellationToken)
     {
         // Logos are public assets on their own host, no base address or auth headers
-        using HttpClient httpClient = _clientFactory.CreateClient(StandardHttpClientName);
+        using HttpClient httpClient = _httpClientFactory.CreateClient(StandardHttpClientName);
 
         return await httpClient.GetByteArrayAsync(logoUri, cancellationToken);
     }
@@ -338,7 +338,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
 
     private async Task<HttpClient> BuildHttpClient(string clientName, Uri baseUrl, string? authHeader)
     {
-        HttpClient httpClient = _clientFactory.CreateClient(clientName);
+        HttpClient httpClient = _httpClientFactory.CreateClient(clientName);
         httpClient.BaseAddress = baseUrl;
 
         if (!string.IsNullOrEmpty(authHeader))

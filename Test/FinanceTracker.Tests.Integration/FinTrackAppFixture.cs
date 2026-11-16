@@ -5,6 +5,7 @@ using System.Net;
 using FinanceTracker.AppHost.ServiceDefaults;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Encryption;
+using FinanceTracker.Tests.Integration.Auth;
 using FinanceTracker.Tests.Integration.Http;
 using FinanceTracker.Tests.Integration.OpenBanking;
 using FinanceTracker.Tests.Unit.Shared;
@@ -34,6 +35,11 @@ public sealed class FinTrackAppFixture : AspireFixture<Projects.FinanceTracker_A
     private const int TestMaxPoolSize = 30;
 
     public FakeTrueLayer TrueLayer { get; } = new();
+
+    /// <summary>
+    /// The OIDC provider the app's single sign on goes to, see <see cref="FakeOidcProvider"/>.
+    /// </summary>
+    public FakeOidcProvider Oidc { get; } = new();
 
     public IDbContextFactory<FinanceTrackerContext> DbContextFactory { get; private set; } = null!;
 
@@ -93,7 +99,13 @@ public sealed class FinTrackAppFixture : AspireFixture<Projects.FinanceTracker_A
             .WithEnvironment(FinTrackEnvironment.WebhookAllowPrivate, "true")
             // Every test signs in and invites from this machine, more than the limits let one address
             .WithEnvironment(FinTrackEnvironment.SignInsPerMinute, "100000")
-            .WithEnvironment(FinTrackEnvironment.InvitesPerHour, "100000");
+            .WithEnvironment(FinTrackEnvironment.InvitesPerHour, "100000")
+            // Single sign on goes to the stand in provider, which is plain http, see FakeOidcProvider. Set here rather
+            // than through the AppHost's OIDC parameters, which the args leave empty so no real provider is used
+            .WithEnvironment(FinTrackEnvironment.OidcAuthority, Oidc.Issuer)
+            .WithEnvironment(FinTrackEnvironment.OidcClientId, FakeOidcProvider.ClientId)
+            .WithEnvironment(FinTrackEnvironment.OidcClientSecret, FakeOidcProvider.ClientSecret)
+            .WithEnvironment(FinTrackEnvironment.OidcAllowHttp, "true");
     }
 
     public override async Task InitializeAsync()
@@ -138,6 +150,7 @@ public sealed class FinTrackAppFixture : AspireFixture<Projects.FinanceTracker_A
     {
         await base.DisposeAsync();
         TrueLayer.Dispose();
+        Oidc.Dispose();
         Mail.Dispose();
     }
 }

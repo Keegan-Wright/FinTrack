@@ -23,20 +23,20 @@ public sealed class SharingEffects : ServiceBase<SharingService>, ISharingEffect
     /// </summary>
     private const string SharingPath = "Sharing";
 
-    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IServiceScopeFactory _serviceScopeFactory;
 
     public SharingEffects(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<SharingService> logger,
-        IServiceScopeFactory scopeFactory)
+        IServiceScopeFactory serviceScopeFactory)
         : base(currentUser, financeTrackerContextFactory, logger)
     {
-        _scopeFactory = scopeFactory;
+        _serviceScopeFactory = serviceScopeFactory;
     }
 
     public async Task NotifyAsync(Guid userId, NotificationKind kind, string key, string title, string message,
         CancellationToken cancellationToken)
     {
-        await using AsyncServiceScope scope = _scopeFactory.CreateUserScope(userId);
+        await using AsyncServiceScope scope = _serviceScopeFactory.CreateUserScope(userId);
         await scope.ServiceProvider.GetRequiredService<INotifier>()
             .NotifyAsync(kind, key, title, message, SharingPath, cancellationToken);
     }
@@ -56,7 +56,7 @@ public sealed class SharingEffects : ServiceBase<SharingService>, ISharingEffect
     {
         foreach (IGrouping<Guid, Guid> owner in accounts.GroupBy(static x => x.OwnerId, static x => x.AccountId))
         {
-            await using AsyncServiceScope scope = _scopeFactory.CreateUserScope(owner.Key);
+            await using AsyncServiceScope scope = _serviceScopeFactory.CreateUserScope(owner.Key);
             await scope.ServiceProvider.GetRequiredService<IRuleApplicationService>()
                 .ReapplyToAccountsAsync(owner.Distinct().ToList(), cancellationToken);
         }
@@ -71,7 +71,7 @@ public sealed class SharingEffects : ServiceBase<SharingService>, ISharingEffect
         // Each as themselves, they're in different groups once the link has ended
         foreach (Guid userId in new[] { link.UserId, link.InviteeId })
         {
-            await using AsyncServiceScope scope = _scopeFactory.CreateUserScope(userId);
+            await using AsyncServiceScope scope = _serviceScopeFactory.CreateUserScope(userId);
             await scope.ServiceProvider.GetRequiredService<ITransferMatchingService>().MatchAsync(cancellationToken);
         }
     }

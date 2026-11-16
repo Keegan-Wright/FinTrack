@@ -40,7 +40,7 @@ public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
                 (userId, Scenario.ConnectionMappings["second"]),
                 (otherUserId, Scenario.ConnectionMappings["theirs"])
             ]);
-            await OpenBankingService.Received(3)
+            await OpenBankingSyncService.Received(3)
                 .SyncConnectionAsync(Arg.Any<Guid>(), SyncTypes.All, CancellationToken);
         }
     }
@@ -71,9 +71,9 @@ public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
             {
                 SyncNotifier.NotifyStartedAsync(Arg.Any<Guid>());
                 SyncNotifier.NotifyStartedAsync(Arg.Any<Guid>());
-                OpenBankingService.SyncConnectionAsync(Arg.Any<Guid>(), SyncTypes.All, Arg.Any<CancellationToken>());
-                OpenBankingService.SyncConnectionAsync(Arg.Any<Guid>(), SyncTypes.All, Arg.Any<CancellationToken>());
-                OpenBankingService.SyncConnectionAsync(Arg.Any<Guid>(), SyncTypes.All, Arg.Any<CancellationToken>());
+                OpenBankingSyncService.SyncConnectionAsync(Arg.Any<Guid>(), SyncTypes.All, Arg.Any<CancellationToken>());
+                OpenBankingSyncService.SyncConnectionAsync(Arg.Any<Guid>(), SyncTypes.All, Arg.Any<CancellationToken>());
+                OpenBankingSyncService.SyncConnectionAsync(Arg.Any<Guid>(), SyncTypes.All, Arg.Any<CancellationToken>());
             });
         }
     }
@@ -112,7 +112,7 @@ public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
             .Do(s => s.BankConnectionScenario.WithConnection("broken", Username))
             .Do(s => s.BankConnectionScenario.WithConnection("third", Username));
 
-        OpenBankingService.SyncConnectionAsync(Scenario.ConnectionMappings["broken"], SyncTypes.All, CancellationToken)
+        OpenBankingSyncService.SyncConnectionAsync(Scenario.ConnectionMappings["broken"], SyncTypes.All, CancellationToken)
             .ThrowsAsync(new InvalidOperationException("boom"));
 
         using TestMetrics metrics = new();
@@ -125,7 +125,7 @@ public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
         // Assert
         using (Assert.Multiple())
         {
-            await OpenBankingService.Received(3)
+            await OpenBankingSyncService.Received(3)
                 .SyncConnectionAsync(Arg.Any<Guid>(), SyncTypes.All, CancellationToken);
             await SyncNotifier.Received(1).NotifyAsync(Scenario.UserMappings[Username]);
             await Assert.That(durations.GetMeasurementSnapshot()
@@ -390,7 +390,7 @@ public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
         // Assert
         using (Assert.Multiple())
         {
-            await OpenBankingService.DidNotReceiveWithAnyArgs().SyncConnectionAsync(default, default, default);
+            await OpenBankingSyncService.DidNotReceiveWithAnyArgs().SyncConnectionAsync(default, default, default);
             await SyncNotifier.DidNotReceiveWithAnyArgs().NotifyAsync(default);
         }
     }

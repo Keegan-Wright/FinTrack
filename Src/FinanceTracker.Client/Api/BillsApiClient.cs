@@ -38,14 +38,14 @@ public sealed class BillsApiClient : IBillsService
     public async Task<Bill> GetBillAsync(Guid id, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.GetAsync($"{ApiRoutes.Bills}/{id}", cancellationToken);
-        response.EnsureFound();
+        await response.EnsureFoundAsync(cancellationToken);
         return await response.ReadRequiredJsonAsync<Bill>(cancellationToken);
     }
 
     public async Task<Bill> AddBillAsync(SaveBill bill, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.PostAsJsonAsync(ApiRoutes.Bills, bill, cancellationToken);
-        response.EnsureFound();
+        await response.EnsureFoundAsync(cancellationToken);
         return await response.ReadRequiredJsonAsync<Bill>(cancellationToken);
     }
 
@@ -53,7 +53,7 @@ public sealed class BillsApiClient : IBillsService
     {
         using HttpResponseMessage response =
             await _http.PutAsJsonAsync($"{ApiRoutes.Bills}/{id}", bill, cancellationToken);
-        response.EnsureFound();
+        await response.EnsureFoundAsync(cancellationToken);
         return await response.ReadRequiredJsonAsync<Bill>(cancellationToken);
     }
 
@@ -71,7 +71,7 @@ public sealed class BillsApiClient : IBillsService
             throw new NotSupportedException("A bill from a standing order or direct debit can only be ended.");
         }
 
-        response.EnsureFound();
+        await response.EnsureFoundAsync(cancellationToken);
     }
 
     public async Task<Transaction> PayBillAsync(Guid transactionId, PayBill payment,
@@ -79,7 +79,7 @@ public sealed class BillsApiClient : IBillsService
     {
         using HttpResponseMessage response =
             await _http.PutAsJsonAsync($"{ApiRoutes.Bills}/payments/{transactionId}", payment, cancellationToken);
-        response.EnsureFound();
+        await response.EnsureFoundAsync(cancellationToken);
         return await response.ReadRequiredJsonAsync<Transaction>(cancellationToken);
     }
 
@@ -103,7 +103,7 @@ public sealed class BillsApiClient : IBillsService
             throw new AlreadyABillException(await CoveringBillNameAsync(response, cancellationToken));
         }
 
-        response.EnsureFound();
+        await response.EnsureFoundAsync(cancellationToken);
         return await response.ReadRequiredJsonAsync<Bill>(cancellationToken);
     }
 
@@ -129,13 +129,13 @@ public sealed class BillsApiClient : IBillsService
     {
         using HttpResponseMessage response =
             await _http.PostAsync($"{ApiRoutes.Bills}/suggestions/{id}/dismiss", null, cancellationToken);
-        response.EnsureFound();
+        await response.EnsureFoundAsync(cancellationToken);
     }
 
     private async Task<Bill> PostForBillAsync(string path, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.PostAsync(path, null, cancellationToken);
-        response.EnsureFound();
+        await response.EnsureFoundAsync(cancellationToken);
         return await response.ReadRequiredJsonAsync<Bill>(cancellationToken);
     }
 }

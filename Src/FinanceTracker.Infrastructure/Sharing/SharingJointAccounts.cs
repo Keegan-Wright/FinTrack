@@ -14,17 +14,17 @@ namespace FinanceTracker.Infrastructure.Sharing;
 public sealed class SharingJointAccounts : ServiceBase<SharingService>, ISharingJointAccounts
 {
     private readonly TimeProvider _timeProvider;
-    private readonly ISharingEffects _effects;
-    private readonly ISharingChoices _choices;
+    private readonly ISharingEffects _sharingEffects;
+    private readonly ISharingChoices _sharingChoices;
 
     public SharingJointAccounts(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<SharingService> logger,
-        TimeProvider timeProvider, ISharingEffects effects, ISharingChoices choices)
+        TimeProvider timeProvider, ISharingEffects sharingEffects, ISharingChoices sharingChoices)
         : base(currentUser, financeTrackerContextFactory, logger)
     {
         _timeProvider = timeProvider;
-        _effects = effects;
-        _choices = choices;
+        _sharingEffects = sharingEffects;
+        _sharingChoices = sharingChoices;
     }
 
     public async Task<LinkShares> MergeAsync(Guid linkId, MergeJointAccounts request,
@@ -48,18 +48,18 @@ public sealed class SharingJointAccounts : ServiceBase<SharingService>, ISharing
         }
 
         // Once for all of them, it matches everything both of them have
-        await _effects.RematchTransfersAsync(context, link, cancellationToken);
-        await _effects.RerunRulesAsync(await SharingEffects.CopiesOfAsync(context, merged, cancellationToken),
+        await _sharingEffects.RematchTransfersAsync(context, link, cancellationToken);
+        await _sharingEffects.RerunRulesAsync(await SharingEffects.CopiesOfAsync(context, merged, cancellationToken),
             cancellationToken);
 
         string name = await MergedNamesAsync(context, merged, cancellationToken);
-        await _effects.NotifyOtherAsync(context, link, $"joint-account:{merged[0].Id}:merged",
+        await _sharingEffects.NotifyOtherAsync(context, link, $"joint-account:{merged[0].Id}:merged",
             person => $"{person} merged {name}",
             "You'd both connected them, so each is counted once now. You each see and tag the same copy, and yours " +
             "keeps syncing in the background. Either of you can split one again on the Sharing page.",
             cancellationToken);
 
-        return await _choices.LinkSharesAsync(context, link, cancellationToken);
+        return await _sharingChoices.LinkSharesAsync(context, link, cancellationToken);
     }
 
     public async Task<LinkShares> SplitAsync(Guid linkId, Guid jointAccountId, CancellationToken cancellationToken)
@@ -82,16 +82,16 @@ public sealed class SharingJointAccounts : ServiceBase<SharingService>, ISharing
         await context.SaveChangesAsync(cancellationToken);
         Logger.LogChanged(UserId, "split", "joint account", joint.Id);
 
-        await _effects.RematchTransfersAsync(context, link, cancellationToken);
-        await _effects.RerunRulesAsync(copies, cancellationToken);
+        await _sharingEffects.RematchTransfersAsync(context, link, cancellationToken);
+        await _sharingEffects.RerunRulesAsync(copies, cancellationToken);
 
-        await _effects.NotifyOtherAsync(context, link, $"joint-account:{joint.Id}:split",
+        await _sharingEffects.NotifyOtherAsync(context, link, $"joint-account:{joint.Id}:split",
             person => $"{person} split your joint account {name}",
             "You each see your own copy again, with its tags as they were. It counts in both of your totals until " +
             "you merge it again.",
             cancellationToken);
 
-        return await _choices.LinkSharesAsync(context, link, cancellationToken);
+        return await _sharingChoices.LinkSharesAsync(context, link, cancellationToken);
     }
 
     public async Task<bool> SplitAllAsync(FinanceTrackerContext context, DomainLink link,

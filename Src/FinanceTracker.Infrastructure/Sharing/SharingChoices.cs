@@ -20,15 +20,15 @@ namespace FinanceTracker.Infrastructure.Sharing;
 public sealed class SharingChoices : ServiceBase<SharingService>, ISharingChoices
 {
     private readonly TimeProvider _timeProvider;
-    private readonly ISharingEffects _effects;
+    private readonly ISharingEffects _sharingEffects;
 
     public SharingChoices(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<SharingService> logger,
-        TimeProvider timeProvider, ISharingEffects effects)
+        TimeProvider timeProvider, ISharingEffects sharingEffects)
         : base(currentUser, financeTrackerContextFactory, logger)
     {
         _timeProvider = timeProvider;
-        _effects = effects;
+        _sharingEffects = sharingEffects;
     }
 
     public async Task<LinkShares?> GetSharesAsync(Guid linkId, CancellationToken cancellationToken)
@@ -111,8 +111,8 @@ public sealed class SharingChoices : ServiceBase<SharingService>, ISharingChoice
         await context.SaveChangesAsync(cancellationToken);
         Logger.LogChanged(UserId, "changed account shares in", "user link", link.Id);
 
-        await _effects.RematchTransfersAsync(context, link, cancellationToken);
-        await _effects.RerunRulesAsync(changeableBefore.Select(x => (UserId, x)).ToList(), cancellationToken);
+        await _sharingEffects.RematchTransfersAsync(context, link, cancellationToken);
+        await _sharingEffects.RerunRulesAsync(changeableBefore.Select(x => (UserId, x)).ToList(), cancellationToken);
         await NotifySharesChangedAsync(context, link, sharedBefore, cancellationToken);
 
         return await LinkSharesAsync(context, link, cancellationToken);
@@ -235,7 +235,7 @@ public sealed class SharingChoices : ServiceBase<SharingService>, ISharingChoice
             return;
         }
 
-        await _effects.NotifyOtherAsync(context, link,
+        await _sharingEffects.NotifyOtherAsync(context, link,
             $"sharing-changed:{link.Id:N}:{UserId:N}:{_timeProvider.GetUtcNow().UtcTicks}",
             person => $"{person} changed what they share with you", message, cancellationToken,
             NotificationKind.SharingChanged);
