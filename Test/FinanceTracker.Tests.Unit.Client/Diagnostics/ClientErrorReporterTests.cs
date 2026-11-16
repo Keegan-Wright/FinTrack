@@ -11,14 +11,14 @@ namespace FinanceTracker.Tests.Unit.Client.Diagnostics;
 
 public class ClientErrorReporterTests : ComponentTestBase
 {
-    private readonly IClientErrorsService _service = Substitute.For<IClientErrorsService>();
+    private readonly IClientErrorsService _clientErrorsService = Substitute.For<IClientErrorsService>();
     private readonly List<ClientError> _sent = [];
 
     public ClientErrorReporterTests()
     {
-        Services.AddSingleton(_service);
+        Services.AddSingleton(_clientErrorsService);
         Services.AddSingleton<ClientErrorReporter>();
-        _service.ReportAsync(Arg.Do<ClientError>(_sent.Add), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        _clientErrorsService.ReportAsync(Arg.Do<ClientError>(_sent.Add), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
         Services.GetRequiredService<NavigationManager>().NavigateTo("Budgets?month=2026-11");
     }
 
@@ -88,7 +88,7 @@ public class ClientErrorReporterTests : ComponentTestBase
     public async Task SendingFails_DropsItWithoutReportingThat()
     {
         // Arrange, sending logs an error then fails, as a refused call would
-        _service.ReportAsync(Arg.Any<ClientError>(), Arg.Any<CancellationToken>()).Returns(_ =>
+        _clientErrorsService.ReportAsync(Arg.Any<ClientError>(), Arg.Any<CancellationToken>()).Returns(_ =>
         {
             Log("System.Net.Http.HttpClient", LogLevel.Error, "The server refused it");
             throw new HttpRequestException("refused");
@@ -99,7 +99,7 @@ public class ClientErrorReporterTests : ComponentTestBase
         await Reporter.WhenSentAsync();
 
         // Assert, the one report only, its own failure wasn't sent in turn
-        await _service.Received(1).ReportAsync(Arg.Any<ClientError>(), Arg.Any<CancellationToken>());
+        await _clientErrorsService.Received(1).ReportAsync(Arg.Any<ClientError>(), Arg.Any<CancellationToken>());
     }
 
     // Logged the way Blazor and the framework log, straight through ILogger

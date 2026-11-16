@@ -22,18 +22,18 @@ public class TransfersService : ServiceBase<TransfersService>, ITransfersService
     private readonly ITransferMatchingService _transferMatchingService;
     private readonly TimeProvider _timeProvider;
     private readonly IAccountScope _accountScope;
-    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IServiceScopeFactory _serviceScopeFactory;
 
     public TransfersService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<TransfersService> logger,
         ITransferMatchingService transferMatchingService, TimeProvider timeProvider, IAccountScope accountScope,
-        IServiceScopeFactory scopeFactory)
+        IServiceScopeFactory serviceScopeFactory)
         : base(currentUser, financeTrackerContextFactory, logger)
     {
         _transferMatchingService = transferMatchingService;
         _timeProvider = timeProvider;
         _accountScope = accountScope;
-        _scopeFactory = scopeFactory;
+        _serviceScopeFactory = serviceScopeFactory;
     }
 
     public async IAsyncEnumerable<Transaction> GetTransfersToReviewAsync(
@@ -159,7 +159,7 @@ public class TransfersService : ServiceBase<TransfersService>, ITransfersService
             return;
         }
 
-        await using AsyncServiceScope scope = _scopeFactory.CreateUserScope(ownerId);
+        await using AsyncServiceScope scope = _serviceScopeFactory.CreateUserScope(ownerId);
         await scope.ServiceProvider.GetRequiredService<ITransferMatchingService>()
             .MatchAroundAsync(affected, cancellationToken);
     }

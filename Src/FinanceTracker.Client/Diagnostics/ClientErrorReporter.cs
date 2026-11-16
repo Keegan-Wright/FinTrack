@@ -18,7 +18,7 @@ public sealed class ClientErrorReporter
     /// </summary>
     public const int MaxReports = 20;
 
-    private readonly IServiceProvider _services;
+    private readonly IServiceProvider _serviceProvider;
     private readonly HashSet<string> _sent = [];
     private readonly List<Task> _sending = [];
     private readonly Lock _lock = new();
@@ -26,7 +26,7 @@ public sealed class ClientErrorReporter
     // Set while a report is being sent, so anything logged by sending it isn't reported in turn
     private static readonly AsyncLocal<bool> Reporting = new();
 
-    public ClientErrorReporter(IServiceProvider services) => _services = services;
+    public ClientErrorReporter(IServiceProvider serviceProvider) => _serviceProvider = serviceProvider;
 
     /// <summary>
     /// Sends the error unless it's been sent already, the limit's reached, or it was logged by sending a report.
@@ -66,7 +66,7 @@ public sealed class ClientErrorReporter
         Reporting.Value = true;
         try
         {
-            await using AsyncServiceScope scope = _services.CreateAsyncScope();
+            await using AsyncServiceScope scope = _serviceProvider.CreateAsyncScope();
             await scope.ServiceProvider.GetRequiredService<IClientErrorsService>()
                 .ReportAsync(error, CancellationToken.None);
         }
@@ -88,7 +88,7 @@ public sealed class ClientErrorReporter
     // Relative to the app and without the query, which can carry ids and searches
     private string CurrentPage()
     {
-        NavigationManager navigation = _services.GetRequiredService<NavigationManager>();
+        NavigationManager navigation = _serviceProvider.GetRequiredService<NavigationManager>();
         string relative = navigation.ToBaseRelativePath(navigation.Uri);
         int queryAt = relative.IndexOfAny(['?', '#']);
         if (queryAt >= 0)

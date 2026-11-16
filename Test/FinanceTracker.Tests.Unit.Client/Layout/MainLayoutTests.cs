@@ -24,7 +24,7 @@ public class MainLayoutTests : ComponentTestBase
     private readonly IOpenBankingService _openBankingService = Substitute.For<IOpenBankingService>();
     private readonly INotificationsService _notificationsService = Substitute.For<INotificationsService>();
     private readonly IProfileService _profileService = Substitute.For<IProfileService>();
-    private readonly IBrowserViewportService _viewport = Substitute.For<IBrowserViewportService>();
+    private readonly IBrowserViewportService _browserViewportService = Substitute.For<IBrowserViewportService>();
     private readonly ApplicationState _applicationState = new();
     private readonly AppUpdate _update = new("0.1.1+3e871e2");
 
@@ -43,7 +43,7 @@ public class MainLayoutTests : ComponentTestBase
         Services.AddSingleton(_openBankingService);
         Services.AddSingleton(_notificationsService);
         Services.AddSingleton(_profileService);
-        Services.AddSingleton(_viewport);
+        Services.AddSingleton(_browserViewportService);
         Services.AddSingleton(_update);
 
         // Interactive in the browser, as the layout only subscribes once interactive. Builds the services, so last
@@ -375,7 +375,7 @@ public class MainLayoutTests : ComponentTestBase
     public async Task Render_OpensTheDrawerOnlyAtDesktopWidth(bool desktop)
     {
         // Arrange
-        _viewport.IsBreakpointWithinWindowSizeAsync(Breakpoint.LgAndUp).Returns(desktop);
+        _browserViewportService.IsBreakpointWithinWindowSizeAsync(Breakpoint.LgAndUp).Returns(desktop);
 
         // Act
         IRenderedComponent<MainLayout> cut = RenderLayout();
@@ -392,7 +392,7 @@ public class MainLayoutTests : ComponentTestBase
     public async Task MenuButton_TogglesTheDrawer()
     {
         // Arrange
-        _viewport.IsBreakpointWithinWindowSizeAsync(Breakpoint.LgAndUp).Returns(false);
+        _browserViewportService.IsBreakpointWithinWindowSizeAsync(Breakpoint.LgAndUp).Returns(false);
         IRenderedComponent<MainLayout> cut = RenderLayout();
 
         // Act

@@ -47,7 +47,7 @@ public sealed class AutomationApiClient : IAutomationService
             throw new JobAlreadyRunningException(function);
         }
 
-        response.EnsureFound();
+        await response.EnsureFoundAsync(cancellationToken);
     }
 
     public async Task<bool> UpdateJobSettingsAsync(UpdateCronJob request, CancellationToken cancellationToken)
@@ -62,7 +62,7 @@ public sealed class AutomationApiClient : IAutomationService
                 nameof(request));
         }
 
-        response.EnsureFound();
+        await response.EnsureFoundAsync(cancellationToken);
         return true;
     }
 

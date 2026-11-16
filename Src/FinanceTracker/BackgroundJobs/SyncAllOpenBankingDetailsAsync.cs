@@ -10,10 +10,10 @@ namespace FinanceTracker.BackgroundJobs;
 /// </summary>
 public class SyncAllOpenBankingDetailsAsync : OpenBankingSyncJob, IJob
 {
-    public SyncAllOpenBankingDetailsAsync(IServiceScopeFactory scopeFactory,
+    public SyncAllOpenBankingDetailsAsync(IServiceScopeFactory serviceScopeFactory,
         IDbContextFactory<FinanceTrackerContext> dbContextFactory, ISyncNotifier syncNotifier,
         TimeProvider timeProvider, ILogger<OpenBankingSyncJob> logger, FinTrackMetrics metrics)
-        : base(scopeFactory, dbContextFactory, syncNotifier, timeProvider, logger, metrics)
+        : base(serviceScopeFactory, dbContextFactory, syncNotifier, timeProvider, logger, metrics)
     {
     }
 

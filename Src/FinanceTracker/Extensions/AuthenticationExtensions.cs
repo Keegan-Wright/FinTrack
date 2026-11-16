@@ -163,6 +163,7 @@ public static class AuthenticationExtensions
         options.Authority = configuration[FinTrackEnvironment.OidcAuthority];
         options.ClientId = configuration[FinTrackEnvironment.OidcClientId];
         options.ClientSecret = configuration[FinTrackEnvironment.OidcClientSecret];
+        options.RequireHttpsMetadata = !configuration.GetValue(FinTrackEnvironment.OidcAllowHttp, false);
 
         // Authorization code flow with PKCE, signing into Identity's external cookie for /auth/oidc/complete
         options.ResponseType = OpenIdConnectResponseType.Code;

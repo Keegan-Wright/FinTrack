@@ -41,7 +41,7 @@ public sealed class TransactionsApiClient : ITransactionsService
     {
         using HttpResponseMessage response = await _http.PostAsJsonAsync(
             $"{ApiRoutes.Transactions}/{transactionId}/bank-classifications/{change}", request, cancellationToken);
-        response.EnsureFound();
+        await response.EnsureFoundAsync(cancellationToken);
         return await response.ReadRequiredJsonAsync<Transaction>(cancellationToken);
     }
 
@@ -55,14 +55,14 @@ public sealed class TransactionsApiClient : ITransactionsService
             throw new CannotSplitTransactionException(await ReasonAsync(response, cancellationToken));
         }
 
-        response.EnsureFound();
+        await response.EnsureFoundAsync(cancellationToken);
         return await response.ReadRequiredJsonAsync<Transaction>(cancellationToken);
     }
 
     public async Task<Transaction> UnsplitAsync(Guid transactionId, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.DeleteAsync(Splits(transactionId), cancellationToken);
-        response.EnsureFound();
+        await response.EnsureFoundAsync(cancellationToken);
         return await response.ReadRequiredJsonAsync<Transaction>(cancellationToken);
     }
 

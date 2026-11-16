@@ -22,15 +22,15 @@ public sealed class EmailChange : IEmailChange
 
     private readonly UserManager<FinanceTrackerUser> _userManager;
     private readonly IMailSender _mailSender;
-    private readonly IAccountEmails _emails;
+    private readonly IAccountEmails _accountEmails;
     private readonly IAccountUrls _accountUrls;
 
-    public EmailChange(UserManager<FinanceTrackerUser> userManager, IMailSender mailSender, IAccountEmails emails,
-        IAccountUrls accountUrls)
+    public EmailChange(UserManager<FinanceTrackerUser> userManager, IMailSender mailSender,
+        IAccountEmails accountEmails, IAccountUrls accountUrls)
     {
         _userManager = userManager;
         _mailSender = mailSender;
-        _emails = emails;
+        _accountEmails = accountEmails;
         _accountUrls = accountUrls;
     }
 
@@ -63,7 +63,7 @@ public sealed class EmailChange : IEmailChange
             ["code"] = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code))
         });
 
-        await _mailSender.SendAsync(await _emails.ChangeEmailAsync(email, link), CancellationToken.None);
+        await _mailSender.SendAsync(await _accountEmails.ChangeEmailAsync(email, link), CancellationToken.None);
         return new ProfileChange { LinkSent = true };
     }
 

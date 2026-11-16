@@ -26,19 +26,19 @@ namespace FinanceTracker.BackgroundJobs;
 public abstract class OpenBankingSyncJob
 {
     private readonly IDbContextFactory<FinanceTrackerContext> _dbContextFactory;
-    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IServiceScopeFactory _serviceScopeFactory;
     private readonly ISyncNotifier _syncNotifier;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<OpenBankingSyncJob> _logger;
     private readonly FinTrackMetrics _metrics;
 
-    protected OpenBankingSyncJob(IServiceScopeFactory scopeFactory,
+    protected OpenBankingSyncJob(IServiceScopeFactory serviceScopeFactory,
         IDbContextFactory<FinanceTrackerContext> dbContextFactory, ISyncNotifier syncNotifier,
         TimeProvider timeProvider, ILogger<OpenBankingSyncJob> logger, FinTrackMetrics metrics)
     {
         _logger = logger;
         _metrics = metrics;
-        _scopeFactory = scopeFactory;
+        _serviceScopeFactory = serviceScopeFactory;
         _dbContextFactory = dbContextFactory;
         _syncNotifier = syncNotifier;
         _timeProvider = timeProvider;
@@ -95,7 +95,7 @@ public abstract class OpenBankingSyncJob
             {
                 // Each connection syncs in its own scope acting as its owner, so services resolve that user and
                 // nothing carries over from the previous connection
-                await using AsyncServiceScope scope = _scopeFactory.CreateUserScope(userId);
+                await using AsyncServiceScope scope = _serviceScopeFactory.CreateUserScope(userId);
                 IOpenBankingSyncService openBankingSyncService =
                     scope.ServiceProvider.GetRequiredService<IOpenBankingSyncService>();
 
@@ -188,7 +188,7 @@ public abstract class OpenBankingSyncJob
     {
         try
         {
-            await using AsyncServiceScope scope = _scopeFactory.CreateUserScope(userId);
+            await using AsyncServiceScope scope = _serviceScopeFactory.CreateUserScope(userId);
             await scope.ServiceProvider.GetRequiredService<ISyncHealth>()
                 .RecordFailedAsync(connectionId, cancellationToken);
         }
@@ -225,7 +225,7 @@ public abstract class OpenBankingSyncJob
     {
         using Activity? notifyActivity = FinTrackActivitySources.App.StartUserActivity("Send sync notices", userId);
 
-        await using AsyncServiceScope scope = _scopeFactory.CreateUserScope(userId);
+        await using AsyncServiceScope scope = _serviceScopeFactory.CreateUserScope(userId);
         foreach (ISyncNotices notices in scope.ServiceProvider.GetServices<ISyncNotices>())
         {
             using Activity? noticesActivity = FinTrackActivitySources.App.StartUserActivity(notices.GetType().Name, userId);
@@ -255,7 +255,7 @@ public abstract class OpenBankingSyncJob
         using Activity? activity = FinTrackActivitySources.App.StartUserActivity(step, userId);
         try
         {
-            await using AsyncServiceScope scope = _scopeFactory.CreateUserScope(userId);
+            await using AsyncServiceScope scope = _serviceScopeFactory.CreateUserScope(userId);
             await run(scope.ServiceProvider.GetRequiredService<TService>());
         }
         catch (Exception ex)

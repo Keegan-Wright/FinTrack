@@ -1,0 +1,1150 @@
+using System.Diagnostics;
+using FinanceTracker.Contracts;
+using FinanceTracker.Domain.OpenBanking.Accounts;
+using FinanceTracker.Domain.OpenBanking.Connections;
+using FinanceTracker.Domain.OpenBanking.Transactions;
+using FinanceTracker.Infrastructure.OpenBanking;
+using FinanceTracker.Infrastructure.OpenBanking.TrueLayer.Contracts;
+using FinanceTracker.Telemetry;
+using FinanceTracker.Tests.Unit.Shared;
+using FinanceTracker.Tests.Unit.Shared.Fakers;
+using FinanceTracker.Tests.Unit.Shared.Fakers.TrueLayer;
+using FinanceTracker.Tests.Unit.Shared.Scenarios;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.Metrics.Testing;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using NSubstitute;
+using NSubstitute.ExceptionExtensions;
+
+namespace FinanceTracker.Tests.Unit.Infrastructure.Services.OpenBanking;
+
+/// <summary>
+/// Syncing a connection end to end, through the real <see cref="AccountSnapshotFetcher"/> and
+/// <see cref="AccountSnapshotWriter"/> against the fake bank.
+/// </summary>
+public class OpenBankingSyncServiceTests : OpenBankingTestBase
+{
+    [Test]
+    public async Task SyncConnectionAsync_WhenConnectionHasNoActiveToken_DoesNotCallProvider()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("bank", Username));
+
+        OpenBankingSyncService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        await OpenBankingApi.DidNotReceiveWithAnyArgs().GetAllAccountsAsync(default!, default);
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_WhenConnectionOwnedByAnotherUser_Throws()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.UserScenario.WithUser(OtherUsername))
+            .Do(s => s.BankConnectionScenario.WithConnection("theirs", OtherUsername))
+            .Do(s => s.BankConnectionScenario.WithAccessToken("theirs"));
+
+        OpenBankingSyncService subject = BuildSubject();
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            subject.SyncConnectionAsync(Scenario.ConnectionMappings["theirs"], SyncTypes.All, CancellationToken));
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_NewProviderAccounts_CreatesAccounts()
+    {
+        // Arrange
+        await SeedConnectionAsync();
+        ExternalOpenBankingAccount external = new ExternalOpenBankingAccountFaker().Generate();
+        GivenProviderReturns(accounts: [external]);
+
+        OpenBankingSyncService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        BankAccount account = (await LoadAccountsAsync()).Single();
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(account.UserId).IsEqualTo(Scenario.UserMappings[Username]);
+            await Assert.That(account.ConnectionId).IsEqualTo(Scenario.ConnectionMappings["bank"]);
+            await Assert.That(account.ExternalId).IsEqualTo(external.AccountId);
+            await Assert.That(account.AccountType).IsEqualTo(external.AccountType);
+            await Assert.That(account.DisplayName).IsEqualTo(external.DisplayName);
+            await Assert.That(account.Currency).IsEqualTo(external.Currency);
+            await OpenBankingApi.Received(1).GetAllAccountsAsync(Token, CancellationToken);
+        }
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_StoresTheAccountIdentifier()
+    {
+        // Arrange
+        await SeedConnectionAsync();
+        ExternalOpenBankingAccount external = new ExternalOpenBankingAccountFaker().Generate();
+        external.AccountNumber = new ExternalOpenBankingAccountNumber
+        {
+            SortCode = "12-34-56", Number = "12345678", Iban = "GB29 NWBK 1234 5612 3456 78"
+        };
+        GivenProviderReturns(accounts: [external]);
+
+        OpenBankingSyncService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        AccountIdentifier stored = (await LoadAccountsAsync()).Single().Identifier;
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(stored.SortCode).IsEqualTo("123456");
+            await Assert.That(stored.Number).IsEqualTo("12345678");
+            await Assert.That(stored.Iban).IsEqualTo("GB29NWBK12345612345678");
+        }
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_AccountWithoutAnIdentifier_LoadsAsUnknown()
+    {
+        // Arrange
+        await SeedConnectionAsync();
+        GivenProviderReturns(accounts: [new ExternalOpenBankingAccountFaker().Generate()]);
+
+        OpenBankingSyncService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        await Assert.That((await LoadAccountsAsync()).Single().Identifier.IsKnown).IsFalse();
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_StoresTheTransactionsMetadata()
+    {
+        // Arrange
+        await SeedConnectionAsync();
+        ExternalOpenBankingAccountTransaction transfer = new ExternalOpenBankingAccountTransactionFaker().Generate();
+        transfer.MerchantName = "Coffee Co";
+        transfer.Meta = new ExternalOpenBankingTransactionMetadata
+        {
+            ProviderReference = "123456 12345678",
+            ProviderCategory = "TFR",
+            CounterPartyPreferredName = "C Example",
+            DebtorAccountName = "J Example"
+        };
+        GivenProviderReturns(accounts: [new ExternalOpenBankingAccountFaker().Generate()], transactions: [transfer]);
+
+        OpenBankingSyncService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        await Assert.That((await LoadTransactionsAsync()).Single().Metadata).IsEqualTo(
+            new TransactionMetadata("123456 12345678", "TFR", "Coffee Co", "C Example", "J Example"));
+    }
+
+    [Test]
+    [Arguments("TRANSFER", true)]
+    [Arguments("transfer", true)]
+    [Arguments("PURCHASE", false)]
+    public async Task SyncConnectionAsync_TrueLayersTransferCategory_LabelsTheTransactionATransfer(string category,
+        bool labelled)
+    {
+        // Arrange
+        await SeedConnectionAsync();
+        ExternalOpenBankingAccountTransaction transaction = new ExternalOpenBankingAccountTransactionFaker().Generate();
+        transaction.TransactionCategory = category;
+        GivenProviderReturns(accounts: [new ExternalOpenBankingAccountFaker().Generate()], transactions: [transaction]);
+
+        OpenBankingSyncService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        await Assert.That((await LoadTransactionsAsync()).Single().LabelledAsTransfer).IsEqualTo(labelled);
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_TransactionWithoutMetadata_LoadsWithNone()
+    {
+        // Arrange
+        await SeedConnectionAsync();
+        ExternalOpenBankingAccountTransaction transaction = new ExternalOpenBankingAccountTransactionFaker().Generate();
+        transaction.Meta = new ExternalOpenBankingTransactionMetadata { ProviderId = "ignored" };
+        GivenProviderReturns(accounts: [new ExternalOpenBankingAccountFaker().Generate()], transactions: [transaction]);
+
+        OpenBankingSyncService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        await Assert.That((await LoadTransactionsAsync()).Single().Metadata).IsEqualTo(TransactionMetadata.None);
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_KnownProviderAccount_UpdatesExistingAccount()
+    {
+        // Arrange
+        await SeedConnectionAsync()
+            .Do(s => s.BankAccountScenario.WithAccount("main", "bank", (userId, connectionId) =>
+                new BankAccount(userId, connectionId, "acc-1", "TRANSACTION", "Old Name", "GBP")));
+
+        GivenProviderReturns(accounts:
+        [
+            new ExternalOpenBankingAccount
+            {
+                AccountId = "acc-1", AccountType = "SAVINGS", DisplayName = "New Name", Currency = "EUR"
+            }
+        ]);
+
+        OpenBankingSyncService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        BankAccount account = (await LoadAccountsAsync()).Single();
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(account.Id).IsEqualTo(Scenario.AccountMappings["main"]);
+            await Assert.That(account.AccountType).IsEqualTo("SAVINGS");
+            await Assert.That(account.DisplayName).IsEqualTo("New Name");
+            await Assert.That(account.Currency).IsEqualTo("EUR");
+        }
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_AppliesBalanceStandingOrdersAndDirectDebits()
+    {
+        // Arrange
+        await SeedConnectionAsync();
+        ExternalOpenBankingAccountBalance balance = new ExternalOpenBankingAccountBalanceFaker().Generate();
+        ExternalOpenBankingAccountStandingOrder standingOrder = new ExternalOpenBankingAccountStandingOrderFaker().Generate();
+        ExternalOpenBankingDirectDebit directDebit = new ExternalOpenBankingDirectDebitFaker().Generate();
+
+        GivenProviderReturns(accounts: [new ExternalOpenBankingAccountFaker().Generate()], balances: [balance],
+            standingOrders: [standingOrder], directDebits: [directDebit]);
+
+        OpenBankingSyncService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        BankAccount account = (await LoadAccountsAsync()).Single();
+        StandingOrder storedStandingOrder = account.StandingOrders.Single();
+        DirectDebit storedDirectDebit = account.DirectDebits.Single();
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(account.Balance!.Available).IsEqualTo(balance.Available);
+            await Assert.That(account.Balance.Current).IsEqualTo(balance.Current);
+            await Assert.That(account.Balance.AsOf).IsEqualTo(balance.UpdateTimestamp);
+            await Assert.That(storedStandingOrder.Reference).IsEqualTo(standingOrder.Reference);
+            await Assert.That(storedStandingOrder.Payee).IsEqualTo(standingOrder.Payee);
+            await Assert.That(storedStandingOrder.NextPaymentAmount).IsEqualTo(standingOrder.NextPaymentAmount);
+            await Assert.That(storedStandingOrder.NextPaymentDate).IsEqualTo(standingOrder.NextPaymentDate);
+            await Assert.That(storedDirectDebit.ExternalId).IsEqualTo(directDebit.DirectDebitId);
+            await Assert.That(storedDirectDebit.Name).IsEqualTo(directDebit.Name);
+            await Assert.That(storedDirectDebit.PreviousPaymentAmount).IsEqualTo(directDebit.PreviousPaymentAmount);
+        }
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_UnspecifiedProviderTimestamps_AreStoredAsUtc()
+    {
+        // Arrange
+        await SeedConnectionAsync();
+        DateTime unspecified = new(2026, 2, 1, 8, 0, 0, DateTimeKind.Unspecified);
+
+        GivenProviderReturns(accounts: [new ExternalOpenBankingAccountFaker().Generate()],
+            balances: [new ExternalOpenBankingAccountBalance { Available = 1, Current = 1, UpdateTimestamp = unspecified }]);
+
+        OpenBankingSyncService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        AccountBalance balance = (await LoadAccountsAsync()).Single().Balance!;
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(balance.AsOf.Kind).IsEqualTo(DateTimeKind.Utc);
+            await Assert.That(balance.AsOf.Ticks).IsEqualTo(unspecified.Ticks);
+        }
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_ImportsBookedAndPendingTransactions()
+    {
+        // Arrange
+        await SeedConnectionAsync();
+        ExternalOpenBankingAccountTransaction booked = new ExternalOpenBankingAccountTransactionFaker().Generate();
+        ExternalOpenBankingAccountTransaction pending = new ExternalOpenBankingAccountTransactionFaker().Generate();
+
+        GivenProviderReturns(accounts: [new ExternalOpenBankingAccountFaker().Generate()], transactions: [booked],
+            pendingTransactions: [pending]);
+
+        OpenBankingSyncService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        List<BankTransaction> transactions = await LoadTransactionsAsync();
+        BankTransaction storedBooked = transactions.Single(x => x.ExternalId == booked.TransactionId);
+        BankTransaction storedPending = transactions.Single(x => x.ExternalId == pending.TransactionId);
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(transactions.Count).IsEqualTo(2);
+            await Assert.That(storedBooked.IsPending).IsFalse();
+            await Assert.That(storedBooked.Description).IsEqualTo(booked.Description);
+            await Assert.That(storedBooked.Amount).IsEqualTo(booked.Amount);
+            await Assert.That(storedBooked.Category).IsEqualTo(booked.TransactionCategory);
+            await Assert.That(storedBooked.OccurredAt).IsEqualTo(booked.Timestamp);
+            await Assert.That(storedBooked.ProviderClassifications)
+                .IsEquivalentTo(await booked.TransactionClassification!.ToListAsync(CancellationToken));
+            await Assert.That(storedPending.IsPending).IsTrue();
+        }
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_TransactionReportedAsPendingAndBooked_IsStoredAsBooked()
+    {
+        // Arrange
+        await SeedConnectionAsync();
+        ExternalOpenBankingAccountTransaction transaction = new ExternalOpenBankingAccountTransactionFaker().Generate();
+
+        GivenProviderReturns(accounts: [new ExternalOpenBankingAccountFaker().Generate()], transactions: [transaction],
+            pendingTransactions: [transaction]);
+
+        OpenBankingSyncService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        BankTransaction stored = (await LoadTransactionsAsync()).Single();
+        await Assert.That(stored.IsPending).IsFalse();
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_PreviouslyPendingTransaction_IsUpdatedNotDuplicated()
+    {
+        // Arrange
+        ExternalOpenBankingAccount externalAccount = new ExternalOpenBankingAccountFaker().Generate();
+        ExternalOpenBankingAccountTransaction transaction = new ExternalOpenBankingAccountTransactionFaker().Generate();
+
+        await SeedConnectionAsync()
+            .Do(s => s.BankAccountScenario.WithAccount("main", "bank", (userId, connectionId) =>
+                new BankAccount(userId, connectionId, externalAccount.AccountId, "TRANSACTION", "Main", "GBP")))
+            .Do(s => s.TransactionScenario.WithTransaction("pending", "main", new TransactionDetails(
+                transaction.TransactionId, "Pending description", TransactionType.Debit, "PURCHASE", -1m, "GBP",
+                DateTime.UtcNow, true, [], TransactionMetadata.None, false)));
+
+        GivenProviderReturns(accounts: [externalAccount], transactions: [transaction]);
+
+        OpenBankingSyncService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        BankTransaction stored = (await LoadTransactionsAsync()).Single();
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(stored.Id).IsEqualTo(Scenario.TransactionMappings["pending"]);
+            await Assert.That(stored.IsPending).IsFalse();
+            await Assert.That(stored.Description).IsEqualTo(transaction.Description);
+            await Assert.That(stored.Amount).IsEqualTo(transaction.Amount);
+        }
+    }
+
+    [Test]
+    [Arguments("DEBIT", 10, TransactionType.Debit)]
+    [Arguments("credit", -10, TransactionType.Credit)]
+    [Arguments("", -10, TransactionType.Debit)]
+    [Arguments("UNKNOWN", 10, TransactionType.Credit)]
+    public async Task SyncConnectionAsync_TransactionType_ParsedOrInferredFromAmount(string providerType, decimal amount,
+        TransactionType expected)
+    {
+        // Arrange
+        await SeedConnectionAsync();
+        ExternalOpenBankingAccountTransaction transaction = new ExternalOpenBankingAccountTransactionFaker().Generate();
+        transaction.TransactionType = providerType;
+        transaction.Amount = amount;
+
+        GivenProviderReturns(accounts: [new ExternalOpenBankingAccountFaker().Generate()], transactions: [transaction]);
+
+        OpenBankingSyncService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        await Assert.That((await LoadTransactionsAsync()).Single().Type).IsEqualTo(expected);
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_RecordsSyncLogForEachKindOfDataSynced()
+    {
+        // Arrange
+        await SeedConnectionAsync();
+        GivenProviderReturns(accounts: [new ExternalOpenBankingAccountFaker().Generate()]);
+
+        OpenBankingSyncService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        await Assert.That(await LoadSyncLogTypesAsync()).IsEquivalentTo([
+            SyncType.Account, SyncType.Balance, SyncType.StandingOrders, SyncType.DirectDebits,
+            SyncType.Transactions
+        ]);
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_OnlyBalanceRequested_FetchesAndLogsBalanceOnly()
+    {
+        // Arrange
+        await SeedConnectionAsync();
+        GivenProviderReturns(accounts: [new ExternalOpenBankingAccountFaker().Generate()]);
+
+        OpenBankingSyncService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.Balance, CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await OpenBankingApi.ReceivedWithAnyArgs(1).GetAccountBalanceAsync(default!, default!, default);
+            await OpenBankingApi.DidNotReceiveWithAnyArgs().GetAccountStandingOrdersAsync(default!, default!, default);
+            await OpenBankingApi.DidNotReceiveWithAnyArgs().GetAccountDirectDebitsAsync(default!, default!, default);
+            await OpenBankingApi.DidNotReceiveWithAnyArgs().GetAccountTransactionsAsync(default!, default!, default, default);
+            await OpenBankingApi.DidNotReceiveWithAnyArgs().GetAccountPendingTransactionsAsync(default!, default!, default, default);
+            await Assert.That(await LoadSyncLogTypesAsync()).IsEquivalentTo([SyncType.Account, SyncType.Balance]);
+        }
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_TransactionsRequested_AlsoFetchesPendingTransactions()
+    {
+        // Arrange
+        await SeedConnectionAsync();
+        GivenProviderReturns(accounts: [new ExternalOpenBankingAccountFaker().Generate()]);
+
+        OpenBankingSyncService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.Transactions, CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await OpenBankingApi.ReceivedWithAnyArgs(1).GetAccountTransactionsAsync(default!, default!, default, default);
+            await OpenBankingApi.ReceivedWithAnyArgs(1).GetAccountPendingTransactionsAsync(default!, default!, default, default);
+            await Assert.That(await LoadSyncLogTypesAsync()).IsEquivalentTo([
+                SyncType.Account, SyncType.Transactions
+            ]);
+        }
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_WhenOneProviderCallFails_AppliesTheRest()
+    {
+        // Arrange
+        await SeedConnectionAsync();
+        GivenProviderReturns(accounts: [new ExternalOpenBankingAccountFaker().Generate()],
+            standingOrders: [new ExternalOpenBankingAccountStandingOrderFaker().Generate()]);
+        OpenBankingApi.GetAccountBalanceAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new HttpRequestException("provider down"));
+
+        OpenBankingSyncService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        BankAccount account = (await LoadAccountsAsync()).Single();
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(account.Balance).IsNull();
+            await Assert.That(account.StandingOrders.Count).IsEqualTo(1);
+            await Assert.That(await LoadSyncLogTypesAsync()).DoesNotContain(SyncType.Balance);
+        }
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_TracesEachAccountAndItsFetchesAndSumsUp()
+    {
+        // Arrange
+        await SeedConnectionAsync();
+        GivenProviderReturns(accounts: [new ExternalOpenBankingAccountFaker().Generate()],
+            transactions: new ExternalOpenBankingAccountTransactionFaker().Generate(2).ToArray());
+        CapturingLogger<OpenBankingSyncService> logger = new();
+        using TestMetrics metrics = new();
+        using MetricCollector<long> synced = metrics.Collect<long>(FinTrackMetrics.TransactionsSyncedName);
+        OpenBankingSyncService subject = BuildSubject(logger, metrics.Metrics);
+        using SpanRecorder spans = new();
+
+        // Act
+        using (Activity? connection = spans.StartRoot())
+        {
+            await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+        }
+
+        // Assert
+        BankAccount account = (await LoadAccountsAsync()).Single();
+        long added = synced.GetMeasurementSnapshot()
+            .Where(static x => Equals(x.Tags[TelemetryTags.Change], "added"))
+            .Sum(static x => x.Value);
+        Activity accountSpan = spans.Named("Sync account");
+        Activity transactionsSpan = spans.Named("Fetch transactions");
+        using (Assert.Multiple())
+        {
+            await Assert.That(accountSpan.GetTagItem(TelemetryTags.AccountId)).IsEqualTo(account.Id.ToString());
+            await Assert.That(transactionsSpan.ParentSpanId).IsEqualTo(accountSpan.SpanId);
+            await Assert.That(transactionsSpan.GetTagItem(TelemetryTags.ItemCount)).IsEqualTo(2);
+            await Assert.That(spans.Names).Contains("Fetch balance");
+            await Assert.That(spans.Names).Contains("Fetch pending transactions");
+            await Assert.That(spans.Names).Contains("Fetch standing orders");
+            await Assert.That(spans.Names).Contains("Fetch direct debits");
+            await Assert.That(spans.Root.GetTagItem(TelemetryTags.TransactionsAdded)).IsEqualTo(2);
+            await Assert.That(added).IsEqualTo(2);
+            await Assert.That(logger.Entries.Single(x => x.Message.StartsWith("Synced connection", StringComparison.Ordinal)).Message)
+                .Contains(": 1 accounts, 0 cards, 2 transactions added, 0 updated, 0 stale pending removed, 0 fetches failed");
+        }
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_FetchFails_MarksItsSpanFailedAndCountsIt()
+    {
+        // Arrange
+        await SeedConnectionAsync();
+        GivenProviderReturns(accounts: [new ExternalOpenBankingAccountFaker().Generate()]);
+        OpenBankingApi.GetAccountBalanceAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new HttpRequestException("provider down"));
+        CapturingLogger<OpenBankingSyncService> logger = new();
+        using TestMetrics metrics = new();
+        using MetricCollector<long> failed = metrics.Collect<long>(FinTrackMetrics.FetchesFailedName);
+        OpenBankingSyncService subject = BuildSubject(logger, metrics.Metrics);
+        using SpanRecorder spans = new();
+
+        // Act
+        using (Activity? connection = spans.StartRoot())
+        {
+            await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+        }
+
+        // Assert
+        Activity balanceSpan = spans.Named("Fetch balance");
+        using (Assert.Multiple())
+        {
+            await Assert.That(balanceSpan.Status).IsEqualTo(ActivityStatusCode.Error);
+            await Assert.That(balanceSpan.Events.Select(x => x.Name)).Contains("exception");
+            await Assert.That(spans.Named("Fetch transactions").Status).IsNotEqualTo(ActivityStatusCode.Error);
+            await Assert.That(spans.Root.GetTagItem(TelemetryTags.FetchesFailed)).IsEqualTo(1);
+            await Assert.That(failed.GetMeasurementSnapshot().Sum(static x => x.Value)).IsEqualTo(1);
+            await Assert.That(logger.Entries.Single(x => x.Message.StartsWith("Synced connection", StringComparison.Ordinal)).Message)
+                .EndsWith("1 fetches failed");
+        }
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_WithPreviousTransactionSync_RequestsBookedFromSevenDaysEarlier()
+    {
+        // Arrange
+        ExternalOpenBankingAccount externalAccount = new ExternalOpenBankingAccountFaker().Generate();
+        DateTime lastSync = new(2026, 3, 10, 12, 0, 0, DateTimeKind.Utc);
+
+        await SeedConnectionAsync()
+            .Do(s => s.BankAccountScenario.WithAccount("main", "bank", (userId, connectionId) =>
+                new BankAccount(userId, connectionId, externalAccount.AccountId, "TRANSACTION", "Main", "GBP")))
+            .Do(s => s.BankAccountScenario.WithSyncLog("main", SyncType.Transactions, lastSync.AddDays(-30)))
+            .Do(s => s.BankAccountScenario.WithSyncLog("main", SyncType.Transactions, lastSync))
+            .Do(s => s.BankAccountScenario.WithSyncLog("main", SyncType.Balance, lastSync.AddDays(5)));
+
+        GivenProviderReturns(accounts: [externalAccount]);
+
+        OpenBankingSyncService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        DateTime? expectedFrom = lastSync.AddDays(-7);
+
+        using (Assert.Multiple())
+        {
+            await OpenBankingApi.Received(1).GetAccountTransactionsAsync(externalAccount.AccountId, Token,
+                Arg.Is<DateTime?>(x => x == expectedFrom), CancellationToken);
+            await OpenBankingApi.Received(1).GetAccountPendingTransactionsAsync(externalAccount.AccountId, Token, null,
+                CancellationToken);
+        }
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_PendingTransactionNoLongerReported_IsRemoved()
+    {
+        // Arrange
+        ExternalOpenBankingAccount externalAccount = new ExternalOpenBankingAccountFaker().Generate();
+        ExternalOpenBankingAccountTransaction stillPending = new ExternalOpenBankingAccountTransactionFaker().Generate();
+        ExternalOpenBankingAccountTransaction settled = new ExternalOpenBankingAccountTransactionFaker().Generate();
+
+        await SeedAccountAsync(externalAccount)
+            .Do(s => s.TransactionScenario.WithTransaction("stale", "main", PendingDetails("stale-pending-id")))
+            .Do(s => s.TransactionScenario.WithTransaction("still-pending", "main",
+                PendingDetails(stillPending.TransactionId)));
+
+        // The bank settled the stale one under a different id
+        GivenProviderReturns(accounts: [externalAccount], transactions: [settled], pendingTransactions: [stillPending]);
+
+        CapturingLogger<AccountSnapshotWriter> logger = new();
+        OpenBankingSyncService subject = BuildSubject(writerLogger: logger);
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        List<string> stored = (await LoadTransactionsAsync()).Select(x => x.ExternalId).ToList();
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(stored).IsEquivalentTo([stillPending.TransactionId, settled.TransactionId]);
+            await Assert.That(logger.Entries.Any(x => x.Message.Contains("Removed 1 stale pending transactions")))
+                .IsTrue();
+        }
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_PendingFetchFails_KeepsStoredPendingTransactions()
+    {
+        // Arrange
+        ExternalOpenBankingAccount externalAccount = new ExternalOpenBankingAccountFaker().Generate();
+
+        await SeedAccountAsync(externalAccount)
+            .Do(s => s.TransactionScenario.WithTransaction("pending", "main", PendingDetails("pending-id")));
+
+        GivenProviderReturns(accounts: [externalAccount],
+            transactions: [new ExternalOpenBankingAccountTransactionFaker().Generate()]);
+        OpenBankingApi.GetAccountPendingTransactionsAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<DateTime?>(),
+            Arg.Any<CancellationToken>()).ThrowsAsync(new HttpRequestException("provider down"));
+
+        OpenBankingSyncService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        await Assert.That((await LoadTransactionsAsync()).Select(x => x.ExternalId)).Contains("pending-id");
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_LongAfterAuthenticating_LeavesOutStandingOrdersAndDirectDebits()
+    {
+        // Arrange, a scheduled sync hours after the user connected, when the bank would refuse them
+        ExternalOpenBankingAccount externalAccount = new ExternalOpenBankingAccountFaker().Generate();
+
+        await SeedAccountAsync(externalAccount, authenticatedAgo: TimeSpan.FromHours(4))
+            .Do(s => s.BankAccountScenario.WithStandingOrders("main", new StandingOrderDetailsFaker().Generate()))
+            .Do(s => s.BankAccountScenario.WithDirectDebits("main", new DirectDebitDetailsFaker().Generate()));
+
+        ExternalOpenBankingAccountBalance balance = new ExternalOpenBankingAccountBalanceFaker().Generate();
+        GivenProviderReturns(accounts: [externalAccount], balances: [balance]);
+        using TestMetrics metrics = new();
+        using MetricCollector<long> fetchesFailed = metrics.Collect<long>(FinTrackMetrics.FetchesFailedName);
+
+        OpenBankingSyncService subject = BuildSubject(metrics: metrics.Metrics);
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert, not asked for, so nothing refused, the stored ones kept and the rest synced as usual
+        BankAccount account = (await LoadAccountsAsync()).Single();
+
+        using (Assert.Multiple())
+        {
+            await OpenBankingApi.DidNotReceiveWithAnyArgs().GetAccountStandingOrdersAsync(default!, default!, default);
+            await OpenBankingApi.DidNotReceiveWithAnyArgs().GetAccountDirectDebitsAsync(default!, default!, default);
+            await Assert.That(account.StandingOrders).Count().IsEqualTo(1);
+            await Assert.That(account.DirectDebits).Count().IsEqualTo(1);
+            await Assert.That(account.Balance!.Available).IsEqualTo(balance.Available);
+            await Assert.That(fetchesFailed.GetMeasurementSnapshot().Sum(static x => x.Value)).IsEqualTo(0);
+        }
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_JustAfterAuthenticating_FetchesStandingOrdersAndDirectDebits()
+    {
+        // Arrange, the sync straight after connecting or renewing
+        ExternalOpenBankingAccount externalAccount = new ExternalOpenBankingAccountFaker().Generate();
+        await SeedAccountAsync(externalAccount, authenticatedAgo: TimeSpan.FromMinutes(1));
+        GivenProviderReturns(accounts: [externalAccount],
+            standingOrders: [new ExternalOpenBankingAccountStandingOrderFaker().Generate()],
+            directDebits: [new ExternalOpenBankingDirectDebitFaker().Generate()]);
+
+        OpenBankingSyncService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        BankAccount account = (await LoadAccountsAsync()).Single();
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(account.StandingOrders).Count().IsEqualTo(1);
+            await Assert.That(account.DirectDebits).Count().IsEqualTo(1);
+        }
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_StandingOrdersAndDirectDebitsFetchFails_KeepsTheStoredOnes()
+    {
+        // Arrange
+        ExternalOpenBankingAccount externalAccount = new ExternalOpenBankingAccountFaker().Generate();
+
+        await SeedAccountAsync(externalAccount)
+            .Do(s => s.BankAccountScenario.WithStandingOrders("main", new StandingOrderDetailsFaker().Generate()))
+            .Do(s => s.BankAccountScenario.WithDirectDebits("main", new DirectDebitDetailsFaker().Generate()));
+
+        GivenProviderReturns(accounts: [externalAccount]);
+        OpenBankingApi.GetAccountStandingOrdersAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new HttpRequestException("refused"));
+        OpenBankingApi.GetAccountDirectDebitsAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new HttpRequestException("refused"));
+
+        OpenBankingSyncService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        BankAccount account = (await LoadAccountsAsync()).Single();
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(account.StandingOrders).Count().IsEqualTo(1);
+            await Assert.That(account.DirectDebits).Count().IsEqualTo(1);
+        }
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_ConnectionWithCardsScope_StoresEachCardAsACard()
+    {
+        // Arrange
+        await SeedConnectionAsync(withCards: true);
+        ExternalOpenBankingCard externalCard = new ExternalOpenBankingCardFaker().Generate();
+        DateTime balanceAt = new(2026, 10, 27, 18, 0, 0, DateTimeKind.Utc);
+
+        GivenProviderReturns();
+        GivenCardsReturn([externalCard],
+            balances:
+            [
+                new ExternalOpenBankingAccountBalance
+                {
+                    Available = 2700m, Current = 300m, CreditLimit = 3000m, Currency = "GBP",
+                    UpdateTimestamp = balanceAt
+                }
+            ],
+            transactions:
+            [
+                CardTransaction("purchase", "DEBIT", 24.25m),
+                CardTransaction("repayment", "CREDIT", 100m)
+            ]);
+
+        OpenBankingSyncService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        BankAccount card = (await LoadAccountsAsync()).Single();
+        Dictionary<string, decimal> amounts = (await LoadTransactionsAsync()).ToDictionary(x => x.ExternalId, x => x.Amount);
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(card.Kind).IsEqualTo(BankAccountKind.Card);
+            await Assert.That(card.ExternalId).IsEqualTo(externalCard.AccountId);
+            await Assert.That(card.AccountType).IsEqualTo("CREDIT_CARD");
+            await Assert.That(card.Card.PartialNumber).IsEqualTo(externalCard.PartialCardNumber);
+            await Assert.That(card.Card.Network).IsEqualTo(externalCard.CardNetwork);
+            await Assert.That(card.Balance).IsEqualTo(new AccountBalance(2700m, -300m, balanceAt, 3000m));
+            await Assert.That(amounts["purchase"]).IsEqualTo(-24.25m);
+            await Assert.That(amounts["repayment"]).IsEqualTo(100m);
+            await OpenBankingApi.DidNotReceive().GetAccountStandingOrdersAsync(externalCard.AccountId, Arg.Any<string>(),
+                Arg.Any<CancellationToken>());
+            await OpenBankingApi.DidNotReceive().GetAccountDirectDebitsAsync(externalCard.AccountId, Arg.Any<string>(),
+                Arg.Any<CancellationToken>());
+        }
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_ConnectionWithoutCardsScope_DoesNotAskForCards()
+    {
+        // Arrange
+        await SeedConnectionAsync();
+        GivenProviderReturns(accounts: [new ExternalOpenBankingAccountFaker().Generate()]);
+
+        OpenBankingSyncService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await OpenBankingApi.DidNotReceive().GetAllCardsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+            await Assert.That((await LoadAccountsAsync()).Single().Kind).IsEqualTo(BankAccountKind.Account);
+        }
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_BookedTransactionNoLongerReported_IsKept()
+    {
+        // Arrange
+        ExternalOpenBankingAccount externalAccount = new ExternalOpenBankingAccountFaker().Generate();
+
+        await SeedAccountAsync(externalAccount)
+            .Do(s => s.TransactionScenario.WithTransaction("booked", "main",
+                PendingDetails("booked-id") with { IsPending = false }));
+
+        GivenProviderReturns(accounts: [externalAccount]);
+
+        OpenBankingSyncService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        await Assert.That((await LoadTransactionsAsync()).Select(x => x.ExternalId)).Contains("booked-id");
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_PendingTransactionsOnAnotherAccount_AreKept()
+    {
+        // Arrange
+        ExternalOpenBankingAccount externalAccount = new ExternalOpenBankingAccountFaker().Generate();
+
+        await SeedAccountAsync(externalAccount)
+            .Do(s => s.BankAccountScenario.WithAccount("other", "bank", (userId, connectionId) =>
+                new BankAccount(userId, connectionId, "other-external-id", "TRANSACTION", "Other", "GBP")))
+            .Do(s => s.TransactionScenario.WithTransaction("other-pending", "other", PendingDetails("other-pending-id")));
+
+        // Only the main account is reported, so the other account is not synced
+        GivenProviderReturns(accounts: [externalAccount]);
+
+        OpenBankingSyncService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        await Assert.That((await LoadTransactionsAsync()).Select(x => x.ExternalId)).Contains("other-pending-id");
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_WithoutPreviousTransactionSync_RequestsFullHistory()
+    {
+        // Arrange
+        await SeedConnectionAsync();
+        ExternalOpenBankingAccount externalAccount = new ExternalOpenBankingAccountFaker().Generate();
+        GivenProviderReturns(accounts: [externalAccount]);
+
+        OpenBankingSyncService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        await OpenBankingApi.Received(1).GetAccountTransactionsAsync(externalAccount.AccountId, Token, null, CancellationToken);
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_ExpiredToken_RefreshesPersistsAndUsesNewToken()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("bank", Username))
+            .Do(s => s.BankConnectionScenario.WithAccessToken("bank", DateTime.UtcNow.AddHours(-2), 3600, Token,
+                "old-refresh"));
+
+        OpenBankingApi.GetAccessTokenByRefreshTokenAsync("old-refresh", CancellationToken).Returns(
+            new ExternalOpenBankingAccessResponse { AccessToken = "new-token", RefreshToken = "new-refresh", ExpiresIn = 3600 });
+
+        OpenBankingSyncService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        BankConnection connection = await LoadConnectionAsync("bank");
+
+        using (Assert.Multiple())
+        {
+            await OpenBankingApi.Received(1).GetAllAccountsAsync("new-token", CancellationToken);
+            await Assert.That(connection.AccessTokens.Count).IsEqualTo(2);
+            await Assert.That(connection.ActiveToken!.Token).IsEqualTo("new-token");
+            await Assert.That(connection.ActiveToken.RefreshToken).IsEqualTo("new-refresh");
+            await Assert.That(connection.AccessTokens.Single(x => x.Token == Token).IsRevoked).IsTrue();
+        }
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_ValidToken_DoesNotRefresh()
+    {
+        // Arrange
+        await SeedConnectionAsync();
+        OpenBankingSyncService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        await OpenBankingApi.DidNotReceiveWithAnyArgs().GetAccessTokenByRefreshTokenAsync(default!, default);
+    }
+
+    [Test]
+    public async Task PerformSyncAsync_SyncsEachOfTheCurrentUsersConnections()
+    {
+        // Arrange
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.UserScenario.WithUser(OtherUsername))
+            .Do(s => s.BankConnectionScenario.WithConnection("first", Username))
+            .Do(s => s.BankConnectionScenario.WithAccessToken("first", token: "first-token"))
+            .Do(s => s.BankConnectionScenario.WithConnection("second", Username))
+            .Do(s => s.BankConnectionScenario.WithAccessToken("second", token: "second-token"))
+            .Do(s => s.BankConnectionScenario.WithConnection("theirs", OtherUsername))
+            .Do(s => s.BankConnectionScenario.WithAccessToken("theirs", token: "their-token"));
+
+        OpenBankingSyncService subject = BuildSubject();
+
+        // Act
+        await subject.PerformSyncAsync(SyncTypes.All, CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await OpenBankingApi.Received(1).GetAllAccountsAsync("first-token", CancellationToken);
+            await OpenBankingApi.Received(1).GetAllAccountsAsync("second-token", CancellationToken);
+            await OpenBankingApi.DidNotReceive().GetAllAccountsAsync("their-token", Arg.Any<CancellationToken>());
+        }
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_ExistingTransaction_PersistsUpdatedProviderClassifications()
+    {
+        // Arrange
+        ExternalOpenBankingAccount externalAccount = new ExternalOpenBankingAccountFaker().Generate();
+        ExternalOpenBankingAccountTransaction transaction = new ExternalOpenBankingAccountTransactionFaker().Generate();
+        transaction.TransactionClassification = new[] { "New" }.ToAsyncEnumerable();
+
+        await SeedConnectionAsync()
+            .Do(s => s.BankAccountScenario.WithAccount("main", "bank", (userId, connectionId) =>
+                new BankAccount(userId, connectionId, externalAccount.AccountId, "TRANSACTION", "Main", "GBP")))
+            .Do(s => s.TransactionScenario.WithTransaction("existing", "main", new TransactionDetails(
+                transaction.TransactionId, "Description", TransactionType.Debit, "PURCHASE", -1m, "GBP",
+                DateTime.UtcNow, false, ["Old"], TransactionMetadata.None, false)));
+
+        GivenProviderReturns(accounts: [externalAccount], transactions: [transaction]);
+
+        OpenBankingSyncService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        await Assert.That((await LoadTransactionsAsync()).Single().ProviderClassifications).IsEquivalentTo(["New"]);
+    }
+
+    [Test]
+    [Arguments("Balance", "account balance", SyncType.Balance)]
+    [Arguments("StandingOrders", "syncing standing orders", SyncType.StandingOrders)]
+    [Arguments("DirectDebits", "syncing direct debits", SyncType.DirectDebits)]
+    [Arguments("Transactions", "syncing transactions", SyncType.Transactions)]
+    [Arguments("PendingTransactions", "syncing pending transactions", null)]
+    public async Task SyncConnectionAsync_ProviderCallFails_LogsErrorAndSkipsOnlyThatData(string failingCall,
+        string expectedMessage, SyncType? skippedLog)
+    {
+        // Arrange
+        await SeedConnectionAsync();
+        ExternalOpenBankingAccountTransaction booked = new ExternalOpenBankingAccountTransactionFaker().Generate();
+        ExternalOpenBankingAccountTransaction pending = new ExternalOpenBankingAccountTransactionFaker().Generate();
+        GivenProviderReturns(accounts: [new ExternalOpenBankingAccountFaker().Generate()],
+            transactions: [booked], pendingTransactions: [pending]);
+
+        HttpRequestException failure = new("provider down");
+        switch (failingCall)
+        {
+            case "Balance":
+                OpenBankingApi.GetAccountBalanceAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+                    .ThrowsAsync(failure);
+                break;
+            case "StandingOrders":
+                OpenBankingApi.GetAccountStandingOrdersAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+                    .ThrowsAsync(failure);
+                break;
+            case "DirectDebits":
+                OpenBankingApi.GetAccountDirectDebitsAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+                    .ThrowsAsync(failure);
+                break;
+            case "Transactions":
+                OpenBankingApi.GetAccountTransactionsAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<DateTime?>(),
+                    Arg.Any<CancellationToken>()).ThrowsAsync(failure);
+                break;
+            case "PendingTransactions":
+                OpenBankingApi.GetAccountPendingTransactionsAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<DateTime?>(),
+                    Arg.Any<CancellationToken>()).ThrowsAsync(failure);
+                break;
+        }
+
+        CapturingLogger<AccountSnapshotFetcher> logger = new();
+        OpenBankingSyncService subject = BuildSubject(fetcherLogger: logger);
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        (LogLevel Level, string Message, Exception? Exception) error = logger.Entries.Single(x => x.Level == Microsoft.Extensions.Logging.LogLevel.Error);
+        List<SyncType> logged = await LoadSyncLogTypesAsync();
+        List<string> imported = (await LoadTransactionsAsync()).Select(x => x.ExternalId).ToList();
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(error.Message).Contains(expectedMessage);
+            await Assert.That(error.Exception).IsSameReferenceAs(failure);
+            await Assert.That(logged).Contains(SyncType.Account);
+            if (skippedLog is not null)
+            {
+                await Assert.That(logged).DoesNotContain(skippedLog.Value);
+            }
+
+            // Whichever transaction list still arrived is imported
+            await Assert.That(imported.Contains(booked.TransactionId)).IsEqualTo(failingCall != "Transactions");
+            await Assert.That(imported.Contains(pending.TransactionId)).IsEqualTo(failingCall != "PendingTransactions");
+        }
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_ProviderReturnsNoAccountList_SyncsNothing()
+    {
+        // Arrange
+        await SeedConnectionAsync();
+        OpenBankingApi.GetAllAccountsAsync(Token, CancellationToken).Returns(new ExternalOpenBankingListAllAccountsResponse());
+
+        OpenBankingSyncService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That((await LoadAccountsAsync()).Count).IsEqualTo(0);
+            await Assert.That((await LoadSyncLogTypesAsync()).Count).IsEqualTo(0);
+        }
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_ProviderReturnsNoResults_TreatedAsEmptyAndLogged()
+    {
+        // Arrange
+        await SeedConnectionAsync();
+        GivenProviderReturns(accounts: [new ExternalOpenBankingAccountFaker().Generate()]);
+        OpenBankingApi.GetAccountBalanceAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new ExternalOpenBankingGetAccountBalanceResponse());
+
+        OpenBankingSyncService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That((await LoadAccountsAsync()).Single().Balance).IsNull();
+            await Assert.That(await LoadSyncLogTypesAsync()).Contains(SyncType.Balance);
+        }
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_TransactionWithoutClassifications_ImportsWithNone()
+    {
+        // Arrange
+        await SeedConnectionAsync();
+        ExternalOpenBankingAccountTransaction transaction = new ExternalOpenBankingAccountTransactionFaker().Generate();
+        transaction.TransactionClassification = null;
+        GivenProviderReturns(accounts: [new ExternalOpenBankingAccountFaker().Generate()], transactions: [transaction]);
+
+        OpenBankingSyncService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        await Assert.That((await LoadTransactionsAsync()).Single().ProviderClassifications.Count).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_LocalProviderTimestamps_AreConvertedToUtc()
+    {
+        // Arrange
+        await SeedConnectionAsync();
+        DateTime local = new(2026, 2, 1, 8, 0, 0, DateTimeKind.Local);
+        ExternalOpenBankingAccountTransaction transaction = new ExternalOpenBankingAccountTransactionFaker().Generate();
+        transaction.Timestamp = local;
+        GivenProviderReturns(accounts: [new ExternalOpenBankingAccountFaker().Generate()], transactions: [transaction]);
+
+        OpenBankingSyncService subject = BuildSubject();
+
+        // Act
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        DateTime stored = (await LoadTransactionsAsync()).Single().OccurredAt;
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(stored.Kind).IsEqualTo(DateTimeKind.Utc);
+            await Assert.That(stored).IsEqualTo(local.ToUniversalTime());
+        }
+    }
+
+    /// <param name="fetcherLogger">For what the bank's fetches log, such as one failing.</param>
+    /// <param name="writerLogger">For what storing the fetched data logs, such as stale pending removed.</param>
+    private OpenBankingSyncService BuildSubject(ILogger<OpenBankingSyncService>? logger = null,
+        FinTrackMetrics? metrics = null, ILogger<AccountSnapshotFetcher>? fetcherLogger = null,
+        ILogger<AccountSnapshotWriter>? writerLogger = null)
+    {
+        AccountSnapshotFetcher accountSnapshotFetcher =
+            new(OpenBankingApi, fetcherLogger ?? NullLogger<AccountSnapshotFetcher>.Instance);
+        AccountSnapshotWriter accountSnapshotWriter =
+            new(writerLogger ?? NullLogger<AccountSnapshotWriter>.Instance);
+
+        return new OpenBankingSyncService(CurrentUserFor(Username), DbContextFactory, OpenBankingApi,
+            logger ?? NullLogger<OpenBankingSyncService>.Instance, TimeProvider.System, accountSnapshotFetcher, accountSnapshotWriter,
+            metrics ?? TestMetrics.Unobserved);
+    }
+}

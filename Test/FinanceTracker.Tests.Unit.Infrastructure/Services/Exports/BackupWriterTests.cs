@@ -31,18 +31,18 @@ public class BackupWriterTests : UnitTestBase
         "net-worth.json", "balance-history.json"
     ];
 
-    private readonly ITransactionsService _transactions = Substitute.For<ITransactionsService>();
-    private readonly IAccountService _accounts = Substitute.For<IAccountService>();
+    private readonly ITransactionsService _transactionsService = Substitute.For<ITransactionsService>();
+    private readonly IAccountService _accountService = Substitute.For<IAccountService>();
 
     public BackupWriterTests()
     {
-        _transactions.GetAllTransactionsAsync(Arg.Any<FilterTransactions>(), Arg.Any<CancellationToken>())
+        _transactionsService.GetAllTransactionsAsync(Arg.Any<FilterTransactions>(), Arg.Any<CancellationToken>())
             .Returns(_ => new[]
             {
                 TransactionCsvTests.Transaction("COFFEE SHOP", -3.5m),
                 TransactionCsvTests.Transaction("RENT", -800m)
             }.ToAsyncEnumerable());
-        _accounts.GetAccountsAndMostRecentTransactionsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+        _accountService.GetAccountsAndMostRecentTransactionsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(_ => AsyncEnumerable.Empty<AccountAndTransactions>());
     }
 
@@ -87,7 +87,7 @@ public class BackupWriterTests : UnitTestBase
         }
 
         // Every transaction, not just a page's filters
-        _transactions.Received(2).GetAllTransactionsAsync(
+        _transactionsService.Received(2).GetAllTransactionsAsync(
             Arg.Is<FilterTransactions>(static x => x.SearchTerm == null), Arg.Any<CancellationToken>());
     }
 
@@ -98,7 +98,7 @@ public class BackupWriterTests : UnitTestBase
         using ZipArchive zip = await WriteAsync();
 
         // Assert
-        _accounts.Received(1).GetAccountsAndMostRecentTransactionsAsync(0, Arg.Any<CancellationToken>());
+        _accountService.Received(1).GetAccountsAndMostRecentTransactionsAsync(0, Arg.Any<CancellationToken>());
         await Assert.That(Text(zip, "accounts.json").Trim()).IsEqualTo("[]");
     }
 
@@ -154,7 +154,7 @@ public class BackupWriterTests : UnitTestBase
     private async Task<ZipArchive> WriteAsync()
     {
         MemoryStream backup = new();
-        await BuildWriter(_transactions, _accounts).WriteAsync(backup, CancellationToken);
+        await BuildWriter(_transactionsService, _accountService).WriteAsync(backup, CancellationToken);
         backup.Position = 0;
         return new ZipArchive(backup, ZipArchiveMode.Read);
     }

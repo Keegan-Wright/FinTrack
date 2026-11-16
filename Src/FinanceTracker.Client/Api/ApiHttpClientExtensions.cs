@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 using FinanceTracker.Contracts;
 
 namespace FinanceTracker.Client.Api;
@@ -81,9 +82,10 @@ public static class ApiHttpClientExtensions
         /// when one of the app's rules refuses the change, which it answers with 422. Throws as the service would.
         /// </summary>
         /// <exception cref="NotFoundException">The API answered 404.</exception>
-        /// <exception cref="RuleBrokenException">The API answered 422.</exception>
+        /// <exception cref="RuleBrokenException">The API answered 422, with the rule's own message, e.g. <c>Only your
+        /// own accounts can be shared.</c></exception>
         /// <exception cref="HttpRequestException">The API answered with any other failure.</exception>
-        public void EnsureFound()
+        public async Task EnsureFoundAsync(CancellationToken cancellationToken)
         {
             if (response.StatusCode == HttpStatusCode.NotFound)
             {
@@ -92,7 +94,7 @@ public static class ApiHttpClientExtensions
 
             if (response.StatusCode == HttpStatusCode.UnprocessableEntity)
             {
-                throw new RuleBrokenException($"{response.RequestMessage?.RequestUri} was refused by one of the rules.");
+                throw new RuleBrokenException(await response.RuleMessageAsync(cancellationToken));
             }
 
             response.EnsureSuccessStatusCode();
@@ -105,16 +107,43 @@ public static class ApiHttpClientExtensions
         /// <param name="kind">What's named, e.g. <c>savings goal</c>.</param>
         /// <param name="name">The name that was sent.</param>
         /// <exception cref="NameTakenException">The API answered 409.</exception>
-        /// <exception cref="InvalidOperationException">The API answered 404.</exception>
+        /// <exception cref="NotFoundException">The API answered 404.</exception>
+        /// <exception cref="RuleBrokenException">The API answered 422.</exception>
         /// <exception cref="HttpRequestException">The API answered with any other failure.</exception>
-        public void EnsureNameFree(string kind, string name)
+        public async Task EnsureNameFreeAsync(string kind, string name, CancellationToken cancellationToken)
         {
             if (response.StatusCode == HttpStatusCode.Conflict)
             {
                 throw new NameTakenException(kind, name.Trim());
             }
 
-            response.EnsureFound();
+            await response.EnsureFoundAsync(cancellationToken);
+        }
+
+        /// <summary>
+        /// The message of the rule that refused the change, the <c>detail</c> of the problem the API answers 422 with.
+        /// A general one when the body has none, so the user is still told something.
+        /// </summary>
+        private async Task<string> RuleMessageAsync(CancellationToken cancellationToken)
+        {
+            string fallback = $"{response.RequestMessage?.RequestUri} was refused by one of the rules.";
+            try
+            {
+                JsonElement problem = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken);
+                if (problem.ValueKind == JsonValueKind.Object &&
+                    problem.TryGetProperty("detail", out JsonElement detail) &&
+                    detail.ValueKind == JsonValueKind.String &&
+                    !string.IsNullOrWhiteSpace(detail.GetString()))
+                {
+                    return detail.GetString()!;
+                }
+            }
+            catch (JsonException)
+            {
+                // Not a problem body, the general message does
+            }
+
+            return fallback;
         }
 
         /// <summary>

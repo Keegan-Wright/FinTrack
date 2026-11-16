@@ -16,7 +16,7 @@ public class NotificationsPageTests : ComponentTestBase
 {
     private static readonly DateTime RaisedAt = new(2026, 11, 6, 9, 30, 0, DateTimeKind.Utc);
 
-    private readonly INotificationsService _service = Substitute.For<INotificationsService>();
+    private readonly INotificationsService _notificationsService = Substitute.For<INotificationsService>();
     private readonly ApplicationState _applicationState = new();
 
     private readonly Notification _unread = new()
@@ -35,7 +35,7 @@ public class NotificationsPageTests : ComponentTestBase
     public NotificationsPageTests()
     {
         AddBunitPersistentComponentState();
-        Services.AddSingleton(_service);
+        Services.AddSingleton(_notificationsService);
         Services.AddSingleton(TimeProvider.System);
         GivenNotifications(_unread, _read);
     }
@@ -82,7 +82,7 @@ public class NotificationsPageTests : ComponentTestBase
     {
         // Arrange
         _applicationState.UnreadNotifications = 1;
-        _service.MarkReadAsync(_unread.Id, Arg.Any<CancellationToken>()).Returns(true);
+        _notificationsService.MarkReadAsync(_unread.Id, Arg.Any<CancellationToken>()).Returns(true);
         IRenderedComponent<FinanceTracker.Client.Pages.Notifications> cut = RenderPage();
         cut.WaitForState(() => cut.Markup.Contains(_unread.Title, StringComparison.Ordinal));
 
@@ -93,7 +93,7 @@ public class NotificationsPageTests : ComponentTestBase
         cut.WaitForState(() => cut.FindAll(".ft-notification--unread").Count == 0);
         using (Assert.Multiple())
         {
-            await _service.Received(1).MarkReadAsync(_unread.Id, Arg.Any<CancellationToken>());
+            await _notificationsService.Received(1).MarkReadAsync(_unread.Id, Arg.Any<CancellationToken>());
             await Assert.That(_applicationState.UnreadNotifications).IsEqualTo(0);
             await Assert.That(cut.Markup).Contains("All read");
         }
@@ -114,7 +114,7 @@ public class NotificationsPageTests : ComponentTestBase
         cut.WaitForState(() => cut.FindAll(".ft-notification--unread").Count == 0);
         using (Assert.Multiple())
         {
-            await _service.Received(1).MarkAllReadAsync(Arg.Any<CancellationToken>());
+            await _notificationsService.Received(1).MarkAllReadAsync(Arg.Any<CancellationToken>());
             await Assert.That(_applicationState.UnreadNotifications).IsEqualTo(0);
         }
     }
@@ -123,7 +123,7 @@ public class NotificationsPageTests : ComponentTestBase
     public async Task Title_Clicked_MarksItReadOnTheWayWhateverHappensToThePage()
     {
         // Arrange
-        _service.MarkReadAsync(_unread.Id, Arg.Any<CancellationToken>()).Returns(true);
+        _notificationsService.MarkReadAsync(_unread.Id, Arg.Any<CancellationToken>()).Returns(true);
         IRenderedComponent<FinanceTracker.Client.Pages.Notifications> cut = RenderPage();
         cut.WaitForState(() => cut.Markup.Contains(_unread.Title, StringComparison.Ordinal));
 
@@ -131,14 +131,14 @@ public class NotificationsPageTests : ComponentTestBase
         await cut.Find("a[href='ProviderSetup']").ClickAsync(new());
 
         // Assert, not with the page's token, which leaving the page cancels
-        await _service.Received(1).MarkReadAsync(_unread.Id, CancellationToken.None);
+        await _notificationsService.Received(1).MarkReadAsync(_unread.Id, CancellationToken.None);
     }
 
     [Test]
     public async Task MarkRead_ServerFails_SaysSoAndLeavesItUnread()
     {
         // Arrange
-        _service.MarkReadAsync(_unread.Id, Arg.Any<CancellationToken>())
+        _notificationsService.MarkReadAsync(_unread.Id, Arg.Any<CancellationToken>())
             .ThrowsAsync(new HttpRequestException("The server didn't answer"));
         IRenderedComponent<MudSnackbarProvider> snackbars = Render<MudSnackbarProvider>();
         IRenderedComponent<FinanceTracker.Client.Pages.Notifications> cut = RenderPage();
@@ -167,7 +167,7 @@ public class NotificationsPageTests : ComponentTestBase
         Render<FinanceTracker.Client.Pages.Notifications>(p => p.AddCascadingValue(_applicationState));
 
     private void GivenNotifications(params Notification[] notifications) =>
-        _service.GetNotificationsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+        _notificationsService.GetNotificationsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(_ => notifications.ToAsyncEnumerable());
 
     private static AngleSharp.Dom.IElement MarkAllButton(

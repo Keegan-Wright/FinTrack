@@ -13,7 +13,7 @@ namespace FinanceTracker.Tests.Unit.Client.SavingsGoals;
 
 public class SavingsGoalsPageTests : ComponentTestBase
 {
-    private readonly ISavingsGoalsService _goalsService = Substitute.For<ISavingsGoalsService>();
+    private readonly ISavingsGoalsService _savingsGoalsService = Substitute.For<ISavingsGoalsService>();
     private readonly ApplicationState _applicationState = new();
 
     public SavingsGoalsPageTests()
@@ -23,10 +23,10 @@ public class SavingsGoalsPageTests : ComponentTestBase
         classificationService.GetAllCustomClassificationsAsync(Arg.Any<CancellationToken>())
             .Returns(AsyncEnumerable.Empty<Classification>());
 
-        Services.AddSingleton(_goalsService);
+        Services.AddSingleton(_savingsGoalsService);
         Services.AddSingleton(classificationService);
 
-        _goalsService.GetSavingsAccountsAsync(Arg.Any<CancellationToken>())
+        _savingsGoalsService.GetSavingsAccountsAsync(Arg.Any<CancellationToken>())
             .Returns(AsyncEnumerable.Empty<SavingsGoalAccount>());
     }
 
@@ -35,7 +35,7 @@ public class SavingsGoalsPageTests : ComponentTestBase
     {
         // Arrange
         using CultureScope culture = new();
-        _goalsService.GetSavingsGoalsAsync(Arg.Any<CancellationToken>()).Returns(new[]
+        _savingsGoalsService.GetSavingsGoalsAsync(Arg.Any<CancellationToken>()).Returns(new[]
         {
             new SavingsGoal
             {
@@ -65,7 +65,7 @@ public class SavingsGoalsPageTests : ComponentTestBase
     public async Task NoGoals_SaysHowToStart()
     {
         // Arrange
-        _goalsService.GetSavingsGoalsAsync(Arg.Any<CancellationToken>())
+        _savingsGoalsService.GetSavingsGoalsAsync(Arg.Any<CancellationToken>())
             .Returns(AsyncEnumerable.Empty<SavingsGoal>());
 
         // Act
@@ -82,7 +82,7 @@ public class SavingsGoalsPageTests : ComponentTestBase
     public async Task Menu_OffersHistoryForGoalsThatTrackSomething(SavingsGoalSource source, bool offered)
     {
         // Arrange
-        _goalsService.GetSavingsGoalsAsync(Arg.Any<CancellationToken>()).Returns(new[]
+        _savingsGoalsService.GetSavingsGoalsAsync(Arg.Any<CancellationToken>()).Returns(new[]
         {
             new SavingsGoal { Id = Guid.NewGuid(), Name = "Car", Source = source }
         }.ToAsyncEnumerable());
@@ -102,7 +102,7 @@ public class SavingsGoalsPageTests : ComponentTestBase
         // Arrange
         using CultureScope culture = new();
         decimal saved = 1300m;
-        _goalsService.GetSavingsGoalsAsync(Arg.Any<CancellationToken>()).Returns(_ => new[]
+        _savingsGoalsService.GetSavingsGoalsAsync(Arg.Any<CancellationToken>()).Returns(_ => new[]
         {
             new SavingsGoal
             {
@@ -124,11 +124,11 @@ public class SavingsGoalsPageTests : ComponentTestBase
     public async Task Delete_WhenItFails_SaysSoAndKeepsTheGoal()
     {
         // Arrange
-        _goalsService.GetSavingsGoalsAsync(Arg.Any<CancellationToken>()).Returns(_ => new[]
+        _savingsGoalsService.GetSavingsGoalsAsync(Arg.Any<CancellationToken>()).Returns(_ => new[]
         {
             new SavingsGoal { Id = Guid.NewGuid(), Name = "Car", Target = 10000m, Source = SavingsGoalSource.Manual }
         }.ToAsyncEnumerable());
-        _goalsService.DeleteSavingsGoalAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+        _savingsGoalsService.DeleteSavingsGoalAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new HttpRequestException("The server didn't answer"));
         IRenderedComponent<MudPopoverProvider> popovers = Render<MudPopoverProvider>();
         IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();

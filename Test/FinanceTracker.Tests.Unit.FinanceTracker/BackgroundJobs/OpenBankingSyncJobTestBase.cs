@@ -26,7 +26,7 @@ public abstract class OpenBankingSyncJobTestBase : InfrastructureTestBase
     private ServiceProvider _services = null!;
 
     /// <summary>
-    /// The user of the scope <see cref="OpenBankingService"/> was last resolved from.
+    /// The user of the scope <see cref="OpenBankingSyncService"/> was last resolved from.
     /// </summary>
     private ICurrentUser? _resolvedFor;
 
@@ -50,7 +50,7 @@ public abstract class OpenBankingSyncJobTestBase : InfrastructureTestBase
     /// </summary>
     private ICurrentUser? _noticesFor;
 
-    protected IOpenBankingSyncService OpenBankingService { get; } = Substitute.For<IOpenBankingSyncService>();
+    protected IOpenBankingSyncService OpenBankingSyncService { get; } = Substitute.For<IOpenBankingSyncService>();
     protected ISyncNotifier SyncNotifier { get; } = Substitute.For<ISyncNotifier>();
     protected ITransferMatchingService TransferMatchingService { get; } = Substitute.For<ITransferMatchingService>();
     protected IBalanceSnapshotService BalanceSnapshotService { get; } = Substitute.For<IBalanceSnapshotService>();
@@ -62,7 +62,7 @@ public abstract class OpenBankingSyncJobTestBase : InfrastructureTestBase
     protected TimeProvider Clock { get; } = new FixedTimeProvider(Now);
 
     /// <summary>
-    /// Scopes the jobs resolve <see cref="OpenBankingService"/> from, with a real <see cref="CurrentUser"/>.
+    /// Scopes the jobs resolve <see cref="OpenBankingSyncService"/> from, with a real <see cref="CurrentUser"/>.
     /// </summary>
     protected IServiceScopeFactory ScopeFactory => _services.GetRequiredService<IServiceScopeFactory>();
 
@@ -109,7 +109,7 @@ public abstract class OpenBankingSyncJobTestBase : InfrastructureTestBase
             .AddScoped(sp =>
             {
                 _resolvedFor = sp.GetRequiredService<ICurrentUser>();
-                return OpenBankingService;
+                return OpenBankingSyncService;
             })
             .AddScoped(sp =>
             {
@@ -172,7 +172,7 @@ public abstract class OpenBankingSyncJobTestBase : InfrastructureTestBase
                 }
             });
 
-        OpenBankingService
+        OpenBankingSyncService
             .When(x => x.SyncConnectionAsync(Arg.Any<Guid>(), Arg.Any<SyncTypes>(), Arg.Any<CancellationToken>()))
             .Do(callInfo =>
             {

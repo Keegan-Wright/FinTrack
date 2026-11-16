@@ -29,7 +29,7 @@ public sealed class ClassificationApiClient : IClassificationService
     {
         using HttpResponseMessage response =
             await _http.GetAsync($"{ApiRoutes.Classifications}/{id}", cancellationToken);
-        response.EnsureFound();
+        await response.EnsureFoundAsync(cancellationToken);
         return await response.ReadRequiredJsonAsync<GetClassification>(cancellationToken);
     }
 
@@ -38,7 +38,7 @@ public sealed class ClassificationApiClient : IClassificationService
     {
         using HttpResponseMessage response =
             await _http.PostAsJsonAsync(ApiRoutes.Classifications, classification, cancellationToken);
-        response.EnsureNameFree(NameTakenException.Tag, classification.Tag);
+        await response.EnsureNameFreeAsync(NameTakenException.Tag, classification.Tag, cancellationToken);
         return await response.ReadRequiredJsonAsync<Classification>(cancellationToken);
     }
 
@@ -47,7 +47,7 @@ public sealed class ClassificationApiClient : IClassificationService
     {
         using HttpResponseMessage response =
             await _http.PutAsJsonAsync($"{ApiRoutes.Classifications}/{id}", request, cancellationToken);
-        response.EnsureNameFree(NameTakenException.Tag, request.Tag);
+        await response.EnsureNameFreeAsync(NameTakenException.Tag, request.Tag, cancellationToken);
         return await response.ReadRequiredJsonAsync<Classification>(cancellationToken);
     }
 
@@ -56,13 +56,13 @@ public sealed class ClassificationApiClient : IClassificationService
     {
         using HttpResponseMessage response = await _http.PostAsJsonAsync($"{ApiRoutes.Classifications}/transactions",
             model, cancellationToken);
-        response.EnsureFound();
+        await response.EnsureFoundAsync(cancellationToken);
     }
 
     public async Task RemoveCustomClassificationAsync(Guid id, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response =
             await _http.DeleteAsync($"{ApiRoutes.Classifications}/{id}", cancellationToken);
-        response.EnsureFound();
+        await response.EnsureFoundAsync(cancellationToken);
     }
 }

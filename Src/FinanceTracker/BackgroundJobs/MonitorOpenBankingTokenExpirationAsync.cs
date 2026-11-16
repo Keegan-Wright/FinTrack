@@ -17,19 +17,19 @@ namespace FinanceTracker.BackgroundJobs;
 public class MonitorOpenBankingTokenExpirationAsync : IJob
 {
     private readonly IDbContextFactory<FinanceTrackerContext> _dbContextFactory;
-    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IServiceScopeFactory _serviceScopeFactory;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<MonitorOpenBankingTokenExpirationAsync> _logger;
     private readonly FinTrackMetrics _metrics;
 
     public MonitorOpenBankingTokenExpirationAsync(IDbContextFactory<FinanceTrackerContext> dbContextFactory,
-        IServiceScopeFactory scopeFactory, TimeProvider timeProvider,
+        IServiceScopeFactory serviceScopeFactory, TimeProvider timeProvider,
         ILogger<MonitorOpenBankingTokenExpirationAsync> logger, FinTrackMetrics metrics)
     {
         _metrics = metrics;
         _logger = logger;
         _dbContextFactory = dbContextFactory;
-        _scopeFactory = scopeFactory;
+        _serviceScopeFactory = serviceScopeFactory;
         _timeProvider = timeProvider;
     }
 
@@ -101,7 +101,7 @@ public class MonitorOpenBankingTokenExpirationAsync : IJob
             using IDisposable? logScope = _logger.BeginUserScope(owner);
             try
             {
-                await using AsyncServiceScope scope = _scopeFactory.CreateUserScope(owner);
+                await using AsyncServiceScope scope = _serviceScopeFactory.CreateUserScope(owner);
                 await scope.ServiceProvider.GetRequiredService<IConsentNotices>().NotifyAsync(cancellationToken);
             }
             catch (Exception ex) when (!cancellationToken.IsCancellationRequested)

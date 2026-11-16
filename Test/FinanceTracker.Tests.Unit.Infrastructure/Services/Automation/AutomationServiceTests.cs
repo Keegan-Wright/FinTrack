@@ -25,7 +25,7 @@ public class AutomationServiceTests : InfrastructureTestBase
 
     private static readonly DateTime Now = new(2026, 3, 10, 12, 0, 30, DateTimeKind.Utc);
 
-    private readonly IOpenBankingSyncScheduler _syncScheduler = Substitute.For<IOpenBankingSyncScheduler>();
+    private readonly IOpenBankingSyncScheduler _openBankingSyncScheduler = Substitute.For<IOpenBankingSyncScheduler>();
 
     // Local time is UTC, so the times read back as stored
     private readonly FixedTimeProvider _time = new(Now, TimeZoneInfo.Utc);
@@ -208,7 +208,7 @@ public class AutomationServiceTests : InfrastructureTestBase
         await subject.RequestSyncAsync(CancellationToken);
 
         // Assert
-        await _syncScheduler.Received(1).ScheduleUserSyncAsync(Scenario.UserMappings[Username], CancellationToken);
+        await _openBankingSyncScheduler.Received(1).ScheduleUserSyncAsync(Scenario.UserMappings[Username], CancellationToken);
     }
 
     [Test]
@@ -530,5 +530,5 @@ public class AutomationServiceTests : InfrastructureTestBase
 
     private AutomationService BuildSubject() => new(CurrentUserFor(Username), DbContextFactory,
         NullLogger<AutomationService>.Instance, _quartz!.GetRequiredService<ISchedulerFactory>(), History,
-        _syncScheduler, _time);
+        _openBankingSyncScheduler, _time);
 }

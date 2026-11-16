@@ -18,17 +18,17 @@ namespace FinanceTracker.Infrastructure.Sharing;
 public sealed class SharingLinks : ServiceBase<SharingService>, ISharingLinks
 {
     private readonly TimeProvider _timeProvider;
-    private readonly ISharingEffects _effects;
-    private readonly ISharingJointAccounts _jointAccounts;
+    private readonly ISharingEffects _sharingEffects;
+    private readonly ISharingJointAccounts _sharingJointAccounts;
 
     public SharingLinks(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<SharingService> logger,
-        TimeProvider timeProvider, ISharingEffects effects, ISharingJointAccounts jointAccounts)
+        TimeProvider timeProvider, ISharingEffects sharingEffects, ISharingJointAccounts sharingJointAccounts)
         : base(currentUser, financeTrackerContextFactory, logger)
     {
         _timeProvider = timeProvider;
-        _effects = effects;
-        _jointAccounts = jointAccounts;
+        _sharingEffects = sharingEffects;
+        _sharingJointAccounts = sharingJointAccounts;
     }
 
     public async IAsyncEnumerable<ContractLink> GetLinksAsync(
@@ -165,7 +165,7 @@ public sealed class SharingLinks : ServiceBase<SharingService>, ISharingLinks
         Logger.LogChanged(UserId, "invited", "user link", link.Id);
 
         FinanceTrackerUser inviter = await context.Users.SingleAsync(x => x.Id == UserId, cancellationToken);
-        await _effects.NotifyAsync(invitee.Id, NotificationKind.SharingInvite, RoundKey("sharing-invite", link),
+        await _sharingEffects.NotifyAsync(invitee.Id, NotificationKind.SharingInvite, RoundKey("sharing-invite", link),
             $"{PersonNames.Full(inviter)} wants to share with you",
             "Accept on the Sharing page to link with them. Nothing is shared until each of you chooses what to share.",
             cancellationToken);
@@ -189,7 +189,7 @@ public sealed class SharingLinks : ServiceBase<SharingService>, ISharingLinks
         Logger.LogChanged(UserId, "accepted", "user link", link.Id);
 
         FinanceTrackerUser invitee = await context.Users.SingleAsync(x => x.Id == UserId, cancellationToken);
-        await _effects.NotifyAsync(link.InvitedBy, NotificationKind.SharingAccepted,
+        await _sharingEffects.NotifyAsync(link.InvitedBy, NotificationKind.SharingAccepted,
             RoundKey("sharing-accepted", link), $"{PersonNames.Full(invitee)} accepted your invite to share",
             "You're linked. Choose what to share with them on the Sharing page.", cancellationToken);
 
@@ -211,7 +211,7 @@ public sealed class SharingLinks : ServiceBase<SharingService>, ISharingLinks
         await context.SaveChangesAsync(cancellationToken);
         Logger.LogChanged(UserId, "declined", "user link", link.Id);
 
-        await _effects.NotifyOtherAsync(context, link, RoundKey("sharing-declined", link),
+        await _sharingEffects.NotifyOtherAsync(context, link, RoundKey("sharing-declined", link),
             person => $"{person} declined your invite to share", "Nothing is shared between you.",
             cancellationToken, NotificationKind.SharingChanged);
         return true;
@@ -236,7 +236,7 @@ public sealed class SharingLinks : ServiceBase<SharingService>, ISharingLinks
 
         // Each gets their own copy of a joint account back first, with its tags as they stand, while the link still
         // lets each see the other's names. Then the other person's come off with everything else of theirs
-        bool splitAny = await _jointAccounts.SplitAllAsync(context, link, cancellationToken);
+        bool splitAny = await _sharingJointAccounts.SplitAllAsync(context, link, cancellationToken);
 
         bool wasLinked = link.Status == UserLinkStatus.Accepted;
         link.End(UserId, _timeProvider.GetUtcNow().UtcDateTime);
@@ -266,10 +266,10 @@ public sealed class SharingLinks : ServiceBase<SharingService>, ISharingLinks
         // were cleared when it was merged
         if (shares.Count > 0 || linkedMembers.Count > 0 || splitAny)
         {
-            await _effects.RematchTransfersAsync(context, link, cancellationToken);
+            await _sharingEffects.RematchTransfersAsync(context, link, cancellationToken);
         }
 
-        await _effects.RerunRulesAsync(changeable, cancellationToken);
+        await _sharingEffects.RerunRulesAsync(changeable, cancellationToken);
         await NotifyEndedAsync(context, link, wasLinked, cancellationToken);
         return true;
     }
@@ -291,7 +291,7 @@ public sealed class SharingLinks : ServiceBase<SharingService>, ISharingLinks
     {
         if (wasLinked)
         {
-            await _effects.NotifyOtherAsync(context, link, RoundKey("sharing-ended", link),
+            await _sharingEffects.NotifyOtherAsync(context, link, RoundKey("sharing-ended", link),
                 person => $"{person} stopped sharing with you",
                 "Nothing of theirs is shared with you now, and nothing of yours with them. Joint accounts you'd " +
                 "merged are split, each of you keeping your own copy.",
@@ -299,7 +299,7 @@ public sealed class SharingLinks : ServiceBase<SharingService>, ISharingLinks
             return;
         }
 
-        await _effects.NotifyOtherAsync(context, link, RoundKey("sharing-withdrawn", link),
+        await _sharingEffects.NotifyOtherAsync(context, link, RoundKey("sharing-withdrawn", link),
             person => $"{person} withdrew their invite to share", "Nothing is shared between you.",
             cancellationToken, NotificationKind.SharingChanged);
     }

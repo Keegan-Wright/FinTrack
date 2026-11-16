@@ -34,7 +34,7 @@ public sealed class PayPeriodsApiClient : IPayPeriodsService
     {
         using HttpResponseMessage response =
             await _http.PutAsJsonAsync($"{ApiRoutes.PayPeriods}/pay", income, cancellationToken);
-        response.EnsureFound();
+        await response.EnsureFoundAsync(cancellationToken);
         return await response.ReadRequiredJsonAsync<YourPay>(cancellationToken);
     }
 
@@ -46,7 +46,7 @@ public sealed class PayPeriodsApiClient : IPayPeriodsService
     {
         using HttpResponseMessage response =
             await _http.PutAsync($"{ApiRoutes.PayPeriods}/{path}", null, cancellationToken);
-        response.EnsureFound();
+        await response.EnsureFoundAsync(cancellationToken);
         return await response.ReadRequiredJsonAsync<YourPay>(cancellationToken);
     }
 }

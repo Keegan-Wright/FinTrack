@@ -13,12 +13,12 @@ namespace FinanceTracker.Tests.Unit.Client.Notifications;
 
 public class NotificationSettingsPageTests : ComponentTestBase
 {
-    private readonly INotificationsService _service = Substitute.For<INotificationsService>();
+    private readonly INotificationsService _notificationsService = Substitute.For<INotificationsService>();
 
     public NotificationSettingsPageTests()
     {
         AddBunitPersistentComponentState();
-        Services.AddSingleton(_service);
+        Services.AddSingleton(_notificationsService);
         Services.AddSingleton(TimeProvider.System);
         Services.AddScoped<IValidator<SetWebhook>, SetWebhookValidator>();
         Services.AddScoped<IValidator<ChangeAlertSettings>, ChangeAlertSettingsValidator>();
@@ -28,7 +28,7 @@ public class NotificationSettingsPageTests : ComponentTestBase
     public async Task Render_Loaded_HasATabEachOpenOnWhatAndWhere()
     {
         // Arrange
-        _service.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(Create());
+        _notificationsService.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(Create());
 
         // Act
         IRenderedComponent<NotificationSettingsPage> cut = RenderPage();

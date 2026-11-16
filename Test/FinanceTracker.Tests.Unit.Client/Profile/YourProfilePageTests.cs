@@ -13,12 +13,12 @@ namespace FinanceTracker.Tests.Unit.Client.Profile;
 
 public class YourProfilePageTests : ComponentTestBase
 {
-    private readonly IProfileService _service = Substitute.For<IProfileService>();
+    private readonly IProfileService _profileService = Substitute.For<IProfileService>();
 
     public YourProfilePageTests()
     {
         AddBunitPersistentComponentState();
-        Services.AddSingleton(_service);
+        Services.AddSingleton(_profileService);
         Services.AddScoped<IValidator<ChangeEmail>, ChangeEmailValidator>();
         Services.AddScoped<IValidator<ChangePassword>, ChangePasswordValidator>();
     }
@@ -27,7 +27,7 @@ public class YourProfilePageTests : ComponentTestBase
     public async Task Render_LocalAccount_HasAnEmailAndAPasswordTabOpenOnEmail()
     {
         // Arrange
-        _service.GetProfileAsync(Arg.Any<CancellationToken>()).Returns(Create());
+        _profileService.GetProfileAsync(Arg.Any<CancellationToken>()).Returns(Create());
 
         // Act
         IRenderedComponent<YourProfile> cut = RenderPage();
@@ -48,7 +48,7 @@ public class YourProfilePageTests : ComponentTestBase
     public async Task Render_NoPassword_SaysTheProviderLooksAfterThem()
     {
         // Arrange, made by signing in through the identity provider
-        _service.GetProfileAsync(Arg.Any<CancellationToken>()).Returns(Create(hasPassword: false));
+        _profileService.GetProfileAsync(Arg.Any<CancellationToken>()).Returns(Create(hasPassword: false));
 
         // Act
         IRenderedComponent<YourProfile> cut = RenderPage();

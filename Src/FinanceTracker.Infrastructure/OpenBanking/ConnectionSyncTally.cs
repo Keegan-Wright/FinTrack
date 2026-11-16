@@ -3,7 +3,7 @@ namespace FinanceTracker.Infrastructure.OpenBanking;
 /// <summary>
 /// What one connection's sync did, for its summary log and the tags on its span.
 /// </summary>
-internal sealed class ConnectionSyncTally
+public sealed class ConnectionSyncTally
 {
     private int _failedFetches;
 

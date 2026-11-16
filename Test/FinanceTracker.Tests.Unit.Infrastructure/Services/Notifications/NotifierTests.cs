@@ -22,16 +22,16 @@ public class NotifierTests : InfrastructureTestBase
 
     private static readonly DateTime Now = new(2026, 11, 7, 9, 0, 0, DateTimeKind.Utc);
 
-    private readonly INotificationPublisher _publisher = Substitute.For<INotificationPublisher>();
-    private readonly IMailSender _mail = Substitute.For<IMailSender>();
-    private readonly IWebhookSender _webhooks = Substitute.For<IWebhookSender>();
+    private readonly INotificationPublisher _notificationPublisher = Substitute.For<INotificationPublisher>();
+    private readonly IMailSender _mailSender = Substitute.For<IMailSender>();
+    private readonly IWebhookSender _webhookSender = Substitute.For<IWebhookSender>();
 
     [Before(Test)]
     public async Task SetUpAsync()
     {
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
             .Do(s => s.UserScenario.WithEmail(Username, Address));
-        _mail.IsAvailable.Returns(true);
+        _mailSender.IsAvailable.Returns(true);
     }
 
     [Test]
@@ -49,8 +49,8 @@ public class NotifierTests : InfrastructureTestBase
             await Assert.That(saved.UserId).IsEqualTo(Scenario.UserMappings[Username]);
             await Assert.That(saved.Title).IsEqualTo("Bank access has ended");
             await Assert.That(saved.IsRead).IsFalse();
-            await _publisher.Received(1).NotificationAddedAsync(Scenario.UserMappings[Username]);
-            await _mail.Received(1).SendAsync(
+            await _notificationPublisher.Received(1).NotificationAddedAsync(Scenario.UserMappings[Username]);
+            await _mailSender.Received(1).SendAsync(
                 Arg.Is<MailMessage>(x => x.To == Address && x.Subject == "Bank access has ended"),
                 Arg.Any<CancellationToken>());
         }
@@ -101,8 +101,8 @@ public class NotifierTests : InfrastructureTestBase
         {
             await Assert.That(again).IsFalse();
             await Assert.That(await context.Notifications.CountAsync(CancellationToken)).IsEqualTo(1);
-            await _publisher.Received(1).NotificationAddedAsync(Arg.Any<Guid>());
-            await _mail.Received(1).SendAsync(Arg.Any<MailMessage>(), Arg.Any<CancellationToken>());
+            await _notificationPublisher.Received(1).NotificationAddedAsync(Arg.Any<Guid>());
+            await _mailSender.Received(1).SendAsync(Arg.Any<MailMessage>(), Arg.Any<CancellationToken>());
         }
     }
 
@@ -125,8 +125,8 @@ public class NotifierTests : InfrastructureTestBase
         using (Assert.Multiple())
         {
             await Assert.That(raised).IsTrue();
-            await _publisher.Received(1).NotificationAddedAsync(Arg.Any<Guid>());
-            await _mail.DidNotReceive().SendAsync(Arg.Any<MailMessage>(), Arg.Any<CancellationToken>());
+            await _notificationPublisher.Received(1).NotificationAddedAsync(Arg.Any<Guid>());
+            await _mailSender.DidNotReceive().SendAsync(Arg.Any<MailMessage>(), Arg.Any<CancellationToken>());
         }
     }
 
@@ -134,7 +134,7 @@ public class NotifierTests : InfrastructureTestBase
     public async Task Notify_NoMailServer_OnlyShowsInTheApp()
     {
         // Arrange
-        _mail.IsAvailable.Returns(false);
+        _mailSender.IsAvailable.Returns(false);
 
         // Act
         bool raised = await Notify("consent-ended:a");
@@ -143,7 +143,7 @@ public class NotifierTests : InfrastructureTestBase
         using (Assert.Multiple())
         {
             await Assert.That(raised).IsTrue();
-            await _mail.DidNotReceive().SendAsync(Arg.Any<MailMessage>(), Arg.Any<CancellationToken>());
+            await _mailSender.DidNotReceive().SendAsync(Arg.Any<MailMessage>(), Arg.Any<CancellationToken>());
         }
     }
 
@@ -151,7 +151,7 @@ public class NotifierTests : InfrastructureTestBase
     public async Task Notify_EmailFails_StillShowsInTheApp()
     {
         // Arrange
-        _mail.SendAsync(Arg.Any<MailMessage>(), Arg.Any<CancellationToken>())
+        _mailSender.SendAsync(Arg.Any<MailMessage>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new IOException("The mail server didn't answer"));
 
         // Act
@@ -193,7 +193,7 @@ public class NotifierTests : InfrastructureTestBase
         await Notify("consent-ended:a");
 
         // Assert
-        await _mail.Received(1).SendAsync(
+        await _mailSender.Received(1).SendAsync(
             Arg.Is<MailMessage>(x => x.Images.Count == 1 && x.Html.Contains("FinTrack can no longer sync Bank.")),
             Arg.Any<CancellationToken>());
     }
@@ -211,7 +211,7 @@ public class NotifierTests : InfrastructureTestBase
         await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
         using (Assert.Multiple())
         {
-            await _mail.DidNotReceive().SendAsync(Arg.Any<MailMessage>(), Arg.Any<CancellationToken>());
+            await _mailSender.DidNotReceive().SendAsync(Arg.Any<MailMessage>(), Arg.Any<CancellationToken>());
             await Assert.That(await context.Notifications.CountAsync(CancellationToken)).IsEqualTo(1);
         }
     }
@@ -230,7 +230,7 @@ public class NotifierTests : InfrastructureTestBase
         NotificationSettings settings = await context.NotificationSettings.SingleAsync(CancellationToken);
         using (Assert.Multiple())
         {
-            await _webhooks.Received(1).SendAsync("https://hooks.example.test/fintrack", "secret",
+            await _webhookSender.Received(1).SendAsync("https://hooks.example.test/fintrack", "secret",
                 Arg.Is<WebhookPayload>(x => x.Kind == NotificationKind.ConsentEnded && x.Title == "Bank access has ended"),
                 Arg.Any<CancellationToken>());
             await Assert.That(settings.LastWebhookAt).IsEqualTo(Now);
@@ -254,9 +254,9 @@ public class NotifierTests : InfrastructureTestBase
         // Assert
         using (Assert.Multiple())
         {
-            await _webhooks.DidNotReceive().SendAsync(Arg.Any<string>(), Arg.Any<string>(),
+            await _webhookSender.DidNotReceive().SendAsync(Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<WebhookPayload>(), Arg.Any<CancellationToken>());
-            await _mail.Received(1).SendAsync(Arg.Any<MailMessage>(), Arg.Any<CancellationToken>());
+            await _mailSender.Received(1).SendAsync(Arg.Any<MailMessage>(), Arg.Any<CancellationToken>());
         }
     }
 
@@ -265,7 +265,7 @@ public class NotifierTests : InfrastructureTestBase
     {
         // Arrange
         await GivenSettingsAsync(x => x.SetWebhook("https://hooks.example.test/fintrack", "secret"));
-        _webhooks.SendAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<WebhookPayload>(),
+        _webhookSender.SendAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<WebhookPayload>(),
                 Arg.Any<CancellationToken>())
             .ThrowsAsync(new WebhookRejectedException(System.Net.HttpStatusCode.InternalServerError));
 
@@ -280,7 +280,7 @@ public class NotifierTests : InfrastructureTestBase
             await Assert.That(raised).IsTrue();
             await Assert.That(settings.LastWebhookFailure).IsEqualTo("The webhook answered 500, not success.");
             await Assert.That(settings.LastEmailFailure).IsNull();
-            await _mail.Received(1).SendAsync(Arg.Any<MailMessage>(), Arg.Any<CancellationToken>());
+            await _mailSender.Received(1).SendAsync(Arg.Any<MailMessage>(), Arg.Any<CancellationToken>());
         }
     }
 
@@ -291,7 +291,7 @@ public class NotifierTests : InfrastructureTestBase
         await Notify("consent-ended:a");
 
         // Assert
-        await _webhooks.DidNotReceive().SendAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<WebhookPayload>(),
+        await _webhookSender.DidNotReceive().SendAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<WebhookPayload>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -311,8 +311,8 @@ public class NotifierTests : InfrastructureTestBase
         {
             await Assert.That(raised).IsTrue();
             await Assert.That(saved.InApp).IsFalse();
-            await _publisher.DidNotReceive().NotificationAddedAsync(Arg.Any<Guid>());
-            await _mail.Received(1).SendAsync(Arg.Any<MailMessage>(), Arg.Any<CancellationToken>());
+            await _notificationPublisher.DidNotReceive().NotificationAddedAsync(Arg.Any<Guid>());
+            await _mailSender.Received(1).SendAsync(Arg.Any<MailMessage>(), Arg.Any<CancellationToken>());
         }
     }
 
@@ -337,9 +337,9 @@ public class NotifierTests : InfrastructureTestBase
         {
             await Assert.That(raised).IsFalse();
             await Assert.That(await context.Notifications.CountAsync(CancellationToken)).IsEqualTo(0);
-            await _publisher.DidNotReceive().NotificationAddedAsync(Arg.Any<Guid>());
-            await _mail.DidNotReceive().SendAsync(Arg.Any<MailMessage>(), Arg.Any<CancellationToken>());
-            await _webhooks.DidNotReceive().SendAsync(Arg.Any<string>(), Arg.Any<string>(),
+            await _notificationPublisher.DidNotReceive().NotificationAddedAsync(Arg.Any<Guid>());
+            await _mailSender.DidNotReceive().SendAsync(Arg.Any<MailMessage>(), Arg.Any<CancellationToken>());
+            await _webhookSender.DidNotReceive().SendAsync(Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<WebhookPayload>(), Arg.Any<CancellationToken>());
         }
     }
@@ -348,7 +348,7 @@ public class NotifierTests : InfrastructureTestBase
     public async Task Notify_NotInTheAppAndNoMailServer_IsNotRaised()
     {
         // Arrange, emailed by their settings, but there's nothing to send it with
-        _mail.IsAvailable.Returns(false);
+        _mailSender.IsAvailable.Returns(false);
         await GivenSettingsAsync(x => x.ShowInAppOnly([]));
 
         // Act
@@ -368,8 +368,8 @@ public class NotifierTests : InfrastructureTestBase
     }
 
     private Task<bool> Notify(string key, ILogger<Notifier>? logger = null, FinTrackMetrics? metrics = null) =>
-        new Notifier(CurrentUserFor(Username), DbContextFactory, logger ?? NullLogger<Notifier>.Instance, _publisher, _mail,
-                TestEmails.Create(), _webhooks, PublicAddress.Unknown, new FixedTimeProvider(Now),
+        new Notifier(CurrentUserFor(Username), DbContextFactory, logger ?? NullLogger<Notifier>.Instance, _notificationPublisher, _mailSender,
+                TestEmails.Create(), _webhookSender, PublicAddress.Unknown, new FixedTimeProvider(Now),
                 metrics ?? TestMetrics.Unobserved)
             .NotifyAsync(NotificationKind.ConsentEnded, key, "Bank access has ended",
                 "FinTrack can no longer sync Bank.", "ProviderSetup", CancellationToken);

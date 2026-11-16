@@ -43,7 +43,7 @@ public sealed class TransfersApiClient : ITransfersService
     {
         using HttpRequestMessage request = new(method, path);
         using HttpResponseMessage response = await _http.SendAsync(request, cancellationToken);
-        response.EnsureFound();
+        await response.EnsureFoundAsync(cancellationToken);
         return await response.ReadRequiredJsonAsync<List<Transaction>>(cancellationToken);
     }
 }

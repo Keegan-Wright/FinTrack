@@ -34,14 +34,14 @@ public sealed class BudgetsApiClient : IBudgetsService
     public async Task<Budget> GetBudgetAsync(Guid id, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.GetAsync($"{ApiRoutes.Budgets}/{id}", cancellationToken);
-        response.EnsureFound();
+        await response.EnsureFoundAsync(cancellationToken);
         return await response.ReadRequiredJsonAsync<Budget>(cancellationToken);
     }
 
     public async Task<Budget> AddBudgetAsync(SaveBudget budget, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.PostAsJsonAsync(ApiRoutes.Budgets, budget, cancellationToken);
-        response.EnsureFound();
+        await response.EnsureFoundAsync(cancellationToken);
         return await response.ReadRequiredJsonAsync<Budget>(cancellationToken);
     }
 
@@ -49,13 +49,13 @@ public sealed class BudgetsApiClient : IBudgetsService
     {
         using HttpResponseMessage response =
             await _http.PutAsJsonAsync($"{ApiRoutes.Budgets}/{id}", budget, cancellationToken);
-        response.EnsureFound();
+        await response.EnsureFoundAsync(cancellationToken);
         return await response.ReadRequiredJsonAsync<Budget>(cancellationToken);
     }
 
     public async Task DeleteBudgetAsync(Guid id, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.DeleteAsync($"{ApiRoutes.Budgets}/{id}", cancellationToken);
-        response.EnsureFound();
+        await response.EnsureFoundAsync(cancellationToken);
     }
 }

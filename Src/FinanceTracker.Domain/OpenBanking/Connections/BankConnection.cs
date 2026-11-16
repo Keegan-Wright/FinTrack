@@ -25,7 +25,7 @@ public sealed class BankConnection : AggregateRoot
     /// behind the user's other connections and can start minutes later. Missing that sync would leave the connection
     /// without them until it's renewed, a refused fetch in the minutes between only costs a warning.
     /// </summary>
-    public static readonly TimeSpan StrongAuthenticationWindow = TimeSpan.FromMinutes(45);
+    public static readonly TimeSpan EnhancedAuthenticationWindow = TimeSpan.FromMinutes(45);
 
     private readonly List<string> _scopes = [];
     private readonly List<AccessToken> _accessTokens = [];
@@ -82,10 +82,11 @@ public sealed class BankConnection : AggregateRoot
     public bool NeedsRenewal(DateTime now) => now >= ConsentExpiresAt - RenewalWindow;
 
     /// <summary>
-    /// The user authenticated within <see cref="StrongAuthenticationWindow"/>, connecting or renewing, so the bank
+    /// The user authenticated within <see cref="EnhancedAuthenticationWindow"/>, connecting or renewing, so the bank
     /// still releases standing orders and direct debits.
     /// </summary>
-    public bool IsWithinStrongAuthentication(DateTime now) => now < ConsentGrantedAt + StrongAuthenticationWindow;
+    public bool IsWithinEnhancedAuthenticationWindow(DateTime now) =>
+        now < ConsentGrantedAt + EnhancedAuthenticationWindow;
 
     /// <summary>
     /// The refresh token to renew the consent with: the latest one issued, revoked or not, as renewing works for a
