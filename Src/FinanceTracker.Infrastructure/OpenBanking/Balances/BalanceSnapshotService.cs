@@ -129,19 +129,21 @@ public class BalanceSnapshotService : ServiceBase<BalanceSnapshotService>, IBala
                 .ToListAsync(cancellationToken))
             .ToLookup(static x => x.AccountId);
 
-        HashSet<DateOnly> days = [];
+        List<BalanceSnapshot> derived = [];
         foreach (BankAccount account in accounts)
         {
-            IReadOnlyList<BalanceSnapshot> derived = BalanceHistory.Backfill(account,
+            IReadOnlyList<BalanceSnapshot> accountDerived = BalanceHistory.Backfill(account,
                 snapshots[account.Id].ToList(), transactions[account.Id], _timeProvider.LocalTimeZone);
 
-            context.BalanceSnapshots.AddRange(derived);
-            days.UnionWith(derived.Select(static x => x.Date));
+            context.BalanceSnapshots.AddRange(accountDerived);
+            derived.AddRange(accountDerived);
             account.MarkHistoryBackfilled();
         }
 
+        HashSet<DateOnly> days = derived.Select(static x => x.Date).ToHashSet();
+
+        await RetotalAsync(context, derived, days, cancellationToken);
         await context.SaveChangesAsync(cancellationToken);
-        await RetotalAsync(context, days, cancellationToken);
 
         Logger.LogBackfilledBalanceHistory(UserId, accounts.Count, days.Count);
         CurrentActivity.Tag((TelemetryTags.Accounts, accounts.Count), (TelemetryTags.Days, days.Count));
@@ -150,19 +152,21 @@ public class BalanceSnapshotService : ServiceBase<BalanceSnapshotService>, IBala
 
     /// <summary>
     /// Totals each of <paramref name="days"/>' net worth again from all its balances, adding the days that had none.
+    /// Tracked changes, saved by the caller.
     /// </summary>
-    private async Task RetotalAsync(FinanceTrackerContext context, HashSet<DateOnly> days,
-        CancellationToken cancellationToken)
+    private async Task RetotalAsync(FinanceTrackerContext context, List<BalanceSnapshot> derived,
+        HashSet<DateOnly> days, CancellationToken cancellationToken)
     {
         if (days.Count == 0)
         {
             return;
         }
 
-        ILookup<DateOnly, BalanceSnapshot> balances = (await context.BalanceSnapshots.OwnedBy(UserId).AsNoTracking()
-                .Where(x => days.Contains(x.Date))
-                .ToListAsync(cancellationToken))
-            .ToLookup(static x => x.Date);
+        List<BalanceSnapshot> stored = await context.BalanceSnapshots.OwnedBy(UserId).AsNoTracking()
+            .Where(x => days.Contains(x.Date))
+            .ToListAsync(cancellationToken);
+
+        ILookup<DateOnly, BalanceSnapshot> balances = stored.Concat(derived).ToLookup(static x => x.Date);
 
         Dictionary<DateOnly, NetWorthSnapshot> netWorths = await context.NetWorthSnapshots.OwnedBy(UserId)
             .Where(x => days.Contains(x.Date))
@@ -183,8 +187,6 @@ public class BalanceSnapshotService : ServiceBase<BalanceSnapshotService>, IBala
 
             context.NetWorthSnapshots.Add(new NetWorthSnapshot(UserId, day, dayBalances, owed));
         }
-
-        await context.SaveChangesAsync(cancellationToken);
     }
 
     /// <summary>

@@ -5,6 +5,8 @@ using FinanceTracker.Domain.Identity;
 using FinanceTracker.Domain.Notifications;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.Sharing;
+using FinanceTracker.Generated.Attributes;
+using FinanceTracker.Generated.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using DomainLink = FinanceTracker.Domain.Sharing.UserLink;
@@ -13,18 +15,16 @@ using ShareMode = FinanceTracker.Contracts.Sharing.ShareMode;
 
 namespace FinanceTracker.Infrastructure.Sharing;
 
-/// <summary>
-/// What each person shares in a link, see <see cref="SharingService"/>. Reading it both ways, and changing the accounts
-/// and other things the user shares.
-/// </summary>
-internal sealed class SharingChoices : ServiceBase<SharingService>
+[InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
+[Scoped<ISharingChoices>]
+public sealed class SharingChoices : ServiceBase<SharingService>, ISharingChoices
 {
     private readonly TimeProvider _timeProvider;
-    private readonly SharingEffects _effects;
+    private readonly ISharingEffects _effects;
 
     public SharingChoices(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<SharingService> logger,
-        TimeProvider timeProvider, SharingEffects effects)
+        TimeProvider timeProvider, ISharingEffects effects)
         : base(currentUser, financeTrackerContextFactory, logger)
     {
         _timeProvider = timeProvider;
@@ -69,6 +69,7 @@ internal sealed class SharingChoices : ServiceBase<SharingService>
 
         Dictionary<Guid, DomainShareMode> wanted =
             request.Accounts.ToDictionary(static x => x.AccountId, static x => ToDomain(x.Mode));
+        HashSet<Guid> sharedAfter = wanted.Keys.ToHashSet();
 
         List<Share> existing = await OwnAccountShares(context, link.Id).ToListAsync(cancellationToken);
 
@@ -105,8 +106,8 @@ internal sealed class SharingChoices : ServiceBase<SharingService>
             context.Shares.Add(new Share(UserId, link.Id, ShareItemType.BankAccount, accountId, mode, now));
         }
 
-        await context.SaveChangesAsync(cancellationToken);
-        await ItemShares.TakeOffNoLongerSharedAsync(context, link, UserId, goingWithBefore, cancellationToken);
+        await ItemShares.TakeOffNoLongerSharedAsync(context, link, UserId, goingWithBefore, sharedAfter,
+            cancellationToken);
         await context.SaveChangesAsync(cancellationToken);
         Logger.LogChanged(UserId, "changed account shares in", "user link", link.Id);
 
@@ -138,10 +139,6 @@ internal sealed class SharingChoices : ServiceBase<SharingService>
         return await LinkSharesAsync(context, link, cancellationToken);
     }
 
-    /// <summary>
-    /// What's shared both ways in <paramref name="link"/>: every account of the user's with how it's shared, and the
-    /// accounts the other person shares.
-    /// </summary>
     public async Task<LinkShares> LinkSharesAsync(FinanceTrackerContext context, DomainLink link,
         CancellationToken cancellationToken)
     {

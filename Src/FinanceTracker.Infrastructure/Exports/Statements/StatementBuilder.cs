@@ -11,13 +11,9 @@ using FinanceTracker.Generated.Enums;
 
 namespace FinanceTracker.Infrastructure.Exports.Statements;
 
-/// <summary>
-/// Gathers a <see cref="Statement"/> through the services the pages read, so it shows what they show, and only the
-/// user's own.
-/// </summary>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
-[Scoped<StatementBuilder>]
-public sealed class StatementBuilder
+[Scoped<IStatementBuilder>]
+public sealed class StatementBuilder : IStatementBuilder
 {
     private readonly IBudgetsService _budgetsService;
     private readonly IBillsService _billsService;
@@ -42,9 +38,6 @@ public sealed class StatementBuilder
         _timeProvider = timeProvider;
     }
 
-    /// <summary>
-    /// The statement for the pay period named after <paramref name="month"/> of <paramref name="year"/>.
-    /// </summary>
     public async Task<Statement> BuildAsync(int year, int month, CancellationToken cancellationToken)
     {
         // The budgets page's period for the month, from pay to pay once the user's pay is picked up

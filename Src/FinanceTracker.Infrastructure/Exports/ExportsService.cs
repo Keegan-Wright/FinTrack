@@ -20,17 +20,17 @@ namespace FinanceTracker.Infrastructure.Exports;
 public sealed class ExportsService : IExportsService
 {
     private readonly ITransactionsService _transactionsService;
-    private readonly BackupWriter _backupWriter;
-    private readonly StatementBuilder _statementBuilder;
-    private readonly StatementPeriods _statementPeriods;
-    private readonly ReportDocumentBuilder _reportDocumentBuilder;
+    private readonly IBackupWriter _backupWriter;
+    private readonly IStatementBuilder _statementBuilder;
+    private readonly IStatementPeriods _statementPeriods;
+    private readonly IReportDocumentBuilder _reportDocumentBuilder;
     private readonly TimeProvider _timeProvider;
     private readonly ICurrentUser _currentUser;
     private readonly ILogger<ExportsService> _logger;
 
-    public ExportsService(ITransactionsService transactionsService, BackupWriter backupWriter,
-        StatementBuilder statementBuilder, StatementPeriods statementPeriods,
-        ReportDocumentBuilder reportDocumentBuilder, TimeProvider timeProvider, ICurrentUser currentUser,
+    public ExportsService(ITransactionsService transactionsService, IBackupWriter backupWriter,
+        IStatementBuilder statementBuilder, IStatementPeriods statementPeriods,
+        IReportDocumentBuilder reportDocumentBuilder, TimeProvider timeProvider, ICurrentUser currentUser,
         ILogger<ExportsService> logger)
     {
         _currentUser = currentUser;

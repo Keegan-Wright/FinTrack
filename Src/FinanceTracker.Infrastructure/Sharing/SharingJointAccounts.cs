@@ -1,26 +1,25 @@
 using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.Sharing;
 using FinanceTracker.Domain.Sharing;
+using FinanceTracker.Generated.Attributes;
+using FinanceTracker.Generated.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using DomainLink = FinanceTracker.Domain.Sharing.UserLink;
 
 namespace FinanceTracker.Infrastructure.Sharing;
 
-/// <summary>
-/// Merging and splitting the joint accounts two linked people have both connected, see <see cref="SharingService"/>
-/// and <see cref="JointAccounts"/>, with what follows: transfers matched again, rules run again over both copies, and
-/// the other person told.
-/// </summary>
-internal sealed class SharingJointAccounts : ServiceBase<SharingService>
+[InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
+[Scoped<ISharingJointAccounts>]
+public sealed class SharingJointAccounts : ServiceBase<SharingService>, ISharingJointAccounts
 {
     private readonly TimeProvider _timeProvider;
-    private readonly SharingEffects _effects;
-    private readonly SharingChoices _choices;
+    private readonly ISharingEffects _effects;
+    private readonly ISharingChoices _choices;
 
     public SharingJointAccounts(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<SharingService> logger,
-        TimeProvider timeProvider, SharingEffects effects, SharingChoices choices)
+        TimeProvider timeProvider, ISharingEffects effects, ISharingChoices choices)
         : base(currentUser, financeTrackerContextFactory, logger)
     {
         _timeProvider = timeProvider;
@@ -95,10 +94,6 @@ internal sealed class SharingJointAccounts : ServiceBase<SharingService>
         return await _choices.LinkSharesAsync(context, link, cancellationToken);
     }
 
-    /// <summary>
-    /// Splits every joint account merged in <paramref name="link"/>, and saves.
-    /// </summary>
-    /// <returns>Whether there were any to split.</returns>
     public async Task<bool> SplitAllAsync(FinanceTrackerContext context, DomainLink link,
         CancellationToken cancellationToken)
     {
@@ -115,7 +110,6 @@ internal sealed class SharingJointAccounts : ServiceBase<SharingService>
             await JointAccounts.SplitAsync(context, link, joint, now, cancellationToken);
         }
 
-        await context.SaveChangesAsync(cancellationToken);
         return true;
     }
 

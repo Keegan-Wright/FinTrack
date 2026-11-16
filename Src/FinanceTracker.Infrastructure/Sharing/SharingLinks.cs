@@ -4,6 +4,8 @@ using FinanceTracker.Domain.Household;
 using FinanceTracker.Domain.Identity;
 using FinanceTracker.Domain.Notifications;
 using FinanceTracker.Domain.Sharing;
+using FinanceTracker.Generated.Attributes;
+using FinanceTracker.Generated.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using ContractLink = FinanceTracker.Contracts.Sharing.UserLink;
@@ -11,19 +13,17 @@ using DomainLink = FinanceTracker.Domain.Sharing.UserLink;
 
 namespace FinanceTracker.Infrastructure.Sharing;
 
-/// <summary>
-/// The links between people, see <see cref="SharingService"/>. Listing them, inviting, answering and ending. Ending
-/// splits their joint accounts and takes off everything shared, see <see cref="EndAsync"/>.
-/// </summary>
-internal sealed class SharingLinks : ServiceBase<SharingService>
+[InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
+[Scoped<ISharingLinks>]
+public sealed class SharingLinks : ServiceBase<SharingService>, ISharingLinks
 {
     private readonly TimeProvider _timeProvider;
-    private readonly SharingEffects _effects;
-    private readonly SharingJointAccounts _jointAccounts;
+    private readonly ISharingEffects _effects;
+    private readonly ISharingJointAccounts _jointAccounts;
 
     public SharingLinks(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<SharingService> logger,
-        TimeProvider timeProvider, SharingEffects effects, SharingJointAccounts jointAccounts)
+        TimeProvider timeProvider, ISharingEffects effects, ISharingJointAccounts jointAccounts)
         : base(currentUser, financeTrackerContextFactory, logger)
     {
         _timeProvider = timeProvider;
@@ -253,8 +253,10 @@ internal sealed class SharingLinks : ServiceBase<SharingService>
             member.UnlinkUser();
         }
 
-        // Both ways, so linking again later shares nothing until each of them chooses it again
-        List<Share> shares = await context.Shares.Where(x => x.LinkId == link.Id).ToListAsync(cancellationToken);
+        // Both ways, so linking again later shares nothing until each of them chooses it again. With those the split
+        // just added for the other person's tags on a hidden copy, which aren't saved yet
+        await context.Shares.Where(x => x.LinkId == link.Id).LoadAsync(cancellationToken);
+        List<Share> shares = context.Shares.Local.Where(x => x.LinkId == link.Id).ToList();
         await SharingEffects.TakeOffAnnotationsAsync(context, link, shares, cancellationToken);
         context.Shares.RemoveRange(shares);
         await context.SaveChangesAsync(cancellationToken);

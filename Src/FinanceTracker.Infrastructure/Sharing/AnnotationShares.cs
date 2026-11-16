@@ -53,11 +53,16 @@ internal static class AnnotationShares
     /// Takes the tag, bill or debt <paramref name="itemId"/> off every transaction of <paramref name="ownerId"/>'s, as
     /// when they can no longer see it. Tracked changes, saved by the caller.
     /// </summary>
+    /// <remarks>Includes those given it earlier in the same change and not saved yet, such as a joint account's
+    /// hidden copy taking back its tags as the link ends.</remarks>
     public static async Task TakeOffTransactionsOfAsync(FinanceTrackerContext context, Guid ownerId,
         ShareItemType itemType, Guid itemId, CancellationToken cancellationToken)
     {
-        List<BankTransaction> carrying = await Carrying(context.BankTransactions.OwnedBy(ownerId), itemType, itemId)
-            .ToListAsync(cancellationToken);
+        // Loaded so they're tracked, then picked from everything tracked as it stands now
+        await Carrying(context.BankTransactions.OwnedBy(ownerId), itemType, itemId).LoadAsync(cancellationToken);
+        List<BankTransaction> carrying =
+            Carrying(context.BankTransactions.Local.AsQueryable().OwnedBy(ownerId), itemType, itemId).ToList();
+
         foreach (BankTransaction transaction in carrying)
         {
             TakeOff(transaction, itemType, itemId);

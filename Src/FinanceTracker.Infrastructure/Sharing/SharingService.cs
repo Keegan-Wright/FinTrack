@@ -2,9 +2,6 @@ using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Sharing;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using ContractLink = FinanceTracker.Contracts.Sharing.UserLink;
 
 namespace FinanceTracker.Infrastructure.Sharing;
@@ -19,22 +16,18 @@ namespace FinanceTracker.Infrastructure.Sharing;
 [Scoped<ISharingService>]
 public sealed class SharingService : ISharingService
 {
-    private readonly SharingLinks _links;
-    private readonly SharingChoices _choices;
-    private readonly SharingJointAccounts _jointAccounts;
-    private readonly SharingViews _views;
+    private readonly ISharingLinks _links;
+    private readonly ISharingChoices _choices;
+    private readonly ISharingJointAccounts _jointAccounts;
+    private readonly ISharingViews _views;
 
-    public SharingService(ICurrentUser currentUser,
-        IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<SharingService> logger,
-        IServiceScopeFactory scopeFactory, TimeProvider timeProvider)
+    public SharingService(ISharingLinks links, ISharingChoices choices, ISharingJointAccounts jointAccounts,
+        ISharingViews views)
     {
-        SharingEffects effects = new(currentUser, financeTrackerContextFactory, logger, scopeFactory);
-        _choices = new SharingChoices(currentUser, financeTrackerContextFactory, logger, timeProvider, effects);
-        _jointAccounts = new SharingJointAccounts(currentUser, financeTrackerContextFactory, logger, timeProvider,
-            effects, _choices);
-        _links = new SharingLinks(currentUser, financeTrackerContextFactory, logger, timeProvider, effects,
-            _jointAccounts);
-        _views = new SharingViews(currentUser, financeTrackerContextFactory, logger);
+        _links = links;
+        _choices = choices;
+        _jointAccounts = jointAccounts;
+        _views = views;
     }
 
     public IAsyncEnumerable<ContractLink> GetLinksAsync(CancellationToken cancellationToken) =>

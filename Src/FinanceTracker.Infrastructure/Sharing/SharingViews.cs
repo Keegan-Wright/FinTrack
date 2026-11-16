@@ -1,15 +1,15 @@
 using FinanceTracker.Contracts.Sharing;
 using FinanceTracker.Domain.Sharing;
+using FinanceTracker.Generated.Attributes;
+using FinanceTracker.Generated.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Infrastructure.Sharing;
 
-/// <summary>
-/// Whether the user's money pages include what's shared with them, Everyone or Just mine, see
-/// <see cref="SharingService"/>.
-/// </summary>
-internal sealed class SharingViews : ServiceBase<SharingService>
+[InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
+[Scoped<ISharingViews>]
+public sealed class SharingViews : ServiceBase<SharingService>, ISharingViews
 {
     public SharingViews(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<SharingService> logger)

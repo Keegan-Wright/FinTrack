@@ -7,13 +7,9 @@ using FinanceTracker.Generated.Enums;
 
 namespace FinanceTracker.Infrastructure.Exports.Reports;
 
-/// <summary>
-/// Gathers a <see cref="ReportContent"/> through the report service the reports page reads, so it shows what the page
-/// shows, and names the filters with what the filter bar lists.
-/// </summary>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
-[Scoped<ReportDocumentBuilder>]
-public sealed class ReportDocumentBuilder
+[Scoped<IReportDocumentBuilder>]
+public sealed class ReportDocumentBuilder : IReportDocumentBuilder
 {
     private readonly IReportService _reportService;
     private readonly ITransactionsService _transactionsService;

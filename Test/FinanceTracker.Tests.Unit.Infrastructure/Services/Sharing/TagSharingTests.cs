@@ -324,6 +324,6 @@ public class TagSharingTests : InfrastructureTestBase
             .ToListAsync(CancellationToken).AsTask();
 
     private SharingService Sharing(string username) =>
-        new(CurrentUserFor(username), DbContextFactory, NullLogger<SharingService>.Instance,
-            _services.GetRequiredService<IServiceScopeFactory>(), TimeProvider.System);
+        SharingTestServices.Build(CurrentUserFor(username), DbContextFactory,
+            _services.GetRequiredService<IServiceScopeFactory>());
 }
