@@ -10,6 +10,7 @@ using FinanceTracker.Domain.Sharing;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using FinanceTracker.Infrastructure.OpenBanking.Transfers;
+using FinanceTracker.Infrastructure.Sharing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using HouseholdMember = FinanceTracker.Contracts.HouseholdMember.HouseholdMember;
@@ -69,8 +70,8 @@ public class HouseholdMemberService : ServiceBase<HouseholdMemberService>, IHous
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
         Domain.Household.HouseholdMember householdMember =
-            await context.HouseholdMembers.OwnedBy(UserId).SingleOrDefaultAsync(x => x.Id == id, cancellationToken)
-            ?? throw new NotFoundException($"Household member {id} was not found.");
+            await context.HouseholdMembers.OwnedBy(UserId)
+                .SingleOrNotFoundAsync(x => x.Id == id, "household member", cancellationToken);
 
         await EnsureNameIsFreeAsync(context, request.FirstName, request.LastName, id, cancellationToken);
         householdMember.Rename(request.FirstName, request.LastName);
@@ -89,8 +90,8 @@ public class HouseholdMemberService : ServiceBase<HouseholdMemberService>, IHous
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
         Domain.Household.HouseholdMember householdMember =
-            await context.HouseholdMembers.OwnedBy(UserId).SingleOrDefaultAsync(x => x.Id == id, cancellationToken)
-            ?? throw new NotFoundException($"Household member {id} was not found.");
+            await context.HouseholdMembers.OwnedBy(UserId)
+                .SingleOrNotFoundAsync(x => x.Id == id, "household member", cancellationToken);
 
         householdMember.ReplaceRecognition(request.PayeeNames, request.LinkedAccounts.Select(static x =>
             AccountIdentifier.Create(x.SortCode, x.Number, null)
@@ -157,8 +158,8 @@ public class HouseholdMemberService : ServiceBase<HouseholdMemberService>, IHous
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
         Domain.Household.HouseholdMember householdMember =
-            await context.HouseholdMembers.OwnedBy(UserId).SingleOrDefaultAsync(x => x.Id == id, cancellationToken)
-            ?? throw new NotFoundException($"Household member {id} was not found.");
+            await context.HouseholdMembers.OwnedBy(UserId)
+                .SingleOrNotFoundAsync(x => x.Id == id, "household member", cancellationToken);
 
         if (request.LinkId is not { } linkId)
         {
@@ -173,11 +174,7 @@ public class HouseholdMemberService : ServiceBase<HouseholdMemberService>, IHous
 
         // Someone they're linked with, taking their name
         Guid userId = UserId;
-        Domain.Sharing.UserLink link = await context.UserLinks
-                                           .SingleOrDefaultAsync(x => x.Id == linkId &&
-                                                                      x.Status == UserLinkStatus.Accepted &&
-                                                                      (x.UserId == userId || x.InviteeId == userId),
-                                               cancellationToken)
+        Domain.Sharing.UserLink link = await SharingLinks.AcceptedLinkAsync(context, userId, linkId, cancellationToken)
                                        ?? throw new NotFoundException($"No accepted link {linkId} was found.");
         Guid personId = link.OtherThan(userId);
         FinanceTrackerUser person = await context.Users.AsNoTracking().SingleAsync(x => x.Id == personId,

@@ -116,8 +116,7 @@ public class TransfersService : ServiceBase<TransfersService>, ITransfersService
         {
             AccountsInView changeable = await _accountScope.ResolveChangeableAsync(context, cancellationToken);
             BankTransaction transaction = await context.BankTransactions.ChangeableIn(changeable)
-                                              .SingleOrDefaultAsync(x => x.Id == id, cancellationToken)
-                                          ?? throw new NotFoundException($"Transaction {id} was not found.");
+                .SingleOrNotFoundAsync(x => x.Id == id, "transaction", cancellationToken);
             ownerId = transaction.UserId;
 
             // The other half may be on an account the user can't see, one the owner keeps private, or the other

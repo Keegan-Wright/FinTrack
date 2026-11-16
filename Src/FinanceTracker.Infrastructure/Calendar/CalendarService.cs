@@ -208,10 +208,8 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
     private async Task<DomainCalendarEvent> FindEventAsync(FinanceTrackerContext context, Guid id,
         CancellationToken cancellationToken)
     {
-        DomainCalendarEvent? calendarEvent = await context.CalendarEvents.OwnedBy(UserId)
-            .SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
-
-        return calendarEvent ?? throw new NotFoundException($"The user has no event {id}.");
+        return await context.CalendarEvents.OwnedBy(UserId)
+            .SingleOrNotFoundAsync(x => x.Id == id, "event", cancellationToken);
     }
 
     /// <summary>
@@ -259,10 +257,8 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
             return null;
         }
 
-        DomainSavingsGoal? goal = await context.SavingsGoals.OwnedBy(UserId)
-            .SingleOrDefaultAsync(x => x.Id == goalId, cancellationToken);
-
-        return goal ?? throw new NotFoundException($"The user has no savings goal {goalId}.");
+        return await context.SavingsGoals.OwnedBy(UserId)
+            .SingleOrNotFoundAsync(x => x.Id == goalId, "savings goal", cancellationToken);
     }
 
     /// <summary>
