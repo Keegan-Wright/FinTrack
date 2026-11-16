@@ -1,4 +1,3 @@
-using FinanceTracker.AppHost.ServiceDefaults;
 using FinanceTracker.BackgroundJobs;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Infrastructure.Automation;

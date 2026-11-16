@@ -6,6 +6,10 @@ namespace FinanceTracker.Infrastructure;
 /// What users change through the app, one shape for all of them so the logs can be searched by
 /// <c>action</c>, <c>entity</c> and <c>entityId</c>. Ids only, never names or amounts.
 /// </summary>
+/// <remarks>
+/// The methods take the logger as a <c>this</c> parameter rather than sitting in an <c>extension</c> block, as the
+/// logging source generator only recognises the classic form.
+/// </remarks>
 public static partial class ChangeLoggerMessages
 {
     /// <summary>
@@ -24,7 +28,8 @@ public static partial class ChangeLoggerMessages
     [LoggerMessage(LogLevel.Information, "User {userId} ran job {job} now")]
     public static partial void LogJobRunNow(this ILogger logger, Guid userId, string job);
 
-    [LoggerMessage(LogLevel.Information, "User {userId} changed job {job}'s settings: enabled {enabled}, schedule {schedule}")]
+    [LoggerMessage(LogLevel.Information,
+        "User {userId} changed job {job}'s settings: enabled {enabled}, schedule {schedule}")]
     public static partial void LogJobSettingsChanged(this ILogger logger, Guid userId, string job, bool enabled,
         string schedule);
 

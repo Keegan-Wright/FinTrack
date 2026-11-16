@@ -1,10 +1,10 @@
+using FinanceTracker.Telemetry;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using FinanceTracker.Telemetry;
 using Npgsql;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
@@ -13,9 +13,9 @@ using OpenTelemetry.Trace;
 
 namespace FinanceTracker.AppHost.ServiceDefaults;
 
-// Adds common Aspire services service discovery, resilience, health checks, and OpenTelemetry.
-// This project should be referenced by each service project in your solution.
-// To learn more about using this project, see https://aka.ms/dotnet/aspire/service-defaults
+/// <summary>
+/// What every FinTrack service shares: service discovery, resilient HTTP clients, health checks and OpenTelemetry.
+/// </summary>
 public static class Extensions
 {
     internal const string HealthEndpointPath = "/health";

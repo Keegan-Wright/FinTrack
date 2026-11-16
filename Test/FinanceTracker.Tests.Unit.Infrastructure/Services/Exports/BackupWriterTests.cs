@@ -4,7 +4,6 @@ using FinanceTracker.Contracts.Account;
 using FinanceTracker.Contracts.Bills;
 using FinanceTracker.Contracts.Budgets;
 using FinanceTracker.Contracts.Calendar;
-using FinanceTracker.Contracts.Classifications;
 using FinanceTracker.Contracts.Debts;
 using FinanceTracker.Contracts.Exports;
 using FinanceTracker.Contracts.HouseholdMember;

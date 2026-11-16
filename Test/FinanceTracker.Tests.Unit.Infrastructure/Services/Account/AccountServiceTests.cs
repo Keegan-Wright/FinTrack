@@ -1,14 +1,12 @@
-using FinanceTracker.Infrastructure.Sharing;
 using FinanceTracker.Contracts.Account;
-using FinanceTracker.Contracts.Services;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Infrastructure.Account;
+using FinanceTracker.Infrastructure.Sharing;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Fakers;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.Extensions.Logging.Abstractions;
-using NSubstitute;
 
 namespace FinanceTracker.Tests.Unit.Infrastructure.Services.Account;
 

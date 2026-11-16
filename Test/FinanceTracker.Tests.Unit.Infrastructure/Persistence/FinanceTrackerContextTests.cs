@@ -1,5 +1,4 @@
 using FinanceTracker.Domain.Bills;
-using FinanceTracker.Domain.Budgeting;
 using FinanceTracker.Domain.Common;
 using FinanceTracker.Domain.Debts;
 using FinanceTracker.Domain.Household;
@@ -8,8 +7,8 @@ using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.SavingsGoals;
 using FinanceTracker.Infrastructure;
-using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using FinanceTracker.Tests.Unit.Shared;
+using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.Tests.Unit.Infrastructure.Persistence;

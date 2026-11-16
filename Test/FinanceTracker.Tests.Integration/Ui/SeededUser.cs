@@ -1,9 +1,9 @@
-using FinanceTracker.Domain.Notifications;
 using FinanceTracker.Domain.Bills;
 using FinanceTracker.Domain.Budgeting;
 using FinanceTracker.Domain.Calendar;
 using FinanceTracker.Domain.Debts;
 using FinanceTracker.Domain.Household;
+using FinanceTracker.Domain.Notifications;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.OpenBanking.Transfers;

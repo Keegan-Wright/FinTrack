@@ -1,25 +1,23 @@
-using FinanceTracker.Infrastructure.Sharing;
-using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Transactions;
 using FinanceTracker.Domain.Bills;
 using FinanceTracker.Domain.Debts;
+using FinanceTracker.Domain.Household;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Domain.OpenBanking.Transactions;
+using FinanceTracker.Domain.OpenBanking.Transfers;
+using FinanceTracker.Domain.Rules;
+using FinanceTracker.Domain.SavingsGoals;
+using FinanceTracker.Infrastructure;
+using FinanceTracker.Infrastructure.OpenBanking.Transfers;
+using FinanceTracker.Infrastructure.Sharing;
 using FinanceTracker.Infrastructure.Transactions;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Fakers;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
-using Microsoft.Extensions.Logging.Abstractions;
-using NSubstitute;
-using Transaction = FinanceTracker.Contracts.Transactions.Transaction;
-using FinanceTracker.Domain.OpenBanking.Transfers;
-using FinanceTracker.Domain.Household;
-using FinanceTracker.Infrastructure.OpenBanking.Transfers;
-using FinanceTracker.Domain.Rules;
-using FinanceTracker.Domain.SavingsGoals;
-using FinanceTracker.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
+using Transaction = FinanceTracker.Contracts.Transactions.Transaction;
 
 namespace FinanceTracker.Tests.Unit.Infrastructure.Services.Transactions;
 

@@ -1,5 +1,5 @@
-using FinanceTracker.Contracts.HouseholdMember;
 using FinanceTracker.Client.Extensions;
+using FinanceTracker.Contracts.HouseholdMember;
 using FinanceTracker.Contracts.Validation;
 
 namespace FinanceTracker.Tests.Unit.FinanceTracker.Extensions;

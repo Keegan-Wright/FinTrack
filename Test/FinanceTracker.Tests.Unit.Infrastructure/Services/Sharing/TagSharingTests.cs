@@ -14,9 +14,9 @@ using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
-using TagContract = FinanceTracker.Contracts.Classifications.Classification;
 using ContractLink = FinanceTracker.Contracts.Sharing.UserLink;
 using NotificationKind = FinanceTracker.Domain.Notifications.NotificationKind;
+using TagContract = FinanceTracker.Contracts.Classifications.Classification;
 using Transaction = FinanceTracker.Contracts.Transactions.Transaction;
 
 namespace FinanceTracker.Tests.Unit.Infrastructure.Services.Sharing;

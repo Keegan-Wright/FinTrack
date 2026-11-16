@@ -1,4 +1,3 @@
-using FinanceTracker.Domain.Budgeting;
 using FinanceTracker.Domain.Household;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 

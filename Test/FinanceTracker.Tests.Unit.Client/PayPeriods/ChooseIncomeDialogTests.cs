@@ -2,7 +2,6 @@ using AngleSharp.Dom;
 using Bunit;
 using FinanceTracker.Client.Components.PayPeriods;
 using FinanceTracker.Contracts.PayPeriods;
-using FinanceTracker.Tests.Unit.Shared;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;

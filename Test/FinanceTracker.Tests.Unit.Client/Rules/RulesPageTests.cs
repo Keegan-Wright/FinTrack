@@ -1,8 +1,8 @@
 using Bunit;
 using FinanceTracker.Client;
 using FinanceTracker.Contracts.Bills;
-using FinanceTracker.Contracts.Debts;
 using FinanceTracker.Contracts.Classifications;
+using FinanceTracker.Contracts.Debts;
 using FinanceTracker.Contracts.Rules;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Transactions;

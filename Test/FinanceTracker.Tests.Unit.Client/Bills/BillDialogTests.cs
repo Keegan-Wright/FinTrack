@@ -7,7 +7,6 @@ using FinanceTracker.Contracts.Validation;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
-using FinanceTracker.Tests.Unit.Shared;
 
 namespace FinanceTracker.Tests.Unit.Client.Bills;
 

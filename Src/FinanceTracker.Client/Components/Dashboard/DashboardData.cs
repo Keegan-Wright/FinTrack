@@ -1,9 +1,9 @@
 using System.Text.Json.Serialization;
 using FinanceTracker.Contracts.Account;
 using FinanceTracker.Contracts.Budgets;
-using FinanceTracker.Contracts.SavingsGoals;
 using FinanceTracker.Contracts.Dashboard;
 using FinanceTracker.Contracts.NetWorth;
+using FinanceTracker.Contracts.SavingsGoals;
 using FinanceTracker.Contracts.Transactions;
 
 namespace FinanceTracker.Client.Components.Dashboard;

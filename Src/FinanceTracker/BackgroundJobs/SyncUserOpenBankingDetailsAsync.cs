@@ -1,7 +1,7 @@
 using FinanceTracker.Infrastructure;
+using FinanceTracker.Infrastructure.Automation;
 using FinanceTracker.Telemetry;
 using Microsoft.EntityFrameworkCore;
-using FinanceTracker.Infrastructure.Automation;
 using Quartz;
 
 namespace FinanceTracker.BackgroundJobs;

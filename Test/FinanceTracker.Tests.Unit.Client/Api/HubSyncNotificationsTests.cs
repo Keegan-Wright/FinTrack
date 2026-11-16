@@ -1,5 +1,4 @@
 using FinanceTracker.Client.Api;
-using FinanceTracker.Tests.Unit.Shared;
 using Microsoft.AspNetCore.SignalR.Client;
 
 namespace FinanceTracker.Tests.Unit.Client.Api;

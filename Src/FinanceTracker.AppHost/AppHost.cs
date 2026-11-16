@@ -1,7 +1,4 @@
-using Aspire.Hosting;
-using Aspire.Hosting.ApplicationModel;
 using FinanceTracker.AppHost.ServiceDefaults;
-using Microsoft.Extensions.Configuration;
 #pragma warning disable ASPIRECOMPUTE003
 #pragma warning disable ASPIREPIPELINES003
 

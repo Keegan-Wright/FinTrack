@@ -15,6 +15,7 @@ using FinanceTracker.Domain.SavingsGoals;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.OpenBanking.TrueLayer.Contracts;
 using FinanceTracker.Tests.Integration.Http;
+using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Fakers.TrueLayer;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.EntityFrameworkCore;
@@ -22,7 +23,6 @@ using DomainBill = FinanceTracker.Domain.Bills.Bill;
 using DomainBillFrequency = FinanceTracker.Domain.Bills.BillFrequency;
 using DomainBillSource = FinanceTracker.Domain.Bills.BillSource;
 using DomainDebt = FinanceTracker.Domain.Debts.Debt;
-using FinanceTracker.Tests.Unit.Shared;
 
 namespace FinanceTracker.Tests.Integration.OpenBanking;
 

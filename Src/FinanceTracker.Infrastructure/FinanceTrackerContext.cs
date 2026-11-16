@@ -1,12 +1,12 @@
-using FinanceTracker.Domain.Notifications;
 using FinanceTracker.Domain.Bills;
 using FinanceTracker.Domain.Budgeting;
 using FinanceTracker.Domain.Calendar;
-using FinanceTracker.Domain.Debts;
 using FinanceTracker.Domain.Classifications;
+using FinanceTracker.Domain.Debts;
 using FinanceTracker.Domain.Household;
 using FinanceTracker.Domain.Identity;
 using FinanceTracker.Domain.NetWorth;
+using FinanceTracker.Domain.Notifications;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Balances;
 using FinanceTracker.Domain.OpenBanking.Connections;
@@ -20,10 +20,9 @@ using FinanceTracker.Infrastructure.Encryption;
 using FinanceTracker.Infrastructure.Persistence;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Design;
-using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Design;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FinanceTracker.Infrastructure;

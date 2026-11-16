@@ -1,10 +1,10 @@
 using FinanceTracker.Domain.SavingsGoals;
-using SavingsGoal = FinanceTracker.Contracts.SavingsGoals.SavingsGoal;
-using SavingsGoalSource = FinanceTracker.Contracts.SavingsGoals.SavingsGoalSource;
+using DomainSavingsDirection = FinanceTracker.Domain.SavingsGoals.SavingsDirection;
 using DomainSavingsGoal = FinanceTracker.Domain.SavingsGoals.SavingsGoal;
 using DomainSavingsGoalSource = FinanceTracker.Domain.SavingsGoals.SavingsGoalSource;
 using SavingsDirection = FinanceTracker.Contracts.SavingsGoals.SavingsDirection;
-using DomainSavingsDirection = FinanceTracker.Domain.SavingsGoals.SavingsDirection;
+using SavingsGoal = FinanceTracker.Contracts.SavingsGoals.SavingsGoal;
+using SavingsGoalSource = FinanceTracker.Contracts.SavingsGoals.SavingsGoalSource;
 
 namespace FinanceTracker.Infrastructure.SavingsGoals;
 

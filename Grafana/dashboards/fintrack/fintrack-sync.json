@@ -2667,7 +2667,7 @@
             "type": "loki",
             "uid": "${loki}"
           },
-          "expr": "{service_name=\"$service\"} |~ \"(?i)synced connection|truelayer refused|no active consent|started failing|syncs again|error occured syncing|re-authentication\"",
+          "expr": "{service_name=\"$service\"} |~ \"(?i)synced connection|truelayer refused|no active consent|started failing|syncs again|error occurr?ed syncing|re-authentication\"",
           "legendFormat": "",
           "queryType": "range"
         }

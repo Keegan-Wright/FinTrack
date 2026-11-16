@@ -1,14 +1,14 @@
-using FinanceTracker.Infrastructure.Sharing;
 using FinanceTracker.Contracts.Dashboard;
 using FinanceTracker.Domain.Bills;
+using FinanceTracker.Domain.OpenBanking.Transfers;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Dashboard;
+using FinanceTracker.Infrastructure.Sharing;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Fakers;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
-using FinanceTracker.Domain.OpenBanking.Transfers;
 using BillState = FinanceTracker.Contracts.Bills.BillState;
 using DomainBill = FinanceTracker.Domain.Bills.Bill;
 

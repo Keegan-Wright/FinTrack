@@ -3,8 +3,8 @@ using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Domain.SavingsGoals;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
-using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 
 namespace FinanceTracker.Tests.Integration.Persistence;
 

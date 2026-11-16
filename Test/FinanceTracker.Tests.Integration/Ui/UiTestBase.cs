@@ -3,7 +3,6 @@ using Deque.AxeCore.Commons;
 using Deque.AxeCore.Playwright;
 using FinanceTracker.Tests.Integration.Http;
 using Microsoft.Playwright;
-using TUnit.Core;
 using Cookie = Microsoft.Playwright.Cookie;
 
 namespace FinanceTracker.Tests.Integration.Ui;

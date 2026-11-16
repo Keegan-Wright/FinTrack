@@ -3,7 +3,6 @@ using Bunit;
 using FinanceTracker.Client.Components.Dialogs;
 using FinanceTracker.Contracts.Classifications;
 using FinanceTracker.Contracts.Validation;
-using FinanceTracker.Tests.Unit.Shared;
 using FluentValidation;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;

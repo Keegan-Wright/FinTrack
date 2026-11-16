@@ -4,9 +4,9 @@ using System.Threading.RateLimiting;
 using FinanceTracker.AppHost.ServiceDefaults;
 using FinanceTracker.Extensions;
 using FinanceTracker.Infrastructure.OpenBanking.TrueLayer;
+using FinanceTracker.Tests.Unit.Shared;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
-using FinanceTracker.Tests.Unit.Shared;
 
 namespace FinanceTracker.Tests.Unit.FinanceTracker.Extensions;
 

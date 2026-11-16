@@ -1,6 +1,5 @@
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Tests.Unit.Shared;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Infrastructure.Internal;
 

@@ -2,11 +2,11 @@ using System.Net;
 using FinanceTracker.Contracts.Automation;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Domain.OpenBanking.Accounts;
-using FinanceTracker.Tests.Integration.Http;
-using Microsoft.EntityFrameworkCore;
 using FinanceTracker.Infrastructure;
-using FinanceTracker.Tests.Unit.Shared.Scenarios;
+using FinanceTracker.Tests.Integration.Http;
 using FinanceTracker.Tests.Unit.Shared;
+using FinanceTracker.Tests.Unit.Shared.Scenarios;
+using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.Tests.Integration.Api;
 

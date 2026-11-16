@@ -1,8 +1,6 @@
 using FinanceTracker.Contracts.Budgets;
 using FinanceTracker.Domain.Budgeting;
 using FinanceTracker.Domain.OpenBanking.Transactions;
-using FinanceTracker.Domain.PayPeriods;
-using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Budgets;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Fakers;
