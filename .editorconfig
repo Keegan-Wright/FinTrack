@@ -170,7 +170,7 @@ resharper_xmldoc_keep_user_linebreaks = true
 # Self-closing tags have no space before />, e.g. <see cref="X"/>
 resharper_xmldoc_space_before_self_closing = false
 
-# Rider and ReSharper: lines are broken by hand for readability, so the formatter keeps the arrangement it finds,
+# Rider and ReSharper lines are broken by hand for readability, so the formatter keeps the arrangement it finds,
 # e.g. one initialiser member or attribute per line, and only wraps what's over max_line_length
 resharper_keep_user_linebreaks = true
 resharper_keep_existing_attribute_arrangement = true
@@ -185,7 +185,7 @@ resharper_keep_existing_list_patterns_arrangement = true
 resharper_keep_existing_property_patterns_arrangement = true
 resharper_keep_existing_switch_expression_arrangement = true
 
-# Rider and ReSharper: new() where the declaration already names the type, the type named where it doesn't, e.g. as
+# Rider and ReSharper new() where the declaration already names the type, the type named where it doesn't, e.g. as
 # an argument
 csharp_style_implicit_object_creation_when_type_is_apparent = true:suggestion
 resharper_object_creation_when_type_evident = target_typed
@@ -194,9 +194,15 @@ resharper_object_creation_when_type_not_evident = explicit_typed
 # C# only solution, the reserved keyword clashes this reports (e.g. VB's `Shared`) don't apply
 dotnet_diagnostic.CA1716.severity = none
 
-# Misfires on C# 14 extension blocks: every block is compiler-named "extension", so classes with more than one block
+# Misfires on C# 14 extension blocks every block is compiler-named "extension", so classes with more than one block
 # look like they have members differing only by case
 dotnet_diagnostic.CA1708.severity = none
+
+# Domain classes are what EF maps, and EF only maps a property it can set. A private setter or init that only the
+# constructor uses still has to stay, so Rider mustn't make these properties get-only. Doing so drops their columns
+[Src/FinanceTracker.Domain/**.cs]
+resharper_auto_property_can_be_made_get_only_global_highlighting = none
+resharper_auto_property_can_be_made_get_only_local_highlighting = none
 
 # EF Core generated migrations, analysers skip generated code
 [Src/FinanceTracker.Infrastructure.Migrations/Migrations/**.cs]
