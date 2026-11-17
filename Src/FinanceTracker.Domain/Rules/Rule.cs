@@ -20,6 +20,12 @@ public sealed class Rule : AggregateRoot
     }
 #pragma warning restore CS8618
 
+    /// <param name="userId">The user it belongs to.</param>
+    /// <param name="name">What the user calls it.</param>
+    /// <param name="order">Where it runs among the user's rules.</param>
+    /// <param name="matchMode">How many of its conditions a transaction has to meet.</param>
+    /// <param name="conditions">What a transaction has to meet.</param>
+    /// <param name="actions">What it does to a transaction it matches.</param>
     /// <exception cref="ArgumentException">There are no conditions or no actions, or the actions conflict, see
     /// <see cref="ReplaceActions"/>.</exception>
     public Rule(Guid userId, string name, int order, RuleMatchMode matchMode, IEnumerable<RuleCondition> conditions,
@@ -33,6 +39,9 @@ public sealed class Rule : AggregateRoot
         IsEnabled = true;
     }
 
+    /// <summary>
+    /// What the user calls it.
+    /// </summary>
     public string Name { get; private set; }
 
     /// <summary>
@@ -40,8 +49,14 @@ public sealed class Rule : AggregateRoot
     /// </summary>
     public int Order { get; private set; }
 
+    /// <summary>
+    /// Whether it runs.
+    /// </summary>
     public bool IsEnabled { get; private set; }
 
+    /// <summary>
+    /// How many of its conditions a transaction has to meet.
+    /// </summary>
     public RuleMatchMode MatchMode { get; private set; }
 
     /// <summary>
@@ -49,10 +64,20 @@ public sealed class Rule : AggregateRoot
     /// </summary>
     public bool StopProcessing { get; private set; }
 
+    /// <summary>
+    /// What a transaction has to meet.
+    /// </summary>
     public IReadOnlyList<RuleCondition> Conditions => _conditions.AsReadOnly();
 
+    /// <summary>
+    /// What it does to a transaction it matches.
+    /// </summary>
     public IReadOnlyList<RuleAction> Actions => _actions.AsReadOnly();
 
+    /// <summary>
+    /// Changes what the user calls it.
+    /// </summary>
+    /// <param name="name">The new name.</param>
     [MemberNotNull(nameof(Name))]
     public void Rename(string name)
     {
@@ -60,6 +85,10 @@ public sealed class Rule : AggregateRoot
         Name = name;
     }
 
+    /// <summary>
+    /// Changes where it runs among the user's rules.
+    /// </summary>
+    /// <param name="order">Its place, 0 or more.</param>
     public void MoveTo(int order)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(order);
@@ -78,8 +107,15 @@ public sealed class Rule : AggregateRoot
         IsEnabled = true;
     }
 
+    /// <summary>
+    /// Stops it running.
+    /// </summary>
     public void Disable() => IsEnabled = false;
 
+    /// <summary>
+    /// Changes how many of its conditions a transaction has to meet.
+    /// </summary>
+    /// <param name="matchMode">The new mode.</param>
     public void ChangeMatchMode(RuleMatchMode matchMode)
     {
         if (!Enum.IsDefined(matchMode))
@@ -90,8 +126,13 @@ public sealed class Rule : AggregateRoot
         MatchMode = matchMode;
     }
 
+    /// <summary>
+    /// Sets whether rules after this one are skipped for a transaction it matches.
+    /// </summary>
+    /// <param name="stopProcessing">Whether to skip them.</param>
     public void StopProcessingAfterMatch(bool stopProcessing) => StopProcessing = stopProcessing;
 
+    /// <param name="conditions">What a transaction has to meet now.</param>
     /// <exception cref="ArgumentException">There are no conditions.</exception>
     public void ReplaceConditions(IEnumerable<RuleCondition> conditions)
     {
@@ -110,6 +151,7 @@ public sealed class Rule : AggregateRoot
     /// <summary>
     /// Replaces the actions, adding each tag once.
     /// </summary>
+    /// <param name="actions">What it does now.</param>
     /// <exception cref="ArgumentException">There are no actions, more than one decides the transfer answer or pays a
     /// bill, or one that hides a bank classification or pays a bill doesn't say which.</exception>
     public void ReplaceActions(IEnumerable<RuleAction> actions)
@@ -165,6 +207,7 @@ public sealed class Rule : AggregateRoot
     /// Whether applying this rule to <paramref name="transaction"/> could change. It matches now, or it tagged or
     /// decided it before and may need to take that back.
     /// </summary>
+    /// <param name="transaction">The transaction to check.</param>
     public bool Reaches(BankTransaction transaction)
     {
         ArgumentNullException.ThrowIfNull(transaction);
@@ -175,6 +218,7 @@ public sealed class Rule : AggregateRoot
     /// Drops the actions that add a tag being deleted. A rule left with nothing to do is disabled rather than deleted,
     /// so the user can see it and give it a new action.
     /// </summary>
+    /// <param name="classificationId">The tag being deleted.</param>
     /// <returns>Whether the rule added the tag.</returns>
     public bool RemoveTag(Guid classificationId)
     {
@@ -198,6 +242,7 @@ public sealed class Rule : AggregateRoot
     /// Drops the action that pays a bill being deleted. A rule left with nothing to do is disabled rather than deleted,
     /// see <see cref="RemoveTag"/>.
     /// </summary>
+    /// <param name="billId">The bill being deleted.</param>
     /// <returns>Whether the rule paid the bill.</returns>
     public bool RemoveBill(Guid billId)
     {
@@ -220,6 +265,7 @@ public sealed class Rule : AggregateRoot
     /// Drops the action that pays off a debt being deleted. A rule left with nothing to do is disabled rather than
     /// deleted, see <see cref="RemoveTag"/>.
     /// </summary>
+    /// <param name="debtId">The debt being deleted.</param>
     /// <returns>Whether the rule paid off the debt.</returns>
     public bool RemoveDebt(Guid debtId)
     {
@@ -242,6 +288,7 @@ public sealed class Rule : AggregateRoot
     /// Whether <paramref name="transaction"/> meets all or any of the conditions, by <see cref="MatchMode"/>. Doesn't
     /// look at <see cref="IsEnabled"/>, so a disabled rule can still be previewed.
     /// </summary>
+    /// <param name="transaction">The transaction to check.</param>
     public bool Matches(BankTransaction transaction)
     {
         ArgumentNullException.ThrowIfNull(transaction);

@@ -46,6 +46,10 @@ public static class TransferMatcher
     /// Matches <paramref name="transactions"/> against their
     /// <paramref name="accounts"/> and their owners' <paramref name="householdMembers"/>.
     /// </summary>
+    /// <param name="accounts">The accounts the transactions are on.</param>
+    /// <param name="householdMembers">The household members of the accounts' owners.</param>
+    /// <param name="transactions">The transactions to match.</param>
+    /// <param name="decidedAt">When the decisions are made, stored on each.</param>
     /// <param name="pairing">Which of them may pair, when they're several people's. One person's own accounts only
     /// when null.</param>
     /// <param name="membersOwnAccounts">The accounts each member who's a user connected themselves, by member, see
@@ -112,6 +116,11 @@ public static class TransferMatcher
     /// Step 1. A reference naming one of the user's accounts is the strongest sign there is, so the transaction is a
     /// transfer whether or not its other half has arrived yet.
     /// </summary>
+    /// <param name="accounts">The accounts the transactions are on.</param>
+    /// <param name="open">The transactions still to decide.</param>
+    /// <param name="decisions">The run's decisions so far, by transaction.</param>
+    /// <param name="pairing">Which transactions may pair across people, null for one person's own.</param>
+    /// <param name="decidedAt">When the decisions are made.</param>
     private static void MatchOwnAccountReferences(IReadOnlyCollection<BankAccount> accounts,
         List<BankTransaction> open, Dictionary<Guid, TransferInfo> decisions, TransferPairing pairing,
         DateTime decidedAt)
@@ -146,6 +155,11 @@ public static class TransferMatcher
     /// Step 2. Pairs each outgoing transaction with an equal incoming one on another account, but only when the two
     /// are each other's closest. Driven from the outgoing side, so each pair is considered once.
     /// </summary>
+    /// <param name="accounts">The accounts the transactions are on.</param>
+    /// <param name="open">The transactions still to decide.</param>
+    /// <param name="decisions">The run's decisions so far, by transaction.</param>
+    /// <param name="pairing">Which transactions may pair across people, null for one person's own.</param>
+    /// <param name="decidedAt">When the decisions are made.</param>
     /// <example>
     /// −£50 Monday 09:00 from current, +£50 Tuesday 09:05 into savings, −£50 Tuesday 09:00 from joint. For Monday's,
     /// savings is the closest incoming. But savings' closest outgoing is joint's, five minutes away, so Monday's is
@@ -220,6 +234,11 @@ public static class TransferMatcher
     /// Naming the member is a stronger sign than the bank's label, so the label isn't needed. After the user's own
     /// accounts so a pair found there always wins, e.g. once the member's account is connected.
     /// </summary>
+    /// <param name="householdMembers">The household members of the accounts' owners.</param>
+    /// <param name="membersOwnAccounts">The accounts each member who's a user connected themselves, by member.</param>
+    /// <param name="open">The transactions still to decide.</param>
+    /// <param name="decisions">The run's decisions so far, by transaction.</param>
+    /// <param name="decidedAt">When the decisions are made.</param>
     private static void MatchHouseholdMembers(IReadOnlyCollection<HouseholdMember> householdMembers,
         IReadOnlyDictionary<Guid, IReadOnlyCollection<AccountIdentifier>> membersOwnAccounts,
         List<BankTransaction> open, Dictionary<Guid, TransferInfo> decisions, DateTime decidedAt)
@@ -244,6 +263,9 @@ public static class TransferMatcher
     /// A mirror pair's decision for one half, naming the other half as its partner either way so a review can show
     /// the pair side by side.
     /// </summary>
+    /// <param name="confident">Whether it's a transfer for sure, otherwise one to review.</param>
+    /// <param name="partner">The other half.</param>
+    /// <param name="decidedAt">When it was decided.</param>
     private static TransferInfo Decide(bool confident, BankTransaction partner, DateTime decidedAt) => confident
         ? TransferInfo.Matched(TransferReason.MirrorPair, partner.Id, partner.AccountId, decidedAt)
         : TransferInfo.ToReview(TransferReason.MirrorPair, partner.Id, partner.AccountId, decidedAt);
@@ -252,6 +274,10 @@ public static class TransferMatcher
     /// The undecided mirrors of <paramref name="transaction"/> among <paramref name="candidates"/> that are closest
     /// in time, more than one when they're equally close. Its owner's own come first, see below.
     /// </summary>
+    /// <param name="transaction">The transaction to find the other half of.</param>
+    /// <param name="candidates">The transactions that could be.</param>
+    /// <param name="decisions">The run's decisions so far, by transaction.</param>
+    /// <param name="pairing">Which transactions may pair across people, null for one person's own.</param>
     /// <remarks>
     /// Closeness is the exact time apart, while <see cref="IsMirror"/> limits candidates by calendar day. For a bank
     /// that only gives dates every transaction sits at midnight, so two on the same day are equally close and tie.
@@ -287,6 +313,8 @@ public static class TransferMatcher
     /// Whether <paramref name="candidate"/> could be the other half of <paramref name="transaction"/> another
     /// account, the exact opposite amount in the same currency, and within <see cref="MaxDaysApart"/> calendar days.
     /// </summary>
+    /// <param name="transaction">One half.</param>
+    /// <param name="candidate">The possible other half.</param>
     /// <remarks>
     /// Calendar days rather than hours, as banks that only give a date put everything at midnight. A zero amount
     /// mirrors itself, e.g. a card check, so it never matches.
@@ -302,6 +330,9 @@ public static class TransferMatcher
     /// The one other account the transaction's reference names, of the user's or one it can pair with across a link,
     /// null when none or several do.
     /// </summary>
+    /// <param name="accounts">The accounts the transactions are on.</param>
+    /// <param name="transaction">The transaction whose reference to read.</param>
+    /// <param name="pairing">Which transactions may pair across people, null for one person's own.</param>
     private static BankAccount? NamedAccount(IReadOnlyCollection<BankAccount> accounts, BankTransaction transaction,
         TransferPairing pairing)
     {
@@ -321,6 +352,8 @@ public static class TransferMatcher
     /// Writes the run's decisions to the transactions, and clears the matcher's earlier decisions the run no longer
     /// makes.
     /// </summary>
+    /// <param name="open">The transactions the run looked at.</param>
+    /// <param name="decisions">The run's decisions, by transaction.</param>
     /// <returns>What changed. Decisions that were already stored aren't counted.</returns>
     private static TransferMatchSummary Apply(List<BankTransaction> open, Dictionary<Guid, TransferInfo> decisions)
     {

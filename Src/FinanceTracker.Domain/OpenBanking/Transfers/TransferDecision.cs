@@ -1,5 +1,8 @@
 namespace FinanceTracker.Domain.OpenBanking.Transfers;
 
+/// <summary>
+/// Whether a transaction is a transfer between the user's own accounts.
+/// </summary>
 public enum TransferDecision
 {
     /// <summary>

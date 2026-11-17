@@ -18,6 +18,8 @@ public sealed class BillSuggestion : AggregateRoot
     }
 #pragma warning restore CS8618
 
+    /// <param name="userId">The user it belongs to.</param>
+    /// <param name="detected">The payments that look like a subscription.</param>
     public BillSuggestion(Guid userId, DetectedSubscription detected) : base(userId)
     {
         ArgumentNullException.ThrowIfNull(detected);
@@ -44,6 +46,9 @@ public sealed class BillSuggestion : AggregateRoot
     /// </summary>
     public string Name { get; private set; }
 
+    /// <summary>
+    /// How often the payments repeat.
+    /// </summary>
     public BillFrequency Frequency { get; private set; }
 
     /// <summary>
@@ -51,8 +56,14 @@ public sealed class BillSuggestion : AggregateRoot
     /// </summary>
     public decimal Amount { get; private set; }
 
+    /// <summary>
+    /// The day of the first payment.
+    /// </summary>
     public DateOnly FirstPaidOn { get; private set; }
 
+    /// <summary>
+    /// The day of the latest payment.
+    /// </summary>
     public DateOnly LastPaidOn { get; private set; }
 
     /// <summary>
@@ -68,6 +79,7 @@ public sealed class BillSuggestion : AggregateRoot
     /// <summary>
     /// Whether <paramref name="detected"/> is about the same payments, the same payee on the same account.
     /// </summary>
+    /// <param name="detected">The payments found.</param>
     public bool IsFor(DetectedSubscription detected)
     {
         ArgumentNullException.ThrowIfNull(detected);
@@ -77,6 +89,7 @@ public sealed class BillSuggestion : AggregateRoot
     /// <summary>
     /// Takes in the latest payments.
     /// </summary>
+    /// <param name="detected">The latest payments found.</param>
     /// <exception cref="ArgumentException"><paramref name="detected"/> is about other payments, see
     /// <see cref="IsFor"/>.</exception>
     [MemberNotNull(nameof(Name))]
@@ -100,6 +113,9 @@ public sealed class BillSuggestion : AggregateRoot
         _paymentIds.AddRange(detected.PaymentIds);
     }
 
+    /// <summary>
+    /// The user says it isn't a bill, so it isn't suggested again.
+    /// </summary>
     public void Dismiss() => IsDismissed = true;
 
     /// <summary>

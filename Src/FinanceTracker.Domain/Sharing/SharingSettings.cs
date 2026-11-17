@@ -12,6 +12,10 @@ public sealed class SharingSettings : AggregateRoot
     {
     }
 
+    /// <summary>
+    /// Settings that show everything shared with the user.
+    /// </summary>
+    /// <param name="userId">The user they're for.</param>
     public SharingSettings(Guid userId) : base(userId)
     {
         IncludeShared = true;
@@ -22,5 +26,9 @@ public sealed class SharingSettings : AggregateRoot
     /// </summary>
     public bool IncludeShared { get; private set; }
 
+    /// <summary>
+    /// Sets whether accounts shared with them show beside their own.
+    /// </summary>
+    /// <param name="includeShared">Whether to show them.</param>
     public void ShowShared(bool includeShared) => IncludeShared = includeShared;
 }

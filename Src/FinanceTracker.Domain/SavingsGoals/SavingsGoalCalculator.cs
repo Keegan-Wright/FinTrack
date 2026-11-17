@@ -8,6 +8,10 @@ namespace FinanceTracker.Domain.SavingsGoals;
 /// </summary>
 public static class SavingsGoalCalculator
 {
+    /// <summary>
+    /// How <paramref name="goal"/> is doing today.
+    /// </summary>
+    /// <param name="goal">The goal to work out.</param>
     /// <param name="accountBalance">The current balance of the goal's account, null when it has none or the account
     /// has gone.</param>
     /// <param name="transactions">The user's transactions, at least those from the goal's
@@ -26,6 +30,13 @@ public static class SavingsGoalCalculator
             OnTrack(goal, saved, today));
     }
 
+    /// <summary>
+    /// What's saved now, from wherever the goal's source says.
+    /// </summary>
+    /// <param name="goal">The goal to work out.</param>
+    /// <param name="accountBalance">The current balance of the goal's account, null when it has none.</param>
+    /// <param name="transactions">The user's transactions.</param>
+    /// <param name="timeZone">Where the user is, so a transaction falls on the day it was where they are.</param>
     private static decimal Saved(SavingsGoal goal, decimal? accountBalance,
         IEnumerable<BankTransaction> transactions, TimeZoneInfo timeZone)
     {
@@ -45,9 +56,11 @@ public static class SavingsGoalCalculator
     /// <paramref name="today"/>: its starting amount plus what's counted, see <see cref="Progress"/>. Empty for any
     /// other goal, an account goal's history being its account's balances.
     /// </summary>
+    /// <param name="goal">The goal to work out.</param>
     /// <param name="transactions">The user's transactions, at least those from the goal's
     /// <see cref="SavingsGoal.TrackedFrom"/> on.</param>
     /// <param name="timeZone">Where the user is, so a transaction falls on the day it was where they are.</param>
+    /// <param name="today">Today where the user is.</param>
     public static IReadOnlyList<SavedOn> History(SavingsGoal goal, IEnumerable<BankTransaction> transactions,
         TimeZoneInfo timeZone, DateOnly today)
     {
@@ -79,12 +92,17 @@ public static class SavingsGoalCalculator
     /// What the tagged transactions saved, of a split transaction only the parts with the goal's tags. Saving into an
     /// account here, money in less money out. Saving somewhere FinTrack can't see, money out less money back in.
     /// </summary>
+    /// <param name="goal">The goal to work out.</param>
+    /// <param name="transactions">The user's transactions.</param>
+    /// <param name="timeZone">Where the user is, so a transaction falls on the day it was where they are.</param>
     private static decimal Tagged(SavingsGoal goal, IEnumerable<BankTransaction> transactions, TimeZoneInfo timeZone) =>
         Counted(goal, transactions, timeZone).Sum(x => SavedBy(goal, x));
 
     /// <summary>
     /// How much <paramref name="transaction"/> adds to the goal, less than nothing when it takes from it.
     /// </summary>
+    /// <param name="goal">The goal to work out.</param>
+    /// <param name="transaction">A transaction that counts towards it.</param>
     private static decimal SavedBy(SavingsGoal goal, BankTransaction transaction)
     {
         decimal amount = transaction.AmountUnder(goal.TagIds);
@@ -100,6 +118,9 @@ public static class SavingsGoalCalculator
     /// The transactions that count towards the goal. When both halves of a transfer are tagged, only the half going the
     /// way the goal saves counts, money in or money out, so a rule tagging both sides doesn't cancel itself out.
     /// </summary>
+    /// <param name="goal">The goal to work out.</param>
+    /// <param name="transactions">The user's transactions.</param>
+    /// <param name="timeZone">Where the user is, so a transaction falls on the day it was where they are.</param>
     private static List<BankTransaction> Counted(SavingsGoal goal, IEnumerable<BankTransaction> transactions,
         TimeZoneInfo timeZone)
     {
@@ -112,6 +133,9 @@ public static class SavingsGoalCalculator
     /// <summary>
     /// The half of a transfer whose other half is tagged too that goes against the goal's direction.
     /// </summary>
+    /// <param name="goal">The goal to work out.</param>
+    /// <param name="transaction">The transaction to check.</param>
+    /// <param name="taggedIds">The transactions with one of the goal's tags.</param>
     private static bool IsOtherHalfOfTaggedTransfer(SavingsGoal goal, BankTransaction transaction,
         HashSet<Guid> taggedIds)
     {
@@ -131,6 +155,9 @@ public static class SavingsGoalCalculator
     /// <summary>
     /// Saving the monthly contribution from next month on.
     /// </summary>
+    /// <param name="goal">The goal to work out.</param>
+    /// <param name="saved">What's saved now.</param>
+    /// <param name="today">Today where the user is.</param>
     private static DateOnly? ReachedBy(SavingsGoal goal, decimal saved, DateOnly today)
     {
         decimal toGo = goal.Target - saved;
@@ -147,6 +174,9 @@ public static class SavingsGoalCalculator
     /// <summary>
     /// The months from next month to the target date's month, each taking an even share of what's left.
     /// </summary>
+    /// <param name="goal">The goal to work out.</param>
+    /// <param name="saved">What's saved now.</param>
+    /// <param name="today">Today where the user is.</param>
     private static decimal? NeededPerMonth(SavingsGoal goal, decimal saved, DateOnly today)
     {
         if (goal.Target <= 0 || goal.TargetDate is not { } targetDate)
@@ -164,6 +194,13 @@ public static class SavingsGoalCalculator
         return Math.Ceiling(toGo / months * 100) / 100;
     }
 
+    /// <summary>
+    /// Whether saving the monthly contribution reaches the target by the target date. Null without a target, a date or
+    /// a contribution.
+    /// </summary>
+    /// <param name="goal">The goal to work out.</param>
+    /// <param name="saved">What's saved now.</param>
+    /// <param name="today">Today where the user is.</param>
     private static bool? OnTrack(SavingsGoal goal, decimal saved, DateOnly today)
     {
         if (goal.Target <= 0)
@@ -185,6 +222,11 @@ public static class SavingsGoalCalculator
         return saved + goal.MonthlyContribution * Math.Max(months, 0) >= goal.Target;
     }
 
+    /// <summary>
+    /// How many months from this month to the target date's month.
+    /// </summary>
+    /// <param name="today">Today where the user is.</param>
+    /// <param name="targetDate">The target date.</param>
     private static int MonthsUntil(DateOnly today, DateOnly targetDate) =>
         (targetDate.Year - today.Year) * 12 + targetDate.Month - today.Month;
 }

@@ -13,18 +13,23 @@ namespace FinanceTracker.Domain.Sharing;
 /// <param name="ClosedAt">When the shown copy was found syncing again, null while it's open.</param>
 public sealed record JointAccountGap(DateTime From, DateTime? To, DateTime OpenedAt, DateTime? ClosedAt)
 {
+    /// <summary>
+    /// Whether the shown copy hasn't synced again yet.
+    /// </summary>
     public bool IsOpen => ClosedAt is null;
 
     /// <summary>
     /// Whether a transaction at <paramref name="occurredAt"/> falls inside it, after the shown copy's last and before
     /// its first again.
     /// </summary>
+    /// <param name="occurredAt">When the transaction happened.</param>
     public bool Covers(DateTime occurredAt) => occurredAt > From && (To is null || occurredAt < To);
 
     /// <summary>
     /// Whether the shown copy's balance on <paramref name="day"/> is the hidden copy's, from the day the lapse was
     /// found until the day it synced again.
     /// </summary>
+    /// <param name="day">The day to check.</param>
     public bool CoversBalanceOn(DateOnly day) =>
         day >= DateOnly.FromDateTime(OpenedAt) && (ClosedAt is null || day < DateOnly.FromDateTime(ClosedAt.Value));
 }

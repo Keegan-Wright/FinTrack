@@ -83,7 +83,9 @@ public static class SubscriptionDetector
     /// Brings the user's suggestions in line with <paramref name="detected"/> new ones added, waiting ones refreshed,
     /// waiting ones no longer detected removed. Dismissed ones are left as they are so they're never suggested again.
     /// </summary>
+    /// <param name="userId">The user the new suggestions belong to.</param>
     /// <param name="suggestions">The user's suggestions, those refreshed are changed in place.</param>
+    /// <param name="detected">The subscriptions detected now, see <see cref="Detect"/>.</param>
     public static SuggestionChanges Suggest(Guid userId, IReadOnlyCollection<BillSuggestion> suggestions,
         IReadOnlyCollection<DetectedSubscription> detected)
     {
@@ -120,6 +122,7 @@ public static class SubscriptionDetector
     /// Settled money out that isn't a transfer and pays no bill. Pending payments are left out as the settled one
     /// replaces them, and a payment the user said pays no bill isn't suggested as one.
     /// </summary>
+    /// <param name="transaction">The transaction to check.</param>
     private static bool IsCandidate(BankTransaction transaction) =>
         transaction.Amount < 0 && !transaction.IsPending && transaction.CountsAsIncomeOrSpending &&
         transaction.BillPayment is null;
@@ -128,6 +131,8 @@ public static class SubscriptionDetector
     /// The running bill on <paramref name="payment"/>'s account it's paid to, null when there's none, so it isn't a
     /// new subscription.
     /// </summary>
+    /// <param name="bills">The user's bills.</param>
+    /// <param name="payment">The payment to check.</param>
     public static Bill? BillCovering(IReadOnlyCollection<Bill> bills, BankTransaction payment)
     {
         ArgumentNullException.ThrowIfNull(bills);
@@ -148,6 +153,9 @@ public static class SubscriptionDetector
     /// The longest run of payments ending with the latest that repeats at the first frequency to fit, null when none
     /// has <see cref="RequiredPayments"/> or the run has stopped.
     /// </summary>
+    /// <param name="ordered">One payee's payments on one account, oldest first.</param>
+    /// <param name="timeZone">Where the user is, so a payment falls on the day it was where they are.</param>
+    /// <param name="today">Today where the user is.</param>
     private static DetectedSubscription? Repeating(List<BankTransaction> ordered, TimeZoneInfo timeZone,
         DateOnly today)
     {
@@ -180,6 +188,9 @@ public static class SubscriptionDetector
     /// Walks back from the latest payment while each earlier one is a period before the next, give or take
     /// <see cref="Slack"/>, and close to the latest's amount.
     /// </summary>
+    /// <param name="ordered">One payee's payments on one account, oldest first.</param>
+    /// <param name="frequency">The frequency to try.</param>
+    /// <param name="timeZone">Where the user is, so a payment falls on the day it was where they are.</param>
     /// <returns>Oldest first.</returns>
     private static List<BankTransaction> RunEndingWithLatest(List<BankTransaction> ordered, BillFrequency frequency,
         TimeZoneInfo timeZone)
@@ -206,12 +217,19 @@ public static class SubscriptionDetector
         return run;
     }
 
+    /// <summary>
+    /// Whether <paramref name="amount"/> is within <see cref="SimilarPercent"/> of <paramref name="latest"/>.
+    /// </summary>
+    /// <param name="amount">An earlier payment's amount.</param>
+    /// <param name="latest">The latest payment's amount.</param>
     private static bool IsSimilar(decimal amount, decimal latest) =>
         Math.Abs(amount - latest) <= latest * SimilarPercent / 100;
 
     /// <summary>
     /// One period on from <paramref name="day"/>.
     /// </summary>
+    /// <param name="day">The day to step from.</param>
+    /// <param name="frequency">How far to step.</param>
     private static DateOnly Step(DateOnly day, BillFrequency frequency) => frequency switch
     {
         BillFrequency.Weekly => day.AddDays(7),
@@ -224,6 +242,7 @@ public static class SubscriptionDetector
     /// How many days a payment can move from a period after the last, for weekends and bank holidays. Tighter for
     /// week based frequencies, so monthly payments don't pass as four-weekly.
     /// </summary>
+    /// <param name="frequency">How often the payments repeat.</param>
     private static int Slack(BillFrequency frequency)
     {
         if (frequency == BillFrequency.Monthly)

@@ -85,6 +85,8 @@ public static class BillSeeder
     /// A bill for <paramref name="standingOrder"/>, due from its first payment on its schedule. Null when it has no
     /// next payment or amount to go on, or it has stopped.
     /// </summary>
+    /// <param name="account">The account it's paid from.</param>
+    /// <param name="standingOrder">The standing order to seed it from.</param>
     public static Bill? FromStandingOrder(BankAccount account, StandingOrder standingOrder)
     {
         ArgumentNullException.ThrowIfNull(account);
@@ -119,6 +121,8 @@ public static class BillSeeder
     /// A bill for <paramref name="directDebit"/>, monthly from its previous payment as banks don't say how often
     /// they're taken. Null before it's been paid, or once it has stopped.
     /// </summary>
+    /// <param name="account">The account it's paid from.</param>
+    /// <param name="directDebit">The direct debit to seed it from.</param>
     public static Bill? FromDirectDebit(BankAccount account, DirectDebit directDebit)
     {
         ArgumentNullException.ThrowIfNull(account);
@@ -136,6 +140,11 @@ public static class BillSeeder
             previous.Value, BillSource.DirectDebit, directDebit.Id);
     }
 
+    /// <summary>
+    /// Adds <paramref name="bill"/> when there is one. Null means its source had nothing to go on or had stopped.
+    /// </summary>
+    /// <param name="added">The bills added so far.</param>
+    /// <param name="bill">The bill seeded, or null.</param>
     private static void AddIfRunning(List<Bill> added, Bill? bill)
     {
         if (bill is not null)
@@ -147,6 +156,9 @@ public static class BillSeeder
     /// <summary>
     /// Follows the standing order's schedule and the price of its next payment, from that payment on.
     /// </summary>
+    /// <param name="bill">The bill seeded from it.</param>
+    /// <param name="standingOrder">The standing order as the bank reports it now.</param>
+    /// <param name="today">Today where the user is.</param>
     private static void Refresh(Bill bill, StandingOrder standingOrder, DateOnly today)
     {
         DateOnly? next = Known(standingOrder.NextPaymentDate);
@@ -178,6 +190,9 @@ public static class BillSeeder
     /// Ends it once the bank says it has stopped and runs it again if it restarts. Its schedule and price are the
     /// user's, the bank doesn't send them.
     /// </summary>
+    /// <param name="bill">The bill seeded from it.</param>
+    /// <param name="directDebit">The direct debit as the bank reports it now.</param>
+    /// <param name="today">Today where the user is.</param>
     private static void Refresh(Bill bill, DirectDebit directDebit, DateOnly today)
     {
         if (IsInactive(directDebit.Status))
@@ -189,6 +204,8 @@ public static class BillSeeder
         bill.Reopen();
     }
 
+    /// <param name="bill">The bill seeded from it.</param>
+    /// <param name="standingOrder">The standing order as the bank reports it now.</param>
     /// <returns>Whether the standing order has a final payment, so the bill ends then.</returns>
     private static bool EndOnFinalPayment(Bill bill, StandingOrder standingOrder)
     {
@@ -207,12 +224,17 @@ public static class BillSeeder
         return true;
     }
 
+    /// <summary>
+    /// Whether the bank says it has stopped.
+    /// </summary>
+    /// <param name="status">The status as the bank sends it.</param>
     private static bool IsInactive(string? status) =>
         string.Equals(status, InactiveStatus, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// The day, null when the bank left it out, which arrives as the earliest date there is.
     /// </summary>
+    /// <param name="date">The date as the bank sent it.</param>
     private static DateOnly? Known(DateTime date)
     {
         if (date.Year <= 1900)

@@ -26,6 +26,7 @@ public static class RuleEvaluator
     /// </summary>
     /// <param name="rules">The rules that reach it, which the caller works out: the owner's, and those of anyone
     /// allowed to change its account.</param>
+    /// <param name="transaction">The transaction to check.</param>
     public static RuleOutcome Evaluate(IEnumerable<Rule> rules, BankTransaction transaction)
     {
         ArgumentNullException.ThrowIfNull(rules);
@@ -72,6 +73,9 @@ public static class RuleEvaluator
     /// <summary>
     /// Runs <paramref name="rules"/> over <paramref name="transaction"/> and records the outcome on it.
     /// </summary>
+    /// <param name="rules">The rules that reach it.</param>
+    /// <param name="transaction">The transaction to apply them to.</param>
+    /// <param name="decidedAt">When they decided.</param>
     /// <returns>Whether the transaction changed.</returns>
     /// <exception cref="InvalidOperationException">A rule belongs to another user.</exception>
     public static bool Apply(IEnumerable<Rule> rules, BankTransaction transaction, DateTime decidedAt)
@@ -83,6 +87,12 @@ public static class RuleEvaluator
     /// <summary>
     /// Adds what a matching <paramref name="rule"/> does to what's been collected so far.
     /// </summary>
+    /// <param name="rule">The rule that matched.</param>
+    /// <param name="tags">The tags so far.</param>
+    /// <param name="hidden">The bank classifications hidden so far.</param>
+    /// <param name="transfer">The transfer answer so far.</param>
+    /// <param name="bill">The bill so far.</param>
+    /// <param name="debt">The debt so far.</param>
     private static void Collect(Rule rule, List<RuleTag> tags, List<HiddenClassification> hidden,
         ref RuleTransfer? transfer, ref RuleBill? bill, ref RuleDebt? debt)
     {
@@ -109,6 +119,12 @@ public static class RuleEvaluator
         }
     }
 
+    /// <summary>
+    /// Adds a tag unless an earlier rule added it already.
+    /// </summary>
+    /// <param name="tags">The tags so far.</param>
+    /// <param name="classificationId">The tag to add.</param>
+    /// <param name="ruleId">The rule adding it.</param>
     private static void AddTag(List<RuleTag> tags, Guid classificationId, Guid ruleId)
     {
         if (tags.Any(x => x.ClassificationId == classificationId))
@@ -119,6 +135,12 @@ public static class RuleEvaluator
         tags.Add(new RuleTag(classificationId, ruleId));
     }
 
+    /// <summary>
+    /// Hides a bank classification unless an earlier rule hid it already, in any case.
+    /// </summary>
+    /// <param name="hidden">The bank classifications hidden so far.</param>
+    /// <param name="classification">The bank classification to hide.</param>
+    /// <param name="ruleId">The rule hiding it.</param>
     private static void Hide(List<HiddenClassification> hidden, string classification, Guid ruleId)
     {
         if (hidden.Exists(x => string.Equals(x.Classification, classification, StringComparison.OrdinalIgnoreCase)))
@@ -129,6 +151,10 @@ public static class RuleEvaluator
         hidden.Add(new HiddenClassification(classification, ruleId));
     }
 
+    /// <summary>
+    /// The transfer answer a transfer action gives.
+    /// </summary>
+    /// <param name="type">The action's type.</param>
     private static TransferDecision ToDecision(RuleActionType type)
     {
         if (type == RuleActionType.MarkAsTransfer)

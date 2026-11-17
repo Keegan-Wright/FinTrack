@@ -21,6 +21,10 @@ public sealed class CalendarEvent : AggregateRoot
     }
 #pragma warning restore CS8618
 
+    /// <param name="userId">The user it belongs to.</param>
+    /// <param name="title">What the user calls it.</param>
+    /// <param name="date">The day it's on, or first on for a yearly one.</param>
+    /// <param name="recurrence">Whether it happens once or every year.</param>
     /// <exception cref="ArgumentException">The title is blank.</exception>
     public CalendarEvent(Guid userId, string title, DateOnly date, EventRecurrence recurrence) : base(userId)
     {
@@ -28,6 +32,9 @@ public sealed class CalendarEvent : AggregateRoot
         Reschedule(date, recurrence);
     }
 
+    /// <summary>
+    /// What the user calls it.
+    /// </summary>
     public string Title { get; private set; }
 
     /// <summary>
@@ -35,6 +42,9 @@ public sealed class CalendarEvent : AggregateRoot
     /// </summary>
     public DateOnly Date { get; private set; }
 
+    /// <summary>
+    /// Whether it happens once or every year.
+    /// </summary>
     public EventRecurrence Recurrence { get; private set; }
 
     /// <summary>
@@ -57,6 +67,10 @@ public sealed class CalendarEvent : AggregateRoot
     /// </summary>
     public bool RollsGoalOn { get; private set; }
 
+    /// <summary>
+    /// Changes what the user calls it.
+    /// </summary>
+    /// <param name="title">The new title, trimmed.</param>
     [MemberNotNull(nameof(Title))]
     public void Rename(string title)
     {
@@ -67,6 +81,8 @@ public sealed class CalendarEvent : AggregateRoot
     /// <summary>
     /// Moves it to <paramref name="date"/>. A one-off event's goal stays where it is.
     /// </summary>
+    /// <param name="date">The day it's on now.</param>
+    /// <param name="recurrence">Whether it happens once or every year.</param>
     public void Reschedule(DateOnly date, EventRecurrence recurrence)
     {
         Date = date;
@@ -77,8 +93,13 @@ public sealed class CalendarEvent : AggregateRoot
         }
     }
 
+    /// <summary>
+    /// Changes its notes. Blank notes are cleared.
+    /// </summary>
+    /// <param name="notes">The new notes, trimmed.</param>
     public void ChangeNotes(string? notes) => Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
 
+    /// <param name="savingsTarget">What to save for it each time, null for nothing.</param>
     /// <exception cref="ArgumentOutOfRangeException">The target isn't more than 0.</exception>
     public void SetSavingsTarget(decimal? savingsTarget)
     {
@@ -93,6 +114,7 @@ public sealed class CalendarEvent : AggregateRoot
     /// <summary>
     /// Saves for it in <paramref name="goal"/>.
     /// </summary>
+    /// <param name="goal">The goal saving for it.</param>
     /// <exception cref="InvalidOperationException">The goal belongs to another user.</exception>
     public void LinkSavingsGoal(SavingsGoal goal)
     {
@@ -114,6 +136,7 @@ public sealed class CalendarEvent : AggregateRoot
         RollsGoalOn = false;
     }
 
+    /// <param name="rollsGoalOn">Whether its goal moves on to its next date once each passes.</param>
     /// <exception cref="InvalidOperationException">Rolling on is asked for an event that isn't yearly or has no goal.
     /// </exception>
     public void SetRollsGoalOn(bool rollsGoalOn)
@@ -130,12 +153,17 @@ public sealed class CalendarEvent : AggregateRoot
     /// The day it falls on in <paramref name="year"/>, whether or not it happens then. 29 February is the 28th in a
     /// year that isn't a leap year.
     /// </summary>
+    /// <param name="year">The year to look at.</param>
     public DateOnly OnIn(int year)
     {
         int day = Math.Min(Date.Day, DateTime.DaysInMonth(year, Date.Month));
         return new DateOnly(year, Date.Month, day);
     }
 
+    /// <summary>
+    /// Whether it happens on <paramref name="day"/>. A yearly one happens on its day every year from its first.
+    /// </summary>
+    /// <param name="day">The day to check.</param>
     public bool OccursOn(DateOnly day)
     {
         if (Recurrence != EventRecurrence.Yearly)
@@ -149,6 +177,7 @@ public sealed class CalendarEvent : AggregateRoot
     /// <summary>
     /// The first day it's on from <paramref name="from"/>, that day included. Null for a one-off that's passed.
     /// </summary>
+    /// <param name="from">The day to look from.</param>
     public DateOnly? NextOn(DateOnly from)
     {
         if (Recurrence != EventRecurrence.Yearly)
@@ -169,6 +198,8 @@ public sealed class CalendarEvent : AggregateRoot
     /// Once the day <paramref name="goal"/> was saving for has passed, aims it at the next one, with
     /// <see cref="SavingsTarget"/> as its target when there is one. Does nothing unless it <see cref="RollsGoalOn"/>.
     /// </summary>
+    /// <param name="goal">Its savings goal.</param>
+    /// <param name="today">Today where the user is.</param>
     /// <returns>Whether the goal moved on.</returns>
     /// <exception cref="InvalidOperationException"><paramref name="goal"/> isn't this event's.</exception>
     public bool MoveGoalOn(SavingsGoal goal, DateOnly today)
@@ -199,7 +230,10 @@ public sealed class CalendarEvent : AggregateRoot
     /// saved for it stays its owner's to set. Nothing to check for its owner.
     /// </summary>
     /// <param name="by">Who's changing it.</param>
+    /// <param name="savingsTarget">What the change would save for it each time.</param>
+    /// <param name="savingsGoalId">The goal the change would save for it in.</param>
     /// <param name="newGoal">Whether the change makes it a new savings goal.</param>
+    /// <param name="rollsGoalOn">Whether the change would move its goal on to its next date.</param>
     /// <exception cref="DomainRuleException">Someone other than its owner would change what's saved for it.
     /// </exception>
     public void EnsureSavingsAreUnchangedFor(Guid by, decimal? savingsTarget, Guid? savingsGoalId, bool newGoal,

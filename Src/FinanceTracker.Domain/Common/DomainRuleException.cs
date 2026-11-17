@@ -7,14 +7,26 @@ namespace FinanceTracker.Domain.Common;
 /// </summary>
 public sealed class DomainRuleException : InvalidOperationException
 {
+    /// <summary>
+    /// Makes one with the default message.
+    /// </summary>
     public DomainRuleException()
     {
     }
 
+    /// <summary>
+    /// Makes one saying which rule refused the change.
+    /// </summary>
+    /// <param name="message">Which rule, for the person making the change.</param>
     public DomainRuleException(string message) : base(message)
     {
     }
 
+    /// <summary>
+    /// Makes one saying which rule refused the change, caused by <paramref name="innerException"/>.
+    /// </summary>
+    /// <param name="message">Which rule, for the person making the change.</param>
+    /// <param name="innerException">What caused it.</param>
     public DomainRuleException(string message, Exception innerException) : base(message, innerException)
     {
     }

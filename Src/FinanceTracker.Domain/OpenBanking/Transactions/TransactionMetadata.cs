@@ -17,5 +17,8 @@ public sealed record TransactionMetadata(
     string? CounterPartyPreferredName,
     string? DebtorAccountName)
 {
+    /// <summary>
+    /// Nothing from the provider.
+    /// </summary>
     public static TransactionMetadata None { get; } = new(null, null, null, null, null);
 }

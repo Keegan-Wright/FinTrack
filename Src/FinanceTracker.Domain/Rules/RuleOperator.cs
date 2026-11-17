@@ -11,10 +11,19 @@ public enum RuleOperator
     /// </summary>
     Equals = 1,
 
+    /// <summary>
+    /// Text containing the value.
+    /// </summary>
     Contains = 2,
 
+    /// <summary>
+    /// Text starting with the value.
+    /// </summary>
     StartsWith = 3,
 
+    /// <summary>
+    /// Text ending with the value.
+    /// </summary>
     EndsWith = 4,
 
     /// <summary>
@@ -22,8 +31,14 @@ public enum RuleOperator
     /// </summary>
     Regex = 5,
 
+    /// <summary>
+    /// A number more than the value.
+    /// </summary>
     GreaterThan = 6,
 
+    /// <summary>
+    /// A number less than the value.
+    /// </summary>
     LessThan = 7,
 
     /// <summary>

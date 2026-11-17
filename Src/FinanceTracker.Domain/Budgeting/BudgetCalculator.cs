@@ -14,7 +14,9 @@ public static class BudgetCalculator
     /// <summary>
     /// How <paramref name="budget"/> is doing in <paramref name="month"/>, rolling over from its first month.
     /// </summary>
+    /// <param name="budget">The budget to work out.</param>
     /// <param name="transactions">The user's transactions, at least those from the budget's first month on.</param>
+    /// <param name="month">The month to work out.</param>
     /// <param name="timeZone">Where the user is, so a transaction falls in the month it was where they are.</param>
     /// <param name="today">Today where the user is, for the pace.</param>
     /// <param name="calendar">The user's periods, which month each transaction counts in.</param>
@@ -58,6 +60,11 @@ public static class BudgetCalculator
     /// less refunds. Of a split transaction, the parts none of them cover. Untagged money in could be income or a refund, so only what the bank calls a purchase counts as
     /// a refund, card refunds come back that way while salary and transfers don't. Never below nothing.
     /// </summary>
+    /// <param name="budgets">The user's budgets.</param>
+    /// <param name="transactions">The user's transactions, at least those in the month.</param>
+    /// <param name="month">The month to work out.</param>
+    /// <param name="timeZone">Where the user is, so a transaction falls in the month it was where they are.</param>
+    /// <param name="calendar">The user's periods, which month each transaction counts in.</param>
     public static decimal Unbudgeted(IEnumerable<Budget> budgets, IEnumerable<BankTransaction> transactions,
         BudgetMonth month, TimeZoneInfo timeZone, PayCalendar calendar)
     {
@@ -84,6 +91,10 @@ public static class BudgetCalculator
     /// </summary>
     private const string PurchaseCategory = "PURCHASE";
 
+    /// <summary>
+    /// Whether it's money back on a purchase. The bank calls card refunds a purchase too.
+    /// </summary>
+    /// <param name="transaction">The transaction to check.</param>
     private static bool IsRefund(BankTransaction transaction) =>
         transaction.Amount > 0 &&
         string.Equals(transaction.Category, PurchaseCategory, StringComparison.OrdinalIgnoreCase);
@@ -93,10 +104,18 @@ public static class BudgetCalculator
     /// the parts with the budget's tags. Never below nothing: money in can cancel spending but not add to what the
     /// budget allows, e.g. income that happens to carry the tag.
     /// </summary>
+    /// <param name="budget">The budget to work out.</param>
+    /// <param name="byMonth">The user's transactions grouped by the month they count in.</param>
+    /// <param name="month">The month to work out.</param>
     private static decimal Spent(Budget budget, Dictionary<BudgetMonth, List<BankTransaction>> byMonth,
         BudgetMonth month) =>
         Math.Max(0, -byMonth.GetValueOrDefault(month, []).Sum(x => x.AmountUnder(budget.TagIds)));
 
+    /// <summary>
+    /// What of a month's <paramref name="remaining"/> carries into the next.
+    /// </summary>
+    /// <param name="mode">The budget's rollover mode.</param>
+    /// <param name="remaining">What was left, negative when overspent.</param>
     private static decimal CarryOver(RolloverMode mode, decimal remaining) => mode switch
     {
         RolloverMode.CarryUnderspend => Math.Max(remaining, 0),
@@ -107,6 +126,8 @@ public static class BudgetCalculator
     /// <summary>
     /// The month the period <paramref name="day"/> falls in is named after.
     /// </summary>
+    /// <param name="day">The day to look at.</param>
+    /// <param name="calendar">The user's periods.</param>
     public static BudgetMonth MonthOf(DateOnly day, PayCalendar calendar)
     {
         ArgumentNullException.ThrowIfNull(calendar);
@@ -118,6 +139,10 @@ public static class BudgetCalculator
     /// <summary>
     /// A straight line through the period: by day 15 of 30, half of <paramref name="available"/>.
     /// </summary>
+    /// <param name="available">What the budget allows for the period.</param>
+    /// <param name="month">The month to work out.</param>
+    /// <param name="today">Today where the user is.</param>
+    /// <param name="calendar">The user's periods.</param>
     private static decimal ExpectedByNow(decimal available, BudgetMonth month, DateOnly today, PayCalendar calendar)
     {
         BudgetMonth current = MonthOf(today, calendar);

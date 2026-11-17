@@ -8,5 +8,8 @@ namespace FinanceTracker.Domain.Budgeting;
 /// <param name="Amount">How much can be spent each month, 0 or more.</param>
 public sealed record BudgetLimit(DateOnly From, decimal Amount)
 {
+    /// <summary>
+    /// The first month it applies to.
+    /// </summary>
     public BudgetMonth Month => BudgetMonth.Of(From);
 }

@@ -41,6 +41,7 @@ public static class BillMatcher
     /// <param name="transactions">The transactions to match, with any around them that already pay the bills so
     /// their periods are known to be paid.</param>
     /// <param name="timeZone">Where the user is, so a payment falls on the day it was where they are.</param>
+    /// <param name="decidedAt">When the decisions are made, stored on each.</param>
     /// <returns>How many transactions changed.</returns>
     public static int Match(IReadOnlyCollection<Bill> bills, IEnumerable<BankTransaction> transactions,
         TimeZoneInfo timeZone, DateTime decidedAt)
@@ -88,6 +89,8 @@ public static class BillMatcher
     /// Whether <paramref name="transaction"/> is paid to <paramref name="bill"/>'s payee, by its description or the
     /// merchant or counterparty the bank named, ignoring case, spaces and punctuation.
     /// </summary>
+    /// <param name="bill">The bill to check.</param>
+    /// <param name="transaction">The transaction to check.</param>
     public static bool IsPaidTo(Bill bill, BankTransaction transaction)
     {
         ArgumentNullException.ThrowIfNull(bill);
@@ -118,6 +121,7 @@ public static class BillMatcher
     /// <summary>
     /// Whether the matcher can decide for <paramref name="transaction"/> money out no rule or user has decided about.
     /// </summary>
+    /// <param name="transaction">The transaction to check.</param>
     private static bool IsOpen(BankTransaction transaction) =>
         transaction.Amount < 0 &&
         (transaction.BillPayment is null || transaction.BillPayment.Source == DecisionSource.Matcher);
@@ -125,6 +129,9 @@ public static class BillMatcher
     /// <summary>
     /// The periods rules and the user have already paid, which the matcher leaves to them.
     /// </summary>
+    /// <param name="transactions">The transactions being matched.</param>
+    /// <param name="bills">The user's bills.</param>
+    /// <param name="timeZone">Where the user is, so a payment falls on the day it was where they are.</param>
     private static HashSet<(Guid BillId, DateOnly Due)> PaidByOthers(List<BankTransaction> transactions,
         Dictionary<Guid, Bill> bills, TimeZoneInfo timeZone)
     {
@@ -146,6 +153,12 @@ public static class BillMatcher
         return paid;
     }
 
+    /// <summary>
+    /// The bills on the transaction's account it could pay, each with how far it is from the nearest period.
+    /// </summary>
+    /// <param name="transaction">The transaction to match.</param>
+    /// <param name="bills">The user's bills.</param>
+    /// <param name="timeZone">Where the user is, so a payment falls on the day it was where they are.</param>
     private static IEnumerable<BillCandidate> Candidates(BankTransaction transaction, IReadOnlyCollection<Bill> bills,
         TimeZoneInfo timeZone)
     {
@@ -177,6 +190,9 @@ public static class BillMatcher
         }
     }
 
+    /// <param name="transaction">The transaction that pays it.</param>
+    /// <param name="billId">The bill it pays.</param>
+    /// <param name="decidedAt">When it was decided.</param>
     /// <returns>Whether the transaction changed.</returns>
     private static bool Record(BankTransaction transaction, Guid billId, DateTime decidedAt)
     {
@@ -194,6 +210,10 @@ public static class BillMatcher
         return transaction.DecideBillPayment(payment);
     }
 
+    /// <summary>
+    /// The names on the transaction, normalised. Its description, merchant and counterparty, the empty ones left out.
+    /// </summary>
+    /// <param name="transaction">The transaction.</param>
     private static IEnumerable<string> Names(BankTransaction transaction)
     {
         string?[] names =
@@ -214,6 +234,7 @@ public static class BillMatcher
     /// <summary>
     /// Upper case letters and digits only, so <c>Netflix.com</c> and <c>NETFLIX COM</c> read the same.
     /// </summary>
+    /// <param name="text">The text to normalise.</param>
     private static string Normalise(string? text)
     {
         if (string.IsNullOrWhiteSpace(text))

@@ -13,6 +13,8 @@ public sealed class RuleCheckpoint : AggregateRoot
     {
     }
 
+    /// <param name="userId">The user it's for.</param>
+    /// <param name="appliedFrom">When the first run started loading.</param>
     public RuleCheckpoint(Guid userId, DateTime appliedFrom) : base(userId) => AppliedFrom = appliedFrom;
 
     /// <summary>
@@ -20,5 +22,9 @@ public sealed class RuleCheckpoint : AggregateRoot
     /// </summary>
     public DateTime AppliedFrom { get; private set; }
 
+    /// <summary>
+    /// Records a run, so the next only looks at what's changed since.
+    /// </summary>
+    /// <param name="appliedFrom">When the run started loading.</param>
     public void Record(DateTime appliedFrom) => AppliedFrom = appliedFrom;
 }

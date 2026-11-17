@@ -10,6 +10,9 @@ namespace FinanceTracker.Domain.PayPeriods;
 /// </summary>
 public static class PayDetector
 {
+    /// <summary>
+    /// How many pays it takes, so one-off income isn't taken as pay.
+    /// </summary>
     public const int RequiredPays = 3;
 
     /// <summary>
@@ -77,6 +80,7 @@ public static class PayDetector
     /// <summary>
     /// Settled money in that isn't a transfer between the user's accounts.
     /// </summary>
+    /// <param name="transaction">The transaction to check.</param>
     private static bool IsCandidate(BankTransaction transaction) =>
         transaction.Amount > 0 && !transaction.IsPending && transaction.CountsAsIncomeOrSpending;
 
@@ -84,6 +88,8 @@ public static class PayDetector
     /// The run of at least <see cref="RequiredPays"/> ending with the latest payment it can, so a refund or expenses
     /// from the payer after the latest pay don't hide it. Null when there's none.
     /// </summary>
+    /// <param name="ordered">One payer's payments into one account, oldest first.</param>
+    /// <param name="timeZone">Where the user is, so a pay falls on the day it was where they are.</param>
     private static List<BankTransaction>? LatestMonthlyRun(List<BankTransaction> ordered, TimeZoneInfo timeZone)
     {
         for (int index = ordered.Count - 1; index >= RequiredPays - 1; index--)
@@ -103,6 +109,9 @@ public static class PayDetector
     /// <see cref="SlackDays"/> and close to the latest's amount, so a refund or expenses from the same payer in
     /// between are passed over.
     /// </summary>
+    /// <param name="ordered">One payer's payments into one account, oldest first.</param>
+    /// <param name="latest">The payment the run ends with.</param>
+    /// <param name="timeZone">Where the user is, so a pay falls on the day it was where they are.</param>
     /// <returns>Oldest first.</returns>
     private static List<BankTransaction> MonthlyRun(List<BankTransaction> ordered, BankTransaction latest,
         TimeZoneInfo timeZone)
@@ -121,6 +130,10 @@ public static class PayDetector
     /// The payment before <paramref name="later"/> closest to a month before it, null when none is within
     /// <see cref="SlackDays"/> with an amount like <paramref name="latestAmount"/>.
     /// </summary>
+    /// <param name="ordered">One payer's payments into one account, oldest first.</param>
+    /// <param name="later">The payment to look back from.</param>
+    /// <param name="latestAmount">The amount of the run's latest payment.</param>
+    /// <param name="timeZone">Where the user is, so a pay falls on the day it was where they are.</param>
     private static BankTransaction? ClosestToAMonthBefore(List<BankTransaction> ordered, BankTransaction later,
         decimal latestAmount, TimeZoneInfo timeZone)
     {
@@ -146,6 +159,11 @@ public static class PayDetector
         return closest;
     }
 
+    /// <summary>
+    /// Whether <paramref name="amount"/> is within <see cref="SimilarPercent"/> of <paramref name="latest"/>.
+    /// </summary>
+    /// <param name="amount">An earlier pay's amount.</param>
+    /// <param name="latest">The latest pay's amount.</param>
     private static bool IsSimilar(decimal amount, decimal latest) =>
         Math.Abs(amount - latest) <= latest * SimilarPercent / 100;
 }

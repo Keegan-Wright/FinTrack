@@ -6,5 +6,8 @@ namespace FinanceTracker.Domain.Common;
 /// </summary>
 public interface IBelongsToAccount
 {
+    /// <summary>
+    /// The bank account it's held for.
+    /// </summary>
     Guid AccountId { get; }
 }
