@@ -16,6 +16,7 @@ public sealed class ProfileService : IProfileService
     private readonly SignInManager<FinanceTrackerUser> _signInManager;
     private readonly ICurrentUser _currentUser;
     private readonly IMailSender _mailSender;
+    private readonly SignInMethods _signInMethods;
     private readonly IEmailConfirmation _emailConfirmation;
     private readonly IEmailChange _emailChange;
     private readonly ILogger<ProfileService> _logger;
@@ -26,11 +27,14 @@ public sealed class ProfileService : IProfileService
     /// <param name="mailSender">Sends the emails.</param>
     /// <param name="emailConfirmation">Sends the confirmation email.</param>
     /// <param name="emailChange">Starts an email change.</param>
+    /// <param name="signInMethods">Whether passwords can be used.</param>
     /// <param name="logger">Its logger.</param>
     public ProfileService(UserManager<FinanceTrackerUser> userManager,
         SignInManager<FinanceTrackerUser> signInManager, ICurrentUser currentUser, IMailSender mailSender,
-        IEmailConfirmation emailConfirmation, IEmailChange emailChange, ILogger<ProfileService> logger)
+        IEmailConfirmation emailConfirmation, IEmailChange emailChange, SignInMethods signInMethods,
+        ILogger<ProfileService> logger)
     {
+        _signInMethods = signInMethods;
         _userManager = userManager;
         _signInManager = signInManager;
         _currentUser = currentUser;
@@ -50,7 +54,7 @@ public sealed class ProfileService : IProfileService
             Username = user.UserName ?? string.Empty,
             Email = email,
             EmailConfirmed = user.EmailConfirmed,
-            HasPassword = await _userManager.HasPasswordAsync(user),
+            HasPassword = await CanUsePasswordAsync(user),
             UsesIdentityProvider = user.OpenIdConnectSubject is not null,
             MailAvailable = _mailSender.IsAvailable
         };
@@ -65,7 +69,7 @@ public sealed class ProfileService : IProfileService
     {
         ArgumentNullException.ThrowIfNull(change);
         FinanceTrackerUser user = await UserAsync();
-        if (!await _userManager.HasPasswordAsync(user))
+        if (!await CanUsePasswordAsync(user))
         {
             return null;
         }
@@ -87,7 +91,7 @@ public sealed class ProfileService : IProfileService
     {
         ArgumentNullException.ThrowIfNull(change);
         FinanceTrackerUser user = await UserAsync();
-        if (!await _userManager.HasPasswordAsync(user))
+        if (!await CanUsePasswordAsync(user))
         {
             return null;
         }
@@ -109,4 +113,11 @@ public sealed class ProfileService : IProfileService
     private async Task<FinanceTrackerUser> UserAsync() =>
         await _userManager.FindByIdAsync(_currentUser.UserId.ToString())
         ?? throw new InvalidOperationException("The signed in user no longer exists");
+
+    /// <summary>
+    /// Whether <paramref name="user"/> has a password they can use, see <see cref="SignInMethods.CanUsePassword"/>.
+    /// </summary>
+    /// <param name="user">The user.</param>
+    private async Task<bool> CanUsePasswordAsync(FinanceTrackerUser user) =>
+        _signInMethods.CanUsePassword(await _userManager.HasPasswordAsync(user));
 }

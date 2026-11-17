@@ -53,10 +53,20 @@ else
     /// <summary>
     /// How many accounts and their total.
     /// </summary>
-    private string Subtitle => Accounts is null or { Count: 0 }
-        ? "Your connected accounts"
-        : $"{Accounts.Count} {(Accounts.Count == 1 ? "account" : "accounts")} · " +
-          $"{CurrencyFormatter.Format(Accounts.Sum(static x => x.AccountBalance))} in total";
+    private string Subtitle
+    {
+        get
+        {
+            if (Accounts is null or { Count: 0 })
+            {
+                return "Your connected accounts";
+            }
+
+            string word = Accounts.Count == 1 ? "account" : "accounts";
+            string total = CurrencyFormatter.Format(Accounts.Sum(static x => x.AccountBalance));
+            return $"{Accounts.Count} {word} · {total} in total";
+        }
+    }
 
     /// <summary>
     /// Each account's closing balances over the last 90 days, loaded once.

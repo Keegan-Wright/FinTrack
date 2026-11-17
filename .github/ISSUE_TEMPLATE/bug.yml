@@ -1,0 +1,35 @@
+name: Bug
+description: Something isn't working as it should.
+labels: [bug]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What went wrong, and what you expected instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The release you're running, e.g. v0.1.1.
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Anything relevant from the logs. Remove any personal details first.
+      render: text

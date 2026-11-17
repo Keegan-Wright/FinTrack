@@ -11,7 +11,7 @@
 @inject ILogger<Login> Logger
 @inject NavigationManager NavigationManager
 @inject IdentityRedirectManager RedirectManager
-@inject IConfiguration Configuration
+@inject SignInMethods SignInMethods
 @inject IMailSender MailSender
 
 <PageTitle>FinTrack - Sign in</PageTitle>
@@ -26,7 +26,7 @@
 
 @* A full page load rather than Blazor's enhanced navigation, which fetches the page and can't follow the redirect
    on to the provider, a site the content security policy doesn't let it connect to *@
-@if (Configuration.IsOidcEnabled())
+@if (SignInMethods.SingleSignOn)
 {
     <MudButton
         Href="@(NavigationManager.GetUriWithQueryParameters("auth/oidc", new Dictionary<string, object?> { ["returnUrl"] = ReturnUrl }))"
@@ -34,46 +34,53 @@
         StartIcon="@Icons.Material.Outlined.Key" data-enhance-nav="false">
         Sign in with single sign on
     </MudButton>
+}
+
+@if (SignInMethods is { SingleSignOn: true, Password: true })
+{
     <AuthDivider Text="or with your username"/>
 }
 
-<EditForm Model="LoginRequest" method="post" OnValidSubmit="LoginUser" FormName="login">
-    <FluentValidator/>
-    <AuthFields>
-        <MudStaticTextField For="@(() => LoginRequest.Username)" @bind-Value="LoginRequest.Username"
-                            Label="Username" Variant="Variant.Outlined"
-                            UserAttributes="@(new Dictionary<string, object?> { { "autocomplete", "username" }, { "aria-required", "true" } })"/>
+@if (SignInMethods.Password)
+{
+    <EditForm Model="LoginRequest" method="post" OnValidSubmit="LoginUser" FormName="login">
+        <FluentValidator/>
+        <AuthFields>
+            <MudStaticTextField For="@(() => LoginRequest.Username)" @bind-Value="LoginRequest.Username"
+                                Label="Username" Variant="Variant.Outlined"
+                                UserAttributes="@(new Dictionary<string, object?> { { "autocomplete", "username" }, { "aria-required", "true" } })"/>
 
-        <MudStaticTextField For="@(() => LoginRequest.Password)" @bind-Value="LoginRequest.Password"
-                            Label="Password" InputType="InputType.Password" Variant="Variant.Outlined"
-                            Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Outlined.Visibility"
-                            AdornmentToggledIcon="@Icons.Material.Outlined.VisibilityOff"
-                            AdornmentClickFunction="ftTogglePassword" AdornmentAriaLabel="Show password"
-                            UserAttributes="@(new Dictionary<string, object?> { { "autocomplete", "current-password" }, { "aria-required", "true" } })"/>
+            <MudStaticTextField For="@(() => LoginRequest.Password)" @bind-Value="LoginRequest.Password"
+                                Label="Password" InputType="InputType.Password" Variant="Variant.Outlined"
+                                Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Outlined.Visibility"
+                                AdornmentToggledIcon="@Icons.Material.Outlined.VisibilityOff"
+                                AdornmentClickFunction="ftTogglePassword" AdornmentAriaLabel="Show password"
+                                UserAttributes="@(new Dictionary<string, object?> { { "autocomplete", "current-password" }, { "aria-required", "true" } })"/>
 
-        <div class="ft-login-options">
-            <MudStaticCheckBox For="@(() => LoginRequest.RememberMe)" @bind-Value="LoginRequest.RememberMe"
-                               Color="Color.Primary">Remember me
-            </MudStaticCheckBox>
-            @if (MailSender.IsAvailable)
-            {
-                <MudLink Href="Account/ForgotPassword" Typo="Typo.body2">Forgot password?</MudLink>
-            }
-        </div>
+            <div class="ft-login-options">
+                <MudStaticCheckBox For="@(() => LoginRequest.RememberMe)" @bind-Value="LoginRequest.RememberMe"
+                                   Color="Color.Primary">Remember me
+                </MudStaticCheckBox>
+                @if (MailSender.IsAvailable)
+                {
+                    <MudLink Href="Account/ForgotPassword" Typo="Typo.body2">Forgot password?</MudLink>
+                }
+            </div>
 
-        <MudStaticButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Size="Size.Large"
-                         FormAction="FormAction.Submit">Sign in
-        </MudStaticButton>
-    </AuthFields>
-</EditForm>
+            <MudStaticButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Size="Size.Large"
+                             FormAction="FormAction.Submit">Sign in
+            </MudStaticButton>
+        </AuthFields>
+    </EditForm>
 
-<AuthFooter>
-    New to FinTrack?
-    <MudLink
-        Href="@(NavigationManager.GetUriWithQueryParameters("Account/Register", new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))">
-        Create an account
-    </MudLink>
-</AuthFooter>
+    <AuthFooter>
+        New to FinTrack?
+        <MudLink
+            Href="@(NavigationManager.GetUriWithQueryParameters("Account/Register", new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))">
+            Create an account
+        </MudLink>
+    </AuthFooter>
+}
 
 @code {
     private string? _errorMessage;
@@ -116,6 +123,10 @@
     /// </summary>
     public async Task LoginUser()
     {
+        // The form isn't shown with password sign in off, but could still be posted
+        if (!SignInMethods.Password)
+            return;
+
         // Failures count towards account lockout (lockoutOnFailure: true)
         var result = await SignInManager.PasswordSignInAsync(LoginRequest.Username, LoginRequest.Password, LoginRequest.RememberMe, true);
         if (result.Succeeded)

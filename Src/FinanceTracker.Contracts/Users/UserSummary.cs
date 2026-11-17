@@ -26,8 +26,9 @@ public sealed class UserSummary
     public required bool EmailConfirmed { get; init; }
 
     /// <summary>
-    /// Whether they have a password here, so a reset link can be made for them. One made by signing in through the
-    /// identity provider hasn't, their password is the provider's.
+    /// Whether they have a password here they can use, so a reset link can be made for them. One made by signing in
+    /// through the identity provider hasn't, their password is the provider's, and nobody can with password sign in
+    /// turned off.
     /// </summary>
     public required bool HasPassword { get; init; }
 

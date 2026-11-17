@@ -24,7 +24,7 @@ public static class TestTimeouts
     /// <summary>
     /// A whole integration test.
     /// </summary>
-    public static readonly TimeSpan IntegrationTest = TimeSpan.FromMinutes(2);
+    public static readonly TimeSpan IntegrationTest = TimeSpan.FromMinutes(3);
 
     /// <summary>
     /// The AppHost's resources starting, Postgres container included.

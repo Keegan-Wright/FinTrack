@@ -32,6 +32,10 @@ public static class AuthenticationExtensions
         /// </summary>
         public WebApplicationBuilder AddFinTrackAuthentication()
         {
+            // Read first, so the app won't start without a way to sign in
+            SignInMethods signInMethods = builder.Configuration.GetSignInMethods();
+            builder.Services.AddSingleton(signInMethods);
+
             builder.Services.AddCascadingAuthenticationState();
             builder.Services.AddScoped<IdentityUserAccessor>();
             builder.Services.AddScoped<IdentityRedirectManager>();
@@ -49,7 +53,7 @@ public static class AuthenticationExtensions
             builder.Services.Configure<SecurityStampValidatorOptions>(options =>
                 options.ValidationInterval = TimeSpan.FromMinutes(1));
 
-            if (builder.Configuration.IsOidcEnabled())
+            if (signInMethods.SingleSignOn)
             {
                 authBuilder.AddOpenIdConnect(OpenIdConnectDefaults.AuthenticationScheme,
                     options => ConfigureOidc(options, builder.Configuration));
@@ -159,6 +163,30 @@ public static class AuthenticationExtensions
             !string.IsNullOrEmpty(configuration[FinTrackEnvironment.OidcAuthority]) &&
             !string.IsNullOrEmpty(configuration[FinTrackEnvironment.OidcClientId]) &&
             !string.IsNullOrEmpty(configuration[FinTrackEnvironment.OidcClientSecret]);
+
+        /// <summary>
+        /// The ways people can sign in. Password sign in is on unless <see cref="FinTrackEnvironment.PasswordSignIn"/>
+        /// turns it off, single sign-on when <see cref="IsOidcEnabled"/>.
+        /// </summary>
+        /// <exception cref="InvalidOperationException">Both are off, so nobody could sign in.</exception>
+        public SignInMethods GetSignInMethods()
+        {
+            SignInMethods methods = new()
+            {
+                Password = configuration.GetValue(FinTrackEnvironment.PasswordSignIn, true),
+                SingleSignOn = configuration.IsOidcEnabled()
+            };
+
+            if (!methods.Password && !methods.SingleSignOn)
+            {
+                throw new InvalidOperationException(
+                    $"{FinTrackEnvironment.PasswordSignIn} is false and single sign-on isn't set up, so nobody could " +
+                    $"sign in. Set {FinTrackEnvironment.OidcAuthority}, {FinTrackEnvironment.OidcClientId} and " +
+                    $"{FinTrackEnvironment.OidcClientSecret}, or turn password sign in back on.");
+            }
+
+            return methods;
+        }
     }
 
     /// <summary>

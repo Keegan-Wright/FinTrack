@@ -39,11 +39,15 @@ public sealed partial class FinTrackClient : IDisposable
 
     public Task<HttpResponseMessage> RegisterAsync(string username, string password,
         CancellationToken cancellationToken) =>
+        RegisterAsync(username, password, "Integration", "Test", cancellationToken);
+
+    public Task<HttpResponseMessage> RegisterAsync(string username, string password, string firstName,
+        string lastName, CancellationToken cancellationToken) =>
         SubmitFormAsync("/Account/Register", new Dictionary<string, string>
         {
             ["RegisterRequest.Username"] = username,
-            ["RegisterRequest.FirstName"] = "Integration",
-            ["RegisterRequest.LastName"] = "Test",
+            ["RegisterRequest.FirstName"] = firstName,
+            ["RegisterRequest.LastName"] = lastName,
             ["RegisterRequest.Email"] = $"{username}@fintrack.test",
             ["RegisterRequest.Password"] = password,
             ["RegisterRequest.ConfirmPassword"] = password

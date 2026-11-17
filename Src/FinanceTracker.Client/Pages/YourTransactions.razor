@@ -234,9 +234,19 @@
     /// <summary>
     /// How many transactions match.
     /// </summary>
-    private string Subtitle => _loading
-        ? "Everything in and out of your accounts"
-        : $"{_transactions.Count:n0} {(_transactions.Count == 1 ? "transaction" : "transactions")}";
+    private string Subtitle
+    {
+        get
+        {
+            if (_loading)
+            {
+                return "Everything in and out of your accounts";
+            }
+
+            string word = _transactions.Count == 1 ? "transaction" : "transactions";
+            return $"{_transactions.Count:n0} {word}";
+        }
+    }
 
     /// <inheritdoc/>
     protected override async Task OnInitializedAsync()

@@ -6,6 +6,7 @@
 @using FluentValidation
 @using Microsoft.AspNetCore.Identity
 
+@inject SignInMethods SignInMethods
 @inject UserManager<FinanceTrackerUser> UserManager
 @inject IUserStore<FinanceTrackerUser> UserStore
 @inject SignInManager<FinanceTrackerUser> SignInManager
@@ -81,9 +82,18 @@
     /// </summary>
     [SupplyParameterFromForm] private RegisterRequest RegisterRequest { get; set; } = default!;
 
-    // Form posts bind the property before initialisation, so only create a model when nothing was posted
     /// <inheritdoc/>
-    protected override void OnInitialized() => RegisterRequest ??= new();
+    protected override void OnInitialized()
+    {
+        // Password sign in is off, these pages are only for it
+        if (!SignInMethods.Password)
+        {
+            RedirectManager.RedirectTo("Account/Login");
+        }
+
+        // Form posts bind the property before initialisation, so only create a model when nothing was posted
+        RegisterRequest ??= new();
+    }
 
     /// <summary>
     /// Where to go once registered.

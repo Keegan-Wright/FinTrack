@@ -40,9 +40,12 @@ services:
       OPEN_BANKING_TRUELAYER_CLIENT_ID: "${OPENBANKING_CLIENT_ID}"
       OPEN_BANKING_TRUELAYER_CLIENT_SECRET: "${OPENBANKING_CLIENT_SECRET}"
       OPEN_BANKING_PUBLIC_IP_ADDRESS: "${OPENBANKING_PUBLIC_IP_ADDRESS}"
-      OIDC_Authority: "${OIDC_AUTHORITY}"
-      OIDC_ClientId: "${OIDC_CLIENT_ID}"
-      OIDC_ClientSecret: "${OIDC_CLIENT_SECRET}"
+
+      # Single sign-on, option, enabled when all three are set
+      OIDC_Authority: "${OIDC_AUTHORITY:-}"
+      OIDC_ClientId: "${OIDC_CLIENT_ID:-}"
+      OIDC_ClientSecret: "${OIDC_CLIENT_SECRET:-}"
+
       ConnectionStrings__FinTrackDb: "Host=FinTrack-Postgres;Port=5432;Username=postgres;Password=${FINTRACK_POSTGRES_PASSWORD};Database=FinTrackDb"
       FINTRACKDB_HOST: "FinTrack-Postgres"
       FINTRACKDB_PORT: "5432"
@@ -64,13 +67,16 @@ services:
       SMTP_FROM: "${SMTP_FROM:-}"
       # Lets users' webhooks reach private network addresses, e.g. Home Assistant at home. Off by default
       WEBHOOK_ALLOW_PRIVATE: "${WEBHOOK_ALLOW_PRIVATE:-false}"
+      # false turns off username and password sign in, leaving single sign-on, which then has to be set up
+      PASSWORD_SIGN_IN: "${PASSWORD_SIGN_IN:-true}"
       RATE_LIMIT_SIGN_INS_PER_MINUTE: "${RATE_LIMIT_SIGN_INS_PER_MINUTE:-10}"
       RATE_LIMIT_INVITES_PER_HOUR: "${RATE_LIMIT_INVITES_PER_HOUR:-20}"
       # The reverse proxy's network, whose forwarded headers give each visitor's address and HTTPS. Empty when the
       # app isn't behind a proxy, see .env.example
       TRUSTED_PROXIES: "${TRUSTED_PROXIES:-}"
 
-      OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_OTLP_ENDPOINT}"
+      # Logs, traces and metrics, optional: nothing is sent when empty
+      OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_OTLP_ENDPOINT:-}"
       OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
       OTEL_SERVICE_NAME: "FinTrack"
 
