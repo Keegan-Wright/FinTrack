@@ -119,13 +119,22 @@
 
     private string _search = string.Empty;
 
+    /// <summary>
+    /// The items that can be chosen on their own.
+    /// </summary>
     private List<ShareChoiceItem> Choosable => Items.Where(static x => x.CanChoose).ToList();
 
+    /// <summary>
+    /// The items whose name matches the search.
+    /// </summary>
     private List<ShareChoiceItem> Listed => Items
         .Where(x => string.IsNullOrWhiteSpace(_search) ||
                     x.Name.Contains(_search.Trim(), StringComparison.CurrentCultureIgnoreCase))
         .ToList();
 
+    /// <summary>
+    /// e.g. <c>2 of 5 tags shared</c>.
+    /// </summary>
     private string CountText
     {
         get
@@ -158,6 +167,11 @@
         }
     }
 
+    /// <summary>
+    /// Shares or stops sharing an item, read only to start.
+    /// </summary>
+    /// <param name="item">The item.</param>
+    /// <param name="isChosen">Whether it's shared.</param>
     private async Task ChooseAsync(ShareChoiceItem item, bool isChosen)
     {
         if (isChosen)
@@ -172,6 +186,11 @@
         await OnChanged.InvokeAsync();
     }
 
+    /// <summary>
+    /// Changes what the other person can do with an item.
+    /// </summary>
+    /// <param name="item">The item.</param>
+    /// <param name="mode">How it's shared.</param>
     private async Task ChangeModeAsync(ShareChoiceItem item, ShareMode mode)
     {
         Chosen[item.Id] = mode;
@@ -180,6 +199,10 @@
 
     // Ticks those that can be chosen, read only unless already chosen otherwise. It's not a standing choice, ones added
     // later still start private
+    /// <summary>
+    /// Shares every item or none.
+    /// </summary>
+    /// <param name="all">Whether to share them all.</param>
     private async Task ChooseAllAsync(bool? all)
     {
         if (all == true)

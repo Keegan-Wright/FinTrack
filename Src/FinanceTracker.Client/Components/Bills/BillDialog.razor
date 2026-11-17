@@ -92,8 +92,14 @@
     private DateTime? _nextDue;
     private List<ValidationFailure> _errors = [];
 
+    /// <summary>
+    /// The current culture's currency symbol, shown on amount fields.
+    /// </summary>
     private static string CurrencySymbol => CultureInfo.CurrentCulture.NumberFormat.CurrencySymbol;
 
+    /// <summary>
+    /// Whether the bill follows a standing order or direct debit, which sets its schedule.
+    /// </summary>
     private bool FollowsTheBank => Bill?.FollowsTheBank == true;
 
     /// <summary>
@@ -106,6 +112,9 @@
     /// </summary>
     private bool AccountLocked => FromTheBank || Bill?.SharedBy is not null;
 
+    /// <summary>
+    /// The help under the account field, saying when it can't be changed.
+    /// </summary>
     private string AccountHelp
     {
         get
@@ -124,10 +133,14 @@
         }
     }
 
+    /// <summary>
+    /// The help under the amount field.
+    /// </summary>
     private string AmountHelp => Bill is null
         ? "What it costs each time"
         : "A new amount applies from today, earlier payments keep theirs";
 
+    /// <inheritdoc/>
     protected override void OnInitialized()
     {
         if (Bill is null)
@@ -149,6 +162,10 @@
         _nextDue = _model.NextDue.ToDateTime(TimeOnly.MinValue);
     }
 
+    /// <summary>
+    /// An account's name as the picker shows it.
+    /// </summary>
+    /// <param name="accountId">The account.</param>
     private string? AccountName(Guid accountId)
     {
         TransactionAccountFilter? account = Accounts.FirstOrDefault(x => x.AccountId == accountId);
@@ -166,10 +183,17 @@
         return null;
     }
 
+    /// <summary>
+    /// The validation errors for one field.
+    /// </summary>
+    /// <param name="propertyName">The field's property name.</param>
     private IEnumerable<string> ErrorsFor(string propertyName) => _errors
         .Where(x => x.PropertyName == propertyName)
         .Select(static x => x.ErrorMessage);
 
+    /// <summary>
+    /// Validates the form and gives what the dialog closes with, null to keep it open.
+    /// </summary>
     private async Task<SaveBill?> BuildResponseModel()
     {
         _model.NextDue = _nextDue is { } nextDue ? DateOnly.FromDateTime(nextDue) : default;

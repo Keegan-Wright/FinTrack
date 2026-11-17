@@ -143,9 +143,21 @@
     /// </summary>
     [Parameter] public int UnreadNotifications { get; set; }
 
+    /// <summary>
+    /// The transfers review page.
+    /// </summary>
     internal const string TransfersReviewPath = "Review";
+    /// <summary>
+    /// The subscriptions review page.
+    /// </summary>
     internal const string SubscriptionsReviewPath = "Review/Subscriptions";
+    /// <summary>
+    /// The notifications page.
+    /// </summary>
     internal const string NotificationsPath = "Notifications";
+    /// <summary>
+    /// The notification settings page.
+    /// </summary>
     internal const string NotificationSettingsPath = "Notifications/Settings";
 
     /// <summary>
@@ -169,8 +181,14 @@
         }
     }
 
+    /// <summary>
+    /// Whether transfers wait for review, or the user is on that page.
+    /// </summary>
     private bool ShowTransfersReview => TransfersToReview > 0 || IsCurrentPage(TransfersReviewPath);
 
+    /// <summary>
+    /// Whether subscriptions wait for review, or the user is on that page.
+    /// </summary>
     private bool ShowSubscriptionsReview => SubscriptionsToReview > 0 || IsCurrentPage(SubscriptionsReviewPath);
 
     /// <summary>
@@ -188,6 +206,7 @@
         return string.Equals(current.TrimEnd('/'), path, StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <inheritdoc/>
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
@@ -195,6 +214,11 @@
         NavigationManager.LocationChanged += OnLocationChanged;
     }
 
+    /// <summary>
+    /// Keeps the notifications group open while on its pages.
+    /// </summary>
+    /// <param name="sender">The navigation manager.</param>
+    /// <param name="e">Where the user went.</param>
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
         OpenNotificationsWhenOnThem();
@@ -213,6 +237,7 @@
         }
     }
 
+    /// <inheritdoc/>
     public void Dispose()
     {
         NavigationManager.LocationChanged -= OnLocationChanged;

@@ -31,15 +31,27 @@
 
 @code {
 
+    /// <summary>
+    /// The range chosen, null for any.
+    /// </summary>
     [Parameter] public DateRange? Value { get; set; }
 
+    /// <summary>
+    /// Called with the range the user picks.
+    /// </summary>
     [Parameter] public EventCallback<DateRange?> ValueChanged { get; set; }
 
+    /// <summary>
+    /// More classes for the field.
+    /// </summary>
     [Parameter] public string? Class { get; set; }
 
     private bool _open;
     private DateRange? _draft;
 
+    /// <summary>
+    /// The range as the field shows it.
+    /// </summary>
     private string Text
     {
         get
@@ -66,17 +78,31 @@
         }
     }
 
+    /// <summary>
+    /// The quick picks, from today.
+    /// </summary>
     private IReadOnlyList<(string Label, DateRange Range)> Presets =>
         DateRangePresets.For(TimeProvider.GetLocalNow().DateTime);
 
+    /// <summary>
+    /// A day, e.g. <c>17 Nov 2026</c>.
+    /// </summary>
+    /// <param name="date">The day.</param>
     private static string Format(DateTime date) => date.ToString("d MMM yyyy", CultureInfo.CurrentCulture);
 
+    /// <summary>
+    /// Opens the calendar on the range chosen.
+    /// </summary>
     private void Open()
     {
         _draft = Value;
         _open = true;
     }
 
+    /// <summary>
+    /// Closes the calendar with a range.
+    /// </summary>
+    /// <param name="range">The range, null for any.</param>
     private async Task Choose(DateRange? range)
     {
         _open = false;

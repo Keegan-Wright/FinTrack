@@ -80,6 +80,9 @@
 
 @code {
 
+    /// <summary>
+    /// The job.
+    /// </summary>
     [Parameter] [EditorRequired] public required AutomationJobSummary Job { get; set; }
 
     /// <summary>
@@ -87,6 +90,9 @@
     /// </summary>
     [Parameter] public bool ShowRuns { get; set; }
 
+    /// <summary>
+    /// Called with the new value when the user shows or hides the runs.
+    /// </summary>
     [Parameter] public EventCallback<bool> ShowRunsChanged { get; set; }
 
     /// <summary>
@@ -104,10 +110,19 @@
     /// </summary>
     [Parameter] public EventCallback OnRunNow { get; set; }
 
+    /// <summary>
+    /// Whether a run is going, or waiting to retry.
+    /// </summary>
     private bool IsRunning => Job.LastRun?.Status is AutomationRunStatus.Running or AutomationRunStatus.Retrying;
 
+    /// <summary>
+    /// The job's name for people.
+    /// </summary>
     private string Name => AutomationText.JobName(Job.Function);
 
+    /// <summary>
+    /// When it runs, or that it only runs when asked.
+    /// </summary>
     private string Caption
     {
         get
@@ -122,6 +137,9 @@
     }
 
     // How often a failed run is tried again, and how long it waits before each
+    /// <summary>
+    /// How a failed run is retried.
+    /// </summary>
     private string RetriesText
     {
         get
@@ -141,6 +159,9 @@
         }
     }
 
+    /// <summary>
+    /// Shows or hides the runs.
+    /// </summary>
     private Task ToggleRunsAsync() => ShowRunsChanged.InvokeAsync(!ShowRuns);
 
 }

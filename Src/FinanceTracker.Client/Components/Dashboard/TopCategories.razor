@@ -21,13 +21,25 @@
 
 @code {
 
+    /// <summary>
+    /// How many tags the chart ranks.
+    /// </summary>
     private const int CategoriesToShow = 8;
 
+    /// <summary>
+    /// Each bar's height in pixels.
+    /// </summary>
     private const int BarRowHeight = 34;
 
+    /// <summary>
+    /// Whether the dark theme is on.
+    /// </summary>
     [CascadingParameter(Name = "IsDarkMode")]
     public bool IsDarkMode { get; set; }
 
+    /// <summary>
+    /// The range's transactions.
+    /// </summary>
     [Parameter, EditorRequired] public IReadOnlyList<Transaction> Transactions { get; set; } = [];
 
     private List<TagSpend> _items = [];
@@ -37,8 +49,12 @@
     private bool _drawn;
 
     // Room for each bar plus the value axis
+    /// <summary>
+    /// The chart's height in pixels, a row per tag.
+    /// </summary>
     private int ChartHeight => _items.Count * BarRowHeight + 60;
 
+    /// <inheritdoc/>
     protected override void OnParametersSet()
     {
         // The parent re-renders while loading, only rebuild when it hands over a new set of transactions
@@ -57,6 +73,9 @@
         }
     }
 
+    /// <summary>
+    /// The chart's options, horizontal bars without a legend.
+    /// </summary>
     private ApexChartOptions<TagSpend> CreateOptions()
     {
         var options = ChartDefaults.Create<TagSpend>(IsDarkMode);
@@ -98,6 +117,9 @@
         return options;
     }
 
+    /// <summary>
+    /// Totals the money out under each tag and keeps the biggest.
+    /// </summary>
     private void Build()
     {
         // A transaction counts towards every tag it carries

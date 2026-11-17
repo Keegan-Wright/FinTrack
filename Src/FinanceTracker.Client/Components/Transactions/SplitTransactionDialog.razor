@@ -72,8 +72,14 @@
 
 @code {
 
+    /// <summary>
+    /// The dialog it's shown in.
+    /// </summary>
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
 
+    /// <summary>
+    /// The transaction to split.
+    /// </summary>
     [Parameter] [EditorRequired] public required Transaction Transaction { get; set; }
 
     /// <summary>
@@ -83,10 +89,19 @@
 
     private List<SplitPartDraft> _parts = [];
 
+    /// <summary>
+    /// The current culture's currency symbol, shown on amount fields.
+    /// </summary>
     private static string CurrencySymbol => CultureInfo.CurrentCulture.NumberFormat.CurrencySymbol;
 
+    /// <summary>
+    /// What's left to split.
+    /// </summary>
     private decimal Remaining => SplitText.Remaining(Transaction, _parts);
 
+    /// <summary>
+    /// Green once nothing's left.
+    /// </summary>
     private Color RemainingColor => Remaining == 0 ? Color.Success : Color.Default;
 
     /// <summary>
@@ -102,8 +117,13 @@
         }
     }
 
+    /// <inheritdoc/>
     protected override void OnInitialized() => _parts = SplitText.Drafts(Transaction);
 
+    /// <summary>
+    /// A tag's name as the picker shows it, <c>No tag</c> for none.
+    /// </summary>
+    /// <param name="tagId">The tag, <see cref="Guid.Empty"/> for none.</param>
     private string TagName(Guid tagId)
     {
         if (tagId == Guid.Empty)
@@ -114,10 +134,21 @@
         return Tags.FirstOrDefault(x => x.ClassificationId == tagId)?.Tag ?? string.Empty;
     }
 
+    /// <summary>
+    /// Whether a part can take what's left.
+    /// </summary>
+    /// <param name="part">The part.</param>
     private bool CanTakeTheRest(SplitPartDraft part) => Remaining != 0 && part.Amount + Remaining > 0;
 
+    /// <summary>
+    /// Adds what's left to a part.
+    /// </summary>
+    /// <param name="part">The part.</param>
     private void TakeTheRest(SplitPartDraft part) => part.Amount += Remaining;
 
+    /// <summary>
+    /// Closes with the split.
+    /// </summary>
     private void Save() => MudDialog.Close(DialogResult.Ok(SplitText.Request(Transaction, _parts)));
 
 }

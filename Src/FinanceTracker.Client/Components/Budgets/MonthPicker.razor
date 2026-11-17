@@ -15,6 +15,9 @@
     /// </summary>
     [Parameter] [EditorRequired] public required DateOnly Month { get; set; }
 
+    /// <summary>
+    /// Called with the month the user steps to.
+    /// </summary>
     [Parameter] public EventCallback<DateOnly> MonthChanged { get; set; }
 
     /// <summary>

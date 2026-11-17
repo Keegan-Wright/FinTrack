@@ -97,6 +97,7 @@
     private string? _classificationsSearchTerm;
 
 
+    /// <inheritdoc/>
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
@@ -106,6 +107,9 @@
     }
 
 
+    /// <summary>
+    /// Keeps the tags whose name contains what's searched, every tag when nothing is.
+    /// </summary>
     private Func<Classification, bool> ClassificationsQuickFilter => x =>
     {
         if (string.IsNullOrWhiteSpace(_classificationsSearchTerm))
@@ -114,6 +118,9 @@
         return x.Tag != null && x.Tag.Contains(_classificationsSearchTerm, StringComparison.OrdinalIgnoreCase);
     };
 
+    /// <summary>
+    /// Adds a tag from the dialog.
+    /// </summary>
     private async Task AddClassification()
     {
         var dialogRef = await DialogService.ShowAsync<AddClassificationDialog>();
@@ -144,6 +151,10 @@
         }
     }
 
+    /// <summary>
+    /// Renames a tag in the dialog.
+    /// </summary>
+    /// <param name="classification">The tag.</param>
     internal async Task RenameAsync(Classification classification)
     {
         DialogParameters<AddClassificationDialog> parameters = new() { { x => x.Tag, classification.Tag } };
@@ -185,6 +196,10 @@
         }
     }
 
+    /// <summary>
+    /// Deletes a tag once the user confirms.
+    /// </summary>
+    /// <param name="classification">The tag.</param>
     internal async Task DeleteAsync(Classification classification)
     {
         bool? confirmed = await DialogService.ShowMessageBoxAsync($"Delete {classification.Tag}?",

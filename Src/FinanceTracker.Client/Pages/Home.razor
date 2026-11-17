@@ -65,8 +65,14 @@
 
 @code {
 
+    /// <summary>
+    /// The most transactions the charts load.
+    /// </summary>
     private const int MaxTransactionsForCharts = 5000;
 
+    /// <summary>
+    /// Who's signed in, for the greeting.
+    /// </summary>
     [CascadingParameter] private Task<AuthenticationState> AuthenticationStateTask { get; set; } = null!;
 
     /// <summary>
@@ -75,12 +81,19 @@
     [PersistentState]
     public DashboardData? Data { get; set; }
 
+    /// <summary>
+    /// What's shown, nothing until loaded.
+    /// </summary>
     private DashboardData View => Data ?? DashboardData.Empty;
 
     private string? _userName;
 
+    /// <summary>
+    /// What this month is called, a pay period when months follow pay.
+    /// </summary>
     private string ThisMonthText => View.FollowsPay ? "This pay period" : "This month";
 
+    /// <inheritdoc/>
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
@@ -95,6 +108,10 @@
     /// </summary>
     protected override async Task OnSyncedAsync() => Data = await LoadDashboardAsync(View.Preset, _cts.Token);
 
+    /// <summary>
+    /// Shows another range.
+    /// </summary>
+    /// <param name="preset">The range.</param>
     private async Task SetRangePresetAsync(DashboardRangePreset preset)
     {
         if (View.Preset == preset)
@@ -127,6 +144,11 @@
         return (from, now);
     }
 
+    /// <summary>
+    /// Loads everything the dashboard shows for a range.
+    /// </summary>
+    /// <param name="preset">The range.</param>
+    /// <param name="cancellationToken">Stops it once the user leaves.</param>
     private async Task<DashboardData> LoadDashboardAsync(DashboardRangePreset preset, CancellationToken cancellationToken)
     {
         YourPay pay = await PayPeriodsService.GetYourPayAsync(cancellationToken);
@@ -175,6 +197,12 @@
         };
     }
 
+    /// <summary>
+    /// Loads the range's transactions for the charts, noting when there were too many.
+    /// </summary>
+    /// <param name="fromDate">The range's start.</param>
+    /// <param name="toDate">The range's end.</param>
+    /// <param name="cancellationToken">Stops it once the user leaves.</param>
     private async Task<(List<Transaction> Transactions, string? ChartNote)> LoadChartTransactionsAsync(
         DateTime fromDate, DateTime toDate, CancellationToken cancellationToken)
     {
@@ -206,6 +234,11 @@
         return (transactions, null);
     }
 
+    /// <summary>
+    /// The change from <paramref name="previous"/> as a percentage, null when it was 0.
+    /// </summary>
+    /// <param name="current">This range's total.</param>
+    /// <param name="previous">The previous range's total.</param>
     private static decimal? CalculateTrendPercentage(decimal current, decimal previous)
     {
         if (previous == 0)
@@ -214,6 +247,9 @@
         return (current - previous) / Math.Abs(previous);
     }
 
+    /// <summary>
+    /// The range's dates, or a general line before it's loaded.
+    /// </summary>
     private string GetRangeLabel()
     {
         if (View.FromDate == default)
@@ -224,6 +260,9 @@
         return $"{from} – {View.ToDate.ToString("d MMM yyyy", culture)}";
     }
 
+    /// <summary>
+    /// Good morning, afternoon or evening, with the user's name.
+    /// </summary>
     private string GetGreeting()
     {
         var hour = TimeProvider.GetLocalNow().Hour;

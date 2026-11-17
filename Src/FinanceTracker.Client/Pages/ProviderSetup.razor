@@ -156,6 +156,7 @@
 
     private string _renewalUrl = string.Empty;
 
+    /// <inheritdoc/>
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
@@ -166,6 +167,10 @@
             OpenBankingService.GetConnectionsAsync(cancellationToken).ToListAsync(cancellationToken).AsTask());
     }
 
+    /// <summary>
+    /// Gets a link from the bank to renew a connection, shown for the user to follow.
+    /// </summary>
+    /// <param name="connection">The connection.</param>
     private async Task StartRenewalAsync(BankConnectionSummary connection)
     {
         SetLoadingState(true, $"Asking {connection.Name} for a renewal link…");
@@ -189,15 +194,26 @@
     /// </summary>
     protected override Task OnSyncedAsync() => ReloadConnectionsAsync();
 
+    /// <summary>
+    /// Loads the connections again, and how many need renewing.
+    /// </summary>
     private async Task ReloadConnectionsAsync()
     {
         Connections = await OpenBankingService.GetConnectionsAsync(_cts.Token).ToListAsync(_cts.Token);
         RefreshConnectionsToRenew(Connections);
     }
 
+    /// <summary>
+    /// Whether a connection's consent ends soon or has ended.
+    /// </summary>
+    /// <param name="connection">The connection.</param>
     private static bool NeedsRenewal(BankConnectionSummary connection) =>
         connection.ConsentState != ConsentState.Active;
 
+    /// <summary>
+    /// When a connection's consent ends, or ended.
+    /// </summary>
+    /// <param name="connection">The connection.</param>
     internal static string ConsentText(BankConnectionSummary connection)
     {
         string date = connection.ConsentExpiresAt.ToLocalTime().ToString("d MMM yyyy", CultureInfo.CurrentCulture);
@@ -224,6 +240,10 @@
         return $"Standing orders and direct debits from {date}, renew to bring in new ones";
     }
 
+    /// <summary>
+    /// Red once consent has ended, amber when it ends soon.
+    /// </summary>
+    /// <param name="connection">The connection.</param>
     private static string ConsentClass(BankConnectionSummary connection) => connection.ConsentState switch
     {
         ConsentState.Lapsed => "mud-error-text",
@@ -231,9 +251,16 @@
         _ => "mud-text-secondary"
     };
 
+    /// <summary>
+    /// Keeps the banks whose name contains what's searched, every bank when nothing is.
+    /// </summary>
     private Func<OpenBankingProvider, bool> QuickFilter =>
         x => string.IsNullOrWhiteSpace(_searchString) || x.DisplayName.Contains(_searchString, StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Picks or drops a bank to connect.
+    /// </summary>
+    /// <param name="provider">The bank.</param>
     private async Task ToggleAsync(OpenBankingProvider provider)
     {
         if (!_selected.Remove(provider))
@@ -255,6 +282,11 @@
         _openBankingAuthUrl = await OpenBankingService.BuildAuthUrlAsync(requestModel, _cts.Token);
     }
 
+    /// <summary>
+    /// Picks or drops a bank with Enter or Space.
+    /// </summary>
+    /// <param name="e">The key.</param>
+    /// <param name="provider">The bank.</param>
     private async Task OnProviderKeyUp(KeyboardEventArgs e, OpenBankingProvider provider)
     {
         if (e.Key is "Enter" or " ")

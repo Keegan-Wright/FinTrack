@@ -136,12 +136,24 @@
 
 @code {
 
+    /// <summary>
+    /// The chart's height in pixels.
+    /// </summary>
     private const int ChartHeight = 300;
 
+    /// <summary>
+    /// The most labels on the axis.
+    /// </summary>
     private const int MaxAxisLabels = 16;
 
+    /// <summary>
+    /// The most labels on a phone's axis.
+    /// </summary>
     private const int MaxPhoneAxisLabels = 6;
 
+    /// <summary>
+    /// Whether the dark theme is on.
+    /// </summary>
     [CascadingParameter(Name = "IsDarkMode")]
     public bool IsDarkMode { get; set; }
 
@@ -159,6 +171,9 @@
     private List<Transaction>? _dayTransactions;
     private CancellationTokenSource? _dayCts;
 
+    /// <summary>
+    /// The period shown, the last on the path.
+    /// </summary>
     private ReportNode Current => _path[^1];
 
     /// <summary>
@@ -201,6 +216,7 @@
         }
     }
 
+    /// <inheritdoc/>
     protected override void OnParametersSet()
     {
         // The same report refreshed, e.g. after a sync, stays where the user was
@@ -251,6 +267,10 @@
         _path.AddRange(path);
     }
 
+    /// <summary>
+    /// Opens a period within the current one.
+    /// </summary>
+    /// <param name="node">The period.</param>
     private void DrillInto(ReportNode node)
     {
         if (!node.CanDrillInto)
@@ -260,12 +280,19 @@
         OnPathChanged();
     }
 
+    /// <summary>
+    /// Goes back up the path to one of the periods on it.
+    /// </summary>
+    /// <param name="index">Its place on the path.</param>
     private void GoBackTo(int index)
     {
         _path.RemoveRange(index + 1, _path.Count - index - 1);
         OnPathChanged();
     }
 
+    /// <summary>
+    /// Redraws for the new period, and loads its transactions when it's a day.
+    /// </summary>
     private void OnPathChanged()
     {
         RebuildOptionsIfNeeded();
@@ -282,6 +309,11 @@
         }
     }
 
+    /// <summary>
+    /// Loads a day's transactions.
+    /// </summary>
+    /// <param name="request">The day's filters.</param>
+    /// <param name="cancellationToken">Stops it once the user moves on.</param>
     private async Task LoadDayAsync(FilterTransactions request, CancellationToken cancellationToken)
     {
         try
@@ -301,6 +333,10 @@
         }
     }
 
+    /// <summary>
+    /// A transaction's time and category, as the day's list shows them.
+    /// </summary>
+    /// <param name="transaction">The transaction.</param>
     private static string TransactionDetail(Transaction transaction)
     {
         var parts = new List<string>
@@ -312,24 +348,37 @@
         return string.Join(" · ", parts.Where(static x => !string.IsNullOrWhiteSpace(x)).Distinct());
     }
 
+    /// <inheritdoc/>
     public void Dispose()
     {
         _dayCts?.Cancel();
         _dayCts?.Dispose();
     }
 
+    /// <summary>
+    /// Opens the period whose bar was clicked.
+    /// </summary>
+    /// <param name="selected">The bar.</param>
     private void OnBarSelected(SelectedData<ReportNode> selected)
     {
         if (selected.DataPointIndex >= 0 && selected.DataPointIndex < Current.Children.Count)
             DrillInto(Current.Children[selected.DataPointIndex]);
     }
 
+    /// <summary>
+    /// Opens a period from its row with Enter or Space.
+    /// </summary>
+    /// <param name="e">The key.</param>
+    /// <param name="node">The row's period.</param>
     private void OnRowKeyUp(KeyboardEventArgs e, ReportNode node)
     {
         if (e.Key is "Enter" or " ")
             DrillInto(node);
     }
 
+    /// <summary>
+    /// Makes the chart's options again when the period or theme changed.
+    /// </summary>
     private void RebuildOptionsIfNeeded()
     {
         if (ReferenceEquals(_optionsFor, Current) && _optionsDarkMode == IsDarkMode)
@@ -341,6 +390,9 @@
         _drawn = false;
     }
 
+    /// <summary>
+    /// The chart's options, bars of money in and out per period.
+    /// </summary>
     private ApexChartOptions<ReportNode> CreateOptions()
     {
         var points = Current.Children.Count;
@@ -369,6 +421,10 @@
         return options;
     }
 
+    /// <summary>
+    /// The daily average of <paramref name="total"/>, empty for a single day.
+    /// </summary>
+    /// <param name="total">The total.</param>
     private string PerDay(decimal total) =>
         Current.Days > 1 ? $"{CurrencyFormatter.Format(Math.Abs(total) / Current.Days)} a day on average" : string.Empty;
 

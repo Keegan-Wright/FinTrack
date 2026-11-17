@@ -36,13 +36,20 @@
     private MudForm _form = null!;
     private AddCustomClassificationsToTransaction _model = null!;
 
+    /// <summary>
+    /// The transaction to tag.
+    /// </summary>
     [Parameter] public Guid TransactionId { get; set; }
 
+    /// <summary>
+    /// The tags to pick from.
+    /// </summary>
     [Parameter] public IEnumerable<Classification> Classifications { get; set; } = null!;
 
     private string _searchString = string.Empty;
     private readonly HashSet<Guid> _selected = [];
 
+    /// <inheritdoc/>
     protected override void OnInitialized()
     {
         _model = new AddCustomClassificationsToTransaction
@@ -52,6 +59,9 @@
         };
     }
 
+    /// <summary>
+    /// Keeps the tags whose name contains what's searched, every tag when nothing is.
+    /// </summary>
     private Func<Classification, bool> QuickFilter => x =>
     {
         if (string.IsNullOrWhiteSpace(_searchString))
@@ -61,6 +71,9 @@
     };
 
 
+    /// <summary>
+    /// Validates the form and gives what the dialog closes with, null to keep it open.
+    /// </summary>
     private async Task<AddCustomClassificationsToTransaction?> BuildResponseModel()
     {
         await _form.ValidateAsync();
@@ -69,6 +82,11 @@
         return _model;
     }
 
+    /// <summary>
+    /// Picks or drops a tag.
+    /// </summary>
+    /// <param name="classification">The tag.</param>
+    /// <param name="isChecked">Whether it's picked.</param>
     private async Task ToggleAsync(Classification classification, bool isChecked)
     {
         if (isChecked)

@@ -71,6 +71,9 @@
 
 @code {
 
+    /// <summary>
+    /// The user's profile.
+    /// </summary>
     [Parameter, EditorRequired]
     public required ProfileDetails Profile { get; set; }
 
@@ -87,6 +90,9 @@
     private string? _sentTo;
     private bool _busy;
 
+    /// <summary>
+    /// The help under the field, whether a link will confirm it.
+    /// </summary>
     private string HelperText
     {
         get
@@ -100,6 +106,9 @@
         }
     }
 
+    /// <summary>
+    /// Asks to change the email once the form is valid.
+    /// </summary>
     internal async Task ChangeAsync()
     {
         _error = null;
@@ -128,6 +137,11 @@
         }
     }
 
+    /// <summary>
+    /// Shows how the change went, a link sent or the email changed.
+    /// </summary>
+    /// <param name="change">What the server did, null when the identity provider now owns the email.</param>
+    /// <param name="newEmail">The email asked for.</param>
     private async Task ShowAsync(ProfileChange? change, string newEmail)
     {
         if (change is null)
@@ -157,6 +171,7 @@
         await _form.ResetValidationAsync();
     }
 
+    /// <inheritdoc/>
     public void Dispose()
     {
         _cts.Cancel();

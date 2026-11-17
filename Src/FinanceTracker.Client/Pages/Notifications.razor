@@ -90,8 +90,14 @@
     [PersistentState]
     public List<Notification>? Items { get; set; }
 
+    /// <summary>
+    /// How many are unread.
+    /// </summary>
     private int UnreadCount => Items?.Count(static x => !x.IsRead) ?? 0;
 
+    /// <summary>
+    /// How many are unread, or that they're all read.
+    /// </summary>
     private string Subtitle
     {
         get
@@ -105,6 +111,7 @@
         }
     }
 
+    /// <inheritdoc/>
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
@@ -122,9 +129,17 @@
         SetUnreadNotifications(UnreadCount);
     }
 
+    /// <summary>
+    /// A row's classes, unread ones marked.
+    /// </summary>
+    /// <param name="notification">The notification.</param>
     private static string RowClass(Notification notification) =>
         notification.IsRead ? "ft-list__row" : "ft-list__row ft-notification--unread";
 
+    /// <summary>
+    /// When it was raised, where the user is.
+    /// </summary>
+    /// <param name="notification">The notification.</param>
     private string RaisedText(Notification notification) =>
         TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(notification.RaisedAt, DateTimeKind.Utc),
                 TimeProvider.LocalTimeZone)
@@ -153,6 +168,10 @@
         }
     }
 
+    /// <summary>
+    /// Marks a notification read.
+    /// </summary>
+    /// <param name="notification">The notification.</param>
     internal async Task MarkReadAsync(Notification notification)
     {
         if (notification.IsRead)
@@ -172,6 +191,9 @@
         }
     }
 
+    /// <summary>
+    /// Marks every notification read.
+    /// </summary>
     internal async Task MarkAllReadAsync()
     {
         try
@@ -186,6 +208,11 @@
         }
     }
 
+    /// <summary>
+    /// Swaps a notification in the list for its new version.
+    /// </summary>
+    /// <param name="old">As it was.</param>
+    /// <param name="updated">As it is now.</param>
     private void Replace(Notification old, Notification updated)
     {
         if (Items?.IndexOf(old) is { } index and >= 0)
@@ -194,6 +221,10 @@
         }
     }
 
+    /// <summary>
+    /// A copy of <paramref name="notification"/> marked read.
+    /// </summary>
+    /// <param name="notification">The notification.</param>
     private static Notification Read(Notification notification) => new()
     {
         Id = notification.Id,

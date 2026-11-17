@@ -155,6 +155,9 @@
 
     internal readonly CancellationTokenSource _cts = new();
 
+    /// <summary>
+    /// When the user's accounts last synced, null until known.
+    /// </summary>
     private DateTime? BackgroundSyncTime { get; set; }
 
     private bool _livePaused;
@@ -179,6 +182,7 @@
     /// </summary>
     private void RetryPage() => _errorBoundary?.Recover();
 
+    /// <inheritdoc/>
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         await base.OnAfterRenderAsync(firstRender);
@@ -213,6 +217,11 @@
         }
     }
 
+    /// <summary>
+    /// Redraws to show the update banner.
+    /// </summary>
+    /// <param name="sender">The update notice.</param>
+    /// <param name="e">Nothing.</param>
     private void OnUpdateAvailable(object? sender, EventArgs e) => _ = InvokeAsync(StateHasChanged);
 
     /// <summary>
@@ -221,6 +230,9 @@
     /// </summary>
     private void OnLivePausedChanged(object? sender, EventArgs e) => _ = InvokeAsync(OnLivePausedChangedAsync);
 
+    /// <summary>
+    /// Notes live updates pausing or coming back, catching up on what was missed when they're back.
+    /// </summary>
     private async Task OnLivePausedChangedAsync()
     {
         _livePaused = SyncNotifications.Paused;
@@ -250,6 +262,9 @@
         StateHasChanged();
     }
 
+    /// <summary>
+    /// Takes in a finished sync, its time and anything new to review.
+    /// </summary>
     private async Task OnSyncCompletedAsync()
     {
         ApplicationState.Syncing = false;
@@ -270,6 +285,9 @@
         Task.WhenAll(GetLatestSyncTimeAsync(), GetTransfersToReviewAsync(), GetSubscriptionsToReviewAsync(),
             GetConnectionsToRenewAsync(), GetUnreadNotificationsAsync());
 
+    /// <summary>
+    /// Loads when the accounts last synced.
+    /// </summary>
     private async Task GetLatestSyncTimeAsync()
     {
         try
@@ -283,6 +301,9 @@
         }
     }
 
+    /// <summary>
+    /// Loads how many transfers wait for review.
+    /// </summary>
     private async Task GetTransfersToReviewAsync()
     {
         try
@@ -295,6 +316,9 @@
         }
     }
 
+    /// <summary>
+    /// Loads how many subscriptions wait for review.
+    /// </summary>
     private async Task GetSubscriptionsToReviewAsync()
     {
         try
@@ -307,6 +331,9 @@
         }
     }
 
+    /// <summary>
+    /// Loads how many bank connections need renewing.
+    /// </summary>
     private async Task GetConnectionsToRenewAsync()
     {
         try
@@ -336,6 +363,9 @@
         }
     }
 
+    /// <summary>
+    /// Loads the user's profile, for the banners.
+    /// </summary>
     private async Task GetProfileAsync()
     {
         try
@@ -349,6 +379,9 @@
         }
     }
 
+    /// <summary>
+    /// Asks the server to sync the user's accounts now.
+    /// </summary>
     public async Task RequestResync()
     {
         // Cleared when the sync notification arrives
@@ -370,11 +403,15 @@
     }
 
 
+    /// <summary>
+    /// Turns the dark theme on or off.
+    /// </summary>
     private void DarkModeToggle()
     {
         _isDarkMode = !_isDarkMode;
     }
 
+    /// <inheritdoc/>
     public void Dispose()
     {
         ApplicationState.PropertyChanged -= ApplicationStateOnPropertyChanged;

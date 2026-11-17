@@ -31,8 +31,14 @@
 
 @code {
 
+    /// <summary>
+    /// The user's pay.
+    /// </summary>
     [Parameter] [EditorRequired] public required YourPay Pay { get; set; }
 
+    /// <summary>
+    /// Called when the user asks to choose another income.
+    /// </summary>
     [Parameter] public EventCallback OnChooseIncome { get; set; }
 
     /// <summary>
@@ -40,6 +46,9 @@
     /// </summary>
     [Parameter] public EventCallback<bool> OnUsePayPeriods { get; set; }
 
+    /// <summary>
+    /// What the user's periods run by.
+    /// </summary>
     private string Text
     {
         get

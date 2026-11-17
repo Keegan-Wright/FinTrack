@@ -128,19 +128,32 @@
         }
     }
 
+    /// <summary>
+    /// The month's dates and whether it's over, null until loaded.
+    /// </summary>
     private string? PeriodCaption => Overview is null
         ? null
         : PayText.MonthCaption(Pay, Overview.Start, Overview.End, !Overview.IsCurrent);
 
+    /// <summary>
+    /// The month shown.
+    /// </summary>
     private DateOnly Month => Overview?.Month ?? CurrentMonth;
 
+    /// <summary>
+    /// The user's tags by id.
+    /// </summary>
     private IReadOnlyDictionary<Guid, string> TagNames =>
         (Tags ?? []).ToDictionary(static x => x.ClassificationId, static x => x.Tag ?? string.Empty);
 
+    /// <summary>
+    /// What's said when the month has no budgets.
+    /// </summary>
     private string EmptyText => BudgetList is null or { Count: 0 }
         ? "No budgets yet. Make one for anything you want to keep to a limit, like £400 a month on groceries."
         : "None of your budgets had started by this month.";
 
+    /// <inheritdoc/>
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
@@ -174,6 +187,10 @@
         }
     }
 
+    /// <summary>
+    /// Loads and shows a month.
+    /// </summary>
+    /// <param name="month">The month.</param>
     internal async Task ShowMonthAsync(DateOnly month)
     {
         try
@@ -191,6 +208,9 @@
         }
     }
 
+    /// <summary>
+    /// Lets the user choose which income is their pay.
+    /// </summary>
     private async Task ChooseIncomeAsync()
     {
         List<Income> incomes;
@@ -222,6 +242,10 @@
             () => PayPeriodsService.ChooseAsync(income, _cts.Token));
     }
 
+    /// <summary>
+    /// Runs months from pay to pay, or as calendar months.
+    /// </summary>
+    /// <param name="payPeriods">Whether to run them from pay to pay.</param>
     private Task UsePayPeriodsAsync(bool payPeriods)
     {
         if (payPeriods)
@@ -261,6 +285,9 @@
         }
     }
 
+    /// <summary>
+    /// Adds a budget from the dialog.
+    /// </summary>
     private async Task AddAsync()
     {
         SaveBudget? budget = await ShowDialogAsync(null);
@@ -272,6 +299,10 @@
         await SaveAsync($"{budget.Name} added", () => BudgetsService.AddBudgetAsync(budget, _cts.Token));
     }
 
+    /// <summary>
+    /// Changes a budget in the dialog.
+    /// </summary>
+    /// <param name="budgetId">The budget.</param>
     private async Task EditAsync(Guid budgetId)
     {
         Budget? existing = BudgetList?.Find(x => x.Id == budgetId);
@@ -290,6 +321,10 @@
             () => BudgetsService.UpdateBudgetAsync(budgetId, budget, _cts.Token));
     }
 
+    /// <summary>
+    /// Deletes a budget once the user confirms.
+    /// </summary>
+    /// <param name="status">The budget's status this month.</param>
     private async Task DeleteAsync(BudgetStatus status)
     {
         bool? confirmed = await DialogService.ShowMessageBoxAsync($"Delete {status.Name}?",

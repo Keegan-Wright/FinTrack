@@ -57,6 +57,9 @@
 
 @code {
 
+    /// <summary>
+    /// The user's notification settings.
+    /// </summary>
     [Parameter, EditorRequired]
     public required NotificationSettings Settings { get; set; }
 
@@ -71,6 +74,9 @@
     private bool _sendingConfirmation;
     private bool _confirmationSent;
 
+    /// <summary>
+    /// Sends a test email.
+    /// </summary>
     internal async Task SendTestAsync()
     {
         _sendingTest = true;
@@ -104,6 +110,9 @@
         }
     }
 
+    /// <summary>
+    /// Sends the email confirmation link again.
+    /// </summary>
     internal async Task SendConfirmationAsync()
     {
         _sendingConfirmation = true;
@@ -128,12 +137,17 @@
         }
     }
 
+    /// <summary>
+    /// Takes the settings the server sent back and tells the page.
+    /// </summary>
+    /// <param name="settings">The settings now.</param>
     private async Task ChangeSettingsAsync(NotificationSettings settings)
     {
         Settings = settings;
         await SettingsChanged.InvokeAsync(settings);
     }
 
+    /// <inheritdoc/>
     public void Dispose()
     {
         _cts.Cancel();

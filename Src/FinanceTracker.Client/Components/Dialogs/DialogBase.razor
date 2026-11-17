@@ -14,17 +14,38 @@
 
 @code {
 
+    /// <summary>
+    /// The dialog it's shown in.
+    /// </summary>
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
 
+    /// <summary>
+    /// The dialog's title.
+    /// </summary>
     [Parameter] [EditorRequired] public required string Title { get; set; }
 
+    /// <summary>
+    /// The dialog's content.
+    /// </summary>
     [Parameter] [EditorRequired] public required RenderFragment Content { get; set; }
 
+    /// <summary>
+    /// Gives what the dialog closes with when OK is pressed, null to keep it open.
+    /// </summary>
     [Parameter] [EditorRequired] public required Func<Task<TResponse?>> ResponseConstructor { get; set; }
 
+    /// <summary>
+    /// What the submit button says.
+    /// </summary>
     private const string SubmitButtonText = "OK";
+    /// <summary>
+    /// What the cancel button says.
+    /// </summary>
     private const string CancelButtonText = "Cancel";
 
+    /// <summary>
+    /// Closes with the response, unless there's none.
+    /// </summary>
     internal async Task Submit()
     {
         var response = await ResponseConstructor.Invoke();
@@ -34,6 +55,9 @@
         }
     }
 
+    /// <summary>
+    /// Closes without a response.
+    /// </summary>
     internal void Cancel()
     {
         MudDialog.Cancel();

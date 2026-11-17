@@ -59,6 +59,9 @@
 
 @code {
 
+    /// <summary>
+    /// The bill.
+    /// </summary>
     [Parameter] [EditorRequired] public required Bill Bill { get; set; }
 
     /// <summary>
@@ -76,12 +79,24 @@
     /// </summary>
     [Parameter] public bool Editable { get; set; }
 
+    /// <summary>
+    /// Called when the user asks to edit it.
+    /// </summary>
     [Parameter] public EventCallback OnEdit { get; set; }
 
+    /// <summary>
+    /// Called when the user asks to end it.
+    /// </summary>
     [Parameter] public EventCallback OnEnd { get; set; }
 
+    /// <summary>
+    /// Called when the user asks to start it again.
+    /// </summary>
     [Parameter] public EventCallback OnReopen { get; set; }
 
+    /// <summary>
+    /// Called when the user asks to delete it.
+    /// </summary>
     [Parameter] public EventCallback OnDelete { get; set; }
 
 }

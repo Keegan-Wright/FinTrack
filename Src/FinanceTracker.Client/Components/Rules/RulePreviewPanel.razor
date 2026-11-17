@@ -79,17 +79,32 @@
     /// </summary>
     [Parameter] public bool CanApply { get; set; } = true;
 
+    /// <summary>
+    /// Called when the user asks for a preview.
+    /// </summary>
     [Parameter] public EventCallback OnPreview { get; set; }
 
+    /// <summary>
+    /// Called when the user applies the rule to their transactions.
+    /// </summary>
     [Parameter] public EventCallback OnApply { get; set; }
 
+    /// <summary>
+    /// Changes shown a page.
+    /// </summary>
     internal const int PageSize = 20;
 
     private int _page = 1;
     private RulePreview? _shownPreview;
 
+    /// <summary>
+    /// How many pages of changes there are.
+    /// </summary>
     private int PageCount => Preview is null ? 0 : (Preview.Changes.Count + PageSize - 1) / PageSize;
 
+    /// <summary>
+    /// The changes on the page shown.
+    /// </summary>
     private IEnumerable<RulePreviewChange> PageOfChanges =>
         (Preview?.Changes ?? []).Skip((_page - 1) * PageSize).Take(PageSize);
 
@@ -105,9 +120,17 @@
         }
     }
 
+    /// <summary>
+    /// The changed transaction's day.
+    /// </summary>
+    /// <param name="change">The change.</param>
     private static string Day(RulePreviewChange change) =>
         change.TransactionTime.ToLocalTime().ToString("d MMM yyyy", CultureInfo.CurrentCulture);
 
+    /// <summary>
+    /// How many transactions applying it would change.
+    /// </summary>
+    /// <param name="preview">The preview.</param>
     internal static string Headline(RulePreview preview) => preview.Changed switch
     {
         0 => "Applying it wouldn't change any of your transactions.",
@@ -115,6 +138,10 @@
         var count => $"Applying it would change {count:n0} transactions."
     };
 
+    /// <summary>
+    /// How many transactions keep the user's own tags.
+    /// </summary>
+    /// <param name="count">How many.</param>
     internal static string LeftAloneText(int count) => count == 1
         ? "1 transaction you tagged yourself keeps your tags."
         : $"{count:n0} transactions you tagged yourself keep your tags.";

@@ -26,6 +26,9 @@
 
 @code {
 
+    /// <summary>
+    /// The section's title, null for none.
+    /// </summary>
     [Parameter] public string? Title { get; set; }
 
     /// <summary>
@@ -43,6 +46,9 @@
     /// </summary>
     [Parameter] public RenderFragment? Actions { get; set; }
 
+    /// <summary>
+    /// The section's content.
+    /// </summary>
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
     /// <summary>
@@ -51,6 +57,9 @@
     /// </summary>
     [Parameter] public bool ScrollBody { get; set; }
 
+    /// <summary>
+    /// More classes for the section.
+    /// </summary>
     [Parameter] public string? Class { get; set; }
 
 }

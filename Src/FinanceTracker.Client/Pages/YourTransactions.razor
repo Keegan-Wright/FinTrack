@@ -226,12 +226,19 @@
     private bool _exporting;
     private bool _loaded;
 
+    /// <summary>
+    /// The filter options, none until loaded.
+    /// </summary>
     private TransactionFilterOptions Filters => FilterOptions ?? TransactionFilterOptions.None;
 
+    /// <summary>
+    /// How many transactions match.
+    /// </summary>
     private string Subtitle => _loading
         ? "Everything in and out of your accounts"
         : $"{_transactions.Count:n0} {(_transactions.Count == 1 ? "transaction" : "transactions")}";
 
+    /// <inheritdoc/>
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
@@ -256,10 +263,15 @@
         _transactions.AddRange(transactions);
     }
 
+    /// <summary>
+    /// Loads the filter options.
+    /// </summary>
+    /// <param name="cancellationToken">Stops it once the user leaves.</param>
     private Task<TransactionFilterOptions> LoadFilterOptionsAsync(CancellationToken cancellationToken) =>
         TransactionFilterOptions.LoadAsync(TransactionsService, BillsService, DebtsService, SavingsGoalsService,
             cancellationToken);
 
+    /// <inheritdoc/>
     protected override async Task OnParametersSetAsync()
     {
         // The prerender shows the spinner, the browser loads the list once it's interactive
@@ -270,6 +282,10 @@
         }
     }
 
+    /// <summary>
+    /// Loads the transactions matching the filters.
+    /// </summary>
+    /// <param name="filters">The filters.</param>
     private async Task SearchTransactionsAsync(ActiveTransactionFilters filters)
     {
         _filters = filters;
@@ -304,11 +320,23 @@
         }
     }
 
+    /// <summary>
+    /// Loads the transactions matching <paramref name="filters"/>.
+    /// </summary>
+    /// <param name="filters">The filters.</param>
     private Task<List<Transaction>> FetchAsync(ActiveTransactionFilters filters) =>
         TransactionsService.GetAllTransactionsAsync(filters.ToRequest(TimeProvider.LocalTimeZone), _cts.Token).ToListAsync(_cts.Token).AsTask();
 
+    /// <summary>
+    /// How it counts, for the grid's column.
+    /// </summary>
+    /// <param name="transaction">The transaction.</param>
     private static object CountsAs(Transaction transaction) => TransferText.CountsAs(transaction);
 
+    /// <summary>
+    /// Shows everything about a transaction in the dialog.
+    /// </summary>
+    /// <param name="transaction">The transaction.</param>
     private async Task ShowDetailsAsync(Transaction transaction)
     {
         var dialogParameters = new DialogParameters<TransactionDetailsDialog>
@@ -338,6 +366,11 @@
         await DialogService.ShowAsync<TransactionDetailsDialog>(null, dialogParameters);
     }
 
+    /// <summary>
+    /// Saves the user's transfer choice for a transaction.
+    /// </summary>
+    /// <param name="transaction">The transaction.</param>
+    /// <param name="action">What the user chose.</param>
     private async Task DecideTransferAsync(Transaction transaction, TransferAction action)
     {
         try
@@ -579,6 +612,10 @@
         }
     }
 
+    /// <summary>
+    /// Swaps a transaction in the list for its new version.
+    /// </summary>
+    /// <param name="updated">As it is now.</param>
     private void Replace(Transaction updated)
     {
         int index = _transactions.FindIndex(x => x.TransactionId == updated.TransactionId);
@@ -588,9 +625,17 @@
         }
     }
 
+    /// <summary>
+    /// Goes to a new rule started from the transaction.
+    /// </summary>
+    /// <param name="transaction">The transaction.</param>
     private void CreateRuleFrom(Transaction transaction) =>
         NavigationManager.NavigateTo($"Rules/new?from={transaction.TransactionId}");
 
+    /// <summary>
+    /// Adds tags to a transaction from the dialog.
+    /// </summary>
+    /// <param name="transaction">The transaction.</param>
     private async Task AddClassificationsAsync(Transaction transaction)
     {
         List<Classification> classifications = TransactionChoices.For(await ClassificationsService

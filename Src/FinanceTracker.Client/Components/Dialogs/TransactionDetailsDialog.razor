@@ -211,8 +211,14 @@
     private bool IsReadOnly => Shown.IsReadOnly;
 
 
+    /// <summary>
+    /// The dialog it's shown in.
+    /// </summary>
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
 
+    /// <summary>
+    /// The transaction.
+    /// </summary>
     [Parameter] [EditorRequired] public required Transaction Transaction { get; set; }
 
     /// <summary>
@@ -231,6 +237,9 @@
     /// </summary>
     private Transaction? _changed;
 
+    /// <summary>
+    /// The transaction as it is now, changed in the dialog or as it came.
+    /// </summary>
     private Transaction Shown => _changed ?? Transaction;
 
     /// <summary>
@@ -238,16 +247,33 @@
     /// </summary>
     private IEnumerable<string> OwnTags => Shown.Tags.Except(Shown.BankClassifications);
 
+    /// <summary>
+    /// e.g. <c>TV hidden by your rule Mortgage</c>.
+    /// </summary>
+    /// <param name="hidden">The hidden classification.</param>
     internal static string HiddenText(TransactionHiddenClassification hidden) => hidden.RuleName is null
         ? $"{hidden.Classification} hidden by you"
         : $"{hidden.Classification} hidden by your rule {hidden.RuleName}";
 
+    /// <summary>
+    /// Hides one of the bank's classifications.
+    /// </summary>
+    /// <param name="classification">The classification.</param>
     private async Task HideAsync(string classification) =>
         _changed = await ChangeAsync(OnHideClassification, classification);
 
+    /// <summary>
+    /// Shows one of the bank's classifications again.
+    /// </summary>
+    /// <param name="classification">The classification.</param>
     private async Task ShowAsync(string classification) =>
         _changed = await ChangeAsync(OnShowClassification, classification);
 
+    /// <summary>
+    /// Hides or shows a classification through the page, keeping what's shown when it couldn't.
+    /// </summary>
+    /// <param name="change">The page's handler, null when it gave none.</param>
+    /// <param name="classification">The classification.</param>
     private async Task<Transaction?> ChangeAsync(Func<string, Task<Transaction?>>? change, string classification)
     {
         if (change is null)
@@ -299,12 +325,18 @@
     /// </summary>
     internal static string BillLabel(TransactionBill bill) => bill.BillName ?? "No bill";
 
+    /// <summary>
+    /// Closes and has the page pick a bill.
+    /// </summary>
     private async Task PayBillAsync()
     {
         MudDialog.Close();
         await OnPayBill.InvokeAsync();
     }
 
+    /// <summary>
+    /// Closes and has the page pick a debt.
+    /// </summary>
     private async Task PayDebtAsync()
     {
         MudDialog.Close();
@@ -312,30 +344,46 @@
     }
 
     // Closed first, the tags dialog and the loading overlay open over the page rather than over this
+    /// <summary>
+    /// Closes and has the page add tags.
+    /// </summary>
     private async Task AddTagsAsync()
     {
         MudDialog.Close();
         await OnAddTags.InvokeAsync();
     }
 
+    /// <summary>
+    /// Closes and has the page split it.
+    /// </summary>
     private async Task SplitAsync()
     {
         MudDialog.Close();
         await OnSplit.InvokeAsync();
     }
 
+    /// <summary>
+    /// Closes and has the page undo the split.
+    /// </summary>
     private async Task UnsplitAsync()
     {
         MudDialog.Close();
         await OnUnsplit.InvokeAsync();
     }
 
+    /// <summary>
+    /// Closes and has the page make a rule from it.
+    /// </summary>
     private async Task CreateRuleAsync()
     {
         MudDialog.Close();
         await OnCreateRule.InvokeAsync();
     }
 
+    /// <summary>
+    /// Closes and has the page decide the transfer.
+    /// </summary>
+    /// <param name="action">What the user chose.</param>
     private async Task DecideAsync(TransferAction action)
     {
         MudDialog.Close();

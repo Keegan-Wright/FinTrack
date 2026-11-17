@@ -25,6 +25,9 @@ else
     /// </summary>
     [Parameter] public bool HigherIsBetter { get; set; } = true;
 
+    /// <summary>
+    /// Up, down or flat.
+    /// </summary>
     private string Arrow => Value switch
     {
         > 0 => Icons.Material.Filled.ArrowUpward,
@@ -32,6 +35,9 @@ else
         _ => Icons.Material.Filled.Remove
     };
 
+    /// <summary>
+    /// Green when the change is good, red when it isn't.
+    /// </summary>
     private Color TrendColor => Value switch
     {
         > 0 => HigherIsBetter ? Color.Success : Color.Error,

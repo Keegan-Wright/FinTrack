@@ -30,6 +30,9 @@
 
 @code {
 
+    /// <summary>
+    /// The transaction.
+    /// </summary>
     [Parameter] [EditorRequired] public required Transaction Transaction { get; set; }
 
     /// <summary>
@@ -42,8 +45,13 @@
     /// </summary>
     private Guid _billId;
 
+    /// <inheritdoc/>
     protected override void OnInitialized() => _billId = Transaction.Bill?.BillId ?? Guid.Empty;
 
+    /// <summary>
+    /// A bill's name as the picker shows it, <c>No bill</c> for none.
+    /// </summary>
+    /// <param name="billId">The bill, <see cref="Guid.Empty"/> for none.</param>
     private string BillName(Guid billId)
     {
         if (billId == Guid.Empty)
@@ -60,6 +68,9 @@
         return BillText.PickerLabel(bill);
     }
 
+    /// <summary>
+    /// Validates the form and gives what the dialog closes with, null to keep it open.
+    /// </summary>
     private Task<PayBill?> BuildResponseModel()
     {
         Guid? billId = null;

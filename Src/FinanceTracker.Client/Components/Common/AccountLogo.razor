@@ -14,8 +14,14 @@
     /// </summary>
     [Parameter] public string? Src { get; set; }
 
+    /// <summary>
+    /// More classes for the tile.
+    /// </summary>
     [Parameter] public string? Class { get; set; }
 
+    /// <summary>
+    /// Where the image comes from, the logo as a data address unless a source is given.
+    /// </summary>
     private string Source => Src ?? $"data:image/svg+xml;base64,{Convert.ToBase64String(Logo)}";
 
 }

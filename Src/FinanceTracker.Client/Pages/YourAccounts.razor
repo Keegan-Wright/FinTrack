@@ -50,6 +50,9 @@ else
     [PersistentState]
     public List<AccountAndTransactions>? Accounts { get; set; }
 
+    /// <summary>
+    /// How many accounts and their total.
+    /// </summary>
     private string Subtitle => Accounts is null or { Count: 0 }
         ? "Your connected accounts"
         : $"{Accounts.Count} {(Accounts.Count == 1 ? "account" : "accounts")} · " +
@@ -61,6 +64,9 @@ else
     [PersistentState]
     public List<AccountBalanceHistory>? Histories { get; set; }
 
+    /// <summary>
+    /// The shared UI state, which keeps which banks are folded.
+    /// </summary>
     [CascadingParameter] private ApplicationState AppState { get; set; } = null!;
 
     private Dictionary<Guid, IReadOnlyList<BalancePoint>> _historyByAccount = [];
@@ -75,8 +81,17 @@ else
         .OrderByDescending(static x => x.Accounts.Sum(static y => y.AccountBalance))
         .ToList();
 
+    /// <summary>
+    /// Whether a bank's accounts show.
+    /// </summary>
+    /// <param name="provider">The bank.</param>
     private bool IsExpanded(string provider) => !AppState.CollapsedProviders.Contains(provider);
 
+    /// <summary>
+    /// Shows or folds a bank's accounts.
+    /// </summary>
+    /// <param name="provider">The bank.</param>
+    /// <param name="expanded">Whether they show.</param>
     private void SetExpanded(string provider, bool expanded)
     {
         if (expanded)
@@ -90,6 +105,7 @@ else
 
     private List<AccountBalanceHistory>? _historiesFrom;
 
+    /// <inheritdoc/>
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
@@ -107,10 +123,18 @@ else
         IndexHistories();
     }
 
+    /// <summary>
+    /// Loads the accounts, each with its newest transactions.
+    /// </summary>
+    /// <param name="cancellationToken">Stops it once the user leaves.</param>
     private Task<List<AccountAndTransactions>> LoadAccountsAsync(CancellationToken cancellationToken) =>
         AccountService.GetAccountsAndMostRecentTransactionsAsync(5, cancellationToken)
             .ToListAsync(cancellationToken).AsTask();
 
+    /// <summary>
+    /// Loads each account's balance history.
+    /// </summary>
+    /// <param name="cancellationToken">Stops it once the user leaves.</param>
     private Task<List<AccountBalanceHistory>> LoadHistoriesAsync(CancellationToken cancellationToken) =>
         NetWorthService.GetBalanceHistoriesAsync(
                 DateOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime).AddDays(-90), cancellationToken)
@@ -121,6 +145,9 @@ else
     /// </summary>
     protected override void OnParametersSet() => IndexHistories();
 
+    /// <summary>
+    /// Indexes the histories by account, once each time they load.
+    /// </summary>
     private void IndexHistories()
     {
         if (Histories is null || ReferenceEquals(Histories, _historiesFrom))
@@ -133,6 +160,10 @@ else
             static x => (IReadOnlyList<BalancePoint>)x.Points);
     }
 
+    /// <summary>
+    /// An account's balance history, null when it has none.
+    /// </summary>
+    /// <param name="account">The account.</param>
     private IReadOnlyList<BalancePoint>? HistoryOf(AccountAndTransactions account) =>
         _historyByAccount.GetValueOrDefault(account.AccountId);
 

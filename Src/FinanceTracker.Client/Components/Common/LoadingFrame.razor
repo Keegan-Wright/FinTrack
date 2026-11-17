@@ -20,6 +20,9 @@
     /// </summary>
     [Parameter, EditorRequired] public bool Loading { get; set; }
 
+    /// <summary>
+    /// What's said while it loads.
+    /// </summary>
     [Parameter] public string Message { get; set; } = "Loading…";
 
     /// <summary>
@@ -33,6 +36,9 @@
     /// </summary>
     [Parameter] public int MinHeight { get; set; }
 
+    /// <summary>
+    /// The content, shown once it's ready.
+    /// </summary>
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
 }

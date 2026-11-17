@@ -52,12 +52,19 @@
     /// </summary>
     private readonly HashSet<Guid> _answered = [];
 
+    /// <summary>
+    /// Today where the user is.
+    /// </summary>
     private DateOnly Today => DateOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime);
 
+    /// <summary>
+    /// How many wait for review.
+    /// </summary>
     private string Subtitle => _loading || _suggestions.Count == 0
         ? "Repeat payments that might be bills"
         : $"{_suggestions.Count} to review";
 
+    /// <inheritdoc/>
     protected override async Task OnParametersSetAsync()
     {
         // The prerender shows the spinner, the browser loads the list once it's interactive
@@ -83,6 +90,11 @@
         _suggestions = suggestions.Where(x => !_answered.Contains(x.Id)).ToList();
     }
 
+    /// <summary>
+    /// Makes a suggestion a bill or dismisses it.
+    /// </summary>
+    /// <param name="suggestion">The suggestion.</param>
+    /// <param name="isBill">Whether it's a bill.</param>
     private async Task DecideAsync(BillSuggestion suggestion, bool isBill)
     {
         try

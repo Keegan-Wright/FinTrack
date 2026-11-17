@@ -43,6 +43,9 @@
 
 @code {
 
+    /// <summary>
+    /// The debt.
+    /// </summary>
     [Parameter] [EditorRequired] public required Debt Debt { get; set; }
 
     /// <summary>
@@ -50,8 +53,14 @@
     /// </summary>
     [Parameter] public bool Editable { get; set; }
 
+    /// <summary>
+    /// Called when the user asks to edit it.
+    /// </summary>
     [Parameter] public EventCallback OnEdit { get; set; }
 
+    /// <summary>
+    /// Called when the user asks to delete it.
+    /// </summary>
     [Parameter] public EventCallback OnDelete { get; set; }
 
     /// <summary>
@@ -59,6 +68,9 @@
     /// </summary>
     private Color ForecastColor => Debt.Forecast.PaidOffOn is null ? Color.Warning : Color.Default;
 
+    /// <summary>
+    /// Amber when it's behind the pay off goal.
+    /// </summary>
     private Color GoalColor => Debt.OnTrack == false ? Color.Warning : Color.Default;
 
 }

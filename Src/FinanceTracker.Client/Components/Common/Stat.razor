@@ -10,13 +10,22 @@
 
 @code {
 
+    /// <summary>
+    /// What the amount is.
+    /// </summary>
     [Parameter, EditorRequired] public string Label { get; set; } = string.Empty;
 
+    /// <summary>
+    /// The amount.
+    /// </summary>
     [Parameter, EditorRequired] public decimal Value { get; set; }
 
     /// <inheritdoc cref="MoneyText.Signed"/>
     [Parameter] public bool Signed { get; set; }
 
+    /// <summary>
+    /// A colour for the amount, null for its sign's.
+    /// </summary>
     [Parameter] public Color? Color { get; set; }
 
     /// <summary>

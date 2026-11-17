@@ -27,11 +27,15 @@
 
 @code {
 
+    /// <summary>
+    /// The goal.
+    /// </summary>
     [Parameter] [EditorRequired] public required SavingsGoal Goal { get; set; }
 
     private IReadOnlyList<BalancePoint>? _history;
     private bool _failed;
 
+    /// <inheritdoc/>
     protected override async Task OnInitializedAsync()
     {
         try

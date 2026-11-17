@@ -57,8 +57,14 @@
     /// </summary>
     [Parameter] [EditorRequired] public required IReadOnlyDictionary<Guid, string> TagNames { get; set; }
 
+    /// <summary>
+    /// The bills the rules name, by id.
+    /// </summary>
     [Parameter] public IReadOnlyDictionary<Guid, string> BillNames { get; set; } = new Dictionary<Guid, string>();
 
+    /// <summary>
+    /// The debts the rules name, by id.
+    /// </summary>
     [Parameter] public IReadOnlyDictionary<Guid, string> DebtNames { get; set; } = new Dictionary<Guid, string>();
 
     /// <summary>

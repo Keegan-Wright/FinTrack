@@ -28,14 +28,23 @@
 
     private Income? _income;
 
+    /// <inheritdoc/>
     protected override void OnInitialized()
     {
         _income = Incomes.FirstOrDefault(IsCurrent) ?? Incomes.FirstOrDefault();
     }
 
+    /// <summary>
+    /// Whether <paramref name="income"/> is the one taken as pay now.
+    /// </summary>
+    /// <param name="income">The income.</param>
     private bool IsCurrent(Income income) =>
         Current is not null && income.AccountId == Current.AccountId && income.Key == Current.Key;
 
+    /// <summary>
+    /// An income's name as the picker shows it.
+    /// </summary>
+    /// <param name="income">The income, null for none.</param>
     private static string Name(Income? income)
     {
         if (income is null)
@@ -46,6 +55,9 @@
         return PayText.Label(income);
     }
 
+    /// <summary>
+    /// Validates the form and gives what the dialog closes with, null to keep it open.
+    /// </summary>
     private Task<ChooseIncome?> BuildResponseModel()
     {
         if (_income is null)

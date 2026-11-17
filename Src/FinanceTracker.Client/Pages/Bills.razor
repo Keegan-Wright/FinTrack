@@ -122,6 +122,9 @@
     /// </summary>
     private int _suggestionCount;
 
+    /// <summary>
+    /// Today where the user is.
+    /// </summary>
     private DateOnly Today => DateOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime);
 
     /// <summary>
@@ -135,12 +138,21 @@
     /// </summary>
     private DateOnly CurrentMonth => Pay?.CurrentPeriod.Month ?? new DateOnly(Today.Year, Today.Month, 1);
 
+    /// <summary>
+    /// The month's dates and whether it's over, null until loaded.
+    /// </summary>
     private string? PeriodCaption => Overview is null
         ? null
         : PayText.MonthCaption(Pay, Overview.Start, Overview.End, IsPast);
 
+    /// <summary>
+    /// The month shown.
+    /// </summary>
     private DateOnly Month => Overview?.Month ?? CurrentMonth;
 
+    /// <summary>
+    /// Whether the month shown is over.
+    /// </summary>
     private bool IsPast => Month < CurrentMonth;
 
     /// <summary>
@@ -151,16 +163,27 @@
         .Where(x => x.EndedOn <= Today && !IsInMonth(x))
         .ToList();
 
+    /// <summary>
+    /// Whether a bill is due in the month shown.
+    /// </summary>
+    /// <param name="bill">The bill.</param>
     private bool IsInMonth(Bill bill) => Overview is not null && Overview.Bills.Any(x => x.Bill.Id == bill.Id);
 
+    /// <summary>
+    /// What's said when the month has no bills.
+    /// </summary>
     private string EmptyText => BillList is null or { Count: 0 }
         ? "No bills yet. Your standing orders and direct debits show here after a sync, or add one yourself."
         : "No bills were due in this month.";
 
+    /// <summary>
+    /// e.g. <c>2 repeat payments look like subscriptions</c>.
+    /// </summary>
     private string SuggestionsText => _suggestionCount == 1
         ? "1 repeat payment looks like a subscription"
         : $"{_suggestionCount} repeat payments look like subscriptions";
 
+    /// <inheritdoc/>
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
@@ -215,6 +238,10 @@
         }
     }
 
+    /// <summary>
+    /// Loads and shows a month.
+    /// </summary>
+    /// <param name="month">The month.</param>
     internal async Task ShowMonthAsync(DateOnly month)
     {
         try
@@ -232,6 +259,9 @@
         }
     }
 
+    /// <summary>
+    /// Adds a bill from the dialog.
+    /// </summary>
     private async Task AddAsync()
     {
         SaveBill? bill = await ShowDialogAsync(null);
@@ -243,6 +273,10 @@
         await SaveAsync($"{bill.Name} added", () => BillsService.AddBillAsync(bill, _cts.Token));
     }
 
+    /// <summary>
+    /// Changes a bill in the dialog.
+    /// </summary>
+    /// <param name="existing">The bill.</param>
     private async Task EditAsync(Bill existing)
     {
         SaveBill? bill = await ShowDialogAsync(existing);
@@ -254,6 +288,10 @@
         await SaveAsync($"{bill.Name} saved", () => BillsService.UpdateBillAsync(existing.Id, bill, _cts.Token));
     }
 
+    /// <summary>
+    /// Ends a bill once the user confirms.
+    /// </summary>
+    /// <param name="bill">The bill.</param>
     private async Task EndAsync(Bill bill)
     {
         bool? confirmed = await DialogService.ShowMessageBoxAsync($"End {bill.Name}?",
@@ -267,9 +305,17 @@
         await SaveAsync($"{bill.Name} ended", () => BillsService.EndBillAsync(bill.Id, _cts.Token));
     }
 
+    /// <summary>
+    /// Makes a bill due again.
+    /// </summary>
+    /// <param name="bill">The bill.</param>
     private Task ReopenAsync(Bill bill) =>
         SaveAsync($"{bill.Name} reopened", () => BillsService.ReopenBillAsync(bill.Id, _cts.Token));
 
+    /// <summary>
+    /// Deletes a bill once the user confirms.
+    /// </summary>
+    /// <param name="bill">The bill.</param>
     private async Task DeleteAsync(Bill bill)
     {
         bool? confirmed = await DialogService.ShowMessageBoxAsync($"Delete {bill.Name}?",

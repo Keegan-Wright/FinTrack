@@ -82,16 +82,34 @@
     [PersistentState]
     public List<TransactionAccountFilter>? Accounts { get; set; }
 
+    /// <summary>
+    /// Today where the user is.
+    /// </summary>
     private DateOnly Today => DateOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime);
 
+    /// <summary>
+    /// The debts with something left.
+    /// </summary>
     private List<Debt> Owing => (DebtList ?? []).Where(static x => !DebtText.IsPaidOff(x)).ToList();
 
+    /// <summary>
+    /// The debts paid off.
+    /// </summary>
     private List<Debt> PaidOff => (DebtList ?? []).Where(DebtText.IsPaidOff).ToList();
 
+    /// <summary>
+    /// What goes on the debts each month.
+    /// </summary>
     private decimal MonthlyPayments => Owing.Sum(static x => x.MonthlyPayment);
 
+    /// <summary>
+    /// e.g. <c>2 debts</c>.
+    /// </summary>
     private string DebtCountText => DebtList?.Count == 1 ? "1 debt" : $"{DebtList?.Count ?? 0} debts";
 
+    /// <summary>
+    /// What's said when nothing's owed.
+    /// </summary>
     private string EmptyText => DebtList is null or { Count: 0 }
         ? "No debts yet. Add a loan, card or finance agreement to see when it's paid off."
         : "Everything's paid off.";
@@ -118,6 +136,7 @@
         }
     }
 
+    /// <inheritdoc/>
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
@@ -138,6 +157,9 @@
             .ToListAsync(_cts.Token);
     }
 
+    /// <summary>
+    /// Adds a debt from the dialog.
+    /// </summary>
     private async Task AddAsync()
     {
         SaveDebt? debt = await ShowDialogAsync(null);
@@ -149,6 +171,10 @@
         await SaveAsync($"{debt.Name} added", () => DebtsService.AddDebtAsync(debt, _cts.Token));
     }
 
+    /// <summary>
+    /// Changes a debt in the dialog.
+    /// </summary>
+    /// <param name="existing">The debt.</param>
     private async Task EditAsync(Debt existing)
     {
         SaveDebt? debt = await ShowDialogAsync(existing);
@@ -160,6 +186,10 @@
         await SaveAsync($"{debt.Name} saved", () => DebtsService.UpdateDebtAsync(existing.Id, debt, _cts.Token));
     }
 
+    /// <summary>
+    /// Deletes a debt once the user confirms.
+    /// </summary>
+    /// <param name="debt">The debt.</param>
     private async Task DeleteAsync(Debt debt)
     {
         bool? confirmed = await DialogService.ShowMessageBoxAsync($"Delete {debt.Name}?",

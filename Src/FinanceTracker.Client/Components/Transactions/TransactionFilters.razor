@@ -96,14 +96,29 @@
 
 @code {
 
+    /// <summary>
+    /// The accounts to filter by.
+    /// </summary>
     [Parameter, EditorRequired] public List<TransactionAccountFilter> AccountFilterItems { get; set; } = [];
 
+    /// <summary>
+    /// The bank's categories to filter by.
+    /// </summary>
     [Parameter, EditorRequired] public List<TransactionCategoryFilter> CategoryFilterItems { get; set; } = [];
 
+    /// <summary>
+    /// The banks to filter by.
+    /// </summary>
     [Parameter, EditorRequired] public List<TransactionProviderFilter> ProviderFilterItems { get; set; } = [];
 
+    /// <summary>
+    /// Money in or out.
+    /// </summary>
     [Parameter, EditorRequired] public List<TransactionTypeFilter> TransactionTypeFilterItems { get; set; } = [];
 
+    /// <summary>
+    /// The user's tags to filter by.
+    /// </summary>
     [Parameter, EditorRequired] public List<TransactionTagFilter> TransactionTagFilterItems { get; set; } = [];
 
     /// <summary>
@@ -111,8 +126,14 @@
     /// </summary>
     [Parameter] public List<TransactionLinkFilter> BillFilterItems { get; set; } = [];
 
+    /// <summary>
+    /// The debts to filter by.
+    /// </summary>
     [Parameter] public List<TransactionLinkFilter> DebtFilterItems { get; set; } = [];
 
+    /// <summary>
+    /// The savings goals to filter by.
+    /// </summary>
     [Parameter] public List<TransactionLinkFilter> SavingsGoalFilterItems { get; set; } = [];
 
     /// <summary>
@@ -133,28 +154,50 @@
     private bool _expanded;
 
     // The filters folded away, counted on the button so they aren't forgotten when it's closed
+    /// <summary>
+    /// How many of the folded filters are set.
+    /// </summary>
     private int MoreFilterCount => new[]
     {
         _selectedProviderIds.Count, _selectedAccountIds.Count, _selectedCategories.Count, _selectedTypes.Count,
         _selectedTags.Count, _selectedBillIds.Count, _selectedDebtIds.Count, _selectedSavingsGoalIds.Count
     }.Count(static x => x > 0);
 
+    /// <summary>
+    /// Whether any filter is set.
+    /// </summary>
     private bool HasAnyFilter => MoreFilterCount > 0 || !string.IsNullOrWhiteSpace(_searchTerm) ||
                                  _dateRange?.Start is not null || _dateRange?.End is not null;
 
+    /// <summary>
+    /// e.g. <c>2 accounts</c>, empty when none are chosen.
+    /// </summary>
+    /// <param name="list">What's chosen.</param>
+    /// <param name="one">The word for one.</param>
+    /// <param name="many">The word for more.</param>
     private static string CountText(IReadOnlyList<string?>? list, string one, string many) =>
         list is null || list.Count == 0 ? string.Empty : $"{list.Count} {(list.Count == 1 ? one : many)}";
 
+    /// <summary>
+    /// Searches when Enter is pressed.
+    /// </summary>
+    /// <param name="e">The key.</param>
     private async Task OnSearchKeyUp(KeyboardEventArgs e)
     {
         if (e.Key is "Enter" or "NumpadEnter")
             await ApplyAsync();
     }
 
+    /// <summary>
+    /// Tells the page the filters chosen.
+    /// </summary>
     private Task ApplyAsync() => SearchTransactions.InvokeAsync(new ActiveTransactionFilters(_selectedProviderIds,
         _selectedAccountIds, _selectedCategories, _selectedTypes, _selectedTags, _dateRange,
         _searchTerm ?? string.Empty, _selectedBillIds, _selectedDebtIds, _selectedSavingsGoalIds));
 
+    /// <summary>
+    /// Clears every filter and tells the page.
+    /// </summary>
     private Task ClearAsync()
     {
         _searchTerm = string.Empty;

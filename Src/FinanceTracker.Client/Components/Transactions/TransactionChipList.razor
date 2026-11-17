@@ -17,6 +17,9 @@
 
 @code {
 
+    /// <summary>
+    /// The transaction.
+    /// </summary>
     [Parameter] [EditorRequired] public required Transaction Transaction { get; set; }
 
     /// <summary>
@@ -24,14 +27,29 @@
     /// </summary>
     [Parameter] public bool LinksOnly { get; set; }
 
+    /// <summary>
+    /// The chips to show.
+    /// </summary>
     private IReadOnlyList<TransactionChip> Chips => TransactionChips.For(Transaction, LinksOnly);
 
+    /// <summary>
+    /// Outlined for a link, plain text otherwise.
+    /// </summary>
+    /// <param name="chip">The chip.</param>
     private static Variant VariantFor(TransactionChip chip) =>
         chip.Kind == TransactionChipKind.Link ? Variant.Outlined : Variant.Text;
 
+    /// <summary>
+    /// The app's colour for a link, the default otherwise.
+    /// </summary>
+    /// <param name="chip">The chip.</param>
     private static Color ColorFor(TransactionChip chip) =>
         chip.Kind == TransactionChipKind.Link ? Color.Primary : Color.Default;
 
+    /// <summary>
+    /// The bank's classifications' class, quieter than the user's tags.
+    /// </summary>
+    /// <param name="chip">The chip.</param>
     private static string? ClassFor(TransactionChip chip) =>
         chip.Kind == TransactionChipKind.Bank ? "ft-transaction-chips__bank" : null;
 

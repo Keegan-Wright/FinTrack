@@ -98,6 +98,9 @@
 
 @code {
 
+    /// <summary>
+    /// What the backup holds, as listed on the page.
+    /// </summary>
     private static readonly string[] Contents =
     [
         "Your accounts, and their balance and net worth history",
@@ -124,10 +127,14 @@
     private bool _downloadingStatement;
     private bool _downloadingBackup;
 
+    /// <summary>
+    /// How the statement's months run.
+    /// </summary>
     private string StatementCaption => Pay is { FollowsPay: true }
         ? "Each pay period runs from your pay day to the day before the next"
         : "Calendar months until your pay is picked up, then from pay day to pay day";
 
+    /// <inheritdoc/>
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
@@ -177,6 +184,9 @@
         return name;
     }
 
+    /// <summary>
+    /// Downloads the chosen month's statement.
+    /// </summary>
     private async Task DownloadStatementAsync()
     {
         DateOnly month = _statementMonth;
@@ -194,6 +204,9 @@
         }
     }
 
+    /// <summary>
+    /// Downloads the backup.
+    /// </summary>
     private async Task DownloadBackupAsync()
     {
         _downloadingBackup = true;

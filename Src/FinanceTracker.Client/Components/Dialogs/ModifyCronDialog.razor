@@ -53,12 +53,28 @@
     /// </summary>
     [Parameter] public string Function { get; set; } = null!;
 
+    /// <summary>
+    /// What the job does.
+    /// </summary>
     [Parameter] public string Description { get; set; } = null!;
+    /// <summary>
+    /// The job's cron expression.
+    /// </summary>
     [Parameter] public string Expression { get; set; } = null!;
+    /// <summary>
+    /// How many times a failed run is retried.
+    /// </summary>
     [Parameter] public int Retries { get; set; }
+    /// <summary>
+    /// Seconds before each retry.
+    /// </summary>
     [Parameter] public int[] RetryIntervals { get; set; } = null!;
+    /// <summary>
+    /// Whether the job runs on its schedule.
+    /// </summary>
     [Parameter] public bool IsEnabled { get; set; }
 
+    /// <inheritdoc/>
     protected override void OnInitialized()
     {
         _model = new UpdateCronJob
@@ -79,8 +95,15 @@
     /// </summary>
     private string _retryIntervalsText = string.Empty;
 
+    /// <summary>
+    /// What's said when the retry intervals can't be read.
+    /// </summary>
     private const string RetryIntervalsMessage = "Whole seconds, separated by commas, e.g. 10, 20, 30";
 
+    /// <summary>
+    /// Takes in the retry intervals as typed, keeping them when they can be read.
+    /// </summary>
+    /// <param name="text">The intervals as typed.</param>
     private void SetRetryIntervals(string text)
     {
         _retryIntervalsText = text;
@@ -90,6 +113,10 @@
         }
     }
 
+    /// <summary>
+    /// What's wrong with the retry intervals, null when nothing is.
+    /// </summary>
+    /// <param name="text">The intervals as typed.</param>
     private static string? RetryIntervalsError(string text)
     {
         if (TryParseIntervals(text, out _))
@@ -126,6 +153,9 @@
         return true;
     }
 
+    /// <summary>
+    /// Validates the form and gives what the dialog closes with, null to keep it open.
+    /// </summary>
     private async Task<UpdateCronJob?> BuildResponseModel()
     {
         await _form.ValidateAsync();

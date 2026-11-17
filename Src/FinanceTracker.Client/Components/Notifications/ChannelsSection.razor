@@ -67,6 +67,9 @@
 
 @code {
 
+    /// <summary>
+    /// The user's notification settings.
+    /// </summary>
     [Parameter, EditorRequired]
     public required NotificationSettings Settings { get; set; }
 
@@ -78,14 +81,32 @@
 
     private readonly CancellationTokenSource _cts = new();
 
+    /// <summary>
+    /// Whether email can be sent, a mail server and a confirmed address.
+    /// </summary>
     private bool CanEmail => Settings is { EmailAvailable: true, EmailAddress: not null, EmailConfirmed: true };
 
+    /// <summary>
+    /// Whether they have a webhook.
+    /// </summary>
     private bool HasWebhook => Settings.WebhookUrl is not null;
 
+    /// <summary>
+    /// Whether a kind shows in the app.
+    /// </summary>
+    /// <param name="kind">The kind.</param>
     private bool InApp(NotificationKind kind) => Settings.InApp.Contains(kind);
 
+    /// <summary>
+    /// Whether a kind is emailed.
+    /// </summary>
+    /// <param name="kind">The kind.</param>
     private bool Emailed(NotificationKind kind) => Settings.Emailed.Contains(kind);
 
+    /// <summary>
+    /// Whether a kind is posted to the webhook.
+    /// </summary>
+    /// <param name="kind">The kind.</param>
     private bool Webhooked(NotificationKind kind) => Settings.Webhooked.Contains(kind);
 
     /// <summary>
@@ -111,6 +132,12 @@
         }
     }
 
+    /// <summary>
+    /// <paramref name="kinds"/> with or without <paramref name="kind"/>.
+    /// </summary>
+    /// <param name="kinds">The kinds on for a channel.</param>
+    /// <param name="kind">The kind to add or remove.</param>
+    /// <param name="with">Whether to add it.</param>
     private static List<NotificationKind> WithOrWithout(IEnumerable<NotificationKind> kinds, NotificationKind kind,
         bool with)
     {
@@ -123,6 +150,7 @@
         return changed;
     }
 
+    /// <inheritdoc/>
     public void Dispose()
     {
         _cts.Cancel();

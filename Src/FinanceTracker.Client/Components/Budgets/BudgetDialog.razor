@@ -74,12 +74,19 @@
     private IReadOnlyCollection<Guid> _tagIds = [];
     private string? _tagsError;
 
+    /// <summary>
+    /// The current culture's currency symbol, shown on amount fields.
+    /// </summary>
     private static string CurrencySymbol => CultureInfo.CurrentCulture.NumberFormat.CurrencySymbol;
 
+    /// <summary>
+    /// The help under the limit field.
+    /// </summary>
     private string LimitHelp => Budget is null
         ? "How much you can spend each month"
         : "A new limit applies from this month on, earlier months keep theirs";
 
+    /// <inheritdoc/>
     protected override void OnInitialized()
     {
         if (Budget is null)
@@ -100,6 +107,10 @@
         _tagIds = tagIds;
     }
 
+    /// <summary>
+    /// The chosen tags' names, for the picker's text.
+    /// </summary>
+    /// <param name="selected">The chosen tags' ids.</param>
     private string TagsText(IReadOnlyList<string> selected)
     {
         List<string> names = [];
@@ -114,6 +125,9 @@
         return string.Join(", ", names);
     }
 
+    /// <summary>
+    /// Validates the form and gives what the dialog closes with, null to keep it open.
+    /// </summary>
     private async Task<SaveBudget?> BuildResponseModel()
     {
         _model.TagIds = _tagIds.ToList();

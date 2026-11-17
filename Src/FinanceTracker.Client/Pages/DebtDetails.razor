@@ -121,6 +121,9 @@ else
 
 @code {
 
+    /// <summary>
+    /// The debt, from the address.
+    /// </summary>
     [Parameter] public Guid Id { get; set; }
 
     /// <summary>
@@ -136,20 +139,36 @@ else
     [PersistentState]
     public List<TransactionAccountFilter>? Accounts { get; set; }
 
+    /// <summary>
+    /// Today where the user is.
+    /// </summary>
     private DateOnly Today => DateOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime);
 
+    /// <summary>
+    /// The debt's name.
+    /// </summary>
     private string Title => Detail?.Debt.Name ?? "Debt";
 
+    /// <summary>
+    /// The debt's terms.
+    /// </summary>
     private string Subtitle => Detail is null ? string.Empty : DebtText.Terms(Detail.Debt);
 
+    /// <summary>
+    /// How the history is worked out.
+    /// </summary>
     private string HistoryCaption => Detail?.Debt.AccountId is null
         ? "From what was owed at the start, less payments, plus interest each month"
         : "From the linked account's balance at each month end";
 
+    /// <summary>
+    /// How the payments count.
+    /// </summary>
     private string PaymentsCaption => Detail?.Debt.AccountId is null
         ? "Latest first, these are what come off what's owed"
         : "Latest first, what's owed follows the account's balance";
 
+    /// <inheritdoc/>
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
@@ -189,6 +208,9 @@ else
             .ToListAsync(_cts.Token);
     }
 
+    /// <summary>
+    /// Loads the debt, null when it's gone.
+    /// </summary>
     private async Task<DebtDetail?> FetchDetailAsync()
     {
         try
@@ -210,6 +232,9 @@ else
         return $"{day} · {payment.AccountName} · {DebtText.Reason(payment.DecidedBy, payment.RuleName)}";
     }
 
+    /// <summary>
+    /// Changes the debt in the dialog.
+    /// </summary>
     private async Task EditAsync()
     {
         Debt existing = Detail!.Debt;
@@ -253,6 +278,9 @@ else
         }
     }
 
+    /// <summary>
+    /// Deletes the debt once the user confirms.
+    /// </summary>
     private async Task DeleteAsync()
     {
         Debt debt = Detail!.Debt;

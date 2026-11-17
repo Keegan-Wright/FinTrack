@@ -51,6 +51,7 @@ else
     [PersistentState]
     public NotificationSettings? Settings { get; set; }
 
+    /// <inheritdoc/>
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();

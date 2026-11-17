@@ -122,6 +122,9 @@
 
 @code {
 
+    /// <summary>
+    /// The user's notification settings.
+    /// </summary>
     [Parameter, EditorRequired]
     public required NotificationSettings Settings { get; set; }
 
@@ -139,6 +142,9 @@
     private decimal? _largeWhenOff;
     private bool _busy;
 
+    /// <summary>
+    /// The current culture's currency symbol, shown on amount fields.
+    /// </summary>
     private static string CurrencySymbol => CultureInfo.CurrentCulture.NumberFormat.CurrencySymbol;
 
     /// <summary>
@@ -154,6 +160,7 @@
         .Where(account => !_model.LowBalance.Exists(x => x.AccountId == account.AccountId))
         .ToList();
 
+    /// <inheritdoc/>
     protected override void OnParametersSet()
     {
         // The fields follow the saved settings when they change, leaving what the user is typing otherwise
@@ -181,9 +188,16 @@
         _model.LargeTransactionOver = null;
     }
 
+    /// <summary>
+    /// Starts watching an account's balance, from below 0.
+    /// </summary>
+    /// <param name="accountId">The account.</param>
     private void Watch(Guid accountId) =>
         _model.LowBalance.Add(new LowBalanceThreshold { AccountId = accountId, Below = 0m });
 
+    /// <summary>
+    /// Saves the alerts once the form is valid.
+    /// </summary>
     internal async Task SaveAsync()
     {
         await _form.ValidateAsync();
@@ -210,6 +224,10 @@
         }
     }
 
+    /// <summary>
+    /// A watched account's name.
+    /// </summary>
+    /// <param name="accountId">The account.</param>
     private string AccountName(Guid accountId) =>
         Settings.LowBalance.FirstOrDefault(x => x.AccountId == accountId)?.AccountName ?? "Account";
 
@@ -236,6 +254,11 @@
         };
     }
 
+    /// <summary>
+    /// Whether two sets of alerts say the same, so there's nothing to save.
+    /// </summary>
+    /// <param name="left">One set.</param>
+    /// <param name="right">The other.</param>
     private static bool SameAs(ChangeAlertSettings left, ChangeAlertSettings right)
     {
         if (left.BudgetWarningPercent != right.BudgetWarningPercent
@@ -258,6 +281,7 @@
         return true;
     }
 
+    /// <inheritdoc/>
     public void Dispose()
     {
         _cts.Cancel();

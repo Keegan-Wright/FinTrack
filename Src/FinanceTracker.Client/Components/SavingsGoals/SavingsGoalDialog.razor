@@ -149,6 +149,9 @@
     private DateTime? _trackedFrom = DateTime.Today;
     private List<ValidationFailure> _errors = [];
 
+    /// <summary>
+    /// The current culture's currency symbol, shown on amount fields.
+    /// </summary>
     private static string CurrencySymbol => CultureInfo.CurrentCulture.NumberFormat.CurrencySymbol;
 
     /// <summary>
@@ -157,6 +160,7 @@
     private IEnumerable<SavingsGoalAccount> FreeAccounts =>
         Accounts.Where(x => x.GoalId is null || x.GoalId == Goal?.Id);
 
+    /// <inheritdoc/>
     protected override void OnInitialized()
     {
         if (Goal is null)
@@ -194,9 +198,17 @@
         return "Money in with any of these adds to it, money out takes from it";
     }
 
+    /// <summary>
+    /// An account's name as the picker shows it.
+    /// </summary>
+    /// <param name="accountId">The account, null for none.</param>
     private string? AccountName(Guid? accountId) =>
         Accounts.FirstOrDefault(x => x.AccountId == accountId)?.Name;
 
+    /// <summary>
+    /// The chosen tags' names, for the picker's text.
+    /// </summary>
+    /// <param name="selected">The chosen tags' ids.</param>
     private string TagsText(IReadOnlyList<string> selected)
     {
         List<string> names = [];
@@ -211,6 +223,10 @@
         return string.Join(", ", names);
     }
 
+    /// <summary>
+    /// The validation errors for one field.
+    /// </summary>
+    /// <param name="propertyName">The field's property name.</param>
     private IEnumerable<string> ErrorsFor(string propertyName) => _errors
         .Where(x => x.PropertyName == propertyName)
         .Select(static x => x.ErrorMessage);

@@ -80,6 +80,9 @@
 
 @code {
 
+    /// <summary>
+    /// The range picker's value for all time.
+    /// </summary>
     private const int AllTime = 0;
 
     /// <summary>
@@ -92,10 +95,17 @@
     private NetWorthHistory? _pointsFrom;
     private IReadOnlyList<BalancePoint> _points = [];
 
+    /// <summary>
+    /// The latest day's figure, null without history.
+    /// </summary>
     private NetWorthPoint? Latest => History?.Points.LastOrDefault();
 
+    /// <summary>
+    /// What the chart's line is, noting days worked out from transactions.
+    /// </summary>
     private string ChartCaption => NetWorthText.DerivedNote(_points) ?? "Each day's closing balances";
 
+    /// <inheritdoc/>
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
@@ -103,6 +113,7 @@
             cancellationToken => NetWorthService.GetNetWorthAsync(From(_months), cancellationToken));
     }
 
+    /// <inheritdoc/>
     protected override void OnParametersSet() => BuildPoints();
 
     /// <summary>
@@ -128,6 +139,10 @@
         _points = NetWorthText.Points(History);
     }
 
+    /// <summary>
+    /// Shows another range.
+    /// </summary>
+    /// <param name="months">How many months back, <see cref="AllTime"/> for all.</param>
     private async Task SetRangeAsync(int months)
     {
         if (months == _months)
@@ -165,6 +180,10 @@
         return DateOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime).AddMonths(-months);
     }
 
+    /// <summary>
+    /// The change's colour class, null when there's none.
+    /// </summary>
+    /// <param name="change">The change.</param>
     private static string? ChangeClass(decimal? change)
     {
         if (change is not { } amount || amount == 0)
@@ -175,6 +194,10 @@
         return amount > 0 ? "mud-success-text" : "mud-error-text";
     }
 
+    /// <summary>
+    /// The day, e.g. <c>17 Nov 2026</c>.
+    /// </summary>
+    /// <param name="day">The day.</param>
     private static string Day(DateOnly day) => day.ToString("d MMM yyyy", CultureInfo.CurrentCulture);
 
 }
