@@ -283,8 +283,14 @@ public class RuleSharingTests : InfrastructureTestBase
     private SaveRule Shops(string tag, string description = "SUPERMARKET") => new()
     {
         Name = "Shops",
-        Conditions = [new RuleCondition { Field = RuleField.Description, Operator = RuleOperator.Contains,
-            Value = description }],
+        Conditions =
+        [
+            new RuleCondition
+            {
+                Field = RuleField.Description, Operator = RuleOperator.Contains,
+                Value = description
+            }
+        ],
         Actions = [new RuleAction { Type = RuleActionType.AddTag, ClassificationId = Tag(tag) }]
     };
 

@@ -312,7 +312,9 @@ public static class TransferMatcher
                         pairing.CanReach(transaction, x) &&
                         x.Identifier.IsNamedIn(transaction.Metadata.ProviderReference))
             .Take(2)
-            .ToList() is [var only] ? only : null;
+            .ToList() is [var only]
+            ? only
+            : null;
     }
 
     /// <summary>

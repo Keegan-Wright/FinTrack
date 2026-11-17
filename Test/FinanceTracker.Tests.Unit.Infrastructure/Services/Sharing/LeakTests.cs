@@ -60,7 +60,7 @@ public class LeakTests : InfrastructureTestBase
                 new BankAccount(userId, connectionId, "ext-current", "TRANSACTION", "Current", "GBP")))
             .Do(s => s.BankAccountScenario.WithBalance("sam-current", new AccountBalance(5m, 5m, DateTime.UtcNow)))
             .Do(s => s.TransactionScenario.WithTransaction("sofa", "sam-current", new TransactionDetailsFaker()
-                .Generate() with
+                    .Generate() with
                 {
                     Amount = -900m, Description = "SOFA SHOP", Type = TransactionType.Debit,
                     OccurredAt = DateTime.UtcNow.AddHours(-1), IsPending = false, LabelledAsTransfer = false

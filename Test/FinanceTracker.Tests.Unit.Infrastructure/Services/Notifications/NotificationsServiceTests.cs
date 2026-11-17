@@ -262,8 +262,9 @@ public class NotificationsServiceTests : InfrastructureTestBase
     public async Task SetWebhook_PrivateAddressWhenAllowed_SetsIt()
     {
         // Act
-        WebhookChange change = await Subject(Username, new WebhookSettings { AllowPrivateAddresses = true }).SetWebhookAsync(
-            new SetWebhook { Url = "http://192.168.1.10:8123/api/webhook/fintrack" }, CancellationToken);
+        WebhookChange change = await Subject(Username, new WebhookSettings { AllowPrivateAddresses = true })
+            .SetWebhookAsync(
+                new SetWebhook { Url = "http://192.168.1.10:8123/api/webhook/fintrack" }, CancellationToken);
 
         // Assert
         await Assert.That(change.Settings!.WebhookUrl).IsEqualTo("http://192.168.1.10:8123/api/webhook/fintrack");
@@ -323,7 +324,8 @@ public class NotificationsServiceTests : InfrastructureTestBase
         // Assert
         using (Assert.Multiple())
         {
-            await _webhookSender.Received(1).SendAsync("https://hooks.example.test/fintrack", set.Settings!.WebhookSecret!,
+            await _webhookSender.Received(1).SendAsync("https://hooks.example.test/fintrack",
+                set.Settings!.WebhookSecret!,
                 Arg.Is<WebhookPayload>(x => x.Event == WebhookPayload.TestEvent), Arg.Any<CancellationToken>());
             await Assert.That(settings!.LastWebhook!.At).IsEqualTo(Now);
             await Assert.That(settings.LastWebhook.Failure).IsEqualTo("FinTrack couldn't reach the webhook.");
@@ -402,7 +404,8 @@ public class NotificationsServiceTests : InfrastructureTestBase
         using (Assert.Multiple())
         {
             await Assert.That(settings!.LastEmail!.Sent).IsFalse();
-            await Assert.That(settings.LastEmail.Failure).IsEqualTo("The mail server didn't accept FinTrack's sign in.");
+            await Assert.That(settings.LastEmail.Failure)
+                .IsEqualTo("The mail server didn't accept FinTrack's sign in.");
         }
     }
 
@@ -440,7 +443,8 @@ public class NotificationsServiceTests : InfrastructureTestBase
 
     private NotificationsService Subject(string username, WebhookSettings? webhookSettings = null) =>
         new(CurrentUserFor(username), DbContextFactory, NullLogger<NotificationsService>.Instance,
-            new FixedTimeProvider(Now), _mailSender, TestEmails.Create(), _webhookSender, webhookSettings ?? new WebhookSettings(),
+            new FixedTimeProvider(Now), _mailSender, TestEmails.Create(), _webhookSender,
+            webhookSettings ?? new WebhookSettings(),
             PublicAddress.Unknown);
 
     private async Task<Guid> AddAsync(string username, string title, bool inApp = true)

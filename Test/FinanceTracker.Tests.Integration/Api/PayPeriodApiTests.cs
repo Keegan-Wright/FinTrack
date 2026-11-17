@@ -16,8 +16,11 @@ public class PayPeriodApiTests : IntegrationTestBase
         SignedInUser user = await RegisterUserAsync();
         DateOnly thisMonth = DateOnly.FromDateTime(DateTime.Now);
         thisMonth = new DateOnly(thisMonth.Year, thisMonth.Month, 1);
-        DateOnly[] payDays = [.. Enumerable.Range(1, 3).Select(x => thisMonth.AddMonths(-x))
-            .Select(static x => WorkingDays.LastIn(x.Year, x.Month))];
+        DateOnly[] payDays =
+        [
+            .. Enumerable.Range(1, 3).Select(x => thisMonth.AddMonths(-x))
+                .Select(static x => WorkingDays.LastIn(x.Year, x.Month))
+        ];
         await SeedAccountAsync(user, "main")
             .Do(s => s.TransactionScenario.WithTransaction("first", "main", Pay(payDays[2])))
             .Do(s => s.TransactionScenario.WithTransaction("second", "main", Pay(payDays[1])))

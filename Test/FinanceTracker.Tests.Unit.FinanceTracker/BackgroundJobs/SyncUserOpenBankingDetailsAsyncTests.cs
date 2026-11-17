@@ -71,7 +71,8 @@ public class SyncUserOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
             .Do(s => s.BankConnectionScenario.WithConnection("broken", Username))
             .Do(s => s.BankConnectionScenario.WithConnection("third", Username));
 
-        OpenBankingSyncService.SyncConnectionAsync(Scenario.ConnectionMappings["broken"], SyncTypes.All, CancellationToken)
+        OpenBankingSyncService
+            .SyncConnectionAsync(Scenario.ConnectionMappings["broken"], SyncTypes.All, CancellationToken)
             .ThrowsAsync(new InvalidOperationException("boom"));
 
         Guid userId = Scenario.UserMappings[Username];

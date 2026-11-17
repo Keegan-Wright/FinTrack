@@ -12,5 +12,6 @@ public sealed class DataProtectionScenario : ScenarioBuilder
     }
 
     public Task<TestingScenario> WithKey(string friendlyName, string xml) =>
-        PersistAsync(context => context.DataProtectionKeys.Add(new DataProtectionKey { FriendlyName = friendlyName, Xml = xml }));
+        PersistAsync(context =>
+            context.DataProtectionKeys.Add(new DataProtectionKey { FriendlyName = friendlyName, Xml = xml }));
 }

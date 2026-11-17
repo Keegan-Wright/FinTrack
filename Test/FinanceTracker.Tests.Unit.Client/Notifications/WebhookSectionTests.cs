@@ -63,7 +63,8 @@ public class WebhookSectionTests : ComponentTestBase
 
         // Assert
         cut.WaitForState(() => cut.Markup.Contains("starting https://", StringComparison.Ordinal));
-        await _notificationsService.DidNotReceive().SetWebhookAsync(Arg.Any<SetWebhook>(), Arg.Any<CancellationToken>());
+        await _notificationsService.DidNotReceive()
+            .SetWebhookAsync(Arg.Any<SetWebhook>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -118,7 +119,8 @@ public class WebhookSectionTests : ComponentTestBase
     public async Task NewSecret_Confirmed_ReplacesIt()
     {
         // Arrange
-        _notificationsService.ReplaceWebhookSecretAsync(Arg.Any<CancellationToken>()).Returns(Settings(Url, "secret-two"));
+        _notificationsService.ReplaceWebhookSecretAsync(Arg.Any<CancellationToken>())
+            .Returns(Settings(Url, "secret-two"));
         IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
         IRenderedComponent<WebhookSection> cut = RenderSection(With);
 

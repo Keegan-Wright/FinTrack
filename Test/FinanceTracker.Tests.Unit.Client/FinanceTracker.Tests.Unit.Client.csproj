@@ -1,25 +1,25 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-    <PropertyGroup>
-        <TargetFramework>net10.0</TargetFramework>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
-    </PropertyGroup>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="bunit" />
-    <PackageReference Include="NSubstitute" />
-    <PackageReference Include="TUnit" />
+    <PackageReference Include="bunit"/>
+    <PackageReference Include="NSubstitute"/>
+    <PackageReference Include="TUnit"/>
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Src\FinanceTracker.Client\FinanceTracker.Client.csproj" />
+    <ProjectReference Include="..\..\Src\FinanceTracker.Client\FinanceTracker.Client.csproj"/>
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="..\FinanceTracker.Tests.Unit.Shared\TestTimeouts.cs" Link="TestTimeouts.cs" />
-    <Compile Include="..\FinanceTracker.Tests.Unit.Shared\CultureScope.cs" Link="CultureScope.cs" />
-    <Using Include="FinanceTracker.Tests.Unit.Shared" />
+    <Compile Include="..\FinanceTracker.Tests.Unit.Shared\TestTimeouts.cs" Link="TestTimeouts.cs"/>
+    <Compile Include="..\FinanceTracker.Tests.Unit.Shared\CultureScope.cs" Link="CultureScope.cs"/>
+    <Using Include="FinanceTracker.Tests.Unit.Shared"/>
   </ItemGroup>
 
 </Project>

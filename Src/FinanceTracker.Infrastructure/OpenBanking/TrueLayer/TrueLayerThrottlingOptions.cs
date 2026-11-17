@@ -13,6 +13,7 @@ public sealed class TrueLayerThrottlingOptions
     /// How many calls can be in flight at once, 0 for no limit.
     /// </summary>
     public int MaxConcurrentCalls { get; set; }
+
     /// <summary>
     /// How many calls can start each second, 0 for no limit.
     /// </summary>

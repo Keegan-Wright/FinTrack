@@ -18,7 +18,8 @@ namespace FinanceTracker.Tests.Unit.FinanceTracker.Api;
 /// </summary>
 public class ApiEndpointSecurityTests
 {
-    private static readonly string[] AdminRoutes = [ApiRoutes.AutomationJobs, ApiRoutes.AutomationRuns, ApiRoutes.Users];
+    private static readonly string[] AdminRoutes =
+        [ApiRoutes.AutomationJobs, ApiRoutes.AutomationRuns, ApiRoutes.Users];
 
     [Test]
     public async Task EveryEndpoint_NeedsASignedInUser()
@@ -129,7 +130,8 @@ public class ApiEndpointSecurityTests
         return byAttribute || byPolicy;
     }
 
-    private static string Route(RouteEndpoint endpoint) => (endpoint.RoutePattern.RawText ?? string.Empty).TrimStart('/');
+    private static string Route(RouteEndpoint endpoint) =>
+        (endpoint.RoutePattern.RawText ?? string.Empty).TrimStart('/');
 
     private static string Describe(RouteEndpoint endpoint) => endpoint.DisplayName ?? Route(endpoint);
 }

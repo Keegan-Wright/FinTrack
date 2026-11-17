@@ -291,7 +291,8 @@ public class ClassificationServiceTests : InfrastructureTestBase
         await subject.AddCustomClassificationsToTransactionAsync(new AddCustomClassificationsToTransaction
         {
             TransactionId = Scenario.TransactionMappings["payment"],
-            Classifications = [new SelectedCustomClassification { ClassificationId = Scenario.ClassificationMappings["bills"] }]
+            Classifications =
+                [new SelectedCustomClassification { ClassificationId = Scenario.ClassificationMappings["bills"] }]
         }, CancellationToken);
 
         // Assert
@@ -317,7 +318,8 @@ public class ClassificationServiceTests : InfrastructureTestBase
             new AddCustomClassificationsToTransaction
             {
                 TransactionId = Scenario.TransactionMappings["theirs"],
-                Classifications = [new SelectedCustomClassification { ClassificationId = Scenario.ClassificationMappings["bills"] }]
+                Classifications =
+                    [new SelectedCustomClassification { ClassificationId = Scenario.ClassificationMappings["bills"] }]
             }, CancellationToken));
     }
 
@@ -351,7 +353,8 @@ public class ClassificationServiceTests : InfrastructureTestBase
         using (Assert.Multiple())
         {
             await Assert.That(remainingClassifications).IsEquivalentTo([Scenario.ClassificationMappings["travel"]]);
-            await Assert.That(first.CustomClassificationIds).IsEquivalentTo([Scenario.ClassificationMappings["travel"]]);
+            await Assert.That(first.CustomClassificationIds)
+                .IsEquivalentTo([Scenario.ClassificationMappings["travel"]]);
             await Assert.That(second.CustomClassificationIds.Count).IsEqualTo(0);
         }
     }

@@ -95,8 +95,10 @@ public class NetWorthServiceTests : InfrastructureTestBase
 
         // Assert
         await Assert.That(history.Breakdown.Select(static x => (x.Name, x.Kind, x.Amount))).IsEquivalentTo(
-            [("Car loan", NetWorthItemKind.Debt, -900m), ("Current", NetWorthItemKind.Account, 500m),
-                ("Card", NetWorthItemKind.Card, -40m)],
+            [
+                ("Car loan", NetWorthItemKind.Debt, -900m), ("Current", NetWorthItemKind.Account, 500m),
+                ("Card", NetWorthItemKind.Card, -40m)
+            ],
             TUnit.Assertions.Enums.CollectionOrdering.Matching);
     }
 

@@ -37,7 +37,8 @@ public sealed partial class FinTrackClient : IDisposable
         CancellationToken cancellationToken) =>
         _client.SendAsync(request, completionOption, cancellationToken);
 
-    public Task<HttpResponseMessage> RegisterAsync(string username, string password, CancellationToken cancellationToken) =>
+    public Task<HttpResponseMessage> RegisterAsync(string username, string password,
+        CancellationToken cancellationToken) =>
         SubmitFormAsync("/Account/Register", new Dictionary<string, string>
         {
             ["RegisterRequest.Username"] = username,
@@ -48,7 +49,8 @@ public sealed partial class FinTrackClient : IDisposable
             ["RegisterRequest.ConfirmPassword"] = password
         }, cancellationToken);
 
-    public Task<HttpResponseMessage> LoginAsync(string username, string password, CancellationToken cancellationToken) =>
+    public Task<HttpResponseMessage>
+        LoginAsync(string username, string password, CancellationToken cancellationToken) =>
         SubmitFormAsync("/Account/Login", new Dictionary<string, string>
         {
             ["LoginRequest.Username"] = username,
@@ -74,7 +76,8 @@ public sealed partial class FinTrackClient : IDisposable
         string page = await _client.GetStringAsync(path, cancellationToken);
 
         Dictionary<string, string> form = HiddenInput().Matches(page)
-            .ToDictionary(x => WebUtility.HtmlDecode(x.Groups["name"].Value), x => WebUtility.HtmlDecode(x.Groups["value"].Value));
+            .ToDictionary(x => WebUtility.HtmlDecode(x.Groups["name"].Value),
+                x => WebUtility.HtmlDecode(x.Groups["value"].Value));
 
         foreach ((string name, string value) in fields)
         {

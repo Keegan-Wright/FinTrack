@@ -8,9 +8,11 @@
     <div class="ft-rule-preview">
         <div class="ft-rule-preview__buttons">
             <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Preview"
-                       Disabled="@Busy" OnClick="@OnPreview">Preview</MudButton>
+                       Disabled="@Busy" OnClick="@OnPreview">Preview
+            </MudButton>
             <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.DoneAll"
-                       Disabled="@(Busy || !CanApply)" OnClick="@OnApply">Save and apply</MudButton>
+                       Disabled="@(Busy || !CanApply)" OnClick="@OnApply">Save and apply
+            </MudButton>
         </div>
         @if (!CanApply)
         {
@@ -54,6 +56,7 @@
                     </div>
                 }
             }
+
             <MudText Typo="Typo.caption" Class="mud-text-secondary">Preview again after changing the rule.</MudText>
         }
     </div>

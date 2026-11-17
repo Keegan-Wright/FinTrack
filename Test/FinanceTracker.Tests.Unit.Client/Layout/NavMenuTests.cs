@@ -31,8 +31,10 @@ public class NavMenuTests : ComponentTestBase
             await Assert.That(LinksUnder(cut, "Insights")).IsEquivalentTo(["NetWorth", "Reports"],
                 TUnit.Assertions.Enums.CollectionOrdering.Matching);
             await Assert.That(LinksUnder(cut, "Manage"))
-                .IsEquivalentTo(["ProviderSetup", NavMenu.NotificationsPath, NavMenu.NotificationSettingsPath,
-                        "HouseholdMembers", "Sharing", "Classifications", "Rules", "YourData"],
+                .IsEquivalentTo([
+                        "ProviderSetup", NavMenu.NotificationsPath, NavMenu.NotificationSettingsPath,
+                        "HouseholdMembers", "Sharing", "Classifications", "Rules", "YourData"
+                    ],
                     TUnit.Assertions.Enums.CollectionOrdering.Matching);
         }
     }
@@ -62,7 +64,8 @@ public class NavMenuTests : ComponentTestBase
         using (Assert.Multiple())
         {
             await Assert.That(LinksUnder(cut, "To review")).IsEquivalentTo([NavMenu.SubscriptionsReviewPath]);
-            await Assert.That(cut.Find($"a[href='{NavMenu.SubscriptionsReviewPath}'] .ft-nav__count").TextContent.Trim())
+            await Assert
+                .That(cut.Find($"a[href='{NavMenu.SubscriptionsReviewPath}'] .ft-nav__count").TextContent.Trim())
                 .IsEqualTo("4");
         }
     }

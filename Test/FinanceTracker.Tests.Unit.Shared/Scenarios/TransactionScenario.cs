@@ -25,7 +25,8 @@ public sealed class TransactionScenario : ScenarioBuilder
         PersistAsync(async context =>
         {
             BankAccount account = await LoadAccountAsync(context, accountName);
-            BankTransaction transaction = BankTransaction.Import(account, details ?? new TransactionDetailsFaker().Generate());
+            BankTransaction transaction =
+                BankTransaction.Import(account, details ?? new TransactionDetailsFaker().Generate());
 
             context.BankTransactions.Add(transaction);
             Scenario.TransactionMappings.Add(transactionName, transaction.Id);

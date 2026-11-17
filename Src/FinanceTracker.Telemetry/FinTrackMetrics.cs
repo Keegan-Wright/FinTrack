@@ -186,7 +186,8 @@ public sealed class FinTrackMetrics
     /// <summary>
     /// What one sync of a user's bills changed.
     /// </summary>
-    public void BillsSynced(int added, int ended, int pricesChanged, int transactionsMatched, int subscriptionsSuggested)
+    public void BillsSynced(int added, int ended, int pricesChanged, int transactionsMatched,
+        int subscriptionsSuggested)
     {
         _billChanges.Add(added, BillChangeTag(Added));
         _billChanges.Add(ended, BillChangeTag(Ended));

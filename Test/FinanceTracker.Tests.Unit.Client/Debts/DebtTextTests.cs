@@ -53,7 +53,8 @@ public class DebtTextTests
         // Assert
         using (Assert.Multiple())
         {
-            await Assert.That(terms).IsEqualTo("Car Finance Co · 6.9% APR · £250.00 a month · Balance from Loan account");
+            await Assert.That(terms)
+                .IsEqualTo("Car Finance Co · 6.9% APR · £250.00 a month · Balance from Loan account");
             await Assert.That(plain).IsEqualTo("No interest · £250.00 a month");
         }
     }
@@ -112,7 +113,8 @@ public class DebtTextTests
         // Assert
         using (Assert.Multiple())
         {
-            await Assert.That(stillNever).IsEqualTo("At £50.00 a month it's never paid off, that doesn't cover the interest");
+            await Assert.That(stillNever)
+                .IsEqualTo("At £50.00 a month it's never paid off, that doesn't cover the interest");
             await Assert.That(nowItIs).IsEqualTo("At £300.00 a month it's paid off by Mar 2030, when now it never is");
             await Assert.That(noSooner).IsEqualTo("At £250.00 a month it's paid off by Mar 2030, no sooner than now");
         }

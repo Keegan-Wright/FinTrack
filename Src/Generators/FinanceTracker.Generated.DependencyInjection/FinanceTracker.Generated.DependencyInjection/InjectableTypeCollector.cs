@@ -70,9 +70,11 @@ internal static class InjectableTypeCollector
             string? lifetime =
                 attributeName.StartsWith(SourceGeneratorConstants.ScopedAttributeName, StringComparison.Ordinal)
                     ? "Scoped"
-                    : attributeName.StartsWith(SourceGeneratorConstants.TransientAttributeName, StringComparison.Ordinal)
+                    : attributeName.StartsWith(SourceGeneratorConstants.TransientAttributeName,
+                        StringComparison.Ordinal)
                         ? "Transient"
-                        : attributeName.StartsWith(SourceGeneratorConstants.SingletonAttributeName, StringComparison.Ordinal)
+                        : attributeName.StartsWith(SourceGeneratorConstants.SingletonAttributeName,
+                            StringComparison.Ordinal)
                             ? "Singleton"
                             : null;
 

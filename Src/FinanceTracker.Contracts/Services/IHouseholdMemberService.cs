@@ -1,4 +1,3 @@
-
 namespace FinanceTracker.Contracts.Services;
 
 /// <summary>

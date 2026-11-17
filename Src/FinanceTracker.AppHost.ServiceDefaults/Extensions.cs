@@ -25,6 +25,7 @@ public static class Extensions
     /// ActivitySourceName and MeterName.
     /// </summary>
     private const string QuartzInstrumentationName = "Quartz";
+
     internal const string AlivenessEndpointPath = "/alive";
 
     /// <summary>
@@ -67,10 +68,7 @@ public static class Extensions
             builder.Services.ConfigureHttpClientDefaults(http =>
             {
                 // Turn on resilience by default
-                http.AddStandardResilienceHandler(o =>
-                {
-                    o.Retry.UseJitter = true;
-                });
+                http.AddStandardResilienceHandler(o => { o.Retry.UseJitter = true; });
 
                 // Turn on service discovery by default
                 http.AddServiceDiscovery();

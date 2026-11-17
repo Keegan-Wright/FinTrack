@@ -25,12 +25,12 @@ public static class SavingsGoalEndpoints
                 service.GetSavingsAccountsAsync(cancellationToken));
 
             goals.MapGet("{id:guid}/history", async Task<Ok<List<BalancePoint>>> (Guid id,
-                        ISavingsGoalsService service, CancellationToken cancellationToken) =>
-                    TypedResults.Ok(await service.GetSavingsGoalHistoryAsync(id, cancellationToken)));
+                    ISavingsGoalsService service, CancellationToken cancellationToken) =>
+                TypedResults.Ok(await service.GetSavingsGoalHistoryAsync(id, cancellationToken)));
 
             goals.MapGet("{id:guid}", async Task<Ok<SavingsGoal>> (Guid id, ISavingsGoalsService service,
-                        CancellationToken cancellationToken) =>
-                    TypedResults.Ok(await service.GetSavingsGoalAsync(id, cancellationToken)));
+                    CancellationToken cancellationToken) =>
+                TypedResults.Ok(await service.GetSavingsGoalAsync(id, cancellationToken)));
 
             goals.MapPost(string.Empty, async Task<Ok<SavingsGoal>> (SaveSavingsGoal request,
                         ISavingsGoalsService service, CancellationToken cancellationToken) =>

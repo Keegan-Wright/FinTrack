@@ -79,7 +79,8 @@ public class ColumnEncryptionService : IColumnEncryptionService
             aes.Encrypt(nonce, plainBytes, cipherBytes, tag);
         }
 
-        return string.Create(CultureInfo.InvariantCulture, $"{CurrentKeyId}{KeyIdSeparator}{Convert.ToBase64String(payload)}");
+        return string.Create(CultureInfo.InvariantCulture,
+            $"{CurrentKeyId}{KeyIdSeparator}{Convert.ToBase64String(payload)}");
     }
 
     public T? Decrypt<T>(string cipherText)
@@ -93,7 +94,8 @@ public class ColumnEncryptionService : IColumnEncryptionService
 
         int separator = cipherText.IndexOf(KeyIdSeparator, StringComparison.Ordinal);
         if (separator <= 0 ||
-            !int.TryParse(cipherText.AsSpan(0, separator), NumberStyles.None, CultureInfo.InvariantCulture, out int keyId))
+            !int.TryParse(cipherText.AsSpan(0, separator), NumberStyles.None, CultureInfo.InvariantCulture,
+                out int keyId))
         {
             throw new CryptographicException("The value isn't in the encrypted format.");
         }

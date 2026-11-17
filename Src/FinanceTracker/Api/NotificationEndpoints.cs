@@ -59,9 +59,9 @@ public static class NotificationEndpoints
                 TypedResults.Ok(await service.ChangeSettingsAsync(request, cancellationToken)));
 
             notifications.MapPut("settings/alerts", async Task<Ok<NotificationSettings>> (
-                    ChangeAlertSettings request, INotificationsService service,
-                    CancellationToken cancellationToken) =>
-                TypedResults.Ok(await service.ChangeAlertsAsync(request, cancellationToken)))
+                        ChangeAlertSettings request, INotificationsService service,
+                        CancellationToken cancellationToken) =>
+                    TypedResults.Ok(await service.ChangeAlertsAsync(request, cancellationToken)))
                 .Validated<ChangeAlertSettings>();
 
             notifications.MapPost("settings/test-email", async Task<Results<Ok<NotificationSettings>, Conflict>> (
@@ -77,7 +77,7 @@ public static class NotificationEndpoints
 
             // Setting answers 200 with the refusal when this FinTrack won't post there, see WebhookChange
             notifications.MapPut("settings/webhook", async Task<Ok<WebhookChange>> (SetWebhook request,
-                    INotificationsService service, CancellationToken cancellationToken) =>
+                        INotificationsService service, CancellationToken cancellationToken) =>
                     TypedResults.Ok(await service.SetWebhookAsync(request, cancellationToken)))
                 .Validated<SetWebhook>();
 

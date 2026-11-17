@@ -253,16 +253,28 @@ public class SharedRulesRunTests : InfrastructureTestBase
     private SaveRule TagShops(string tag) => new()
     {
         Name = $"Shops are {tag}",
-        Conditions = [new RuleCondition { Field = RuleField.Description, Operator = RuleOperator.Contains,
-            Value = "SUPERMARKET" }],
+        Conditions =
+        [
+            new RuleCondition
+            {
+                Field = RuleField.Description, Operator = RuleOperator.Contains,
+                Value = "SUPERMARKET"
+            }
+        ],
         Actions = [new RuleAction { Type = RuleActionType.AddTag, ClassificationId = Tag(tag) }]
     };
 
     private static SaveRule Answer(RuleActionType answer) => new()
     {
         Name = $"Shops {answer}",
-        Conditions = [new RuleCondition { Field = RuleField.Description, Operator = RuleOperator.Contains,
-            Value = "SUPERMARKET" }],
+        Conditions =
+        [
+            new RuleCondition
+            {
+                Field = RuleField.Description, Operator = RuleOperator.Contains,
+                Value = "SUPERMARKET"
+            }
+        ],
         Actions = [new RuleAction { Type = answer }]
     };
 

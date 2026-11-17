@@ -3,13 +3,16 @@
 @* Razor drops the whitespace between an expression and the text after it, so the space after the reason is written
    out *@
 <p style="@EmailStyles.Quiet">
-    @($"{Reason} ")@if (IsNotification && Settings is null)
+    @($"{Reason} ")
+    @if (IsNotification && Settings is null)
     {
         <text>You can change which emails you get in FinTrack, under Notifications.</text>
     }
     else if (IsNotification)
     {
-        <text>You can </text><a href="@Settings" style="@EmailStyles.Link">change which emails you get</a><text>.</text>
+        <text>You can </text>
+        <a href="@Settings" style="@EmailStyles.Link">change which emails you get</a>
+        <text>.</text>
     }
 </p>
 @if (PublicUrl is not null)

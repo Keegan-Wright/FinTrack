@@ -235,8 +235,14 @@ public class SaveRuleValidatorTests : UnitTestBase
     private static SaveRule Valid() => new()
     {
         Name = "Groceries",
-        Conditions = [new RuleCondition { Field = RuleField.Description, Operator = RuleOperator.Contains,
-            Value = "GROCER" }],
+        Conditions =
+        [
+            new RuleCondition
+            {
+                Field = RuleField.Description, Operator = RuleOperator.Contains,
+                Value = "GROCER"
+            }
+        ],
         Actions = [new RuleAction { Type = RuleActionType.AddTag, ClassificationId = TagId }]
     };
 }

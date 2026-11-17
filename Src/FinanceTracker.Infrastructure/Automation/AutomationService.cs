@@ -162,7 +162,8 @@ public class AutomationService : ServiceBase<AutomationService>, IAutomationServ
 
     public async Task<DateTime?> GetLastSyncTimeAsync(CancellationToken cancellationToken)
     {
-        await using FinanceTrackerContext context = await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+        await using FinanceTrackerContext context =
+            await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
         DateTime? lastSync = await context.SyncLog
             .Where(x => context.BankAccounts.Any(a => a.Id == x.AccountId && a.UserId == UserId))

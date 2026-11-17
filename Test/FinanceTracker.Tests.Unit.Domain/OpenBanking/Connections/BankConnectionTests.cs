@@ -14,7 +14,8 @@ public class BankConnectionTests
         byte[] logo = [1, 2, 3];
         DateTime consentGrantedAt = new(2026, 3, 1, 9, 0, 0, DateTimeKind.Utc);
 
-        var connection = new BankConnection(userId, "ob-bank", "Bank", "access-code", ["accounts", "balance"], logo, consentGrantedAt, consentGrantedAt.AddDays(90));
+        var connection = new BankConnection(userId, "ob-bank", "Bank", "access-code", ["accounts", "balance"], logo,
+            consentGrantedAt, consentGrantedAt.AddDays(90));
 
         using (Assert.Multiple())
         {
@@ -33,7 +34,8 @@ public class BankConnectionTests
     [Test]
     public async Task BankConnection_DuplicateScopes_AreStoredOnce()
     {
-        var connection = new BankConnection(Guid.NewGuid(), "ob-bank", "Bank", "code", ["accounts", "accounts", "info"], [], DateTime.UtcNow, DateTime.UtcNow.AddDays(90));
+        var connection = new BankConnection(Guid.NewGuid(), "ob-bank", "Bank", "code", ["accounts", "accounts", "info"],
+            [], DateTime.UtcNow, DateTime.UtcNow.AddDays(90));
 
         await Assert.That(connection.Scopes).IsEquivalentTo(["accounts", "info"]);
     }
@@ -47,28 +49,32 @@ public class BankConnectionTests
         string accessCode)
     {
         Assert.Throws<ArgumentException>(() =>
-            _ = new BankConnection(Guid.NewGuid(), externalProviderId, name, accessCode, [], [], DateTime.UtcNow, DateTime.UtcNow.AddDays(90)));
+            _ = new BankConnection(Guid.NewGuid(), externalProviderId, name, accessCode, [], [], DateTime.UtcNow,
+                DateTime.UtcNow.AddDays(90)));
     }
 
     [Test]
     public void BankConnection_NullLogo_Throws_ArgumentNullException()
     {
         Assert.Throws<ArgumentNullException>(() =>
-            _ = new BankConnection(Guid.NewGuid(), "ob-bank", "Bank", "code", [], null!, DateTime.UtcNow, DateTime.UtcNow.AddDays(90)));
+            _ = new BankConnection(Guid.NewGuid(), "ob-bank", "Bank", "code", [], null!, DateTime.UtcNow,
+                DateTime.UtcNow.AddDays(90)));
     }
 
     [Test]
     public void BankConnection_NullScopes_Throws_ArgumentNullException()
     {
         Assert.Throws<ArgumentNullException>(() =>
-            _ = new BankConnection(Guid.NewGuid(), "ob-bank", "Bank", "code", null!, [], DateTime.UtcNow, DateTime.UtcNow.AddDays(90)));
+            _ = new BankConnection(Guid.NewGuid(), "ob-bank", "Bank", "code", null!, [], DateTime.UtcNow,
+                DateTime.UtcNow.AddDays(90)));
     }
 
     [Test]
     public void BankConnection_EmptyUserId_Throws_ArgumentOutOfRangeException()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() =>
-            _ = new BankConnection(Guid.Empty, "ob-bank", "Bank", "code", [], [], DateTime.UtcNow, DateTime.UtcNow.AddDays(90)));
+            _ = new BankConnection(Guid.Empty, "ob-bank", "Bank", "code", [], [], DateTime.UtcNow,
+                DateTime.UtcNow.AddDays(90)));
     }
 
     [Test]
@@ -268,7 +274,8 @@ public class BankConnectionTests
     {
         BankConnection connection = BuildConnection();
 
-        await Assert.That(connection.IsWithinEnhancedAuthenticationWindow(IssuedAt.AddMinutes(minutesLater))).IsEqualTo(within);
+        await Assert.That(connection.IsWithinEnhancedAuthenticationWindow(IssuedAt.AddMinutes(minutesLater)))
+            .IsEqualTo(within);
     }
 
     [Test]

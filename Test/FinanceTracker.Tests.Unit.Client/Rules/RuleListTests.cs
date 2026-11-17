@@ -161,8 +161,14 @@ public class RuleListTests : ComponentTestBase
         Id = Guid.NewGuid(),
         Name = name,
         IsEnabled = enabled,
-        Conditions = [new RuleCondition { Field = RuleField.Description, Operator = RuleOperator.Contains,
-            Value = name.ToUpperInvariant() }],
+        Conditions =
+        [
+            new RuleCondition
+            {
+                Field = RuleField.Description, Operator = RuleOperator.Contains,
+                Value = name.ToUpperInvariant()
+            }
+        ],
         Actions = actions ?? [new RuleAction { Type = RuleActionType.MarkNotATransfer }]
     };
 }

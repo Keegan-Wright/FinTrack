@@ -28,7 +28,8 @@
                 @if (HasWebhook)
                 {
                     <MudButton Variant="Variant.Text" Color="Color.Error" Disabled="@_busy"
-                               OnClick="@RemoveAsync">Remove</MudButton>
+                               OnClick="@RemoveAsync">Remove
+                    </MudButton>
                 }
             </div>
         </MudForm>
@@ -44,7 +45,8 @@
                               AdornmentAriaLabel="@(_showSecret ? "Hide the secret" : "Show the secret")"
                               OnAdornmentClick="@(() => _showSecret = !_showSecret)" Class="ft-webhook__url"/>
                 <MudButton Variant="Variant.Text" Color="Color.Primary" Disabled="@_busy"
-                           OnClick="@ReplaceSecretAsync">New secret</MudButton>
+                           OnClick="@ReplaceSecretAsync">New secret
+                </MudButton>
             </div>
             <div class="ft-webhook__check">
                 <MudText Typo="Typo.subtitle2" HtmlTag="h3">Checking a post came from FinTrack</MudText>
@@ -60,7 +62,8 @@
             </div>
             <div class="ft-notification-test">
                 <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Send"
-                           Disabled="@_busy" OnClick="@SendTestAsync">Send a test post</MudButton>
+                           Disabled="@_busy" OnClick="@SendTestAsync">Send a test post
+                </MudButton>
                 @if (Settings.LastWebhook is { } last)
                 {
                     <DeliveryStatusText Status="@last" What="post"/>

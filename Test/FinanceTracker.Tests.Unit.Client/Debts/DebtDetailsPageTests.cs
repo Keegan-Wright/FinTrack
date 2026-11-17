@@ -17,6 +17,7 @@ public class DebtDetailsPageTests : ComponentTestBase
 
     private readonly IDebtsService _debtsService = Substitute.For<IDebtsService>();
     private readonly ApplicationState _applicationState = new();
+
     private readonly Debt _debt = DebtTextTests.Debt(lender: "Car Finance Co", rate: 6.9m,
         forecast: DebtTextTests.Paying(4, new DateOnly(2027, 3, 2), interest: 20m));
 

@@ -37,23 +37,23 @@ public static class TransactionEndpoints
 
             // 409 with the reason when the transaction can't be split that way, e.g. it's pending
             transactions.MapPut("{id:guid}/splits", async Task<Results<Ok<Transaction>, ProblemHttpResult>> (Guid id,
-                        SplitTransaction request, ITransactionsService service,
-                        CancellationToken cancellationToken) =>
+                    SplitTransaction request, ITransactionsService service,
+                    CancellationToken cancellationToken) =>
+                {
+                    try
                     {
-                        try
-                        {
-                            return TypedResults.Ok(await service.SplitAsync(id, request, cancellationToken));
-                        }
-                        catch (CannotSplitTransactionException ex)
-                        {
-                            return TypedResults.Problem(ex.Message, statusCode: StatusCodes.Status409Conflict);
-                        }
-                    })
+                        return TypedResults.Ok(await service.SplitAsync(id, request, cancellationToken));
+                    }
+                    catch (CannotSplitTransactionException ex)
+                    {
+                        return TypedResults.Problem(ex.Message, statusCode: StatusCodes.Status409Conflict);
+                    }
+                })
                 .Validated<SplitTransaction>();
 
             transactions.MapDelete("{id:guid}/splits", async Task<Ok<Transaction>> (Guid id,
-                        ITransactionsService service, CancellationToken cancellationToken) =>
-                    TypedResults.Ok(await service.UnsplitAsync(id, cancellationToken)));
+                    ITransactionsService service, CancellationToken cancellationToken) =>
+                TypedResults.Ok(await service.UnsplitAsync(id, cancellationToken)));
 
             RouteGroupBuilder filters = transactions.MapGroup("filters");
 

@@ -6,7 +6,6 @@ using Quartz;
 
 namespace FinanceTracker.BackgroundJobs;
 
-
 /// <summary>
 /// On demand sync of a single user's connections, queued when they ask for a resync.
 /// </summary>

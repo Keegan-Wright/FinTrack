@@ -79,6 +79,7 @@ public class SharingApiTests : IntegrationTestBase
         // Act
         LinkShares? alexSees = await alexApi.GetSharesAsync(sent.Link.Id, CancellationToken);
         LinkShares? strangerSees = await strangerApi.GetSharesAsync(sent.Link.Id, CancellationToken);
+
         Task StrangerChanges() => strangerApi.ChangeAccountSharesAsync(sent.Link.Id,
             new ChangeAccountShares { Accounts = [] }, CancellationToken);
 

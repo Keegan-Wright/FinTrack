@@ -286,7 +286,8 @@ public class TransferMatchingServiceTests : InfrastructureTestBase
         await subject.MatchChangesAsync(CancellationToken);
 
         // Assert
-        BankTransaction recent = (await LoadTransactionsAsync()).Single(x => x.Id == Scenario.TransactionMappings["recent"]);
+        BankTransaction recent =
+            (await LoadTransactionsAsync()).Single(x => x.Id == Scenario.TransactionMappings["recent"]);
         await Assert.That(recent.Transfer!.PartnerTransactionId).IsEqualTo(Scenario.TransactionMappings["old"]);
     }
 
@@ -393,7 +394,8 @@ public class TransferMatchingServiceTests : InfrastructureTestBase
 
         confirmed.DecideTransfer(TransferInfo.Matched(TransferReason.MirrorPair, other.Id, other.AccountId, Monday));
         confirmed.MarkAsTransfer(Monday);
-        other.DecideTransfer(TransferInfo.Matched(TransferReason.MirrorPair, confirmed.Id, confirmed.AccountId, Monday));
+        other.DecideTransfer(TransferInfo.Matched(TransferReason.MirrorPair, confirmed.Id, confirmed.AccountId,
+            Monday));
         await context.SaveChangesAsync(CancellationToken);
     }
 

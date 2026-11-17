@@ -82,7 +82,8 @@ public class NotificationApiTests : IntegrationTestBase
         {
             InApp = Enum.GetValues<NotificationKind>(), Emailed = [NotificationKind.SyncFailed], Webhooked = []
         }, CancellationToken);
-        NotificationSettings after = await ApiFor(user).Get<INotificationsService>().GetSettingsAsync(CancellationToken);
+        NotificationSettings after =
+            await ApiFor(user).Get<INotificationsService>().GetSettingsAsync(CancellationToken);
 
         // Assert, the AppHost's mail catcher means email is available
         using (Assert.Multiple())
@@ -157,7 +158,8 @@ public class NotificationApiTests : IntegrationTestBase
         {
             BudgetWarningPercent = 90, BillReminderDays = 7, LargeTransactionOver = 250m
         }, CancellationToken);
-        NotificationSettings after = await ApiFor(user).Get<INotificationsService>().GetSettingsAsync(CancellationToken);
+        NotificationSettings after =
+            await ApiFor(user).Get<INotificationsService>().GetSettingsAsync(CancellationToken);
 
         // Assert
         using (Assert.Multiple())

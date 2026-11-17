@@ -121,7 +121,8 @@ public class ReportDocumentTests
     private static ReportRow Month(int year, int number, bool fromFirstMonth, decimal scale)
     {
         DateOnly named = new(year, number, 1);
-        ReportRow empty = new() { Title = named.ToString("MMMM yyyy", British), Label = named.ToString("MMM", British) };
+        ReportRow empty = new()
+            { Title = named.ToString("MMMM yyyy", British), Label = named.ToString("MMM", British) };
         if (!fromFirstMonth || named > new DateOnly(2026, 11, 1))
         {
             return empty;

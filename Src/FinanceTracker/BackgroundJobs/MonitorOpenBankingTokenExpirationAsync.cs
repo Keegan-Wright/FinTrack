@@ -96,7 +96,8 @@ public class MonitorOpenBankingTokenExpirationAsync : IJob
         foreach (Guid owner in owners)
         {
             // A span for each owner, so a failure shows whose it was
-            using Activity? ownerActivity = FinTrackActivitySources.App.StartUserActivity("Send consent notices", owner);
+            using Activity? ownerActivity =
+                FinTrackActivitySources.App.StartUserActivity("Send consent notices", owner);
             ownerActivity?.SetTag(TelemetryTags.NotificationsRaised, 0);
             using IDisposable? logScope = _logger.BeginUserScope(owner);
             try

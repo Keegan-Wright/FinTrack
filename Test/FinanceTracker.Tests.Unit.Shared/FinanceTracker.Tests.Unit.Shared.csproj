@@ -1,28 +1,28 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-    <PropertyGroup>
-        <TargetFramework>net10.0</TargetFramework>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
-        <IsTestProject>false</IsTestProject>
-        <IsTestingPlatformApplication>false</IsTestingPlatformApplication>
-        <OutputType>Library</OutputType>
-    </PropertyGroup>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsTestProject>false</IsTestProject>
+    <IsTestingPlatformApplication>false</IsTestingPlatformApplication>
+    <OutputType>Library</OutputType>
+  </PropertyGroup>
 
-    <ItemGroup>
-      <PackageReference Include="TUnit" />
-      <PackageReference Include="TUnit.AspNetCore" />
-      <PackageReference Include="TUnit.Core" />
+  <ItemGroup>
+    <PackageReference Include="TUnit"/>
+    <PackageReference Include="TUnit.AspNetCore"/>
+    <PackageReference Include="TUnit.Core"/>
 
-      <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite"/>
-      <PackageReference Include="Microsoft.Data.Sqlite"/>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite"/>
+    <PackageReference Include="Microsoft.Data.Sqlite"/>
 
-      <PackageReference Include="Bogus"/>
-      <PackageReference Include="Microsoft.Extensions.Diagnostics.Testing"/>
-    </ItemGroup>
+    <PackageReference Include="Bogus"/>
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.Testing"/>
+  </ItemGroup>
 
-    <ItemGroup>
-      <ProjectReference Include="..\..\Src\FinanceTracker.Infrastructure\FinanceTracker.Infrastructure.csproj" />
-    </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Src\FinanceTracker.Infrastructure\FinanceTracker.Infrastructure.csproj"/>
+  </ItemGroup>
 
 </Project>

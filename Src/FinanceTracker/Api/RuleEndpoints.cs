@@ -21,8 +21,8 @@ public static class RuleEndpoints
                 service.GetRulesAsync(cancellationToken));
 
             rules.MapGet("{id:guid}", async Task<Ok<Rule>> (Guid id, IRulesService service,
-                        CancellationToken cancellationToken) =>
-                    TypedResults.Ok(await service.GetRuleAsync(id, cancellationToken)));
+                    CancellationToken cancellationToken) =>
+                TypedResults.Ok(await service.GetRuleAsync(id, cancellationToken)));
 
             rules.MapPost(string.Empty, async Task<Ok<Rule>> (SaveRule request, IRulesService service,
                         CancellationToken cancellationToken) =>
@@ -53,19 +53,19 @@ public static class RuleEndpoints
                 .Validated<SaveRule>();
 
             rules.MapPost("{id:guid}/apply", async Task<Ok<int>> (Guid id, IRulesService service,
-                        CancellationToken cancellationToken) =>
-                    TypedResults.Ok(await service.ApplyRuleToExistingAsync(id, cancellationToken)));
+                    CancellationToken cancellationToken) =>
+                TypedResults.Ok(await service.ApplyRuleToExistingAsync(id, cancellationToken)));
 
             rules.MapGet("draft/{transactionId:guid}", async Task<Ok<SaveRule>> (Guid transactionId,
-                        IRulesService service, CancellationToken cancellationToken) =>
-                    TypedResults.Ok(await service.GetDraftFromTransactionAsync(transactionId, cancellationToken)));
+                    IRulesService service, CancellationToken cancellationToken) =>
+                TypedResults.Ok(await service.GetDraftFromTransactionAsync(transactionId, cancellationToken)));
 
             rules.MapDelete("{id:guid}", async Task<NoContent> (Guid id, IRulesService service,
-                    CancellationToken cancellationToken) =>
-                {
-                    await service.DeleteRuleAsync(id, cancellationToken);
-                    return TypedResults.NoContent();
-                });
+                CancellationToken cancellationToken) =>
+            {
+                await service.DeleteRuleAsync(id, cancellationToken);
+                return TypedResults.NoContent();
+            });
 
             return api;
         }

@@ -17,7 +17,8 @@ public class ClientErrorReporterTests : ComponentTestBase
     {
         Services.AddSingleton(_clientErrorsService);
         Services.AddSingleton<ClientErrorReporter>();
-        _clientErrorsService.ReportAsync(Arg.Do<ClientError>(_sent.Add), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        _clientErrorsService.ReportAsync(Arg.Do<ClientError>(_sent.Add), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
         Services.GetRequiredService<NavigationManager>().NavigateTo("Budgets?month=2026-11");
     }
 

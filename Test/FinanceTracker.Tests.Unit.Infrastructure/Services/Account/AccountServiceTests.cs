@@ -28,7 +28,10 @@ public class AccountServiceTests : InfrastructureTestBase
             .Do(s => s.TransactionScenario.WithTransaction("latest", "main",
                 new TransactionDetailsFaker().Generate() with { Description = "Latest", OccurredAt = now.AddDays(-1) }))
             .Do(s => s.TransactionScenario.WithTransaction("middle", "main",
-                new TransactionDetailsFaker().Generate() with { Description = "Middle", OccurredAt = now.AddDays(-2) }));
+                new TransactionDetailsFaker().Generate() with
+                {
+                    Description = "Middle", OccurredAt = now.AddDays(-2)
+                }));
 
         AccountService subject = BuildSubject(Username);
 
@@ -49,7 +52,8 @@ public class AccountServiceTests : InfrastructureTestBase
         byte[] logo = [9, 8, 7];
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
             .Do(s => s.BankConnectionScenario.WithConnection("bank", Username, userId =>
-                new BankConnection(userId, "ob-bank", "Bank", "code", ["accounts"], logo, DateTime.UtcNow, DateTime.UtcNow.AddDays(90))))
+                new BankConnection(userId, "ob-bank", "Bank", "code", ["accounts"], logo, DateTime.UtcNow,
+                    DateTime.UtcNow.AddDays(90))))
             .Do(s => s.BankAccountScenario.WithAccount("main", "bank", (userId, connectionId) =>
                 new BankAccount(userId, connectionId, "acc-1", "TRANSACTION", "Main Account", "GBP")))
             .Do(s => s.BankAccountScenario.WithBalance("main", new AccountBalance(90m, 100m, DateTime.UtcNow)));
@@ -150,8 +154,10 @@ public class AccountServiceTests : InfrastructureTestBase
         // Assert
         using (Assert.Multiple())
         {
-            await Assert.That(account.Transactions!.Single(x => x.Description == "Pending").Status).IsEqualTo("Pending");
-            await Assert.That(account.Transactions!.Single(x => x.Description == "Booked").Status).IsEqualTo("Complete");
+            await Assert.That(account.Transactions!.Single(x => x.Description == "Pending").Status)
+                .IsEqualTo("Pending");
+            await Assert.That(account.Transactions!.Single(x => x.Description == "Booked").Status)
+                .IsEqualTo("Complete");
         }
     }
 

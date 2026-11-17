@@ -29,13 +29,16 @@
                         </MudAvatar>
                         <div class="ft-list__main">
                             <MudText Typo="Typo.body2" Class="text-truncate">@link.Name</MudText>
-                            <MudText Typo="Typo.caption" Class="mud-text-secondary text-truncate">@StateText(link)</MudText>
+                            <MudText Typo="Typo.caption"
+                                     Class="mud-text-secondary text-truncate">@StateText(link)</MudText>
                         </div>
                         <div class="ft-sharing__actions">
                             <MudButton Variant="Variant.Text" Size="Size.Small"
-                                       OnClick="@(() => DeclineAsync(link))">Decline</MudButton>
+                                       OnClick="@(() => DeclineAsync(link))">Decline
+                            </MudButton>
                             <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
-                                       OnClick="@(() => AcceptAsync(link))">Accept</MudButton>
+                                       OnClick="@(() => AcceptAsync(link))">Accept
+                            </MudButton>
                         </div>
                     </div>
                 }
@@ -51,7 +54,8 @@
                           Error="@(_inviteError is not null)" ErrorText="@_inviteError"
                           OnKeyUp="@OnInviteKeyUp"/>
             <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.PersonAdd"
-                       Disabled="@string.IsNullOrWhiteSpace(_who)" OnClick="@InviteAsync">Invite</MudButton>
+                       Disabled="@string.IsNullOrWhiteSpace(_who)" OnClick="@InviteAsync">Invite
+            </MudButton>
         </div>
     </Section>
 
@@ -73,7 +77,8 @@
                         </MudAvatar>
                         <div class="ft-list__main">
                             <MudText Typo="Typo.body2" Class="text-truncate">@link.Name</MudText>
-                            <MudText Typo="Typo.caption" Class="mud-text-secondary text-truncate">@StateText(link)</MudText>
+                            <MudText Typo="Typo.caption"
+                                     Class="mud-text-secondary text-truncate">@StateText(link)</MudText>
                         </div>
                         <div class="ft-sharing__actions">
                             @* What's shared, joint accounts and ending the link are on their own page *@
@@ -81,7 +86,8 @@
                             {
                                 <MudButton Href="@($"Sharing/{link.Id}")" Variant="Variant.Outlined"
                                            Color="Color.Primary" Size="Size.Small"
-                                           StartIcon="@Icons.Material.Outlined.Tune">Open</MudButton>
+                                           StartIcon="@Icons.Material.Outlined.Tune">Open
+                                </MudButton>
                             }
                             else
                             {

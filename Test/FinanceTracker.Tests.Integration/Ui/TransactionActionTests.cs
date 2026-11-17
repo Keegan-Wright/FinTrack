@@ -68,7 +68,8 @@ public partial class TransactionActionTests : UiTestBase
         // Act, split
         await Dialog(page).GetByRole(AriaRole.Button, new LocatorGetByRoleOptions { Name = "Split", Exact = true })
             .ClickAsync();
-        ILocator split = page.Locator(".mud-dialog").Filter(new LocatorFilterOptions { Has = page.Locator(".ft-split__remaining") });
+        ILocator split = page.Locator(".mud-dialog").Filter(new LocatorFilterOptions
+            { Has = page.Locator(".ft-split__remaining") });
         ILocator amounts = split.GetByLabel("Amount", new LocatorGetByLabelOptions { Exact = true });
         await amounts.Nth(0).FillAsync("30");
         await amounts.Nth(1).FillAsync("12.18");
@@ -162,7 +163,8 @@ public partial class TransactionActionTests : UiTestBase
         IPage page = await OpenAsync(ScreenSize.Desktop, user);
         await GoToAsync(page, "/Transactions");
         await WaitUntilLoadedAsync(page);
-        ILocator activator = page.GetByRole(AriaRole.Row).Filter(new LocatorFilterOptions { HasText = SeededUser.ToSavings })
+        ILocator activator = page.GetByRole(AriaRole.Row)
+            .Filter(new LocatorFilterOptions { HasText = SeededUser.ToSavings })
             .GetByRole(AriaRole.Button, new LocatorGetByRoleOptions { Name = "Transfer", Exact = true });
 
         // Act

@@ -82,16 +82,21 @@
                                 {
                                     <div class="ft-list__row">
                                         <div class="ft-list__main">
-                                            <MudText Typo="Typo.body2" Class="text-truncate mud-text-secondary">@subject.Title</MudText>
-                                            <MudText Typo="Typo.caption" Class="mud-text-secondary">Nothing matching these filters</MudText>
+                                            <MudText Typo="Typo.body2"
+                                                     Class="text-truncate mud-text-secondary">@subject.Title</MudText>
+                                            <MudText Typo="Typo.caption" Class="mud-text-secondary">Nothing matching
+                                                these filters
+                                            </MudText>
                                         </div>
                                     </div>
                                     continue;
                                 }
-                                <div class="@($"ft-list__row ft-list__row--link {(selected ? "ft-list__row--selected" : string.Empty)}")"
-                                     role="button" tabindex="0" aria-pressed="@(selected ? "true" : "false")"
-                                     @onclick="@(() => _selected = subject)"
-                                     @onkeyup="@(e => OnSubjectKeyUp(e, subject))">
+
+                                <div
+                                    class="@($"ft-list__row ft-list__row--link {(selected ? "ft-list__row--selected" : string.Empty)}")"
+                                    role="button" tabindex="0" aria-pressed="@(selected ? "true" : "false")"
+                                    @onclick="@(() => _selected = subject)"
+                                    @onkeyup="@(e => OnSubjectKeyUp(e, subject))">
                                     <div class="ft-list__main">
                                         <MudText Typo="Typo.body2" Class="text-truncate">@subject.Title</MudText>
                                         <MudText Typo="Typo.caption" Class="mud-text-secondary">
@@ -101,7 +106,8 @@
                                     <div class="ft-list__end">
                                         <MoneyText Value="@subject.Net" Signed="true" Typo="Typo.body1"/>
                                         <MudText Typo="Typo.caption" Class="mud-text-secondary ft-money">
-                                            @CurrencyFormatter.Format(subject.TotalIn) in · @CurrencyFormatter.Format(Math.Abs(subject.TotalOut)) out
+                                            @CurrencyFormatter.Format(subject.TotalIn) in
+                                            · @CurrencyFormatter.Format(Math.Abs(subject.TotalOut)) out
                                         </MudText>
                                     </div>
                                 </div>

@@ -117,5 +117,4 @@ public static class BalanceHistory
 
         return new AccountBalance(current + room, current, endOfDay, after.CreditLimit);
     }
-
 }

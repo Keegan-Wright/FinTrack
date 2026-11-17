@@ -135,7 +135,7 @@ public sealed class HubSyncNotifications : ISyncNotifications, IDisposable
     {
         try
         {
-            for (long failedTries = 1; ; failedTries++)
+            for (long failedTries = 1;; failedTries++)
             {
                 await Task.Delay(KeepTryingRetryPolicy.WaitBefore(failedTries), _timeProvider, cancellationToken);
                 if (await TryToStartAsync(cancellationToken))

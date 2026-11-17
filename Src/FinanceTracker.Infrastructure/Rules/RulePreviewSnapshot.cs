@@ -11,8 +11,12 @@ namespace FinanceTracker.Infrastructure.Rules;
 /// <param name="Transfer">Its transfer answer, null when nothing has decided.</param>
 /// <param name="BillId">The bill it pays, null when it pays none.</param>
 /// <param name="DebtId">The debt it pays off, null when it pays none.</param>
-internal sealed record RulePreviewSnapshot(HashSet<Guid> Tags, HashSet<string> Visible, TransferDecision? Transfer,
-    Guid? BillId, Guid? DebtId)
+internal sealed record RulePreviewSnapshot(
+    HashSet<Guid> Tags,
+    HashSet<string> Visible,
+    TransferDecision? Transfer,
+    Guid? BillId,
+    Guid? DebtId)
 {
     public static RulePreviewSnapshot Of(BankTransaction transaction) => new(
         transaction.CustomClassificationIds.ToHashSet(),

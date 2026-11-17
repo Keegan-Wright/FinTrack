@@ -23,8 +23,10 @@ public class AccountEmailsTests
             await Assert.That(email.Text).Contains($"Choose a new password: {Link}");
             await Assert.That(email.Html).Contains("Reset your password");
             await Assert.That(email.Html).Contains("Choose a new password");
-            await Assert.That(email.Html).Contains("href=\"https://fintrack.example.test/money/Account/ResetPassword?code=abc&amp;x=1\"");
-            await Assert.That(email.Html).Contains(">https://fintrack.example.test/money/Account/ResetPassword?code=abc&amp;x=1</a>");
+            await Assert.That(email.Html)
+                .Contains("href=\"https://fintrack.example.test/money/Account/ResetPassword?code=abc&amp;x=1\"");
+            await Assert.That(email.Html)
+                .Contains(">https://fintrack.example.test/money/Account/ResetPassword?code=abc&amp;x=1</a>");
             await Assert.That(email.Html).Contains("Sent by FinTrack at fintrack.example.test");
             await Assert.That(email.Images).Count().IsEqualTo(1);
         }

@@ -35,7 +35,8 @@ public class YourAccountsTests : ComponentTestBase
         // Arrange
         using CultureScope culture = new();
         _accountService.GetAccountsAndMostRecentTransactionsAsync(5, Arg.Any<CancellationToken>())
-            .Returns(_ => new[] { Account(100m) }.ToAsyncEnumerable(), _ => new[] { Account(250m) }.ToAsyncEnumerable());
+            .Returns(_ => new[] { Account(100m) }.ToAsyncEnumerable(),
+                _ => new[] { Account(250m) }.ToAsyncEnumerable());
         IRenderedComponent<YourAccounts> cut = Render<YourAccounts>(p => p.AddCascadingValue(_applicationState));
         cut.WaitForState(() => cut.Markup.Contains("£100.00"));
 

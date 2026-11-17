@@ -48,5 +48,6 @@ public sealed record TransferInfo(
     /// <summary>
     /// Whether this says the same as <paramref name="other"/>, whenever each was decided.
     /// </summary>
-    public bool IsSameAs(TransferInfo? other) => other is not null && this with { DecidedAt = other.DecidedAt } == other;
+    public bool IsSameAs(TransferInfo? other) =>
+        other is not null && this with { DecidedAt = other.DecidedAt } == other;
 }

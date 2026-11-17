@@ -113,7 +113,8 @@ public class RegisterRequestValidatorTests : UnitTestBase
             await Assert.That(result.IsValid).IsFalse();
             await Assert.That(result.Errors).Count().IsEqualTo(2);
             await Assert
-                .That(result.Errors.First(x => x.PropertyName == nameof(RegisterRequest.Email) && x.ErrorMessage == "Email is required")
+                .That(result.Errors.First(x =>
+                        x.PropertyName == nameof(RegisterRequest.Email) && x.ErrorMessage == "Email is required")
                     .ErrorMessage).IsEqualTo("Email is required");
         }
     }
@@ -225,7 +226,9 @@ public class RegisterRequestValidatorTests : UnitTestBase
             await Assert.That(result.IsValid).IsFalse();
             await Assert.That(result.Errors).Count().IsEqualTo(2);
             await Assert
-                .That(result.Errors.First(x => x.PropertyName == nameof(RegisterRequest.ConfirmPassword) && x.ErrorMessage == "Confirm password is required")
+                .That(result.Errors.First(x =>
+                        x.PropertyName == nameof(RegisterRequest.ConfirmPassword) &&
+                        x.ErrorMessage == "Confirm password is required")
                     .ErrorMessage).IsEqualTo("Confirm password is required");
         }
     }
@@ -282,5 +285,4 @@ public class RegisterRequestValidatorTests : UnitTestBase
             await Assert.That(result.Errors).Count().IsEqualTo(7);
         }
     }
-
 }

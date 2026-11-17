@@ -24,33 +24,33 @@ public static class UsersEndpoints
                 service.GetUsersAsync(cancellationToken));
 
             users.MapPost("{id:guid}/reset-link", async Task<Results<Ok<ResetLink>, Conflict>> (Guid id,
-                    IUsersService service, CancellationToken cancellationToken) =>
+                IUsersService service, CancellationToken cancellationToken) =>
+            {
+                if (await service.CreateResetLinkAsync(id, cancellationToken) is not { } link)
                 {
-                    if (await service.CreateResetLinkAsync(id, cancellationToken) is not { } link)
-                    {
-                        return TypedResults.Conflict();
-                    }
+                    return TypedResults.Conflict();
+                }
 
-                    return TypedResults.Ok(link);
-                });
+                return TypedResults.Ok(link);
+            });
 
             users.MapPost("{id:guid}/lock", async Task<Results<NoContent, Conflict>> (Guid id, IUsersService service,
-                    CancellationToken cancellationToken) =>
+                CancellationToken cancellationToken) =>
+            {
+                if (!await service.LockAsync(id, cancellationToken))
                 {
-                    if (!await service.LockAsync(id, cancellationToken))
-                    {
-                        return TypedResults.Conflict();
-                    }
+                    return TypedResults.Conflict();
+                }
 
-                    return TypedResults.NoContent();
-                });
+                return TypedResults.NoContent();
+            });
 
             users.MapPost("{id:guid}/unlock", async Task<NoContent> (Guid id, IUsersService service,
-                    CancellationToken cancellationToken) =>
-                {
-                    await service.UnlockAsync(id, cancellationToken);
-                    return TypedResults.NoContent();
-                });
+                CancellationToken cancellationToken) =>
+            {
+                await service.UnlockAsync(id, cancellationToken);
+                return TypedResults.NoContent();
+            });
 
             return api;
         }

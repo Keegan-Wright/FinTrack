@@ -133,8 +133,14 @@ public class RuleApiTests : IntegrationTestBase
     private static SaveRule TagRule(string name, string contains, Classification tag) => new()
     {
         Name = name,
-        Conditions = [new RuleCondition { Field = RuleField.Description, Operator = RuleOperator.Contains,
-            Value = contains }],
+        Conditions =
+        [
+            new RuleCondition
+            {
+                Field = RuleField.Description, Operator = RuleOperator.Contains,
+                Value = contains
+            }
+        ],
         Actions = [new RuleAction { Type = RuleActionType.AddTag, ClassificationId = tag.ClassificationId }]
     };
 }

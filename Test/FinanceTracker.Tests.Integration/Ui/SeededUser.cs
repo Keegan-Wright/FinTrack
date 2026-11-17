@@ -48,6 +48,7 @@ public static class SeededUser
     /// The unread notification's title.
     /// </summary>
     public const string Notice = "Everyday bank access ends in 5 days";
+
     public const string MemberLastName = "Example";
     public const string Event = "Car service";
 

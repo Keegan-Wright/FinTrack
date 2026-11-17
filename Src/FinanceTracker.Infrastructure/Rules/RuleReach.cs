@@ -122,8 +122,11 @@ internal sealed class RuleReach
                 join hidden in context.BankAccounts on joint.HiddenAccountId equals hidden.Id
                 where link.Status == UserLinkStatus.Accepted
                       && (accountIds.Contains(shown.Id) || accountIds.Contains(hidden.Id))
-                select new { ShownId = shown.Id, ShownOwner = shown.UserId, HiddenId = hidden.Id,
-                    HiddenOwner = hidden.UserId })
+                select new
+                {
+                    ShownId = shown.Id, ShownOwner = shown.UserId, HiddenId = hidden.Id,
+                    HiddenOwner = hidden.UserId
+                })
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 

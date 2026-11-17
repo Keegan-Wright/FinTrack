@@ -28,10 +28,12 @@
                             <AccountLogo Logo="@connection.Logo"/>
                             <div class="ft-list__main">
                                 <MudText Typo="Typo.body2" Class="text-truncate">@connection.Name</MudText>
-                                <MudText Typo="Typo.caption" Class="@ConsentClass(connection)">@ConsentText(connection)</MudText>
+                                <MudText Typo="Typo.caption"
+                                         Class="@ConsentClass(connection)">@ConsentText(connection)</MudText>
                                 @if (RecurringPaymentsText(connection) is { } recurringPayments)
                                 {
-                                    <MudText Typo="Typo.caption" Class="mud-text-secondary d-block">@recurringPayments</MudText>
+                                    <MudText Typo="Typo.caption"
+                                             Class="mud-text-secondary d-block">@recurringPayments</MudText>
                                 }
                             </div>
                             @if (renewing)
@@ -80,17 +82,20 @@
                     @foreach (var provider in shown)
                     {
                         var selected = _selected.Contains(provider);
-                        <div class="@($"ft-list__row ft-list__row--link {(selected ? "ft-list__row--selected" : string.Empty)}")"
-                             role="checkbox" tabindex="0" aria-checked="@(selected ? "true" : "false")"
-                             @onclick="@(() => ToggleAsync(provider))"
-                             @onkeyup="@(e => OnProviderKeyUp(e, provider))">
+                        <div
+                            class="@($"ft-list__row ft-list__row--link {(selected ? "ft-list__row--selected" : string.Empty)}")"
+                            role="checkbox" tabindex="0" aria-checked="@(selected ? "true" : "false")"
+                            @onclick="@(() => ToggleAsync(provider))"
+                            @onkeyup="@(e => OnProviderKeyUp(e, provider))">
                             <AccountLogo Src="@provider.LogoUrl"/>
                             <div class="ft-list__main">
                                 <MudText Typo="Typo.body2" Class="text-truncate">@provider.DisplayName</MudText>
-                                <MudText Typo="Typo.caption" Class="mud-text-secondary">@provider.Country.ToUpperInvariant()</MudText>
+                                <MudText Typo="Typo.caption"
+                                         Class="mud-text-secondary">@provider.Country.ToUpperInvariant()</MudText>
                             </div>
-                            <MudIcon Icon="@(selected ? Icons.Material.Filled.CheckCircle : Icons.Material.Outlined.Circle)"
-                                     Color="@(selected ? Color.Primary : Color.Default)"/>
+                            <MudIcon
+                                Icon="@(selected ? Icons.Material.Filled.CheckCircle : Icons.Material.Outlined.Circle)"
+                                Color="@(selected ? Color.Primary : Color.Default)"/>
                         </div>
                     }
                 </div>
@@ -117,7 +122,8 @@
                                   Immediate="true" Variant="Variant.Outlined" Margin="Margin.Dense"
                                   Disabled="@(string.IsNullOrEmpty(_openBankingAuthUrl) && _renewing is null)"/>
                     <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="@AddProviderAsync"
-                               Disabled="@string.IsNullOrWhiteSpace(_vendorAccessToken)">Connect</MudButton>
+                               Disabled="@string.IsNullOrWhiteSpace(_vendorAccessToken)">Connect
+                    </MudButton>
                 </div>
             </Section>
         </div>
@@ -147,6 +153,7 @@
     /// The connection being renewed once its renewal link has been fetched.
     /// </summary>
     private BankConnectionSummary? _renewing;
+
     private string _renewalUrl = string.Empty;
 
     protected override async Task OnInitializedAsync()
@@ -263,7 +270,7 @@
             AccessCode = _vendorAccessToken
         };
 
-        var response = await OpenBankingService.AddVendorViaAccessCodeAsync(requestModel ,_cts.Token);
+        var response = await OpenBankingService.AddVendorViaAccessCodeAsync(requestModel, _cts.Token);
 
         SetLoadingState(false);
         if (response)

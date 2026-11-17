@@ -7,7 +7,8 @@ else
 {
     <span class="ft-trend">
         <MudIcon Icon="@Arrow" Size="Size.Small" Color="@TrendColor"/>
-        <MudText Typo="Typo.caption" HtmlTag="span" Color="@TrendColor" Class="ft-money">@($"{Math.Abs(Value.Value):P0}")</MudText>
+        <MudText Typo="Typo.caption" HtmlTag="span" Color="@TrendColor"
+                 Class="ft-money">@($"{Math.Abs(Value.Value):P0}")</MudText>
         <span class="mud-text-secondary">vs previous period</span>
     </span>
 }

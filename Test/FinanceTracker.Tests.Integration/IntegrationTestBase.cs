@@ -112,7 +112,8 @@ public abstract class IntegrationTestBase
 
         FinTrackClient client = CreateClient();
         SetClock(client, user.ClockOffset);
-        HttpResponseMessage response = await client.LoginAsync(user.Username, SignedInUser.DefaultPassword, CancellationToken);
+        HttpResponseMessage response =
+            await client.LoginAsync(user.Username, SignedInUser.DefaultPassword, CancellationToken);
         if (response.StatusCode != HttpStatusCode.Redirect)
         {
             throw new InvalidOperationException($"Signing {user.Username} back in returned {response.StatusCode}");
@@ -141,7 +142,8 @@ public abstract class IntegrationTestBase
             SetClock(client, offset);
         }
 
-        HttpResponseMessage response = await client.RegisterAsync(username, SignedInUser.DefaultPassword, CancellationToken);
+        HttpResponseMessage response =
+            await client.RegisterAsync(username, SignedInUser.DefaultPassword, CancellationToken);
         if (response.StatusCode != HttpStatusCode.Redirect)
         {
             throw new InvalidOperationException(
@@ -149,7 +151,8 @@ public abstract class IntegrationTestBase
         }
 
         await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
-        Guid userId = await context.Users.Where(x => x.UserName == username).Select(x => x.Id).SingleAsync(CancellationToken);
+        Guid userId = await context.Users.Where(x => x.UserName == username).Select(x => x.Id)
+            .SingleAsync(CancellationToken);
 
         Scenario.UserMappings[username] = userId;
         if (confirmEmail)

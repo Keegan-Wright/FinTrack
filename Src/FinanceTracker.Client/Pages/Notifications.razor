@@ -16,9 +16,11 @@
 <PageHeader Title="Notifications" Subtitle="@Subtitle">
     <Actions>
         <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Settings"
-                   Href="Notifications/Settings">Settings</MudButton>
+                   Href="Notifications/Settings">Settings
+        </MudButton>
         <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.DoneAll"
-                   Disabled="@(UnreadCount == 0)" OnClick="@MarkAllReadAsync">Mark all as read</MudButton>
+                   Disabled="@(UnreadCount == 0)" OnClick="@MarkAllReadAsync">Mark all as read
+        </MudButton>
     </Actions>
 </PageHeader>
 
@@ -43,7 +45,8 @@
                             @if (notification.Link is { } link)
                             {
                                 @* A plain link, MudLink with a click handler announces itself as a button *@
-                                <a href="@link" class="mud-typography mud-typography-body2 mud-link mud-primary-text mud-link-underline-hover ft-notification__title"
+                                <a href="@link"
+                                   class="mud-typography mud-typography-body2 mud-link mud-primary-text mud-link-underline-hover ft-notification__title"
                                    @onclick="@(() => MarkReadOnTheWayAsync(notification))">@notification.Title</a>
                             }
                             else
@@ -52,7 +55,8 @@
                             }
                             <MudText Typo="Typo.body2" Class="mud-text-secondary">@notification.Message</MudText>
                             <MudText Typo="Typo.caption" Class="mud-text-secondary">
-                                @RaisedText(notification)@if (!notification.IsRead)
+                                @RaisedText(notification)
+                                @if (!notification.IsRead)
                                 {
                                     <span> · Unread</span>
                                 }

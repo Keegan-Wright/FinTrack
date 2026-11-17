@@ -31,7 +31,8 @@
                     <MudTextField @bind-Value="_newPayeeName" Label="Name" Immediate="true" Class="ft-recognise__field"
                                   OnKeyUp="@(x => OnEnter(x, AddPayeeName))"/>
                     <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="@AddPayeeName"
-                               Disabled="@string.IsNullOrWhiteSpace(_newPayeeName)">Add name</MudButton>
+                               Disabled="@string.IsNullOrWhiteSpace(_newPayeeName)">Add name
+                    </MudButton>
                 </div>
             </div>
 
@@ -53,7 +54,8 @@
                 <MudForm @ref="_accountForm" Model="@_newAccount">
                     <div class="ft-recognise__add">
                         <MudTextField @bind-Value="_newAccount.SortCode" Label="Sort code" Immediate="true"
-                                      Class="ft-recognise__field ft-recognise__field--short" InputMode="InputMode.numeric"
+                                      Class="ft-recognise__field ft-recognise__field--short"
+                                      InputMode="InputMode.numeric"
                                       For="@(() => _newAccount.SortCode)"
                                       Validation="@(LinkedAccountValidator.ValidateValue(_newAccount, nameof(LinkedAccount.SortCode)))"/>
                         <MudTextField @bind-Value="_newAccount.Number" Label="Account number" Immediate="true"
@@ -62,7 +64,8 @@
                                       Validation="@(LinkedAccountValidator.ValidateValue(_newAccount, nameof(LinkedAccount.Number)))"
                                       OnKeyUp="@(x => OnEnter(x, AddAccountAsync))"/>
                         <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="@AddAccountAsync"
-                                   Disabled="@(!HasAccountInput)">Add account</MudButton>
+                                   Disabled="@(!HasAccountInput)">Add account
+                        </MudButton>
                     </div>
                 </MudForm>
             </div>

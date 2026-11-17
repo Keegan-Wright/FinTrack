@@ -5,7 +5,6 @@ namespace FinanceTracker.Tests.Unit.Domain.Classifications;
 [Category("Domain")]
 public class CustomClassificationTests
 {
-
     [Test]
     public async Task CustomClassification_ValidConstruction_SetsProperties()
     {

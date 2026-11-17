@@ -191,7 +191,8 @@ public class ColumnEncryptionServiceTests : UnitTestBase
     {
         // Act
         string same = new ColumnEncryptionService(TestEncryptionKeys.Keyring()).KeyringFingerprint;
-        string rotated = new ColumnEncryptionService(TestEncryptionKeys.Keyring(currentKeyId: 2, 1, 2)).KeyringFingerprint;
+        string rotated = new ColumnEncryptionService(TestEncryptionKeys.Keyring(currentKeyId: 2, 1, 2))
+            .KeyringFingerprint;
 
         // Assert
         using (Assert.Multiple())

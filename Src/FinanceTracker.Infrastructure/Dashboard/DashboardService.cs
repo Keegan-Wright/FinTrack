@@ -37,7 +37,8 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
     private readonly TimeProvider _timeProvider;
     private readonly IAccountScope _accountScope;
 
-    public DashboardService(ICurrentUser currentUser, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
+    public DashboardService(ICurrentUser currentUser,
+        IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
         ILogger<DashboardService> logger, TimeProvider timeProvider, IAccountScope accountScope)
         : base(currentUser, financeTrackerContextFactory, logger)
     {

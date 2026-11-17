@@ -52,7 +52,8 @@ public class SyncHealthTests : InfrastructureTestBase
         // Assert
         using (Assert.Multiple())
         {
-            await Assert.That(logger.Entries.Select(x => x.Level)).IsEquivalentTo([LogLevel.Warning, LogLevel.Information]);
+            await Assert.That(logger.Entries.Select(x => x.Level))
+                .IsEquivalentTo([LogLevel.Warning, LogLevel.Information]);
             await Assert.That(logger.Entries[0].Message).Contains($"Connection {ConnectionId}")
                 .And.Contains("started failing to sync");
             await Assert.That(logger.Entries[1].Message).Contains("syncs again");

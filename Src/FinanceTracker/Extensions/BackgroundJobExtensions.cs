@@ -43,11 +43,11 @@ public static class BackgroundJobExtensions
 
                 quartz.AddJob<SyncAllOpenBankingDetailsAsync>(static job =>
                     job.WithIdentity(JobNames.SyncAll)
-                    .StoreDurably());
+                        .StoreDurably());
 
                 quartz.AddJob<SyncUserOpenBankingDetailsAsync>(static job =>
                     job.WithIdentity(JobNames.SyncUser)
-                    .StoreDurably());
+                        .StoreDurably());
 
                 quartz.AddJob<MonitorOpenBankingTokenExpirationAsync>(static job =>
                     job.WithIdentity(JobNames.MonitorTokens)

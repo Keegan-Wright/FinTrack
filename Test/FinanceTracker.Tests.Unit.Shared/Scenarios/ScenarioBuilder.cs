@@ -16,7 +16,8 @@ public abstract class ScenarioBuilder
     /// </summary>
     protected async Task<TestingScenario> PersistAsync(Func<FinanceTrackerContext, Task> change)
     {
-        await using FinanceTrackerContext context = await Scenario.DbContextFactory.CreateDbContextAsync(Scenario.CancellationToken);
+        await using FinanceTrackerContext context =
+            await Scenario.DbContextFactory.CreateDbContextAsync(Scenario.CancellationToken);
 
         await change(context);
 

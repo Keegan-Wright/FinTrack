@@ -60,13 +60,15 @@
                             Label="Confirm password" InputType="InputType.Password" Variant="Variant.Outlined"
                             UserAttributes="@(new Dictionary<string, object?> { { "autocomplete", "new-password" }, { "aria-required", "true" } })"/>
         <MudStaticButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Size="Size.Large"
-                         FormAction="FormAction.Submit">Create account</MudStaticButton>
+                         FormAction="FormAction.Submit">Create account
+        </MudStaticButton>
     </AuthFields>
 </EditForm>
 
 <AuthFooter>
     Already have an account?
-    <MudLink Href="@(NavigationManager.GetUriWithQueryParameters("Account/Login", new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))">
+    <MudLink
+        Href="@(NavigationManager.GetUriWithQueryParameters("Account/Login", new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))">
         Sign in
     </MudLink>
 </AuthFooter>

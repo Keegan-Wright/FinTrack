@@ -231,7 +231,8 @@ public class NotifierTests : InfrastructureTestBase
         using (Assert.Multiple())
         {
             await _webhookSender.Received(1).SendAsync("https://hooks.example.test/fintrack", "secret",
-                Arg.Is<WebhookPayload>(x => x.Kind == NotificationKind.ConsentEnded && x.Title == "Bank access has ended"),
+                Arg.Is<WebhookPayload>(x =>
+                    x.Kind == NotificationKind.ConsentEnded && x.Title == "Bank access has ended"),
                 Arg.Any<CancellationToken>());
             await Assert.That(settings.LastWebhookAt).IsEqualTo(Now);
             await Assert.That(settings.LastWebhookFailure).IsNull();
@@ -368,7 +369,8 @@ public class NotifierTests : InfrastructureTestBase
     }
 
     private Task<bool> Notify(string key, ILogger<Notifier>? logger = null, FinTrackMetrics? metrics = null) =>
-        new Notifier(CurrentUserFor(Username), DbContextFactory, logger ?? NullLogger<Notifier>.Instance, _notificationPublisher, _mailSender,
+        new Notifier(CurrentUserFor(Username), DbContextFactory, logger ?? NullLogger<Notifier>.Instance,
+                _notificationPublisher, _mailSender,
                 TestEmails.Create(), _webhookSender, PublicAddress.Unknown, new FixedTimeProvider(Now),
                 metrics ?? TestMetrics.Unobserved)
             .NotifyAsync(NotificationKind.ConsentEnded, key, "Bank access has ended",

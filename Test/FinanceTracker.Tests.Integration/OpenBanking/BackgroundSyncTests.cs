@@ -51,9 +51,11 @@ public class BackgroundSyncTests : IntegrationTestBase
 
         ExternalOpenBankingAccount account = new ExternalOpenBankingAccountFaker().Generate();
         ExternalOpenBankingAccountBalance balance = new ExternalOpenBankingAccountBalanceFaker().Generate();
-        List<ExternalOpenBankingAccountTransaction> transactions = new ExternalOpenBankingAccountTransactionFaker().Generate(3);
+        List<ExternalOpenBankingAccountTransaction> transactions =
+            new ExternalOpenBankingAccountTransactionFaker().Generate(3);
         ExternalOpenBankingAccountTransaction pending = new ExternalOpenBankingAccountTransactionFaker().Generate();
-        ExternalOpenBankingAccountStandingOrder standingOrder = new ExternalOpenBankingAccountStandingOrderFaker().Generate();
+        ExternalOpenBankingAccountStandingOrder standingOrder =
+            new ExternalOpenBankingAccountStandingOrderFaker().Generate();
         ExternalOpenBankingDirectDebit directDebit = new ExternalOpenBankingDirectDebitFaker().Generate();
 
         await App.TrueLayer.StubAccountAsync(accessToken, account, [balance], transactions, [pending],
@@ -91,7 +93,10 @@ public class BackgroundSyncTests : IntegrationTestBase
             await Assert.That(syncedTransactions.Select(x => x.ExternalId))
                 .IsEquivalentTo(transactions.Append(pending).Select(x => x.TransactionId));
             await Assert.That(syncLog).IsEquivalentTo(
-                [SyncType.Account, SyncType.Balance, SyncType.StandingOrders, SyncType.DirectDebits, SyncType.Transactions]);
+            [
+                SyncType.Account, SyncType.Balance, SyncType.StandingOrders, SyncType.DirectDebits,
+                SyncType.Transactions
+            ]);
         }
     }
 
@@ -106,7 +111,8 @@ public class BackgroundSyncTests : IntegrationTestBase
 
         // Quarterly, so only the one payment falls in the dashboard's window
         DateTime nextPayment = DateTime.UtcNow.Date.AddDays(10).AddHours(12);
-        ExternalOpenBankingAccountStandingOrder standingOrder = new ExternalOpenBankingAccountStandingOrderFaker().Generate();
+        ExternalOpenBankingAccountStandingOrder standingOrder =
+            new ExternalOpenBankingAccountStandingOrderFaker().Generate();
         standingOrder.Frequency = "Quarterly";
         standingOrder.NextPaymentDate = nextPayment;
 
@@ -333,7 +339,9 @@ public class BackgroundSyncTests : IntegrationTestBase
             await Assert.That(App.TrueLayer.RequestsWithToken(refreshed.AccessToken)).IsNotEmpty();
             await Assert.That(connection.ActiveToken!.Token).IsEqualTo(refreshed.AccessToken);
             await Assert.That(connection.ActiveToken!.RefreshToken).IsEqualTo(refreshed.RefreshToken);
-            await Assert.That(await context.BankAccounts.AnyAsync(x => x.ConnectionId == connectionId, CancellationToken)).IsTrue();
+            await Assert
+                .That(await context.BankAccounts.AnyAsync(x => x.ConnectionId == connectionId, CancellationToken))
+                .IsTrue();
         }
     }
 
@@ -369,8 +377,12 @@ public class BackgroundSyncTests : IntegrationTestBase
 
         using (Assert.Multiple())
         {
-            await Assert.That(await context.BankAccounts.AnyAsync(x => x.ConnectionId == connectionId, CancellationToken)).IsTrue();
-            await Assert.That(await context.BankAccounts.AnyAsync(x => x.ConnectionId == otherConnectionId, CancellationToken)).IsTrue();
+            await Assert
+                .That(await context.BankAccounts.AnyAsync(x => x.ConnectionId == connectionId, CancellationToken))
+                .IsTrue();
+            await Assert
+                .That(await context.BankAccounts.AnyAsync(x => x.ConnectionId == otherConnectionId, CancellationToken))
+                .IsTrue();
         }
     }
 
@@ -403,8 +415,12 @@ public class BackgroundSyncTests : IntegrationTestBase
 
         using (Assert.Multiple())
         {
-            await Assert.That(await context.BankAccounts.AnyAsync(x => x.ConnectionId == connectionId, CancellationToken)).IsTrue();
-            await Assert.That(await context.BankAccounts.AnyAsync(x => x.ConnectionId == lockedConnectionId, CancellationToken)).IsFalse();
+            await Assert
+                .That(await context.BankAccounts.AnyAsync(x => x.ConnectionId == connectionId, CancellationToken))
+                .IsTrue();
+            await Assert
+                .That(await context.BankAccounts.AnyAsync(x => x.ConnectionId == lockedConnectionId, CancellationToken))
+                .IsFalse();
         }
     }
 
@@ -436,8 +452,12 @@ public class BackgroundSyncTests : IntegrationTestBase
 
         using (Assert.Multiple())
         {
-            await Assert.That(await context.BankAccounts.AnyAsync(x => x.ConnectionId == connectionId, CancellationToken)).IsTrue();
-            await Assert.That(await context.BankAccounts.AnyAsync(x => x.ConnectionId == otherConnectionId, CancellationToken)).IsFalse();
+            await Assert
+                .That(await context.BankAccounts.AnyAsync(x => x.ConnectionId == connectionId, CancellationToken))
+                .IsTrue();
+            await Assert
+                .That(await context.BankAccounts.AnyAsync(x => x.ConnectionId == otherConnectionId, CancellationToken))
+                .IsFalse();
             await Assert.That(App.TrueLayer.RequestsWithToken(otherAccessToken)).IsEmpty();
         }
     }
@@ -506,7 +526,8 @@ public class BackgroundSyncTests : IntegrationTestBase
     /// </summary>
     private static ExternalOpenBankingAccountStandingOrder WeeklyStandingOrder(DateTime lastPayment)
     {
-        ExternalOpenBankingAccountStandingOrder standingOrder = new ExternalOpenBankingAccountStandingOrderFaker().Generate();
+        ExternalOpenBankingAccountStandingOrder standingOrder =
+            new ExternalOpenBankingAccountStandingOrderFaker().Generate();
         standingOrder.Frequency = "Weekly";
         standingOrder.FirstPaymentDate = lastPayment.AddDays(-7);
         standingOrder.NextPaymentDate = lastPayment.AddDays(7);

@@ -26,7 +26,7 @@ public sealed class ManualTimeProvider : TimeProvider
         List<ManualTimer> running;
         lock (_timers)
         {
-            running = [.._timers];
+            running = [.. _timers];
         }
 
         foreach (ManualTimer timer in running)

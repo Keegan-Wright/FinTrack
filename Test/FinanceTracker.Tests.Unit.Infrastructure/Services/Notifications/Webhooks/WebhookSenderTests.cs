@@ -71,9 +71,11 @@ public class WebhookSenderTests
         string timestamp = Header(handler, WebhookSender.TimestampHeader);
         using (Assert.Multiple())
         {
-            await Assert.That(timestamp).IsEqualTo(new DateTimeOffset(Now).ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture));
+            await Assert.That(timestamp)
+                .IsEqualTo(new DateTimeOffset(Now).ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture));
             await Assert.That(Header(handler, WebhookSender.SignatureHeader))
-                .IsEqualTo(WebhookSignature.Sign(Secret, long.Parse(timestamp, CultureInfo.InvariantCulture), handler.Body));
+                .IsEqualTo(WebhookSignature.Sign(Secret, long.Parse(timestamp, CultureInfo.InvariantCulture),
+                    handler.Body));
             await Assert.That(Header(handler, WebhookSender.EventHeader)).IsEqualTo("test");
         }
     }

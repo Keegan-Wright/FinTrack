@@ -73,7 +73,8 @@ public class RuleApplicationServiceTests : InfrastructureTestBase
             await Assert.That(spans.Root.GetTagItem(TelemetryTags.TransactionsConsidered)).IsEqualTo(3);
             await Assert.That(spans.Root.GetTagItem(TelemetryTags.TransactionsChanged)).IsEqualTo(2);
             await Assert.That(logger.Entries).Contains(x =>
-                x.Level == LogLevel.Debug && x.Message == $"Rule {ruleId} matched 2 transactions for user {Scenario.UserMappings[Username]}");
+                x.Level == LogLevel.Debug && x.Message ==
+                $"Rule {ruleId} matched 2 transactions for user {Scenario.UserMappings[Username]}");
         }
     }
 

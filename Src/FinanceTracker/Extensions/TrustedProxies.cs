@@ -23,7 +23,8 @@ public static class TrustedProxies
         }
 
         List<IPNetwork> networks = [];
-        foreach (string entry in value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        foreach (string entry in value.Split(',',
+                     StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
         {
             networks.Add(ParseEntry(entry));
         }

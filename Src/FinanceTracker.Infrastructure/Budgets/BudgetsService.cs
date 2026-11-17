@@ -167,7 +167,8 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        DomainBudget budget = await context.Budgets.OwnedBy(UserId).SingleOrNotFoundAsync(x => x.Id == id, "budget", cancellationToken);
+        DomainBudget budget = await context.Budgets.OwnedBy(UserId)
+            .SingleOrNotFoundAsync(x => x.Id == id, "budget", cancellationToken);
         context.Budgets.Remove(budget);
         await context.SaveChangesAsync(cancellationToken);
         Logger.LogChanged(UserId, "deleted", "budget", id);

@@ -35,6 +35,7 @@ public class SharingWithPageTests : ComponentTestBase
     private readonly ShareableItem _holiday = Item(SharedItemKind.Classification, "Holiday", ShareMode.ReadOnly);
     private readonly ShareableItem _kids = Item(SharedItemKind.Classification, "Kids", null);
     private readonly ShareableItem _shops = Item(SharedItemKind.Rule, "Shops", null);
+
     private readonly ShareableItem _rent = Item(SharedItemKind.Bill, "Rent", ShareMode.ReadOnly) with
     {
         FollowsAccount = "Joint"
@@ -86,8 +87,11 @@ public class SharingWithPageTests : ComponentTestBase
             await Assert.That(cut.Markup).Contains("Sharing with Sam Taylor");
             await Assert.That(cut.Markup).Contains("@sam · linked since");
             await Assert.That(tabs).IsEquivalentTo(
-                ["Accounts · 1/3", "Tags · 1/2", "Rules · 0/1", "Bills · 1/1", "Debts · 1/1", "Budgets", "Goals", "Events",
-                    "From Sam"],
+                [
+                    "Accounts · 1/3", "Tags · 1/2", "Rules · 0/1", "Bills · 1/1", "Debts · 1/1", "Budgets", "Goals",
+                    "Events",
+                    "From Sam"
+                ],
                 TUnit.Assertions.Enums.CollectionOrdering.Matching);
             await Assert.That(Checkbox(cut, "Share Savings").IsChecked()).IsTrue();
             await Assert.That(cut.FindAll(".ft-save-bar")).IsEmpty();
@@ -198,7 +202,8 @@ public class SharingWithPageTests : ComponentTestBase
         cut.Find(".ft-search input").Input("holi");
 
         // Assert
-        await Assert.That(cut.FindAll("input[aria-label^='Share ']").Select(static x => x.GetAttribute("aria-label") ?? string.Empty))
+        await Assert.That(cut.FindAll("input[aria-label^='Share ']")
+                .Select(static x => x.GetAttribute("aria-label") ?? string.Empty))
             .IsEquivalentTo(["Share Holiday"]);
     }
 

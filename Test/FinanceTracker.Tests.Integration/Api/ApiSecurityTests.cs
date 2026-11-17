@@ -113,7 +113,8 @@ public class ApiSecurityTests : IntegrationTestBase
     {
         // Arrange
         SignedInUser user = await RegisterUserAsync();
-        using HttpRequestMessage request = ApiRequest(HttpMethod.Post, $"{ApiRoutes.AutomationJobs}/{Guid.NewGuid()}/run");
+        using HttpRequestMessage request =
+            ApiRequest(HttpMethod.Post, $"{ApiRoutes.AutomationJobs}/{Guid.NewGuid()}/run");
 
         // Act
         HttpResponseMessage response = await user.Client.SendAsync(request, HttpCompletionOption.ResponseContentRead,

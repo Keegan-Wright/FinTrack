@@ -1,42 +1,42 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-    <PropertyGroup>
-        <TargetFramework>net10.0</TargetFramework>
-      <ImplicitUsings>enable</ImplicitUsings>
-      <Nullable>enable</Nullable>
-      <AnalysisMode>Recommended</AnalysisMode>
-    </PropertyGroup>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AnalysisMode>Recommended</AnalysisMode>
+  </PropertyGroup>
 
-    <ItemGroup>
-      <ProjectReference Include="..\FinanceTracker.Contracts\FinanceTracker.Contracts.csproj" />
-      <ProjectReference Include="..\FinanceTracker.Telemetry\FinanceTracker.Telemetry.csproj"/>
-      <ProjectReference Include="..\FinanceTracker.Design\FinanceTracker.Design.csproj"/>
-      <ProjectReference Include="..\FinanceTracker.Domain\FinanceTracker.Domain.csproj" />
-      <ProjectReference Include="..\FinanceTracker.Emails\FinanceTracker.Emails.csproj"/>
-    </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\FinanceTracker.Contracts\FinanceTracker.Contracts.csproj"/>
+    <ProjectReference Include="..\FinanceTracker.Telemetry\FinanceTracker.Telemetry.csproj"/>
+    <ProjectReference Include="..\FinanceTracker.Design\FinanceTracker.Design.csproj"/>
+    <ProjectReference Include="..\FinanceTracker.Domain\FinanceTracker.Domain.csproj"/>
+    <ProjectReference Include="..\FinanceTracker.Emails\FinanceTracker.Emails.csproj"/>
+  </ItemGroup>
 
-    <ItemGroup>
-      <PackageReference Include="CsvHelper"/>
-      <PackageReference Include="FluentValidation"/>
-      <PackageReference Include="MailKit"/>
-      <PackageReference Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore"/>
-      <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore"/>
-      <PackageReference Include="Microsoft.EntityFrameworkCore"/>
-      <PackageReference Include="Microsoft.Extensions.Http"/>
-      <PackageReference Include="Quartz"/>
-      <PackageReference Include="QuestPDF"/>
-      <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
-    </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="CsvHelper"/>
+    <PackageReference Include="FluentValidation"/>
+    <PackageReference Include="MailKit"/>
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore"/>
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore"/>
+    <PackageReference Include="Microsoft.EntityFrameworkCore"/>
+    <PackageReference Include="Microsoft.Extensions.Http"/>
+    <PackageReference Include="Quartz"/>
+    <PackageReference Include="QuestPDF"/>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL"/>
+  </ItemGroup>
 
-    <!-- For the PDFs, see QuestPdfSetup -->
-    <ItemGroup>
-      <EmbeddedResource Include="Exports\Pdf\Fonts\*.ttf" LogicalName="Fonts.%(Filename)%(Extension)"/>
-    </ItemGroup>
+  <!-- For the PDFs, see QuestPdfSetup -->
+  <ItemGroup>
+    <EmbeddedResource Include="Exports\Pdf\Fonts\*.ttf" LogicalName="Fonts.%(Filename)%(Extension)"/>
+  </ItemGroup>
 
-    <!-- For its unit tests, e.g. the internal helpers of reports and rules -->
-    <ItemGroup>
-      <InternalsVisibleTo Include="FinanceTracker.Tests.Unit.Infrastructure"/>
-    </ItemGroup>
+  <!-- For its unit tests, e.g. the internal helpers of reports and rules -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="FinanceTracker.Tests.Unit.Infrastructure"/>
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Generators\FinanceTracker.Generated.Attributes\FinanceTracker.Generated.Attributes\FinanceTracker.Generated.Attributes.csproj" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false"/>

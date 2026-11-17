@@ -80,7 +80,8 @@ public class ChangeEmailSectionTests : ComponentTestBase
         cut.WaitForState(() => cut.Markup.Contains("on its way", StringComparison.Ordinal));
         using (Assert.Multiple())
         {
-            await _profileService.Received(1).ChangeEmailAsync(Arg.Is<ChangeEmail>(x => x.NewEmail == "new@example.test"),
+            await _profileService.Received(1).ChangeEmailAsync(
+                Arg.Is<ChangeEmail>(x => x.NewEmail == "new@example.test"),
                 Arg.Any<CancellationToken>());
             await Assert.That(cut.Find("[role='status']").TextContent)
                 .Contains("A link is on its way to new@example.test.");
@@ -92,7 +93,8 @@ public class ChangeEmailSectionTests : ComponentTestBase
     public async Task Change_WithoutAMailServer_TellsThePageItChanged()
     {
         // Arrange
-        _profileService.ChangeEmailAsync(Arg.Any<ChangeEmail>(), Arg.Any<CancellationToken>()).Returns(new ProfileChange());
+        _profileService.ChangeEmailAsync(Arg.Any<ChangeEmail>(), Arg.Any<CancellationToken>())
+            .Returns(new ProfileChange());
         IRenderedComponent<MudSnackbarProvider> snackbars = Render<MudSnackbarProvider>();
         IRenderedComponent<ChangeEmailSection> cut = RenderSection(Create(mailAvailable: false));
 

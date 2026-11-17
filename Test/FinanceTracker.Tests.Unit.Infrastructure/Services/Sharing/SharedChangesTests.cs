@@ -378,11 +378,12 @@ public class SharedChangesTests : InfrastructureTestBase
     private async Task SeedTransferToGiftFundAsync()
     {
         await Scenario
-            .Do(s => s.TransactionScenario.WithTransaction("sam-to-gift", "sam-joint", Details(-25m, "For the gift fund")))
+            .Do(s => s.TransactionScenario.WithTransaction("sam-to-gift", "sam-joint",
+                Details(-25m, "For the gift fund")))
             .Do(s => s.TransactionScenario.WithTransaction("gift-in", "sam-private", Details(25m, "From joint")));
 
         await new TransferMatchingService(CurrentUserFor(Sam), DbContextFactory,
-            NullLogger<TransferMatchingService>.Instance, TimeProvider.System, TestMetrics.Unobserved)
+                NullLogger<TransferMatchingService>.Instance, TimeProvider.System, TestMetrics.Unobserved)
             .MatchAsync(CancellationToken);
 
         BankTransaction matched = await LoadAsync("sam-to-gift");

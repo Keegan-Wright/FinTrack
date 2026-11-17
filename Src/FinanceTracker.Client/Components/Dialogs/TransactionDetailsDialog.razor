@@ -15,7 +15,8 @@
                 <MoneyText Value="@Shown.Amount" Signed="true" Typo="Typo.h5"/>
                 @if (Shown.Pending)
                 {
-                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Warning">Pending</MudChip>
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Warning">Pending
+                    </MudChip>
                 }
             </div>
 
@@ -76,7 +77,8 @@
                                 {
                                     @if (IsReadOnly)
                                     {
-                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@classification</MudChip>
+                                        <MudChip T="string" Size="Size.Small"
+                                                 Variant="Variant.Outlined">@classification</MudChip>
                                     }
                                     else
                                     {
@@ -93,7 +95,8 @@
                                 @if (hidden.RuleName is null && !IsReadOnly)
                                 {
                                     <MudButton Variant="Variant.Text" Size="Size.Small" Color="Color.Primary"
-                                               OnClick="@(() => ShowAsync(hidden.Classification))">Show</MudButton>
+                                               OnClick="@(() => ShowAsync(hidden.Classification))">Show
+                                    </MudButton>
                                 }
                             </div>
                         }
@@ -110,7 +113,8 @@
                     @if (Shown.Transfer is { } transfer)
                     {
                         <span>@TransferText.Label(transfer)</span>
-                        <MudText Typo="Typo.caption" Class="mud-text-secondary">@TransferText.Reason(transfer, Shown.SharedBy)</MudText>
+                        <MudText Typo="Typo.caption"
+                                 Class="mud-text-secondary">@TransferText.Reason(transfer, Shown.SharedBy)</MudText>
                         @if (TransferText.OtherHalf(transfer) is { } otherHalf)
                         {
                             <MudText Typo="Typo.caption" Class="mud-text-secondary">Other half: @otherHalf</MudText>
@@ -149,44 +153,51 @@
             }
             else
             {
-            @if (Shown.SharedBy is { } sharer)
-            {
-                <MudText Typo="Typo.body2" Class="mud-text-secondary">
-                    @sharer lets you change this. They'll see the names of any tags, bills or debts you add.
-                </MudText>
-            }
-            @* A list rather than footer buttons, so actions rules add later are just more rows *@
-            <div class="ft-details__actions">
-                <div class="ft-details__heading">Actions</div>
-                @* A split transaction's tags are its parts' *@
-                @if (Shown.Splits.Count == 0)
+                @if (Shown.SharedBy is { } sharer)
                 {
-                    <MudButton Variant="Variant.Text" FullWidth="true" StartIcon="@Icons.Material.Outlined.Sell"
-                               Class="ft-details__action" OnClick="@AddTagsAsync">Add tags</MudButton>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        @sharer lets you change this. They'll see the names of any tags, bills or debts you add.
+                    </MudText>
                 }
-                <MudButton Variant="Variant.Text" FullWidth="true" StartIcon="@Icons.Material.Outlined.CallSplit"
-                           Class="ft-details__action" Disabled="@Shown.Pending"
-                           OnClick="@SplitAsync">@SplitText.ActionLabel(Shown)</MudButton>
-                @if (Shown.Splits.Count > 0)
-                {
-                    <MudButton Variant="Variant.Text" FullWidth="true" StartIcon="@Icons.Material.Outlined.MergeType"
-                               Class="ft-details__action" OnClick="@UnsplitAsync">Remove split</MudButton>
-                }
-                @foreach (var action in TransferText.Actions(Shown.Transfer))
-                {
-                    <MudButton Variant="Variant.Text" FullWidth="true" StartIcon="@TransferText.ActionIcon(action)"
-                               Class="ft-details__action" OnClick="@(() => DecideAsync(action))">
-                        @TransferText.ActionLabel(action)
+
+                @* A list rather than footer buttons, so actions rules add later are just more rows *@
+                <div class="ft-details__actions">
+                    <div class="ft-details__heading">Actions</div>
+                    @* A split transaction's tags are its parts' *@
+                    @if (Shown.Splits.Count == 0)
+                    {
+                        <MudButton Variant="Variant.Text" FullWidth="true" StartIcon="@Icons.Material.Outlined.Sell"
+                                   Class="ft-details__action" OnClick="@AddTagsAsync">Add tags
+                        </MudButton>
+                    }
+                    <MudButton Variant="Variant.Text" FullWidth="true" StartIcon="@Icons.Material.Outlined.CallSplit"
+                               Class="ft-details__action" Disabled="@Shown.Pending"
+                               OnClick="@SplitAsync">@SplitText.ActionLabel(Shown)</MudButton>
+                    @if (Shown.Splits.Count > 0)
+                    {
+                        <MudButton Variant="Variant.Text" FullWidth="true"
+                                   StartIcon="@Icons.Material.Outlined.MergeType"
+                                   Class="ft-details__action" OnClick="@UnsplitAsync">Remove split
+                        </MudButton>
+                    }
+                    @foreach (var action in TransferText.Actions(Shown.Transfer))
+                    {
+                        <MudButton Variant="Variant.Text" FullWidth="true" StartIcon="@TransferText.ActionIcon(action)"
+                                   Class="ft-details__action" OnClick="@(() => DecideAsync(action))">
+                            @TransferText.ActionLabel(action)
+                        </MudButton>
+                    }
+                    <MudButton Variant="Variant.Text" FullWidth="true" StartIcon="@Icons.Material.Outlined.EventRepeat"
+                               Class="ft-details__action" OnClick="@PayBillAsync">Pays a bill
                     </MudButton>
-                }
-                <MudButton Variant="Variant.Text" FullWidth="true" StartIcon="@Icons.Material.Outlined.EventRepeat"
-                           Class="ft-details__action" OnClick="@PayBillAsync">Pays a bill</MudButton>
-                <MudButton Variant="Variant.Text" FullWidth="true" StartIcon="@Icons.Material.Outlined.CreditScore"
-                           Class="ft-details__action" OnClick="@PayDebtAsync">Pays off a debt</MudButton>
-                @* Their rules run on any account they can change, a shared one too *@
-                <MudButton Variant="Variant.Text" FullWidth="true" StartIcon="@Icons.Material.Outlined.Rule"
-                           Class="ft-details__action" OnClick="@CreateRuleAsync">Create rule from this</MudButton>
-            </div>
+                    <MudButton Variant="Variant.Text" FullWidth="true" StartIcon="@Icons.Material.Outlined.CreditScore"
+                               Class="ft-details__action" OnClick="@PayDebtAsync">Pays off a debt
+                    </MudButton>
+                    @* Their rules run on any account they can change, a shared one too *@
+                    <MudButton Variant="Variant.Text" FullWidth="true" StartIcon="@Icons.Material.Outlined.Rule"
+                               Class="ft-details__action" OnClick="@CreateRuleAsync">Create rule from this
+                    </MudButton>
+                </div>
             }
         </div>
     </DialogContent>

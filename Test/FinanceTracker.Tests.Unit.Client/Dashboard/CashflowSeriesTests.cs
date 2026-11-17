@@ -18,7 +18,8 @@ public class CashflowSeriesTests
         ];
 
         // Act
-        List<CashflowPoint> points = CashflowSeries.Build(transactions, new DateTime(2026, 8, 1), new DateTime(2026, 8, 3));
+        List<CashflowPoint> points =
+            CashflowSeries.Build(transactions, new DateTime(2026, 8, 1), new DateTime(2026, 8, 3));
 
         // Assert
         using (Assert.Multiple())
@@ -73,7 +74,8 @@ public class CashflowSeriesTests
         ];
 
         // Act
-        List<CashflowPoint> points = CashflowSeries.Build(transactions, new DateTime(2026, 8, 1), new DateTime(2026, 8, 1));
+        List<CashflowPoint> points =
+            CashflowSeries.Build(transactions, new DateTime(2026, 8, 1), new DateTime(2026, 8, 1));
 
         // Assert
         await Assert.That(points.Single().In).IsEqualTo(5m);

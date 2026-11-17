@@ -37,7 +37,10 @@ public class CalendarPageTests : ComponentTestBase
         {
             Date = new DateTime(2026, 3, 14),
             Events = [CalendarTextTests.Event(target: 100m, goalName: "Gifts", saved: 40m, notes: "Book a table")],
-            Debts = [new CalendarDebtItem { DebtId = Guid.NewGuid(), Name = "Car loan", Kind = CalendarDebtDate.PaidOff }]
+            Debts =
+            [
+                new CalendarDebtItem { DebtId = Guid.NewGuid(), Name = "Car loan", Kind = CalendarDebtDate.PaidOff }
+            ]
         });
 
         // Act

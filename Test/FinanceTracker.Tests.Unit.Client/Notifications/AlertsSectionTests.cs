@@ -47,7 +47,8 @@ public class AlertsSectionTests : ComponentTestBase
     {
         // Arrange
         NotificationSettings saved = Settings(everydayBelow: 50m);
-        _notificationsService.ChangeAlertsAsync(Arg.Any<ChangeAlertSettings>(), Arg.Any<CancellationToken>()).Returns(saved);
+        _notificationsService.ChangeAlertsAsync(Arg.Any<ChangeAlertSettings>(), Arg.Any<CancellationToken>())
+            .Returns(saved);
         IRenderedComponent<MudSnackbarProvider> snackbars = Render<MudSnackbarProvider>();
         IRenderedComponent<AlertsSection> cut = RenderSection(Settings(everydayBelow: 100m));
 
@@ -64,9 +65,10 @@ public class AlertsSectionTests : ComponentTestBase
         {
             await _notificationsService.Received(1).ChangeAlertsAsync(
                 Arg.Is<ChangeAlertSettings>(x => x.BudgetWarningPercent == 90 && x.BillReminderDays == 3
-                                                 && x.LargeTransactionOver == 250m
-                                                 && x.LowBalance.Single().AccountId == Everyday
-                                                 && x.LowBalance.Single().Below == 50m),
+                                                                              && x.LargeTransactionOver == 250m
+                                                                              && x.LowBalance.Single().AccountId ==
+                                                                              Everyday
+                                                                              && x.LowBalance.Single().Below == 50m),
                 Arg.Any<CancellationToken>());
             await Assert.That(_changed).IsSameReferenceAs(saved);
         }
@@ -84,7 +86,8 @@ public class AlertsSectionTests : ComponentTestBase
 
         // Assert
         cut.WaitForState(() => cut.Markup.Contains("Enter an amount", StringComparison.Ordinal));
-        await _notificationsService.DidNotReceive().ChangeAlertsAsync(Arg.Any<ChangeAlertSettings>(), Arg.Any<CancellationToken>());
+        await _notificationsService.DidNotReceive()
+            .ChangeAlertsAsync(Arg.Any<ChangeAlertSettings>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -162,7 +165,8 @@ public class AlertsSectionTests : ComponentTestBase
         List<AccountLowBalance> accounts = [];
         if (withAccounts)
         {
-            accounts.Add(new AccountLowBalance { AccountId = Everyday, AccountName = "Everyday", Below = everydayBelow });
+            accounts.Add(
+                new AccountLowBalance { AccountId = Everyday, AccountName = "Everyday", Below = everydayBelow });
             accounts.Add(new AccountLowBalance { AccountId = Savings, AccountName = "Savings", Below = null });
         }
 

@@ -182,13 +182,16 @@ public class RulePayDebtTests
         }
     }
 
-    private static Debt Debt() => new(UserId, "Car loan", "Car Finance Co", 5000m, new DateOnly(2026, 1, 1), 9.9m, 199m);
+    private static Debt Debt() =>
+        new(UserId, "Car loan", "Car Finance Co", 5000m, new DateOnly(2026, 1, 1), 9.9m, 199m);
 
     private static BankTransaction Transaction() =>
         BankTransaction.Import(Account, new TransactionDetails(Guid.NewGuid().ToString(), "CAR FINANCE CO",
             TransactionType.Debit, "PURCHASE", -199m, "GBP", At, false, [], TransactionMetadata.None, false));
 
     private static Rule Rule(string name, int order, params RuleAction[] actions) =>
-        new(UserId, name, order, RuleMatchMode.All, [new RuleCondition(RuleField.Description, RuleOperator.Contains,
-            "CAR FINANCE")], actions);
+        new(UserId, name, order, RuleMatchMode.All, [
+            new RuleCondition(RuleField.Description, RuleOperator.Contains,
+                "CAR FINANCE")
+        ], actions);
 }

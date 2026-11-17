@@ -24,7 +24,8 @@ public class PublishedImageTests
         await using IBrowserContext context = await Browsers.Browser.NewContextAsync(new BrowserNewContextOptions
         {
             BaseURL = PublishedImage.Address!.ToString(),
-            ViewportSize = new ViewportSize { Width = Ui.ScreenSize.Desktop.Width, Height = Ui.ScreenSize.Desktop.Height }
+            ViewportSize = new ViewportSize
+                { Width = Ui.ScreenSize.Desktop.Width, Height = Ui.ScreenSize.Desktop.Height }
         });
         IPage page = await context.NewPageAsync();
         WatchForErrors(page);
@@ -59,7 +60,8 @@ public class PublishedImageTests
         page.PageError += (_, error) => _browserErrors.Add(error);
         page.Console += (_, message) =>
         {
-            if (message.Type == "error" && !message.Text.StartsWith("Failed to load resource", StringComparison.Ordinal))
+            if (message.Type == "error" &&
+                !message.Text.StartsWith("Failed to load resource", StringComparison.Ordinal))
             {
                 _browserErrors.Add(message.Text);
             }

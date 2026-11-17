@@ -1,9 +1,9 @@
 using FinanceTracker.AppHost.ServiceDefaults;
+
 #pragma warning disable ASPIRECOMPUTE003
 #pragma warning disable ASPIREPIPELINES003
 
 IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
-
 
 
 IResourceBuilder<ContainerRegistryResource> registry = builder.AddContainerRegistry(
@@ -29,25 +29,21 @@ IResourceBuilder<ParameterResource> openBankingAuthRedirectUrl =
 IResourceBuilder<ParameterResource> openBankingClientId =
     builder.AddParameterFromConfiguration("OpenBanking-Client-Id", "OpenBanking:TrueLayer:ClientId");
 IResourceBuilder<ParameterResource> openBankingClientSecret =
-    builder.AddParameterFromConfiguration("OpenBanking-Client-Secret", "OpenBanking:TrueLayer:ClientSecret", secret: true);
+    builder.AddParameterFromConfiguration("OpenBanking-Client-Secret", "OpenBanking:TrueLayer:ClientSecret",
+        secret: true);
 IResourceBuilder<ParameterResource> openBankingPublicIpAddress =
     builder.AddParameterFromConfiguration("OpenBanking-Public-IP-Address", "OpenBanking:TrueLayer:PublicIpAddress");
 
 
-
 IResourceBuilder<PostgresServerResource> postgres = builder.AddPostgres(FinTrackResources.Postgres)
     .WithDataVolume(isReadOnly: false)
-    .PublishAsDockerComposeService((resource, service) =>
-    {
-        service.Restart = "unless-stopped";
-    });
+    .PublishAsDockerComposeService((resource, service) => { service.Restart = "unless-stopped"; });
 
 
 IResourceBuilder<PostgresDatabaseResource> postgresDb = postgres.AddDatabase(FinTrackResources.Database);
 
 
 IResourceBuilder<ProjectResource> finTrack = builder.AddProject<Projects.FinanceTracker>(FinTrackResources.Web)
-
     .WithEnvironment(FinTrackEnvironment.EncryptionKeys, encryptionKeys)
     .WithEnvironment(FinTrackEnvironment.EncryptionCurrentKeyId, encryptionCurrentKeyId)
     .WithEnvironment(FinTrackEnvironment.TrueLayerBaseAuthUrl, openBankingAuthUrl)
@@ -60,10 +56,7 @@ IResourceBuilder<ProjectResource> finTrack = builder.AddProject<Projects.Finance
     .WithEnvironment(FinTrackEnvironment.WebhookAllowPrivate, true.ToString())
     .WithReference(postgresDb)
     .WaitFor(postgresDb)
-    .PublishAsDockerComposeService((resource, service) =>
-    {
-        service.Restart = "unless-stopped";
-    })
+    .PublishAsDockerComposeService((resource, service) => { service.Restart = "unless-stopped"; })
     .WithContainerRegistry(registry)
     .WithRemoteImageTag("v0.0.1");
 

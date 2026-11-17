@@ -28,7 +28,8 @@
                            OnClick="@(() => ChangeMonthAsync(-1))"/>
         </MudTooltip>
         <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@GoToTodayAsync"
-                   Disabled="@IsCurrentMonth">Today</MudButton>
+                   Disabled="@IsCurrentMonth">Today
+        </MudButton>
         <MudTooltip Text="Next month">
             <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" aria-label="Next month"
                            OnClick="@(() => ChangeMonthAsync(1))"/>
@@ -39,7 +40,8 @@
 <MudGrid Spacing="4">
     <MudItem xs="12" lg="8">
         <Section>
-            <div class="ft-calendar" role="grid" aria-label="@MonthStart.ToString("MMMM yyyy", CultureInfo.CurrentCulture)">
+            <div class="ft-calendar" role="grid"
+                 aria-label="@MonthStart.ToString("MMMM yyyy", CultureInfo.CurrentCulture)">
                 @* Rows for screen readers, laid out by the calendar's own grid, see .ft-calendar__row *@
                 <div class="ft-calendar__row" role="row">
                     @foreach (var dayName in WeekdayNames)
@@ -126,7 +128,8 @@
                  Caption="@SelectedCaption" Class="h-100" ScrollBody="true">
             <Actions>
                 <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
-                           StartIcon="@Icons.Material.Outlined.Add" OnClick="@AddEventAsync">Add event</MudButton>
+                           StartIcon="@Icons.Material.Outlined.Add" OnClick="@AddEventAsync">Add event
+                </MudButton>
             </Actions>
             <ChildContent>
                 @if (SelectedDay is null || IsQuiet(SelectedDay))
@@ -151,7 +154,8 @@
                                     }
                                     @if (calendarEvent.SharedBy is { } sharedBy)
                                     {
-                                        <MudText Typo="Typo.caption" Class="mud-text-secondary">@($"{sharedBy}'s")</MudText>
+                                        <MudText Typo="Typo.caption"
+                                                 Class="mud-text-secondary">@($"{sharedBy}'s")</MudText>
                                     }
                                 </div>
                                 <div class="ft-list__end">
@@ -159,12 +163,14 @@
                                              AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
                                              AriaLabel="@($"Actions for {calendarEvent.Title}")">
                                         <MudMenuItem Icon="@Icons.Material.Outlined.Edit"
-                                                     OnClick="@(() => EditEventAsync(calendarEvent))">Edit</MudMenuItem>
+                                                     OnClick="@(() => EditEventAsync(calendarEvent))">Edit
+                                        </MudMenuItem>
                                         @* Only its owner deletes it *@
                                         @if (calendarEvent.SharedBy is null)
                                         {
                                             <MudMenuItem Icon="@Icons.Material.Outlined.Delete"
-                                                         OnClick="@(() => DeleteEventAsync(calendarEvent))">Delete</MudMenuItem>
+                                                         OnClick="@(() => DeleteEventAsync(calendarEvent))">Delete
+                                            </MudMenuItem>
                                         }
                                     </MudMenu>
                                 </div>
@@ -179,17 +185,20 @@
                                     <MudLink Href="@($"Debts/{debt.DebtId}")" Typo="Typo.body2" Class="text-truncate">
                                         @debt.Name
                                     </MudLink>
-                                    <MudText Typo="Typo.caption" Class="mud-text-secondary">@CalendarText.DebtDate(debt)</MudText>
+                                    <MudText Typo="Typo.caption"
+                                             Class="mud-text-secondary">@CalendarText.DebtDate(debt)</MudText>
                                 </div>
                             </div>
                         }
                         @foreach (CalendarBillItem bill in SelectedDay.Bills)
                         {
                             <div class="ft-list__row">
-                                <MudIcon Icon="@BillText.StateIcon(bill.State)" Color="@BillText.StateColor(bill.State)"/>
+                                <MudIcon Icon="@BillText.StateIcon(bill.State)"
+                                         Color="@BillText.StateColor(bill.State)"/>
                                 <div class="ft-list__main">
                                     <MudText Typo="Typo.body2" Class="text-truncate">@bill.Name</MudText>
-                                    <MudText Typo="Typo.caption" Class="mud-text-secondary">@BillStateText(bill.State)</MudText>
+                                    <MudText Typo="Typo.caption"
+                                             Class="mud-text-secondary">@BillStateText(bill.State)</MudText>
                                 </div>
                                 <div class="ft-list__end">
                                     <MoneyText Value="@bill.Amount"/>

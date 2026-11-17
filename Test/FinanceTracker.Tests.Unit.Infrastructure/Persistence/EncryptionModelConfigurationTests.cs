@@ -75,7 +75,8 @@ public class EncryptionModelConfigurationTests : InfrastructureTestBase
     {
         // Arrange
         await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
-        ValueComparer comparer = context.Model.FindEntityType(entityType)!.FindProperty(propertyName)!.GetValueComparer();
+        ValueComparer comparer =
+            context.Model.FindEntityType(entityType)!.FindProperty(propertyName)!.GetValueComparer();
         List<string> original = ["a", "b"];
 
         // Act

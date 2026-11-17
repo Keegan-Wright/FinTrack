@@ -214,8 +214,14 @@ public class RulesPageTests : ComponentTestBase
         Id = Guid.NewGuid(),
         Name = name,
         IsEnabled = true,
-        Conditions = [new RuleCondition { Field = RuleField.Description, Operator = RuleOperator.Contains,
-            Value = "SHOP" }],
+        Conditions =
+        [
+            new RuleCondition
+            {
+                Field = RuleField.Description, Operator = RuleOperator.Contains,
+                Value = "SHOP"
+            }
+        ],
         Actions = [new RuleAction { Type = RuleActionType.AddTag, ClassificationId = tagId }],
         SharedBy = "Sam Taylor",
         CanChange = canChange,
@@ -227,8 +233,14 @@ public class RulesPageTests : ComponentTestBase
         Id = Guid.NewGuid(),
         Name = name,
         IsEnabled = enabled,
-        Conditions = [new RuleCondition { Field = RuleField.Description, Operator = RuleOperator.Contains,
-            Value = name.ToUpperInvariant() }],
+        Conditions =
+        [
+            new RuleCondition
+            {
+                Field = RuleField.Description, Operator = RuleOperator.Contains,
+                Value = name.ToUpperInvariant()
+            }
+        ],
         Actions = [new RuleAction { Type = RuleActionType.MarkNotATransfer }]
     };
 }

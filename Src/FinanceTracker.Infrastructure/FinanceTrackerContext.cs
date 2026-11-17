@@ -27,7 +27,8 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace FinanceTracker.Infrastructure;
 
-public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, FinanceTrackerRole, Guid>, IDesignTimeDbContextFactory<FinanceTrackerContext>,
+public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, FinanceTrackerRole, Guid>,
+    IDesignTimeDbContextFactory<FinanceTrackerContext>,
     IDataProtectionKeyContext
 {
     /// <summary>
@@ -64,6 +65,7 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
 
 
     #region Aggregates
+
     public DbSet<BankConnection> BankConnections { get; private set; }
     public DbSet<BankAccount> BankAccounts { get; private set; }
     public DbSet<BankTransaction> BankTransactions { get; private set; }
@@ -87,6 +89,7 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
     public DbSet<RuleCheckpoint> RuleCheckpoints { get; private set; }
     public DbSet<Notification> Notifications { get; private set; }
     public DbSet<NotificationSettings> NotificationSettings { get; private set; }
+
     #endregion
 
     /// <summary>
@@ -102,8 +105,6 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
     public DbSet<DataProtectionKey> DataProtectionKeys { get; private set; }
 
 
-
-
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         optionsBuilder.AddInterceptors(AuditingInterceptor.Instance, BlindIndexInterceptor.Instance);
@@ -117,7 +118,6 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
         builder.ApplyConfigurationsFromAssembly(typeof(FinanceTrackerContext).Assembly);
 
         builder.UseEncryption(_columnEncryptionService);
-
     }
 
     /// <summary>
@@ -127,19 +127,19 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
     /// <returns></returns>
     public FinanceTrackerContext CreateDbContext(string[] args)
     {
-            var builder = new DbContextOptionsBuilder<FinanceTrackerContext>();
-            builder.UseNpgsql("DesignTimeConnectionString", npgsqlDbContextOptionsBuilder =>
-            {
-                npgsqlDbContextOptionsBuilder.MigrationsAssembly("FinanceTracker.Infrastructure.Migrations");
-                npgsqlDbContextOptionsBuilder.EnableRetryOnFailure();
-                npgsqlDbContextOptionsBuilder.CommandTimeout(CommandTimeoutSeconds);
-            });
+        var builder = new DbContextOptionsBuilder<FinanceTrackerContext>();
+        builder.UseNpgsql("DesignTimeConnectionString", npgsqlDbContextOptionsBuilder =>
+        {
+            npgsqlDbContextOptionsBuilder.MigrationsAssembly("FinanceTracker.Infrastructure.Migrations");
+            npgsqlDbContextOptionsBuilder.EnableRetryOnFailure();
+            npgsqlDbContextOptionsBuilder.CommandTimeout(CommandTimeoutSeconds);
+        });
 
-            // Migrations only need the model, a throwaway key is enough
-            return new FinanceTrackerContext(builder.Options, new ColumnEncryptionService(new EncryptionConfiguration
-            {
-                Keys = new Dictionary<int, byte[]> { [1] = new byte[EncryptionConfiguration.KeySize] },
-                CurrentKeyId = 1
-            }), TimeProvider.System);
-        }
+        // Migrations only need the model, a throwaway key is enough
+        return new FinanceTrackerContext(builder.Options, new ColumnEncryptionService(new EncryptionConfiguration
+        {
+            Keys = new Dictionary<int, byte[]> { [1] = new byte[EncryptionConfiguration.KeySize] },
+            CurrentKeyId = 1
+        }), TimeProvider.System);
+    }
 }

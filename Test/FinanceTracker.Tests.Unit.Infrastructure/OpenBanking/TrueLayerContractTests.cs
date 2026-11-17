@@ -16,12 +16,12 @@ public class TrueLayerContractTests : UnitTestBase
     {
         // Arrange
         const string json = """
-            {
-              "account_id": "acc-1",
-              "account_number": { "iban": "GB00TEST", "swift_bic": "TESTGB2L", "number": "12345678", "sort_code": "01-02-03" },
-              "provider": { "display_name": "Test Bank", "provider_id": "ob-test", "logo_uri": "https://logo.test/bank.svg" }
-            }
-            """;
+                            {
+                              "account_id": "acc-1",
+                              "account_number": { "iban": "GB00TEST", "swift_bic": "TESTGB2L", "number": "12345678", "sort_code": "01-02-03" },
+                              "provider": { "display_name": "Test Bank", "provider_id": "ob-test", "logo_uri": "https://logo.test/bank.svg" }
+                            }
+                            """;
 
         // Act
         ExternalOpenBankingAccount account = JsonSerializer.Deserialize<ExternalOpenBankingAccount>(json, WebOptions)!;
@@ -44,21 +44,21 @@ public class TrueLayerContractTests : UnitTestBase
     {
         // Arrange
         const string json = """
-            {
-              "transaction_id": "tx-1",
-              "merchant_name": "Coffee Co",
-              "provider_transaction_id": "ptx-1",
-              "normalised_provider_transaction_id": "ntx-1",
-              "meta": {
-                "provider_reference": "123456 12345678",
-                "provider_category": "PURCHASE",
-                "transaction_type": "DEBIT",
-                "provider_id": "ob-test",
-                "counter_party_preferred_name": "Coffee Co Ltd",
-                "debtor_account_name": "Jane Doe"
-              }
-            }
-            """;
+                            {
+                              "transaction_id": "tx-1",
+                              "merchant_name": "Coffee Co",
+                              "provider_transaction_id": "ptx-1",
+                              "normalised_provider_transaction_id": "ntx-1",
+                              "meta": {
+                                "provider_reference": "123456 12345678",
+                                "provider_category": "PURCHASE",
+                                "transaction_type": "DEBIT",
+                                "provider_id": "ob-test",
+                                "counter_party_preferred_name": "Coffee Co Ltd",
+                                "debtor_account_name": "Jane Doe"
+                              }
+                            }
+                            """;
 
         // Act
         ExternalOpenBankingAccountTransaction transaction =
@@ -84,11 +84,12 @@ public class TrueLayerContractTests : UnitTestBase
     {
         // Arrange
         const string json = """
-            { "direct_debit_id": "dd-1", "meta": { "provider_mandate_identification": "mandate-1", "provider_account_id": "pacc-1" } }
-            """;
+                            { "direct_debit_id": "dd-1", "meta": { "provider_mandate_identification": "mandate-1", "provider_account_id": "pacc-1" } }
+                            """;
 
         // Act
-        ExternalOpenBankingDirectDebit directDebit = JsonSerializer.Deserialize<ExternalOpenBankingDirectDebit>(json, WebOptions)!;
+        ExternalOpenBankingDirectDebit directDebit =
+            JsonSerializer.Deserialize<ExternalOpenBankingDirectDebit>(json, WebOptions)!;
 
         // Assert
         using (Assert.Multiple())
@@ -117,26 +118,27 @@ public class TrueLayerContractTests : UnitTestBase
     {
         // Arrange
         const string json = """
-            {
-              "title": "Choose account type",
-              "fields": [
-                {
-                  "type": "select",
-                  "id": "account-type",
-                  "display_name": "Account type",
-                  "help_text": "Pick one",
-                  "mandatory": true,
-                  "is_sensitive": false,
-                  "allowed_characters": "a-z",
-                  "values": [ { "value": "personal", "display_name": "Personal" } ],
-                  "validations": [ { "regex": "^[a-z]+$", "error_message": "Letters only" } ]
-                }
-              ]
-            }
-            """;
+                            {
+                              "title": "Choose account type",
+                              "fields": [
+                                {
+                                  "type": "select",
+                                  "id": "account-type",
+                                  "display_name": "Account type",
+                                  "help_text": "Pick one",
+                                  "mandatory": true,
+                                  "is_sensitive": false,
+                                  "allowed_characters": "a-z",
+                                  "values": [ { "value": "personal", "display_name": "Personal" } ],
+                                  "validations": [ { "regex": "^[a-z]+$", "error_message": "Letters only" } ]
+                                }
+                              ]
+                            }
+                            """;
 
         // Act
-        ExternalOpenBankingProviderStep step = JsonSerializer.Deserialize<ExternalOpenBankingProviderStep>(json, WebOptions)!;
+        ExternalOpenBankingProviderStep step =
+            JsonSerializer.Deserialize<ExternalOpenBankingProviderStep>(json, WebOptions)!;
 
         // Assert
         ExternalOpenBankingProviderStepField field = (await step.Fields!.ToListAsync(CancellationToken)).Single();

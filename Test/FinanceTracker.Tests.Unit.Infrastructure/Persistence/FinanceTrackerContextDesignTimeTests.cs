@@ -20,7 +20,8 @@ public class FinanceTrackerContextDesignTimeTests : UnitTestBase
 
         // Assert
 #pragma warning disable EF1001 // The provider's options extension is the only place the migrations assembly is exposed
-        NpgsqlOptionsExtension npgsql = context.GetService<IDbContextOptions>().FindExtension<NpgsqlOptionsExtension>()!;
+        NpgsqlOptionsExtension npgsql =
+            context.GetService<IDbContextOptions>().FindExtension<NpgsqlOptionsExtension>()!;
 #pragma warning restore EF1001
 
         using (Assert.Multiple())

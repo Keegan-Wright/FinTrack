@@ -240,7 +240,8 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
         await using (FinanceTrackerContext context =
                      await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken))
         {
-            DomainRule rule = await context.Rules.OwnedBy(UserId).SingleOrNotFoundAsync(x => x.Id == id, "rule", cancellationToken);
+            DomainRule rule = await context.Rules.OwnedBy(UserId)
+                .SingleOrNotFoundAsync(x => x.Id == id, "rule", cancellationToken);
             context.Rules.Remove(rule);
             await context.SaveChangesAsync(cancellationToken);
             Logger.LogChanged(UserId, "deleted", "rule", id);

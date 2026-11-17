@@ -28,7 +28,8 @@ public class NotificationKindsTests
         {
             foreach (DomainKind kind in Enum.GetValues<DomainKind>())
             {
-                await Assert.That(NotificationKindStyle.Label(kind)).IsNotEqualTo("Notification").Because(kind.ToString());
+                await Assert.That(NotificationKindStyle.Label(kind)).IsNotEqualTo("Notification")
+                    .Because(kind.ToString());
             }
         }
     }

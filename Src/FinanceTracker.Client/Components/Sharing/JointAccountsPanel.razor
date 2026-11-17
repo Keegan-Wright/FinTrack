@@ -22,7 +22,8 @@
                 {
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
                                Disabled="@(Disabled || Busy)"
-                               OnClick="@(() => OnMerge.InvokeAsync(Shares.JointSuggestions))">Merge all</MudButton>
+                               OnClick="@(() => OnMerge.InvokeAsync(Shares.JointSuggestions))">Merge all
+                    </MudButton>
                 }
             </div>
             <div class="ft-list">
@@ -37,7 +38,8 @@
                         </div>
                         <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
                                    Disabled="@(Disabled || Busy)"
-                                   OnClick="@(() => OnMerge.InvokeAsync([suggestion]))">Merge</MudButton>
+                                   OnClick="@(() => OnMerge.InvokeAsync([suggestion]))">Merge
+                        </MudButton>
                     </div>
                 }
             </div>
@@ -60,7 +62,8 @@
                         </div>
                         <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
                                    Disabled="@(Disabled || Busy)"
-                                   OnClick="@(() => OnSplit.InvokeAsync(joint))">Split</MudButton>
+                                   OnClick="@(() => OnSplit.InvokeAsync(joint))">Split
+                        </MudButton>
                     </div>
                 }
             </div>

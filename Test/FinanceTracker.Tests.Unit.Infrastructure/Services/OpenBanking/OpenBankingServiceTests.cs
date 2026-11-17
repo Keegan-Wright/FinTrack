@@ -18,6 +18,7 @@ namespace FinanceTracker.Tests.Unit.Infrastructure.Services.OpenBanking;
 public class OpenBankingServiceTests : OpenBankingTestBase
 {
     private readonly IOpenBankingSyncScheduler _openBankingSyncScheduler = Substitute.For<IOpenBankingSyncScheduler>();
+
     private readonly HybridCache _hybridCache = new ServiceCollection().AddHybridCache().Services.BuildServiceProvider()
         .GetRequiredService<HybridCache>();
 
@@ -143,7 +144,8 @@ public class OpenBankingServiceTests : OpenBankingTestBase
     {
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser(Username));
-        OpenBankingApi.BuildAuthUrl(Arg.Any<IEnumerable<string>>(), Arg.Any<IEnumerable<string>>()).Returns("https://example.test/auth");
+        OpenBankingApi.BuildAuthUrl(Arg.Any<IEnumerable<string>>(), Arg.Any<IEnumerable<string>>())
+            .Returns("https://example.test/auth");
 
         OpenBankingService subject = BuildSubject();
 
@@ -170,20 +172,24 @@ public class OpenBankingServiceTests : OpenBankingTestBase
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
             .Do(s => s.BankConnectionScenario.WithConnection("bank", Username, userId =>
-                new BankConnection(userId, "ob-existing", "Bank", "old-code", ["accounts"], [1], DateTime.UtcNow, DateTime.UtcNow.AddDays(90))))
+                new BankConnection(userId, "ob-existing", "Bank", "old-code", ["accounts"], [1], DateTime.UtcNow,
+                    DateTime.UtcNow.AddDays(90))))
             .Do(s => s.BankConnectionScenario.WithAccessToken("bank", token: "old-token"));
 
         OpenBankingApi.ExchangeCodeForAccessTokenAsync("new-code", CancellationToken).Returns(
             new ExternalOpenBankingAccessResponse { AccessToken = Token, RefreshToken = "refresh", ExpiresIn = 3600 });
-        OpenBankingApi.GetProviderInformation(Token, CancellationToken).Returns(new ExternalOpenBankingAccountConnectionResponse
-        {
-            Results = new[] { new ExternalOpenBankingAccountConnectionFaker("ob-existing").Generate() }.ToAsyncEnumerable()
-        });
+        OpenBankingApi.GetProviderInformation(Token, CancellationToken).Returns(
+            new ExternalOpenBankingAccountConnectionResponse
+            {
+                Results = new[] { new ExternalOpenBankingAccountConnectionFaker("ob-existing").Generate() }
+                    .ToAsyncEnumerable()
+            });
 
         OpenBankingService subject = BuildSubject();
 
         // Act
-        bool result = await subject.AddVendorViaAccessCodeAsync(new AddVendor { AccessCode = "new-code" }, CancellationToken);
+        bool result =
+            await subject.AddVendorViaAccessCodeAsync(new AddVendor { AccessCode = "new-code" }, CancellationToken);
 
         // Assert
         await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
@@ -318,7 +324,8 @@ public class OpenBankingServiceTests : OpenBankingTestBase
                 refreshToken: "latest-refresh"))
             .Do(s => s.BankConnectionScenario.WithRevokedToken("bank", DateTime.UtcNow));
 
-        OpenBankingApi.GetReauthenticationUrlAsync("latest-refresh", CancellationToken).Returns("https://bank.example.test/reauth");
+        OpenBankingApi.GetReauthenticationUrlAsync("latest-refresh", CancellationToken)
+            .Returns("https://bank.example.test/reauth");
 
         OpenBankingService subject = BuildSubject();
 
@@ -343,7 +350,8 @@ public class OpenBankingServiceTests : OpenBankingTestBase
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             subject.GetRenewalUrlAsync(Scenario.ConnectionMappings["theirs"], CancellationToken));
-        await OpenBankingApi.DidNotReceive().GetReauthenticationUrlAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await OpenBankingApi.DidNotReceive()
+            .GetReauthenticationUrlAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -352,21 +360,24 @@ public class OpenBankingServiceTests : OpenBankingTestBase
         // Arrange
         byte[] logo = [137, 80, 78, 71];
         await Scenario.Do(s => s.UserScenario.WithUser(Username));
-        ExternalOpenBankingAccountConnection external = new ExternalOpenBankingAccountConnectionFaker("ob-new").Generate();
+        ExternalOpenBankingAccountConnection external =
+            new ExternalOpenBankingAccountConnectionFaker("ob-new").Generate();
 
         OpenBankingApi.ExchangeCodeForAccessTokenAsync("new-code", CancellationToken).Returns(
             new ExternalOpenBankingAccessResponse { AccessToken = Token, RefreshToken = "refresh", ExpiresIn = 3600 });
-        OpenBankingApi.GetProviderInformation(Token, CancellationToken).Returns(new ExternalOpenBankingAccountConnectionResponse
-        {
-            Results = new[] { external }.ToAsyncEnumerable()
-        });
+        OpenBankingApi.GetProviderInformation(Token, CancellationToken).Returns(
+            new ExternalOpenBankingAccountConnectionResponse
+            {
+                Results = new[] { external }.ToAsyncEnumerable()
+            });
         OpenBankingApi.GetProviderLogoAsync(external.Provider!.LogoUri, CancellationToken).Returns(logo);
 
         OpenBankingService subject = BuildSubject();
         DateTime before = DateTime.UtcNow;
 
         // Act
-        bool result = await subject.AddVendorViaAccessCodeAsync(new AddVendor { AccessCode = "new-code" }, CancellationToken);
+        bool result =
+            await subject.AddVendorViaAccessCodeAsync(new AddVendor { AccessCode = "new-code" }, CancellationToken);
 
         // Assert
         await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
@@ -399,10 +410,11 @@ public class OpenBankingServiceTests : OpenBankingTestBase
 
         OpenBankingApi.ExchangeCodeForAccessTokenAsync("new-code", CancellationToken).Returns(
             new ExternalOpenBankingAccessResponse { AccessToken = Token, RefreshToken = "refresh", ExpiresIn = 3600 });
-        OpenBankingApi.GetProviderInformation(Token, CancellationToken).Returns(new ExternalOpenBankingAccountConnectionResponse
-        {
-            Results = new ExternalOpenBankingAccountConnectionFaker().Generate(2).ToAsyncEnumerable()
-        });
+        OpenBankingApi.GetProviderInformation(Token, CancellationToken).Returns(
+            new ExternalOpenBankingAccountConnectionResponse
+            {
+                Results = new ExternalOpenBankingAccountConnectionFaker().Generate(2).ToAsyncEnumerable()
+            });
         OpenBankingApi.GetProviderLogoAsync(Arg.Any<string>(), CancellationToken).Returns([1]);
 
         OpenBankingService subject = BuildSubject();
@@ -429,10 +441,11 @@ public class OpenBankingServiceTests : OpenBankingTestBase
 
         OpenBankingApi.ExchangeCodeForAccessTokenAsync("new-code", CancellationToken).Returns(
             new ExternalOpenBankingAccessResponse { AccessToken = Token, RefreshToken = "refresh", ExpiresIn = 3600 });
-        OpenBankingApi.GetProviderInformation(Token, CancellationToken).Returns(new ExternalOpenBankingAccountConnectionResponse
-        {
-            Results = new[] { new ExternalOpenBankingAccountConnectionFaker().Generate() }.ToAsyncEnumerable()
-        });
+        OpenBankingApi.GetProviderInformation(Token, CancellationToken).Returns(
+            new ExternalOpenBankingAccountConnectionResponse
+            {
+                Results = new[] { new ExternalOpenBankingAccountConnectionFaker().Generate() }.ToAsyncEnumerable()
+            });
         OpenBankingApi.GetProviderLogoAsync(Arg.Any<string>(), CancellationToken).Returns([1]);
 
         OpenBankingService subject = BuildSubject();
@@ -450,14 +463,17 @@ public class OpenBankingServiceTests : OpenBankingTestBase
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
             .Do(s => s.BankConnectionScenario.WithConnection("bank", Username, userId =>
-                new BankConnection(userId, "ob-existing", "Bank", "old-code", ["accounts"], [1], DateTime.UtcNow, DateTime.UtcNow.AddDays(90))));
+                new BankConnection(userId, "ob-existing", "Bank", "old-code", ["accounts"], [1], DateTime.UtcNow,
+                    DateTime.UtcNow.AddDays(90))));
 
         OpenBankingApi.ExchangeCodeForAccessTokenAsync("new-code", CancellationToken).Returns(
             new ExternalOpenBankingAccessResponse { AccessToken = Token, RefreshToken = "refresh", ExpiresIn = 3600 });
-        OpenBankingApi.GetProviderInformation(Token, CancellationToken).Returns(new ExternalOpenBankingAccountConnectionResponse
-        {
-            Results = new[] { new ExternalOpenBankingAccountConnectionFaker("ob-existing").Generate() }.ToAsyncEnumerable()
-        });
+        OpenBankingApi.GetProviderInformation(Token, CancellationToken).Returns(
+            new ExternalOpenBankingAccountConnectionResponse
+            {
+                Results = new[] { new ExternalOpenBankingAccountConnectionFaker("ob-existing").Generate() }
+                    .ToAsyncEnumerable()
+            });
 
         OpenBankingService subject = BuildSubject();
 
@@ -476,17 +492,18 @@ public class OpenBankingServiceTests : OpenBankingTestBase
 
         OpenBankingApi.ExchangeCodeForAccessTokenAsync("new-code", CancellationToken).Returns(
             new ExternalOpenBankingAccessResponse { AccessToken = Token, RefreshToken = "refresh", ExpiresIn = 3600 });
-        OpenBankingApi.GetProviderInformation(Token, CancellationToken).Returns(new ExternalOpenBankingAccountConnectionResponse
-        {
-            Results = new[] { new ExternalOpenBankingAccountConnectionFaker().Generate() }.ToAsyncEnumerable()
-        });
-        OpenBankingApi.GetProviderLogoAsync(Arg.Any<string>(), CancellationToken).ThrowsAsync(new HttpRequestException("404"));
+        OpenBankingApi.GetProviderInformation(Token, CancellationToken).Returns(
+            new ExternalOpenBankingAccountConnectionResponse
+            {
+                Results = new[] { new ExternalOpenBankingAccountConnectionFaker().Generate() }.ToAsyncEnumerable()
+            });
+        OpenBankingApi.GetProviderLogoAsync(Arg.Any<string>(), CancellationToken)
+            .ThrowsAsync(new HttpRequestException("404"));
 
         OpenBankingService subject = BuildSubject();
 
         // Act
         await Assert.ThrowsAsync<HttpRequestException>(() =>
-
             subject.AddVendorViaAccessCodeAsync(new AddVendor { AccessCode = "new-code" }, CancellationToken));
 
         // Assert
@@ -505,14 +522,17 @@ public class OpenBankingServiceTests : OpenBankingTestBase
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
             .Do(s => s.BankConnectionScenario.WithConnection("bank", Username, userId =>
-                new BankConnection(userId, "ob-existing", "Bank", "old-code", ["accounts"], [1], DateTime.UtcNow, DateTime.UtcNow.AddDays(90))));
+                new BankConnection(userId, "ob-existing", "Bank", "old-code", ["accounts"], [1], DateTime.UtcNow,
+                    DateTime.UtcNow.AddDays(90))));
 
         OpenBankingApi.ExchangeCodeForAccessTokenAsync("new-code", CancellationToken).Returns(
             new ExternalOpenBankingAccessResponse { AccessToken = Token, RefreshToken = "refresh", ExpiresIn = 3600 });
-        OpenBankingApi.GetProviderInformation(Token, CancellationToken).Returns(new ExternalOpenBankingAccountConnectionResponse
-        {
-            Results = new[] { new ExternalOpenBankingAccountConnectionFaker("ob-existing").Generate() }.ToAsyncEnumerable()
-        });
+        OpenBankingApi.GetProviderInformation(Token, CancellationToken).Returns(
+            new ExternalOpenBankingAccountConnectionResponse
+            {
+                Results = new[] { new ExternalOpenBankingAccountConnectionFaker("ob-existing").Generate() }
+                    .ToAsyncEnumerable()
+            });
 
         OpenBankingService subject = BuildSubject();
 
@@ -531,7 +551,8 @@ public class OpenBankingServiceTests : OpenBankingTestBase
         await Scenario.Do(s => s.UserScenario.WithUser(Username));
         OpenBankingApi.ExchangeCodeForAccessTokenAsync("code", CancellationToken).Returns(
             new ExternalOpenBankingAccessResponse { AccessToken = Token, RefreshToken = "refresh", ExpiresIn = 3600 });
-        OpenBankingApi.GetProviderInformation(Token, CancellationToken).Returns(new ExternalOpenBankingAccountConnectionResponse());
+        OpenBankingApi.GetProviderInformation(Token, CancellationToken)
+            .Returns(new ExternalOpenBankingAccountConnectionResponse());
 
         OpenBankingService subject = BuildSubject();
 
@@ -547,10 +568,11 @@ public class OpenBankingServiceTests : OpenBankingTestBase
         await Scenario.Do(s => s.UserScenario.WithUser(Username));
         OpenBankingApi.ExchangeCodeForAccessTokenAsync("code", CancellationToken).Returns(
             new ExternalOpenBankingAccessResponse { AccessToken = Token, RefreshToken = "refresh", ExpiresIn = 3600 });
-        OpenBankingApi.GetProviderInformation(Token, CancellationToken).Returns(new ExternalOpenBankingAccountConnectionResponse
-        {
-            Results = new[] { new ExternalOpenBankingAccountConnection { Provider = null } }.ToAsyncEnumerable()
-        });
+        OpenBankingApi.GetProviderInformation(Token, CancellationToken).Returns(
+            new ExternalOpenBankingAccountConnectionResponse
+            {
+                Results = new[] { new ExternalOpenBankingAccountConnection { Provider = null } }.ToAsyncEnumerable()
+            });
 
         OpenBankingService subject = BuildSubject();
 
@@ -569,10 +591,11 @@ public class OpenBankingServiceTests : OpenBankingTestBase
 
         OpenBankingApi.ExchangeCodeForAccessTokenAsync("new-code", CancellationToken).Returns(
             new ExternalOpenBankingAccessResponse { AccessToken = Token, RefreshToken = "refresh", ExpiresIn = 3600 });
-        OpenBankingApi.GetProviderInformation(Token, CancellationToken).Returns(new ExternalOpenBankingAccountConnectionResponse
-        {
-            Results = new[] { external }.ToAsyncEnumerable()
-        });
+        OpenBankingApi.GetProviderInformation(Token, CancellationToken).Returns(
+            new ExternalOpenBankingAccountConnectionResponse
+            {
+                Results = new[] { external }.ToAsyncEnumerable()
+            });
         OpenBankingApi.GetProviderLogoAsync(Arg.Any<string>(), CancellationToken).Returns([1]);
 
         OpenBankingService subject = BuildSubject();

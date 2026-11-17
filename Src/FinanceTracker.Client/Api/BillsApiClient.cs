@@ -114,7 +114,7 @@ public sealed class BillsApiClient : IBillsService
         CancellationToken cancellationToken)
     {
         using JsonDocument problem = await response.Content.ReadFromJsonAsync<JsonDocument>(cancellationToken)
-            ?? throw new InvalidOperationException("The API's 409 had no body.");
+                                     ?? throw new InvalidOperationException("The API's 409 had no body.");
 
         if (problem.RootElement.TryGetProperty(AlreadyABillException.BillNameField, out JsonElement billName) &&
             billName.GetString() is { } name)

@@ -109,7 +109,8 @@ public class RecogniseHouseholdMemberDialogTests : ComponentTestBase
     public async Task Display_WritesTheSortCodeWithDashes(string sortCode, string number, string expected)
     {
         // Act
-        string display = RecogniseHouseholdMemberDialog.Display(new LinkedAccount { SortCode = sortCode, Number = number });
+        string display =
+            RecogniseHouseholdMemberDialog.Display(new LinkedAccount { SortCode = sortCode, Number = number });
 
         // Assert
         await Assert.That(display).IsEqualTo(expected);

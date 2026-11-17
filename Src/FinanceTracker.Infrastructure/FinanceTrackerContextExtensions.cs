@@ -22,7 +22,8 @@ public static class FinanceTrackerContextExtensions
         /// Restricts to those owned by any of <paramref name="userIds"/>, for naming what shared transactions point
         /// at, such as the tags and bills of whoever shared the account. For reading only.
         /// </summary>
-        public IQueryable<T> OwnedByAny(IReadOnlyCollection<Guid> userIds) => query.Where(x => userIds.Contains(x.UserId));
+        public IQueryable<T> OwnedByAny(IReadOnlyCollection<Guid> userIds) =>
+            query.Where(x => userIds.Contains(x.UserId));
 
         /// <summary>
         /// The one matching <paramref name="predicate"/>, for looking up what a request names by its id.

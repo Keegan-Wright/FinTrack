@@ -70,7 +70,8 @@ public class CustomClassificationsPageTests : ComponentTestBase
             .Returns(new Classification { ClassificationId = _holiday.ClassificationId, Tag = "Travel" });
         IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
         IRenderedComponent<MudPopoverProvider> popovers = Render<MudPopoverProvider>();
-        IRenderedComponent<CustomClassifications> cut = Render<CustomClassifications>(p => p.AddCascadingValue(_applicationState));
+        IRenderedComponent<CustomClassifications> cut =
+            Render<CustomClassifications>(p => p.AddCascadingValue(_applicationState));
 
         // Act
         Task choosing = await RowMenu.StartAsync(cut, popovers, "Holiday", "Rename");
@@ -124,7 +125,8 @@ public class CustomClassificationsPageTests : ComponentTestBase
         // Arrange
         IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
         IRenderedComponent<MudPopoverProvider> popovers = Render<MudPopoverProvider>();
-        IRenderedComponent<CustomClassifications> cut = Render<CustomClassifications>(p => p.AddCascadingValue(_applicationState));
+        IRenderedComponent<CustomClassifications> cut =
+            Render<CustomClassifications>(p => p.AddCascadingValue(_applicationState));
 
         // Act
         Task choosing = await RowMenu.StartAsync(cut, popovers, "Kids", "Delete");
@@ -146,7 +148,8 @@ public class CustomClassificationsPageTests : ComponentTestBase
         // Arrange
         IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
         IRenderedComponent<MudPopoverProvider> popovers = Render<MudPopoverProvider>();
-        IRenderedComponent<CustomClassifications> cut = Render<CustomClassifications>(p => p.AddCascadingValue(_applicationState));
+        IRenderedComponent<CustomClassifications> cut =
+            Render<CustomClassifications>(p => p.AddCascadingValue(_applicationState));
 
         // Act
         Task choosing = await RowMenu.StartAsync(cut, popovers, "Kids", "Delete");

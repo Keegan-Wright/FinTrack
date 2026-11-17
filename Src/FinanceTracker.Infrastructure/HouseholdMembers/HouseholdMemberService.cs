@@ -132,7 +132,6 @@ public class HouseholdMemberService : ServiceBase<HouseholdMemberService>, IHous
         // Their transactions were transfers because of them, so count again or go back to review
         await _transferMatchingService.MatchAsync(cancellationToken);
         return true;
-
     }
 
     /// <exception cref="NameTakenException">Someone else in the household has the same first and last name.

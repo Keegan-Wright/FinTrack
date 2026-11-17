@@ -96,8 +96,11 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
         {
             // Their own tags, those shared with them, or one already on it, which on a shared transaction may be the
             // other person's
-            List<Guid> onIt = [.. transaction.CustomClassificationIds, .. transaction.Splits.Select(static x => x.TagId)
-                .OfType<Guid>()];
+            List<Guid> onIt =
+            [
+                .. transaction.CustomClassificationIds, .. transaction.Splits.Select(static x => x.TagId)
+                    .OfType<Guid>()
+            ];
 
             List<Guid> tagIds = request.Parts.Select(static x => x.TagId).OfType<Guid>().Distinct().ToList();
 

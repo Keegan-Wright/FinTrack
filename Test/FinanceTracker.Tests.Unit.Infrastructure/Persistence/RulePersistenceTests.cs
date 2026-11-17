@@ -19,11 +19,11 @@ public class RulePersistenceTests : InfrastructureTestBase
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser(Username));
         Rule rule = new(Scenario.UserMappings[Username], "Groceries", 3, RuleMatchMode.Any,
-        [
-            new RuleCondition(RuleField.Description, RuleOperator.Contains, "GROCER", ignoreCase: false),
-            new RuleCondition(RuleField.Amount, RuleOperator.Between, "5.00", "50.00")
-        ],
-        [new RuleAction(RuleActionType.AddTag, TagId), RuleAction.MarkNotATransfer()]);
+            [
+                new RuleCondition(RuleField.Description, RuleOperator.Contains, "GROCER", ignoreCase: false),
+                new RuleCondition(RuleField.Amount, RuleOperator.Between, "5.00", "50.00")
+            ],
+            [new RuleAction(RuleActionType.AddTag, TagId), RuleAction.MarkNotATransfer()]);
         rule.StopProcessingAfterMatch(true);
         await SaveAsync(rule);
 

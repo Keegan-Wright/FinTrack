@@ -41,7 +41,8 @@
 
     private const int ChartHeight = 300;
 
-    [CascadingParameter(Name = "IsDarkMode")] public bool IsDarkMode { get; set; }
+    [CascadingParameter(Name = "IsDarkMode")]
+    public bool IsDarkMode { get; set; }
 
     [Parameter, EditorRequired] public IReadOnlyList<Transaction> Transactions { get; set; } = [];
 

@@ -19,7 +19,8 @@
 <PageHeader Title="Household" Subtitle="@Subtitle">
     <Actions>
         <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.PersonAdd"
-                   OnClick="@AddHouseholdMember">Add person</MudButton>
+                   OnClick="@AddHouseholdMember">Add person
+        </MudButton>
     </Actions>
 </PageHeader>
 
@@ -55,7 +56,8 @@
                         @if (member.YearlyIncome is { } yearly)
                         {
                             <MoneyText Value="@yearly" Typo="Typo.body1"/>
-                            <MudText Typo="Typo.caption" Class="mud-text-secondary d-block">@MonthlyText(yearly)</MudText>
+                            <MudText Typo="Typo.caption"
+                                     Class="mud-text-secondary d-block">@MonthlyText(yearly)</MudText>
                         }
                         else
                         {
@@ -66,9 +68,11 @@
                              AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
                              AriaLabel="@($"Actions for {member.FirstName} {member.LastName}")">
                         <MudMenuItem Icon="@Icons.Material.Outlined.Edit"
-                                     OnClick="@(() => EditAsync(member))">Edit</MudMenuItem>
+                                     OnClick="@(() => EditAsync(member))">Edit
+                        </MudMenuItem>
                         <MudMenuItem Icon="@Icons.Material.Outlined.PersonSearch"
-                                     OnClick="@(() => RecognisePayments(member))">Recognise their payments</MudMenuItem>
+                                     OnClick="@(() => RecognisePayments(member))">Recognise their payments
+                        </MudMenuItem>
                         @if (member.LinkedUsername is { } linkedAs)
                         {
                             <MudMenuItem Icon="@Icons.Material.Outlined.LinkOff"
@@ -83,7 +87,8 @@
                             }
                         }
                         <MudMenuItem Icon="@Icons.Material.Outlined.Delete"
-                                     OnClick="@(() => DeleteAsync(member))">Delete</MudMenuItem>
+                                     OnClick="@(() => DeleteAsync(member))">Delete
+                        </MudMenuItem>
                     </MudMenu>
                 </div>
             }

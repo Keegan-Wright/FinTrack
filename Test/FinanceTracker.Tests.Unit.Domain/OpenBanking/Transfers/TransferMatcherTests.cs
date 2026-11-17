@@ -19,8 +19,10 @@ public class TransferMatcherTests
     private readonly BankAccount _current = Account("Current", "111111", "11111111");
     private readonly BankAccount _savings = Account("Savings", "222222", "22222222");
     private readonly BankAccount _joint = Account("Joint", "333333", "33333333");
+
     private readonly BankAccount _card = new(UserId, Guid.NewGuid(), "ext-card", "CREDIT_CARD", "Credit Card", "GBP",
         BankAccountKind.Card);
+
     private readonly HouseholdMember _partner = Member("444444", "44444444", "Jane Smith", "J Smith");
 
     [Test]

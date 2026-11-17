@@ -75,7 +75,8 @@ public class AccountSharingServiceTests : InfrastructureTestBase
         // Assert
         using (Assert.Multiple())
         {
-            await Assert.That(saved.YourAccounts.Where(static x => x.Mode is not null).Select(x => (x.AccountId, x.Mode)))
+            await Assert.That(saved.YourAccounts.Where(static x => x.Mode is not null)
+                    .Select(x => (x.AccountId, x.Mode)))
                 .IsEquivalentTo([(Account("alex-current"), (ShareMode?)ShareMode.AllowChanges)]);
             await Assert.That(await CountSharesAsync()).IsEqualTo(1);
         }
@@ -117,8 +118,10 @@ public class AccountSharingServiceTests : InfrastructureTestBase
             CancellationToken);
 
         // Act
-        UserLink alexSees = (await Subject(Alex).GetLinksAsync(CancellationToken).ToListAsync(CancellationToken)).Single();
-        UserLink samSees = (await Subject(Sam).GetLinksAsync(CancellationToken).ToListAsync(CancellationToken)).Single();
+        UserLink alexSees =
+            (await Subject(Alex).GetLinksAsync(CancellationToken).ToListAsync(CancellationToken)).Single();
+        UserLink samSees =
+            (await Subject(Sam).GetLinksAsync(CancellationToken).ToListAsync(CancellationToken)).Single();
 
         // Assert
         using (Assert.Multiple())
@@ -207,7 +210,8 @@ public class AccountSharingServiceTests : InfrastructureTestBase
 
     private ChangeAccountShares Choose(params (string Account, ShareMode Mode)[] accounts) => new()
     {
-        Accounts = accounts.Select(x => new AccountShareChoice { AccountId = Account(x.Account), Mode = x.Mode }).ToList()
+        Accounts = accounts.Select(x => new AccountShareChoice { AccountId = Account(x.Account), Mode = x.Mode })
+            .ToList()
     };
 
     private async Task<int> CountSharesAsync()

@@ -120,7 +120,8 @@ public class AccountPageTests : UiTestBase
         await page.GotoAsync($"/Account/ResetPassword?userId={user.UserId}&code=cGxhY2Vob2xkZXI");
 
         // Act
-        await page.GetByLabel("New password", new PageGetByLabelOptions { Exact = true }).FillAsync("Another-Password-4!");
+        await page.GetByLabel("New password", new PageGetByLabelOptions { Exact = true })
+            .FillAsync("Another-Password-4!");
         await page.GetByLabel("Confirm new password").FillAsync("Another-Password-4!");
         await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = "Reset password" }).ClickAsync();
 
@@ -128,7 +129,8 @@ public class AccountPageTests : UiTestBase
         await Assertions.Expect(page.GetByRole(AriaRole.Heading, new PageGetByRoleOptions { Level = 1 }))
             .ToHaveTextAsync("That reset link isn't valid");
         using FinTrackClient client = CreateClient();
-        HttpResponseMessage signIn = await client.LoginAsync(user.Username, SignedInUser.DefaultPassword, CancellationToken);
+        HttpResponseMessage signIn =
+            await client.LoginAsync(user.Username, SignedInUser.DefaultPassword, CancellationToken);
         await Assert.That(signIn.StatusCode).IsEqualTo(System.Net.HttpStatusCode.Redirect);
     }
 }

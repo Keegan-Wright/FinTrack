@@ -347,7 +347,8 @@ public class SavingsGoalsServiceTests : InfrastructureTestBase
         // Arrange, paid out of the current account into a pot FinTrack can't see
         await SeedAccountsAsync(Username)
             .Do(s => s.ClassificationScenario.WithClassification("car", Username, "Car fund"))
-            .Do(s => s.TransactionScenario.WithTransaction("paid-out", "savings", Moved(-200m, new DateTime(2026, 3, 2))))
+            .Do(s => s.TransactionScenario.WithTransaction("paid-out", "savings",
+                Moved(-200m, new DateTime(2026, 3, 2))))
             .Do(s => s.TransactionScenario.WithCustomClassification("paid-out", "car"));
         SavingsGoalsService subject = BuildSubject(Username);
         await subject.AddSavingsGoalAsync(new SaveSavingsGoal

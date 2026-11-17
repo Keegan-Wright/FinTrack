@@ -10,7 +10,8 @@ internal static class QueryableBlindIndexExtensions
 {
     extension<TEntity>(IQueryable<TEntity> query)
     {
-        public IQueryable<TEntity> WhereEncryptedEquals(Expression<Func<TEntity, string>> encryptedProperty, string value,
+        public IQueryable<TEntity> WhereEncryptedEquals(Expression<Func<TEntity, string>> encryptedProperty,
+            string value,
             FinanceTrackerContext context)
         {
             string hash = context.EncryptionService.ComputeBlindIndex(value);

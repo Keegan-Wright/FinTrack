@@ -208,7 +208,8 @@ public class AutomationServiceTests : InfrastructureTestBase
         await subject.RequestSyncAsync(CancellationToken);
 
         // Assert
-        await _openBankingSyncScheduler.Received(1).ScheduleUserSyncAsync(Scenario.UserMappings[Username], CancellationToken);
+        await _openBankingSyncScheduler.Received(1)
+            .ScheduleUserSyncAsync(Scenario.UserMappings[Username], CancellationToken);
     }
 
     [Test]

@@ -79,11 +79,13 @@ public class UserLinkTests
 
     [Test]
     public void Accept_ByTheInviter_Throws() =>
-        Assert.Throws<InvalidOperationException>(() => new UserLink(Inviter, Invitee, InvitedAt).Accept(Inviter, Later));
+        Assert.Throws<InvalidOperationException>(() =>
+            new UserLink(Inviter, Invitee, InvitedAt).Accept(Inviter, Later));
 
     [Test]
     public void Accept_ByAStranger_Throws() =>
-        Assert.Throws<InvalidOperationException>(() => new UserLink(Inviter, Invitee, InvitedAt).Accept(Stranger, Later));
+        Assert.Throws<InvalidOperationException>(() =>
+            new UserLink(Inviter, Invitee, InvitedAt).Accept(Stranger, Later));
 
     [Test]
     public void Accept_Twice_Throws()

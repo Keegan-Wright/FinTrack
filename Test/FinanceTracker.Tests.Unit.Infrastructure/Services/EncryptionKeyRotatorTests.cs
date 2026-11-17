@@ -85,11 +85,13 @@ public class EncryptionKeyRotatorTests : InfrastructureTestBase
         await using FinanceTrackerContext context = await rotatedFactory.CreateDbContextAsync(CancellationToken);
         SavingsGoal category = await context.SavingsGoals.SingleAsync(CancellationToken);
         string blindIndex = await context.BankTransactions
-            .Select(static x => EF.Property<string>(x, EntityTypeBuilderExtensions.BlindIndexPropertyName(nameof(BankTransaction.ExternalId))))
+            .Select(static x => EF.Property<string>(x,
+                EntityTypeBuilderExtensions.BlindIndexPropertyName(nameof(BankTransaction.ExternalId))))
             .SingleAsync(CancellationToken);
 
         string dayBlindIndex = await context.BankTransactions
-            .Select(static x => EF.Property<string>(x, EntityTypeBuilderExtensions.DayBlindIndexPropertyName(nameof(BankTransaction.OccurredAt))))
+            .Select(static x => EF.Property<string>(x,
+                EntityTypeBuilderExtensions.DayBlindIndexPropertyName(nameof(BankTransaction.OccurredAt))))
             .SingleAsync(CancellationToken);
 
         using (Assert.Multiple())

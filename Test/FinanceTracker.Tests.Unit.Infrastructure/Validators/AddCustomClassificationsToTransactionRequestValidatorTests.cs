@@ -16,7 +16,7 @@ public class AddCustomClassificationsToTransactionRequestValidatorTests : UnitTe
         var testModel = new AddCustomClassificationsToTransaction
         {
             TransactionId = Guid.NewGuid(),
-            Classifications = new []
+            Classifications = new[]
             {
                 new SelectedCustomClassification()
                 {
@@ -43,7 +43,7 @@ public class AddCustomClassificationsToTransactionRequestValidatorTests : UnitTe
         var testModel = new AddCustomClassificationsToTransaction
         {
             TransactionId = Guid.Empty,
-            Classifications = new []
+            Classifications = new[]
             {
                 new SelectedCustomClassification()
                 {
@@ -60,7 +60,8 @@ public class AddCustomClassificationsToTransactionRequestValidatorTests : UnitTe
         {
             await Assert.That(result.IsValid).IsFalse();
             await Assert.That(result.Errors).Count().IsEqualTo(1);
-            await Assert.That(result.Errors.First().PropertyName).IsEqualTo(nameof(AddCustomClassificationsToTransaction.TransactionId));
+            await Assert.That(result.Errors.First().PropertyName)
+                .IsEqualTo(nameof(AddCustomClassificationsToTransaction.TransactionId));
             await Assert.That(result.Errors.First().ErrorMessage).IsEqualTo("Invalid transaction id");
         }
     }
@@ -83,8 +84,10 @@ public class AddCustomClassificationsToTransactionRequestValidatorTests : UnitTe
         {
             await Assert.That(result.IsValid).IsFalse();
             await Assert.That(result.Errors).Count().IsEqualTo(1);
-            await Assert.That(result.Errors.First().PropertyName).IsEqualTo(nameof(AddCustomClassificationsToTransaction.Classifications));
-            await Assert.That(result.Errors.First().ErrorMessage).IsEqualTo("At least one classification must be selected");
+            await Assert.That(result.Errors.First().PropertyName)
+                .IsEqualTo(nameof(AddCustomClassificationsToTransaction.Classifications));
+            await Assert.That(result.Errors.First().ErrorMessage)
+                .IsEqualTo("At least one classification must be selected");
         }
     }
 
@@ -95,7 +98,7 @@ public class AddCustomClassificationsToTransactionRequestValidatorTests : UnitTe
         var testModel = new AddCustomClassificationsToTransaction
         {
             TransactionId = Guid.NewGuid(),
-            Classifications = new []
+            Classifications = new[]
             {
                 new SelectedCustomClassification()
                 {
@@ -120,7 +123,9 @@ public class AddCustomClassificationsToTransactionRequestValidatorTests : UnitTe
         {
             await Assert.That(result.IsValid).IsFalse();
             await Assert.That(result.Errors).Count().IsEqualTo(3);
-            await Assert.That(result.Errors).All(x => x.PropertyName.EndsWith(nameof(SelectedCustomClassification.ClassificationId), StringComparison.Ordinal));
+            await Assert.That(result.Errors).All(x =>
+                x.PropertyName.EndsWith(nameof(SelectedCustomClassification.ClassificationId),
+                    StringComparison.Ordinal));
             foreach (ValidationFailure validationFailure in result.Errors)
             {
                 await Assert.That(validationFailure.ErrorMessage)

@@ -44,7 +44,8 @@
             <MudText Typo="Typo.body2">Notifications are emailed to <strong>@Settings.EmailAddress</strong>.</MudText>
             <div class="ft-email-test">
                 <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Send"
-                           Disabled="@_sendingTest" OnClick="@SendTestAsync">Send a test email</MudButton>
+                           Disabled="@_sendingTest" OnClick="@SendTestAsync">Send a test email
+                </MudButton>
                 @if (Settings.LastEmail is { } last)
                 {
                     <DeliveryStatusText Status="@last" What="email"/>

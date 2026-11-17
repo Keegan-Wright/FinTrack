@@ -41,11 +41,13 @@
                 }
             </MudSelect>
             <MudSelect T="string" Label="Categories" MultiSelection="true" Clearable="true" Variant="Variant.Outlined"
-                       Margin="Margin.Dense" MultiSelectionTextFunc="@(list => CountText(list, "category", "categories"))"
+                       Margin="Margin.Dense"
+                       MultiSelectionTextFunc="@(list => CountText(list, "category", "categories"))"
                        @bind-SelectedValues="_selectedCategories">
                 @foreach (var item in CategoryFilterItems)
                 {
-                    <MudSelectItem T="string" Value="@item.TransactionCategory">@item.TransactionCategory</MudSelectItem>
+                    <MudSelectItem T="string"
+                                   Value="@item.TransactionCategory">@item.TransactionCategory</MudSelectItem>
                 }
             </MudSelect>
             <MudSelect T="string" Label="Types" MultiSelection="true" Clearable="true" Variant="Variant.Outlined"

@@ -23,9 +23,11 @@
     <MudText Typo="Typo.caption" Class="mud-text-secondary">@TransferText.Reason(Pair.First.Transfer!)</MudText>
     <div class="ft-review__actions">
         <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
-                   OnClick="@(() => OnDecide.InvokeAsync(TransferAction.MarkAsTransfer))">It's a transfer</MudButton>
+                   OnClick="@(() => OnDecide.InvokeAsync(TransferAction.MarkAsTransfer))">It's a transfer
+        </MudButton>
         <MudButton Variant="Variant.Text" Size="Size.Small"
-                   OnClick="@(() => OnDecide.InvokeAsync(TransferAction.NotATransfer))">Not a transfer</MudButton>
+                   OnClick="@(() => OnDecide.InvokeAsync(TransferAction.NotATransfer))">Not a transfer
+        </MudButton>
     </div>
 </div>
 
@@ -48,7 +50,8 @@
         @<div class="ft-review__half">
             <div class="ft-review__text">
                 <MudText Typo="Typo.body2" Class="text-truncate">@transaction.Description</MudText>
-                <MudText Typo="Typo.caption" Class="mud-text-secondary text-truncate">@AccountAndDate(transaction)</MudText>
+                <MudText Typo="Typo.caption"
+                         Class="mud-text-secondary text-truncate">@AccountAndDate(transaction)</MudText>
             </div>
             <MoneyText Value="@transaction.Amount" Signed="true"/>
         </div>;

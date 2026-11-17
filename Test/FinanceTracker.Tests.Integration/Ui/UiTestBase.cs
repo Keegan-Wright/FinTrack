@@ -76,7 +76,8 @@ public abstract class UiTestBase : IntegrationTestBase
         page.Console += (_, message) =>
         {
             // A failed request is reported with its address below, the console only says it failed
-            if (message.Type == "error" && !message.Text.StartsWith("Failed to load resource", StringComparison.Ordinal))
+            if (message.Type == "error" &&
+                !message.Text.StartsWith("Failed to load resource", StringComparison.Ordinal))
             {
                 BrowserErrors.Add(message.Text);
             }
@@ -245,18 +246,18 @@ public abstract class UiTestBase : IntegrationTestBase
     // Nothing when the page fits, otherwise each element past the edge whose parent isn't, by its tag, classes and
     // right edge
     private const string SidewaysScript = """
-        () => {
-            const width = window.innerWidth;
-            if (document.documentElement.scrollWidth <= width) {
-                return [];
-            }
-            const past = element => element.getBoundingClientRect().right > width + 1;
-            return [...document.body.querySelectorAll('*')]
-                .filter(x => past(x) && !(x.parentElement && x.parentElement !== document.body && past(x.parentElement)))
-                .slice(0, 5)
-                .map(x => `${x.tagName.toLowerCase()}.${[...x.classList].join('.')} (${Math.round(x.getBoundingClientRect().right)}px)`);
-        }
-        """;
+                                          () => {
+                                              const width = window.innerWidth;
+                                              if (document.documentElement.scrollWidth <= width) {
+                                                  return [];
+                                              }
+                                              const past = element => element.getBoundingClientRect().right > width + 1;
+                                              return [...document.body.querySelectorAll('*')]
+                                                  .filter(x => past(x) && !(x.parentElement && x.parentElement !== document.body && past(x.parentElement)))
+                                                  .slice(0, 5)
+                                                  .map(x => `${x.tagName.toLowerCase()}.${[...x.classList].join('.')} (${Math.round(x.getBoundingClientRect().right)}px)`);
+                                          }
+                                          """;
 
     /// <summary>
     /// Whether all of <paramref name="locator"/> is on the screen, none of it cut off at a side, the top or the
@@ -304,10 +305,10 @@ public abstract class UiTestBase : IntegrationTestBase
 
     // Whether every animation that ends has ended, a spinner's run for as long as it's there
     private const string SettledScript = """
-        () => document.getAnimations()
-            .filter(x => x.effect?.getTiming().iterations !== Infinity)
-            .every(x => x.playState !== 'running')
-        """;
+                                         () => document.getAnimations()
+                                             .filter(x => x.effect?.getTiming().iterations !== Infinity)
+                                             .every(x => x.playState !== 'running')
+                                         """;
 
     // Each element by its selector and the start of its HTML, as the selector alone is often only generated ids
     private static string Describe(AxeResultItem violation)

@@ -20,7 +20,9 @@ public static class FluentValidationExtensions
         {
             return async (obj, property) =>
             {
-                ValidationResult result = await validator.ValidateAsync(ValidationContext<T>.CreateWithOptions(model, x => x.IncludeProperties(propertyName)));
+                ValidationResult result =
+                    await validator.ValidateAsync(
+                        ValidationContext<T>.CreateWithOptions(model, x => x.IncludeProperties(propertyName)));
                 if (result.IsValid)
                     return Array.Empty<string>();
                 return result.Errors.Select(e => e.ErrorMessage);

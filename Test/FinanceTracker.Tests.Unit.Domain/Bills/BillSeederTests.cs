@@ -14,8 +14,10 @@ public class BillSeederTests
     {
         // Arrange
         BankAccount account = Account();
-        account.SyncStandingOrders([StandingOrder("IntrvlMnthDay:01:15", next: new DateTime(2026, 11, 15),
-            amount: -650m, first: new DateTime(2025, 3, 15))]);
+        account.SyncStandingOrders([
+            StandingOrder("IntrvlMnthDay:01:15", next: new DateTime(2026, 11, 15),
+                amount: -650m, first: new DateTime(2025, 3, 15))
+        ]);
 
         // Act
         BillSeedSummary summary = BillSeeder.Seed([account], [], Today);
@@ -74,8 +76,10 @@ public class BillSeederTests
     {
         // Arrange
         BankAccount account = Account();
-        account.SyncStandingOrders([StandingOrder(next: new DateTime(year, month, day), amount: (decimal)amount,
-            status: status)]);
+        account.SyncStandingOrders([
+            StandingOrder(next: new DateTime(year, month, day), amount: (decimal)amount,
+                status: status)
+        ]);
 
         // Act
         BillSeedSummary summary = BillSeeder.Seed([account], [], Today);

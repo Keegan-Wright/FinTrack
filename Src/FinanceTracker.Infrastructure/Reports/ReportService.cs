@@ -25,7 +25,8 @@ public class ReportService : ServiceBase<ReportService>, IReportService
 
     private readonly IAccountScope _accountScope;
 
-    public ReportService(ICurrentUser currentUser, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
+    public ReportService(ICurrentUser currentUser,
+        IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
         ILogger<ReportService> logger, TimeProvider timeProvider, IAccountScope accountScope)
         : base(currentUser, financeTrackerContextFactory, logger)
     {

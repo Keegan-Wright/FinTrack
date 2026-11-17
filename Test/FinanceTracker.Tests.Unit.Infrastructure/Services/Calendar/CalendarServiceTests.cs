@@ -49,7 +49,8 @@ public class CalendarServiceTests : InfrastructureTestBase
         {
             await Assert.That(days.Count).IsEqualTo(expectedDays);
             await Assert.That(days.First().Date).IsEqualTo(new DateTime(year, month, 1, 0, 0, 0, DateTimeKind.Utc));
-            await Assert.That(days.Last().Date).IsEqualTo(new DateTime(year, month, expectedDays, 0, 0, 0, DateTimeKind.Utc));
+            await Assert.That(days.Last().Date)
+                .IsEqualTo(new DateTime(year, month, expectedDays, 0, 0, 0, DateTimeKind.Utc));
         }
     }
 
@@ -61,10 +62,11 @@ public class CalendarServiceTests : InfrastructureTestBase
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
             .Do(s => s.BankConnectionScenario.WithConnection("bank", Username))
             .Do(s => s.BankAccountScenario.WithAccount("main", "bank"))
-            .Do(s => s.TransactionScenario.WithTransaction("coffee", "main", new TransactionDetailsFaker().Generate() with
-            {
-                Description = "Coffee", Amount = -3.5m, Type = TransactionType.Debit, OccurredAt = occurredAt
-            }));
+            .Do(s => s.TransactionScenario.WithTransaction("coffee", "main",
+                new TransactionDetailsFaker().Generate() with
+                {
+                    Description = "Coffee", Amount = -3.5m, Type = TransactionType.Debit, OccurredAt = occurredAt
+                }));
 
         CalendarService subject = BuildSubject();
 
@@ -118,18 +120,21 @@ public class CalendarServiceTests : InfrastructureTestBase
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
             .Do(s => s.BankConnectionScenario.WithConnection("bank", Username))
             .Do(s => s.BankAccountScenario.WithAccount("main", "bank"))
-            .Do(s => s.TransactionScenario.WithTransaction("before", "main", new TransactionDetailsFaker().Generate() with
-            {
-                OccurredAt = new DateTime(2026, 4, 30, 23, 59, 59, DateTimeKind.Utc)
-            }))
-            .Do(s => s.TransactionScenario.WithTransaction("first", "main", new TransactionDetailsFaker().Generate() with
-            {
-                OccurredAt = new DateTime(2026, 5, 1, 0, 0, 0, DateTimeKind.Utc)
-            }))
-            .Do(s => s.TransactionScenario.WithTransaction("after", "main", new TransactionDetailsFaker().Generate() with
-            {
-                OccurredAt = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc)
-            }));
+            .Do(s => s.TransactionScenario.WithTransaction("before", "main",
+                new TransactionDetailsFaker().Generate() with
+                {
+                    OccurredAt = new DateTime(2026, 4, 30, 23, 59, 59, DateTimeKind.Utc)
+                }))
+            .Do(s => s.TransactionScenario.WithTransaction("first", "main",
+                new TransactionDetailsFaker().Generate() with
+                {
+                    OccurredAt = new DateTime(2026, 5, 1, 0, 0, 0, DateTimeKind.Utc)
+                }))
+            .Do(s => s.TransactionScenario.WithTransaction("after", "main",
+                new TransactionDetailsFaker().Generate() with
+                {
+                    OccurredAt = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc)
+                }));
 
         CalendarService subject = BuildSubject();
 
@@ -452,7 +457,8 @@ public class CalendarServiceTests : InfrastructureTestBase
             .Do(s => s.CalendarEventScenario.WithEvent("birthday", Username, userId =>
                 new DomainCalendarEvent(userId, "Birthday", new DateOnly(2020, 6, 2), DomainEventRecurrence.Yearly)))
             .Do(s => s.CalendarEventScenario.WithEvent("anniversary", Username, userId =>
-                new DomainCalendarEvent(userId, "Anniversary", new DateOnly(2020, 3, 1), DomainEventRecurrence.Yearly)));
+                new DomainCalendarEvent(userId, "Anniversary", new DateOnly(2020, 3, 1),
+                    DomainEventRecurrence.Yearly)));
         CalendarService subject = BuildSubject();
 
         // Act

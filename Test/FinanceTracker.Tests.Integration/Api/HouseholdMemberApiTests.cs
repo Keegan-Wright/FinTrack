@@ -19,9 +19,11 @@ public class HouseholdMemberApiTests : IntegrationTestBase
         // Act
         HouseholdMember added = await service.AddHouseholdMemberAsync(
             new AddHouseholdMember { FirstName = "Jane", LastName = "Doe", YearlyIncome = 2500m }, CancellationToken);
-        List<HouseholdMember> listed = await service.GetHouseholdMembersAsync(CancellationToken).ToListAsync(CancellationToken);
+        List<HouseholdMember> listed =
+            await service.GetHouseholdMembersAsync(CancellationToken).ToListAsync(CancellationToken);
         bool deleted = await service.DeleteHouseholdMemberAsync(added.Id, CancellationToken);
-        List<HouseholdMember> afterDelete = await service.GetHouseholdMembersAsync(CancellationToken).ToListAsync(CancellationToken);
+        List<HouseholdMember> afterDelete =
+            await service.GetHouseholdMembersAsync(CancellationToken).ToListAsync(CancellationToken);
 
         // Assert
         using (Assert.Multiple())
@@ -78,7 +80,8 @@ public class HouseholdMemberApiTests : IntegrationTestBase
 
         // Act
         HouseholdMember updated = await service.UpdateHouseholdMemberAsync(added.Id,
-            new UpdateHouseholdMember { FirstName = "Janet", LastName = "Doe", YearlyIncome = 2750m }, CancellationToken);
+            new UpdateHouseholdMember { FirstName = "Janet", LastName = "Doe", YearlyIncome = 2750m },
+            CancellationToken);
         HouseholdMember listed = (await service.GetHouseholdMembersAsync(CancellationToken)
             .ToListAsync(CancellationToken)).Single();
 
@@ -157,7 +160,8 @@ public class HouseholdMemberApiTests : IntegrationTestBase
                 PayeeNames = ["J Doe"],
                 LinkedAccounts = [new LinkedAccount { SortCode = "11-22-33", Number = "12345678" }]
             }, CancellationToken);
-        HouseholdMember listed = await service.GetHouseholdMembersAsync(CancellationToken).SingleAsync(CancellationToken);
+        HouseholdMember listed =
+            await service.GetHouseholdMembersAsync(CancellationToken).SingleAsync(CancellationToken);
 
         // Assert
         using (Assert.Multiple())

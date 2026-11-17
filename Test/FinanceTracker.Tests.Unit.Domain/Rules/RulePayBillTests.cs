@@ -128,6 +128,8 @@ public class RulePayBillTests
             TransactionType.Debit, "PURCHASE", -9.99m, "GBP", At, false, [], TransactionMetadata.None, false));
 
     private static Rule Rule(string name, int order, params RuleAction[] actions) =>
-        new(UserId, name, order, RuleMatchMode.All, [new RuleCondition(RuleField.Description, RuleOperator.Contains,
-            "STREAMCO")], actions);
+        new(UserId, name, order, RuleMatchMode.All, [
+            new RuleCondition(RuleField.Description, RuleOperator.Contains,
+                "STREAMCO")
+        ], actions);
 }

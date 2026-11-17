@@ -15,7 +15,8 @@
             <div class="ft-date-range__presets">
                 @foreach ((string label, DateRange range) in Presets)
                 {
-                    <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="@(() => Choose(range))">@label</MudButton>
+                    <MudButton Variant="Variant.Text" Size="Size.Small"
+                               OnClick="@(() => Choose(range))">@label</MudButton>
                 }
             </div>
             <MudDateRangePicker DateRange="@_draft" DateRangeChanged="@OnDraftChangedAsync"

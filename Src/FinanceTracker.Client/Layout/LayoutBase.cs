@@ -21,6 +21,7 @@ public class LayoutBase : LayoutComponentBase
     /// Closed until the first render knows the screen width.
     /// </summary>
     internal bool _drawerOpen;
+
     internal bool _isDarkMode = true;
     internal MudThemeProvider _mudThemeProvider = null!;
 

@@ -93,7 +93,8 @@
                             @if (context.Item.Pending)
                             {
                                 <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Warning"
-                                         Class="ml-2">Pending</MudChip>
+                                         Class="ml-2">Pending
+                                </MudChip>
                             }
                         </CellTemplate>
                     </PropertyColumn>
@@ -119,13 +120,15 @@
                             <span class="mud-text-secondary">@context.Item.AccountName</span>
                             @if (context.Item.SharedBy is { } sharedBy)
                             {
-                                <MudText Typo="Typo.caption" Class="mud-text-secondary d-block">Shared by @sharedBy</MudText>
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary d-block">Shared
+                                    by @sharedBy</MudText>
                             }
                         </CellTemplate>
                     </PropertyColumn>
                     <PropertyColumn Property="x => x.TransactionCategory" Title="Category" Sortable="true">
                         <CellTemplate>
-                            <span class="mud-text-secondary">@DisplayText.ToTitle(context.Item.TransactionCategory)</span>
+                            <span
+                                class="mud-text-secondary">@DisplayText.ToTitle(context.Item.TransactionCategory)</span>
                         </CellTemplate>
                     </PropertyColumn>
                     <TemplateColumn Title="Tagged and linked" Sortable="false">
@@ -148,37 +151,45 @@
                                 @* Another person's transaction they haven't let the user change, so only its details *@
                                 @if (!context.Item.IsReadOnly)
                                 {
-                                @* A split transaction's tags are its parts' *@
-                                @if (context.Item.Splits.Count == 0)
-                                {
-                                    <MudMenuItem Icon="@Icons.Material.Outlined.Sell"
-                                                 OnClick="@(() => AddClassificationsAsync(context.Item))">Add tags</MudMenuItem>
-                                }
-                                <MudMenuItem Icon="@Icons.Material.Outlined.CallSplit" Disabled="@context.Item.Pending"
-                                             OnClick="@(() => SplitAsync(context.Item))">
-                                    @SplitText.ActionLabel(context.Item)
-                                </MudMenuItem>
-                                @if (context.Item.Splits.Count > 0)
-                                {
-                                    <MudMenuItem Icon="@Icons.Material.Outlined.MergeType"
-                                                 OnClick="@(() => UnsplitAsync(context.Item))">Remove split</MudMenuItem>
-                                }
-                                @foreach (var action in TransferText.Actions(context.Item.Transfer))
-                                {
-                                    <MudMenuItem Icon="@TransferText.ActionIcon(action)"
-                                                 OnClick="@(() => DecideTransferAsync(context.Item, action))">
-                                        @TransferText.ActionLabel(action)
+                                    @* A split transaction's tags are its parts' *@
+                                    @if (context.Item.Splits.Count == 0)
+                                    {
+                                        <MudMenuItem Icon="@Icons.Material.Outlined.Sell"
+                                                     OnClick="@(() => AddClassificationsAsync(context.Item))">Add tags
+                                        </MudMenuItem>
+                                    }
+
+                                    <MudMenuItem Icon="@Icons.Material.Outlined.CallSplit"
+                                                 Disabled="@context.Item.Pending"
+                                                 OnClick="@(() => SplitAsync(context.Item))">
+                                        @SplitText.ActionLabel(context.Item)
                                     </MudMenuItem>
-                                }
-                                <MudMenuItem Icon="@Icons.Material.Outlined.EventRepeat"
-                                             OnClick="@(() => PayBillAsync(context.Item))">Pays a bill</MudMenuItem>
-                                <MudMenuItem Icon="@Icons.Material.Outlined.CreditScore"
-                                             OnClick="@(() => PayDebtAsync(context.Item))">Pays off a debt</MudMenuItem>
-                                @* Their rules run on any account they can change, a shared one too *@
-                                <MudMenuItem Icon="@Icons.Material.Outlined.Rule"
-                                             OnClick="@(() => CreateRuleFrom(context.Item))">
-                                    Create rule from this
-                                </MudMenuItem>
+                                    @if (context.Item.Splits.Count > 0)
+                                    {
+                                        <MudMenuItem Icon="@Icons.Material.Outlined.MergeType"
+                                                     OnClick="@(() => UnsplitAsync(context.Item))">Remove split
+                                        </MudMenuItem>
+                                    }
+
+                                    @foreach (var action in TransferText.Actions(context.Item.Transfer))
+                                    {
+                                        <MudMenuItem Icon="@TransferText.ActionIcon(action)"
+                                                     OnClick="@(() => DecideTransferAsync(context.Item, action))">
+                                            @TransferText.ActionLabel(action)
+                                        </MudMenuItem>
+                                    }
+
+                                    <MudMenuItem Icon="@Icons.Material.Outlined.EventRepeat"
+                                                 OnClick="@(() => PayBillAsync(context.Item))">Pays a bill
+                                    </MudMenuItem>
+                                    <MudMenuItem Icon="@Icons.Material.Outlined.CreditScore"
+                                                 OnClick="@(() => PayDebtAsync(context.Item))">Pays off a debt
+                                    </MudMenuItem>
+                                    @* Their rules run on any account they can change, a shared one too *@
+                                    <MudMenuItem Icon="@Icons.Material.Outlined.Rule"
+                                                 OnClick="@(() => CreateRuleFrom(context.Item))">
+                                        Create rule from this
+                                    </MudMenuItem>
                                 }
                                 <MudMenuItem Icon="@Icons.Material.Outlined.Info"
                                              OnClick="@(() => ShowDetailsAsync(context.Item))">
@@ -210,6 +221,7 @@
     /// What the list was last searched with, so a refresh after a sync shows the same.
     /// </summary>
     private ActiveTransactionFilters _filters = ActiveTransactionFilters.None;
+
     private bool _loading = true;
     private bool _exporting;
     private bool _loaded;

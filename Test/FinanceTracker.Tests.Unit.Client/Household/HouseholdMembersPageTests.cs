@@ -43,7 +43,8 @@ public class HouseholdMembersPageTests : ComponentTestBase
     {
         // Arrange
         IRenderedComponent<MudPopoverProvider> popovers = Render<MudPopoverProvider>();
-        IRenderedComponent<HouseholdMembers> cut = Render<HouseholdMembers>(p => p.AddCascadingValue(_applicationState));
+        IRenderedComponent<HouseholdMembers>
+            cut = Render<HouseholdMembers>(p => p.AddCascadingValue(_applicationState));
 
         // Act
         IReadOnlyList<(string Text, bool Disabled)> items = await RowMenu.ItemsAsync(cut, popovers, "Jane Smith");
@@ -73,7 +74,8 @@ public class HouseholdMembersPageTests : ComponentTestBase
                 LinkedUserId = Guid.NewGuid(), LinkedUsername = "sam"
             });
         IRenderedComponent<MudPopoverProvider> popovers = Render<MudPopoverProvider>();
-        IRenderedComponent<HouseholdMembers> cut = Render<HouseholdMembers>(p => p.AddCascadingValue(_applicationState));
+        IRenderedComponent<HouseholdMembers>
+            cut = Render<HouseholdMembers>(p => p.AddCascadingValue(_applicationState));
 
         // Act
         await RowMenu.ChooseAsync(cut, popovers, "Jane Smith", "This is Sam Taylor");
@@ -96,10 +98,12 @@ public class HouseholdMembersPageTests : ComponentTestBase
         using CultureScope culture = new();
         _householdMemberService.UpdateHouseholdMemberAsync(_partner.Id, Arg.Any<UpdateHouseholdMember>(),
                 Arg.Any<CancellationToken>())
-            .Returns(new HouseholdMember { Id = _partner.Id, FirstName = "Jane", LastName = "Smith", YearlyIncome = 2500m });
+            .Returns(new HouseholdMember
+                { Id = _partner.Id, FirstName = "Jane", LastName = "Smith", YearlyIncome = 2500m });
         IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
         IRenderedComponent<MudPopoverProvider> popovers = Render<MudPopoverProvider>();
-        IRenderedComponent<HouseholdMembers> cut = Render<HouseholdMembers>(p => p.AddCascadingValue(_applicationState));
+        IRenderedComponent<HouseholdMembers>
+            cut = Render<HouseholdMembers>(p => p.AddCascadingValue(_applicationState));
 
         // Act
         Task choosing = await RowMenu.StartAsync(cut, popovers, "Jane Smith", "Edit");
@@ -126,7 +130,8 @@ public class HouseholdMembersPageTests : ComponentTestBase
         using CultureScope culture = new();
 
         // Act
-        IRenderedComponent<HouseholdMembers> cut = Render<HouseholdMembers>(p => p.AddCascadingValue(_applicationState));
+        IRenderedComponent<HouseholdMembers>
+            cut = Render<HouseholdMembers>(p => p.AddCascadingValue(_applicationState));
 
         // Assert
         cut.WaitForState(() => cut.Markup.Contains("Jane Smith", StringComparison.Ordinal));
@@ -168,7 +173,8 @@ public class HouseholdMembersPageTests : ComponentTestBase
         _householdMemberService.DeleteHouseholdMemberAsync(_partner.Id, Arg.Any<CancellationToken>()).Returns(true);
         IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
         IRenderedComponent<MudPopoverProvider> popovers = Render<MudPopoverProvider>();
-        IRenderedComponent<HouseholdMembers> cut = Render<HouseholdMembers>(p => p.AddCascadingValue(_applicationState));
+        IRenderedComponent<HouseholdMembers>
+            cut = Render<HouseholdMembers>(p => p.AddCascadingValue(_applicationState));
 
         // Act
         Task choosing = await RowMenu.StartAsync(cut, popovers, "Jane Smith", "Delete");

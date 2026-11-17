@@ -27,7 +27,8 @@ public class NotificationEmailsTests
                 .Contains("Open it in FinTrack: https://fintrack.example.test/money/ProviderSetup");
             await Assert.That(email.Text).Contains("https://fintrack.example.test/money/Notifications/Settings");
             await Assert.That(email.Html).Contains("href=\"https://fintrack.example.test/money/ProviderSetup\"");
-            await Assert.That(email.Html).Contains("href=\"https://fintrack.example.test/money/Notifications/Settings\"");
+            await Assert.That(email.Html)
+                .Contains("href=\"https://fintrack.example.test/money/Notifications/Settings\"");
             await Assert.That(email.Html).Contains("Sent by FinTrack at fintrack.example.test");
             await Assert.That(email.Html).Contains("notifications. You can");
         }
@@ -116,7 +117,8 @@ public class NotificationEmailsTests
             await Assert.That(email.Subject).IsEqualTo(NotificationEmails.TestSubject);
             await Assert.That(email.Text).Contains("Email works.");
             await Assert.That(email.Html).Contains("Email works");
-            await Assert.That(email.Html).Contains("href=\"https://fintrack.example.test/money/Notifications/Settings\"");
+            await Assert.That(email.Html)
+                .Contains("href=\"https://fintrack.example.test/money/Notifications/Settings\"");
             await Assert.That(email.Images.Single().ContentId).IsEqualTo(EmailBrand.LogoContentId);
         }
     }

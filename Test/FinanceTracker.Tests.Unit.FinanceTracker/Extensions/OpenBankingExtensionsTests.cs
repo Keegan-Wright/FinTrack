@@ -141,7 +141,8 @@ public class OpenBankingExtensionsTests
     public async Task AddOpenBanking_BothClientsWaitLongerBeforeRetryingTooManyRequests(string clientName)
     {
         // Arrange
-        StubTrueLayerHandler trueLayer = new(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.TooManyRequests)));
+        StubTrueLayerHandler trueLayer =
+            new(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.TooManyRequests)));
         await using ServiceProvider services = BuildServices(clientName, trueLayer);
         using HttpClient client = services.GetRequiredService<IHttpClientFactory>().CreateClient(clientName);
         using CancellationTokenSource cancellation = new();

@@ -207,7 +207,8 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        DomainBill bill = await context.Bills.OwnedBy(UserId).SingleOrNotFoundAsync(x => x.Id == id, "bill", cancellationToken);
+        DomainBill bill = await context.Bills.OwnedBy(UserId)
+            .SingleOrNotFoundAsync(x => x.Id == id, "bill", cancellationToken);
         if (bill.SourceId is not null)
         {
             throw new NotSupportedException(
