@@ -20,6 +20,7 @@ public static class TraceFilters
     /// Whether <paramref name="context"/>'s request gets a span not a health check, and not a file such as
     /// <c>/app.css</c>. Pages and the API have no extension.
     /// </summary>
+    /// <param name="context">The request.</param>
     public static bool IsTraced(HttpContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
