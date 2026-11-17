@@ -15,7 +15,13 @@ internal static class AnnotationShares
     /// <paramref name="by"/>, unless it's already shared or <paramref name="by"/> is the owner. Added to the context,
     /// saved with the change.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
     /// <param name="by">Who put it on, and owns it.</param>
+    /// <param name="transaction">The transaction.</param>
+    /// <param name="itemType">What kind of thing it is.</param>
+    /// <param name="itemId">The item's id.</param>
+    /// <param name="now">The time now, in UTC.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <exception cref="InvalidOperationException">They aren't linked, so couldn't be changing it.</exception>
     public static async Task ShareWithOwnerAsync(FinanceTrackerContext context, Guid by, BankTransaction transaction,
         ShareItemType itemType, Guid itemId, DateTime now, CancellationToken cancellationToken)
@@ -53,6 +59,11 @@ internal static class AnnotationShares
     /// Takes the tag, bill or debt <paramref name="itemId"/> off every transaction of <paramref name="ownerId"/>'s, as
     /// when they can no longer see it. Tracked changes, saved by the caller.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="ownerId">Whose transactions to take them off.</param>
+    /// <param name="itemType">What kind of thing it is.</param>
+    /// <param name="itemId">The item's id.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <remarks>Includes those given it earlier in the same change and not saved yet, such as a joint account's
     /// hidden copy taking back its tags as the link ends.</remarks>
     public static async Task TakeOffTransactionsOfAsync(FinanceTrackerContext context, Guid ownerId,
@@ -72,6 +83,9 @@ internal static class AnnotationShares
     /// <summary>
     /// Those of <paramref name="transactions"/> that carry the tag, bill or debt <paramref name="itemId"/>.
     /// </summary>
+    /// <param name="transactions">The transactions to look in.</param>
+    /// <param name="itemType">What kind of thing it is.</param>
+    /// <param name="itemId">The item's id.</param>
     private static IQueryable<BankTransaction> Carrying(IQueryable<BankTransaction> transactions,
         ShareItemType itemType, Guid itemId) => itemType switch
     {
@@ -85,6 +99,9 @@ internal static class AnnotationShares
     /// Takes the tag, bill or debt <paramref name="itemId"/> off <paramref name="transaction"/>, as if it had been
     /// deleted, so matching and rules can decide about it again.
     /// </summary>
+    /// <param name="transaction">The transaction.</param>
+    /// <param name="itemType">What kind of thing it is.</param>
+    /// <param name="itemId">The item's id.</param>
     private static void TakeOff(BankTransaction transaction, ShareItemType itemType, Guid itemId)
     {
         switch (itemType)
@@ -101,6 +118,13 @@ internal static class AnnotationShares
         }
     }
 
+    /// <summary>
+    /// Whether <paramref name="share"/> shares the item for being on a transaction, through the link.
+    /// </summary>
+    /// <param name="share">The share.</param>
+    /// <param name="linkId">The link.</param>
+    /// <param name="itemType">What kind of thing it is.</param>
+    /// <param name="itemId">The item's id.</param>
     private static bool IsShare(Share share, Guid linkId, ShareItemType itemType, Guid itemId) =>
         share.LinkId == linkId && share.ItemType == itemType && share.ItemId == itemId &&
         share.Reason == ShareReason.OnTransaction;

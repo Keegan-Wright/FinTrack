@@ -15,8 +15,17 @@ namespace FinanceTracker.Infrastructure.Encryption;
 [Singleton<IColumnEncryptionService>]
 public class ColumnEncryptionService : IColumnEncryptionService
 {
+    /// <summary>
+    /// The AES-GCM nonce's size, in bytes.
+    /// </summary>
     private const int NonceSize = 12;
+    /// <summary>
+    /// The AES-GCM tag's size, in bytes.
+    /// </summary>
     private const int TagSize = 16;
+    /// <summary>
+    /// Separates a stored value's key id from its ciphertext.
+    /// </summary>
     private const char KeyIdSeparator = ':';
 
     // Separate keys per purpose, derived from each keyring key
@@ -146,9 +155,18 @@ public class ColumnEncryptionService : IColumnEncryptionService
         return Convert.ToBase64String(HMACSHA256.HashData(_blindIndexKey, Encoding.UTF8.GetBytes(value)));
     }
 
+    /// <summary>
+    /// A key for one use derived from a keyring key, so encryption and blind indexes never share a key.
+    /// </summary>
+    /// <param name="keyringKey">The keyring key.</param>
+    /// <param name="info">What the key is for.</param>
     private static byte[] DeriveKey(byte[] keyringKey, byte[] info) =>
         HKDF.DeriveKey(HashAlgorithmName.SHA256, keyringKey, EncryptionConfiguration.KeySize, salt: [], info);
 
+    /// <summary>
+    /// A hash of the keyring, which identifies it without revealing it.
+    /// </summary>
+    /// <param name="configuration">The keyring.</param>
     private static string ComputeFingerprint(EncryptionConfiguration configuration)
     {
         using IncrementalHash hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
@@ -165,6 +183,7 @@ public class ColumnEncryptionService : IColumnEncryptionService
     /// <summary>
     /// Invariant culture and round-trip formats so stored values don't depend on the host's locale.
     /// </summary>
+    /// <param name="value">The value.</param>
     private static string? ToPlainText<T>(T value) => value switch
     {
         null => null,
@@ -178,10 +197,19 @@ public class ColumnEncryptionService : IColumnEncryptionService
         _ => value.ToString()
     };
 
+    /// <summary>
+    /// Whether a type is a collection, stored as JSON.
+    /// </summary>
+    /// <param name="type">The type.</param>
     private static bool IsJsonCollection(Type type) =>
         type != typeof(string) && type != typeof(byte[]) &&
         typeof(System.Collections.IEnumerable).IsAssignableFrom(type);
 
+    /// <summary>
+    /// A decrypted value read back as its type.
+    /// </summary>
+    /// <typeparam name="T">The value's type.</typeparam>
+    /// <param name="plainText">The value as stored before encryption.</param>
     private static T FromPlainText<T>(string plainText)
     {
         if (typeof(T) == typeof(byte[]))
@@ -199,6 +227,11 @@ public class ColumnEncryptionService : IColumnEncryptionService
         return (T)ParsePlainText(plainText, targetType);
     }
 
+    /// <summary>
+    /// A decrypted value parsed as <paramref name="targetType"/>, in the invariant culture.
+    /// </summary>
+    /// <param name="plainText">The value as stored before encryption.</param>
+    /// <param name="targetType">The value's type.</param>
     private static object ParsePlainText(string plainText, Type targetType)
     {
         if (targetType.IsEnum)

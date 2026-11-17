@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Infrastructure.Sharing;
 
+/// <inheritdoc cref="IJointAccountGapService"/>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<IJointAccountGapService>]
 public sealed class JointAccountGapService : ServiceBase<JointAccountGapService>, IJointAccountGapService

@@ -5,8 +5,12 @@ using DomainEventRecurrence = FinanceTracker.Domain.Calendar.EventRecurrence;
 
 namespace FinanceTracker.Infrastructure.Calendar;
 
+/// <summary>
+/// Calendar events between the domain and the API.
+/// </summary>
 internal static class CalendarEventMapper
 {
+    /// <param name="calendarEvent">The event.</param>
     /// <param name="goalName">Its savings goal's name, null without one.</param>
     /// <param name="today">Today where the user is, for when it's next on.</param>
     /// <param name="sharedBy">Whoever shares it with the user, null when it's theirs.</param>
@@ -28,6 +32,7 @@ internal static class CalendarEventMapper
         CanChange = canChange
     };
 
+    /// <param name="calendarEvent">The event.</param>
     /// <param name="goalName">Its savings goal's name, null without one.</param>
     /// <param name="saved">What's saved in that goal, null without one.</param>
     /// <param name="sharedBy">Whoever shares it with the user, null when it's theirs.</param>

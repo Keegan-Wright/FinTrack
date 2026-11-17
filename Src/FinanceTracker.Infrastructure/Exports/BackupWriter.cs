@@ -10,6 +10,7 @@ using FinanceTracker.Generated.Enums;
 
 namespace FinanceTracker.Infrastructure.Exports;
 
+/// <inheritdoc cref="IBackupWriter"/>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<IBackupWriter>]
 public sealed class BackupWriter : IBackupWriter
@@ -82,6 +83,11 @@ public sealed class BackupWriter : IBackupWriter
         await backup.CopyToAsync(destination, cancellationToken);
     }
 
+    /// <summary>
+    /// Writes every file into the zip, then a manifest of what each holds.
+    /// </summary>
+    /// <param name="destination">Where the zip is written.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task WriteZipAsync(Stream destination, CancellationToken cancellationToken)
     {
         DateTimeOffset exportedAt = _timeProvider.GetUtcNow();
@@ -140,6 +146,10 @@ public sealed class BackupWriter : IBackupWriter
         }, cancellationToken);
     }
 
+    /// <param name="zip">The backup.</param>
+    /// <param name="name">The file's name in the backup.</param>
+    /// <param name="records">The records to write.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <returns>How many records it holds.</returns>
     private static async Task<int> WriteListAsync<T>(ZipArchive zip, string name, IAsyncEnumerable<T> records,
         CancellationToken cancellationToken)
@@ -150,6 +160,10 @@ public sealed class BackupWriter : IBackupWriter
         return count;
     }
 
+    /// <param name="zip">The backup.</param>
+    /// <param name="name">The file's name in the backup.</param>
+    /// <param name="record">The record to write.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <returns>1, the one record it holds.</returns>
     private static async Task<int> WriteOneAsync<T>(ZipArchive zip, string name, T record,
         CancellationToken cancellationToken)
@@ -159,6 +173,8 @@ public sealed class BackupWriter : IBackupWriter
         return 1;
     }
 
+    /// <param name="zip">The backup.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <returns>How many transactions it holds.</returns>
     private async Task<int> WriteTransactionsCsvAsync(ZipArchive zip, CancellationToken cancellationToken)
     {
@@ -172,6 +188,12 @@ public sealed class BackupWriter : IBackupWriter
         return count;
     }
 
+    /// <summary>
+    /// <paramref name="records"/>, calling <paramref name="counted"/> for each as it passes.
+    /// </summary>
+    /// <typeparam name="T">The records' type.</typeparam>
+    /// <param name="records">The records.</param>
+    /// <param name="counted">Counts one.</param>
     private static async IAsyncEnumerable<T> Counted<T>(IAsyncEnumerable<T> records, Action counted)
     {
         await foreach (T record in records)
@@ -181,6 +203,9 @@ public sealed class BackupWriter : IBackupWriter
         }
     }
 
+    /// <summary>
+    /// The app's version as built, for the manifest.
+    /// </summary>
     private static string AppVersion() =>
         typeof(BackupWriter).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
         ?? "unknown";

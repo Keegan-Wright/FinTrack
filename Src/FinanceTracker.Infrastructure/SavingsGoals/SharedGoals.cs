@@ -15,8 +15,11 @@ internal static class SharedGoals
     /// <summary>
     /// Every goal <paramref name="userId"/> sees through <paramref name="view"/>, untracked, their own first.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="userId">The user.</param>
     /// <param name="view">Their accounts and those shared with them. A goal tracking one shared with changes allowed
     /// can be changed. Just mine leaves out those chosen for them, as it does accounts.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     public static async Task<List<VisibleItem<DomainSavingsGoal>>> ForAsync(FinanceTrackerContext context,
         Guid userId, AccountsInView view, CancellationToken cancellationToken)
     {

@@ -11,10 +11,13 @@ public interface INotificationEmails
     /// The notification as an email its title as the subject, its message, and a link to where it's dealt with when
     /// the app's address is known (<c>FINTRACK_PUBLIC_URL</c>), otherwise a line saying to open FinTrack.
     /// </summary>
+    /// <param name="notification">The notification.</param>
+    /// <param name="to">Who it's sent to.</param>
     Task<MailMessage> ForAsync(Notification notification, string to);
 
     /// <summary>
     /// The email the Notifications page sends to show email works.
     /// </summary>
+    /// <param name="to">Who it's sent to.</param>
     Task<MailMessage> TestAsync(string to);
 }

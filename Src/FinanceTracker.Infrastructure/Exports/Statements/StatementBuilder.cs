@@ -11,6 +11,7 @@ using FinanceTracker.Generated.Enums;
 
 namespace FinanceTracker.Infrastructure.Exports.Statements;
 
+/// <inheritdoc cref="IStatementBuilder"/>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<IStatementBuilder>]
 public sealed class StatementBuilder : IStatementBuilder
@@ -93,6 +94,11 @@ public sealed class StatementBuilder : IStatementBuilder
         };
     }
 
+    /// <summary>
+    /// When <paramref name="day"/> starts where the user is, in UTC.
+    /// </summary>
+    /// <param name="day">The day.</param>
+    /// <param name="timeZone">Where the user is.</param>
     private static DateTime StartOfDayUtc(DateOnly day, TimeZoneInfo timeZone) =>
         TimeZoneInfo.ConvertTimeToUtc(day.ToDateTime(TimeOnly.MinValue, DateTimeKind.Unspecified), timeZone);
 }

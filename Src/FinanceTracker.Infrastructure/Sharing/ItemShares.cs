@@ -17,6 +17,10 @@ internal static class ItemShares
     /// Every one of <paramref name="userId"/>'s own things that can be shared, with how each is shared in
     /// <paramref name="link"/>, by kind then name.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="link">The link between the two people.</param>
+    /// <param name="userId">The user.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     public static async Task<List<ShareableItem>> YoursAsync(FinanceTrackerContext context, DomainLink link,
         Guid userId, CancellationToken cancellationToken)
     {
@@ -65,6 +69,10 @@ internal static class ItemShares
     /// <paramref name="userId"/>'s bills and debts going with an account they share in <paramref name="link"/>, so
     /// shared with it.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="link">The link between the two people.</param>
+    /// <param name="userId">The user.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     public static async Task<HashSet<(ShareItemType ItemType, Guid Id)>> FollowingAccountsAsync(
         FinanceTrackerContext context, DomainLink link, Guid userId, CancellationToken cancellationToken)
     {
@@ -77,6 +85,10 @@ internal static class ItemShares
     /// <paramref name="userId"/>'s bills and debts going with any of <paramref name="accountIds"/>, for when the
     /// shared accounts are known without reading the shares back.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="userId">The user.</param>
+    /// <param name="accountIds">The accounts shared now.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<HashSet<(ShareItemType ItemType, Guid Id)>> FollowingAccountsAsync(
         FinanceTrackerContext context, Guid userId, IReadOnlySet<Guid> accountIds, CancellationToken cancellationToken)
     {
@@ -93,9 +105,13 @@ internal static class ItemShares
     /// account they go with no longer is, off the other person's transactions. Not those still shared another way,
     /// chosen or for being on their transaction. Tracked changes, saved by the caller.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="link">The link between the two people.</param>
+    /// <param name="userId">The user.</param>
     /// <param name="before">The bills and debts that went with a shared account before the change.</param>
     /// <param name="sharedAccountIds">The accounts shared after the change, passed in as the change isn't saved
     /// yet.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     public static async Task TakeOffNoLongerSharedAsync(FinanceTrackerContext context, DomainLink link, Guid userId,
         HashSet<(ShareItemType ItemType, Guid Id)> before, IReadOnlySet<Guid> sharedAccountIds,
         CancellationToken cancellationToken)
@@ -120,6 +136,10 @@ internal static class ItemShares
     /// The things besides accounts the other person in <paramref name="link"/> shares with <paramref name="userId"/>,
     /// chosen or going with an account they share, by kind then name.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="link">The link between the two people.</param>
+    /// <param name="userId">The user.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     public static async Task<List<ItemSharedWithYou>> TheirsAsync(FinanceTrackerContext context, DomainLink link,
         Guid userId, CancellationToken cancellationToken)
     {
@@ -158,6 +178,11 @@ internal static class ItemShares
     /// How one of the other person's things is shared with the user, the more allowing of chosen and going with an
     /// account, null when it isn't.
     /// </summary>
+    /// <param name="chosen">What the other person chose to share with the user.</param>
+    /// <param name="theirAccounts">The other person's accounts shared with the user, and how.</param>
+    /// <param name="accountOf">The account each thing goes with, null for none.</param>
+    /// <param name="itemType">What kind of thing it is.</param>
+    /// <param name="id">Its id.</param>
     private static DomainShareMode? ModeSharedWithThem(Dictionary<(ShareItemType, Guid), DomainShareMode> chosen,
         Dictionary<Guid, (string Name, DomainShareMode Mode)> theirAccounts,
         Dictionary<(ShareItemType, Guid), Guid> accountOf, ShareItemType itemType, Guid id)
@@ -183,6 +208,12 @@ internal static class ItemShares
     /// <paramref name="request"/>. Something no longer shared comes off the other person's transactions, unless it's
     /// shared for being on them anyway, or still goes with a shared account. Tracked changes, saved by the caller.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="link">The link between the two people.</param>
+    /// <param name="userId">The user.</param>
+    /// <param name="request">What the user chose to share.</param>
+    /// <param name="now">The time now, in UTC.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <exception cref="InvalidOperationException">Something in the request isn't theirs.</exception>
     public static async Task ChangeAsync(FinanceTrackerContext context, DomainLink link, Guid userId,
         ChangeItemShares request, DateTime now, CancellationToken cancellationToken)
@@ -235,6 +266,10 @@ internal static class ItemShares
     /// The accounts <paramref name="userId"/> shares in <paramref name="link"/>, with their names and how each is
     /// shared, by account.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="link">The link between the two people.</param>
+    /// <param name="userId">The user.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<Dictionary<Guid, (string Name, DomainShareMode Mode)>> SharedAccountsAsync(
         FinanceTrackerContext context, DomainLink link, Guid userId, CancellationToken cancellationToken)
     {
@@ -254,6 +289,9 @@ internal static class ItemShares
     /// <paramref name="userId"/>'s things that go with an account. Their bills, each paid from one, and their debts
     /// following one.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="userId">The user.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<List<(ShareItemType ItemType, Guid Id, Guid AccountId)>> AccountItemsAsync(
         FinanceTrackerContext context, Guid userId, CancellationToken cancellationToken)
     {
@@ -279,6 +317,10 @@ internal static class ItemShares
         ];
     }
 
+    /// <summary>
+    /// A kind as the domain has it.
+    /// </summary>
+    /// <param name="kind">The kind.</param>
     private static ShareItemType ToDomain(SharedItemKind kind) => kind switch
     {
         SharedItemKind.Classification => ShareItemType.Classification,
@@ -291,6 +333,10 @@ internal static class ItemShares
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
     };
 
+    /// <summary>
+    /// A kind as the API sends it.
+    /// </summary>
+    /// <param name="itemType">The kind.</param>
     private static SharedItemKind ToContract(ShareItemType itemType) => itemType switch
     {
         ShareItemType.Classification => SharedItemKind.Classification,
@@ -307,6 +353,9 @@ internal static class ItemShares
     /// What <paramref name="userId"/> can share besides accounts: their tags, rules, bills, debts, budgets, goals and
     /// calendar events, each by name.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="userId">The user.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<List<(ShareItemType ItemType, Guid Id, string Name)>> ShareableOfAsync(
         FinanceTrackerContext context, Guid userId, CancellationToken cancellationToken)
     {
@@ -349,6 +398,12 @@ internal static class ItemShares
         items.OrderBy(static x => x.Name, StringComparer.CurrentCultureIgnoreCase)
             .Select(x => (itemType, x.Id, x.Name));
 
+    /// <summary>
+    /// How an item is shared when it's chosen, null when it isn't.
+    /// </summary>
+    /// <param name="chosen">What's chosen, and how.</param>
+    /// <param name="itemType">What kind of thing it is.</param>
+    /// <param name="itemId">The item's id.</param>
     private static Contracts.Sharing.ShareMode? ModeIfChosen(Dictionary<(ShareItemType, Guid), DomainShareMode> chosen,
         ShareItemType itemType, Guid itemId)
     {

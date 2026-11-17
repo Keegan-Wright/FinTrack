@@ -81,6 +81,8 @@ public sealed class BalanceNotices : ServiceBase<BalanceNotices>, ISyncNotices
     /// <summary>
     /// Records each watched account's available balance.
     /// </summary>
+    /// <param name="settings">The user's notification settings.</param>
+    /// <param name="accounts">The watched accounts.</param>
     /// <returns>The accounts that have just gone below, with that balance and their alert as it is now.</returns>
     private List<(BankAccount Account, decimal Available, LowBalanceAlert Alert)> RecordBalances(
         NotificationSettings settings, List<BankAccount> accounts)

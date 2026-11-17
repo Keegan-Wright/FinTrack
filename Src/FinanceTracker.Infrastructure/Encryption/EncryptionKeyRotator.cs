@@ -14,6 +14,9 @@ namespace FinanceTracker.Infrastructure.Encryption;
 /// </summary>
 public sealed class EncryptionKeyRotator
 {
+    /// <summary>
+    /// How many rows are re-encrypted at a time.
+    /// </summary>
     private const int BatchSize = 500;
 
     private static readonly MethodInfo ReencryptMethod = typeof(EncryptionKeyRotator)
@@ -31,6 +34,7 @@ public sealed class EncryptionKeyRotator
         _logger = logger;
     }
 
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <returns>How many rows were re-encrypted.</returns>
     public async Task<int> RotateAsync(CancellationToken cancellationToken)
     {
@@ -61,6 +65,7 @@ public sealed class EncryptionKeyRotator
     /// <summary>
     /// Encrypted columns in the entity's table, including those of owned types stored alongside it.
     /// </summary>
+    /// <param name="entityType">The entity.</param>
     private static List<string> EncryptedColumns(IEntityType entityType)
     {
         StoreObjectIdentifier table = StoreObjectIdentifier.Table(entityType.GetTableName()!, entityType.GetSchema());
@@ -75,6 +80,14 @@ public sealed class EncryptionKeyRotator
             .ToList();
     }
 
+    /// <summary>
+    /// Whether any of the table's encrypted columns still has a value under an older key.
+    /// </summary>
+    /// <param name="context">The context to read through.</param>
+    /// <param name="entityType">The entity.</param>
+    /// <param name="encryptedColumns">Its encrypted columns.</param>
+    /// <param name="currentKeyPrefix">What a value under the current key starts with.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<bool> HasStaleValuesAsync(FinanceTrackerContext context, IEntityType entityType,
         List<string> encryptedColumns, string currentKeyPrefix, CancellationToken cancellationToken)
     {
@@ -96,6 +109,7 @@ public sealed class EncryptionKeyRotator
     /// Loads every row and marks its encrypted values changed, so saving writes them back under the current key.
     /// </summary>
     /// <param name="keyName">The entity's single column primary key, to page by.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<int> ReencryptAsync<TEntity>(string keyName, CancellationToken cancellationToken)
         where TEntity : class
     {

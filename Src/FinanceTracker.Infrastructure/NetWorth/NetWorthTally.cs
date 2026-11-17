@@ -25,6 +25,7 @@ internal sealed class NetWorthTally
     /// <summary>
     /// Counts an account's balance in, an asset when it's in credit and a liability when it's owed.
     /// </summary>
+    /// <param name="balance">The account's balance.</param>
     public void Add(BalanceSnapshot balance)
     {
         Count(balance.Balance.Current, sign: 1);
@@ -35,11 +36,13 @@ internal sealed class NetWorthTally
     /// <summary>
     /// Counts in what a debt not linked to an account owed, a liability.
     /// </summary>
+    /// <param name="owed">What it owed.</param>
     public void AddOwed(decimal owed) => _liabilities += owed;
 
     /// <summary>
     /// Takes an account's balance back out of the total it was counted in.
     /// </summary>
+    /// <param name="balance">The account's balance.</param>
     public void Remove(BalanceSnapshot balance) => Count(balance.Balance.Current, sign: -1);
 
     public NetWorthPoint ToPoint(DateOnly day) => new()
@@ -52,6 +55,11 @@ internal sealed class NetWorthTally
         IsStale = _isStale
     };
 
+    /// <summary>
+    /// Adds a balance to the assets or liabilities, or takes it off.
+    /// </summary>
+    /// <param name="current">The balance.</param>
+    /// <param name="sign">1 to add, -1 to take off.</param>
     private void Count(decimal current, int sign)
     {
         if (current >= 0)

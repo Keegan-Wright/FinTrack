@@ -10,10 +10,15 @@ namespace FinanceTracker.Infrastructure.Exports.Pdf;
 /// and net, the net coloured by whether it's above or below zero.
 /// </summary>
 /// <param name="nameHeader">The first column's heading, e.g. Account or Month.</param>
+/// <param name="rows">The lines.</param>
 internal sealed class TotalsTable(string nameHeader, IReadOnlyList<TotalsTableRow> rows) : IComponent
 {
+    /// <summary>
+    /// Each amount column's width, in points.
+    /// </summary>
     private const float AmountWidth = 70;
 
+    /// <inheritdoc/>
     public void Compose(IContainer container)
     {
         container.Table(table =>
@@ -43,6 +48,11 @@ internal sealed class TotalsTable(string nameHeader, IReadOnlyList<TotalsTableRo
         });
     }
 
+    /// <summary>
+    /// Adds one line to the table.
+    /// </summary>
+    /// <param name="table">The table.</param>
+    /// <param name="row">The line.</param>
     private static void Row(TableDescriptor table, TotalsTableRow row)
     {
         table.Cell().TableCell().Column(cell =>

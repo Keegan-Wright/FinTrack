@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.Infrastructure.Sharing;
 
+/// <inheritdoc cref="IAccountScope"/>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<IAccountScope>]
 public sealed class AccountScope : IAccountScope
@@ -46,6 +47,9 @@ public sealed class AccountScope : IAccountScope
     /// The accounts <paramref name="userId"/> can change, as <see cref="ResolveChangeableAsync"/> gives the current
     /// user, for work done on someone else's behalf, such as re-applying their rule after another person edited it.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="userId">The user.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     internal static Task<AccountsInView> ResolveChangeableForAsync(FinanceTrackerContext context, Guid userId,
         CancellationToken cancellationToken) =>
         ResolveAsync(context, userId, onlyChangeable: true, justMine: false, cancellationToken);
@@ -54,12 +58,18 @@ public sealed class AccountScope : IAccountScope
     /// Every account <paramref name="userId"/> sees, as <see cref="ResolveAllAsync"/> gives the current user, for
     /// working out their figures the same way for someone they share with, such as what a shared debt owes.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="userId">The user.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     internal static Task<AccountsInView> ResolveAllForAsync(FinanceTrackerContext context, Guid userId,
         CancellationToken cancellationToken) =>
         ResolveAsync(context, userId, onlyChangeable: false, justMine: false, cancellationToken);
 
+    /// <param name="context">The context to work through.</param>
+    /// <param name="userId">The user.</param>
     /// <param name="onlyChangeable">Only the shared accounts they're allowed to change.</param>
     /// <param name="justMine">Only their own, and joint accounts they're one of the two of.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<AccountsInView> ResolveAsync(FinanceTrackerContext context, Guid userId,
         bool onlyChangeable, bool justMine, CancellationToken cancellationToken)
     {
@@ -119,6 +129,8 @@ public sealed class AccountScope : IAccountScope
     /// <summary>
     /// Every joint account's two copies and who owns each.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<List<JointCopies>> JointCopiesAsync(FinanceTrackerContext context,
         CancellationToken cancellationToken)
     {
@@ -143,6 +155,10 @@ public sealed class AccountScope : IAccountScope
     /// The accounts the other person in an accepted link shares with them that are still that person's own, so a
     /// share left behind by an account changing hands never shows it.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="userId">The user.</param>
+    /// <param name="onlyChangeable">Only the accounts they're allowed to change.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<List<(Guid AccountId, Guid OwnerId, ShareMode Mode)>> SharesWithAsync(
         FinanceTrackerContext context, Guid userId, bool onlyChangeable, CancellationToken cancellationToken)
     {
@@ -168,6 +184,10 @@ public sealed class AccountScope : IAccountScope
     /// Which of the owners of <paramref name="shared"/> have other accounts, not among them, the hidden copies of
     /// joint accounts aside.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="shared">The accounts shared with the user.</param>
+    /// <param name="hidden">The hidden copies of joint accounts.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<IReadOnlySet<Guid>> OwnersWithPrivateAccountsAsync(FinanceTrackerContext context,
         Dictionary<Guid, Guid> shared, List<Guid> hidden, CancellationToken cancellationToken)
     {

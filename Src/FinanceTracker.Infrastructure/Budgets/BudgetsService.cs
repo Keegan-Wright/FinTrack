@@ -19,6 +19,7 @@ using DomainBudget = FinanceTracker.Domain.Budgeting.Budget;
 
 namespace FinanceTracker.Infrastructure.Budgets;
 
+/// <inheritdoc cref="IBudgetsService"/>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<IBudgetsService>]
 public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
@@ -40,6 +41,8 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
     /// The month today's period is named after, which can be the next calendar month once the pay is in, e.g.
     /// November from pay on 30 October.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<BudgetMonth> CurrentMonthAsync(FinanceTrackerContext context,
         CancellationToken cancellationToken)
     {
@@ -189,6 +192,12 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
     /// end of <paramref name="target"/>'s, a day either side for time zones. Dates are encrypted, so this narrows by
     /// their day index.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="source">Whose transactions, the budget's owner.</param>
+    /// <param name="running">The budgets running.</param>
+    /// <param name="target">The month to work out.</param>
+    /// <param name="calendar">The user's periods.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<List<BankTransaction>> LoadTransactionsAsync(FinanceTrackerContext context,
         IQueryable<BankTransaction> source, List<DomainBudget> running, BudgetMonth target, PayCalendar calendar,
         CancellationToken cancellationToken)
@@ -213,6 +222,10 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
             .ToListAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// The user's own transactions.
+    /// </summary>
+    /// <param name="context">The context to read through.</param>
     private IQueryable<BankTransaction> OwnTransactions(FinanceTrackerContext context) =>
         context.BankTransactions.OwnedBy(UserId);
 
@@ -220,6 +233,12 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
     /// The transactions each of <paramref name="running"/> counts, by budget. A household budget's from every account
     /// its owner sees, the same for whoever looks, otherwise the user's own.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="running">The budgets running.</param>
+    /// <param name="sharing">How each budget is shared.</param>
+    /// <param name="target">The month to work out.</param>
+    /// <param name="calendar">The user's periods.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<Dictionary<Guid, List<BankTransaction>>> SpendingAsync(FinanceTrackerContext context,
         List<VisibleItem<DomainBudget>> running, Dictionary<Guid, BudgetSharing> sharing, BudgetMonth target,
         PayCalendar calendar, CancellationToken cancellationToken)
@@ -261,6 +280,8 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
     /// <summary>
     /// Every budget the user sees, their own and those shared with them.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private Task<List<VisibleItem<DomainBudget>>> VisibleAsync(FinanceTrackerContext context,
         CancellationToken cancellationToken) =>
         SharedChosenItems.ForAsync(context, context.Budgets, UserId, ShareItemType.Budget, justMine: false,
@@ -269,7 +290,10 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
     /// <summary>
     /// Budget <paramref name="id"/>, the user's own or one shared with them.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="id">Its id.</param>
     /// <param name="mustChange">Whether they must be allowed to change it.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <exception cref="InvalidOperationException">They can't see it, or can't change it.</exception>
     private async Task<VisibleItem<DomainBudget>> VisibleAsync(FinanceTrackerContext context, Guid id,
         bool mustChange, CancellationToken cancellationToken)
@@ -288,6 +312,9 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
     /// How each of <paramref name="budgets"/> is shared, by budget. Their own is a household budget once they share
     /// it, someone else's always is.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="budgets">The budgets.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<Dictionary<Guid, BudgetSharing>> SharingAsync(FinanceTrackerContext context,
         IReadOnlyCollection<VisibleItem<DomainBudget>> budgets, CancellationToken cancellationToken)
     {
@@ -322,6 +349,9 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
     /// The tags the user can have <paramref name="budget"/>, someone else's, cover, its owner's tags shared with them,
     /// and those it already covers.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="budget">The budget.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<Dictionary<Guid, string>> TagChoicesAsync(FinanceTrackerContext context, DomainBudget budget,
         CancellationToken cancellationToken)
     {
@@ -339,6 +369,9 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
     /// The tags the user may give <paramref name="visible"/>: their own for their own budget, or its owner's tags
     /// shared with them for someone else's, see <see cref="DomainBudget.ReplaceTags"/>.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="visible">The budget, as the user sees it.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<IReadOnlySet<Guid>> TagChoicesForAsync(FinanceTrackerContext context,
         VisibleItem<DomainBudget> visible, CancellationToken cancellationToken)
     {
@@ -353,6 +386,9 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
         return shared.Keys.ToHashSet();
     }
 
+    /// <param name="context">The context to work through.</param>
+    /// <param name="tagIds">The tags.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <exception cref="InvalidOperationException">A tag doesn't exist or isn't the user's.</exception>
     private async Task EnsureTagsAreTheUsersAsync(FinanceTrackerContext context, List<Guid> tagIds,
         CancellationToken cancellationToken)

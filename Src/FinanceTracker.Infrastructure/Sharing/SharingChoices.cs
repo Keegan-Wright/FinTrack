@@ -15,6 +15,7 @@ using ShareMode = FinanceTracker.Contracts.Sharing.ShareMode;
 
 namespace FinanceTracker.Infrastructure.Sharing;
 
+/// <inheritdoc cref="ISharingChoices"/>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<ISharingChoices>]
 public sealed class SharingChoices : ServiceBase<SharingService>, ISharingChoices
@@ -232,7 +233,10 @@ public sealed class SharingChoices : ServiceBase<SharingService>, ISharingChoice
     /// Tells the other person in <paramref name="link"/> what the user changed in what they share with them, when
     /// anything did.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="link">The link between the two people.</param>
     /// <param name="before">What the user chose to share before, see <see cref="ShareChanges.ChosenAsync"/>.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task NotifySharesChangedAsync(FinanceTrackerContext context, DomainLink link,
         Dictionary<(ShareItemType Kind, Guid ItemId), DomainShareMode> before, CancellationToken cancellationToken)
     {
@@ -253,6 +257,8 @@ public sealed class SharingChoices : ServiceBase<SharingService>, ISharingChoice
     /// <summary>
     /// The account shares the user made in <paramref name="linkId"/>.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="linkId">The link.</param>
     private IQueryable<Share> OwnAccountShares(FinanceTrackerContext context, Guid linkId) =>
         context.Shares.Where(x => x.LinkId == linkId && x.UserId == UserId &&
                                   x.ItemType == ShareItemType.BankAccount);
@@ -260,6 +266,9 @@ public sealed class SharingChoices : ServiceBase<SharingService>, ISharingChoice
     /// <summary>
     /// The joint accounts merged in <paramref name="link"/>, named as the copy both see.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="link">The link between the two people.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<List<MergedJointAccount>> MergedJointAccountsAsync(FinanceTrackerContext context,
         DomainLink link, CancellationToken cancellationToken)
     {
@@ -280,6 +289,11 @@ public sealed class SharingChoices : ServiceBase<SharingService>, ISharingChoice
             .ToList();
     }
 
+    /// <summary>
+    /// How an account is shared, null when it isn't.
+    /// </summary>
+    /// <param name="shared">The shared accounts, and how.</param>
+    /// <param name="accountId">The account.</param>
     private static ShareMode? ModeIfShared(Dictionary<Guid, DomainShareMode> shared, Guid accountId)
     {
         if (shared.TryGetValue(accountId, out DomainShareMode mode))
@@ -290,7 +304,15 @@ public sealed class SharingChoices : ServiceBase<SharingService>, ISharingChoice
         return null;
     }
 
+    /// <summary>
+    /// A share mode as the API sends it.
+    /// </summary>
+    /// <param name="mode">The mode.</param>
     private static ShareMode ToContract(DomainShareMode mode) => ShareModeMapping.ToContract(mode);
 
+    /// <summary>
+    /// A share mode as the domain has it.
+    /// </summary>
+    /// <param name="mode">The mode.</param>
     private static DomainShareMode ToDomain(ShareMode mode) => ShareModeMapping.ToDomain(mode);
 }

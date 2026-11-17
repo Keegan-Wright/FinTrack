@@ -21,6 +21,9 @@ public sealed class ReportRow
     /// </summary>
     public string? Dates { get; init; }
 
+    /// <summary>
+    /// How many transactions it has.
+    /// </summary>
     public int TotalTransactions { get; init; }
 
     /// <summary>

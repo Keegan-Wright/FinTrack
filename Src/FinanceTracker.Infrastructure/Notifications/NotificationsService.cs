@@ -12,6 +12,7 @@ using DomainNotificationSettings = FinanceTracker.Domain.Notifications.Notificat
 
 namespace FinanceTracker.Infrastructure.Notifications;
 
+/// <inheritdoc cref="INotificationsService"/>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<INotificationsService>]
 public sealed class NotificationsService : ServiceBase<NotificationsService>, INotificationsService
@@ -280,10 +281,20 @@ public sealed class NotificationsService : ServiceBase<NotificationsService>, IN
         return await ToContractAsync(context, stored, cancellationToken);
     }
 
+    /// <summary>
+    /// The user's settings, null when they've never changed them.
+    /// </summary>
+    /// <param name="context">The context to read through.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private Task<DomainNotificationSettings?> FindSettingsAsync(FinanceTrackerContext context,
         CancellationToken cancellationToken) =>
         context.NotificationSettings.OwnedBy(UserId).SingleOrDefaultAsync(cancellationToken);
 
+    /// <summary>
+    /// The user's settings, added when they've never changed them.
+    /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<DomainNotificationSettings> FindOrAddSettingsAsync(FinanceTrackerContext context,
         CancellationToken cancellationToken)
     {
@@ -301,6 +312,9 @@ public sealed class NotificationsService : ServiceBase<NotificationsService>, IN
     /// <summary>
     /// The amounts set for the accounts the user sees, their own and those shared with them, others passed over.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="thresholds">The amounts the user set, by account.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<Dictionary<Guid, decimal>> BelowByAccountAsync(FinanceTrackerContext context,
         IEnumerable<LowBalanceThreshold> thresholds, CancellationToken cancellationToken)
     {
@@ -323,6 +337,9 @@ public sealed class NotificationsService : ServiceBase<NotificationsService>, IN
     /// <summary>
     /// Each account the user sees by name, saying whose another person's is, with the amount it's watched for.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="settings">The user's notification settings.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<List<AccountLowBalance>> LowBalanceAsync(FinanceTrackerContext context,
         DomainNotificationSettings settings, CancellationToken cancellationToken)
     {
@@ -345,6 +362,11 @@ public sealed class NotificationsService : ServiceBase<NotificationsService>, IN
             .ToList();
     }
 
+    /// <summary>
+    /// The amount an account is watched below, null when it isn't.
+    /// </summary>
+    /// <param name="belowByAccount">The amounts, by account.</param>
+    /// <param name="accountId">The account.</param>
     private static decimal? Below(Dictionary<Guid, decimal> belowByAccount, Guid accountId)
     {
         if (belowByAccount.TryGetValue(accountId, out decimal below))
@@ -355,6 +377,11 @@ public sealed class NotificationsService : ServiceBase<NotificationsService>, IN
         return null;
     }
 
+    /// <summary>
+    /// The user's email and whether it's confirmed. None when they have no email.
+    /// </summary>
+    /// <param name="context">The context to read through.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<UserEmail> EmailAsync(FinanceTrackerContext context, CancellationToken cancellationToken)
     {
         UserEmail? email = await context.Users.Where(x => x.Id == UserId)
@@ -368,6 +395,12 @@ public sealed class NotificationsService : ServiceBase<NotificationsService>, IN
         return email;
     }
 
+    /// <summary>
+    /// The settings as the API sends them, with the user's email and how the last sends went.
+    /// </summary>
+    /// <param name="context">The context to read through.</param>
+    /// <param name="settings">The settings.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<NotificationSettings> ToContractAsync(FinanceTrackerContext context,
         DomainNotificationSettings settings, CancellationToken cancellationToken)
     {
@@ -391,6 +424,11 @@ public sealed class NotificationsService : ServiceBase<NotificationsService>, IN
         };
     }
 
+    /// <summary>
+    /// How the last send went, null when nothing's been sent.
+    /// </summary>
+    /// <param name="at">When it was sent or tried, null when never.</param>
+    /// <param name="failure">Why it failed, null when it was sent.</param>
     private static DeliveryStatus? Status(DateTime? at, string? failure)
     {
         if (at is not { } attempted)

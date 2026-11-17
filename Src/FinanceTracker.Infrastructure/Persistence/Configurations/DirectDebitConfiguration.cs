@@ -4,8 +4,12 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace FinanceTracker.Infrastructure.Persistence.Configurations;
 
+/// <summary>
+/// Maps <see cref="DirectDebit"/> to its table.
+/// </summary>
 internal sealed class DirectDebitConfiguration : IEntityTypeConfiguration<DirectDebit>
 {
+    /// <inheritdoc/>
     public void Configure(EntityTypeBuilder<DirectDebit> builder)
     {
         builder.ToTable("DirectDebits");

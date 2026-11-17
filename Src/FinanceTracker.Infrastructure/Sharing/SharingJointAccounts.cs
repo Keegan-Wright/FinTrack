@@ -9,6 +9,7 @@ using DomainLink = FinanceTracker.Domain.Sharing.UserLink;
 
 namespace FinanceTracker.Infrastructure.Sharing;
 
+/// <inheritdoc cref="ISharingJointAccounts"/>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<ISharingJointAccounts>]
 public sealed class SharingJointAccounts : ServiceBase<SharingService>, ISharingJointAccounts
@@ -125,6 +126,9 @@ public sealed class SharingJointAccounts : ServiceBase<SharingService>, ISharing
     /// <summary>
     /// What was merged, for the notification, e.g. <c>your joint account Joint</c> or <c>3 joint accounts</c>.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="merged">The merged joint accounts.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<string> MergedNamesAsync(FinanceTrackerContext context, List<JointAccount> merged,
         CancellationToken cancellationToken)
     {
@@ -137,6 +141,12 @@ public sealed class SharingJointAccounts : ServiceBase<SharingService>, ISharing
         return $"your joint account {name}";
     }
 
+    /// <summary>
+    /// An account's name.
+    /// </summary>
+    /// <param name="context">The context to read through.</param>
+    /// <param name="accountId">The account.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<string> AccountNameAsync(FinanceTrackerContext context, Guid accountId,
         CancellationToken cancellationToken) =>
         await context.BankAccounts.AsNoTracking()

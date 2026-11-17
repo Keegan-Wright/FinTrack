@@ -13,6 +13,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Infrastructure.Account;
 
+/// <inheritdoc cref="IAccountService"/>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<IAccountService>]
 public class AccountService : ServiceBase<AccountService>, IAccountService

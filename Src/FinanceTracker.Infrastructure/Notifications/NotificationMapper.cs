@@ -10,6 +10,10 @@ namespace FinanceTracker.Infrastructure.Notifications;
 /// </summary>
 public static class NotificationMapper
 {
+    /// <summary>
+    /// A notification as the API sends it.
+    /// </summary>
+    /// <param name="notification">The notification.</param>
     public static ContractNotification ToContract(DomainNotification notification)
     {
         ArgumentNullException.ThrowIfNull(notification);
@@ -25,6 +29,10 @@ public static class NotificationMapper
         };
     }
 
+    /// <summary>
+    /// A kind as the API sends it.
+    /// </summary>
+    /// <param name="kind">The kind.</param>
     public static ContractKind ToContract(DomainKind kind) => kind switch
     {
         DomainKind.ConsentEndingSoon => ContractKind.ConsentEndingSoon,
@@ -44,6 +52,10 @@ public static class NotificationMapper
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
     };
 
+    /// <summary>
+    /// A kind as the domain has it.
+    /// </summary>
+    /// <param name="kind">The kind.</param>
     public static DomainKind ToDomain(ContractKind kind) => kind switch
     {
         ContractKind.ConsentEndingSoon => DomainKind.ConsentEndingSoon,

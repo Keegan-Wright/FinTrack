@@ -13,13 +13,16 @@ namespace FinanceTracker.Infrastructure.Rules;
 /// </summary>
 internal static class RulePreviewer
 {
-    /// <param name="rules">The user's rules that would run, in any order, <paramref name="draft"/> among them.</param>
+    /// <summary>
+    /// What applying <paramref name="draft"/> would change, without saving anything.
+    /// </summary>
+    /// <param name="rulesFor">The rules that reach each transaction, the draft among them.</param>
     /// <param name="draft">The rule being previewed, only the transactions it reaches are looked at.</param>
     /// <param name="transactions">The user's transactions, untracked, as they're changed in place.</param>
     /// <param name="names">The user's tags, bills and debts by id, to say what changes by name.</param>
-    /// <param name="rulesFor">The rules that reach each transaction, the draft among them.</param>
     /// <param name="describe">What the user is shown of a transaction, see <see cref="Sharing.PrivateTransfers"/>.
     /// </param>
+    /// <param name="now">The time now, in UTC.</param>
     public static RulePreview Preview(Func<BankTransaction, IReadOnlyList<DomainRule>> rulesFor, DomainRule draft,
         IEnumerable<BankTransaction> transactions, RulePreviewNames names, Func<BankTransaction, string> describe,
         DateTime now)
@@ -51,6 +54,13 @@ internal static class RulePreviewer
         };
     }
 
+    /// <summary>
+    /// What changed on a transaction, by name.
+    /// </summary>
+    /// <param name="transaction">The transaction, after the rules ran.</param>
+    /// <param name="before">The transaction before.</param>
+    /// <param name="names">The user's tags, bills and debts by id.</param>
+    /// <param name="description">What the user is shown of it.</param>
     private static RulePreviewChange ToChange(BankTransaction transaction, RulePreviewSnapshot before,
         RulePreviewNames names, string description)
     {
@@ -75,6 +85,11 @@ internal static class RulePreviewer
         };
     }
 
+    /// <summary>
+    /// A bill's or debt's name, null for none.
+    /// </summary>
+    /// <param name="id">Its id, null for none.</param>
+    /// <param name="names">The names, by id.</param>
     private static string? NameOf(Guid? id, IReadOnlyDictionary<Guid, string> names)
     {
         if (id is not { } value)
@@ -85,9 +100,18 @@ internal static class RulePreviewer
         return names.GetValueOrDefault(value);
     }
 
+    /// <summary>
+    /// The tags' names, in order, those not found left out.
+    /// </summary>
+    /// <param name="tagIds">The tags.</param>
+    /// <param name="tagNames">The tags' names, by id.</param>
     private static List<string> Names(IEnumerable<Guid> tagIds, IReadOnlyDictionary<Guid, string> tagNames) =>
         tagIds.Select(tagNames.GetValueOrDefault).OfType<string>().Order().ToList();
 
+    /// <summary>
+    /// A transfer answer as the API sends it, null for none.
+    /// </summary>
+    /// <param name="decision">The answer, null for none.</param>
     private static TransferState? ToContract(TransferDecision? decision)
     {
         if (decision is not { } value)

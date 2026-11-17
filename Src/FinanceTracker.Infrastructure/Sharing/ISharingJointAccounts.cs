@@ -20,6 +20,9 @@ public interface ISharingJointAccounts
     /// <summary>
     /// Splits every joint account merged in <paramref name="link"/>. Tracked changes, saved by the caller.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="link">The link between the two people.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <returns>Whether there were any to split.</returns>
     Task<bool> SplitAllAsync(FinanceTrackerContext context, DomainLink link, CancellationToken cancellationToken);
 }

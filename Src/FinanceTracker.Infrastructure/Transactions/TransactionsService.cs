@@ -13,6 +13,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Infrastructure.Transactions;
 
+/// <inheritdoc cref="ITransactionsService"/>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<ITransactionsService>]
 public class TransactionsService : ServiceBase<TransactionsService>, ITransactionsService
@@ -155,6 +156,10 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
         }, cancellationToken);
     }
 
+    /// <summary>
+    /// A note trimmed, null when it's blank.
+    /// </summary>
+    /// <param name="note">The note.</param>
     private static string? Trimmed(string? note)
     {
         if (string.IsNullOrWhiteSpace(note))
@@ -169,7 +174,10 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
     /// Makes <paramref name="change"/> to a transaction the user can change, their own or one on an account shared
     /// with changes allowed, and returns it as it is now.
     /// </summary>
+    /// <param name="transactionId">The transaction.</param>
     /// <param name="action">What the change was, for the log, e.g. <c>split</c>.</param>
+    /// <param name="change">The change.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <exception cref="InvalidOperationException">The user can't change any such transaction.</exception>
     private async Task<Transaction> ChangeAsync(Guid transactionId, string action,
         Func<FinanceTrackerContext, BankTransaction, Task> change, CancellationToken cancellationToken)
@@ -196,6 +204,8 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
     /// The classifications not among <paramref name="hidden"/>. A transaction from before hiding existed has no hidden
     /// list at all, and projected on its own that comes back null rather than empty.
     /// </summary>
+    /// <param name="classifications">The bank's classifications.</param>
+    /// <param name="hidden">Those hidden.</param>
     private static IEnumerable<string> VisibleClassifications(IEnumerable<string> classifications,
         IReadOnlyList<HiddenClassification>? hidden)
     {

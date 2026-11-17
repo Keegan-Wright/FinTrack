@@ -82,6 +82,12 @@ public sealed class BillNotices : ServiceBase<BillNotices>, ISyncNotices
     /// Says each recent period that went unpaid or was paid a different amount. Only periods due since the bill was
     /// added, so adding one doesn't bring up its past.
     /// </summary>
+    /// <param name="visible">The bill, as the user sees it.</param>
+    /// <param name="account">The account.</param>
+    /// <param name="payments">The bill's payments.</param>
+    /// <param name="today">Today where the user is.</param>
+    /// <param name="timeZone">Where the user is.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task NotifyPastAsync(VisibleItem<Bill> visible, BankAccount? account, List<BankTransaction> payments,
         DateOnly today, TimeZoneInfo timeZone, CancellationToken cancellationToken)
     {
@@ -118,6 +124,13 @@ public sealed class BillNotices : ServiceBase<BillNotices>, ISyncNotices
     /// Reminds them of each period due within <paramref name="reminderDays"/> that isn't paid yet, saying when the
     /// account's available balance won't cover it.
     /// </summary>
+    /// <param name="visible">The bill, as the user sees it.</param>
+    /// <param name="account">The account.</param>
+    /// <param name="payments">The bill's payments.</param>
+    /// <param name="reminderDays">How many days ahead to remind.</param>
+    /// <param name="today">Today where the user is.</param>
+    /// <param name="timeZone">Where the user is.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task RemindAsync(VisibleItem<Bill> visible, BankAccount? account, List<BankTransaction> payments,
         int reminderDays, DateOnly today, TimeZoneInfo timeZone, CancellationToken cancellationToken)
     {
@@ -142,6 +155,7 @@ public sealed class BillNotices : ServiceBase<BillNotices>, ISyncNotices
     /// <summary>
     /// Where it's paid from with a space after, e.g. <c>from Everyday </c>, nothing when the account is gone.
     /// </summary>
+    /// <param name="account">The account.</param>
     private static string FromAccount(BankAccount? account)
     {
         if (account is null)
@@ -155,6 +169,8 @@ public sealed class BillNotices : ServiceBase<BillNotices>, ISyncNotices
     /// <summary>
     /// A warning when the account's available balance is less than <paramref name="expected"/>, nothing otherwise.
     /// </summary>
+    /// <param name="account">The account.</param>
+    /// <param name="expected">What the bill is expected to cost.</param>
     private static string WontCover(BankAccount? account, decimal expected)
     {
         if (account?.Balance is not { } balance || balance.Available >= expected)
@@ -168,8 +184,16 @@ public sealed class BillNotices : ServiceBase<BillNotices>, ISyncNotices
     /// <summary>
     /// Keyed by the bill and the due date, so each period is said once.
     /// </summary>
+    /// <param name="what">What the notification is about.</param>
+    /// <param name="bill">The bill.</param>
+    /// <param name="due">The period's due date.</param>
     private static string Key(string what, Bill bill, DateOnly due) => $"{what}:{bill.Id:N}:{due:yyyyMMdd}";
 
+    /// <summary>
+    /// How many days ahead the user is reminded of bills, the default when they've never changed it.
+    /// </summary>
+    /// <param name="context">The context to read through.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<int> ReminderDaysAsync(FinanceTrackerContext context, CancellationToken cancellationToken)
     {
         NotificationSettings? settings = await context.NotificationSettings.OwnedBy(UserId).AsNoTracking()

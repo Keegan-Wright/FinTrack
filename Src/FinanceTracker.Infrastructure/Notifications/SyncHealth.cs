@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Infrastructure.Notifications;
 
+/// <inheritdoc cref="ISyncHealth"/>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<ISyncHealth>]
 public sealed class SyncHealth : ServiceBase<SyncHealth>, ISyncHealth
@@ -68,6 +69,12 @@ public sealed class SyncHealth : ServiceBase<SyncHealth>, ISyncHealth
             ConsentNotices.RenewLink, cancellationToken);
     }
 
+    /// <summary>
+    /// The user's connection, null when it's gone.
+    /// </summary>
+    /// <param name="context">The context to read through.</param>
+    /// <param name="connectionId">The connection.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private Task<BankConnection?> FindAsync(FinanceTrackerContext context, Guid connectionId,
         CancellationToken cancellationToken) =>
         context.BankConnections.OwnedBy(UserId).SingleOrDefaultAsync(x => x.Id == connectionId, cancellationToken);

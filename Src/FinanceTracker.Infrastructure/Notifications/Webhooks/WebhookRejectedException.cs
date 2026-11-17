@@ -11,6 +11,9 @@ public sealed class WebhookRejectedException : Exception
     public WebhookRejectedException(HttpStatusCode statusCode)
         : base($"The webhook answered {(int)statusCode}") => StatusCode = statusCode;
 
+    /// <summary>
+    /// Says the webhook didn't answer with success.
+    /// </summary>
     public WebhookRejectedException() : base("The webhook didn't answer with success")
     {
     }
@@ -26,5 +29,8 @@ public sealed class WebhookRejectedException : Exception
     {
     }
 
+    /// <summary>
+    /// What the webhook answered, null when it isn't known.
+    /// </summary>
     public HttpStatusCode? StatusCode { get; }
 }

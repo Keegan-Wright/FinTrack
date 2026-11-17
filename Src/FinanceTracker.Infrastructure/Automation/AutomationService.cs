@@ -21,6 +21,9 @@ namespace FinanceTracker.Infrastructure.Automation;
 public class AutomationService : ServiceBase<AutomationService>, IAutomationService
 {
     // Enough of the newest runs to find the success rate's finished ones among retries
+    /// <summary>
+    /// How many recent runs are loaded, enough to find the finished ones the success rate counts.
+    /// </summary>
     private const int SuccessRateLookBack = AutomationJobSummary.SuccessRateRuns * 3;
 
     private readonly ISchedulerFactory _schedulerFactory;
@@ -185,6 +188,14 @@ public class AutomationService : ServiceBase<AutomationService>, IAutomationServ
         return lastSync?.ToLocalTime();
     }
 
+    /// <summary>
+    /// A job's summary, its schedule, last run, next run and success rate.
+    /// </summary>
+    /// <param name="scheduler">Quartz's scheduler.</param>
+    /// <param name="job">The job.</param>
+    /// <param name="cron">Its schedule as the API sends it, null when it has none.</param>
+    /// <param name="schedule">Its schedule in Quartz, null when it has none.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<AutomationJobSummary> SummariseAsync(IScheduler scheduler, JobKey job, AutomationCron? cron,
         ICronTrigger? schedule, CancellationToken cancellationToken)
     {
@@ -222,6 +233,11 @@ public class AutomationService : ServiceBase<AutomationService>, IAutomationServ
     }
 
     // A paused job won't run on its schedule
+    /// <summary>
+    /// When the job next runs, local, null while it's paused or has no schedule.
+    /// </summary>
+    /// <param name="cron">Its schedule as the API sends it, null when it has none.</param>
+    /// <param name="schedule">Its schedule in Quartz, null when it has none.</param>
     private DateTime? NextRunAt(AutomationCron? cron, ICronTrigger? schedule)
     {
         if (cron is not { IsEnabled: true } || schedule?.NextFireTimeUtc is not { } next)
@@ -235,6 +251,9 @@ public class AutomationService : ServiceBase<AutomationService>, IAutomationServ
     /// <summary>
     /// The run of <paramref name="job"/> going now, from its schedule or by hand, null when none is.
     /// </summary>
+    /// <param name="scheduler">Quartz's scheduler.</param>
+    /// <param name="job">The job.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<AutomationRun?> RunningAsync(IScheduler scheduler, JobKey job,
         CancellationToken cancellationToken)
     {
@@ -261,6 +280,10 @@ public class AutomationService : ServiceBase<AutomationService>, IAutomationServ
         return null;
     }
 
+    /// <summary>
+    /// A run as the API sends it, its times local.
+    /// </summary>
+    /// <param name="entry">The run's history entry.</param>
     private AutomationRun ToRun(ExecutionHistoryEntry entry)
     {
         DateTime firedAt = _timeProvider.ToLocal(entry.FiredAtUtc.UtcDateTime);
@@ -269,6 +292,10 @@ public class AutomationService : ServiceBase<AutomationService>, IAutomationServ
             entry.ExceptionMessage);
     }
 
+    /// <summary>
+    /// How a run went.
+    /// </summary>
+    /// <param name="entry">The run's history entry.</param>
     private static AutomationRunStatus StatusOf(ExecutionHistoryEntry entry) => entry.EffectiveResult switch
     {
         JobRunResult.Succeeded => AutomationRunStatus.Done,
@@ -278,6 +305,11 @@ public class AutomationService : ServiceBase<AutomationService>, IAutomationServ
         _ => AutomationRunStatus.Failed
     };
 
+    /// <summary>
+    /// The jobs' schedules, by name.
+    /// </summary>
+    /// <param name="scheduler">Quartz's scheduler.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<List<ICronTrigger>> SchedulesAsync(IScheduler scheduler,
         CancellationToken cancellationToken)
     {
@@ -296,6 +328,12 @@ public class AutomationService : ServiceBase<AutomationService>, IAutomationServ
         return schedules;
     }
 
+    /// <summary>
+    /// A schedule as the API sends it, with whether it's paused.
+    /// </summary>
+    /// <param name="scheduler">Quartz's scheduler.</param>
+    /// <param name="schedule">The schedule.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<AutomationCron> ToCronAsync(IScheduler scheduler, ICronTrigger schedule,
         CancellationToken cancellationToken)
     {

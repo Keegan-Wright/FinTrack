@@ -4,8 +4,12 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace FinanceTracker.Infrastructure.Persistence.Configurations;
 
+/// <summary>
+/// Maps <see cref="CustomClassification"/> to its table.
+/// </summary>
 internal sealed class CustomClassificationConfiguration : AggregateRootConfiguration<CustomClassification>
 {
+    /// <inheritdoc/>
     protected override void ConfigureAggregate(EntityTypeBuilder<CustomClassification> builder)
     {
         builder.ToTable("CustomClassifications");

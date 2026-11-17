@@ -4,8 +4,12 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace FinanceTracker.Infrastructure.Persistence.Configurations;
 
+/// <summary>
+/// Maps <see cref="AccessToken"/> to its table.
+/// </summary>
 internal sealed class AccessTokenConfiguration : IEntityTypeConfiguration<AccessToken>
 {
+    /// <inheritdoc/>
     public void Configure(EntityTypeBuilder<AccessToken> builder)
     {
         builder.ToTable("AccessTokens");

@@ -17,11 +17,13 @@ public static class NameBlindIndex
     /// <summary>
     /// <paramref name="parts"/> as compared, trimmed, joined by a space and in upper case.
     /// </summary>
+    /// <param name="parts">The parts.</param>
     public static string Normalise(params IEnumerable<string?> parts) =>
         string.Join(' ', parts.Select(static x => (x ?? string.Empty).Trim())).ToUpperInvariant();
 
     /// <summary>
     /// What's hashed for <paramref name="parts"/>. Prefixed so it never shares a hash with another index's value.
     /// </summary>
+    /// <param name="parts">The parts.</param>
     public static string Value(params IEnumerable<string?> parts) => $"name:{Normalise(parts)}";
 }

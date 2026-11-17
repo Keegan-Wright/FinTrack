@@ -1,11 +1,14 @@
 namespace FinanceTracker.Infrastructure.Persistence;
 
+/// <summary>
+/// The EF model annotations column encryption and blind indexes use.
+/// </summary>
 public static class Annotations
 {
     /// <summary>
-    /// Marks a column as one to be encrpted at rest.
+    /// Marks a column as one to be encrypted at rest.
     /// </summary>
-    internal const string EncryptedPropertyAnnotation = "FinanceTracker.EncrptedColumn";
+    internal const string EncryptedPropertyAnnotation = "FinanceTracker.EncryptedColumn";
 
     /// <summary>
     /// On a blind index shadow property, the name of the encrypted property it hashes.

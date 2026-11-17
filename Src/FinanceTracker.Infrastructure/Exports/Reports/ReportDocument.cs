@@ -91,6 +91,11 @@ public sealed class ReportDocument : FinTrackDocument
         });
     }
 
+    /// <summary>
+    /// Lays out the report over time, its totals then each year.
+    /// </summary>
+    /// <param name="column">Where it's laid out.</param>
+    /// <param name="everything">Every account together.</param>
     private static void ComposeOverTime(ColumnDescriptor column, ReportRow everything)
     {
         string counted = $"{TransactionCount(everything.TotalTransactions)}. Moves between your own accounts or your " +
@@ -104,6 +109,10 @@ public sealed class ReportDocument : FinTrackDocument
         }
     }
 
+    /// <summary>
+    /// Lays out the report by account or tag, a table of each then each in turn.
+    /// </summary>
+    /// <param name="column">Where it's laid out.</param>
     private void ComposeBreakdown(ColumnDescriptor column)
     {
         bool byAccount = _report.Breakdown == ReportBreakdown.ByAccount;
@@ -120,6 +129,10 @@ public sealed class ReportDocument : FinTrackDocument
         }
     }
 
+    /// <summary>
+    /// A table of each account or tag's totals.
+    /// </summary>
+    /// <param name="container">Where it's laid out.</param>
     private void ComposeSubjectTable(IContainer container)
     {
         string nameHeader = _report.Breakdown == ReportBreakdown.ByAccount ? "Account" : "Tag";
@@ -127,6 +140,11 @@ public sealed class ReportDocument : FinTrackDocument
         container.Component(new TotalsTable(nameHeader, rows));
     }
 
+    /// <summary>
+    /// Lays out an account or tag, each year newest first.
+    /// </summary>
+    /// <param name="container">Where it's laid out.</param>
+    /// <param name="subject">The account or tag.</param>
     private static void ComposeSubject(IContainer container, ReportRow subject)
     {
         container.Column(column =>
@@ -147,6 +165,8 @@ public sealed class ReportDocument : FinTrackDocument
     /// <summary>
     /// The year's twelve months as a chart, then those with transactions in a table.
     /// </summary>
+    /// <param name="container">Where it's laid out.</param>
+    /// <param name="year">The year's line.</param>
     private static void ComposeYear(IContainer container, ReportRow year)
     {
         List<InOutChartBar> bars = year.Periods
@@ -164,6 +184,7 @@ public sealed class ReportDocument : FinTrackDocument
         });
     }
 
+    /// <param name="row">The report's line.</param>
     /// <param name="detail">Under the name, e.g. a pay period's dates, none when null.</param>
     private static TotalsTableRow TableRow(ReportRow row, string? detail) =>
         new(row.Title, detail, row.TotalTransactions, row.TotalIn, -row.TotalOut);
@@ -171,9 +192,14 @@ public sealed class ReportDocument : FinTrackDocument
     /// <summary>
     /// e.g. £2,450.00 in, £1,984.37 out, 128 transactions.
     /// </summary>
+    /// <param name="row">The report's line.</param>
     private static string Totals(ReportRow row) =>
         $"{Money(row.TotalIn)} in, {Money(-row.TotalOut)} out, {TransactionCount(row.TotalTransactions)}";
 
+    /// <summary>
+    /// The years with transactions, newest first.
+    /// </summary>
+    /// <param name="years">The years, oldest first.</param>
     private static IEnumerable<ReportRow> NewestFirst(IReadOnlyList<ReportRow> years) =>
         years.Where(static x => x.TotalTransactions > 0).Reverse();
 }

@@ -35,21 +35,21 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
                     b.Property<string>("FinalPaymentDate")
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<string>("MonthlyPayment")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<string>("PayOffGoal")
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
@@ -81,12 +81,12 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.Property<string>("MonthlyContribution")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
@@ -97,16 +97,16 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.Property<string>("Saved")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<string>("Target")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<string>("TargetDate")
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<DateTime?>("Updated")
                         .HasColumnType("timestamp with time zone");
@@ -138,7 +138,7 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.Property<string>("Tag")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<string>("TagBlindIndex")
                         .IsRequired()
@@ -170,21 +170,21 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.Property<string>("FirstName")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<string>("Income")
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<string>("LastName")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.PrimitiveCollection<string>("PayeeNames")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
@@ -316,7 +316,7 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.Property<string>("Assets")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<DateTime>("Created")
                         .HasColumnType("timestamp with time zone");
@@ -330,7 +330,7 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.Property<string>("Liabilities")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
@@ -360,7 +360,7 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.Property<string>("AccountType")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<Guid>("ConnectionId")
                         .HasColumnType("uuid");
@@ -371,12 +371,12 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.Property<string>("Currency")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<string>("DisplayName")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<string>("ExternalId")
                         .IsRequired()
@@ -421,12 +421,12 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
                     b.Property<string>("Currency")
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<string>("ExternalId")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<string>("ExternalIdBlindIndex")
                         .IsRequired()
@@ -436,27 +436,27 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<string>("PreviousPaymentAmount")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<string>("PreviousPaymentDate")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<string>("Timestamp")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<DateTime?>("Updated")
                         .HasColumnType("timestamp with time zone");
@@ -483,62 +483,62 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.Property<string>("Currency")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<string>("FinalPaymentAmount")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<string>("FinalPaymentDate")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<string>("FirstPaymentAmount")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<string>("FirstPaymentDate")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<string>("Frequency")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<string>("NextPaymentAmount")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<string>("NextPaymentDate")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<string>("Payee")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<string>("Reference")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<string>("Timestamp")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<DateTime?>("Updated")
                         .HasColumnType("timestamp with time zone");
@@ -643,7 +643,7 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.Property<string>("RefreshToken")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<DateTime?>("RevokedAt")
                         .HasColumnType("timestamp with time zone");
@@ -651,7 +651,7 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.Property<string>("Token")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<DateTime?>("Updated")
                         .HasColumnType("timestamp with time zone");
@@ -673,7 +673,7 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.Property<string>("AccessCode")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<DateTime>("ConsentExpiresAt")
                         .HasColumnType("timestamp with time zone");
@@ -687,7 +687,7 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.Property<string>("ExternalProviderId")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<string>("ExternalProviderIdBlindIndex")
                         .IsRequired()
@@ -697,12 +697,12 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.Property<string>("Logo")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
@@ -713,7 +713,7 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.PrimitiveCollection<string>("Scopes")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<DateTime?>("Updated")
                         .HasColumnType("timestamp with time zone");
@@ -740,12 +740,12 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.Property<string>("Amount")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<string>("Category")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<DateTime>("Created")
                         .HasColumnType("timestamp with time zone");
@@ -753,7 +753,7 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.Property<string>("Currency")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.PrimitiveCollection<Guid[]>("CustomClassificationIds")
                         .IsRequired()
@@ -762,12 +762,12 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<string>("ExternalId")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<string>("ExternalIdBlindIndex")
                         .IsRequired()
@@ -783,7 +783,7 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.Property<string>("OccurredAt")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<string>("OccurredAtDayBlindIndex")
                         .IsRequired()
@@ -793,7 +793,7 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.PrimitiveCollection<string>("ProviderClassifications")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
@@ -807,7 +807,7 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.Property<string>("Type")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<DateTime?>("Updated")
                         .HasColumnType("timestamp with time zone");
@@ -874,7 +874,7 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.Property<int>("Order")
                         .HasColumnType("integer");
@@ -945,7 +945,7 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
                     b.Property<string>("Xml")
                         .HasColumnType("text")
-                        .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                     b.HasKey("Id");
 
@@ -1287,15 +1287,15 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
                             b1.Property<string>("Iban")
                                 .HasColumnType("text")
-                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                                .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                             b1.Property<string>("Number")
                                 .HasColumnType("text")
-                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                                .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                             b1.Property<string>("SortCode")
                                 .HasColumnType("text")
-                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                                .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                             b1.HasKey("Id");
 
@@ -1342,24 +1342,24 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                                 .IsRequired()
                                 .HasColumnType("text")
                                 .HasColumnName("Balance_AsOf")
-                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                                .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                             b1.Property<string>("Available")
                                 .IsRequired()
                                 .HasColumnType("text")
                                 .HasColumnName("Balance_Available")
-                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                                .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                             b1.Property<string>("CreditLimit")
                                 .HasColumnType("text")
                                 .HasColumnName("Balance_CreditLimit")
-                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                                .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                             b1.Property<string>("Current")
                                 .IsRequired()
                                 .HasColumnType("text")
                                 .HasColumnName("Balance_Current")
-                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                                .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                             b1.HasKey("BankAccountId");
 
@@ -1377,17 +1377,17 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                             b1.Property<string>("Iban")
                                 .HasColumnType("text")
                                 .HasColumnName("Identifier_Iban")
-                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                                .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                             b1.Property<string>("Number")
                                 .HasColumnType("text")
                                 .HasColumnName("Identifier_Number")
-                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                                .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                             b1.Property<string>("SortCode")
                                 .HasColumnType("text")
                                 .HasColumnName("Identifier_SortCode")
-                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                                .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                             b1.HasKey("BankAccountId");
 
@@ -1405,27 +1405,27 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                             b1.Property<string>("CardType")
                                 .HasColumnType("text")
                                 .HasColumnName("Card_CardType")
-                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                                .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                             b1.Property<string>("NameOnCard")
                                 .HasColumnType("text")
                                 .HasColumnName("Card_NameOnCard")
-                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                                .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                             b1.Property<string>("Network")
                                 .HasColumnType("text")
                                 .HasColumnName("Card_Network")
-                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                                .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                             b1.Property<string>("PartialNumber")
                                 .HasColumnType("text")
                                 .HasColumnName("Card_PartialNumber")
-                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                                .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                             b1.Property<string>("ValidTo")
                                 .HasColumnType("text")
                                 .HasColumnName("Card_ValidTo")
-                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                                .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                             b1.HasKey("BankAccountId");
 
@@ -1492,24 +1492,24 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                                 .IsRequired()
                                 .HasColumnType("text")
                                 .HasColumnName("Balance_AsOf")
-                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                                .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                             b1.Property<string>("Available")
                                 .IsRequired()
                                 .HasColumnType("text")
                                 .HasColumnName("Balance_Available")
-                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                                .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                             b1.Property<string>("CreditLimit")
                                 .HasColumnType("text")
                                 .HasColumnName("Balance_CreditLimit")
-                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                                .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                             b1.Property<string>("Current")
                                 .IsRequired()
                                 .HasColumnType("text")
                                 .HasColumnName("Balance_Current")
-                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                                .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                             b1.HasKey("BalanceSnapshotId");
 
@@ -1564,7 +1564,7 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
                             b1.Property<string>("Classification")
                                 .IsRequired()
-                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                                .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                             b1.Property<Guid?>("RuleId");
 
@@ -1588,27 +1588,27 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                             b1.Property<string>("CounterPartyPreferredName")
                                 .HasColumnType("text")
                                 .HasColumnName("Meta_CounterPartyPreferredName")
-                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                                .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                             b1.Property<string>("DebtorAccountName")
                                 .HasColumnType("text")
                                 .HasColumnName("Meta_DebtorAccountName")
-                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                                .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                             b1.Property<string>("MerchantName")
                                 .HasColumnType("text")
                                 .HasColumnName("Meta_MerchantName")
-                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                                .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                             b1.Property<string>("ProviderCategory")
                                 .HasColumnType("text")
                                 .HasColumnName("Meta_ProviderCategory")
-                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                                .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                             b1.Property<string>("ProviderReference")
                                 .HasColumnType("text")
                                 .HasColumnName("Meta_ProviderReference")
-                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                                .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                             b1.HasKey("BankTransactionId");
 
@@ -1723,7 +1723,7 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                                 .ValueGeneratedOnAdd();
 
                             b1.Property<string>("BankClassification")
-                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                                .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                             b1.Property<Guid?>("ClassificationId");
 
@@ -1758,11 +1758,11 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                                 .IsRequired();
 
                             b1.Property<string>("SecondValue")
-                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                                .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                             b1.Property<string>("Value")
                                 .IsRequired()
-                                .HasAnnotation("FinanceTracker.EncrptedColumn", true);
+                                .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                             b1.HasKey("RuleId", "__synthesizedOrdinal");
 

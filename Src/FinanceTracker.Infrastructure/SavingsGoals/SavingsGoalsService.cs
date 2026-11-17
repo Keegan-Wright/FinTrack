@@ -21,6 +21,7 @@ using SavingsGoal = FinanceTracker.Contracts.SavingsGoals.SavingsGoal;
 
 namespace FinanceTracker.Infrastructure.SavingsGoals;
 
+/// <inheritdoc cref="ISavingsGoalsService"/>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<ISavingsGoalsService>]
 public class SavingsGoalsService : ServiceBase<SavingsGoalsService>, ISavingsGoalsService
@@ -201,6 +202,11 @@ public class SavingsGoalsService : ServiceBase<SavingsGoalsService>, ISavingsGoa
         return true;
     }
 
+    /// <summary>
+    /// Has <paramref name="target"/> track what <paramref name="goal"/> says.
+    /// </summary>
+    /// <param name="target">The goal to change.</param>
+    /// <param name="goal">What the user saved.</param>
     private static void Track(DomainSavingsGoal target, SaveSavingsGoal goal)
     {
         switch (SavingsGoalMapper.ToDomain(goal.Source))
@@ -222,6 +228,9 @@ public class SavingsGoalsService : ServiceBase<SavingsGoalsService>, ISavingsGoa
     /// Each goal with what it's saved: the backing account's balance, or its owner's tagged transactions since it
     /// started counting. The same for whoever's looking, though an account they can't see isn't named.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="goals">The goals.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<List<SavingsGoal>> ToContractsAsync(FinanceTrackerContext context,
         List<VisibleItem<DomainSavingsGoal>> goals, CancellationToken cancellationToken)
     {
@@ -261,6 +270,8 @@ public class SavingsGoalsService : ServiceBase<SavingsGoalsService>, ISavingsGoa
     /// The name of the account <paramref name="goal"/> tracks, private when the user can't see it, null when it tracks
     /// none.
     /// </summary>
+    /// <param name="goal">The goal.</param>
+    /// <param name="seenNames">The names of the accounts the user sees, by id.</param>
     private static string? AccountNameOf(DomainSavingsGoal goal, Dictionary<Guid, string> seenNames)
     {
         if (goal.AccountId is not { } accountId)
@@ -271,6 +282,11 @@ public class SavingsGoalsService : ServiceBase<SavingsGoalsService>, ISavingsGoa
         return seenNames.GetValueOrDefault(accountId, Rules.SharedRules.PrivateAccountName);
     }
 
+    /// <summary>
+    /// The names of the accounts the user sees, by id.
+    /// </summary>
+    /// <param name="context">The context to read through.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<Dictionary<Guid, string>> SeenAccountNamesAsync(FinanceTrackerContext context,
         CancellationToken cancellationToken)
     {
@@ -282,6 +298,9 @@ public class SavingsGoalsService : ServiceBase<SavingsGoalsService>, ISavingsGoa
     /// <summary>
     /// The accounts the goals track, whoever's they are, for their balances.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="goals">The goals.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<Dictionary<Guid, BankAccount>> LoadAccountsAsync(FinanceTrackerContext context,
         List<VisibleItem<DomainSavingsGoal>> goals, CancellationToken cancellationToken)
     {
@@ -304,6 +323,10 @@ public class SavingsGoalsService : ServiceBase<SavingsGoalsService>, ISavingsGoa
     /// <paramref name="ownerId"/>'s transactions from the earliest day one of their tag goals counts from, a day early
     /// for time zones. Dates are encrypted, so this narrows by their day index.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="ownerId">The owner.</param>
+    /// <param name="goals">The goals.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<List<BankTransaction>> LoadTaggedTransactionsAsync(FinanceTrackerContext context,
         Guid ownerId, List<DomainSavingsGoal> goals, CancellationToken cancellationToken)
     {
@@ -330,6 +353,8 @@ public class SavingsGoalsService : ServiceBase<SavingsGoalsService>, ISavingsGoa
     /// <summary>
     /// Every goal the user sees, their own and those shared with them.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<List<VisibleItem<DomainSavingsGoal>>> VisibleAsync(FinanceTrackerContext context,
         CancellationToken cancellationToken)
     {
@@ -340,7 +365,10 @@ public class SavingsGoalsService : ServiceBase<SavingsGoalsService>, ISavingsGoa
     /// <summary>
     /// Goal <paramref name="id"/>, the user's own or one shared with them.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="id">Its id.</param>
     /// <param name="mustChange">Whether they must be allowed to change it.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <exception cref="InvalidOperationException">They can't see it, or can't change it.</exception>
     private async Task<VisibleItem<DomainSavingsGoal>> VisibleAsync(FinanceTrackerContext context, Guid id,
         bool mustChange, CancellationToken cancellationToken)
@@ -356,6 +384,10 @@ public class SavingsGoalsService : ServiceBase<SavingsGoalsService>, ISavingsGoa
     }
 
 
+    /// <param name="context">The context to work through.</param>
+    /// <param name="goalId">The goal being changed, null for a new one.</param>
+    /// <param name="goal">The goal.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <exception cref="InvalidOperationException">The account isn't the user's, is a card or backs another goal, or a
     /// tag isn't the user's.</exception>
     private async Task EnsureSourceIsTheUsersAsync(FinanceTrackerContext context, Guid? goalId, SaveSavingsGoal goal,
@@ -372,6 +404,13 @@ public class SavingsGoalsService : ServiceBase<SavingsGoalsService>, ISavingsGoa
         }
     }
 
+    /// <summary>
+    /// Checks the account is the user's, isn't a card and doesn't back another goal.
+    /// </summary>
+    /// <param name="context">The context to read through.</param>
+    /// <param name="goalId">The goal being changed, null for a new one.</param>
+    /// <param name="accountId">The account.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task EnsureAccountIsFreeAsync(FinanceTrackerContext context, Guid? goalId, Guid accountId,
         CancellationToken cancellationToken)
     {
@@ -390,6 +429,12 @@ public class SavingsGoalsService : ServiceBase<SavingsGoalsService>, ISavingsGoa
         }
     }
 
+    /// <summary>
+    /// Checks the tags are the user's.
+    /// </summary>
+    /// <param name="context">The context to read through.</param>
+    /// <param name="tagIds">The tags.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task EnsureTagsAreTheUsersAsync(FinanceTrackerContext context, List<Guid> tagIds,
         CancellationToken cancellationToken)
     {

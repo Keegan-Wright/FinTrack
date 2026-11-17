@@ -22,7 +22,10 @@ namespace FinanceTracker.Infrastructure.Bills;
 /// </summary>
 internal static class BillMapper
 {
+    /// <param name="bill">The bill.</param>
+    /// <param name="accountName">The account's name.</param>
     /// <param name="payments">The transactions paying the bill, for its latest payment.</param>
+    /// <param name="timeZone">Where the user is.</param>
     /// <param name="today">Today where the user is, for the next due date and monthly cost.</param>
     /// <param name="sharedBy">Whoever shares it with the user, null when it's theirs.</param>
     /// <param name="canChange">Whether the user can edit it.</param>
@@ -68,7 +71,10 @@ internal static class BillMapper
         PaymentIds = period.PaymentIds.ToList()
     };
 
+    /// <param name="suggestion">The suggestion.</param>
+    /// <param name="accountName">The account's name.</param>
     /// <param name="payments">The transactions behind it, those not found, e.g. since deleted, are left out.</param>
+    /// <param name="today">Today where the user is.</param>
     public static BillSuggestion ToContract(DomainBillSuggestion suggestion, string accountName,
         IReadOnlyDictionary<Guid, BankTransaction> payments, DateOnly today) => new()
     {
@@ -95,6 +101,8 @@ internal static class BillMapper
     /// <summary>
     /// Nothing from the day it ends, as nothing more is committed.
     /// </summary>
+    /// <param name="bill">The bill.</param>
+    /// <param name="today">Today where the user is.</param>
     private static decimal MonthlyCost(DomainBill bill, DateOnly today)
     {
         if (bill.EndedOn <= today)
@@ -105,6 +113,12 @@ internal static class BillMapper
         return BillCalculator.MonthlyCost(bill, today);
     }
 
+    /// <summary>
+    /// An enum value as the enum of the same name on the other side.
+    /// </summary>
+    /// <typeparam name="TFrom">The enum it's from.</typeparam>
+    /// <typeparam name="TTo">The enum it's to.</typeparam>
+    /// <param name="value">The value.</param>
     private static TTo Map<TFrom, TTo>(TFrom value) where TFrom : struct, Enum where TTo : struct, Enum =>
         Enum.Parse<TTo>(value.ToString());
 }

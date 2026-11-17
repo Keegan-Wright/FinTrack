@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Infrastructure.Sharing;
 
+/// <inheritdoc cref="ISharingViews"/>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<ISharingViews>]
 public sealed class SharingViews : ServiceBase<SharingService>, ISharingViews
@@ -53,6 +54,8 @@ public sealed class SharingViews : ServiceBase<SharingService>, ISharingViews
     /// <summary>
     /// Their choice, and whether anything's shared with them whichever they chose.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<SharingView> ViewAsync(FinanceTrackerContext context, CancellationToken cancellationToken)
     {
         SharingSettings? settings = await context.SharingSettings.OwnedBy(UserId).AsNoTracking()

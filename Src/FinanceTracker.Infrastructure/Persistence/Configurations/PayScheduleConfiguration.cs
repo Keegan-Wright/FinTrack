@@ -5,8 +5,12 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace FinanceTracker.Infrastructure.Persistence.Configurations;
 
+/// <summary>
+/// Maps <see cref="PaySchedule"/> to its table.
+/// </summary>
 internal sealed class PayScheduleConfiguration : AggregateRootConfiguration<PaySchedule>
 {
+    /// <inheritdoc/>
     protected override void ConfigureAggregate(EntityTypeBuilder<PaySchedule> builder)
     {
         builder.ToTable("PaySchedules");

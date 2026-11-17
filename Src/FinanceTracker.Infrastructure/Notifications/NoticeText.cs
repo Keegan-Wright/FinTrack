@@ -7,13 +7,22 @@ namespace FinanceTracker.Infrastructure.Notifications;
 /// </summary>
 public static class NoticeText
 {
+    /// <summary>
+    /// An amount, e.g. <c>£12.50</c>.
+    /// </summary>
+    /// <param name="amount">The amount.</param>
     public static string Money(decimal amount) => amount.ToString("C", CultureInfo.CurrentCulture);
 
+    /// <summary>
+    /// A day, e.g. <c>14 November</c>.
+    /// </summary>
+    /// <param name="day">The day.</param>
     public static string Day(DateOnly day) => day.ToString("d MMMM", CultureInfo.CurrentCulture);
 
     /// <summary>
     /// Something's name, saying whose when another person shares it, e.g. <c>Rent</c> or <c>Jane Doe's Rent</c>.
     /// </summary>
+    /// <param name="name">Its name.</param>
     /// <param name="sharedBy">Its owner's name when it's someone else's, null when it's the user's.</param>
     public static string Named(string name, string? sharedBy)
     {
@@ -29,6 +38,8 @@ public static class NoticeText
     /// When something is due from <paramref name="today"/>, e.g. <c>today</c>, <c>tomorrow</c> or
     /// <c>in 3 days</c>.
     /// </summary>
+    /// <param name="due">The due date.</param>
+    /// <param name="today">Today where the user is.</param>
     public static string DueIn(DateOnly due, DateOnly today)
     {
         int days = due.DayNumber - today.DayNumber;

@@ -21,9 +21,21 @@ public sealed class WebhookSender : IWebhookSender
     /// </summary>
     public const string ClientName = "webhooks";
 
+    /// <summary>
+    /// The header with the event, notification or test.
+    /// </summary>
     public const string EventHeader = "X-FinTrack-Event";
+    /// <summary>
+    /// The header with the notification's id.
+    /// </summary>
     public const string DeliveryHeader = "X-FinTrack-Delivery";
+    /// <summary>
+    /// The header with when it was sent, in Unix seconds, which the signature covers.
+    /// </summary>
     public const string TimestampHeader = "X-FinTrack-Timestamp";
+    /// <summary>
+    /// The header with the signature, <c>sha256={lowercase hex}</c>.
+    /// </summary>
     public const string SignatureHeader = "X-FinTrack-Signature";
 
     /// <summary>

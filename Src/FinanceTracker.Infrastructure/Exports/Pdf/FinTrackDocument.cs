@@ -41,8 +41,10 @@ public abstract class FinTrackDocument : IDocument
     /// <summary>
     /// Lays out what's between the header and footer, running onto as many pages as it needs.
     /// </summary>
+    /// <param name="container">Where it's laid out.</param>
     protected abstract void ComposeContent(IContainer container);
 
+    /// <inheritdoc/>
     public DocumentMetadata GetMetadata() => new()
     {
         Title = $"FinTrack {Title}",
@@ -51,8 +53,10 @@ public abstract class FinTrackDocument : IDocument
         Language = PdfFormat.Culture.Name
     };
 
+    /// <inheritdoc/>
     public DocumentSettings GetSettings() => DocumentSettings.Default;
 
+    /// <inheritdoc/>
     public void Compose(IDocumentContainer container)
     {
         container.Page(page =>
@@ -68,6 +72,10 @@ public abstract class FinTrackDocument : IDocument
         });
     }
 
+    /// <summary>
+    /// Lays out each page's header, FinTrack and the title, with what it covers on the right.
+    /// </summary>
+    /// <param name="container">Where it's laid out.</param>
     private void ComposeHeader(IContainer container)
     {
         container.Column(column =>
@@ -91,6 +99,10 @@ public abstract class FinTrackDocument : IDocument
         });
     }
 
+    /// <summary>
+    /// Lays out each page's footer, when it was made and the page number.
+    /// </summary>
+    /// <param name="container">Where it's laid out.</param>
     private void ComposeFooter(IContainer container)
     {
         container.Row(row =>

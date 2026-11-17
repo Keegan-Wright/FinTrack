@@ -19,6 +19,8 @@ internal sealed record SharedDebtsOwed(IReadOnlyList<VisibleItem<Debt>> Debts, D
     /// <summary>
     /// What <paramref name="debt"/> owed on <paramref name="day"/>.
     /// </summary>
+    /// <param name="debt">The debt.</param>
+    /// <param name="day">The day.</param>
     public decimal OwedOn(VisibleItem<Debt> debt, DateOnly day)
     {
         ArgumentNullException.ThrowIfNull(debt);
@@ -28,6 +30,11 @@ internal sealed record SharedDebtsOwed(IReadOnlyList<VisibleItem<Debt>> Debts, D
     /// <summary>
     /// The shared debts in <paramref name="view"/>, none for Just mine.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="userId">The user.</param>
+    /// <param name="view">The accounts the user sees.</param>
+    /// <param name="timeZone">Where the user is.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     public static async Task<SharedDebtsOwed> LoadAsync(FinanceTrackerContext context, Guid userId,
         AccountsInView view, TimeZoneInfo timeZone, CancellationToken cancellationToken)
     {

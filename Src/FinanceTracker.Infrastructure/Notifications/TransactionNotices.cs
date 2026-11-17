@@ -89,6 +89,10 @@ public sealed class TransactionNotices : ServiceBase<TransactionNotices>, ISyncN
     /// Booked money out of <paramref name="over"/> or more in the last <see cref="LookBackDays"/>, leaving out
     /// transfers. Dates are encrypted, so the day index narrows them and the decrypted dates give the exact range.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="all">The accounts the user sees.</param>
+    /// <param name="over">The amount a large transaction is over.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<List<BankTransaction>> LoadLargeAsync(FinanceTrackerContext context, AccountsInView all,
         decimal over, CancellationToken cancellationToken)
     {
@@ -107,6 +111,8 @@ public sealed class TransactionNotices : ServiceBase<TransactionNotices>, ISyncN
     /// <summary>
     /// The amount the user hears about payments of, null when they don't want to.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<decimal?> LargeOverAsync(FinanceTrackerContext context, CancellationToken cancellationToken)
     {
         NotificationSettings? settings = await context.NotificationSettings.OwnedBy(UserId).AsNoTracking()

@@ -22,11 +22,16 @@ public sealed class CurrentUser : ICurrentUser
     /// <summary>
     /// Acts as <paramref name="principal"/>, or as nobody when it isn't a signed in user.
     /// </summary>
+    /// <param name="principal">Who's signed in, null for nobody.</param>
     public void Set(ClaimsPrincipal? principal) =>
         _userId = Guid.TryParse(principal?.FindFirstValue(ClaimTypes.NameIdentifier), out Guid userId)
             ? userId
             : null;
 
+    /// <summary>
+    /// Acts as <paramref name="userId"/>, e.g. for a background job's work for one user.
+    /// </summary>
+    /// <param name="userId">The user.</param>
     public void Set(Guid userId)
     {
         ArgumentOutOfRangeException.ThrowIfEqual(userId, Guid.Empty);

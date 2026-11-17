@@ -5,8 +5,12 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace FinanceTracker.Infrastructure.Persistence.Configurations;
 
+/// <summary>
+/// Maps <see cref="HouseholdMember"/> to its table.
+/// </summary>
 internal sealed class HouseholdMemberConfiguration : AggregateRootConfiguration<HouseholdMember>
 {
+    /// <inheritdoc/>
     protected override void ConfigureAggregate(EntityTypeBuilder<HouseholdMember> builder)
     {
         builder.ToTable("HouseholdMembers");

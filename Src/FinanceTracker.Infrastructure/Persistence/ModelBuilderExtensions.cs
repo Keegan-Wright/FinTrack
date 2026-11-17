@@ -7,10 +7,18 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace FinanceTracker.Infrastructure.Persistence;
 
+/// <summary>
+/// Sets up column encryption on the EF model.
+/// </summary>
 public static class ModelBuilderExtensions
 {
     extension(ModelBuilder modelBuilder)
     {
+        /// <summary>
+        /// Gives every property marked <see cref="PropertyBuilderExtensions"/>'s <c>Encrypted</c> a converter that
+        /// encrypts it.
+        /// </summary>
+        /// <param name="encryptionService">Encrypts and decrypts the values.</param>
         public ModelBuilder UseEncryption(IColumnEncryptionService encryptionService)
         {
             ArgumentNullException.ThrowIfNull(modelBuilder);
@@ -38,6 +46,11 @@ public static class ModelBuilderExtensions
         }
     }
 
+    /// <summary>
+    /// An <see cref="EncryptionConverter{TModel}"/> for the property's type.
+    /// </summary>
+    /// <param name="modelType">The property's type.</param>
+    /// <param name="encryptionService">Encrypts and decrypts the values.</param>
     private static ValueConverter CreateConverter(Type modelType, IColumnEncryptionService encryptionService) =>
         (ValueConverter)Activator.CreateInstance(
             typeof(EncryptionConverter<>).MakeGenericType(modelType), encryptionService)!;
@@ -46,6 +59,7 @@ public static class ModelBuilderExtensions
     /// Element by element comparer for array properties and collection properties a <see cref="List{T}"/> can stand
     /// in for, null for anything else.
     /// </summary>
+    /// <param name="modelType">The property's type.</param>
     private static ValueComparer? CreateCollectionComparer(Type modelType)
     {
         if (modelType.IsArray)
@@ -73,6 +87,11 @@ public static class ModelBuilderExtensions
             .Invoke(null, null)!;
     }
 
+    /// <summary>
+    /// Compares two collections element by element.
+    /// </summary>
+    /// <typeparam name="TCollection">The collection's type.</typeparam>
+    /// <typeparam name="TElement">Its elements' type.</typeparam>
     private static ValueComparer<TCollection> CreateSequenceComparer<TCollection, TElement>()
         where TCollection : class, IEnumerable<TElement> =>
         new(
@@ -82,6 +101,10 @@ public static class ModelBuilderExtensions
                 : collection.Aggregate(0, static (hash, element) => HashCode.Combine(hash, element)),
             static collection => collection == null ? null! : (TCollection)(object)collection.ToList());
 
+    /// <summary>
+    /// Compares two arrays element by element.
+    /// </summary>
+    /// <typeparam name="TElement">Its elements' type.</typeparam>
     private static ValueComparer<TElement[]> CreateArrayComparer<TElement>() =>
         new(
             static (left, right) => left == null ? right == null : right != null && left.SequenceEqual(right),

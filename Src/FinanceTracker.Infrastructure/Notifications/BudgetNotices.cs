@@ -71,6 +71,10 @@ public sealed class BudgetNotices : ServiceBase<BudgetNotices>, ISyncNotices
     /// Says it's over when it is, otherwise that it's near once it reaches <paramref name="warningPercent"/> of what
     /// it has. A budget with nothing to spend is only ever over.
     /// </summary>
+    /// <param name="budget">How the budget is doing.</param>
+    /// <param name="month">The month.</param>
+    /// <param name="warningPercent">How much of the budget is spent before warning, as a percentage.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task NotifyForAsync(BudgetStatus budget, BudgetMonth month, int warningPercent,
         CancellationToken cancellationToken)
     {
@@ -93,12 +97,20 @@ public sealed class BudgetNotices : ServiceBase<BudgetNotices>, ISyncNotices
         }
     }
 
+    /// <summary>
+    /// Keyed by the budget and the month, so each is said once a month.
+    /// </summary>
+    /// <param name="what">What the notification is about.</param>
+    /// <param name="budget">The budget.</param>
+    /// <param name="month">The month.</param>
     private static string Key(string what, BudgetStatus budget, BudgetMonth month) =>
         $"{what}:{budget.BudgetId:N}:{month.Year:D4}{month.Month:D2}";
 
     /// <summary>
     /// The month the user's current period is named after, from pay to pay or a calendar month.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<BudgetMonth> CurrentMonthAsync(FinanceTrackerContext context,
         CancellationToken cancellationToken)
     {
@@ -107,6 +119,11 @@ public sealed class BudgetNotices : ServiceBase<BudgetNotices>, ISyncNotices
         return BudgetCalculator.MonthOf(today, calendar);
     }
 
+    /// <summary>
+    /// How much of a budget is spent before warning, the default when the user has never changed it.
+    /// </summary>
+    /// <param name="context">The context to read through.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<int> WarningPercentAsync(FinanceTrackerContext context, CancellationToken cancellationToken)
     {
         NotificationSettings? settings = await context.NotificationSettings.OwnedBy(UserId).AsNoTracking()

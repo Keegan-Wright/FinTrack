@@ -42,7 +42,7 @@ public class ExternalOpenBankingAccountStandingOrder
     /// What it next pays.
     /// </summary>
     [JsonPropertyName("next_payment_amount")]
-    public int NextPaymentAmount { get; set; }
+    public decimal NextPaymentAmount { get; set; }
 
     /// <summary>
     /// When it first paid.
@@ -54,7 +54,7 @@ public class ExternalOpenBankingAccountStandingOrder
     /// What it first paid.
     /// </summary>
     [JsonPropertyName("first_payment_amount")]
-    public int FirstPaymentAmount { get; set; }
+    public decimal FirstPaymentAmount { get; set; }
 
     /// <summary>
     /// When it last pays.
@@ -66,7 +66,7 @@ public class ExternalOpenBankingAccountStandingOrder
     /// What it last pays.
     /// </summary>
     [JsonPropertyName("final_payment_amount")]
-    public int FinalPaymentAmount { get; set; }
+    public decimal FinalPaymentAmount { get; set; }
 
     /// <summary>
     /// The reference on its payments.

@@ -8,6 +8,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.Infrastructure;
 
+/// <summary>
+/// Queries the services share, such as what a user owns or sees.
+/// </summary>
 public static class FinanceTrackerContextExtensions
 {
     extension<T>(IQueryable<T> query) where T : class, IUserOwned
@@ -16,19 +19,23 @@ public static class FinanceTrackerContextExtensions
         /// Restricts an aggregate query to those owned by <paramref name="userId"/>. For changes, and for anything
         /// that isn't an account's, which stays with whoever made it.
         /// </summary>
+        /// <param name="userId">The user.</param>
         public IQueryable<T> OwnedBy(Guid userId) => query.Where(x => x.UserId == userId);
 
         /// <summary>
         /// Restricts to those owned by any of <paramref name="userIds"/>, for naming what shared transactions point
         /// at, such as the tags and bills of whoever shared the account. For reading only.
         /// </summary>
+        /// <param name="userIds">The users.</param>
         public IQueryable<T> OwnedByAny(IReadOnlyCollection<Guid> userIds) =>
             query.Where(x => userIds.Contains(x.UserId));
 
         /// <summary>
         /// The one matching <paramref name="predicate"/>, for looking up what a request names by its id.
         /// </summary>
+        /// <param name="predicate">What to match.</param>
         /// <param name="what">What it is, as it reads in a sentence, e.g. <c>tag</c>.</param>
+        /// <param name="cancellationToken">Stops the work.</param>
         /// <exception cref="NotFoundException">None does, such as one that's gone or isn't the user's to see.
         /// </exception>
         public async Task<T> SingleOrNotFoundAsync(Expression<Func<T, bool>> predicate, string what,
@@ -44,6 +51,7 @@ public static class FinanceTrackerContextExtensions
         /// naming what transactions point at, which may be the other person's tag or bill put on one of the user's.
         /// For reading only.
         /// </summary>
+        /// <param name="userIds">The users.</param>
         /// <param name="sharedIds">Those shared with the user, see <see cref="SharedItems"/>.</param>
         public IQueryable<T> OwnedByAnyOrShared(IReadOnlyCollection<Guid> userIds, IQueryable<Guid> sharedIds) =>
             query.Where(x => userIds.Contains(x.UserId) || sharedIds.Contains(x.Id));
@@ -56,6 +64,7 @@ public static class FinanceTrackerContextExtensions
         /// those shared with changes allowed. Whichever view is passed, a shared account that only lets them see it is
         /// left out.
         /// </summary>
+        /// <param name="view">The accounts the user sees.</param>
         public IQueryable<T> ChangeableIn(AccountsInView view)
         {
             ArgumentNullException.ThrowIfNull(view);
@@ -72,6 +81,7 @@ public static class FinanceTrackerContextExtensions
         /// joint accounts aside, and those shared with them. For reading only, changes go through
         /// <see cref="OwnedBy"/>.
         /// </summary>
+        /// <param name="view">The accounts the user sees.</param>
         public IQueryable<T> InView(AccountsInView view)
         {
             ArgumentNullException.ThrowIfNull(view);
@@ -89,6 +99,7 @@ public static class FinanceTrackerContextExtensions
         /// <see cref="ChangeableIn{T}"/> for transactions, with the hidden copies' that fill a gap in a joint account
         /// the user can change.
         /// </summary>
+        /// <param name="view">The accounts the user sees.</param>
         public IQueryable<BankTransaction> ChangeableIn(AccountsInView view)
         {
             ArgumentNullException.ThrowIfNull(view);
@@ -109,6 +120,7 @@ public static class FinanceTrackerContextExtensions
         /// <see cref="BankTransaction.FillsJointGap"/>. They show as the shown copy's, see
         /// <see cref="AccountsInView.ShownAs"/>.
         /// </summary>
+        /// <param name="view">The accounts the user sees.</param>
         public IQueryable<BankTransaction> InView(AccountsInView view)
         {
             ArgumentNullException.ThrowIfNull(view);
@@ -128,6 +140,7 @@ public static class FinanceTrackerContextExtensions
         /// The accounts <paramref name="view"/> covers: the user's own, their copies of joint accounts aside, and those
         /// shared with them. For reading only.
         /// </summary>
+        /// <param name="view">The accounts the user sees.</param>
         public IQueryable<BankAccount> InView(AccountsInView view)
         {
             ArgumentNullException.ThrowIfNull(view);

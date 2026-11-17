@@ -26,6 +26,10 @@ internal sealed class BlindIndexInterceptor : SaveChangesInterceptor
         return ValueTask.FromResult(result);
     }
 
+    /// <summary>
+    /// Computes the blind indexes of what's being saved.
+    /// </summary>
+    /// <param name="context">The context being saved.</param>
     private static void Compute(DbContext? context)
     {
         if (context is not FinanceTrackerContext financeTrackerContext)
@@ -54,6 +58,8 @@ internal sealed class BlindIndexInterceptor : SaveChangesInterceptor
     /// <summary>
     /// What <paramref name="property"/> hashes when it's a blind index, null for any other property.
     /// </summary>
+    /// <param name="entry">The entity's entry.</param>
+    /// <param name="property">The property.</param>
     private static string? ValueToHash(EntityEntry entry, IProperty property)
     {
         // The encrypted value itself

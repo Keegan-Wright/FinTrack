@@ -10,6 +10,8 @@ public interface IMailSender
     /// </summary>
     bool IsAvailable { get; }
 
+    /// <param name="message">What it says.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <exception cref="InvalidOperationException">No mail server is set up, see <see cref="IsAvailable"/>.</exception>
     Task SendAsync(MailMessage message, CancellationToken cancellationToken);
 }

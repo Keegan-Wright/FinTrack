@@ -43,6 +43,19 @@ internal sealed class TransactionMapper
     // Who owns the other half's account, for the user's own transfers with someone else's account, by account
     private readonly Dictionary<Guid, Guid> _partnerAccountOwners;
 
+    /// <param name="customTags">The tags' names, by id.</param>
+    /// <param name="accountNames">The accounts' names, by id.</param>
+    /// <param name="householdMemberNames">Household members' names, by id.</param>
+    /// <param name="partners">The other halves of transfers, by id.</param>
+    /// <param name="ruleNames">The rules' names, by id.</param>
+    /// <param name="bills">The bills, by id.</param>
+    /// <param name="debts">The debts, by id.</param>
+    /// <param name="savingsGoals">The savings goals tagged transactions count towards.</param>
+    /// <param name="timeZone">Where the user is.</param>
+    /// <param name="view">The accounts the user sees.</param>
+    /// <param name="sharedBy">Who shares each shared account, by account.</param>
+    /// <param name="ownerNames">Other people's names, by user.</param>
+    /// <param name="partnerAccountOwners">Who owns the account at the other end of a transfer, by account.</param>
     private TransactionMapper(IReadOnlyDictionary<Guid, string> customTags, Dictionary<Guid, string> accountNames,
         Dictionary<Guid, string> householdMemberNames, Dictionary<Guid, BankTransaction> partners,
         Dictionary<Guid, string> ruleNames, Dictionary<Guid, Bill> bills, Dictionary<Guid, Debt> debts,
@@ -68,8 +81,11 @@ internal sealed class TransactionMapper
     /// A mapper for the transactions in <paramref name="view"/>, with the tag names they can carry, see
     /// <see cref="TagNames"/>.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="view">The accounts the user sees.</param>
     /// <param name="transactions">What will be mapped. Partners outside it are loaded.</param>
     /// <param name="timeZone">Where the user is, for the day a tag savings goal tracks from.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     public static async Task<TransactionMapper> LoadAsync(FinanceTrackerContext context, AccountsInView view,
         IReadOnlyCollection<BankTransaction> transactions, TimeZoneInfo timeZone, CancellationToken cancellationToken)
     {
@@ -84,9 +100,12 @@ internal sealed class TransactionMapper
     /// come from whoever owns them, as do those the other person put on the user's own and shared with them. Transfer
     /// partners only from accounts in view, never another's private account.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="view">The accounts the user sees.</param>
     /// <param name="customTags">Custom classifications by id, for the tags, the sharers' included.</param>
     /// <param name="transactions">What will be mapped. Partners outside it are loaded.</param>
     /// <param name="timeZone">Where the user is, for the day a tag savings goal tracks from.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     public static async Task<TransactionMapper> LoadAsync(FinanceTrackerContext context, AccountsInView view,
         IReadOnlyDictionary<Guid, string> customTags, IReadOnlyCollection<BankTransaction> transactions,
         TimeZoneInfo timeZone, CancellationToken cancellationToken)
@@ -134,6 +153,10 @@ internal sealed class TransactionMapper
     /// Who owns the account at the other end of the user's own transfers that moved money with someone else's
     /// account, by account. Only their owner, not the account itself unless it's shared with them.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="view">The accounts the user sees.</param>
+    /// <param name="transactions">The transactions.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<Dictionary<Guid, Guid>> LoadPartnerAccountOwnersAsync(FinanceTrackerContext context,
         AccountsInView view, IReadOnlyCollection<BankTransaction> transactions, CancellationToken cancellationToken)
     {
@@ -160,6 +183,10 @@ internal sealed class TransactionMapper
     /// <summary>
     /// The first and last names of <paramref name="userIds"/> other than the user, by user, empty when there are none.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="userId">The user.</param>
+    /// <param name="userIds">The users.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<Dictionary<Guid, string>> LoadOwnerNamesAsync(FinanceTrackerContext context,
         Guid userId, List<Guid> userIds, CancellationToken cancellationToken)
     {
@@ -175,6 +202,10 @@ internal sealed class TransactionMapper
     /// <summary>
     /// Household members' full names by id, empty when none of <paramref name="transactions"/> moved money with one.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="owners">The owners of the transactions.</param>
+    /// <param name="transactions">The transactions.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<Dictionary<Guid, string>> LoadHouseholdMemberNamesAsync(FinanceTrackerContext context,
         List<Guid> owners, IReadOnlyCollection<BankTransaction> transactions, CancellationToken cancellationToken)
     {
@@ -193,6 +224,10 @@ internal sealed class TransactionMapper
     /// <summary>
     /// Rule names by id, empty when no rule tagged or decided any of <paramref name="transactions"/>.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="owners">The owners of the transactions.</param>
+    /// <param name="transactions">The transactions.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<Dictionary<Guid, string>> LoadRuleNamesAsync(FinanceTrackerContext context,
         List<Guid> owners, IReadOnlyCollection<BankTransaction> transactions, CancellationToken cancellationToken)
     {
@@ -214,6 +249,11 @@ internal sealed class TransactionMapper
     /// The owners' bills, and those shared with the user, by id, for their names and whether each is a subscription,
     /// empty when none of <paramref name="transactions"/> pays a bill.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="userId">The user.</param>
+    /// <param name="owners">The owners of the transactions.</param>
+    /// <param name="transactions">The transactions.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<Dictionary<Guid, Bill>> LoadBillsAsync(FinanceTrackerContext context, Guid userId,
         List<Guid> owners, IReadOnlyCollection<BankTransaction> transactions, CancellationToken cancellationToken)
     {
@@ -233,6 +273,9 @@ internal sealed class TransactionMapper
     /// <summary>
     /// The user's goals that transactions can count towards, those backed by an account or tracking tags.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="userId">The user.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<List<SavingsGoal>> LoadSavingsGoalsAsync(FinanceTrackerContext context, Guid userId,
         CancellationToken cancellationToken) =>
         await context.SavingsGoals.OwnedBy(userId).AsNoTracking()
@@ -243,6 +286,11 @@ internal sealed class TransactionMapper
     /// The owners' debts, and those shared with the user, by id, for their names and whose they are, empty when none
     /// of <paramref name="transactions"/> pays off a debt.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="userId">The user.</param>
+    /// <param name="owners">The owners of the transactions.</param>
+    /// <param name="transactions">The transactions.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<Dictionary<Guid, Debt>> LoadDebtsAsync(FinanceTrackerContext context, Guid userId,
         List<Guid> owners, IReadOnlyCollection<BankTransaction> transactions, CancellationToken cancellationToken)
     {
@@ -263,6 +311,10 @@ internal sealed class TransactionMapper
     /// The other halves of <paramref name="transactions"/>' transfers by id, the ones among them included and the
     /// rest loaded.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="view">The accounts the user sees.</param>
+    /// <param name="transactions">The transactions.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<Dictionary<Guid, BankTransaction>> LoadPartnersAsync(FinanceTrackerContext context,
         AccountsInView view, IReadOnlyCollection<BankTransaction> transactions, CancellationToken cancellationToken)
     {
@@ -340,6 +392,10 @@ internal sealed class TransactionMapper
         Splits = transaction.Splits.Select(ToContract).ToList()
     };
 
+    /// <summary>
+    /// A part of a split as the API sends it.
+    /// </summary>
+    /// <param name="split">The part.</param>
     private TransactionSplitPart ToContract(TransactionSplit split) => new()
     {
         Amount = split.Amount,
@@ -348,6 +404,10 @@ internal sealed class TransactionMapper
         Note = split.Note
     };
 
+    /// <summary>
+    /// A transaction's transfer as the API sends it, null when nothing's decided.
+    /// </summary>
+    /// <param name="transaction">The transaction.</param>
     private TransactionTransfer? TransferOf(BankTransaction transaction)
     {
         if (transaction.Transfer is not { } transfer)
@@ -391,6 +451,10 @@ internal sealed class TransactionMapper
         };
     }
 
+    /// <summary>
+    /// The bill a transaction pays as the API sends it, null when nothing's decided.
+    /// </summary>
+    /// <param name="payment">The decision, null for none.</param>
     private TransactionBill? ToContract(BillPayment? payment)
     {
         if (payment is null)
@@ -417,6 +481,7 @@ internal sealed class TransactionMapper
     /// <summary>
     /// Whose account the other half of the user's own transfer is on, when it's someone else's.
     /// </summary>
+    /// <param name="transaction">The transaction.</param>
     private string? PartnerOwnerName(BankTransaction transaction)
     {
         // Only on their own, the other person's say nothing of who else it moved money with
@@ -432,6 +497,7 @@ internal sealed class TransactionMapper
     /// <summary>
     /// Whose it is when it isn't the user's, null when it's theirs or isn't known.
     /// </summary>
+    /// <param name="ownerId">The owner.</param>
     private string? OwnerName(Guid? ownerId)
     {
         if (ownerId is not { } id || id == _view.UserId)
@@ -442,6 +508,10 @@ internal sealed class TransactionMapper
         return _ownerNames.GetValueOrDefault(id);
     }
 
+    /// <summary>
+    /// The bill a payment names, null for none or one not found.
+    /// </summary>
+    /// <param name="payment">The decision.</param>
     private Bill? Bill(BillPayment payment)
     {
         if (payment.BillId is not { } billId)
@@ -452,6 +522,10 @@ internal sealed class TransactionMapper
         return _bills.GetValueOrDefault(billId);
     }
 
+    /// <summary>
+    /// The debt a transaction pays off as the API sends it, null when nothing's decided.
+    /// </summary>
+    /// <param name="payment">The decision, null for none.</param>
     private TransactionDebt? ToContract(DebtPayment? payment)
     {
         if (payment is null)

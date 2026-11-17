@@ -10,10 +10,20 @@ namespace FinanceTracker.Infrastructure.Exports.Pdf;
 /// </summary>
 internal static class QuestPdfSetup
 {
+    /// <summary>
+    /// Whether it's set up, done the first time it's asked.
+    /// </summary>
     private static readonly Lazy<bool> Done = new(Configure);
 
+    /// <summary>
+    /// Sets QuestPDF up, once.
+    /// </summary>
     public static void EnsureConfigured() => _ = Done.Value;
 
+    /// <summary>
+    /// Sets the licence and registers the embedded fonts, without the server's own.
+    /// </summary>
+    /// <returns>True, once done.</returns>
     private static bool Configure()
     {
         Settings.License = LicenseType.Community;

@@ -61,8 +61,14 @@ public sealed class Statement
     /// </summary>
     public decimal Untagged => -Transactions.Where(static x => x.CountsAsIncomeOrSpending).Sum(UntaggedOut);
 
+    /// <summary>
+    /// The month's bills and how each period stands.
+    /// </summary>
     public required BillMonthOverview Bills { get; init; }
 
+    /// <summary>
+    /// How the month's budgets went.
+    /// </summary>
     public required BudgetMonthOverview Budgets { get; init; }
 
     /// <summary>
@@ -84,6 +90,7 @@ public sealed class Statement
     /// What of <paramref name="transaction"/> went out with no tag. Its untagged parts when it's split, all of it when
     /// it has no tags, otherwise nothing.
     /// </summary>
+    /// <param name="transaction">The transaction.</param>
     private static decimal UntaggedOut(Transaction transaction)
     {
         if (transaction.Splits.Count > 0)

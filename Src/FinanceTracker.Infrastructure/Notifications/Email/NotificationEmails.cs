@@ -6,6 +6,7 @@ using FinanceTracker.Generated.Enums;
 
 namespace FinanceTracker.Infrastructure.Notifications.Email;
 
+/// <inheritdoc cref="INotificationEmails"/>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Singleton<INotificationEmails>]
 public sealed class NotificationEmails : INotificationEmails
@@ -15,6 +16,9 @@ public sealed class NotificationEmails : INotificationEmails
     /// </summary>
     public const string SettingsPath = "Notifications/Settings";
 
+    /// <summary>
+    /// The test email's subject.
+    /// </summary>
     public const string TestSubject = TestEmailBody.Subject;
 
     private readonly IEmailRenderer _emailRenderer;
@@ -70,6 +74,10 @@ public sealed class NotificationEmails : INotificationEmails
         return new MailMessage(to, TestSubject, text, html) { Images = [EmailBrand.Logo] };
     }
 
+    /// <summary>
+    /// The plain text footer, saying where to change which emails come.
+    /// </summary>
+    /// <param name="settings">The settings page, null when the app's address isn't known.</param>
     private static string TextFooter(Uri? settings)
     {
         if (settings is null)

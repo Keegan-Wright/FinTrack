@@ -5,6 +5,10 @@ namespace FinanceTracker.Infrastructure.Notifications.Webhooks;
 /// </summary>
 public static class WebhookFailure
 {
+    /// <summary>
+    /// What went wrong, for the user.
+    /// </summary>
+    /// <param name="exception">What posting threw.</param>
     public static string Describe(Exception exception)
     {
         ArgumentNullException.ThrowIfNull(exception);
@@ -33,6 +37,10 @@ public static class WebhookFailure
     }
 
     // The handler's refusal comes wrapped in the HttpClient's own exception
+    /// <summary>
+    /// The address refusal in an exception or what caused it, null when there's none.
+    /// </summary>
+    /// <param name="exception">What posting threw.</param>
     private static WebhookAddressRefusedException? FindRefusal(Exception? exception)
     {
         while (exception is not null)

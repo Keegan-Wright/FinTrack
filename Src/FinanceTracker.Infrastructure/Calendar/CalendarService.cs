@@ -22,6 +22,7 @@ using DomainSavingsGoal = FinanceTracker.Domain.SavingsGoals.SavingsGoal;
 
 namespace FinanceTracker.Infrastructure.Calendar;
 
+/// <inheritdoc cref="ICalendarService"/>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<ICalendarService>]
 public class CalendarService : ServiceBase<CalendarService>, ICalendarService
@@ -217,6 +218,12 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
         Logger.LogChanged(UserId, "deleted", "calendar event", id);
     }
 
+    /// <summary>
+    /// The user's event.
+    /// </summary>
+    /// <param name="context">The context to read through.</param>
+    /// <param name="id">The event.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<DomainCalendarEvent> FindEventAsync(FinanceTrackerContext context, Guid id,
         CancellationToken cancellationToken)
     {
@@ -227,6 +234,10 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
     /// <summary>
     /// Everything but its title and date onto <paramref name="target"/>, creating or finding the goal it saves in.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="target">The event to change.</param>
+    /// <param name="calendarEvent">The event.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <returns>Its goal, null without one.</returns>
     private async Task<DomainSavingsGoal?> ApplyAsync(FinanceTrackerContext context, DomainCalendarEvent target,
         SaveCalendarEvent calendarEvent, CancellationToken cancellationToken)
@@ -249,6 +260,10 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
     /// <summary>
     /// A new goal named after the event and aimed at its target by its next date, the user's chosen goal, or none.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="target">The event to change.</param>
+    /// <param name="calendarEvent">The event.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <exception cref="InvalidOperationException">The chosen goal isn't the user's.</exception>
     /// <exception cref="NameTakenException">A new goal's name, the event's title, is already a goal's.</exception>
     private async Task<DomainSavingsGoal?> GoalForAsync(FinanceTrackerContext context, DomainCalendarEvent target,
@@ -277,6 +292,11 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
     /// The user's events on each day from <paramref name="first"/> to <paramref name="last"/>, yearly ones each year,
     /// with what's saved in their goals.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="view">The accounts the user sees.</param>
+    /// <param name="first">The first day.</param>
+    /// <param name="last">The last day.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<Dictionary<DateOnly, List<CalendarEventItem>>> LoadEventsAsync(FinanceTrackerContext context,
         AccountsInView view, DateOnly first, DateOnly last, CancellationToken cancellationToken)
     {
@@ -314,6 +334,8 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
     /// <summary>
     /// The user's goals with what each has saved, when any event saves in one.
     /// </summary>
+    /// <param name="calendarEvents">The events.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<Dictionary<Guid, ContractSavingsGoal>> LoadGoalsAsync(
         List<DomainCalendarEvent> calendarEvents, CancellationToken cancellationToken)
     {
@@ -331,6 +353,9 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
     /// The names of the goals <paramref name="calendarEvents"/> save in, whoever's, as a shared event's goal is its
     /// owner's.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="calendarEvents">The events.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<Dictionary<Guid, string>> LoadGoalNamesAsync(FinanceTrackerContext context,
         List<DomainCalendarEvent> calendarEvents, CancellationToken cancellationToken)
     {
@@ -343,6 +368,9 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
     /// <summary>
     /// The user's events and, unless <paramref name="justMine"/>, those shared with them.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="justMine">Whether the user's view is Just mine.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private Task<List<VisibleItem<DomainCalendarEvent>>> VisibleEventsAsync(FinanceTrackerContext context,
         bool justMine, CancellationToken cancellationToken) =>
         SharedChosenItems.ForAsync(context, context.CalendarEvents, UserId, ShareItemType.CalendarEvent, justMine,
@@ -351,7 +379,10 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
     /// <summary>
     /// Event <paramref name="id"/>, the user's own or one shared with them.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="id">Its id.</param>
     /// <param name="mustChange">Whether they must be allowed to change it.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <exception cref="InvalidOperationException">They can't see it, or can't change it.</exception>
     private async Task<VisibleItem<DomainCalendarEvent>> VisibleEventAsync(FinanceTrackerContext context, Guid id,
         bool mustChange, CancellationToken cancellationToken)
@@ -367,6 +398,11 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
         return found;
     }
 
+    /// <summary>
+    /// The name of the goal an event saves in, null without one.
+    /// </summary>
+    /// <param name="calendarEvent">The event.</param>
+    /// <param name="goalNames">The goals' names, by id.</param>
     private static string? GoalName(DomainCalendarEvent calendarEvent, Dictionary<Guid, string> goalNames)
     {
         if (calendarEvent.SavingsGoalId is not { } goalId)
@@ -381,6 +417,8 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
     /// Whether <paramref name="debt"/> belongs in <paramref name="view"/>: their own, or shared outside Just mine, or
     /// following an account still in it, such as a joint account's.
     /// </summary>
+    /// <param name="debt">The debt.</param>
+    /// <param name="view">The accounts the user sees.</param>
     private static bool InView(Debt debt, AccountsInView view)
     {
         if (debt.SharedBy is null || !view.IsJustMine)
@@ -396,6 +434,10 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
     /// <paramref name="last"/>. Their own and those shared with them, though Just mine leaves out those shared, as
     /// <paramref name="view"/> does their accounts.
     /// </summary>
+    /// <param name="view">The accounts the user sees.</param>
+    /// <param name="first">The first day.</param>
+    /// <param name="last">The last day.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<Dictionary<DateOnly, List<CalendarDebtItem>>> LoadDebtsAsync(AccountsInView view,
         DateOnly first, DateOnly last, CancellationToken cancellationToken)
     {
@@ -426,6 +468,13 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
         return byDay;
     }
 
+    /// <summary>
+    /// Adds an item to a day's list, starting it when it's the first.
+    /// </summary>
+    /// <typeparam name="T">The item's type.</typeparam>
+    /// <param name="byDay">The items by day.</param>
+    /// <param name="day">The day.</param>
+    /// <param name="item">The item.</param>
     private static void AddTo<T>(Dictionary<DateOnly, List<T>> byDay, DateOnly day, T item)
     {
         if (!byDay.TryGetValue(day, out List<T>? items))
@@ -441,6 +490,11 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
     /// Each bill's periods due from <paramref name="first"/> to <paramref name="last"/>, by the day they're due. Their
     /// own and those shared with them through <paramref name="view"/>, so Just mine leaves out the shared ones.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="view">The accounts the user sees.</param>
+    /// <param name="first">The first day.</param>
+    /// <param name="last">The last day.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<Dictionary<DateOnly, List<CalendarBillItem>>> LoadBillsAsync(FinanceTrackerContext context,
         AccountsInView view, DateOnly first, DateOnly last, CancellationToken cancellationToken)
     {
@@ -470,6 +524,11 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
         return byDay;
     }
 
+    /// <summary>
+    /// A bill period as the calendar shows it, what was paid once it's paid.
+    /// </summary>
+    /// <param name="bill">The bill.</param>
+    /// <param name="period">The period.</param>
     private static CalendarBillItem ToItem(Bill bill, BillPeriod period)
     {
         decimal amount = period.Expected;

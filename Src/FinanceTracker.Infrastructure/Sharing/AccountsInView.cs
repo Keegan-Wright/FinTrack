@@ -36,6 +36,10 @@ public sealed record AccountsInView(
     /// </summary>
     public IReadOnlyList<Guid> SharedOwnerIds { get; } = SharedOwners.Values.Distinct().ToList();
 
+    /// <summary>
+    /// Whether an account in view is someone else's, shared with the user.
+    /// </summary>
+    /// <param name="accountId">The account.</param>
     public bool IsShared(Guid accountId) => SharedOwners.ContainsKey(accountId);
 
     /// <summary>
@@ -53,6 +57,7 @@ public sealed record AccountsInView(
     /// Whether <paramref name="accountId"/> is the user's own or shared with them here, or the hidden copy of a joint
     /// account here whose transactions may fill in for it.
     /// </summary>
+    /// <param name="accountId">The account.</param>
     public bool Contains(Guid accountId) =>
         OwnAccountIds.Contains(accountId) || IsShared(accountId) || FillingAccounts.ContainsKey(accountId);
 
@@ -60,12 +65,14 @@ public sealed record AccountsInView(
     /// The account <paramref name="accountId"/>'s transactions show as: the shown copy for the hidden copy of a joint
     /// account, whose transactions only show when they fill a gap, otherwise itself.
     /// </summary>
+    /// <param name="accountId">The account.</param>
     public Guid ShownAs(Guid accountId) => FillingAccounts.GetValueOrDefault(accountId, accountId);
 
     /// <summary>
     /// <paramref name="accountIds"/> with the hidden copies that fill in for any of them, for filtering transactions
     /// by account. Null stays null, for every account.
     /// </summary>
+    /// <param name="accountIds">The accounts chosen, null for every account.</param>
     public IReadOnlyCollection<Guid>? WithFillingCopies(IReadOnlyCollection<Guid>? accountIds)
     {
         if (accountIds is null)
@@ -83,6 +90,7 @@ public sealed record AccountsInView(
     /// <summary>
     /// Whether the user can see <paramref name="accountId"/>'s transactions but not change them.
     /// </summary>
+    /// <param name="accountId">The account.</param>
     public bool IsReadOnly(Guid accountId)
     {
         Guid shown = ShownAs(accountId);

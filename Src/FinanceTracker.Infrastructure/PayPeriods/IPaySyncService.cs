@@ -12,6 +12,7 @@ public interface IPaySyncService
     /// Picks up the user's pay from their transactions, or the pay days since the last sync. Run after transfers, so
     /// money moved from the user's own accounts isn't taken as pay.
     /// </summary>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <returns>Whether the user has a pay to go by.</returns>
     Task<bool> SyncAsync(CancellationToken cancellationToken);
 }

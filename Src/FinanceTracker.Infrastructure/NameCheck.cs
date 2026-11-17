@@ -17,6 +17,7 @@ public static class NameCheck
     /// spaces at either end.
     /// </summary>
     /// <param name="existing">The user's records of this kind, by id and name.</param>
+    /// <param name="name">The name wanted.</param>
     /// <param name="exceptId">The record being renamed, which can keep its own name in a different case.</param>
     /// <param name="kind">What's named, for the message, e.g. <c>savings goal</c>.</param>
     /// <exception cref="NameTakenException">Another record has the name.</exception>
@@ -35,8 +36,10 @@ public static class NameCheck
     /// Saves, turning the database refusing a name another save took a moment ago into the same
     /// <see cref="NameTakenException"/> <see cref="EnsureFree"/> throws.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
     /// <param name="kind">What's named, for the message, e.g. <c>savings goal</c>.</param>
     /// <param name="name">The name being saved.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <exception cref="NameTakenException">A unique index on a name key refused it.</exception>
     public static async Task SaveKeepingNamesApartAsync(FinanceTrackerContext context, string kind, string name,
         CancellationToken cancellationToken)
@@ -55,6 +58,7 @@ public static class NameCheck
     /// Whether a unique index on a name key refused the save. Postgres names the index and SQLite the columns, both
     /// with <see cref="NameBlindIndex.PropertyName"/> in them.
     /// </summary>
+    /// <param name="exception">What the save threw.</param>
     private static bool IsNameTaken(DbUpdateException exception) =>
         exception.InnerException is DbException database &&
         database.Message.Contains(NameBlindIndex.PropertyName, StringComparison.Ordinal);

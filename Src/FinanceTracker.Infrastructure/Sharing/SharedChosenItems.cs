@@ -13,9 +13,12 @@ internal static class SharedChosenItems
     /// <summary>
     /// Every one of <paramref name="items"/> <paramref name="userId"/> sees, untracked, their own first.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
     /// <param name="items">All of the kind, such as <c>context.Budgets</c>.</param>
+    /// <param name="userId">The user.</param>
     /// <param name="itemType">Which kind they are, as shares name it.</param>
     /// <param name="justMine">Their Just mine view, which leaves out what's shared with them.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     public static async Task<List<VisibleItem<T>>> ForAsync<T>(FinanceTrackerContext context, IQueryable<T> items,
         Guid userId, ShareItemType itemType, bool justMine, CancellationToken cancellationToken)
         where T : AggregateRoot
@@ -51,9 +54,12 @@ internal static class SharedChosenItems
     /// the user, shared the same way as it. One that's both chosen and following an account can be changed when either
     /// allows it. Their own first.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
     /// <param name="chosen">What <see cref="ForAsync{T}"/> found.</param>
     /// <param name="following">Other people's on the accounts in <paramref name="view"/> shared with the user.</param>
     /// <param name="accountOf">The account each of <paramref name="following"/> goes with.</param>
+    /// <param name="view">The accounts the user sees.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     public static async Task<List<VisibleItem<T>>> WithFollowingAsync<T>(FinanceTrackerContext context,
         List<VisibleItem<T>> chosen, List<T> following, Func<T, Guid> accountOf, AccountsInView view,
         CancellationToken cancellationToken)
@@ -84,6 +90,9 @@ internal static class SharedChosenItems
     /// <summary>
     /// The first and last names of <paramref name="ownerIds"/>, by user.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="ownerIds">The owners.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     public static async Task<Dictionary<Guid, string>> OwnerNamesAsync(FinanceTrackerContext context,
         IReadOnlyCollection<Guid> ownerIds, CancellationToken cancellationToken)
     {
@@ -97,6 +106,11 @@ internal static class SharedChosenItems
     /// Whether <paramref name="userId"/> chose to share their <paramref name="itemId"/> with anyone they're linked
     /// with.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="userId">The user.</param>
+    /// <param name="itemType">What kind of thing it is.</param>
+    /// <param name="itemId">The item's id.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     public static Task<bool> IsSharedAsync(FinanceTrackerContext context, Guid userId, ShareItemType itemType,
         Guid itemId, CancellationToken cancellationToken)
     {

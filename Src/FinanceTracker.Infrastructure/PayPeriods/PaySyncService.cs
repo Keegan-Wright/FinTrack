@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Infrastructure.PayPeriods;
 
+/// <inheritdoc cref="IPaySyncService"/>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<IPaySyncService>]
 public class PaySyncService : ServiceBase<PaySyncService>, IPaySyncService

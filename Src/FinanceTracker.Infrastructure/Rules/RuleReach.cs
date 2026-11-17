@@ -16,6 +16,9 @@ internal sealed class RuleReach
     private readonly ILookup<Guid, Guid> _othersByAccount;
     private readonly ILookup<Guid, DomainRule> _rulesByPerson;
 
+    /// <param name="othersByAccount">Who else can change each account, by account.</param>
+    /// <param name="rulesByPerson">Each person's enabled rules.</param>
+    /// <param name="rules">Every rule that may run.</param>
     private RuleReach(ILookup<Guid, Guid> othersByAccount, ILookup<Guid, DomainRule> rulesByPerson,
         IReadOnlyList<DomainRule> rules)
     {
@@ -32,6 +35,7 @@ internal sealed class RuleReach
     /// <summary>
     /// The enabled rules that reach <paramref name="transaction"/>.
     /// </summary>
+    /// <param name="transaction">The transaction.</param>
     public List<DomainRule> RulesFor(BankTransaction transaction)
     {
         ArgumentNullException.ThrowIfNull(transaction);
@@ -48,6 +52,8 @@ internal sealed class RuleReach
     /// Whether <paramref name="userId"/>'s rules reach <paramref name="transaction"/>: it's theirs, or they're allowed
     /// to change its account.
     /// </summary>
+    /// <param name="userId">The user.</param>
+    /// <param name="transaction">The transaction.</param>
     public bool Reaches(Guid userId, BankTransaction transaction)
     {
         ArgumentNullException.ThrowIfNull(transaction);
@@ -57,11 +63,15 @@ internal sealed class RuleReach
     /// <summary>
     /// Whose rule <paramref name="ruleId"/> is, among <see cref="Rules"/>.
     /// </summary>
+    /// <param name="ruleId">The rule.</param>
     public Guid? OwnerOf(Guid ruleId) => Rules.FirstOrDefault(x => x.Id == ruleId)?.UserId;
 
     /// <summary>
     /// The rules that reach <paramref name="transactions"/>.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="transactions">The transactions.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     public static async Task<RuleReach> ForAsync(FinanceTrackerContext context,
         IReadOnlyCollection<BankTransaction> transactions, CancellationToken cancellationToken)
     {
@@ -89,6 +99,9 @@ internal sealed class RuleReach
     /// The other person in each accepted link sharing one of <paramref name="accountIds"/> with changes allowed, while
     /// the account is still its sharer's.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="accountIds">The accounts.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<List<(Guid AccountId, Guid Other)>> ChangingThroughSharesAsync(
         FinanceTrackerContext context, List<Guid> accountIds, CancellationToken cancellationToken)
     {
@@ -112,6 +125,9 @@ internal sealed class RuleReach
     /// For each of <paramref name="accountIds"/> that's a copy of a merged joint account, the other copy's owner. Both
     /// change the shown copy, and the hidden copy stands in for it when it fills a gap.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="accountIds">The accounts.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<List<(Guid AccountId, Guid Other)>> ChangingThroughJointAccountsAsync(
         FinanceTrackerContext context, List<Guid> accountIds, CancellationToken cancellationToken)
     {

@@ -10,6 +10,10 @@ namespace FinanceTracker.Infrastructure.Notifications.Email;
 /// </summary>
 public static class MailFailure
 {
+    /// <summary>
+    /// What went wrong, without the mail server's own message.
+    /// </summary>
+    /// <param name="exception">What sending threw.</param>
     public static string Describe(Exception exception)
     {
         ArgumentNullException.ThrowIfNull(exception);
@@ -37,6 +41,10 @@ public static class MailFailure
         return "Something went wrong sending it.";
     }
 
+    /// <summary>
+    /// What the mail server refused.
+    /// </summary>
+    /// <param name="errorCode">The server's error.</param>
     private static string DescribeRefusal(SmtpErrorCode errorCode)
     {
         if (errorCode == SmtpErrorCode.RecipientNotAccepted)

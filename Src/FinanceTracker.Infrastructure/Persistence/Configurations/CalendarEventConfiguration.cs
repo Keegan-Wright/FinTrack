@@ -5,8 +5,12 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace FinanceTracker.Infrastructure.Persistence.Configurations;
 
+/// <summary>
+/// Maps <see cref="CalendarEvent"/> to its table.
+/// </summary>
 internal sealed class CalendarEventConfiguration : AggregateRootConfiguration<CalendarEvent>
 {
+    /// <inheritdoc/>
     protected override void ConfigureAggregate(EntityTypeBuilder<CalendarEvent> builder)
     {
         builder.ToTable("CalendarEvents");

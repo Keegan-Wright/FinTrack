@@ -7,9 +7,12 @@ namespace FinanceTracker.Infrastructure.Exports.Pdf;
 /// <summary>
 /// A titled part of a document, a heading, a caption under it, then its content.
 /// </summary>
+/// <param name="title">The section's heading.</param>
 /// <param name="caption">Under the title, none when null.</param>
+/// <param name="content">Lays out the section's content.</param>
 internal sealed class PdfSection(string title, string? caption, Action<IContainer> content) : IComponent
 {
+    /// <inheritdoc/>
     public void Compose(IContainer container)
     {
         container.Column(section =>

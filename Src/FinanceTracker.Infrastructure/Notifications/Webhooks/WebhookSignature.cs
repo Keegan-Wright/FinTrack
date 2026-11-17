@@ -12,6 +12,9 @@ namespace FinanceTracker.Infrastructure.Notifications.Webhooks;
 /// </summary>
 public static class WebhookSignature
 {
+    /// <summary>
+    /// How many random bytes a secret has.
+    /// </summary>
     private const int SecretBytes = 32;
 
     /// <summary>
@@ -21,6 +24,9 @@ public static class WebhookSignature
         Convert.ToBase64String(RandomNumberGenerator.GetBytes(SecretBytes))
             .TrimEnd('=').Replace('+', '-').Replace('/', '_');
 
+    /// <param name="secret">The webhook's secret.</param>
+    /// <param name="timestamp">When it's sent, in Unix seconds.</param>
+    /// <param name="body">The post's body.</param>
     /// <returns>The header's value, <c>sha256={lowercase hex}</c>.</returns>
     public static string Sign(string secret, long timestamp, ReadOnlySpan<byte> body)
     {

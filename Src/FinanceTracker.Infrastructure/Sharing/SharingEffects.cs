@@ -14,6 +14,7 @@ using DomainShareMode = FinanceTracker.Domain.Sharing.ShareMode;
 
 namespace FinanceTracker.Infrastructure.Sharing;
 
+/// <inheritdoc cref="ISharingEffects"/>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<ISharingEffects>]
 public sealed class SharingEffects : ServiceBase<SharingService>, ISharingEffects
@@ -89,8 +90,11 @@ public sealed class SharingEffects : ServiceBase<SharingService>, ISharingEffect
     /// change them. Neither could see the other's afterwards, and a payment to a bill they can't see would keep their
     /// own bills from matching it.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="link">The link between the two people.</param>
     /// <param name="shares">The link's shares, those for what was put on each transaction among them, see
     /// <see cref="AnnotationShares"/>.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     public static async Task TakeOffAnnotationsAsync(FinanceTrackerContext context, DomainLink link,
         List<Share> shares, CancellationToken cancellationToken)
     {
@@ -105,6 +109,9 @@ public sealed class SharingEffects : ServiceBase<SharingService>, ISharingEffect
     /// The accounts in <paramref name="link"/> one person lets the other change, so the other's rules reach them. Those
     /// shared with changes allowed, and both copies of each merged joint account. Each with its owner.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="link">The link between the two people.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     public static async Task<List<(Guid OwnerId, Guid AccountId)>> ChangeableAcrossAsync(
         FinanceTrackerContext context, DomainLink link, CancellationToken cancellationToken)
     {
@@ -128,6 +135,9 @@ public sealed class SharingEffects : ServiceBase<SharingService>, ISharingEffect
     /// <summary>
     /// Both copies of each of <paramref name="joints"/>, each with its owner.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="joints">The merged joint accounts.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     public static async Task<List<(Guid OwnerId, Guid AccountId)>> CopiesOfAsync(FinanceTrackerContext context,
         List<JointAccount> joints, CancellationToken cancellationToken)
     {

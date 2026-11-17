@@ -51,6 +51,12 @@ public sealed class SmtpMailSender : IMailSender
         }
     }
 
+    /// <summary>
+    /// Connects to the mail server, signs in when set to, and sends.
+    /// </summary>
+    /// <param name="host">The mail server.</param>
+    /// <param name="message">The email.</param>
+    /// <param name="cancellationToken">Stops the send.</param>
     private async Task SendThroughAsync(string host, MailMessage message, CancellationToken cancellationToken)
     {
         using MimeMessage mime = ToMime(message);
@@ -66,6 +72,10 @@ public sealed class SmtpMailSender : IMailSender
         await client.DisconnectAsync(true, cancellationToken);
     }
 
+    /// <summary>
+    /// The email as MailKit sends it, with the logo carried inside.
+    /// </summary>
+    /// <param name="message">The email.</param>
     private MimeMessage ToMime(MailMessage message)
     {
         MimeMessage mime = new();
@@ -88,6 +98,10 @@ public sealed class SmtpMailSender : IMailSender
         return mime;
     }
 
+    /// <summary>
+    /// MailKit's option for how the connection is secured.
+    /// </summary>
+    /// <param name="security">How it's secured.</param>
     private static SecureSocketOptions SocketOptions(MailSecurity security) => security switch
     {
         MailSecurity.StartTls => SecureSocketOptions.StartTls,

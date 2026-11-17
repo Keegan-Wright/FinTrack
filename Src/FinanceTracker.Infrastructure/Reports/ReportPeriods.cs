@@ -9,6 +9,9 @@ namespace FinanceTracker.Infrastructure.Reports;
 /// </summary>
 internal static class ReportPeriods
 {
+    /// <param name="amounts">The amounts.</param>
+    /// <param name="calendar">The user's periods.</param>
+    /// <param name="timeZone">Where the user is.</param>
     /// <returns>The years with amounts, in order.</returns>
     public static IReadOnlyList<ReportYear> Group(IEnumerable<ReportAmount> amounts, PayCalendar calendar,
         TimeZoneInfo timeZone)
@@ -33,15 +36,33 @@ internal static class ReportPeriods
         return years;
     }
 
+    /// <summary>
+    /// An amount with the day it fell on where the user is, and that day's period.
+    /// </summary>
+    /// <param name="amount">The amount.</param>
+    /// <param name="calendar">The user's periods.</param>
+    /// <param name="timeZone">Where the user is.</param>
     private static PlacedAmount Place(ReportAmount amount, PayCalendar calendar, TimeZoneInfo timeZone)
     {
         DateOnly day = amount.OccurredAt.LocalDayIn(timeZone);
         return new PlacedAmount(amount, day, calendar.Containing(day));
     }
 
+    /// <summary>
+    /// A year's amounts in the period named after <paramref name="month"/>.
+    /// </summary>
+    /// <param name="year">The year's amounts.</param>
+    /// <param name="month">The month of the year, 1 to 12.</param>
     private static List<PlacedAmount> InMonth(IEnumerable<PlacedAmount> year, int month) =>
         year.Where(x => x.Period.Month == month).ToList();
 
+    /// <summary>
+    /// A month of the report, its amounts by day.
+    /// </summary>
+    /// <param name="year">The year.</param>
+    /// <param name="month">The month of the year, 1 to 12.</param>
+    /// <param name="inMonth">Its amounts.</param>
+    /// <param name="calendar">The user's periods.</param>
     private static ReportMonth Month(int year, int month, List<PlacedAmount> inMonth, PayCalendar calendar)
     {
         List<ReportDay> days = inMonth

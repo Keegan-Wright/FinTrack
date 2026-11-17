@@ -16,8 +16,11 @@ internal static class SharedBills
     /// <summary>
     /// Every bill <paramref name="userId"/> sees through <paramref name="view"/>, untracked, their own first.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="userId">The user.</param>
     /// <param name="view">Their accounts and those shared with them. A bill paid from one shared with changes allowed
     /// can be changed. Just mine leaves out those chosen for them, as it does accounts.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     public static async Task<List<VisibleItem<DomainBill>>> ForAsync(FinanceTrackerContext context, Guid userId,
         AccountsInView view, CancellationToken cancellationToken)
     {
@@ -41,6 +44,9 @@ internal static class SharedBills
     /// whoever sees it. One shared with the user may be paid from its owner's account they can't see, which only gives
     /// its amounts and days, never the account. Indexed by bill, so no dates are needed.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="bills">The bills.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     public static async Task<List<BankTransaction>> PaymentsAsync(FinanceTrackerContext context,
         IEnumerable<VisibleItem<DomainBill>> bills, CancellationToken cancellationToken)
     {
@@ -57,6 +63,8 @@ internal static class SharedBills
     /// same bill, which stands for both. Each copy's bills come from its own connection, so the same standing order or
     /// direct debit is a bill on each.
     /// </summary>
+    /// <param name="own">The user's bill.</param>
+    /// <param name="view">The accounts the user sees.</param>
     /// <param name="othersBills">Other people's bills on accounts shared with the user, the shown copy's among them.
     /// </param>
     private static bool StandsInForIt(DomainBill own, AccountsInView view, List<DomainBill> othersBills)
@@ -73,6 +81,8 @@ internal static class SharedBills
     /// <summary>
     /// Whether two copies' bills are one bill: from the same kind of source, to the same payee, as often.
     /// </summary>
+    /// <param name="first">One copy's bill.</param>
+    /// <param name="second">The other copy's bill.</param>
     private static bool IsSameBill(DomainBill first, DomainBill second) =>
         first.Source == second.Source &&
         first.Frequency == second.Frequency &&

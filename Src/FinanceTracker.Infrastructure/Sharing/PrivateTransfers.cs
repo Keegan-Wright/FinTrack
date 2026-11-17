@@ -10,12 +10,24 @@ namespace FinanceTracker.Infrastructure.Sharing;
 /// </summary>
 public static class PrivateTransfers
 {
+    /// <summary>
+    /// What the other person sees for money moved to a private account.
+    /// </summary>
     public const string ToPrivateAccount = "Transfer to a private account";
 
+    /// <summary>
+    /// What the other person sees for money moved from a private account.
+    /// </summary>
     public const string FromPrivateAccount = "Transfer from a private account";
 
+    /// <summary>
+    /// What the other person sees for money that may have moved to a private account.
+    /// </summary>
     public const string MaybeToPrivateAccount = "Possible transfer to a private account";
 
+    /// <summary>
+    /// What the other person sees for money that may have moved from a private account.
+    /// </summary>
     public const string MaybeFromPrivateAccount = "Possible transfer from a private account";
 
     extension(AccountsInView view)
@@ -26,6 +38,7 @@ public static class PrivateTransfers
         /// money they moved into the shared account themselves. See <see cref="IsPossiblePrivateTransfer"/> for one
         /// whose other half isn't known.
         /// </summary>
+        /// <param name="transaction">The transaction.</param>
         public bool IsPrivateTransfer(BankTransaction transaction)
         {
             ArgumentNullException.ThrowIfNull(transaction);
@@ -43,6 +56,7 @@ public static class PrivateTransfers
         /// synced yet, or several could fit, so it may have gone to one of them. A payment to someone else the bank
         /// calls a transfer is hidden too, there's no telling them apart.
         /// </summary>
+        /// <param name="transaction">The transaction.</param>
         public bool IsPossiblePrivateTransfer(BankTransaction transaction)
         {
             ArgumentNullException.ThrowIfNull(transaction);
@@ -58,6 +72,7 @@ public static class PrivateTransfers
         /// The description the user sees, the bank's unless it's a <see cref="IsPrivateTransfer">private
         /// transfer</see> or a <see cref="IsPossiblePrivateTransfer">possible one</see>.
         /// </summary>
+        /// <param name="transaction">The transaction.</param>
         public string DescriptionOf(BankTransaction transaction)
         {
             bool moneyOut = transaction.Amount < 0;
@@ -80,6 +95,8 @@ public static class PrivateTransfers
     /// The other person's copy of a joint account filling a gap counts as shared, it's theirs as much as one they
     /// share.
     /// </summary>
+    /// <param name="view">The accounts the user sees.</param>
+    /// <param name="transaction">The transaction.</param>
     private static TransferInfo? SharedTransfer(AccountsInView view, BankTransaction transaction)
     {
         bool othersFillingCopy = transaction.UserId != view.UserId &&

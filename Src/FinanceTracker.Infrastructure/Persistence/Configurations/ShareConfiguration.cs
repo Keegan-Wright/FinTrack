@@ -4,8 +4,12 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace FinanceTracker.Infrastructure.Persistence.Configurations;
 
+/// <summary>
+/// Maps <see cref="Share"/> to its table.
+/// </summary>
 internal sealed class ShareConfiguration : AggregateRootConfiguration<Share>
 {
+    /// <inheritdoc/>
     protected override void ConfigureAggregate(EntityTypeBuilder<Share> builder)
     {
         builder.ToTable("Shares");
