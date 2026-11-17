@@ -17,6 +17,10 @@ public static class EmailBrand
     /// </summary>
     public static MailImage Logo => LazyLogo.Value;
 
+    /// <summary>
+    /// Reads the logo embedded in the assembly.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">The logo isn't embedded.</exception>
     private static MailImage LoadLogo()
     {
         using Stream stream = typeof(EmailBrand).Assembly.GetManifestResourceStream("Email.logo.png")

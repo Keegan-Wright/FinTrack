@@ -11,6 +11,7 @@ public static class NotificationKindStyle
     /// <summary>
     /// What it's about, a word or two above the title, e.g. <c>Bank access</c>.
     /// </summary>
+    /// <param name="kind">The kind of notification.</param>
     public static string Label(NotificationKind kind) => kind switch
     {
         NotificationKind.ConsentEndingSoon => "Bank access",
@@ -34,6 +35,7 @@ public static class NotificationKindStyle
     /// Amber for something to do soon or to keep an eye on, red for something that has gone wrong, the app's green
     /// for news.
     /// </summary>
+    /// <param name="kind">The kind of notification.</param>
     public static string Accent(NotificationKind kind) => kind switch
     {
         NotificationKind.ConsentEndingSoon => LightPalette.Warning,

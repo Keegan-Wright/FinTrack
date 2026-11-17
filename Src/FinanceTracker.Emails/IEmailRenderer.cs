@@ -8,6 +8,11 @@ namespace FinanceTracker.Emails;
 /// </summary>
 public interface IEmailRenderer
 {
+    /// <summary>
+    /// Renders <typeparamref name="TComponent"/> to HTML.
+    /// </summary>
+    /// <typeparam name="TComponent">The email's template.</typeparam>
+    /// <param name="parameters">The template's parameters, by name.</param>
     /// <returns>The component's HTML.</returns>
     Task<string> RenderAsync<TComponent>(IDictionary<string, object?> parameters) where TComponent : IComponent;
 }

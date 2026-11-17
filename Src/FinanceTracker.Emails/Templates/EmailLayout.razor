@@ -64,9 +64,15 @@
     [Parameter]
     public string Accent { get; set; } = LightPalette.Primary;
 
+    /// <summary>
+    /// The email's content, on the card.
+    /// </summary>
     [Parameter, EditorRequired]
     public required RenderFragment ChildContent { get; set; }
 
+    /// <summary>
+    /// The footer under the card, see <see cref="EmailFooter"/>.
+    /// </summary>
     [Parameter, EditorRequired]
     public required RenderFragment Footer { get; set; }
 

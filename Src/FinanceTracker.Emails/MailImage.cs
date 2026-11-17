@@ -7,4 +7,5 @@ namespace FinanceTracker.Emails;
 /// <param name="ContentId">What the HTML calls it, <c>src="cid:{ContentId}"</c>.</param>
 /// <param name="FileName">Its name as an attachment, for email apps that list it.</param>
 /// <param name="ContentType">Its media type, e.g. <c>image/png</c>.</param>
+/// <param name="Content">The image's bytes.</param>
 public sealed record MailImage(string ContentId, string FileName, string ContentType, ReadOnlyMemory<byte> Content);

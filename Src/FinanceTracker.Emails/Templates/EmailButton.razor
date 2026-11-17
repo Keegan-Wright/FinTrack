@@ -10,9 +10,15 @@
 
 @code {
 
+    /// <summary>
+    /// What the button says.
+    /// </summary>
     [Parameter, EditorRequired]
     public required string Text { get; set; }
 
+    /// <summary>
+    /// Where the button goes.
+    /// </summary>
     [Parameter, EditorRequired]
     public required Uri Href { get; set; }
 
