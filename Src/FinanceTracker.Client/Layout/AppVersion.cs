@@ -10,6 +10,9 @@ namespace FinanceTracker.Client.Layout;
 /// </summary>
 public static class AppVersion
 {
+    /// <summary>
+    /// How much of the commit is shown.
+    /// </summary>
     private const int ShortCommitLength = 7;
 
     /// <summary>
@@ -19,8 +22,15 @@ public static class AppVersion
         typeof(AppVersion).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
         ?? "unknown";
 
+    /// <summary>
+    /// The version as shown in the app, see <see cref="Format"/>.
+    /// </summary>
     public static string Display { get; } = Format(Full);
 
+    /// <summary>
+    /// The version and the start of its commit, e.g. <c>v0.1.1 · 3e871e2</c>.
+    /// </summary>
+    /// <param name="informationalVersion">The informational version as built.</param>
     internal static string Format(string informationalVersion)
     {
         string[] parts = informationalVersion.Split('+', 2);

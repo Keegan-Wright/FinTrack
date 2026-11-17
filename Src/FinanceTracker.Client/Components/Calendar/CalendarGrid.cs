@@ -11,6 +11,7 @@ public static class CalendarGrid
     /// <summary>
     /// The abbreviated day names, starting from <paramref name="format"/>'s first day of the week.
     /// </summary>
+    /// <param name="format">The culture's date format.</param>
     public static IReadOnlyList<string> WeekdayNames(DateTimeFormatInfo format) => Enumerable.Range(0, 7)
         .Select(i => format.AbbreviatedDayNames[((int)format.FirstDayOfWeek + i) % 7])
         .ToList();
@@ -18,6 +19,8 @@ public static class CalendarGrid
     /// <summary>
     /// How many cells come before the month's first day in a week starting on <paramref name="firstDayOfWeek"/>.
     /// </summary>
+    /// <param name="monthStart">The month's first day.</param>
+    /// <param name="firstDayOfWeek">The culture's first day of the week.</param>
     public static int LeadingBlanks(DateTime monthStart, DayOfWeek firstDayOfWeek) =>
         ((int)monthStart.DayOfWeek - (int)firstDayOfWeek + 7) % 7;
 }

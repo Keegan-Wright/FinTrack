@@ -15,17 +15,26 @@ namespace FinanceTracker.Client.Api;
 [Scoped<INotificationsService>]
 public sealed class NotificationsApiClient : INotificationsService
 {
+    /// <summary>
+    /// The user's notification settings.
+    /// </summary>
     private const string Settings = $"{ApiRoutes.Notifications}/settings";
+    /// <summary>
+    /// The user's webhook.
+    /// </summary>
     private const string Webhook = $"{Settings}/webhook";
 
     private readonly HttpClient _http;
 
+    /// <param name="httpClientFactory">Makes the API's client.</param>
     public NotificationsApiClient(IHttpClientFactory httpClientFactory) =>
         _http = httpClientFactory.CreateClient(ApiClientRegistration.HttpClientName);
 
+    /// <inheritdoc/>
     public IAsyncEnumerable<Notification> GetNotificationsAsync(int take, CancellationToken cancellationToken) =>
         _http.GetStreamAsync<Notification>($"{ApiRoutes.Notifications}?take={take}", cancellationToken);
 
+    /// <inheritdoc/>
     public async Task<int> GetUnreadCountAsync(CancellationToken cancellationToken)
     {
         using HttpResponseMessage response =
@@ -34,6 +43,7 @@ public sealed class NotificationsApiClient : INotificationsService
         return await response.ReadRequiredJsonAsync<int>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<bool> MarkReadAsync(Guid id, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response =
@@ -47,6 +57,7 @@ public sealed class NotificationsApiClient : INotificationsService
         return true;
     }
 
+    /// <inheritdoc/>
     public async Task MarkAllReadAsync(CancellationToken cancellationToken)
     {
         using HttpResponseMessage response =
@@ -54,6 +65,7 @@ public sealed class NotificationsApiClient : INotificationsService
         response.EnsureSuccessStatusCode();
     }
 
+    /// <inheritdoc/>
     public async Task<NotificationSettings> GetSettingsAsync(CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.GetAsync(Settings, cancellationToken);
@@ -61,6 +73,7 @@ public sealed class NotificationsApiClient : INotificationsService
         return await response.ReadRequiredJsonAsync<NotificationSettings>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<NotificationSettings> ChangeSettingsAsync(ChangeNotificationSettings settings,
         CancellationToken cancellationToken)
     {
@@ -69,6 +82,7 @@ public sealed class NotificationsApiClient : INotificationsService
         return await response.ReadRequiredJsonAsync<NotificationSettings>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<NotificationSettings> ChangeAlertsAsync(ChangeAlertSettings alerts,
         CancellationToken cancellationToken)
     {
@@ -78,9 +92,11 @@ public sealed class NotificationsApiClient : INotificationsService
         return await response.ReadRequiredJsonAsync<NotificationSettings>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public Task<NotificationSettings?> SendTestEmailAsync(CancellationToken cancellationToken) =>
         PostUnlessConflictAsync($"{Settings}/test-email", cancellationToken);
 
+    /// <inheritdoc/>
     public async Task<WebhookChange> SetWebhookAsync(SetWebhook webhook, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.PutAsJsonAsync(Webhook, webhook, cancellationToken);
@@ -88,6 +104,7 @@ public sealed class NotificationsApiClient : INotificationsService
         return await response.ReadRequiredJsonAsync<WebhookChange>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<NotificationSettings> RemoveWebhookAsync(CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.DeleteAsync(Webhook, cancellationToken);
@@ -95,12 +112,16 @@ public sealed class NotificationsApiClient : INotificationsService
         return await response.ReadRequiredJsonAsync<NotificationSettings>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public Task<NotificationSettings?> ReplaceWebhookSecretAsync(CancellationToken cancellationToken) =>
         PostUnlessConflictAsync($"{Webhook}/secret", cancellationToken);
 
+    /// <inheritdoc/>
     public Task<NotificationSettings?> SendTestWebhookAsync(CancellationToken cancellationToken) =>
         PostUnlessConflictAsync($"{Webhook}/test", cancellationToken);
 
+    /// <param name="route">The API path.</param>
+    /// <param name="cancellationToken">Stops the call.</param>
     /// <returns>The settings, null when the server answers 409, there's nothing to do it to.</returns>
     private async Task<NotificationSettings?> PostUnlessConflictAsync(string route,
         CancellationToken cancellationToken)

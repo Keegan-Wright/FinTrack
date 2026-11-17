@@ -10,5 +10,6 @@ public static class CurrencyFormatter
     /// <summary>
     /// <paramref name="value"/> as money in the app's culture.
     /// </summary>
+    /// <param name="value">The amount.</param>
     public static string Format(decimal value) => value.ToString("C", CultureInfo.CurrentCulture);
 }

@@ -18,15 +18,19 @@ public sealed class AutomationApiClient : IAutomationService
 {
     private readonly HttpClient _http;
 
+    /// <param name="httpClientFactory">Makes the API's client.</param>
     public AutomationApiClient(IHttpClientFactory httpClientFactory) =>
         _http = httpClientFactory.CreateClient(ApiClientRegistration.HttpClientName);
 
+    /// <inheritdoc/>
     public IAsyncEnumerable<AutomationCron> GetJobsAsync(CancellationToken cancellationToken) =>
         _http.GetStreamAsync<AutomationCron>(ApiRoutes.AutomationJobs, cancellationToken);
 
+    /// <inheritdoc/>
     public IAsyncEnumerable<AutomationJobSummary> GetJobSummariesAsync(CancellationToken cancellationToken) =>
         _http.GetStreamAsync<AutomationJobSummary>($"{ApiRoutes.AutomationJobs}/summaries", cancellationToken);
 
+    /// <inheritdoc/>
     public async Task<AutomationRunPage> GetRunsAsync(string function, int page, int pageSize,
         CancellationToken cancellationToken)
     {
@@ -38,6 +42,7 @@ public sealed class AutomationApiClient : IAutomationService
         return await response.ReadRequiredJsonAsync<AutomationRunPage>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task RunNowAsync(string function, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.PostAsync(
@@ -50,6 +55,7 @@ public sealed class AutomationApiClient : IAutomationService
         await response.EnsureFoundAsync(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<bool> UpdateJobSettingsAsync(UpdateCronJob request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -66,6 +72,7 @@ public sealed class AutomationApiClient : IAutomationService
         return true;
     }
 
+    /// <inheritdoc/>
     public async Task<DateTime?> GetLastSyncTimeAsync(CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.GetAsync($"{ApiRoutes.Sync}/last", cancellationToken);
@@ -77,6 +84,7 @@ public sealed class AutomationApiClient : IAutomationService
             : await response.ReadRequiredJsonAsync<DateTime>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task RequestSyncAsync(CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.PostAsync(ApiRoutes.Sync, content: null, cancellationToken);

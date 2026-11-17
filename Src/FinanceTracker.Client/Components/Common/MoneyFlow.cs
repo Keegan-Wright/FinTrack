@@ -7,6 +7,12 @@ public enum MoneyFlow
 {
     /// <summary>Neither in nor out, e.g. a balance.</summary>
     Neutral,
+    /// <summary>
+    /// Money in.
+    /// </summary>
     In,
+    /// <summary>
+    /// Money out.
+    /// </summary>
     Out
 }

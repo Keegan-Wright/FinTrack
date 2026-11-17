@@ -14,11 +14,21 @@ namespace FinanceTracker.Client.Components.Reports;
 /// </summary>
 public static class ReportTree
 {
+    /// <summary>
+    /// The all accounts report as a tree.
+    /// </summary>
+    /// <param name="report">The server's report.</param>
+    /// <param name="request">The filters it was asked for with.</param>
     public static ReportNode From(SpentInTimePeriodReport report, FilterTransactions request) =>
         Root("All accounts", report, request, report.YearlyBreakdown.Select(static y => Year(y.Year, y,
             y.MonthlyBreakdown.Select(m => Month(y.Year, m.Month, m.Start, m.End, m,
                 m.DailyBreakdown.Select(static d => (d.Date, (IReport)d)))))));
 
+    /// <summary>
+    /// An account's report as a tree, narrowed to the account.
+    /// </summary>
+    /// <param name="report">The server's report.</param>
+    /// <param name="request">The filters it was asked for with.</param>
     public static ReportNode From(SpentInAccountReport report, FilterTransactions request) =>
         Root(report.AccountName, report, Narrow(request, accountIds: [report.AccountId]),
             report.YearlyBreakdown.Select(static y => Year(y.Year, y,
@@ -28,6 +38,8 @@ public static class ReportTree
     /// <summary>
     /// An account with no transactions matching the filters.
     /// </summary>
+    /// <param name="accountId">The account's id.</param>
+    /// <param name="name">The account's name.</param>
     public static ReportNode EmptyAccount(Guid accountId, string name) => new()
     {
         Label = name,
@@ -37,6 +49,11 @@ public static class ReportTree
         IncludesTransfers = true
     };
 
+    /// <summary>
+    /// A tag's report as a tree, narrowed to the tag.
+    /// </summary>
+    /// <param name="report">The server's report.</param>
+    /// <param name="request">The filters it was asked for with.</param>
     public static ReportNode From(SpentInCategoryReport report, FilterTransactions request) =>
         Root(report.Category, report, Narrow(request, tags: [report.Category]),
             report.YearlyBreakdown.Select(static y => Year(y.Year, y,
@@ -47,6 +64,9 @@ public static class ReportTree
     /// The accounts the filters cover with nothing in them. Bank
     /// filters can't be matched without each account's bank, so none are added when one is chosen.
     /// </summary>
+    /// <param name="reported">The account reports the server returned.</param>
+    /// <param name="accounts">The user's accounts, as the filters offer them.</param>
+    /// <param name="request">The filters.</param>
     public static IEnumerable<ReportNode> EmptyAccounts(IEnumerable<ReportNode> reported,
         IEnumerable<TransactionAccountFilter> accounts, FilterTransactions request)
     {
@@ -67,10 +87,21 @@ public static class ReportTree
     /// The request listing the transactions behind one day of a report, the day where the user is
     /// (<paramref name="timeZone"/>) as the report counts it.
     /// </summary>
+    /// <param name="scope">The node's filters.</param>
+    /// <param name="day">The day.</param>
+    /// <param name="timeZone">Where the user is.</param>
     public static FilterTransactions ForDay(FilterTransactions scope, DateTime day, TimeZoneInfo timeZone) =>
         Narrow(scope, from: LocalDays.StartUtc(day, timeZone), to: LocalDays.EndUtc(day, timeZone));
 
     // The report's own filters still apply, a narrower account, tag or date replaces the chosen ones
+    /// <summary>
+    /// <paramref name="request"/> with whatever's given replacing what it had.
+    /// </summary>
+    /// <param name="request">The filters.</param>
+    /// <param name="accountIds">The accounts, null to keep the filters'.</param>
+    /// <param name="tags">The tags, null to keep the filters'.</param>
+    /// <param name="from">The first day, null to keep the filters'.</param>
+    /// <param name="to">The last day, null to keep the filters'.</param>
     private static FilterTransactions Narrow(FilterTransactions request, IReadOnlyList<Guid>? accountIds = null,
         IReadOnlyList<string>? tags = null, DateTime? from = null, DateTime? to = null) => new()
     {
@@ -88,6 +119,14 @@ public static class ReportTree
     };
 
     // An account report counts transfers, see ReportNode.IncludesTransfers
+    /// <summary>
+    /// The report's top node, all time, with its years in order.
+    /// </summary>
+    /// <param name="name">What the report is of.</param>
+    /// <param name="totals">The report's totals.</param>
+    /// <param name="scope">The filters behind it.</param>
+    /// <param name="years">Its years.</param>
+    /// <param name="accountId">The account an account report is for.</param>
     private static ReportNode Root(string name, IReport totals, FilterTransactions scope,
         IEnumerable<(int Year, ReportNode Node)> years, Guid? accountId = null)
     {
@@ -108,6 +147,12 @@ public static class ReportTree
         };
     }
 
+    /// <summary>
+    /// A year's node, with every month in it.
+    /// </summary>
+    /// <param name="year">The year.</param>
+    /// <param name="totals">The year's totals.</param>
+    /// <param name="months">Its months that have transactions.</param>
     private static (int Year, ReportNode Node) Year(int year, IReport totals,
         IEnumerable<(int Month, ReportNode Node)> months)
     {
@@ -134,9 +179,13 @@ public static class ReportTree
         });
     }
 
+    /// <param name="year">The year.</param>
+    /// <param name="monthName">The month's name.</param>
     /// <param name="start">The first day of the period the month covers, from pay to pay or the calendar month.
     /// </param>
     /// <param name="end">Its last day, inclusive.</param>
+    /// <param name="totals">The month's totals.</param>
+    /// <param name="days">The month's days and their totals.</param>
     private static (int Month, ReportNode Node) Month(int year, string monthName, DateOnly start, DateOnly end,
         IReport totals, IEnumerable<(DateOnly Date, IReport Totals)> days)
     {
@@ -156,12 +205,26 @@ public static class ReportTree
         return (month, MonthNode(year, month, start, end, totals, dayNodes));
     }
 
+    /// <summary>
+    /// A calendar month with no transactions.
+    /// </summary>
+    /// <param name="year">The year.</param>
+    /// <param name="month">The month of the year, 1 to 12.</param>
     private static ReportNode EmptyMonth(int year, int month)
     {
         DateOnly first = new(year, month, 1);
         return MonthNode(year, month, first, first.AddMonths(1).AddDays(-1), null, []);
     }
 
+    /// <summary>
+    /// A month's node.
+    /// </summary>
+    /// <param name="year">The year.</param>
+    /// <param name="month">The month of the year, 1 to 12.</param>
+    /// <param name="start">The first day it covers.</param>
+    /// <param name="end">The last day it covers.</param>
+    /// <param name="totals">Its totals, null for none.</param>
+    /// <param name="days">Its days.</param>
     private static ReportNode MonthNode(int year, int month, DateOnly start, DateOnly end, IReport? totals,
         IReadOnlyList<ReportNode> days)
     {
@@ -183,6 +246,10 @@ public static class ReportTree
     /// <summary>
     /// e.g. <c>30 Oct – 29 Nov</c> for a month that runs from pay to pay, null for a calendar month.
     /// </summary>
+    /// <param name="year">The year.</param>
+    /// <param name="month">The month of the year, 1 to 12.</param>
+    /// <param name="start">The period's first day.</param>
+    /// <param name="end">The period's last day.</param>
     private static string? PeriodDates(int year, int month, DateOnly start, DateOnly end)
     {
         DateOnly first = new(year, month, 1);
@@ -194,6 +261,11 @@ public static class ReportTree
         return PayText.Period(start, end);
     }
 
+    /// <summary>
+    /// A day's node.
+    /// </summary>
+    /// <param name="date">The day.</param>
+    /// <param name="totals">Its totals, null for none.</param>
     private static ReportNode Day(DateTime date, IReport? totals) => new()
     {
         Label = date.Day.ToString(CultureInfo.CurrentCulture),
@@ -206,6 +278,10 @@ public static class ReportTree
     };
 
     // The server names months in its culture
+    /// <summary>
+    /// The month a name is, in the current culture, January when it's none.
+    /// </summary>
+    /// <param name="monthName">The month's name.</param>
     private static int MonthNumber(string monthName)
     {
         int index = Array.FindIndex(CultureInfo.CurrentCulture.DateTimeFormat.MonthNames,

@@ -14,6 +14,7 @@ public static class NetWorthText
     /// <paramref name="points"/> split into the days synced from the bank and the days worked out from transactions.
     /// Where one meets the other the day is in both, so the lines join up.
     /// </summary>
+    /// <param name="points">The points, oldest first.</param>
     public static IReadOnlyList<HistoryChartPoint> ChartPoints(IReadOnlyList<BalancePoint> points)
     {
         List<HistoryChartPoint> chart = [];
@@ -47,6 +48,7 @@ public static class NetWorthText
     /// <summary>
     /// Net worth on each day as a chartable balance.
     /// </summary>
+    /// <param name="history">The history.</param>
     public static IReadOnlyList<BalancePoint> Points(NetWorthHistory history) => history.Points
         .Select(static x => new BalancePoint { Date = x.Date, Amount = x.NetWorth, IsDerived = x.IsDerived })
         .ToList();
@@ -55,6 +57,7 @@ public static class NetWorthText
     /// How net worth moved across <paramref name="points"/>, e.g. <c>Up £120.00 since 1 Nov</c>, null with fewer
     /// than two days to compare.
     /// </summary>
+    /// <param name="points">The points, oldest first.</param>
     public static string? ChangeAcross(IReadOnlyList<NetWorthPoint> points)
     {
         if (points.Count < 2)
@@ -76,6 +79,8 @@ public static class NetWorthText
     /// <summary>
     /// e.g. <c>Up £120.00 this month</c>, or <c>No history from before this month</c>.
     /// </summary>
+    /// <param name="change">The change, null when there's nothing to compare.</param>
+    /// <param name="period">What it changed over, e.g. <c>this month</c>.</param>
     public static string Change(decimal? change, string period)
     {
         if (change is not { } amount)
@@ -95,6 +100,7 @@ public static class NetWorthText
     /// <summary>
     /// Up as money in, down as money out, nothing when there's no change, see <see cref="MoneyColourClass"/>.
     /// </summary>
+    /// <param name="change">The change, null when there's nothing to compare.</param>
     public static string? ChangeClass(decimal? change)
     {
         if (change is not { } amount)
@@ -105,6 +111,10 @@ public static class NetWorthText
         return MoneyColourClass.BySign(amount);
     }
 
+    /// <summary>
+    /// The icon a kind of item is shown with.
+    /// </summary>
+    /// <param name="kind">The kind of item.</param>
     public static string KindIcon(NetWorthItemKind kind) => kind switch
     {
         NetWorthItemKind.Card => Icons.Material.Outlined.CreditCard,
@@ -112,6 +122,10 @@ public static class NetWorthText
         _ => Icons.Material.Outlined.AccountBalance
     };
 
+    /// <summary>
+    /// What a kind of item is called.
+    /// </summary>
+    /// <param name="kind">The kind of item.</param>
     public static string KindName(NetWorthItemKind kind) => kind switch
     {
         NetWorthItemKind.Card => "Card",
@@ -123,6 +137,7 @@ public static class NetWorthText
     /// Says which part of the chart is worked out, e.g. <c>The dashed line, before 3 Nov 2026, is worked out from your
     /// transactions, so approximate</c>, null when none of it is.
     /// </summary>
+    /// <param name="points">The points, oldest first.</param>
     public static string? DerivedNote(IReadOnlyList<BalancePoint> points)
     {
         BalancePoint? lastDerived = points.LastOrDefault(static x => x.IsDerived);
@@ -138,5 +153,6 @@ public static class NetWorthText
     /// <summary>
     /// e.g. <c>31 Oct 26</c>.
     /// </summary>
+    /// <param name="day">The day.</param>
     public static string Day(DateOnly day) => day.ToString("d MMM yy", CultureInfo.CurrentCulture);
 }

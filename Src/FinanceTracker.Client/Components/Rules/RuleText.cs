@@ -29,6 +29,10 @@ public static class RuleText
         RuleField.Category, RuleField.ProviderClassification, RuleField.ProviderCategory
     ];
 
+    /// <summary>
+    /// What a field is called.
+    /// </summary>
+    /// <param name="field">The field.</param>
     public static string FieldName(RuleField field) => field switch
     {
         RuleField.Counterparty => "Merchant or payee",
@@ -42,6 +46,10 @@ public static class RuleText
         _ => field.ToString()
     };
 
+    /// <summary>
+    /// What an operator is called.
+    /// </summary>
+    /// <param name="operator">The operator.</param>
     public static string OperatorName(RuleOperator @operator) => @operator switch
     {
         RuleOperator.Equals => "is",
@@ -55,8 +63,16 @@ public static class RuleText
         _ => @operator.ToString()
     };
 
+    /// <summary>
+    /// What a match mode is called.
+    /// </summary>
+    /// <param name="matchMode">The match mode.</param>
     public static string MatchModeName(RuleMatchMode matchMode) => matchMode == RuleMatchMode.Any ? "any" : "all";
 
+    /// <summary>
+    /// What an action is called.
+    /// </summary>
+    /// <param name="type">The action's type.</param>
     public static string ActionName(RuleActionType type) => type switch
     {
         RuleActionType.AddTag => "Add tag",
@@ -71,6 +87,7 @@ public static class RuleText
     /// <summary>
     /// The operators that suit <paramref name="field"/>, as <c>RuleConditionValidator</c> allows, the usual one first.
     /// </summary>
+    /// <param name="field">The field.</param>
     public static IReadOnlyList<RuleOperator> OperatorsFor(RuleField field)
     {
         if (IsText(field))
@@ -89,12 +106,14 @@ public static class RuleText
     /// <summary>
     /// Whether <paramref name="field"/> is compared as text, so case can matter.
     /// </summary>
+    /// <param name="field">The field.</param>
     public static bool IsText(RuleField field) => field is RuleField.Description or RuleField.Category
         or RuleField.ProviderCategory or RuleField.ProviderClassification or RuleField.Counterparty;
 
     /// <summary>
     /// e.g. <c>Merchant or payee contains "tesco"</c> or <c>Amount is between 5.00 and 50.00</c>.
     /// </summary>
+    /// <param name="condition">The condition.</param>
     /// <param name="accountNames">The user's accounts by id. An account not in it reads as removed.</param>
     public static string Describe(RuleCondition condition, IReadOnlyDictionary<Guid, string> accountNames)
     {
@@ -115,6 +134,7 @@ public static class RuleText
         }
     }
 
+    /// <param name="action">The action.</param>
     /// <param name="tagNames">The user's tags by id. A tag not in it reads as deleted.</param>
     /// <param name="billNames">The user's bills by id. A bill not in it reads as deleted.</param>
     /// <param name="debtNames">The user's debts by id. A debt not in it reads as deleted.</param>
@@ -162,6 +182,11 @@ public static class RuleText
     /// <summary>
     /// One line for the list its conditions joined by and or, then what it does.
     /// </summary>
+    /// <param name="rule">The rule.</param>
+    /// <param name="accountNames">The user's accounts by id.</param>
+    /// <param name="tagNames">The user's tags by id.</param>
+    /// <param name="billNames">The user's bills by id.</param>
+    /// <param name="debtNames">The user's debts by id.</param>
     public static string Summary(Rule rule, IReadOnlyDictionary<Guid, string> accountNames,
         IReadOnlyDictionary<Guid, string> tagNames, IReadOnlyDictionary<Guid, string>? billNames = null,
         IReadOnlyDictionary<Guid, string>? debtNames = null)
@@ -181,6 +206,8 @@ public static class RuleText
     /// <summary>
     /// Why <paramref name="rule"/> can't do its job as it stands, null when it can.
     /// </summary>
+    /// <param name="rule">The rule.</param>
+    /// <param name="accountNames">The user's accounts by id.</param>
     public static string? Problem(Rule rule, IReadOnlyDictionary<Guid, string> accountNames)
     {
         if (rule.Actions.Count == 0)
@@ -204,6 +231,7 @@ public static class RuleText
     /// What applying a rule would do to one transaction, e.g. <c>+ Shopping</c>, <c>− Food</c> or
     /// <c>Marked as a transfer</c>.
     /// </summary>
+    /// <param name="change">What the rules would change on one transaction.</param>
     public static IEnumerable<string> Changes(RulePreviewChange change)
     {
         foreach (string tag in change.TagsAdded)
@@ -245,6 +273,8 @@ public static class RuleText
     /// <summary>
     /// e.g. <c>Pays Streaming</c>, or <c>Stops paying Streaming</c> when a rule takes the bill back.
     /// </summary>
+    /// <param name="before">What it was, null for none.</param>
+    /// <param name="after">What it is now, null for none.</param>
     private static string BillChange(string? before, string? after)
     {
         if (after is null)
@@ -258,6 +288,8 @@ public static class RuleText
     /// <summary>
     /// e.g. <c>Pays off Car loan</c>, or <c>Stops paying off Car loan</c> when a rule takes the debt back.
     /// </summary>
+    /// <param name="before">What it was, null for none.</param>
+    /// <param name="after">What it is now, null for none.</param>
     private static string DebtChange(string? before, string? after)
     {
         if (after is null)
@@ -272,18 +304,29 @@ public static class RuleText
     /// The rule that added <paramref name="tag"/> to <paramref name="transaction"/>, null when the user added it or it
     /// came from the bank.
     /// </summary>
+    /// <param name="transaction">The transaction.</param>
+    /// <param name="tag">The tag.</param>
     public static string? TaggedBy(Transaction transaction, string tag) =>
         transaction.TagsFromRules.FirstOrDefault(x => x.Tag == tag)?.RuleName;
 
     /// <summary>
     /// e.g. <c>Shopping from your rule Groceries</c>, one line per tag a rule added.
     /// </summary>
+    /// <param name="transaction">The transaction.</param>
     public static IEnumerable<string> TaggedByLines(Transaction transaction) =>
         transaction.TagsFromRules.Select(static x => $"{x.Tag} from your rule {x.RuleName}");
 
+    /// <summary>
+    /// <c>money in</c> for a credit, <c>money out</c> otherwise.
+    /// </summary>
+    /// <param name="value">The type as a condition stores it.</param>
     public static string TypeName(string value) =>
         string.Equals(value, "Credit", StringComparison.OrdinalIgnoreCase) ? "money in" : "money out";
 
+    /// <summary>
+    /// The transfer answer a preview would give, as a change.
+    /// </summary>
+    /// <param name="after">The answer, null when taken back.</param>
     private static string TransferChange(TransferState? after) => after switch
     {
         TransferState.Transfer => "Marked as a transfer",
@@ -292,6 +335,10 @@ public static class RuleText
         _ => "Transfer answer taken back"
     };
 
+    /// <summary>
+    /// A condition's amount as money, as it's written when it isn't one.
+    /// </summary>
+    /// <param name="value">The amount as stored.</param>
     private static string Amount(string? value)
     {
         if (decimal.TryParse(value, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out decimal amount))
@@ -302,6 +349,11 @@ public static class RuleText
         return value ?? string.Empty;
     }
 
+    /// <summary>
+    /// The account a condition names, or that it's been removed.
+    /// </summary>
+    /// <param name="value">The account's id as stored.</param>
+    /// <param name="accountNames">The user's accounts by id.</param>
     private static string AccountName(string value, IReadOnlyDictionary<Guid, string> accountNames)
     {
         if (Guid.TryParse(value, out Guid accountId) && accountNames.TryGetValue(accountId, out string? name))

@@ -15,5 +15,8 @@ public sealed class SplitPartDraft
     /// </summary>
     public Guid TagId { get; set; }
 
+    /// <summary>
+    /// A note on the part, null for none.
+    /// </summary>
     public string? Note { get; set; }
 }

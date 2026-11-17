@@ -12,6 +12,7 @@ public static class SavingsGoalText
     /// <summary>
     /// e.g. <c>£1,300.00 of £10,000.00</c>, or just what's saved without a target.
     /// </summary>
+    /// <param name="goal">The goal.</param>
     public static string SavedOf(SavingsGoal goal) => goal.Target > 0
         ? $"{CurrencyFormatter.Format(goal.Saved)} of {CurrencyFormatter.Format(goal.Target)}"
         : $"{CurrencyFormatter.Format(goal.Saved)} saved";
@@ -19,6 +20,7 @@ public static class SavingsGoalText
     /// <summary>
     /// How much of the target is saved, 0 to 1, 0 without a target.
     /// </summary>
+    /// <param name="goal">The goal.</param>
     public static double Progress(SavingsGoal goal)
     {
         if (goal.Target <= 0)
@@ -32,6 +34,7 @@ public static class SavingsGoalText
     /// <summary>
     /// Where the saved amount comes from, e.g. <c>Balance of Rainy Day</c>.
     /// </summary>
+    /// <param name="goal">The goal.</param>
     /// <param name="tagNames">The user's tags by id.</param>
     public static string Source(SavingsGoal goal, IReadOnlyDictionary<Guid, string> tagNames)
     {
@@ -55,6 +58,7 @@ public static class SavingsGoalText
     /// <summary>
     /// Whether the monthly contribution gets there, null when there's nothing to say.
     /// </summary>
+    /// <param name="goal">The goal.</param>
     public static string? Pace(SavingsGoal goal)
     {
         if (goal.Target > 0 && goal.Saved >= goal.Target)
@@ -80,6 +84,7 @@ public static class SavingsGoalText
     /// <summary>
     /// Why the goal can't track anything as it stands, null when it can.
     /// </summary>
+    /// <param name="goal">The goal.</param>
     public static string? Problem(SavingsGoal goal)
     {
         if (goal.CoversNothing)
@@ -95,6 +100,10 @@ public static class SavingsGoalText
         return null;
     }
 
+    /// <summary>
+    /// What a source is called.
+    /// </summary>
+    /// <param name="source">Where the saved amount comes from.</param>
     public static string SourceName(SavingsGoalSource source) => source switch
     {
         SavingsGoalSource.Account => "A savings account's balance",
@@ -105,16 +114,26 @@ public static class SavingsGoalText
     /// <summary>
     /// For screen readers, e.g. <c>Car, £1,300.00 of £10,000.00</c>.
     /// </summary>
+    /// <param name="goal">The goal.</param>
     public static string BarLabel(SavingsGoal goal) => $"{goal.Name}, {SavedOf(goal)}";
 
+    /// <summary>
+    /// The month, e.g. <c>Nov 2026</c>.
+    /// </summary>
+    /// <param name="date">Any day in it.</param>
     private static string Month(DateTime date) => date.ToString("MMM yyyy", CultureInfo.CurrentCulture);
 
+    /// <summary>
+    /// The day, e.g. <c>17 Nov 2026</c>.
+    /// </summary>
+    /// <param name="day">The day.</param>
     private static string Day(DateOnly? day) =>
         day?.ToString("d MMM yyyy", CultureInfo.CurrentCulture) ?? string.Empty;
 
     /// <summary>
     /// Where a tag goal's money is saved, as the choice reads.
     /// </summary>
+    /// <param name="direction">Which way the money moves.</param>
     public static string DirectionName(SavingsDirection direction) => direction switch
     {
         SavingsDirection.MoneyOut => "Somewhere FinTrack can't see",
@@ -124,6 +143,8 @@ public static class SavingsGoalText
     /// <summary>
     /// Whose a shared goal is and what the user can do, e.g. <c>Jane Doe's · you can change it</c>.
     /// </summary>
+    /// <param name="sharedBy">Who shared it.</param>
+    /// <param name="canChange">Whether the user can change it.</param>
     public static string SharedText(string sharedBy, bool canChange)
     {
         if (canChange)

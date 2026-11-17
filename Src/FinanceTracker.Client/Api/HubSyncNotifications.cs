@@ -24,6 +24,8 @@ public sealed class HubSyncNotifications : ISyncNotifications, IDisposable
     private Task? _tryingToStart;
     private bool _paused;
 
+    /// <param name="connection">The sync hub's connection.</param>
+    /// <param name="timeProvider">The clock.</param>
     public HubSyncNotifications(HubConnection connection, TimeProvider timeProvider)
     {
         _connection = connection;
@@ -34,25 +36,32 @@ public sealed class HubSyncNotifications : ISyncNotifications, IDisposable
         _connection.Closed += _ => OnClosed();
     }
 
+    /// <inheritdoc/>
     public bool Paused => _paused;
 
+    /// <inheritdoc/>
     public event EventHandler? PausedChanged;
 
+    /// <inheritdoc/>
     public Task<IDisposable> SubscribeAsync(Func<Task> onSyncComplete, CancellationToken cancellationToken) =>
         StartedAsync(_connection.On(SyncHubContract.SyncComplete, onSyncComplete), cancellationToken);
 
+    /// <inheritdoc/>
     public Task<IDisposable> SubscribeToSyncStartsAsync(Func<Task> onSyncStarted,
         CancellationToken cancellationToken) =>
         StartedAsync(_connection.On(SyncHubContract.SyncStarted, onSyncStarted), cancellationToken);
 
+    /// <inheritdoc/>
     public Task<IDisposable> SubscribeToJobsAsync(Func<string, Task> onJobChanged,
         CancellationToken cancellationToken) =>
         StartedAsync(_connection.On(SyncHubContract.JobChanged, onJobChanged), cancellationToken);
 
+    /// <inheritdoc/>
     public Task<IDisposable> SubscribeToNotificationsAsync(Func<Task> onNotificationAdded,
         CancellationToken cancellationToken) =>
         StartedAsync(_connection.On(SyncHubContract.NotificationAdded, onNotificationAdded), cancellationToken);
 
+    /// <inheritdoc/>
     public void Dispose()
     {
         _disposed.Cancel();
@@ -61,6 +70,12 @@ public sealed class HubSyncNotifications : ISyncNotifications, IDisposable
     }
 
     // The subscription once the connection is up or being tried again, disposed only if the subscriber gave up
+    /// <summary>
+    /// Starts the hub for a new subscription. While the hub can't be reached, the subscription stands and hears once
+    /// it's back.
+    /// </summary>
+    /// <param name="subscription">The subscription, disposed when the caller gives up.</param>
+    /// <param name="cancellationToken">Stops waiting.</param>
     private async Task<IDisposable> StartedAsync(IDisposable subscription, CancellationToken cancellationToken)
     {
         try
@@ -81,6 +96,10 @@ public sealed class HubSyncNotifications : ISyncNotifications, IDisposable
         return subscription;
     }
 
+    /// <summary>
+    /// Starts the hub unless it's already started, one subscriber at a time.
+    /// </summary>
+    /// <param name="cancellationToken">Stops waiting.</param>
     private async Task EnsureStartedAsync(CancellationToken cancellationToken)
     {
         // Subscribers can arrive together, only one of them may start the connection
@@ -131,6 +150,10 @@ public sealed class HubSyncNotifications : ISyncNotifications, IDisposable
     }
 
     // The first try has failed by the time this runs, so it waits before each try
+    /// <summary>
+    /// Keeps trying to start the hub, waiting longer each time, until it starts.
+    /// </summary>
+    /// <param name="cancellationToken">Stops trying.</param>
     private async Task TryToStartUntilItDoesAsync(CancellationToken cancellationToken)
     {
         try
@@ -151,6 +174,11 @@ public sealed class HubSyncNotifications : ISyncNotifications, IDisposable
         }
     }
 
+    /// <summary>
+    /// Tries once to start the hub.
+    /// </summary>
+    /// <param name="cancellationToken">Stops trying.</param>
+    /// <returns>Whether it started.</returns>
     private async Task<bool> TryToStartAsync(CancellationToken cancellationToken)
     {
         try
@@ -164,12 +192,20 @@ public sealed class HubSyncNotifications : ISyncNotifications, IDisposable
         }
     }
 
+    /// <summary>
+    /// Notes the hub dropping or coming back, see <see cref="Paused"/>.
+    /// </summary>
+    /// <param name="paused">Whether it dropped.</param>
     private Task PausedUntilReconnected(bool paused)
     {
         SetPaused(paused);
         return Task.CompletedTask;
     }
 
+    /// <summary>
+    /// Sets <see cref="Paused"/>, raising <see cref="PausedChanged"/> when it changes.
+    /// </summary>
+    /// <param name="paused">Whether notifications are paused.</param>
     private void SetPaused(bool paused)
     {
         if (_paused == paused)

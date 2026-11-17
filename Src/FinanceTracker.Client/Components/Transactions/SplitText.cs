@@ -12,6 +12,7 @@ public static class SplitText
     /// <summary>
     /// The menu and details action: <c>Split</c>, <c>Edit split</c> once it's split, or why it can't be split yet.
     /// </summary>
+    /// <param name="transaction">The transaction.</param>
     public static string ActionLabel(Transaction transaction)
     {
         if (transaction.Pending)
@@ -30,6 +31,7 @@ public static class SplitText
     /// <summary>
     /// The parts to start the dialog with the split as it is, or two empty parts.
     /// </summary>
+    /// <param name="transaction">The transaction.</param>
     public static List<SplitPartDraft> Drafts(Transaction transaction)
     {
         if (transaction.Splits.Count == 0)
@@ -46,12 +48,15 @@ public static class SplitText
     /// <summary>
     /// How much of the transaction the parts haven't covered yet, below nothing when they come to more.
     /// </summary>
+    /// <param name="transaction">The transaction.</param>
+    /// <param name="parts">The parts.</param>
     public static decimal Remaining(Transaction transaction, IEnumerable<SplitPartDraft> parts) =>
         Math.Abs(transaction.Amount) - parts.Sum(static x => x.Amount);
 
     /// <summary>
     /// e.g. <c>£10.00 left to split</c>.
     /// </summary>
+    /// <param name="remaining">What's left to split.</param>
     public static string RemainingText(decimal remaining)
     {
         if (remaining > 0)
@@ -71,6 +76,8 @@ public static class SplitText
     /// Whether the parts can be saved: two to <see cref="SplitTransaction.MaxParts"/> of them, none empty, adding up
     /// to the transaction with short notes.
     /// </summary>
+    /// <param name="transaction">The transaction.</param>
+    /// <param name="parts">The parts.</param>
     public static bool CanSave(Transaction transaction, IReadOnlyList<SplitPartDraft> parts)
     {
         if (parts.Count is < 2 or > SplitTransaction.MaxParts)
@@ -89,6 +96,8 @@ public static class SplitText
     /// <summary>
     /// The parts as the API takes them, signed like the transaction.
     /// </summary>
+    /// <param name="transaction">The transaction.</param>
+    /// <param name="parts">The parts as filled in.</param>
     public static SplitTransaction Request(Transaction transaction, IEnumerable<SplitPartDraft> parts)
     {
         int sign = Math.Sign(transaction.Amount);
@@ -106,6 +115,8 @@ public static class SplitText
     /// <summary>
     /// e.g. <c>£60.00 Groceries</c>, or <c>£10.00 untagged</c>.
     /// </summary>
+    /// <param name="own">The user's own tags.</param>
+    /// <param name="transaction">The transaction.</param>
     /// <summary>
     /// The tags a part can have: the user's own, and those already on <paramref name="transaction"/>'s parts, which on
     /// a shared one may be the other person's.
@@ -129,12 +140,17 @@ public static class SplitText
         return choices;
     }
 
+    /// <summary>
+    /// A part as a line, e.g. <c>£12.50 Groceries</c>.
+    /// </summary>
+    /// <param name="part">The part.</param>
     public static string PartText(TransactionSplitPart part) =>
         $"{CurrencyFormatter.Format(Math.Abs(part.Amount))} {part.Tag ?? "untagged"}";
 
     /// <summary>
     /// The split chip's tooltip, e.g. <c>Split into £60.00 Groceries, £40.00 untagged</c>.
     /// </summary>
+    /// <param name="transaction">The transaction.</param>
     public static string Summary(Transaction transaction) =>
         $"Split into {string.Join(", ", transaction.Splits.Select(PartText))}";
 }

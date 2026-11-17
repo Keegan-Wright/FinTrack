@@ -14,19 +14,26 @@ public static class DebtText
     /// <summary>
     /// e.g. <c>£900.00 left of £1,000.00</c>.
     /// </summary>
+    /// <param name="debt">The debt.</param>
     public static string OwedOf(Debt debt) =>
         $"{CurrencyFormatter.Format(debt.Owed)} left of {CurrencyFormatter.Format(debt.StartingBalance)}";
 
     /// <summary>
     /// How much is paid off, 0 to 1.
     /// </summary>
+    /// <param name="debt">The debt.</param>
     public static double Progress(Debt debt) => Math.Clamp((double)debt.PaidOffPercent / 100, 0, 1);
 
+    /// <summary>
+    /// Whether nothing's owed.
+    /// </summary>
+    /// <param name="debt">The debt.</param>
     public static bool IsPaidOff(Debt debt) => debt.Owed <= 0;
 
     /// <summary>
     /// e.g. <c>Car Finance Co · 6.9% APR · £250.00 a month</c>, with the account its balance comes from when linked.
     /// </summary>
+    /// <param name="debt">The debt.</param>
     public static string Terms(Debt debt)
     {
         List<string> parts = [];
@@ -49,6 +56,7 @@ public static class DebtText
     /// <summary>
     /// e.g. <c>6.9% APR</c>, or <c>No interest</c>.
     /// </summary>
+    /// <param name="interestRate">The yearly rate (APR) as a percentage.</param>
     public static string Rate(decimal interestRate)
     {
         if (interestRate == 0)
@@ -62,6 +70,7 @@ public static class DebtText
     /// <summary>
     /// When it's paid off, e.g. <c>Paid off by Mar 2028, 18 more payments</c>.
     /// </summary>
+    /// <param name="forecast">The forecast.</param>
     public static string Forecast(DebtForecast forecast)
     {
         if (forecast.PaidOffOn is not { } paidOffOn || forecast.Months is not { } months)
@@ -81,6 +90,7 @@ public static class DebtText
     /// <summary>
     /// e.g. <c>£123.45 interest still to pay</c>, null when there's none or it's never paid off.
     /// </summary>
+    /// <param name="forecast">The forecast.</param>
     public static string? InterestToPay(DebtForecast forecast)
     {
         if (forecast.Interest is not { } interest || interest <= 0)
@@ -94,6 +104,7 @@ public static class DebtText
     /// <summary>
     /// How the forecast stands against the pay-off goal, null without a goal or once it's paid off.
     /// </summary>
+    /// <param name="debt">The debt.</param>
     public static string? Goal(Debt debt)
     {
         if (debt.PayOffGoal is not { } goal || IsPaidOff(debt))
@@ -113,6 +124,9 @@ public static class DebtText
     /// What paying <paramref name="monthlyPayment"/> a month does against its forecast now, e.g.
     /// <c>Paid off by Oct 2027, 7 months sooner, saving £120.00 interest</c>.
     /// </summary>
+    /// <param name="now">The forecast paying what's paid now.</param>
+    /// <param name="payingMore">The forecast paying more.</param>
+    /// <param name="monthlyPayment">What's paid each month now.</param>
     public static string Compare(DebtForecast now, DebtForecast payingMore, decimal monthlyPayment)
     {
         string paying = $"At {CurrencyFormatter.Format(monthlyPayment)} a month";
@@ -147,11 +161,14 @@ public static class DebtText
     /// <summary>
     /// e.g. <c>Car loan</c>, or <c>No debt</c> when the user said it pays none.
     /// </summary>
+    /// <param name="debt">The debt.</param>
     public static string Label(TransactionDebt debt) => debt.DebtName ?? "No debt";
 
     /// <summary>
     /// Who said a transaction pays a debt, e.g. <c>Chosen by you</c> or <c>By your rule Car loan</c>.
     /// </summary>
+    /// <param name="decidedBy">Who decided.</param>
+    /// <param name="ruleName">The rule that decided, null when it wasn't one.</param>
     /// <param name="ownerName">Whose debt it is when it's the other person's, null when it's the user's.</param>
     public static string Reason(TransferDecidedBy decidedBy, string? ruleName, string? ownerName = null)
     {
@@ -166,15 +183,26 @@ public static class DebtText
     /// <summary>
     /// For screen readers, e.g. <c>Car loan, £900.00 left of £1,000.00</c>.
     /// </summary>
+    /// <param name="debt">The debt.</param>
     public static string BarLabel(Debt debt) => $"{debt.Name}, {OwedOf(debt)}";
 
+    /// <summary>
+    /// The month, e.g. <c>Nov 2026</c>.
+    /// </summary>
+    /// <param name="day">Any day in it.</param>
     public static string Month(DateOnly day) => day.ToString("MMM yyyy", CultureInfo.CurrentCulture);
 
+    /// <summary>
+    /// The day, e.g. <c>17 Nov 2026</c>.
+    /// </summary>
+    /// <param name="day">The day.</param>
     public static string Day(DateOnly day) => day.ToString("d MMM yyyy", CultureInfo.CurrentCulture);
 
     /// <summary>
     /// Whose a shared debt is and what the user can do, e.g. <c>Jane Doe's · you can change it</c>.
     /// </summary>
+    /// <param name="sharedBy">Who shared it.</param>
+    /// <param name="canChange">Whether the user can change it.</param>
     public static string SharedText(string sharedBy, bool canChange)
     {
         if (canChange)
@@ -189,6 +217,7 @@ public static class DebtText
     /// How a debt reads where one is picked, with whose it is when it's someone else's, e.g. <c>Car loan · Jane
     /// Doe's</c>.
     /// </summary>
+    /// <param name="debt">The debt.</param>
     public static string PickerLabel(Debt debt)
     {
         ArgumentNullException.ThrowIfNull(debt);

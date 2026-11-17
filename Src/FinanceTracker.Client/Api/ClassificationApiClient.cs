@@ -19,12 +19,15 @@ public sealed class ClassificationApiClient : IClassificationService
 {
     private readonly HttpClient _http;
 
+    /// <param name="httpClientFactory">Makes the API's client.</param>
     public ClassificationApiClient(IHttpClientFactory httpClientFactory) =>
         _http = httpClientFactory.CreateClient(ApiClientRegistration.HttpClientName);
 
+    /// <inheritdoc/>
     public IAsyncEnumerable<Classification> GetAllCustomClassificationsAsync(CancellationToken cancellationToken) =>
         _http.GetStreamAsync<Classification>(ApiRoutes.Classifications, cancellationToken);
 
+    /// <inheritdoc/>
     public async Task<GetClassification> GetClassificationAsync(Guid id, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response =
@@ -33,6 +36,7 @@ public sealed class ClassificationApiClient : IClassificationService
         return await response.ReadRequiredJsonAsync<GetClassification>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<Classification> AddCustomClassificationAsync(AddClassifications classification,
         CancellationToken cancellationToken)
     {
@@ -42,6 +46,7 @@ public sealed class ClassificationApiClient : IClassificationService
         return await response.ReadRequiredJsonAsync<Classification>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<Classification> RenameCustomClassificationAsync(Guid id, RenameClassification request,
         CancellationToken cancellationToken)
     {
@@ -51,6 +56,7 @@ public sealed class ClassificationApiClient : IClassificationService
         return await response.ReadRequiredJsonAsync<Classification>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task AddCustomClassificationsToTransactionAsync(AddCustomClassificationsToTransaction model,
         CancellationToken cancellationToken)
     {
@@ -59,6 +65,7 @@ public sealed class ClassificationApiClient : IClassificationService
         await response.EnsureFoundAsync(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task RemoveCustomClassificationAsync(Guid id, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response =

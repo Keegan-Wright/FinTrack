@@ -15,6 +15,7 @@ public static class MoneyColourClass
     /// <summary>
     /// <see cref="In"/> above zero, <see cref="Out"/> below it, nothing for zero.
     /// </summary>
+    /// <param name="amount">The amount.</param>
     public static string? BySign(decimal amount)
     {
         if (amount > 0)

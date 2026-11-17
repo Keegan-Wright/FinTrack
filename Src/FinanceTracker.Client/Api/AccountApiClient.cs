@@ -15,9 +15,11 @@ public sealed class AccountApiClient : IAccountService
 {
     private readonly HttpClient _http;
 
+    /// <param name="httpClientFactory">Makes the API's client.</param>
     public AccountApiClient(IHttpClientFactory httpClientFactory) =>
         _http = httpClientFactory.CreateClient(ApiClientRegistration.HttpClientName);
 
+    /// <inheritdoc/>
     public IAsyncEnumerable<AccountAndTransactions> GetAccountsAndMostRecentTransactionsAsync(
         int transactionsToReturn, CancellationToken cancellationToken) =>
         _http.GetStreamAsync<AccountAndTransactions>($"{ApiRoutes.Accounts}?transactions={transactionsToReturn}",

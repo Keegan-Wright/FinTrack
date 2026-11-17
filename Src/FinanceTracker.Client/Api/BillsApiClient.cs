@@ -21,9 +21,11 @@ public sealed class BillsApiClient : IBillsService
 {
     private readonly HttpClient _http;
 
+    /// <param name="httpClientFactory">Makes the API's client.</param>
     public BillsApiClient(IHttpClientFactory httpClientFactory) =>
         _http = httpClientFactory.CreateClient(ApiClientRegistration.HttpClientName);
 
+    /// <inheritdoc/>
     public async Task<BillMonthOverview> GetMonthAsync(int year, int month, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response =
@@ -32,9 +34,11 @@ public sealed class BillsApiClient : IBillsService
         return await response.ReadRequiredJsonAsync<BillMonthOverview>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public IAsyncEnumerable<Bill> GetBillsAsync(CancellationToken cancellationToken) =>
         _http.GetStreamAsync<Bill>(ApiRoutes.Bills, cancellationToken);
 
+    /// <inheritdoc/>
     public async Task<Bill> GetBillAsync(Guid id, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.GetAsync($"{ApiRoutes.Bills}/{id}", cancellationToken);
@@ -42,6 +46,7 @@ public sealed class BillsApiClient : IBillsService
         return await response.ReadRequiredJsonAsync<Bill>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<Bill> AddBillAsync(SaveBill bill, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.PostAsJsonAsync(ApiRoutes.Bills, bill, cancellationToken);
@@ -49,6 +54,7 @@ public sealed class BillsApiClient : IBillsService
         return await response.ReadRequiredJsonAsync<Bill>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<Bill> UpdateBillAsync(Guid id, SaveBill bill, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response =
@@ -57,12 +63,15 @@ public sealed class BillsApiClient : IBillsService
         return await response.ReadRequiredJsonAsync<Bill>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public Task<Bill> EndBillAsync(Guid id, CancellationToken cancellationToken) =>
         PostForBillAsync($"{ApiRoutes.Bills}/{id}/end", cancellationToken);
 
+    /// <inheritdoc/>
     public Task<Bill> ReopenBillAsync(Guid id, CancellationToken cancellationToken) =>
         PostForBillAsync($"{ApiRoutes.Bills}/{id}/reopen", cancellationToken);
 
+    /// <inheritdoc/>
     public async Task DeleteBillAsync(Guid id, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.DeleteAsync($"{ApiRoutes.Bills}/{id}", cancellationToken);
@@ -74,6 +83,7 @@ public sealed class BillsApiClient : IBillsService
         await response.EnsureFoundAsync(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<Transaction> PayBillAsync(Guid transactionId, PayBill payment,
         CancellationToken cancellationToken)
     {
@@ -83,9 +93,11 @@ public sealed class BillsApiClient : IBillsService
         return await response.ReadRequiredJsonAsync<Transaction>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public IAsyncEnumerable<BillSuggestion> GetSuggestionsAsync(CancellationToken cancellationToken) =>
         _http.GetStreamAsync<BillSuggestion>($"{ApiRoutes.Bills}/suggestions", cancellationToken);
 
+    /// <inheritdoc/>
     public async Task<int> GetSuggestionCountAsync(CancellationToken cancellationToken)
     {
         using HttpResponseMessage response =
@@ -94,6 +106,7 @@ public sealed class BillsApiClient : IBillsService
         return await response.ReadRequiredJsonAsync<int>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<Bill> ConfirmSuggestionAsync(Guid id, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response =
@@ -110,6 +123,8 @@ public sealed class BillsApiClient : IBillsService
     /// <summary>
     /// The bill a 409 for confirming a suggestion names, see <see cref="AlreadyABillException.BillNameField"/>.
     /// </summary>
+    /// <param name="response">The API's answer.</param>
+    /// <param name="cancellationToken">Stops the call.</param>
     private static async Task<string> CoveringBillNameAsync(HttpResponseMessage response,
         CancellationToken cancellationToken)
     {
@@ -125,6 +140,7 @@ public sealed class BillsApiClient : IBillsService
         return "another bill";
     }
 
+    /// <inheritdoc/>
     public async Task DismissSuggestionAsync(Guid id, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response =
@@ -132,6 +148,11 @@ public sealed class BillsApiClient : IBillsService
         await response.EnsureFoundAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// Posts to <paramref name="path"/> and reads back the bill.
+    /// </summary>
+    /// <param name="path">The API path.</param>
+    /// <param name="cancellationToken">Stops the call.</param>
     private async Task<Bill> PostForBillAsync(string path, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.PostAsync(path, null, cancellationToken);

@@ -16,6 +16,7 @@ public static class NotificationKindText
     /// <summary>
     /// What the kind is about, as the settings put it, e.g. <c>A bank's access ending soon</c>.
     /// </summary>
+    /// <param name="kind">The kind.</param>
     public static string Label(NotificationKind kind) => kind switch
     {
         NotificationKind.ConsentEndingSoon => "A bank's access ending soon",
@@ -35,6 +36,10 @@ public static class NotificationKindText
         _ => kind.ToString()
     };
 
+    /// <summary>
+    /// The icon a kind of notification is shown with.
+    /// </summary>
+    /// <param name="kind">The kind of notification.</param>
     public static string Icon(NotificationKind kind) => kind switch
     {
         NotificationKind.ConsentEndingSoon => Icons.Material.Outlined.HourglassBottom,

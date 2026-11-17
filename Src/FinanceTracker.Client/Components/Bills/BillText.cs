@@ -11,6 +11,10 @@ namespace FinanceTracker.Client.Components.Bills;
 /// </summary>
 public static class BillText
 {
+    /// <summary>
+    /// What a frequency is called, e.g. <c>Monthly</c>.
+    /// </summary>
+    /// <param name="frequency">How often a bill is due.</param>
     public static string FrequencyName(BillFrequency frequency) => frequency switch
     {
         BillFrequency.Weekly => "Weekly",
@@ -22,6 +26,10 @@ public static class BillText
         _ => frequency.ToString()
     };
 
+    /// <summary>
+    /// Where a bill came from, in words.
+    /// </summary>
+    /// <param name="source">Where it came from.</param>
     public static string SourceName(BillSource source) => source switch
     {
         BillSource.StandingOrder => "Standing order",
@@ -34,6 +42,7 @@ public static class BillText
     /// <summary>
     /// e.g. <c>Current · Monthly · Direct debit</c>.
     /// </summary>
+    /// <param name="bill">The bill.</param>
     public static string Summary(Bill bill) =>
         $"{bill.AccountName} · {FrequencyName(bill.Frequency)} · {SourceName(bill.Source)}";
 
@@ -41,6 +50,7 @@ public static class BillText
     /// Who said a transaction pays its bill, e.g. <c>Matched by FinTrack</c> or <c>By your rule Rent</c>, or
     /// <c>By Jane Doe's rule Rent</c> for another person's bill.
     /// </summary>
+    /// <param name="bill">The bill.</param>
     public static string Reason(TransactionBill bill)
     {
         ArgumentNullException.ThrowIfNull(bill);
@@ -55,11 +65,13 @@ public static class BillText
     /// <summary>
     /// <c>you</c>, or the other person's name when it's theirs.
     /// </summary>
+    /// <param name="ownerName">Whose it is when it's the other person's, null when it's the user's.</param>
     internal static string Who(string? ownerName) => ownerName ?? "you";
 
     /// <summary>
     /// <c>your</c>, or <c>Jane Doe's</c> when it's theirs.
     /// </summary>
+    /// <param name="ownerName">Whose it is when it's the other person's, null when it's the user's.</param>
     internal static string Whose(string? ownerName)
     {
         if (ownerName is null)
@@ -74,6 +86,7 @@ public static class BillText
     /// How a bill reads where one is picked, telling apart bills with the same name, e.g.
     /// <c>Phone · Joint · £12.00 monthly</c>, with whose it is when someone else's, and <c>… · ended</c> once it has.
     /// </summary>
+    /// <param name="bill">The bill.</param>
     public static string PickerLabel(Bill bill)
     {
         string label = $"{bill.Name} · {bill.AccountName} · {CurrencyFormatter.Format(bill.ExpectedAmount)} " +
@@ -94,6 +107,8 @@ public static class BillText
     /// <summary>
     /// e.g. <c>4 Nov</c>, with the year when it isn't this one.
     /// </summary>
+    /// <param name="day">The day.</param>
+    /// <param name="today">Today where the user is.</param>
     public static string Day(DateOnly day, DateOnly today)
     {
         string format = day.Year == today.Year ? "d MMM" : "d MMM yyyy";
@@ -103,6 +118,8 @@ public static class BillText
     /// <summary>
     /// When it's next due and when it was last paid, e.g. <c>Next due 12 Nov · Last paid £9.99 on 12 Oct</c>.
     /// </summary>
+    /// <param name="bill">The bill.</param>
+    /// <param name="today">Today where the user is.</param>
     public static string Dates(Bill bill, DateOnly today)
     {
         List<string> parts = [];
@@ -131,6 +148,8 @@ public static class BillText
     /// <summary>
     /// One period on its chip, e.g. <c>Paid 12 Oct</c>, <c>Due 19 Oct</c> or <c>Late, due 3 Oct</c>.
     /// </summary>
+    /// <param name="period">The bill's period.</param>
+    /// <param name="today">Today where the user is.</param>
     public static string PeriodLabel(BillPeriod period, DateOnly today)
     {
         string due = Day(period.Due, today);
@@ -146,6 +165,7 @@ public static class BillText
     /// <summary>
     /// What changed, e.g. <c>Paid £12.99, expected £9.99</c>, null unless the period's price changed.
     /// </summary>
+    /// <param name="period">The bill's period.</param>
     public static string? Changed(BillPeriod period)
     {
         if (period.State != BillState.Changed)
@@ -156,6 +176,10 @@ public static class BillText
         return $"Paid {CurrencyFormatter.Format(period.Paid)}, expected {CurrencyFormatter.Format(period.Expected)}";
     }
 
+    /// <summary>
+    /// The icon a period's state is shown with.
+    /// </summary>
+    /// <param name="state">How the period stands.</param>
     public static string StateIcon(BillState state) => state switch
     {
         BillState.Paid => Icons.Material.Outlined.CheckCircle,
@@ -164,6 +188,10 @@ public static class BillText
         _ => Icons.Material.Outlined.Schedule
     };
 
+    /// <summary>
+    /// The colour a period's state is shown in.
+    /// </summary>
+    /// <param name="state">How the period stands.</param>
     public static Color StateColor(BillState state) => state switch
     {
         BillState.Paid => Color.Success,
@@ -175,12 +203,15 @@ public static class BillText
     /// <summary>
     /// The month's total due and paid, e.g. <c>£120.00 of £340.00 paid</c>.
     /// </summary>
+    /// <param name="overview">The month's bills.</param>
     public static string PaidOfDue(BillMonthOverview overview) =>
         $"{CurrencyFormatter.Format(overview.Paid)} of {CurrencyFormatter.Format(overview.Due)} paid";
 
     /// <summary>
     /// Whose a shared bill is and what the user can do, e.g. <c>Jane Doe's · you can change it</c>.
     /// </summary>
+    /// <param name="sharedBy">Who shared it.</param>
+    /// <param name="canChange">Whether the user can change it.</param>
     public static string SharedText(string sharedBy, bool canChange)
     {
         if (canChange)

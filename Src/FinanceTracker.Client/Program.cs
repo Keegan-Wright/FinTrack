@@ -16,6 +16,10 @@ namespace FinanceTracker.Client;
 /// </remarks>
 public static partial class Program
 {
+    /// <summary>
+    /// Builds and runs the app in the browser.
+    /// </summary>
+    /// <param name="args">The arguments the browser starts it with.</param>
     public static async Task Main(string[] args)
     {
         WebAssemblyHostBuilder builder = WebAssemblyHostBuilder.CreateDefault(args);

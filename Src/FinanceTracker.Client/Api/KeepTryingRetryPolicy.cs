@@ -16,11 +16,13 @@ public sealed class KeepTryingRetryPolicy : IRetryPolicy
 
     private static readonly TimeSpan[] FirstWaits = [TimeSpan.Zero, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(10)];
 
+    /// <inheritdoc/>
     public TimeSpan? NextRetryDelay(RetryContext retryContext) => WaitBefore(retryContext.PreviousRetryCount);
 
     /// <summary>
     /// The wait before trying again after <paramref name="failedTries"/> tries have failed, counting from none.
     /// </summary>
+    /// <param name="failedTries">How many tries have failed so far.</param>
     public static TimeSpan WaitBefore(long failedTries)
     {
         if (failedTries < FirstWaits.Length)

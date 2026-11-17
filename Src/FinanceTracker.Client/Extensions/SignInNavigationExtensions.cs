@@ -2,6 +2,9 @@ using Microsoft.AspNetCore.Components;
 
 namespace FinanceTracker.Client.Extensions;
 
+/// <summary>
+/// Sends the user to sign in.
+/// </summary>
 public static class SignInNavigationExtensions
 {
     extension(NavigationManager navigation)

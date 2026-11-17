@@ -12,6 +12,7 @@ public static class PayText
     /// <summary>
     /// e.g. <c>the last working day of the month</c> or <c>the 15th of each month</c>.
     /// </summary>
+    /// <param name="income">The income.</param>
     public static string When(Income income)
     {
         ArgumentNullException.ThrowIfNull(income);
@@ -27,6 +28,7 @@ public static class PayText
     /// <summary>
     /// e.g. <c>ACME LTD · £2,400.00 into Main</c>.
     /// </summary>
+    /// <param name="income">The income.</param>
     public static string Label(Income income)
     {
         ArgumentNullException.ThrowIfNull(income);
@@ -36,6 +38,8 @@ public static class PayText
     /// <summary>
     /// e.g. <c>30 Oct – 29 Nov</c>, with the years when it spans two.
     /// </summary>
+    /// <param name="start">The period's first day.</param>
+    /// <param name="end">The period's last day.</param>
     public static string Period(DateOnly start, DateOnly end)
     {
         CultureInfo culture = CultureInfo.CurrentCulture;
@@ -51,6 +55,9 @@ public static class PayText
     /// e.g. <c>30 Oct – 29 Nov · As it ended</c> for a month's section, the dates only while months run from pay to
     /// pay. Null when there's nothing to say.
     /// </summary>
+    /// <param name="pay">The user's pay, null when it isn't known.</param>
+    /// <param name="start">The period's first day.</param>
+    /// <param name="end">The period's last day.</param>
     /// <param name="ended">Whether the month is over, so shown as it ended.</param>
     public static string? MonthCaption(YourPay? pay, DateOnly start, DateOnly end, bool ended)
     {
@@ -76,6 +83,7 @@ public static class PayText
     /// <summary>
     /// e.g. <c>1st</c>, <c>2nd</c>, <c>11th</c>, <c>23rd</c>.
     /// </summary>
+    /// <param name="day">The day of the month.</param>
     public static string Ordinal(int day)
     {
         int lastTwo = day % 100;

@@ -10,6 +10,8 @@ public static class LocalDays
     /// <summary>
     /// Midnight at the start of <paramref name="day"/>'s date where the user is, as UTC.
     /// </summary>
+    /// <param name="day">The day, local.</param>
+    /// <param name="timeZone">Where the user is.</param>
     public static DateTime StartUtc(DateTime day, TimeZoneInfo timeZone)
     {
         DateTime midnight = DateTime.SpecifyKind(day.Date, DateTimeKind.Unspecified);
@@ -26,6 +28,8 @@ public static class LocalDays
     /// <summary>
     /// The last tick of <paramref name="day"/>'s date where the user is, as UTC.
     /// </summary>
+    /// <param name="day">The day, local.</param>
+    /// <param name="timeZone">Where the user is.</param>
     public static DateTime EndUtc(DateTime day, TimeZoneInfo timeZone) =>
         StartUtc(day.Date.AddDays(1), timeZone).AddTicks(-1);
 }

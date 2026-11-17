@@ -10,6 +10,9 @@ namespace FinanceTracker.Client.Layout;
 /// </summary>
 public class LayoutBase : LayoutComponentBase
 {
+    /// <summary>
+    /// The app's theme.
+    /// </summary>
     internal readonly MudTheme _theme = AppTheme.Theme;
 
     /// <summary>
@@ -22,7 +25,13 @@ public class LayoutBase : LayoutComponentBase
     /// </summary>
     internal bool _drawerOpen;
 
+    /// <summary>
+    /// Whether the dark theme is on.
+    /// </summary>
     internal bool _isDarkMode = true;
+    /// <summary>
+    /// The theme provider, which says the system's dark mode.
+    /// </summary>
     internal MudThemeProvider _mudThemeProvider = null!;
 
     /// <summary>
@@ -31,15 +40,20 @@ public class LayoutBase : LayoutComponentBase
     [CascadingParameter]
     internal ApplicationState ApplicationState { get; set; } = null!;
 
+    /// <summary>
+    /// Says the browser's width, for whether the drawer starts open.
+    /// </summary>
     [Inject]
     private IBrowserViewportService BrowserViewportService { get; set; } = null!;
 
+    /// <inheritdoc/>
     protected override void OnInitialized()
     {
         base.OnInitialized();
         ApplicationState.PropertyChanged += ApplicationStateOnPropertyChanged;
     }
 
+    /// <inheritdoc/>
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
@@ -51,8 +65,15 @@ public class LayoutBase : LayoutComponentBase
         }
     }
 
+    /// <summary>
+    /// Opens or closes the navigation drawer.
+    /// </summary>
     internal void ToggleDrawer() => _drawerOpen = !_drawerOpen;
 
+    /// <summary>
+    /// Follows the system turning dark mode on or off.
+    /// </summary>
+    /// <param name="newValue">Whether it's on.</param>
     private Task OnSystemPreferenceChanged(bool newValue)
     {
         _isDarkMode = newValue;
@@ -60,5 +81,10 @@ public class LayoutBase : LayoutComponentBase
         return Task.CompletedTask;
     }
 
+    /// <summary>
+    /// Re-renders when the shared state changes.
+    /// </summary>
+    /// <param name="sender">The shared state.</param>
+    /// <param name="e">What changed.</param>
     internal void ApplicationStateOnPropertyChanged(object? sender, PropertyChangedEventArgs e) => StateHasChanged();
 }

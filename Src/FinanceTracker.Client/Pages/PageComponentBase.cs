@@ -19,12 +19,21 @@ public class PageComponent : ComponentBase, IDisposable
     /// </summary>
     internal readonly CancellationTokenSource _cts = new();
 
+    /// <summary>
+    /// The shared UI state.
+    /// </summary>
     [CascadingParameter]
     private ApplicationState ApplicationState { get; set; } = null!;
 
+    /// <summary>
+    /// Shows the page's messages.
+    /// </summary>
     [Inject]
     private ISnackbar PageSnackbar { get; set; } = null!;
 
+    /// <summary>
+    /// Calls the app's scripts, to save files.
+    /// </summary>
     [Inject]
     private IJSRuntime PageJS { get; set; } = null!;
 
@@ -36,6 +45,7 @@ public class PageComponent : ComponentBase, IDisposable
     /// <summary>
     /// Starts listening for syncs once the page has its parameters, the shared state among them.
     /// </summary>
+    /// <param name="parameters">The parameters set.</param>
     public override async Task SetParametersAsync(ParameterView parameters)
     {
         await base.SetParametersAsync(parameters);
@@ -55,6 +65,9 @@ public class PageComponent : ComponentBase, IDisposable
     /// </summary>
     protected virtual Task OnSyncedAsync() => Task.CompletedTask;
 
+    /// <summary>
+    /// Refreshes the page after a sync, again once more when another finishes meanwhile.
+    /// </summary>
     private async Task RefreshAfterSyncAsync()
     {
         if (_disposed)
@@ -83,6 +96,9 @@ public class PageComponent : ComponentBase, IDisposable
         }
     }
 
+    /// <summary>
+    /// Refreshes the page once. A failure leaves what's shown.
+    /// </summary>
     private async Task RefreshOnceAsync()
     {
         try
@@ -106,6 +122,10 @@ public class PageComponent : ComponentBase, IDisposable
     /// Has <paramref name="write"/> make the file, then saves it in the browser as <paramref name="fileName"/>, or
     /// says <paramref name="failure"/>. Nothing more once the user leaves the page.
     /// </summary>
+    /// <param name="fileName">The file's name.</param>
+    /// <param name="contentType">The file's media type.</param>
+    /// <param name="write">Writes the file.</param>
+    /// <param name="failure">What to tell the user when it fails.</param>
     internal async Task SaveFileAsync(string fileName, string contentType, Func<Stream, CancellationToken, Task> write,
         string failure)
     {
@@ -181,6 +201,7 @@ public class PageComponent : ComponentBase, IDisposable
     /// <summary>
     /// Updates the navigation's count of transfers to review, after the user decides about one.
     /// </summary>
+    /// <param name="transfersService">Gives the transfers to review.</param>
     internal async Task RefreshTransfersToReviewAsync(ITransfersService transfersService) =>
         ApplicationState.TransfersToReview = await transfersService.GetReviewCountAsync(_cts.Token);
 
@@ -188,6 +209,7 @@ public class PageComponent : ComponentBase, IDisposable
     /// Updates the navigation's count of subscriptions to review, after the user confirms or dismisses one or adds a
     /// bill that covers one.
     /// </summary>
+    /// <param name="billsService">Gives the subscriptions to review.</param>
     /// <returns>The new count, for the page to show too.</returns>
     internal async Task<int> RefreshSubscriptionsToReviewAsync(IBillsService billsService)
     {
@@ -199,17 +221,21 @@ public class PageComponent : ComponentBase, IDisposable
     /// <summary>
     /// Updates the bell's and the navigation's count of unread notifications, after the user reads some.
     /// </summary>
+    /// <param name="count">How many are unread.</param>
     internal void SetUnreadNotifications(int count) => ApplicationState.UnreadNotifications = count;
 
     /// <summary>
     /// Updates the count of connections to renew in the navigation and banner.
     /// </summary>
+    /// <param name="connections">The user's bank connections.</param>
     internal void RefreshConnectionsToRenew(IEnumerable<BankConnectionSummary> connections) =>
         ApplicationState.CountConnectionsToRenew(connections);
 
     /// <summary>
     /// Shows or hides the loading overlay, with <paramref name="message"/> under the spinner.
     /// </summary>
+    /// <param name="loading">Whether it's loading.</param>
+    /// <param name="message">What's loading, null for the default.</param>
     internal void SetLoadingState(bool loading, string? message = null)
     {
         ApplicationState.Loading = loading;

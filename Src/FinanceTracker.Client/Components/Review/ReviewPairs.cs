@@ -41,6 +41,9 @@ public static class ReviewPairs
     /// <summary>
     /// The other half of <paramref name="transaction"/>'s suggested pair when it's waiting too and not shown yet.
     /// </summary>
+    /// <param name="transaction">The transaction.</param>
+    /// <param name="byId">The transactions waiting for review, by id.</param>
+    /// <param name="shown">The ids of those already shown.</param>
     private static Transaction? WaitingPartner(Transaction transaction, Dictionary<Guid, Transaction> byId,
         HashSet<Guid> shown)
     {

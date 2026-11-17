@@ -152,6 +152,7 @@ public sealed class ApplicationState : INotifyPropertyChanged
     /// <summary>
     /// Sets <see cref="ConnectionsToRenew"/> from the user's connections: those not <see cref="ConsentState.Active"/>.
     /// </summary>
+    /// <param name="connections">The user's bank connections.</param>
     public void CountConnectionsToRenew(IEnumerable<BankConnectionSummary> connections) =>
         ConnectionsToRenew = connections.Count(static x => x.ConsentState != ConsentState.Active);
 
@@ -188,6 +189,10 @@ public sealed class ApplicationState : INotifyPropertyChanged
     /// </summary>
     public event PropertyChangedEventHandler? PropertyChanged;
 
+    /// <summary>
+    /// Raises <see cref="PropertyChanged"/>.
+    /// </summary>
+    /// <param name="propertyName">The property that changed.</param>
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }

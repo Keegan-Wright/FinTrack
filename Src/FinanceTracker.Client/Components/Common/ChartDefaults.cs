@@ -45,6 +45,8 @@ public static class ChartDefaults
     /// The colour money going <paramref name="flow"/> is drawn in, in the mode the app is in, see
     /// <see cref="MoneyColours"/>.
     /// </summary>
+    /// <param name="flow">Which way the money goes.</param>
+    /// <param name="isDarkMode">Whether the dark theme is on.</param>
     public static string MoneyColour(MoneyFlow flow, bool isDarkMode)
     {
         if (isDarkMode)
@@ -68,6 +70,7 @@ public static class ChartDefaults
     /// <summary>
     /// In, out and neutral, the series order the cash flow and report charts use.
     /// </summary>
+    /// <param name="isDarkMode">Whether the dark theme is on.</param>
     public static List<string> InOutAndNeutral(bool isDarkMode) =>
     [
         MoneyColour(MoneyFlow.In, isDarkMode),
@@ -78,6 +81,7 @@ public static class ChartDefaults
     /// <summary>
     /// The colour of a chart's grid lines, the theme's default line colour.
     /// </summary>
+    /// <param name="isDarkMode">Whether the dark theme is on.</param>
     public static string GridColour(bool isDarkMode) =>
         isDarkMode ? DarkPalette.LinesDefault : LightPalette.LinesDefault;
 
@@ -85,6 +89,7 @@ public static class ChartDefaults
     /// A JavaScript formatter writing a value as money in the app's culture, so it runs in the browser without a
     /// call back into .NET.
     /// </summary>
+    /// <param name="fractionDigits">How many decimal places to show.</param>
     public static string MoneyFormatter(int fractionDigits)
     {
         CultureInfo culture = CultureInfo.CurrentCulture;
@@ -99,6 +104,10 @@ public static class ChartDefaults
                  """;
     }
 
+    /// <summary>
+    /// The culture's currency code, GBP for a culture without a region.
+    /// </summary>
+    /// <param name="culture">The culture.</param>
     private static string GetIsoCurrency(CultureInfo culture)
     {
         try
