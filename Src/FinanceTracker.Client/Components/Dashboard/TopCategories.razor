@@ -25,7 +25,8 @@
 
     private const int BarRowHeight = 34;
 
-    [CascadingParameter(Name = "IsDarkMode")] public bool IsDarkMode { get; set; }
+    [CascadingParameter(Name = "IsDarkMode")]
+    public bool IsDarkMode { get; set; }
 
     [Parameter, EditorRequired] public IReadOnlyList<Transaction> Transactions { get; set; } = [];
 

@@ -2,8 +2,8 @@ using Bunit;
 using FinanceTracker.Client;
 using FinanceTracker.Client.Pages;
 using FinanceTracker.Contracts.Bills;
-using FinanceTracker.Contracts.Debts;
 using FinanceTracker.Contracts.Classifications;
+using FinanceTracker.Contracts.Debts;
 using FinanceTracker.Contracts.Rules;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Transactions;
@@ -32,8 +32,14 @@ public class RuleEditorTests : ComponentTestBase
         Name = "Groceries",
         IsEnabled = true,
         MatchMode = RuleMatchMode.All,
-        Conditions = [new RuleCondition { Field = RuleField.Counterparty, Operator = RuleOperator.Contains,
-            Value = "grocer" }],
+        Conditions =
+        [
+            new RuleCondition
+            {
+                Field = RuleField.Counterparty, Operator = RuleOperator.Contains,
+                Value = "grocer"
+            }
+        ],
         Actions = [new RuleAction { Type = RuleActionType.AddTag, ClassificationId = TagId }]
     };
 
@@ -202,8 +208,14 @@ public class RuleEditorTests : ComponentTestBase
             .Returns(new SaveRule
             {
                 Name = "Game Store",
-                Conditions = [new RuleCondition { Field = RuleField.Counterparty, Operator = RuleOperator.Contains,
-                    Value = "Game Store" }],
+                Conditions =
+                [
+                    new RuleCondition
+                    {
+                        Field = RuleField.Counterparty, Operator = RuleOperator.Contains,
+                        Value = "Game Store"
+                    }
+                ],
                 Actions = [new RuleAction { Type = RuleActionType.AddTag, ClassificationId = TagId }]
             });
         Services.GetRequiredService<NavigationManager>().NavigateTo($"Rules/new?from={transactionId}");
@@ -249,8 +261,14 @@ public class RuleEditorTests : ComponentTestBase
             Id = Guid.NewGuid(),
             Name = "Sam's shops",
             IsEnabled = true,
-            Conditions = [new RuleCondition { Field = RuleField.Description, Operator = RuleOperator.Contains,
-                Value = "shop" }],
+            Conditions =
+            [
+                new RuleCondition
+                {
+                    Field = RuleField.Description, Operator = RuleOperator.Contains,
+                    Value = "shop"
+                }
+            ],
             Actions = [new RuleAction { Type = RuleActionType.AddTag, ClassificationId = samsTag }],
             SharedBy = "Sam Taylor",
             CanChange = true,
@@ -283,8 +301,14 @@ public class RuleEditorTests : ComponentTestBase
             Id = Guid.NewGuid(),
             Name = "Sam's shops",
             IsEnabled = true,
-            Conditions = [new RuleCondition { Field = RuleField.Description, Operator = RuleOperator.Contains,
-                Value = "shop" }],
+            Conditions =
+            [
+                new RuleCondition
+                {
+                    Field = RuleField.Description, Operator = RuleOperator.Contains,
+                    Value = "shop"
+                }
+            ],
             Actions = [new RuleAction { Type = RuleActionType.MarkNotATransfer }],
             SharedBy = "Sam Taylor",
             CanChange = false

@@ -5,7 +5,6 @@ namespace FinanceTracker.Tests.Unit.Domain.Identity;
 [Category("Domain")]
 public class FinanceTrackerUserTests
 {
-
     [Test]
     public async Task FinanceTrackerUser_Construction_SetsProperties()
     {

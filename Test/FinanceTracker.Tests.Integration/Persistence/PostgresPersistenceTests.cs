@@ -3,8 +3,8 @@ using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Domain.SavingsGoals;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
-using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 
 namespace FinanceTracker.Tests.Integration.Persistence;
 
@@ -30,7 +30,10 @@ public class PostgresPersistenceTests : IntegrationTestBase
         using (Assert.Multiple())
         {
             await Assert.That(stored).IsNotEmpty();
-            await Assert.That(stored.All(x => x.StartsWith($"{FinTrackAppFixture.EncryptionConfiguration.CurrentKeyId}:", StringComparison.Ordinal))).IsTrue();
+            await Assert.That(stored.All(x =>
+                    x.StartsWith($"{FinTrackAppFixture.EncryptionConfiguration.CurrentKeyId}:",
+                        StringComparison.Ordinal)))
+                .IsTrue();
             await Assert.That(stored.Any(x => x.Contains("<key", StringComparison.Ordinal))).IsFalse();
             await Assert.That(decrypted.All(x => x!.StartsWith("<key", StringComparison.Ordinal))).IsTrue();
         }
@@ -44,7 +47,8 @@ public class PostgresPersistenceTests : IntegrationTestBase
         const string connectionName = "Plaintext Bank Name";
         await Scenario.Do(s => s.UserScenario.WithUser(username))
             .Do(s => s.BankConnectionScenario.WithConnection("bank", username, userId =>
-                new BankConnection(userId, UniqueName("provider"), connectionName, "access-code", ["accounts"], [1, 2, 3], DateTime.UtcNow, DateTime.UtcNow.AddDays(90))));
+                new BankConnection(userId, UniqueName("provider"), connectionName, "access-code", ["accounts"],
+                    [1, 2, 3], DateTime.UtcNow, DateTime.UtcNow.AddDays(90))));
 
         Guid connectionId = Scenario.ConnectionMappings["bank"];
 
@@ -120,14 +124,18 @@ public class PostgresPersistenceTests : IntegrationTestBase
         // Act
         await using (FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken))
         {
-            BankConnection connection = await context.BankConnections.SingleAsync(x => x.Id == connectionId, CancellationToken);
-            connection.Reauthenticate("new-access-code", ["info", "accounts"], DateTime.UtcNow, DateTime.UtcNow.AddDays(90));
+            BankConnection connection =
+                await context.BankConnections.SingleAsync(x => x.Id == connectionId, CancellationToken);
+            connection.Reauthenticate("new-access-code", ["info", "accounts"], DateTime.UtcNow,
+                DateTime.UtcNow.AddDays(90));
             await context.SaveChangesAsync(CancellationToken);
         }
 
         // Assert
-        await using FinanceTrackerContext assertContext = await DbContextFactory.CreateDbContextAsync(CancellationToken);
-        BankConnection reloaded = await assertContext.BankConnections.SingleAsync(x => x.Id == connectionId, CancellationToken);
+        await using FinanceTrackerContext
+            assertContext = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        BankConnection reloaded =
+            await assertContext.BankConnections.SingleAsync(x => x.Id == connectionId, CancellationToken);
 
         await Assert.That(reloaded.Scopes).IsEquivalentTo(["info", "accounts"]);
     }
@@ -166,12 +174,14 @@ public class PostgresPersistenceTests : IntegrationTestBase
         string providerId = UniqueName("provider");
         await Scenario.Do(s => s.UserScenario.WithUser(username))
             .Do(s => s.BankConnectionScenario.WithConnection("bank", username, userId =>
-                new BankConnection(userId, providerId, "Bank", "access-code", ["accounts"], [], DateTime.UtcNow, DateTime.UtcNow.AddDays(90))));
+                new BankConnection(userId, providerId, "Bank", "access-code", ["accounts"], [], DateTime.UtcNow,
+                    DateTime.UtcNow.AddDays(90))));
 
         Guid userId = Scenario.UserMappings[username];
 
         await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
-        context.BankConnections.Add(new BankConnection(userId, providerId, "Same Bank", "other-code", ["accounts"], [], DateTime.UtcNow, DateTime.UtcNow.AddDays(90)));
+        context.BankConnections.Add(new BankConnection(userId, providerId, "Same Bank", "other-code", ["accounts"], [],
+            DateTime.UtcNow, DateTime.UtcNow.AddDays(90)));
 
         // Act & Assert
         await Assert.That(() => context.SaveChangesAsync(CancellationToken)).Throws<DbUpdateException>();
@@ -194,18 +204,23 @@ public class PostgresPersistenceTests : IntegrationTestBase
         // Act
         await using (FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken))
         {
-            BankConnection connection = await context.BankConnections.SingleAsync(x => x.Id == connectionId, CancellationToken);
+            BankConnection connection =
+                await context.BankConnections.SingleAsync(x => x.Id == connectionId, CancellationToken);
             context.BankConnections.Remove(connection);
             await context.SaveChangesAsync(CancellationToken);
         }
 
         // Assert
-        await using FinanceTrackerContext assertContext = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        await using FinanceTrackerContext
+            assertContext = await DbContextFactory.CreateDbContextAsync(CancellationToken);
 
         using (Assert.Multiple())
         {
-            await Assert.That(await assertContext.BankAccounts.AnyAsync(x => x.Id == accountId, CancellationToken)).IsFalse();
-            await Assert.That(await assertContext.BankTransactions.AnyAsync(x => x.AccountId == accountId, CancellationToken)).IsFalse();
+            await Assert.That(await assertContext.BankAccounts.AnyAsync(x => x.Id == accountId, CancellationToken))
+                .IsFalse();
+            await Assert
+                .That(await assertContext.BankTransactions.AnyAsync(x => x.AccountId == accountId, CancellationToken))
+                .IsFalse();
         }
     }
 

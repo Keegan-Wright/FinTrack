@@ -2,32 +2,26 @@
 
 # top-most EditorConfig file
 root = true
-
-# Default settings:
-# A newline ending every file
-# Use 4 spaces as indentation
+# LF line endings, 4 space indents and a final newline. No charset, as some files carry a byte-order mark
+# and setting one would strip or add it on the next clean up
 [*]
+end_of_line = lf
 insert_final_newline = true
 indent_style = space
 indent_size = 4
 trim_trailing_whitespace = true
 
-# Specify UTF-8 without byte-order mark
-[*.{csproj,locproj,nativeproj,proj,resx,slnx,vbproj}]
-charset = utf-8
+# Lines wrap at 120, which editors show as a guide and Rider's formatter wraps to
+max_line_length = 120
 
-# Generated code
-[*{_AssemblyInfo.cs,.notsupported.cs,AsmOffsets.cs}]
-generated_code = true
-
-# C# files
-[*.cs]
-# New line preferences
+# C# files, and the C# in Razor components, which Rider only formats by these rules when they're listed here too
+[*.{cs,razor}]
+# New line preferences, braces on their own lines
 csharp_new_line_before_open_brace = all
 csharp_new_line_before_else = true
 csharp_new_line_before_catch = true
 csharp_new_line_before_finally = true
-csharp_new_line_before_members_in_object_setializers = true
+csharp_new_line_before_members_in_object_initializers = true
 csharp_new_line_before_members_in_anonymous_types = true
 csharp_new_line_between_query_expression_clauses = true
 
@@ -42,13 +36,16 @@ csharp_indent_labels = one_less_than_current
 # Modifier preferences
 csharp_preferred_modifier_order = public, private, protected, internal, file, static, extern, new, virtual, abstract, sealed, override, readonly, unsafe, required, volatile, async:suggestion
 
+# Namespaces are file scoped
+csharp_style_namespace_declarations = file_scoped:suggestion
+
 # avoid this. unless absolutely necessary
 dotnet_style_qualification_for_field = false:suggestion
 dotnet_style_qualification_for_property = false:suggestion
 dotnet_style_qualification_for_method = false:suggestion
 dotnet_style_qualification_for_event = false:suggestion
 
-# Types: use keywords instead of BCL types, and permit var only when the type is clear (e.g. `var x = new Foo()`)
+# Types: use keywords instead of BCL types, and explicit types rather than var, which is left for anonymous types
 csharp_style_var_for_built_in_types = false:warning
 csharp_style_var_when_type_is_apparent = false:none
 csharp_style_var_elsewhere = false:warning
@@ -60,8 +57,7 @@ dotnet_diagnostic.CA2016.severity = error
 
 dotnet_diagnostic.CS0436.severity = none
 
-
-# name all constant fields using PascalCase
+# Constants are PascalCase
 dotnet_naming_rule.constant_fields_should_be_pascal_case.severity = suggestion
 dotnet_naming_rule.constant_fields_should_be_pascal_case.symbols = constant_fields
 dotnet_naming_rule.constant_fields_should_be_pascal_case.style = pascal_case_style
@@ -69,17 +65,16 @@ dotnet_naming_symbols.constant_fields.applicable_kinds = field
 dotnet_naming_symbols.constant_fields.required_modifiers = const
 dotnet_naming_style.pascal_case_style.capitalization = pascal_case
 
-# static fields should have s_ prefix
-dotnet_naming_rule.static_fields_should_have_prefix.severity = suggestion
-dotnet_naming_rule.static_fields_should_have_prefix.symbols = static_fields
-dotnet_naming_rule.static_fields_should_have_prefix.style = static_prefix_style
+# Static fields are PascalCase too, e.g. private static readonly TimeSpan TransactionSyncOverlap. Listed before the
+# _camelCase rule below, so it wins for static fields
+dotnet_naming_rule.static_fields_should_be_pascal_case.severity = suggestion
+dotnet_naming_rule.static_fields_should_be_pascal_case.symbols = static_fields
+dotnet_naming_rule.static_fields_should_be_pascal_case.style = pascal_case_style
 dotnet_naming_symbols.static_fields.applicable_kinds = field
 dotnet_naming_symbols.static_fields.required_modifiers = static
 dotnet_naming_symbols.static_fields.applicable_accessibilities = private, internal, private_protected
-dotnet_naming_style.static_prefix_style.required_prefix = s_
-dotnet_naming_style.static_prefix_style.capitalization = camel_case
 
-# internal and private fields should be _camelCase
+# Other private and internal fields are _camelCase
 dotnet_naming_rule.camel_case_for_private_internal_fields.severity = suggestion
 dotnet_naming_rule.camel_case_for_private_internal_fields.symbols = private_internal_fields
 dotnet_naming_rule.camel_case_for_private_internal_fields.style = camel_case_underscore_style
@@ -95,13 +90,15 @@ csharp_prefer_braces = true:silent
 csharp_preserve_single_line_blocks = true:none
 csharp_preserve_single_line_statements = false:none
 csharp_prefer_static_local_function = true:suggestion
+# Both forms are used, declarations for what lives to the end of the method, blocks to end a scope early or group
+# assertions with Assert.Multiple
 csharp_prefer_simple_using_statement = false:none
 csharp_style_prefer_switch_expression = true:suggestion
 dotnet_style_readonly_field = true:suggestion
 
 # Expression-level preferences
-dotnet_style_object_setializer = true:suggestion
-dotnet_style_collection_setializer = true:suggestion
+dotnet_style_object_initializer = true:suggestion
+dotnet_style_collection_initializer = true:suggestion
 dotnet_style_prefer_collection_expression = when_types_exactly_match
 dotnet_style_explicit_tuple_names = true:suggestion
 dotnet_style_coalesce_expression = true:suggestion
@@ -138,9 +135,6 @@ csharp_style_prefer_index_operator = false:none
 csharp_style_prefer_range_operator = false:none
 csharp_style_pattern_local_over_anonymous_function = false:none
 
-# IDE0071: Simplify interpolation - keep as silent hint since ReadOnlySpan<char>.ToString() is required for netstandard targets
-dotnet_diagnostic.IDE0071.severity = silent
-
 # IDE0031: Use null propagation - keep as silent hint to avoid build errors with TreatWarningsAsErrors
 dotnet_diagnostic.IDE0031.severity = silent
 
@@ -168,56 +162,47 @@ csharp_space_between_method_declaration_parameter_list_parentheses = false
 csharp_space_between_parentheses = false
 csharp_space_between_square_brackets = false
 
+# Rider and ReSharper doc comment text sits straight after ///, not indented inside its tags, and keeps the line
+# breaks it's written with
+resharper_xmldoc_indent_text = ZeroIndent
+resharper_xmldoc_indent_child_elements = ZeroIndent
+resharper_xmldoc_keep_user_linebreaks = true
+# Self-closing tags have no space before />, e.g. <see cref="X"/>
+resharper_xmldoc_space_before_self_closing = false
 
-[src/libraries/System.Net.Http/src/System/Net/Http/{SocketsHttpHandler/Http3RequestStream.cs,BrowserHttpHandler/BrowserHttpHandler.cs}]
-# disable CA2025, the analyzer throws a NullReferenceException when processing this file: https://github.com/dotnet/roslyn-analyzers/issues/7652
-dotnet_diagnostic.CA2025.severity = none
+# Rider and ReSharper lines are broken by hand for readability, so the formatter keeps the arrangement it finds,
+# e.g. one initialiser member or attribute per line, and only wraps what's over max_line_length
+resharper_keep_user_linebreaks = true
+resharper_keep_existing_attribute_arrangement = true
+resharper_keep_existing_initializer_arrangement = true
+resharper_keep_existing_expr_member_arrangement = true
+resharper_keep_existing_invocation_parens_arrangement = true
+resharper_keep_existing_declaration_parens_arrangement = true
+resharper_keep_existing_lambda_and_anonymous_function_parens_arrangement = true
+resharper_keep_existing_embedded_arrangement = true
+resharper_keep_existing_enum_arrangement = true
+resharper_keep_existing_list_patterns_arrangement = true
+resharper_keep_existing_property_patterns_arrangement = true
+resharper_keep_existing_switch_expression_arrangement = true
 
-# C++ Files
-[*.{cpp,h,in}]
-curly_bracket_next_line = true
-indent_brace_style = Allman
-
-# Xml project files
-[*.{csproj,vbproj,vcxproj,vcxproj.filters,proj,nativeproj,locproj}]
-indent_size = 2
-
-# Xml build files
-[*.builds]
-indent_size = 2
-
-# Xml files
-[*.{resx,ruleset,slnx,stylecop,xml}]
-indent_size = 2
-
-# Xml resource files
-[*.resx]
-# match Visual Studio behavior
-insert_final_newline = false
-trim_trailing_whitespace = false
-
-# Xml config files
-[*.{props,targets,config,nuspec}]
-indent_size = 2
-
-# Data serialization
-[*.{json,yaml,yml}]
-indent_size = 2
-
-# Shell scripts
-[*.sh]
-end_of_line = lf
-
-[*.{cmd,bat}]
-end_of_line = crlf
+# Rider and ReSharper new() where the declaration already names the type, the type named where it doesn't, e.g. as
+# an argument
+csharp_style_implicit_object_creation_when_type_is_apparent = true:suggestion
+resharper_object_creation_when_type_evident = target_typed
+resharper_object_creation_when_type_not_evident = explicit_typed
 
 # C# only solution, the reserved keyword clashes this reports (e.g. VB's `Shared`) don't apply
-[*.cs]
 dotnet_diagnostic.CA1716.severity = none
 
-# Misfires on C# 14 extension blocks: every block is compiler-named "extension", so classes with more than one block
+# Misfires on C# 14 extension blocks every block is compiler-named "extension", so classes with more than one block
 # look like they have members differing only by case
 dotnet_diagnostic.CA1708.severity = none
+
+# Domain classes are what EF maps, and EF only maps a property it can set. A private setter or init that only the
+# constructor uses still has to stay, so Rider mustn't make these properties get-only. Doing so drops their columns
+[Src/FinanceTracker.Domain/**.cs]
+resharper_auto_property_can_be_made_get_only_global_highlighting = none
+resharper_auto_property_can_be_made_get_only_local_highlighting = none
 
 # EF Core generated migrations, analysers skip generated code
 [Src/FinanceTracker.Infrastructure.Migrations/Migrations/**.cs]
@@ -228,3 +213,11 @@ generated_code = true
 dotnet_diagnostic.CA1707.severity = none
 # Inline arrays keep test data readable, the per call allocation doesn't matter in tests
 dotnet_diagnostic.CA1861.severity = none
+
+# Xml project and config files
+[*.{csproj,props,targets,config,nuspec,slnx,xml}]
+indent_size = 2
+
+# Data serialization
+[*.{json,yaml,yml}]
+indent_size = 2

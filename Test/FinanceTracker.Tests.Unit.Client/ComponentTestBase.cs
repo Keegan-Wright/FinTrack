@@ -1,7 +1,6 @@
 using Bunit;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Sharing;
-using FinanceTracker.Tests.Unit.Shared;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor.Services;
 using NSubstitute;

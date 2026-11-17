@@ -25,16 +25,16 @@ public static class PayPeriodEndpoints
                 service.GetIncomesAsync(cancellationToken));
 
             payPeriods.MapPut("pay", async Task<Ok<YourPay>> (ChooseIncome request, IPayPeriodsService service,
-                        CancellationToken cancellationToken) =>
-                    TypedResults.Ok(await service.ChooseAsync(request, cancellationToken)));
+                    CancellationToken cancellationToken) =>
+                TypedResults.Ok(await service.ChooseAsync(request, cancellationToken)));
 
             payPeriods.MapPut("off", async Task<Ok<YourPay>> (IPayPeriodsService service,
                     CancellationToken cancellationToken) =>
                 TypedResults.Ok(await service.TurnOffAsync(cancellationToken)));
 
             payPeriods.MapPut("on", async Task<Ok<YourPay>> (IPayPeriodsService service,
-                        CancellationToken cancellationToken) =>
-                    TypedResults.Ok(await service.TurnOnAsync(cancellationToken)));
+                    CancellationToken cancellationToken) =>
+                TypedResults.Ok(await service.TurnOnAsync(cancellationToken)));
 
             return api;
         }

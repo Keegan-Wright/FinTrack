@@ -43,7 +43,8 @@
 {
     <Section>
         <MudText Typo="Typo.body2" Class="mud-text-secondary">
-            That debt doesn't exist any more. <MudLink Href="Debts" Typo="Typo.body2">Back to your debts</MudLink>
+            That debt doesn't exist any more.
+            <MudLink Href="Debts" Typo="Typo.body2">Back to your debts</MudLink>
         </MudText>
     </Section>
 }
@@ -82,6 +83,7 @@ else
                         {
                             <MudText Typo="Typo.body2" Class="mb-2">@interest</MudText>
                         }
+
                         <OverpaymentPanel @key="debt" Debt="@debt"/>
                     }
                 </Section>
@@ -93,7 +95,8 @@ else
             {
                 <MudText Typo="Typo.body2" Class="mud-text-secondary">
                     None yet. Say a transaction pays it off from its actions, or
-                    <MudLink Href="Rules/new" Typo="Typo.body2">make a rule</MudLink> to link them as they arrive.
+                    <MudLink Href="Rules/new" Typo="Typo.body2">make a rule</MudLink>
+                    to link them as they arrive.
                 </MudText>
             }
             else
@@ -103,7 +106,8 @@ else
                     {
                         <div @key="payment.TransactionId" class="ft-payment">
                             <div class="ft-payment__line">
-                                <MudText Typo="Typo.body2" Class="ft-payment__description">@payment.Description</MudText>
+                                <MudText Typo="Typo.body2"
+                                         Class="ft-payment__description">@payment.Description</MudText>
                                 <MoneyText Value="@payment.Amount"/>
                             </div>
                             <MudText Typo="Typo.caption" Class="mud-text-secondary">@PaymentSummary(payment)</MudText>

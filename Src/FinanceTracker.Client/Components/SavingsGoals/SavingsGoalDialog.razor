@@ -38,7 +38,8 @@
                 </MudText>
             }
             <MudSelect T="SavingsGoalSource" Label="What's saved comes from" @bind-Value="_model.Source"
-                       Disabled="@TrackingLocked" For="@(() => _model.Source)" ToStringFunc="@(static x => SavingsGoalText.SourceName(x))">
+                       Disabled="@TrackingLocked" For="@(() => _model.Source)"
+                       ToStringFunc="@(static x => SavingsGoalText.SourceName(x))">
                 @foreach (SavingsGoalSource source in Enum.GetValues<SavingsGoalSource>())
                 {
                     <MudSelectItem T="SavingsGoalSource" Value="@source">
@@ -66,6 +67,7 @@
                             Every account already backs a goal, or you have none to choose.
                         </MudText>
                     }
+
                     break;
                 case SavingsGoalSource.Tags:
                     <MudSelect T="Guid" Label="Tags" MultiSelection="true" @bind-SelectedValues="_tagIds"
@@ -81,19 +83,22 @@
                     {
                         <MudText Typo="Typo.caption" Color="Color.Error">@error</MudText>
                     }
+
                     <MudSelect T="SavingsDirection" @bind-Value="_model.Direction" Label="Where's the money saved?"
                                Disabled="@TrackingLocked"
                                For="@(() => _model.Direction)"
                                ToStringFunc="@(static x => SavingsGoalText.DirectionName(x))">
                         @foreach (SavingsDirection direction in Enum.GetValues<SavingsDirection>())
                         {
-                            <MudSelectItem T="SavingsDirection" Value="@direction">@SavingsGoalText.DirectionName(direction)</MudSelectItem>
+                            <MudSelectItem T="SavingsDirection"
+                                           Value="@direction">@SavingsGoalText.DirectionName(direction)</MudSelectItem>
                         }
                     </MudSelect>
                     <div class="ft-goal-form__pair">
                         <MudDatePicker @bind-Date="_trackedFrom" Label="Counting from" Disabled="@TrackingLocked"
                                        HelperText="Tagged transactions from this day count"/>
-                        <MudTextField T="decimal" @bind-Value="_model.Saved" Label="Saved before then" Disabled="@TrackingLocked"
+                        <MudTextField T="decimal" @bind-Value="_model.Saved" Label="Saved before then"
+                                      Disabled="@TrackingLocked"
                                       For="@(() => _model.Saved)" InputMode="@(InputMode.@decimal)"
                                       Adornment="Adornment.Start" AdornmentText="@CurrencySymbol" Immediate="true"
                                       Validation="@(Validator.ValidateValue(_model, nameof(SaveSavingsGoal.Saved)))"/>
@@ -102,6 +107,7 @@
                     {
                         <MudText Typo="Typo.caption" Color="Color.Error">@error</MudText>
                     }
+
                     break;
                 default:
                     <MudTextField T="decimal" @bind-Value="_model.Saved" Label="Saved so far"

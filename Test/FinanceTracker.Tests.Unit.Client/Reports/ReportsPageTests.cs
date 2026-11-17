@@ -10,7 +10,6 @@ using FinanceTracker.Contracts.Reports.SpentInTimePeriod;
 using FinanceTracker.Contracts.SavingsGoals;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Transactions;
-using FinanceTracker.Tests.Unit.Shared;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;

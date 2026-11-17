@@ -1,5 +1,5 @@
-using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.NetWorth;
+using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Balances;
 
 namespace FinanceTracker.Tests.Unit.Domain.NetWorth;

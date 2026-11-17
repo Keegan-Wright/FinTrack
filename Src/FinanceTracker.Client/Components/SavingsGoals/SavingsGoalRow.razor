@@ -42,7 +42,8 @@
 
     @if (Goal.SharedBy is { } sharedBy)
     {
-        <MudText Typo="Typo.caption" Class="mud-text-secondary">@SavingsGoalText.SharedText(sharedBy, Goal.CanChange)</MudText>
+        <MudText Typo="Typo.caption"
+                 Class="mud-text-secondary">@SavingsGoalText.SharedText(sharedBy, Goal.CanChange)</MudText>
     }
 
     <div class="ft-savings-goal__details">

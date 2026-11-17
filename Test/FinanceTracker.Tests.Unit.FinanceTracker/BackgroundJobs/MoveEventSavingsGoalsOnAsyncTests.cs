@@ -5,7 +5,6 @@ using FinanceTracker.Infrastructure;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.EntityFrameworkCore;
-using NSubstitute;
 
 namespace FinanceTracker.Tests.Unit.FinanceTracker.BackgroundJobs;
 

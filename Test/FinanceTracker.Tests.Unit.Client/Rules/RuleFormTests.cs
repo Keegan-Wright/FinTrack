@@ -280,8 +280,14 @@ public class RuleFormTests : ComponentTestBase
     private static SaveRule Complete() => new()
     {
         Name = "Groceries",
-        Conditions = [new RuleCondition { Field = RuleField.Counterparty, Operator = RuleOperator.Contains,
-            Value = "grocer" }],
+        Conditions =
+        [
+            new RuleCondition
+            {
+                Field = RuleField.Counterparty, Operator = RuleOperator.Contains,
+                Value = "grocer"
+            }
+        ],
         Actions = [new RuleAction { Type = RuleActionType.AddTag, ClassificationId = TagId }]
     };
 }

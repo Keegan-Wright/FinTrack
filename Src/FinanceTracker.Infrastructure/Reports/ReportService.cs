@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.Runtime.CompilerServices;
-using FinanceTracker.Contracts.Reports;
 using FinanceTracker.Contracts.Reports.Account;
 using FinanceTracker.Contracts.Reports.Category;
 using FinanceTracker.Contracts.Reports.SpentInTimePeriod;
@@ -10,8 +9,8 @@ using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.PayPeriods;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
-using FinanceTracker.Infrastructure.Sharing;
 using FinanceTracker.Infrastructure.PayPeriods;
+using FinanceTracker.Infrastructure.Sharing;
 using FinanceTracker.Infrastructure.Transactions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -26,7 +25,8 @@ public class ReportService : ServiceBase<ReportService>, IReportService
 
     private readonly IAccountScope _accountScope;
 
-    public ReportService(ICurrentUser currentUser, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
+    public ReportService(ICurrentUser currentUser,
+        IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
         ILogger<ReportService> logger, TimeProvider timeProvider, IAccountScope accountScope)
         : base(currentUser, financeTrackerContextFactory, logger)
     {

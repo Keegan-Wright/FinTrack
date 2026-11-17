@@ -5,7 +5,6 @@ using FinanceTracker.Client;
 using FinanceTracker.Contracts.PayPeriods;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Tests.Unit.Client.PayPeriods;
-using FinanceTracker.Tests.Unit.Shared;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;

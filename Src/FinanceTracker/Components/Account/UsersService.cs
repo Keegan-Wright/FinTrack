@@ -1,8 +1,8 @@
 using System.Runtime.CompilerServices;
+using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.Auth;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Users;
-using FinanceTracker.Contracts;
 using FinanceTracker.Domain.Identity;
 using FinanceTracker.Infrastructure;
 using Microsoft.AspNetCore.Identity;

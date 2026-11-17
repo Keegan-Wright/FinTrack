@@ -24,7 +24,7 @@ function ftTogglePassword(input) {
 // stream arrives from .NET as a DotNetStreamReference, a link to it is clicked, then let go of.
 async function ftDownloadFile(fileName, contentType, streamReference) {
     const buffer = await streamReference.arrayBuffer();
-    const url = URL.createObjectURL(new Blob([buffer], { type: contentType }));
+    const url = URL.createObjectURL(new Blob([buffer], {type: contentType}));
     const link = document.createElement("a");
     link.href = url;
     link.download = fileName;
@@ -87,7 +87,7 @@ async function ftDownloadFile(fileName, contentType, streamReference) {
         }
     };
 
-    window.addEventListener("scroll", queue, { passive: true });
-    new MutationObserver(queue).observe(document.body, { childList: true, subtree: true });
+    window.addEventListener("scroll", queue, {passive: true});
+    new MutationObserver(queue).observe(document.body, {childList: true, subtree: true});
     update();
 })();

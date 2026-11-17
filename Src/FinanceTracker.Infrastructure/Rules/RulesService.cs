@@ -1,7 +1,7 @@
 using System.Runtime.CompilerServices;
+using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.Rules;
 using FinanceTracker.Contracts.Services;
-using FinanceTracker.Contracts;
 using FinanceTracker.Domain.Common;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Generated.Attributes;
@@ -240,7 +240,8 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
         await using (FinanceTrackerContext context =
                      await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken))
         {
-            DomainRule rule = await context.Rules.OwnedBy(UserId).SingleOrNotFoundAsync(x => x.Id == id, "rule", cancellationToken);
+            DomainRule rule = await context.Rules.OwnedBy(UserId)
+                .SingleOrNotFoundAsync(x => x.Id == id, "rule", cancellationToken);
             context.Rules.Remove(rule);
             await context.SaveChangesAsync(cancellationToken);
             Logger.LogChanged(UserId, "deleted", "rule", id);

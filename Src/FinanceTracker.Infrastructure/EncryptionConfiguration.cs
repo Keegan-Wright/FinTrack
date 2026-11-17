@@ -27,10 +27,12 @@ public sealed class EncryptionConfiguration
         ArgumentException.ThrowIfNullOrWhiteSpace(keys);
 
         Dictionary<int, byte[]> keyring = [];
-        foreach (string entry in keys.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        foreach (string entry in keys.Split(';',
+                     StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
         {
             string[] parts = entry.Split(':', 2);
-            if (parts.Length != 2 || !int.TryParse(parts[0], NumberStyles.None, CultureInfo.InvariantCulture, out int id))
+            if (parts.Length != 2 ||
+                !int.TryParse(parts[0], NumberStyles.None, CultureInfo.InvariantCulture, out int id))
             {
                 throw new FormatException("Encryption keys must be written as id:base64key pairs separated by ';'.");
             }

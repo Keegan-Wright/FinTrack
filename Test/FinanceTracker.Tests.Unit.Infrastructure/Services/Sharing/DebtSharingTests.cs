@@ -1,7 +1,6 @@
 using FinanceTracker.Contracts.Debts;
 using FinanceTracker.Contracts.NetWorth;
 using FinanceTracker.Contracts.Sharing;
-using FinanceTracker.Contracts.Transactions;
 using FinanceTracker.Domain.NetWorth;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Balances;

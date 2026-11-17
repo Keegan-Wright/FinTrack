@@ -11,7 +11,8 @@ public class DatabaseConnectionExtensionsTests
     public async Task GetFinTrackDatabaseConnectionString_TurnsKerberosOffAndKeepsTheRest()
     {
         // Arrange
-        IConfiguration configuration = ConfigurationWith("Host=db;Port=5432;Username=app;Password=secret;Database=FinTrackDb");
+        IConfiguration configuration =
+            ConfigurationWith("Host=db;Port=5432;Username=app;Password=secret;Database=FinTrackDb");
 
         // Act
         NpgsqlConnectionStringBuilder read = new(configuration.GetFinTrackDatabaseConnectionString());

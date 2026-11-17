@@ -65,7 +65,8 @@ public class BankTransactionThirdPersonTests
         CustomClassification tag = new(UserOf(owner), "Groceries");
 
         await AssertAllowedAsync(() => transaction.Split(
-            [new TransactionSplit(-5m, tag.Id, null), new TransactionSplit(-5m, null, null)], [tag], Alex, [tag.Id]),
+                [new TransactionSplit(-5m, tag.Id, null), new TransactionSplit(-5m, null, null)], [tag], Alex,
+                [tag.Id]),
             allowed);
     }
 

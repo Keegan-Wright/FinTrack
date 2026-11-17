@@ -123,7 +123,8 @@ public class UsersFlowTests : UiTestBase
         await Button(adminPage, $"Unlock {user.Username}").ClickAsync();
         await Assertions.Expect(Row(adminPage, user)).Not.ToContainTextAsync("Locked");
         using FinTrackClient client = CreateClient();
-        HttpResponseMessage signIn = await client.LoginAsync(user.Username, SignedInUser.DefaultPassword, CancellationToken);
+        HttpResponseMessage signIn =
+            await client.LoginAsync(user.Username, SignedInUser.DefaultPassword, CancellationToken);
         await Assert.That(signIn.Headers.Location?.OriginalString).DoesNotContain("Lockout");
     }
 

@@ -1,7 +1,6 @@
 using System.Net;
 using FinanceTracker.Contracts.Diagnostics;
 using FinanceTracker.Contracts.Services;
-using FinanceTracker.Tests.Integration.Http;
 
 namespace FinanceTracker.Tests.Integration.Api;
 

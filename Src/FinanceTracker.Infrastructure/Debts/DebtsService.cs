@@ -1,7 +1,7 @@
 using System.Runtime.CompilerServices;
+using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.Debts;
 using FinanceTracker.Contracts.Services;
-using FinanceTracker.Contracts;
 using FinanceTracker.Domain.Common;
 using FinanceTracker.Domain.Debts;
 using FinanceTracker.Domain.OpenBanking.Accounts;
@@ -48,7 +48,8 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
         Dictionary<Guid, DebtFigures> figures = await SharedDebts.FiguresAsync(context, all, debts, cancellationToken);
         Dictionary<Guid, string> accountNames = await AccountNamesAsync(context, all, cancellationToken);
 
-        foreach (VisibleItem<DomainDebt> debt in debts.OrderBy(static x => x.Item.Name, StringComparer.CurrentCultureIgnoreCase))
+        foreach (VisibleItem<DomainDebt> debt in debts.OrderBy(static x => x.Item.Name,
+                     StringComparer.CurrentCultureIgnoreCase))
         {
             yield return ToContract(debt, figures[debt.Item.Id], accountNames);
         }
@@ -158,7 +159,8 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        DomainDebt debt = await context.Debts.OwnedBy(UserId).SingleOrNotFoundAsync(x => x.Id == id, "debt", cancellationToken);
+        DomainDebt debt = await context.Debts.OwnedBy(UserId)
+            .SingleOrNotFoundAsync(x => x.Id == id, "debt", cancellationToken);
 
         // Whoever's transaction pays it, they may have let the user say theirs does
         List<BankTransaction> payments = await context.BankTransactions
@@ -222,7 +224,8 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
         else
         {
             AccountsInView all = await _accountScope.ResolveAllAsync(context, cancellationToken);
-            VisibleItem<DomainDebt> debt = await VisibleAsync(context, all, debtId, mustChange: false, cancellationToken);
+            VisibleItem<DomainDebt> debt =
+                await VisibleAsync(context, all, debtId, mustChange: false, cancellationToken);
             transaction.PayDebt(debt.Item, UserId, _timeProvider.UtcNow, sharedWithThem: !debt.IsOwn);
             if (debt.IsOwn)
             {

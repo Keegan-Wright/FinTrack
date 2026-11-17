@@ -1,7 +1,6 @@
 using FinanceTracker.Contracts.Diagnostics;
 using FinanceTracker.Contracts.Services;
 using Microsoft.AspNetCore.Components;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace FinanceTracker.Client.Diagnostics;
 

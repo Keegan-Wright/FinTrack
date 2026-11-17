@@ -214,7 +214,8 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
 
         if (transactionsStartingDate.HasValue)
         {
-            urlBuilder.Append(CultureInfo.CurrentCulture, $"?from={transactionsStartingDate:yyyy-MM-dd}&to={_timeProvider.GetLocalNow():yyyy-MM-dd}");
+            urlBuilder.Append(CultureInfo.CurrentCulture,
+                $"?from={transactionsStartingDate:yyyy-MM-dd}&to={_timeProvider.GetLocalNow():yyyy-MM-dd}");
         }
 
         // Throws rather than returning empty, so a refused request isn't recorded as a transaction sync, and an empty
@@ -240,7 +241,8 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         EnsureSuccess(response, "standing orders");
 
         ExternalOpenBankingAccountStandingOrdersResponse? responseBody =
-            await response.Content.ReadFromJsonAsync<ExternalOpenBankingAccountStandingOrdersResponse>(cancellationToken);
+            await response.Content.ReadFromJsonAsync<ExternalOpenBankingAccountStandingOrdersResponse>(
+                cancellationToken);
 
         return responseBody!;
     }
@@ -277,7 +279,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         await foreach (ExternalOpenBankingProvider? provider in response.Content
                            .ReadFromJsonAsAsyncEnumerable<ExternalOpenBankingProvider>(cancellationToken))
         {
-            if(provider is null)
+            if (provider is null)
                 continue;
 
             yield return provider;
@@ -289,7 +291,8 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         StringBuilder sb = new();
 
         sb.Append(_trueLayerOpenBankingConfiguration.BaseAuthUrl);
-        sb.Append(CultureInfo.CurrentCulture, $"?response_type=code&client_id={_trueLayerOpenBankingConfiguration.ClientId}");
+        sb.Append(CultureInfo.CurrentCulture,
+            $"?response_type=code&client_id={_trueLayerOpenBankingConfiguration.ClientId}");
         sb.Append('&');
         sb.Append(CultureInfo.CurrentCulture, $"scope={Uri.EscapeDataString(string.Join(" ", scopes))}");
         sb.Append(Uri.EscapeDataString(" "));

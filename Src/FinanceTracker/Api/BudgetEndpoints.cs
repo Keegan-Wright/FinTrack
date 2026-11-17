@@ -26,8 +26,8 @@ public static class BudgetEndpoints
                 service.GetBudgetsAsync(cancellationToken));
 
             budgets.MapGet("{id:guid}", async Task<Ok<Budget>> (Guid id, IBudgetsService service,
-                        CancellationToken cancellationToken) =>
-                    TypedResults.Ok(await service.GetBudgetAsync(id, cancellationToken)));
+                    CancellationToken cancellationToken) =>
+                TypedResults.Ok(await service.GetBudgetAsync(id, cancellationToken)));
 
             budgets.MapPost(string.Empty, async Task<Ok<Budget>> (SaveBudget request, IBudgetsService service,
                         CancellationToken cancellationToken) =>
@@ -40,11 +40,11 @@ public static class BudgetEndpoints
                 .Validated<SaveBudget>();
 
             budgets.MapDelete("{id:guid}", async Task<NoContent> (Guid id, IBudgetsService service,
-                    CancellationToken cancellationToken) =>
-                {
-                    await service.DeleteBudgetAsync(id, cancellationToken);
-                    return TypedResults.NoContent();
-                });
+                CancellationToken cancellationToken) =>
+            {
+                await service.DeleteBudgetAsync(id, cancellationToken);
+                return TypedResults.NoContent();
+            });
 
             return api;
         }

@@ -177,7 +177,8 @@ public class SharingServiceTests : InfrastructureTestBase
         await SeedUsersAsync();
 
         // Act
-        InviteOutcome outcome = await Subject(Alex).InviteAsync(new InviteToShare { Who = "nobody" }, CancellationToken);
+        InviteOutcome outcome =
+            await Subject(Alex).InviteAsync(new InviteToShare { Who = "nobody" }, CancellationToken);
 
         // Assert
         using (Assert.Multiple())
@@ -251,8 +252,10 @@ public class SharingServiceTests : InfrastructureTestBase
         // Assert
         using (Assert.Multiple())
         {
-            await Assert.That(alexSees.Select(static x => (x.Username, x.State))).IsEquivalentTo([(Sam, LinkState.Invited)]);
-            await Assert.That(samSees.Select(static x => (x.Username, x.State))).IsEquivalentTo([(Alex, LinkState.InvitedYou)]);
+            await Assert.That(alexSees.Select(static x => (x.Username, x.State)))
+                .IsEquivalentTo([(Sam, LinkState.Invited)]);
+            await Assert.That(samSees.Select(static x => (x.Username, x.State)))
+                .IsEquivalentTo([(Alex, LinkState.InvitedYou)]);
             await Assert.That(joSees).IsEmpty();
         }
     }

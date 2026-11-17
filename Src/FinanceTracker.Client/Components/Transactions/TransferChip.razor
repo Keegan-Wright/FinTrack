@@ -34,7 +34,8 @@
                 <MudDivider/>
                 @foreach (var action in TransferText.Actions(Transfer))
                 {
-                    <MudMenuItem OnClick="@(() => OnAction.InvokeAsync(action))">@TransferText.ActionLabel(action)</MudMenuItem>
+                    <MudMenuItem
+                        OnClick="@(() => OnAction.InvokeAsync(action))">@TransferText.ActionLabel(action)</MudMenuItem>
                 }
             </ChildContent>
         </MudMenu>

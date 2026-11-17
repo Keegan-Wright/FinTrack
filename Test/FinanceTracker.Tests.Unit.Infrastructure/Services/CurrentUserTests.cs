@@ -24,7 +24,8 @@ public class CurrentUserTests : UnitTestBase
     {
         // Arrange
         CurrentUser subject = new();
-        ClaimsPrincipal principal = new(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, _userId.ToString())], "test"));
+        ClaimsPrincipal principal =
+            new(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, _userId.ToString())], "test"));
 
         // Act
         subject.Set(principal);

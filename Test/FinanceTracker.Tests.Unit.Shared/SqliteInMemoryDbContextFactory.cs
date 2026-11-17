@@ -8,6 +8,7 @@ public class SqliteInMemoryDbContextFactory : IDbContextFactory<FinanceTrackerCo
 {
     private readonly DbContextOptions<FinanceTrackerContext> _options;
     private readonly IColumnEncryptionService _columnEncryptionService;
+
     public SqliteInMemoryDbContextFactory(DbContextOptions<FinanceTrackerContext> options,
         IColumnEncryptionService columnEncryptionService)
     {
@@ -15,5 +16,6 @@ public class SqliteInMemoryDbContextFactory : IDbContextFactory<FinanceTrackerCo
         _columnEncryptionService = columnEncryptionService;
     }
 
-    public FinanceTrackerContext CreateDbContext() => new FinanceTrackerContext(_options, _columnEncryptionService, TimeProvider.System);
+    public FinanceTrackerContext CreateDbContext() =>
+        new FinanceTrackerContext(_options, _columnEncryptionService, TimeProvider.System);
 }

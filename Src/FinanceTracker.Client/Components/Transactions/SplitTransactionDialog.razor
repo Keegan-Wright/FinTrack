@@ -44,7 +44,8 @@
             <div class="ft-split__footer">
                 <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Add"
                            Disabled="@(_parts.Count >= SplitTransaction.MaxParts)"
-                           OnClick="@(() => _parts.Add(new SplitPartDraft()))">Add a part</MudButton>
+                           OnClick="@(() => _parts.Add(new SplitPartDraft()))">Add a part
+                </MudButton>
                 <MudText Typo="Typo.body2" Color="@RemainingColor" Class="ft-split__remaining" role="status">
                     @SplitText.RemainingText(Remaining)
                 </MudText>
@@ -53,7 +54,9 @@
             @if (Tags.Count == 0)
             {
                 <MudText Typo="Typo.caption" Class="mud-text-secondary">
-                    You have no tags yet, <MudLink Href="Classifications" Typo="Typo.caption">make one</MudLink> to
+                    You have no tags yet,
+                    <MudLink Href="Classifications" Typo="Typo.caption">make one</MudLink>
+                    to
                     count a part under it.
                 </MudText>
             }
@@ -62,7 +65,8 @@
     <DialogActions>
         <MudButton OnClick="@(() => MudDialog.Cancel())">Cancel</MudButton>
         <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!SplitText.CanSave(Transaction, _parts))"
-                   OnClick="@Save">Save</MudButton>
+                   OnClick="@Save">Save
+        </MudButton>
     </DialogActions>
 </MudDialog>
 

@@ -96,7 +96,8 @@ public sealed class SharingApiClient : ISharingService
 
     public async Task<SharingView> ChangeViewAsync(ChangeSharingView request, CancellationToken cancellationToken)
     {
-        using HttpResponseMessage response = await _http.PutAsJsonAsync(ApiRoutes.SharingView, request, cancellationToken);
+        using HttpResponseMessage response =
+            await _http.PutAsJsonAsync(ApiRoutes.SharingView, request, cancellationToken);
         response.EnsureSuccessStatusCode();
         return await response.ReadRequiredJsonAsync<SharingView>(cancellationToken);
     }

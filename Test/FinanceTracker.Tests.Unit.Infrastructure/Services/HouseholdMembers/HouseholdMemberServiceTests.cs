@@ -118,7 +118,8 @@ public class HouseholdMemberServiceTests : InfrastructureTestBase
 
         // Act
         HouseholdMember updated = await subject.UpdateHouseholdMemberAsync(id,
-            new UpdateHouseholdMember { FirstName = "Janet", LastName = "Smith", YearlyIncome = 1500 }, CancellationToken);
+            new UpdateHouseholdMember { FirstName = "Janet", LastName = "Smith", YearlyIncome = 1500 },
+            CancellationToken);
 
         // Assert
         HouseholdMember stored = (await subject.GetHouseholdMembersAsync(CancellationToken)
@@ -143,7 +144,8 @@ public class HouseholdMemberServiceTests : InfrastructureTestBase
 
         // Act
         NameTakenException? exception = await Assert.ThrowsAsync<NameTakenException>(() =>
-            subject.AddHouseholdMemberAsync(new AddHouseholdMember { FirstName = "jane ", LastName = "DOE", YearlyIncome = 0 },
+            subject.AddHouseholdMemberAsync(
+                new AddHouseholdMember { FirstName = "jane ", LastName = "DOE", YearlyIncome = 0 },
                 CancellationToken));
 
         // Assert

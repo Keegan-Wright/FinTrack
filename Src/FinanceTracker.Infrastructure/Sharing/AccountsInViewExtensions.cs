@@ -22,7 +22,8 @@ public static class AccountsInViewExtensions
             Dictionary<Guid, string> names = await SharedChosenItems.OwnerNamesAsync(context,
                 view.SharedOwnerIds.ToList(), cancellationToken);
 
-            return view.SharedOwners.ToDictionary(static x => x.Key, x => names.GetValueOrDefault(x.Value, string.Empty));
+            return view.SharedOwners.ToDictionary(static x => x.Key,
+                x => names.GetValueOrDefault(x.Value, string.Empty));
         }
 
         /// <summary>

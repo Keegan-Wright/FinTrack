@@ -24,12 +24,14 @@
                     @if (Profile.EmailConfirmed)
                     {
                         <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Success"
-                                 Icon="@Icons.Material.Outlined.Verified">Confirmed</MudChip>
+                                 Icon="@Icons.Material.Outlined.Verified">Confirmed
+                        </MudChip>
                     }
                     else
                     {
                         <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Warning"
-                                 Icon="@Icons.Material.Outlined.ErrorOutline">Not confirmed</MudChip>
+                                 Icon="@Icons.Material.Outlined.ErrorOutline">Not confirmed
+                        </MudChip>
                     }
                 </div>
                 @if (!Profile.EmailConfirmed)
@@ -61,7 +63,8 @@
         </MudForm>
         <div>
             <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@_busy"
-                       OnClick="@ChangeAsync">Change email</MudButton>
+                       OnClick="@ChangeAsync">Change email
+            </MudButton>
         </div>
     </div>
 </Section>

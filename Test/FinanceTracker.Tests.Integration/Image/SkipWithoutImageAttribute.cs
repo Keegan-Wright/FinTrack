@@ -5,7 +5,8 @@ namespace FinanceTracker.Tests.Integration.Image;
 /// Decided when the test is found, before its browser starts, so a run without the image doesn't need one.
 /// </summary>
 public sealed class SkipWithoutImageAttribute()
-    : SkipAttribute($"Set {PublishedImage.AddressVariable} to where the published image runs, e.g. http://localhost:8080")
+    : SkipAttribute(
+        $"Set {PublishedImage.AddressVariable} to where the published image runs, e.g. http://localhost:8080")
 {
     public override Task<bool> ShouldSkip(TestRegisteredContext context) =>
         Task.FromResult(PublishedImage.Address is null);

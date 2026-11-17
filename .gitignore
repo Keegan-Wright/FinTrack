@@ -16,3 +16,6 @@ TestResults/
 coverage*.xml
 coverage*.json
 *.coverage
+
+# Per-user IDE settings
+*.user

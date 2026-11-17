@@ -7,13 +7,13 @@ using FinanceTracker.Domain.Sharing;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Bills;
 using FinanceTracker.Infrastructure.Notifications;
-using FinanceTracker.Telemetry;
 using FinanceTracker.Infrastructure.OpenBanking;
 using FinanceTracker.Infrastructure.OpenBanking.Balances;
 using FinanceTracker.Infrastructure.OpenBanking.Transfers;
 using FinanceTracker.Infrastructure.PayPeriods;
 using FinanceTracker.Infrastructure.Rules;
 using FinanceTracker.Infrastructure.Sharing;
+using FinanceTracker.Telemetry;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.BackgroundJobs;
@@ -228,7 +228,8 @@ public abstract class OpenBankingSyncJob
         await using AsyncServiceScope scope = _serviceScopeFactory.CreateUserScope(userId);
         foreach (ISyncNotices notices in scope.ServiceProvider.GetServices<ISyncNotices>())
         {
-            using Activity? noticesActivity = FinTrackActivitySources.App.StartUserActivity(notices.GetType().Name, userId);
+            using Activity? noticesActivity =
+                FinTrackActivitySources.App.StartUserActivity(notices.GetType().Name, userId);
 
             // Counted up by each notification raised, so a span that raised none says so
             noticesActivity?.SetTag(TelemetryTags.NotificationsRaised, 0);

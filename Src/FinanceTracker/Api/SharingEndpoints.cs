@@ -76,8 +76,8 @@ public static class SharingEndpoints
                 .Validated<MergeJointAccounts>();
 
             links.MapDelete("{id:guid}/joint-accounts/{jointAccountId:guid}", async Task<Ok<LinkShares>> (Guid id,
-                        Guid jointAccountId, ISharingService service, CancellationToken cancellationToken) =>
-                    TypedResults.Ok(await service.SplitJointAccountAsync(id, jointAccountId, cancellationToken)));
+                    Guid jointAccountId, ISharingService service, CancellationToken cancellationToken) =>
+                TypedResults.Ok(await service.SplitJointAccountAsync(id, jointAccountId, cancellationToken)));
 
             return api;
         }

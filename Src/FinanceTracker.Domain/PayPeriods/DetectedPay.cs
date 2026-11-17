@@ -10,5 +10,10 @@ namespace FinanceTracker.Domain.PayPeriods;
 /// <param name="Amount">The latest pay.</param>
 /// <param name="Pattern">When it comes in, the latest pay's day of the month when no pattern fits them all.</param>
 /// <param name="PayDays">The days it came in where the user is, oldest first.</param>
-public sealed record DetectedPay(Guid AccountId, string Key, string Name, decimal Amount, PayPattern Pattern,
+public sealed record DetectedPay(
+    Guid AccountId,
+    string Key,
+    string Name,
+    decimal Amount,
+    PayPattern Pattern,
     IReadOnlyList<DateOnly> PayDays);

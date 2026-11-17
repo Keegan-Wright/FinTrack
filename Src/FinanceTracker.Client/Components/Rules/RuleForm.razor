@@ -55,7 +55,8 @@
             }
             <div>
                 <MudButton Variant="Variant.Text" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Add"
-                           OnClick="@AddCondition">Add condition</MudButton>
+                           OnClick="@AddCondition">Add condition
+                </MudButton>
             </div>
         </div>
     </Section>
@@ -136,21 +137,27 @@
             @if (TagNames.Count == 0)
             {
                 <MudText Typo="Typo.caption" Class="mud-text-secondary">
-                    You have no tags yet, <MudLink Href="Classifications" Typo="Typo.caption">make one</MudLink> to
+                    You have no tags yet,
+                    <MudLink Href="Classifications" Typo="Typo.caption">make one</MudLink>
+                    to
                     add it with a rule.
                 </MudText>
             }
             @if (BillNames.Count == 0 && Model.Actions.Exists(static x => x.Type == RuleActionType.PayBill))
             {
                 <MudText Typo="Typo.caption" Class="mud-text-secondary">
-                    You have no bills yet, <MudLink Href="Bills" Typo="Typo.caption">add one</MudLink> to pay it with a
+                    You have no bills yet,
+                    <MudLink Href="Bills" Typo="Typo.caption">add one</MudLink>
+                    to pay it with a
                     rule.
                 </MudText>
             }
             @if (DebtNames.Count == 0 && Model.Actions.Exists(static x => x.Type == RuleActionType.PayDebt))
             {
                 <MudText Typo="Typo.caption" Class="mud-text-secondary">
-                    You have no debts yet, <MudLink Href="Debts" Typo="Typo.caption">add one</MudLink> to pay it off
+                    You have no debts yet,
+                    <MudLink Href="Debts" Typo="Typo.caption">add one</MudLink>
+                    to pay it off
                     with a rule.
                 </MudText>
             }
@@ -160,7 +167,8 @@
             }
             <div>
                 <MudButton Variant="Variant.Text" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Add"
-                           OnClick="@AddAction">Add action</MudButton>
+                           OnClick="@AddAction">Add action
+                </MudButton>
             </div>
         </div>
     </Section>

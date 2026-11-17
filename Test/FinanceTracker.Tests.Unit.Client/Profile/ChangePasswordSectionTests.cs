@@ -74,7 +74,8 @@ public class ChangePasswordSectionTests : ComponentTestBase
 
         // Assert
         cut.WaitForState(() => cut.Markup.Contains("The passwords don't match", StringComparison.Ordinal));
-        await _profileService.DidNotReceive().ChangePasswordAsync(Arg.Any<ChangePassword>(), Arg.Any<CancellationToken>());
+        await _profileService.DidNotReceive()
+            .ChangePasswordAsync(Arg.Any<ChangePassword>(), Arg.Any<CancellationToken>());
     }
 
     private static async Task FillAsync(IRenderedComponent<ChangePasswordSection> cut, string current,

@@ -45,11 +45,14 @@
                          AriaLabel="@($"Actions for {context.Name}")">
                     <MudMenuItem Icon="@Icons.Material.Outlined.Edit" Href="@($"Rules/{context.Id}")">Edit</MudMenuItem>
                     <MudMenuItem Icon="@Icons.Material.Outlined.ArrowUpward" Disabled="@(index == 0)"
-                                 OnClick="@(() => MoveAsync(context, index - 1))">Move up</MudMenuItem>
+                                 OnClick="@(() => MoveAsync(context, index - 1))">Move up
+                    </MudMenuItem>
                     <MudMenuItem Icon="@Icons.Material.Outlined.ArrowDownward" Disabled="@(index == Rules.Count - 1)"
-                                 OnClick="@(() => MoveAsync(context, index + 1))">Move down</MudMenuItem>
+                                 OnClick="@(() => MoveAsync(context, index + 1))">Move down
+                    </MudMenuItem>
                     <MudMenuItem Icon="@Icons.Material.Outlined.Delete"
-                                 OnClick="@(() => OnDelete.InvokeAsync(context))">Delete</MudMenuItem>
+                                 OnClick="@(() => OnDelete.InvokeAsync(context))">Delete
+                    </MudMenuItem>
                 </MudMenu>
             </div>
         </ItemRenderer>

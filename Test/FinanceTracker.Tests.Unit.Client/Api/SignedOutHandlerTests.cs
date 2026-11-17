@@ -1,7 +1,6 @@
 using System.Net;
 using Bunit.TestDoubles;
 using FinanceTracker.Client.Api;
-using FinanceTracker.Tests.Unit.Shared;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 

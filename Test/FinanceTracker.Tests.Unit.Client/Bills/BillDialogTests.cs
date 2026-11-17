@@ -7,13 +7,13 @@ using FinanceTracker.Contracts.Validation;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
-using FinanceTracker.Tests.Unit.Shared;
 
 namespace FinanceTracker.Tests.Unit.Client.Bills;
 
 public class BillDialogTests : ComponentTestBase
 {
-    private static readonly TransactionAccountFilter Current = new() { AccountId = Guid.NewGuid(), AccountName = "Current" };
+    private static readonly TransactionAccountFilter Current = new()
+        { AccountId = Guid.NewGuid(), AccountName = "Current" };
 
     private IRenderedComponent<MudDialogProvider> _dialogs = null!;
     private IDialogReference _dialog = null!;

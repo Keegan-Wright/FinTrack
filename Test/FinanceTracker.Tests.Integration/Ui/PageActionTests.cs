@@ -177,9 +177,12 @@ public class PageActionTests : UiTestBase
         // Arrange, paid on the last working day of each of the last three months, which they follow
         SignedInUser user = await RegisterSeededUserAsync();
         DateOnly today = TodayFor(user);
-        DateOnly[] payDays = [.. Enumerable.Range(1, 3)
-            .Select(x => new DateOnly(today.Year, today.Month, 1).AddMonths(-x))
-            .Select(static x => WorkingDays.LastIn(x.Year, x.Month))];
+        DateOnly[] payDays =
+        [
+            .. Enumerable.Range(1, 3)
+                .Select(x => new DateOnly(today.Year, today.Month, 1).AddMonths(-x))
+                .Select(static x => WorkingDays.LastIn(x.Year, x.Month))
+        ];
         foreach (DateOnly payDay in payDays)
         {
             await Scenario.Do(s => s.TransactionScenario.WithTransaction($"pay-{payDay}", SeededUser.Current,

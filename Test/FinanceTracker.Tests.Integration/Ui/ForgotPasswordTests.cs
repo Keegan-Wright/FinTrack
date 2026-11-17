@@ -107,7 +107,8 @@ public partial class ForgotPasswordTests : UiTestBase
             .ToHaveTextAsync("Check your email");
 
         // Assert, the same page as when one's sent, so it doesn't say which accounts have a password
-        await Assert.That(await App.Mail.HasAnyAsync(email, AccountEmails.ResetPasswordSubject, CancellationToken)).IsFalse();
+        await Assert.That(await App.Mail.HasAnyAsync(email, AccountEmails.ResetPasswordSubject, CancellationToken))
+            .IsFalse();
     }
 
     [GeneratedRegex(@"Choose a new password: (?<link>\S+)")]

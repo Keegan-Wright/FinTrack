@@ -8,9 +8,9 @@ using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Fakers;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using DomainRule = FinanceTracker.Domain.Rules.Rule;
-using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Tests.Unit.Infrastructure.Services.Rules;
 
@@ -399,8 +399,14 @@ public class RulesServiceTests : InfrastructureTestBase
         SaveRule rule = new()
         {
             Name = "Mortgage",
-            Conditions = [new RuleCondition { Field = RuleField.Description, Operator = RuleOperator.Contains,
-                Value = "MORTGAGE" }],
+            Conditions =
+            [
+                new RuleCondition
+                {
+                    Field = RuleField.Description, Operator = RuleOperator.Contains,
+                    Value = "MORTGAGE"
+                }
+            ],
             Actions = [new RuleAction { Type = RuleActionType.HideClassification, BankClassification = "TV" }]
         };
 
@@ -582,10 +588,22 @@ public class RulesServiceTests : InfrastructureTestBase
     private SaveRule TagGroceries(string tagName) => new()
     {
         Name = "Groceries",
-        Conditions = [new RuleCondition { Field = RuleField.Description, Operator = RuleOperator.Contains,
-            Value = "GROCER STORE" }],
-        Actions = [new RuleAction { Type = RuleActionType.AddTag,
-            ClassificationId = Scenario.ClassificationMappings[tagName] }]
+        Conditions =
+        [
+            new RuleCondition
+            {
+                Field = RuleField.Description, Operator = RuleOperator.Contains,
+                Value = "GROCER STORE"
+            }
+        ],
+        Actions =
+        [
+            new RuleAction
+            {
+                Type = RuleActionType.AddTag,
+                ClassificationId = Scenario.ClassificationMappings[tagName]
+            }
+        ]
     };
 
     private static RuleCondition OnAccount(Guid accountId) =>

@@ -37,7 +37,8 @@
                 </MudText>
             }
             <div class="ft-event-form__pair">
-                <MudTextField T="decimal?" @bind-Value="_model.SavingsTarget" Label="Save for it" Disabled="@SavingsLocked"
+                <MudTextField T="decimal?" @bind-Value="_model.SavingsTarget" Label="Save for it"
+                              Disabled="@SavingsLocked"
                               For="@(() => _model.SavingsTarget)" InputMode="@(InputMode.@decimal)"
                               Adornment="Adornment.Start" AdornmentText="@CurrencySymbol" Clearable="true"
                               Validation="@(Validator.ValidateValue(_model, nameof(SaveCalendarEvent.SavingsTarget)))"

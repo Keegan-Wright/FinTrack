@@ -1,10 +1,7 @@
 using Bunit;
 using FinanceTracker.Client;
-using FinanceTracker.Client.Pages;
 using FinanceTracker.Contracts.Notifications;
 using FinanceTracker.Contracts.Services;
-using FinanceTracker.Contracts.Validation;
-using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
 using NSubstitute;

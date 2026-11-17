@@ -132,7 +132,8 @@ public partial class ProfileFlowTests : UiTestBase
         // Assert
         using (Assert.Multiple())
         {
-            await Assertions.Expect(page.Locator(".ft-page")).ToContainTextAsync("You sign in through your identity provider");
+            await Assertions.Expect(page.Locator(".ft-page"))
+                .ToContainTextAsync("You sign in through your identity provider");
             await Assert.That(await page.GetByLabel("New email").CountAsync()).IsEqualTo(0);
             await Assert.That(passwordChange).IsNull();
             await Assert.That(emailChange).IsNull();

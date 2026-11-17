@@ -30,8 +30,16 @@ public sealed class FakeTrueLayer : IDisposable
             .Given(Request.Create().WithPath("/auth/api/providers").UsingGet())
             .RespondWith(Json(JsonSerializer.Serialize(new[]
             {
-                new { provider_id = "ob-fake-bank", display_name = "Fake Bank", country = "uk", logo_url = "", scopes = new[] { "accounts", "balance", "transactions" } },
-                new { provider_id = "ob-other-bank", display_name = "Other Bank", country = "uk", logo_url = "", scopes = new[] { "accounts" } }
+                new
+                {
+                    provider_id = "ob-fake-bank", display_name = "Fake Bank", country = "uk", logo_url = "",
+                    scopes = new[] { "accounts", "balance", "transactions" }
+                },
+                new
+                {
+                    provider_id = "ob-other-bank", display_name = "Other Bank", country = "uk", logo_url = "",
+                    scopes = new[] { "accounts" }
+                }
             })));
 
     public Uri AuthUrl => new($"{Server.Url}/auth/");
@@ -76,7 +84,8 @@ public sealed class FakeTrueLayer : IDisposable
     /// </summary>
     public IReadOnlyList<ILogEntry> RequestsWithToken(string accessToken) =>
         Server.LogEntries
-            .Where(x => x.RequestMessage?.Headers?.TryGetValue("Authorization", out WireMockList<string>? values) == true &&
+            .Where(x => x.RequestMessage?.Headers?.TryGetValue("Authorization", out WireMockList<string>? values) ==
+                        true &&
                         values.Contains($"Bearer {accessToken}"))
             .ToList();
 

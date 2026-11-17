@@ -4,7 +4,6 @@ using FinanceTracker.Contracts.Account;
 using FinanceTracker.Contracts.Bills;
 using FinanceTracker.Contracts.Budgets;
 using FinanceTracker.Contracts.Calendar;
-using FinanceTracker.Contracts.Classifications;
 using FinanceTracker.Contracts.Debts;
 using FinanceTracker.Contracts.Exports;
 using FinanceTracker.Contracts.HouseholdMember;
@@ -56,7 +55,7 @@ public class BackupWriterTests : UnitTestBase
         BackupManifest manifest = Read<BackupManifest>(zip, "manifest.json");
         using (Assert.Multiple())
         {
-            await Assert.That(zip.Entries.Select(static x => x.FullName)).IsEquivalentTo([..Files, "manifest.json"]);
+            await Assert.That(zip.Entries.Select(static x => x.FullName)).IsEquivalentTo([.. Files, "manifest.json"]);
             await Assert.That(manifest.Format).IsEqualTo("fintrack-backup");
             await Assert.That(manifest.FormatVersion).IsEqualTo(1);
             await Assert.That(manifest.ExportedAt).IsEqualTo(new DateTimeOffset(Now));

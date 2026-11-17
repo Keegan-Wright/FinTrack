@@ -1,6 +1,6 @@
 using FinanceTracker.Domain.Debts;
-using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.NetWorth;
+using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Balances;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Generated.Attributes;

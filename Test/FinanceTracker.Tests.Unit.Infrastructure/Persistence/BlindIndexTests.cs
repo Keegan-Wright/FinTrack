@@ -52,9 +52,11 @@ public class BlindIndexTests : InfrastructureTestBase
         }
 
         // Assert
-        await using FinanceTrackerContext assertContext = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        await using FinanceTrackerContext
+            assertContext = await DbContextFactory.CreateDbContextAsync(CancellationToken);
         string blindIndex = await assertContext.BankTransactions
-            .Select(static x => EF.Property<string>(x, EntityTypeBuilderExtensions.BlindIndexPropertyName(nameof(BankTransaction.ExternalId))))
+            .Select(static x => EF.Property<string>(x,
+                EntityTypeBuilderExtensions.BlindIndexPropertyName(nameof(BankTransaction.ExternalId))))
             .SingleAsync(CancellationToken);
 
         await Assert.That(blindIndex).IsEqualTo(ColumnEncryptionService.ComputeBlindIndex("renamed-id"));

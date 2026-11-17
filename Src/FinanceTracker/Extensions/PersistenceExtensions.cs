@@ -16,19 +16,20 @@ public static class PersistenceExtensions
         {
             builder.Services.AddDbContextFactory<FinanceTrackerContext>((_, options) =>
             {
-                options.UseNpgsql(builder.Configuration.GetFinTrackDatabaseConnectionString(), npgsqlDbContextOptionsBuilder =>
-                {
-                    npgsqlDbContextOptionsBuilder.MigrationsAssembly("FinanceTracker.Infrastructure.Migrations");
-                    npgsqlDbContextOptionsBuilder.EnableRetryOnFailure();
-                    npgsqlDbContextOptionsBuilder.CommandTimeout(FinanceTrackerContext.CommandTimeoutSeconds);
-                });
+                options.UseNpgsql(builder.Configuration.GetFinTrackDatabaseConnectionString(),
+                    npgsqlDbContextOptionsBuilder =>
+                    {
+                        npgsqlDbContextOptionsBuilder.MigrationsAssembly("FinanceTracker.Infrastructure.Migrations");
+                        npgsqlDbContextOptionsBuilder.EnableRetryOnFailure();
+                        npgsqlDbContextOptionsBuilder.CommandTimeout(FinanceTrackerContext.CommandTimeoutSeconds);
+                    });
             });
 
             builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
             EncryptionConfiguration encryptionConfig = EncryptionConfiguration.Parse(
                 builder.Configuration.GetValue<string>(FinTrackEnvironment.EncryptionKeys)
-                    ?? throw new InvalidOperationException($"{FinTrackEnvironment.EncryptionKeys} isn't configured."),
+                ?? throw new InvalidOperationException($"{FinTrackEnvironment.EncryptionKeys} isn't configured."),
                 builder.Configuration.GetValue<int>(FinTrackEnvironment.EncryptionCurrentKeyId));
 
             builder.Services.AddSingleton(encryptionConfig);

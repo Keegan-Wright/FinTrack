@@ -37,7 +37,8 @@ public class UsersPageTests : ComponentTestBase
         Services.AddSingleton(_usersService);
         Services.AddSingleton(TimeProvider.System);
         JSInterop.Mode = JSRuntimeMode.Loose;
-        _usersService.GetUsersAsync(Arg.Any<CancellationToken>()).Returns(new[] { Provider, Local }.ToAsyncEnumerable());
+        _usersService.GetUsersAsync(Arg.Any<CancellationToken>())
+            .Returns(new[] { Provider, Local }.ToAsyncEnumerable());
     }
 
     [Test]
@@ -159,7 +160,8 @@ public class UsersPageTests : ComponentTestBase
         Render<UsersPage>(p => p.AddCascadingValue(new ApplicationState()));
 
     private static AngleSharp.Dom.IElement Row(IRenderedComponent<UsersPage> cut, string username) =>
-        cut.FindAll(".ft-users__row").Single(x => x.QuerySelector(".ft-users__username")!.TextContent.Trim() == username);
+        cut.FindAll(".ft-users__row")
+            .Single(x => x.QuerySelector(".ft-users__username")!.TextContent.Trim() == username);
 
     private static AngleSharp.Dom.IElement RowButton(IRenderedComponent<UsersPage> cut, string username, string text) =>
         Row(cut, username).QuerySelectorAll("button").Single(x => x.TextContent.Trim() == text);

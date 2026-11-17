@@ -1,10 +1,8 @@
-using FinanceTracker.Contracts.Classifications;
 using FinanceTracker.Contracts.HouseholdMember;
 using FinanceTracker.Contracts.Sharing;
 using FinanceTracker.Domain.Bills;
 using FinanceTracker.Domain.Notifications;
 using FinanceTracker.Domain.OpenBanking.Accounts;
-using FinanceTracker.Domain.OpenBanking.Balances;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.HouseholdMembers;
@@ -85,8 +83,10 @@ public class SharedNoticesTests : InfrastructureTestBase
         await BillNotices(Alex, TimeProvider.System).NotifyAsync(CancellationToken);
 
         // Assert
-        await Assert.That(_raised).IsEquivalentTo([(UserOf(Alex), NotificationKind.BillDueSoon,
-            "Sam Taylor's Rent is due tomorrow")]);
+        await Assert.That(_raised).IsEquivalentTo([
+            (UserOf(Alex), NotificationKind.BillDueSoon,
+                "Sam Taylor's Rent is due tomorrow")
+        ]);
     }
 
     [Test]
@@ -142,8 +142,10 @@ public class SharedNoticesTests : InfrastructureTestBase
             TimeProvider.System, Notifier(Alex)).NotifyAsync(CancellationToken);
 
         // Assert
-        await Assert.That(_raised).IsEquivalentTo([(UserOf(Alex), NotificationKind.LowBalance,
-            "Joint · Sam Taylor's is below £100.00")]);
+        await Assert.That(_raised).IsEquivalentTo([
+            (UserOf(Alex), NotificationKind.LowBalance,
+                "Joint · Sam Taylor's is below £100.00")
+        ]);
     }
 
     [Test]
@@ -161,8 +163,10 @@ public class SharedNoticesTests : InfrastructureTestBase
             TimeProvider.System, Notifier(Alex)).NotifyAsync(CancellationToken);
 
         // Assert
-        await Assert.That(_raised).IsEquivalentTo([(UserOf(Alex), NotificationKind.LargeTransaction,
-            "£750.00 paid to SOFA SHOP")]);
+        await Assert.That(_raised).IsEquivalentTo([
+            (UserOf(Alex), NotificationKind.LargeTransaction,
+                "£750.00 paid to SOFA SHOP")
+        ]);
     }
 
     [Test]

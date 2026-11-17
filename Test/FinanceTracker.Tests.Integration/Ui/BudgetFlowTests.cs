@@ -26,7 +26,8 @@ public class BudgetFlowTests : UiTestBase
         await Assertions.Expect(dialog).ToBeVisibleAsync();
         await dialog.GetByLabel("Name").FillAsync("Weekly shop");
         await dialog.GetByRole(AriaRole.Combobox, new LocatorGetByRoleOptions { Name = "Tags it covers" }).ClickAsync();
-        await page.Locator(".mud-popover-open .mud-list-item").Filter(new LocatorFilterOptions { HasText = "Food shop" })
+        await page.Locator(".mud-popover-open .mud-list-item")
+            .Filter(new LocatorFilterOptions { HasText = "Food shop" })
             .ClickAsync();
         await page.Keyboard.PressAsync("Escape");
         await dialog.GetByLabel("Monthly limit").FillAsync("400");

@@ -17,7 +17,8 @@
     <Actions>
         <SharingViewSwitch/>
         <MudButton Href="ProviderSetup" Variant="Variant.Outlined" Color="Color.Primary"
-                   StartIcon="@Icons.Material.Outlined.Add">Connect a bank</MudButton>
+                   StartIcon="@Icons.Material.Outlined.Add">Connect a bank
+        </MudButton>
     </Actions>
 </PageHeader>
 
@@ -86,6 +87,7 @@ else
 
         AppState.CollapsedProviders.Add(provider);
     }
+
     private List<AccountBalanceHistory>? _historiesFrom;
 
     protected override async Task OnInitializedAsync()

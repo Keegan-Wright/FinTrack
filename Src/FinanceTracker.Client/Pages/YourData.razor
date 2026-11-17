@@ -32,7 +32,8 @@
                                    HelperText="@PeriodDates(_statementMonth)">
                             @foreach (PayPeriod period in Periods)
                             {
-                                <MudSelectItem T="DateOnly" Value="@period.Month">@PeriodName(period.Month)</MudSelectItem>
+                                <MudSelectItem T="DateOnly"
+                                               Value="@period.Month">@PeriodName(period.Month)</MudSelectItem>
                             }
                         </MudSelect>
                         <MudButton Variant="Variant.Filled" Color="Color.Primary"
@@ -53,7 +54,9 @@
                 <ul class="ft-your-data__contents">
                     @foreach (string item in Contents)
                     {
-                        <li><MudText Typo="Typo.body2" HtmlTag="span">@item</MudText></li>
+                        <li>
+                            <MudText Typo="Typo.body2" HtmlTag="span">@item</MudText>
+                        </li>
                     }
                 </ul>
                 <MudText Typo="Typo.caption" Class="mud-text-secondary">
@@ -85,7 +88,8 @@
                 </MudText>
                 <div>
                     <MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="Transactions"
-                               StartIcon="@Icons.Material.Outlined.ReceiptLong">Go to transactions</MudButton>
+                               StartIcon="@Icons.Material.Outlined.ReceiptLong">Go to transactions
+                    </MudButton>
                 </div>
             </div>
         </ChildContent>

@@ -4,9 +4,9 @@ using System.Threading.RateLimiting;
 using FinanceTracker.AppHost.ServiceDefaults;
 using FinanceTracker.Extensions;
 using FinanceTracker.Infrastructure.OpenBanking.TrueLayer;
+using FinanceTracker.Tests.Unit.Shared;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
-using FinanceTracker.Tests.Unit.Shared;
 
 namespace FinanceTracker.Tests.Unit.FinanceTracker.Extensions;
 
@@ -141,7 +141,8 @@ public class OpenBankingExtensionsTests
     public async Task AddOpenBanking_BothClientsWaitLongerBeforeRetryingTooManyRequests(string clientName)
     {
         // Arrange
-        StubTrueLayerHandler trueLayer = new(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.TooManyRequests)));
+        StubTrueLayerHandler trueLayer =
+            new(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.TooManyRequests)));
         await using ServiceProvider services = BuildServices(clientName, trueLayer);
         using HttpClient client = services.GetRequiredService<IHttpClientFactory>().CreateClient(clientName);
         using CancellationTokenSource cancellation = new();

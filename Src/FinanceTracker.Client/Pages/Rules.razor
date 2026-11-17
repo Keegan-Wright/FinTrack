@@ -22,7 +22,8 @@
 <PageHeader Title="Rules" Subtitle="Tag transactions and decide transfers as they arrive">
     <Actions>
         <MudButton Href="Rules/new" Variant="Variant.Filled" Color="Color.Primary"
-                   StartIcon="@Icons.Material.Outlined.Add">New rule</MudButton>
+                   StartIcon="@Icons.Material.Outlined.Add">New rule
+        </MudButton>
     </Actions>
 </PageHeader>
 
@@ -207,8 +208,8 @@
                 _cts.Token);
             RuleList![RuleList.FindIndex(x => x.Id == rule.Id)] = saved;
             Snackbar.Add(turningOn
-                ? $"{rule.Name} is on for transactions from the next sync"
-                : $"{rule.Name} is off, the tags and transfer answers it gave have been taken back",
+                    ? $"{rule.Name} is on for transactions from the next sync"
+                    : $"{rule.Name} is off, the tags and transfer answers it gave have been taken back",
                 Severity.Success);
         }
         catch (Exception)

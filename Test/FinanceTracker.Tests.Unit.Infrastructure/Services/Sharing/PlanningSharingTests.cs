@@ -5,7 +5,6 @@ using FinanceTracker.Contracts.HouseholdMember;
 using FinanceTracker.Contracts.SavingsGoals;
 using FinanceTracker.Contracts.Sharing;
 using FinanceTracker.Domain.OpenBanking.Accounts;
-using FinanceTracker.Domain.OpenBanking.Balances;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Budgets;

@@ -7,7 +7,6 @@ using FinanceTracker.Tests.Unit.Client.Transactions;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
-using FinanceTracker.Tests.Unit.Shared;
 
 namespace FinanceTracker.Tests.Unit.Client.Bills;
 
@@ -76,7 +75,9 @@ public class PayBillDialogTests : ComponentTestBase
 
         // A bill reads with its account and amount after its name, e.g. "Energy · Current · £9.99 monthly"
         IElement option = _popovers.WaitForElements(".mud-popover-open .mud-list-item")
-            .Single(x => x.TextContent.Trim() == item || x.TextContent.Trim().StartsWith($"{item} · ", StringComparison.Ordinal));
+            .Single(x =>
+                x.TextContent.Trim() == item ||
+                x.TextContent.Trim().StartsWith($"{item} · ", StringComparison.Ordinal));
         await option.ClickAsync(new MouseEventArgs());
     }
 

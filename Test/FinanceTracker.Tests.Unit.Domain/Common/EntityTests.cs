@@ -5,7 +5,6 @@ namespace FinanceTracker.Tests.Unit.Domain.Common;
 [Category("Domain")]
 public class EntityTests
 {
-
     [Test]
     public async Task Entity_Construction_AssignsUniqueVersion7Identity()
     {

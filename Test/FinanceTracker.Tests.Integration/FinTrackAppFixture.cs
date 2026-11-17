@@ -1,7 +1,7 @@
+using System.Net;
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Testing;
-using System.Net;
 using FinanceTracker.AppHost.ServiceDefaults;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Encryption;
@@ -21,7 +21,6 @@ namespace FinanceTracker.Tests.Integration;
 /// </summary>
 public sealed class FinTrackAppFixture : AspireFixture<Projects.FinanceTracker_AppHost>
 {
-
     public static readonly EncryptionConfiguration EncryptionConfiguration = TestEncryptionKeys.Keyring();
 
     /// <summary>
@@ -134,7 +133,8 @@ public sealed class FinTrackAppFixture : AspireFixture<Projects.FinanceTracker_A
         string username = $"first-{Guid.NewGuid():N}";
         FinTrackClient client = new(WebBaseAddress);
 
-        HttpResponseMessage response = await client.RegisterAsync(username, SignedInUser.DefaultPassword, CancellationToken.None);
+        HttpResponseMessage response =
+            await client.RegisterAsync(username, SignedInUser.DefaultPassword, CancellationToken.None);
         if (response.StatusCode != HttpStatusCode.Redirect)
         {
             throw new InvalidOperationException($"Registering the first user returned {response.StatusCode}");

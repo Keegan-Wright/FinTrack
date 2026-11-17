@@ -16,5 +16,4 @@ public class ExternalOpenBankingProvider
     public string LogoUrl { get; set; } = string.Empty;
 
     public IAsyncEnumerable<string>? Scopes { get; set; }
-
 }

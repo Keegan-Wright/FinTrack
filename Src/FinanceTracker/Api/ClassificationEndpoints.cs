@@ -22,8 +22,8 @@ public static class ClassificationEndpoints
                 service.GetAllCustomClassificationsAsync(cancellationToken));
 
             classifications.MapGet("{id:guid}", async Task<Ok<GetClassification>> (Guid id,
-                        IClassificationService service, CancellationToken cancellationToken) =>
-                    TypedResults.Ok(await service.GetClassificationAsync(id, cancellationToken)));
+                    IClassificationService service, CancellationToken cancellationToken) =>
+                TypedResults.Ok(await service.GetClassificationAsync(id, cancellationToken)));
 
             classifications.MapPost(string.Empty, async Task<Ok<Classification>> (AddClassifications request,
                         IClassificationService service, CancellationToken cancellationToken) =>
@@ -48,11 +48,11 @@ public static class ClassificationEndpoints
                 .Validated<AddCustomClassificationsToTransaction>();
 
             classifications.MapDelete("{id:guid}", async Task<NoContent> (Guid id, IClassificationService service,
-                    CancellationToken cancellationToken) =>
-                {
-                    await service.RemoveCustomClassificationAsync(id, cancellationToken);
-                    return TypedResults.NoContent();
-                });
+                CancellationToken cancellationToken) =>
+            {
+                await service.RemoveCustomClassificationAsync(id, cancellationToken);
+                return TypedResults.NoContent();
+            });
 
             return api;
         }

@@ -49,19 +49,19 @@ public static class AutomationEndpoints
 
             // Runs the job now on top of its schedule, unless a run is already going
             jobs.MapPost("{function}/run", async Task<Results<Accepted, ProblemHttpResult>> (string function,
-                    IAutomationService service, CancellationToken cancellationToken) =>
+                IAutomationService service, CancellationToken cancellationToken) =>
+            {
+                try
                 {
-                    try
-                    {
-                        await service.RunNowAsync(function, cancellationToken);
-                    }
-                    catch (JobAlreadyRunningException ex)
-                    {
-                        return TypedResults.Problem(ex.Message, statusCode: StatusCodes.Status409Conflict);
-                    }
+                    await service.RunNowAsync(function, cancellationToken);
+                }
+                catch (JobAlreadyRunningException ex)
+                {
+                    return TypedResults.Problem(ex.Message, statusCode: StatusCodes.Status409Conflict);
+                }
 
-                    return TypedResults.Accepted((string?)null);
-                });
+                return TypedResults.Accepted((string?)null);
+            });
 
             RouteGroupBuilder runs = api.MapGroup(ApiRoutes.AutomationRuns)
                 .RequireAuthorization(policy => policy.RequireRole(FinTrackRoles.Admin));

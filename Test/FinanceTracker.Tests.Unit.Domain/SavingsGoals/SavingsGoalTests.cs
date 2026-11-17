@@ -6,13 +6,13 @@ namespace FinanceTracker.Tests.Unit.Domain.SavingsGoals;
 [Category("Domain")]
 public class SavingsGoalTests
 {
-
     [Test]
     [Arguments("", 100, 100, 1000)]
     [Arguments("Test", -1, 100, 1000)]
     [Arguments("Test", 100, -1, 1000)]
     [Arguments("Test", 100, 100, -1)]
-    public void SavingsGoal_InvalidConstruction_Throws_ArgumentException(string name, decimal saved, decimal monthlyContribution, decimal target)
+    public void SavingsGoal_InvalidConstruction_Throws_ArgumentException(string name, decimal saved,
+        decimal monthlyContribution, decimal target)
     {
         Assert.Throws<ArgumentException>(() =>
             _ = new SavingsGoal(Guid.NewGuid(), name, saved, monthlyContribution, target, null));
@@ -52,7 +52,7 @@ public class SavingsGoalTests
     public async Task SavingsGoal_ChangeMonthlyContribution_ValidDecimal_DoesNotThrow()
     {
         var goal = new SavingsGoal(Guid.NewGuid(), "Test", 0m, 0m, 0m, null);
-        decimal newMonthlyContribution =  200m;
+        decimal newMonthlyContribution = 200m;
 
         goal.ChangeMonthlyContribution(newMonthlyContribution);
 
@@ -123,7 +123,7 @@ public class SavingsGoalTests
         goal.AddSavings(newSaved);
 
 
-       await Assert.That(goal.Saved).IsEqualTo(newSaved);
+        await Assert.That(goal.Saved).IsEqualTo(newSaved);
     }
 
     [Test]

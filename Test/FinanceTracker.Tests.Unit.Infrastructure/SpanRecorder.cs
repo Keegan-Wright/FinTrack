@@ -20,7 +20,8 @@ public sealed class SpanRecorder : IDisposable
         _listener = new ActivityListener
         {
             ShouldListenTo = static x => x.Name is FinTrackActivitySources.InfrastructureName or nameof(SpanRecorder),
-            Sample = static (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            Sample = static (ref ActivityCreationOptions<ActivityContext> _) =>
+                ActivitySamplingResult.AllDataAndRecorded,
             ActivityStopped = activity =>
             {
                 if (activity.TraceId == _traceId)

@@ -1,10 +1,10 @@
-using FinanceTracker.Infrastructure.Sharing;
 using FinanceTracker.Contracts.NetWorth;
 using FinanceTracker.Domain.Debts;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Balances;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.NetWorth;
+using FinanceTracker.Infrastructure.Sharing;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -95,8 +95,10 @@ public class NetWorthServiceTests : InfrastructureTestBase
 
         // Assert
         await Assert.That(history.Breakdown.Select(static x => (x.Name, x.Kind, x.Amount))).IsEquivalentTo(
-            [("Car loan", NetWorthItemKind.Debt, -900m), ("Current", NetWorthItemKind.Account, 500m),
-                ("Card", NetWorthItemKind.Card, -40m)],
+            [
+                ("Car loan", NetWorthItemKind.Debt, -900m), ("Current", NetWorthItemKind.Account, 500m),
+                ("Card", NetWorthItemKind.Card, -40m)
+            ],
             TUnit.Assertions.Enums.CollectionOrdering.Matching);
     }
 

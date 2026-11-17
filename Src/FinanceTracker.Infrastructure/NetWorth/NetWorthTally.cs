@@ -1,4 +1,4 @@
-    using FinanceTracker.Contracts.NetWorth;
+using FinanceTracker.Contracts.NetWorth;
 using FinanceTracker.Domain.OpenBanking.Balances;
 
 namespace FinanceTracker.Infrastructure.NetWorth;

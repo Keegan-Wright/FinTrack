@@ -80,7 +80,8 @@ public class AdminProvisionerTests : InfrastructureTestBase
         await Subject.EnsureAdminAsync();
 
         // Assert
-        await Assert.That(await UserManager.IsInRoleAsync(await FindUserAsync("existing"), FinTrackRoles.Admin)).IsTrue();
+        await Assert.That(await UserManager.IsInRoleAsync(await FindUserAsync("existing"), FinTrackRoles.Admin))
+            .IsTrue();
     }
 
     [Test]

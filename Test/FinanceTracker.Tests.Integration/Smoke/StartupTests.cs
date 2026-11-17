@@ -68,6 +68,7 @@ public class StartupTests : IntegrationTestBase
             .SingleAsync(CancellationToken);
 
         // Assert
-        await Assert.That(int.Parse(maxConnections, CultureInfo.InvariantCulture)).IsEqualTo(FinTrackAppFixture.MaxConnections);
+        await Assert.That(int.Parse(maxConnections, CultureInfo.InvariantCulture))
+            .IsEqualTo(FinTrackAppFixture.MaxConnections);
     }
 }

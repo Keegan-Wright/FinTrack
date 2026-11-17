@@ -2,11 +2,11 @@ using System.Net;
 using FinanceTracker.Contracts.Automation;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Domain.OpenBanking.Accounts;
-using FinanceTracker.Tests.Integration.Http;
-using Microsoft.EntityFrameworkCore;
 using FinanceTracker.Infrastructure;
-using FinanceTracker.Tests.Unit.Shared.Scenarios;
+using FinanceTracker.Tests.Integration.Http;
 using FinanceTracker.Tests.Unit.Shared;
+using FinanceTracker.Tests.Unit.Shared.Scenarios;
+using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.Tests.Integration.Api;
 
@@ -185,7 +185,8 @@ public class AutomationApiTests : IntegrationTestBase
         IAutomationService service = ApiFor(admin).Get<IAutomationService>();
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => service.RunNowAsync(UniqueName("job"), CancellationToken));
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.RunNowAsync(UniqueName("job"), CancellationToken));
     }
 
     [Test]
@@ -282,7 +283,8 @@ public class AutomationApiTests : IntegrationTestBase
         while (true)
         {
             AutomationRunPage page = await service.GetRunsAsync(function, page: 0, pageSize: 25, timeout.Token);
-            AutomationRun? run = page.Runs.FirstOrDefault(x => x is { IsManual: true, Status: AutomationRunStatus.Done });
+            AutomationRun? run =
+                page.Runs.FirstOrDefault(x => x is { IsManual: true, Status: AutomationRunStatus.Done });
             if (run is not null)
             {
                 return run;

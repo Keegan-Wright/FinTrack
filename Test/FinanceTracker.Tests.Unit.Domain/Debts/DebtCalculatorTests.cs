@@ -23,7 +23,8 @@ public class DebtCalculatorTests
         ];
 
         // Act
-        DebtProgress progress = DebtCalculator.Progress(debt, null, payments, TimeZoneInfo.Utc, new DateOnly(2026, 3, 1));
+        DebtProgress progress =
+            DebtCalculator.Progress(debt, null, payments, TimeZoneInfo.Utc, new DateOnly(2026, 3, 1));
 
         // Assert
         using (Assert.Multiple())
@@ -59,7 +60,8 @@ public class DebtCalculatorTests
         BankTransaction payment = Paying(debt, -100m, new DateTime(2026, 1, 10));
 
         // Act
-        DebtProgress progress = DebtCalculator.Progress(debt, null, [payment], TimeZoneInfo.Utc, new DateOnly(2026, 2, 1));
+        DebtProgress progress =
+            DebtCalculator.Progress(debt, null, [payment], TimeZoneInfo.Utc, new DateOnly(2026, 2, 1));
 
         // Assert: 1000 - 100, plus 1% of 900
         await Assert.That(progress.Owed).IsEqualTo(909m);
@@ -78,7 +80,8 @@ public class DebtCalculatorTests
         ];
 
         // Act
-        DebtProgress progress = DebtCalculator.Progress(debt, null, payments, TimeZoneInfo.Utc, new DateOnly(2026, 2, 1));
+        DebtProgress progress =
+            DebtCalculator.Progress(debt, null, payments, TimeZoneInfo.Utc, new DateOnly(2026, 2, 1));
 
         // Assert
         using (Assert.Multiple())
@@ -99,7 +102,8 @@ public class DebtCalculatorTests
         ];
 
         // Act
-        DebtProgress progress = DebtCalculator.Progress(debt, null, payments, TimeZoneInfo.Utc, new DateOnly(2026, 1, 20));
+        DebtProgress progress =
+            DebtCalculator.Progress(debt, null, payments, TimeZoneInfo.Utc, new DateOnly(2026, 1, 20));
 
         // Assert
         await Assert.That(progress.Owed).IsEqualTo(850m);
@@ -234,7 +238,8 @@ public class DebtCalculatorTests
 
     [Test]
     public async Task OwedOn_BeforeItStarted_IsNothing() =>
-        await Assert.That(DebtCalculator.OwedOn(Loan(1000m, 0m, 100m), [], TimeZoneInfo.Utc, new DateOnly(2025, 12, 31)))
+        await Assert
+            .That(DebtCalculator.OwedOn(Loan(1000m, 0m, 100m), [], TimeZoneInfo.Utc, new DateOnly(2025, 12, 31)))
             .IsEqualTo(0m);
 
     [Test]

@@ -1,6 +1,5 @@
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Tests.Unit.Shared;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Logging;

@@ -41,5 +41,5 @@ public class RegisterRequest
     /// The password again, must match <see cref="Password"/>.
     /// </summary>
     [Description("Confirmation of the password to ensure accuracy")]
-    public string ConfirmPassword { get; set; }  = string.Empty;
+    public string ConfirmPassword { get; set; } = string.Empty;
 }

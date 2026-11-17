@@ -2,9 +2,6 @@ using FinanceTracker.Contracts.Auth;
 using FinanceTracker.Contracts.Validation;
 using FinanceTracker.Tests.Unit.Shared;
 using FluentValidation.Results;
-using TUnit.Assertions;
-using TUnit.Assertions.Extensions;
-using TUnit.Core;
 
 namespace FinanceTracker.Tests.Unit.Infrastructure.Validators;
 
@@ -116,7 +113,8 @@ public class RegisterRequestValidatorTests : UnitTestBase
             await Assert.That(result.IsValid).IsFalse();
             await Assert.That(result.Errors).Count().IsEqualTo(2);
             await Assert
-                .That(result.Errors.First(x => x.PropertyName == nameof(RegisterRequest.Email) && x.ErrorMessage == "Email is required")
+                .That(result.Errors.First(x =>
+                        x.PropertyName == nameof(RegisterRequest.Email) && x.ErrorMessage == "Email is required")
                     .ErrorMessage).IsEqualTo("Email is required");
         }
     }
@@ -228,7 +226,9 @@ public class RegisterRequestValidatorTests : UnitTestBase
             await Assert.That(result.IsValid).IsFalse();
             await Assert.That(result.Errors).Count().IsEqualTo(2);
             await Assert
-                .That(result.Errors.First(x => x.PropertyName == nameof(RegisterRequest.ConfirmPassword) && x.ErrorMessage == "Confirm password is required")
+                .That(result.Errors.First(x =>
+                        x.PropertyName == nameof(RegisterRequest.ConfirmPassword) &&
+                        x.ErrorMessage == "Confirm password is required")
                     .ErrorMessage).IsEqualTo("Confirm password is required");
         }
     }
@@ -285,5 +285,4 @@ public class RegisterRequestValidatorTests : UnitTestBase
             await Assert.That(result.Errors).Count().IsEqualTo(7);
         }
     }
-
 }

@@ -17,7 +17,8 @@
 <PageHeader Title="Tags" Subtitle="Your own labels for transactions, on top of the ones your bank sends">
     <Actions>
         <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Add"
-                   OnClick="@AddClassification">New tag</MudButton>
+                   OnClick="@AddClassification">New tag
+        </MudButton>
     </Actions>
 </PageHeader>
 
@@ -43,6 +44,7 @@
             {
                 <MudText Typo="Typo.body2" Class="mud-text-secondary">No tags match that search.</MudText>
             }
+
             <div class="ft-list">
                 @foreach (var classification in shown)
                 {
@@ -65,13 +67,15 @@
                                 @if (classification.CanChange)
                                 {
                                     <MudMenuItem Icon="@Icons.Material.Outlined.Edit"
-                                                 OnClick="@(() => RenameAsync(classification))">Rename</MudMenuItem>
+                                                 OnClick="@(() => RenameAsync(classification))">Rename
+                                    </MudMenuItem>
                                 }
                                 @* Only its owner can delete it, it'd come off their transactions too *@
                                 @if (classification.SharedBy is null)
                                 {
                                     <MudMenuItem Icon="@Icons.Material.Outlined.Delete"
-                                                 OnClick="@(() => DeleteAsync(classification))">Delete</MudMenuItem>
+                                                 OnClick="@(() => DeleteAsync(classification))">Delete
+                                    </MudMenuItem>
                                 }
                             </MudMenu>
                         }

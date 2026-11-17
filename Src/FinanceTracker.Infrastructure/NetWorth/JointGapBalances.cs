@@ -57,13 +57,15 @@ internal sealed class JointGapBalances
     {
         foreach (JointAccount joint in _joints.Where(x => x.BalanceFromHiddenOn(day)))
         {
-            if (Counted(joint.ShownAccountId, day, lastOwn, ownTotalHasIt: _view.OwnAccountIds.Contains(joint.ShownAccountId))
+            if (Counted(joint.ShownAccountId, day, lastOwn,
+                    ownTotalHasIt: _view.OwnAccountIds.Contains(joint.ShownAccountId))
                 is { } shown)
             {
                 tally.Remove(shown);
             }
 
-            if (Counted(joint.HiddenAccountId, day, lastOwn, ownTotalHasIt: _view.HiddenAccountIds.Contains(joint.HiddenAccountId))
+            if (Counted(joint.HiddenAccountId, day, lastOwn,
+                    ownTotalHasIt: _view.HiddenAccountIds.Contains(joint.HiddenAccountId))
                 is { } hidden)
             {
                 tally.Add(hidden);

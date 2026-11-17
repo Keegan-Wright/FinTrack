@@ -4,6 +4,10 @@ namespace FinanceTracker;
 /// Source generated log messages for the web app, see <c>FinanceTracker.Infrastructure.LoggerMessages</c> for the
 /// infrastructure equivalents.
 /// </summary>
+/// <remarks>
+/// The methods take the logger as a <c>this</c> parameter rather than sitting in an <c>extension</c> block, as the
+/// logging source generator only recognises the classic form.
+/// </remarks>
 public static partial class WebLoggerMessages
 {
     [LoggerMessage(LogLevel.Information, "User logged in")]
@@ -27,7 +31,8 @@ public static partial class WebLoggerMessages
     [LoggerMessage(LogLevel.Information, "Granted the admin role to user {userId}")]
     public static partial void LogAdminGranted(this ILogger logger, Guid userId);
 
-    [LoggerMessage(LogLevel.Warning, "Nobody is an admin and there are several users, grant the admin role in the database")]
+    [LoggerMessage(LogLevel.Warning,
+        "Nobody is an admin and there are several users, grant the admin role in the database")]
     public static partial void LogNoAdminAmongSeveralUsers(this ILogger logger);
 
     [LoggerMessage(LogLevel.Warning, "OIDC sign in rejected, {reason}")]

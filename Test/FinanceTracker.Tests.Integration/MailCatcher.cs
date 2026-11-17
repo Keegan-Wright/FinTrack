@@ -62,8 +62,8 @@ public sealed class MailCatcher : IDisposable
     private async Task<List<string>> FindAsync(string to, string subject, CancellationToken cancellationToken)
     {
         using JsonDocument found = await _http.GetFromJsonAsync<JsonDocument>(
-            $"api/v1/search?query={Uri.EscapeDataString($"to:\"{to}\"")}", cancellationToken)
-            ?? throw new InvalidOperationException("Mailpit gave no answer");
+                                       $"api/v1/search?query={Uri.EscapeDataString($"to:\"{to}\"")}", cancellationToken)
+                                   ?? throw new InvalidOperationException("Mailpit gave no answer");
 
         // Matched here rather than by Mailpit's search, which matches part of a subject
         return found.RootElement.GetProperty("messages").EnumerateArray()

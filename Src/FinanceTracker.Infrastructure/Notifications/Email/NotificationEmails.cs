@@ -1,8 +1,8 @@
 using FinanceTracker.Domain.Notifications;
 using FinanceTracker.Emails;
+using FinanceTracker.Emails.Templates;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
-using FinanceTracker.Emails.Templates;
 
 namespace FinanceTracker.Infrastructure.Notifications.Email;
 

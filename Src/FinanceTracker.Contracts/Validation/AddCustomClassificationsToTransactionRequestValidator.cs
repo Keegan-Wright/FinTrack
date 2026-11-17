@@ -10,7 +10,8 @@ namespace FinanceTracker.Contracts.Validation;
 /// </summary>
 [InjectionCategory(InjectionCategoryType.Validator, ServiceDestinationType.Server | ServiceDestinationType.Client)]
 [Scoped<IValidator<AddCustomClassificationsToTransaction>>]
-public class AddCustomClassificationsToTransactionRequestValidator : AbstractValidator<AddCustomClassificationsToTransaction>
+public class
+    AddCustomClassificationsToTransactionRequestValidator : AbstractValidator<AddCustomClassificationsToTransaction>
 {
     /// <summary>
     /// Sets up the rules.

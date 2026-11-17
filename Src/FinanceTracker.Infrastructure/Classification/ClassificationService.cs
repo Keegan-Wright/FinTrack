@@ -8,9 +8,9 @@ using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.Rules;
 using FinanceTracker.Domain.SavingsGoals;
 using FinanceTracker.Domain.Sharing;
-using FinanceTracker.Infrastructure.Sharing;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
+using FinanceTracker.Infrastructure.Sharing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -74,7 +74,8 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
         return new GetClassification { Tag = classification.Tag, ClassificationId = classification.Id };
     }
 
-    public async Task<Contracts.Classifications.Classification> AddCustomClassificationAsync(AddClassifications classification,
+    public async Task<Contracts.Classifications.Classification> AddCustomClassificationAsync(
+        AddClassifications classification,
         CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -89,7 +90,8 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
             cancellationToken);
         Logger.LogChanged(UserId, "created", "tag", newClassification.Id);
 
-        return new Contracts.Classifications.Classification { Tag = newClassification.Tag, ClassificationId = newClassification.Id };
+        return new Contracts.Classifications.Classification
+            { Tag = newClassification.Tag, ClassificationId = newClassification.Id };
     }
 
     public async Task<Contracts.Classifications.Classification> RenameCustomClassificationAsync(Guid id,
@@ -111,7 +113,8 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
         await NameCheck.SaveKeepingNamesApartAsync(context, NameTakenException.Tag, request.Tag, cancellationToken);
         Logger.LogChanged(UserId, "renamed", "tag", id);
 
-        return new Contracts.Classifications.Classification { Tag = classification.Tag, ClassificationId = classification.Id };
+        return new Contracts.Classifications.Classification
+            { Tag = classification.Tag, ClassificationId = classification.Id };
     }
 
     public async Task AddCustomClassificationsToTransactionAsync(

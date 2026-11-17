@@ -10,8 +10,13 @@ namespace FinanceTracker.Domain.Budgeting;
 /// <param name="Pending">How much of <see cref="Spent"/> is still pending.</param>
 /// <param name="ExpectedByNow">What spending at a steady pace through the month would have reached by today, all of
 /// <see cref="Available"/> for a past month and nothing for a future one.</param>
-public sealed record BudgetMonthResult(BudgetMonth Month, decimal Limit, decimal CarriedIn, decimal Spent,
-    decimal Pending, decimal ExpectedByNow)
+public sealed record BudgetMonthResult(
+    BudgetMonth Month,
+    decimal Limit,
+    decimal CarriedIn,
+    decimal Spent,
+    decimal Pending,
+    decimal ExpectedByNow)
 {
     /// <summary>
     /// What can be spent this month, the limit and what was carried in.

@@ -1,4 +1,3 @@
-using System.Net;
 using FinanceTracker.Domain.Identity;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Tests.Integration.Http;

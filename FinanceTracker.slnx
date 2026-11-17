@@ -1,57 +1,60 @@
 <Solution>
   <Folder Name="/Host/">
-    <Project Path="Src/FinanceTracker.AppHost.ServiceDefaults/FinanceTracker.AppHost.ServiceDefaults.csproj" />
-    <Project Path="Src/FinanceTracker.AppHost/FinanceTracker.AppHost.csproj" />
+    <Project Path="Src/FinanceTracker.AppHost.ServiceDefaults/FinanceTracker.AppHost.ServiceDefaults.csproj"/>
+    <Project Path="Src/FinanceTracker.AppHost/FinanceTracker.AppHost.csproj"/>
   </Folder>
-  <Project Path="Src/FinanceTracker.Infrastructure/FinanceTracker.Infrastructure.csproj" />
+  <Project Path="Src/FinanceTracker.Infrastructure/FinanceTracker.Infrastructure.csproj"/>
   <Folder Name="/Misc/">
-    <File Path=".editorconfig" />
-    <File Path=".gitignore" />
-    <File Path="Directory.Packages.props" />
+    <File Path=".editorconfig"/>
+    <File Path=".gitignore"/>
+    <File Path="Directory.Packages.props"/>
   </Folder>
   <Folder Name="/Misc/Automation/">
-    <File Path=".github\workflows\Build.yml" />
-    <File Path=".github\workflows\PublishDockerImages.yml" />
+    <File Path=".github\workflows\Build.yml"/>
+    <File Path=".github\workflows\PublishDockerImages.yml"/>
   </Folder>
   <Folder Name="/Misc/Docker/">
-    <File Path="Docker\.env" />
-    <File Path="Docker\docker-compose.yaml" />
-    <File Path="Src\Dockerfile" />
+    <File Path="Docker\.env"/>
+    <File Path="Docker\docker-compose.yaml"/>
+    <File Path="Src\Dockerfile"/>
   </Folder>
   <Folder Name="/Misc/Grafana/">
-    <File Path="Grafana\dashboards.yaml" />
+    <File Path="Grafana\dashboards.yaml"/>
   </Folder>
   <Folder Name="/Misc/Grafana/Dashboards/">
-    <File Path="Grafana\dashboards\fintrack\fintrack-logs.json" />
-    <File Path="Grafana\dashboards\fintrack\fintrack-notifications.json" />
-    <File Path="Grafana\dashboards\fintrack\fintrack-overview.json" />
-    <File Path="Grafana\dashboards\fintrack\fintrack-runtime.json" />
-    <File Path="Grafana\dashboards\fintrack\fintrack-sync.json" />
-    <File Path="Grafana\dashboards\fintrack\fintrack-users.json" />
+    <File Path="Grafana\dashboards\fintrack\fintrack-logs.json"/>
+    <File Path="Grafana\dashboards\fintrack\fintrack-notifications.json"/>
+    <File Path="Grafana\dashboards\fintrack\fintrack-overview.json"/>
+    <File Path="Grafana\dashboards\fintrack\fintrack-runtime.json"/>
+    <File Path="Grafana\dashboards\fintrack\fintrack-sync.json"/>
+    <File Path="Grafana\dashboards\fintrack\fintrack-users.json"/>
   </Folder>
   <Folder Name="/SourceGenerators/">
-    <Project Path="Src/Generators/FinanceTracker.Generated.Attributes/FinanceTracker.Generated.Attributes/FinanceTracker.Generated.Attributes.csproj" />
-    <Project Path="Src/Generators/FinanceTracker.Generated.DependencyInjection/FinanceTracker.Generated.DependencyInjection/FinanceTracker.Generated.DependencyInjection.csproj" />
-    <Project Path="Src/Generators/FinanceTracker.Generated.Enums/FinanceTracker.Generated.Enums/FinanceTracker.Generated.Enums.csproj" />
-    <Project Path="Src\Generators\FinanceTracker.Generated.Shared\FinanceTracker.Generated.Shared.csproj" />
+    <Project
+      Path="Src/Generators/FinanceTracker.Generated.Attributes/FinanceTracker.Generated.Attributes/FinanceTracker.Generated.Attributes.csproj"/>
+    <Project
+      Path="Src/Generators/FinanceTracker.Generated.DependencyInjection/FinanceTracker.Generated.DependencyInjection/FinanceTracker.Generated.DependencyInjection.csproj"/>
+    <Project
+      Path="Src/Generators/FinanceTracker.Generated.Enums/FinanceTracker.Generated.Enums/FinanceTracker.Generated.Enums.csproj"/>
+    <Project Path="Src\Generators\FinanceTracker.Generated.Shared\FinanceTracker.Generated.Shared.csproj"/>
   </Folder>
-  <Folder Name="/Tests/" />
-  <Project Path="Src/FinanceTracker.Infrastructure.Migrations/FinanceTracker.Infrastructure.Migrations.csproj" />
+  <Folder Name="/Tests/"/>
+  <Project Path="Src/FinanceTracker.Infrastructure.Migrations/FinanceTracker.Infrastructure.Migrations.csproj"/>
   <Folder Name="/Tests/Integration/">
-    <Project Path="Test/FinanceTracker.Tests.Integration/FinanceTracker.Tests.Integration.csproj" />
+    <Project Path="Test/FinanceTracker.Tests.Integration/FinanceTracker.Tests.Integration.csproj"/>
   </Folder>
   <Folder Name="/Tests/Unit/">
-    <Project Path="Test/FinanceTracker.Tests.Unit.Shared/FinanceTracker.Tests.Unit.Shared.csproj" />
-    <Project Path="Test\FinanceTracker.Tests.Unit.Client\FinanceTracker.Tests.Unit.Client.csproj" />
-    <Project Path="Test\FinanceTracker.Tests.Unit.Domain\FinanceTracker.Tests.Unit.Domain.csproj" />
-    <Project Path="Test\FinanceTracker.Tests.Unit.FinanceTracker\FinanceTracker.Tests.Unit.FinanceTracker.csproj" />
-    <Project Path="Test\FinanceTracker.Tests.Unit.Infrastructure\FinanceTracker.Tests.Unit.Infrastructure.csproj" />
+    <Project Path="Test/FinanceTracker.Tests.Unit.Shared/FinanceTracker.Tests.Unit.Shared.csproj"/>
+    <Project Path="Test\FinanceTracker.Tests.Unit.Client\FinanceTracker.Tests.Unit.Client.csproj"/>
+    <Project Path="Test\FinanceTracker.Tests.Unit.Domain\FinanceTracker.Tests.Unit.Domain.csproj"/>
+    <Project Path="Test\FinanceTracker.Tests.Unit.FinanceTracker\FinanceTracker.Tests.Unit.FinanceTracker.csproj"/>
+    <Project Path="Test\FinanceTracker.Tests.Unit.Infrastructure\FinanceTracker.Tests.Unit.Infrastructure.csproj"/>
   </Folder>
-  <Project Path="Src/FinanceTracker.Client/FinanceTracker.Client.csproj" />
-  <Project Path="Src/FinanceTracker.Contracts/FinanceTracker.Contracts.csproj" />
-  <Project Path="Src/FinanceTracker.Telemetry/FinanceTracker.Telemetry.csproj" />
-  <Project Path="Src/FinanceTracker.Design/FinanceTracker.Design.csproj" />
-  <Project Path="Src/FinanceTracker.Domain/FinanceTracker.Domain.csproj" />
-  <Project Path="Src/FinanceTracker.Emails/FinanceTracker.Emails.csproj" />
-  <Project Path="Src/FinanceTracker/FinanceTracker.csproj" />
+  <Project Path="Src/FinanceTracker.Client/FinanceTracker.Client.csproj"/>
+  <Project Path="Src/FinanceTracker.Contracts/FinanceTracker.Contracts.csproj"/>
+  <Project Path="Src/FinanceTracker.Telemetry/FinanceTracker.Telemetry.csproj"/>
+  <Project Path="Src/FinanceTracker.Design/FinanceTracker.Design.csproj"/>
+  <Project Path="Src/FinanceTracker.Domain/FinanceTracker.Domain.csproj"/>
+  <Project Path="Src/FinanceTracker.Emails/FinanceTracker.Emails.csproj"/>
+  <Project Path="Src/FinanceTracker/FinanceTracker.csproj"/>
 </Solution>

@@ -3,9 +3,9 @@ using FinanceTracker.Contracts.Budgets;
 using FinanceTracker.Contracts.Classifications;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Transactions;
+using FinanceTracker.Tests.Integration.Http;
 using FinanceTracker.Tests.Unit.Shared.Fakers;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
-using FinanceTracker.Tests.Integration.Http;
 
 namespace FinanceTracker.Tests.Integration.Api;
 

@@ -37,7 +37,8 @@
 {
     <Section>
         <MudText Typo="Typo.body2" Class="mud-text-secondary">
-            That rule doesn't exist any more. <MudLink Href="Rules" Typo="Typo.body2">Back to your rules</MudLink>
+            That rule doesn't exist any more.
+            <MudLink Href="Rules" Typo="Typo.body2">Back to your rules</MudLink>
         </MudText>
     </Section>
 }
@@ -62,7 +63,8 @@ else
                 @if (Id is not null && Shared is null)
                 {
                     <MudButton Variant="Variant.Text" Color="Color.Error" StartIcon="@Icons.Material.Outlined.Delete"
-                               OnClick="@DeleteAsync">Delete</MudButton>
+                               OnClick="@DeleteAsync">Delete
+                    </MudButton>
                 }
                 <span class="ft-rule-editor__spacer"></span>
                 <MudButton Href="Rules" Variant="Variant.Text">Cancel</MudButton>

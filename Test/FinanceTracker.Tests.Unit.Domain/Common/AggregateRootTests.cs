@@ -5,7 +5,6 @@ namespace FinanceTracker.Tests.Unit.Domain.Common;
 [Category("Domain")]
 public class AggregateRootTests
 {
-
     [Test]
     public void AggregateRoot_InvalidConstruction_Throws_ArgumentException()
     {
@@ -40,7 +39,6 @@ public class AggregateRootTests
     {
         public TestingAggregateRoot(Guid id) : base(id)
         {
-
         }
     }
 }

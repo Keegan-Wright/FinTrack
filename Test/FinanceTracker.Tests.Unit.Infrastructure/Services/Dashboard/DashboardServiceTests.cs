@@ -1,14 +1,14 @@
-using FinanceTracker.Infrastructure.Sharing;
 using FinanceTracker.Contracts.Dashboard;
 using FinanceTracker.Domain.Bills;
+using FinanceTracker.Domain.OpenBanking.Transfers;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Dashboard;
+using FinanceTracker.Infrastructure.Sharing;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Fakers;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
-using FinanceTracker.Domain.OpenBanking.Transfers;
 using BillState = FinanceTracker.Contracts.Bills.BillState;
 using DomainBill = FinanceTracker.Domain.Bills.Bill;
 
@@ -33,7 +33,8 @@ public class DashboardServiceTests : InfrastructureTestBase
         DashboardService subject = BuildSubject();
 
         // Act
-        SpentInTimePeriod result = await subject.GetSpentInTimePeriod(Now.AddDays(-1), Now.AddDays(1), CancellationToken);
+        SpentInTimePeriod result =
+            await subject.GetSpentInTimePeriod(Now.AddDays(-1), Now.AddDays(1), CancellationToken);
 
         // Assert
         using (Assert.Multiple())
@@ -57,7 +58,8 @@ public class DashboardServiceTests : InfrastructureTestBase
         DashboardService subject = BuildSubject();
 
         // Act
-        SpentInTimePeriod result = await subject.GetSpentInTimePeriod(Now.AddDays(-1), Now.AddDays(1), CancellationToken);
+        SpentInTimePeriod result =
+            await subject.GetSpentInTimePeriod(Now.AddDays(-1), Now.AddDays(1), CancellationToken);
 
         // Assert
         using (Assert.Multiple())
@@ -79,7 +81,8 @@ public class DashboardServiceTests : InfrastructureTestBase
         await SeedAccountAsync()
             .Do(s => s.TransactionScenario.WithTransaction("at-start", "main", Transaction(-1m, from)))
             .Do(s => s.TransactionScenario.WithTransaction("before-end", "main", Transaction(-2m, to.AddSeconds(-1))))
-            .Do(s => s.TransactionScenario.WithTransaction("before-start", "main", Transaction(-4m, from.AddSeconds(-1))))
+            .Do(s => s.TransactionScenario.WithTransaction("before-start", "main",
+                Transaction(-4m, from.AddSeconds(-1))))
             .Do(s => s.TransactionScenario.WithTransaction("at-end", "main", Transaction(-8m, to)));
 
         DashboardService subject = BuildSubject();
@@ -104,7 +107,8 @@ public class DashboardServiceTests : InfrastructureTestBase
         DashboardService subject = BuildSubject();
 
         // Act
-        SpentInTimePeriod result = await subject.GetSpentInTimePeriod(Now.AddDays(-1), Now.AddDays(1), CancellationToken);
+        SpentInTimePeriod result =
+            await subject.GetSpentInTimePeriod(Now.AddDays(-1), Now.AddDays(1), CancellationToken);
 
         // Assert
         await Assert.That(result.TotalOut).IsEqualTo(0m);
@@ -118,7 +122,8 @@ public class DashboardServiceTests : InfrastructureTestBase
         DashboardService subject = BuildSubject();
 
         // Act
-        SpentInTimePeriod result = await subject.GetSpentInTimePeriod(Now.AddDays(-1), Now.AddDays(1), CancellationToken);
+        SpentInTimePeriod result =
+            await subject.GetSpentInTimePeriod(Now.AddDays(-1), Now.AddDays(1), CancellationToken);
 
         // Assert
         using (Assert.Multiple())
@@ -230,5 +235,6 @@ public class DashboardServiceTests : InfrastructureTestBase
         new TransactionDetailsFaker().Generate() with { Amount = amount, OccurredAt = occurredAt, Category = category };
 
     private DashboardService BuildSubject(DateTime? now = null) => new(CurrentUserFor(Username), DbContextFactory,
-        NullLogger<DashboardService>.Instance, new FixedTimeProvider(now ?? Now), new AccountScope(CurrentUserFor(Username)));
+        NullLogger<DashboardService>.Instance, new FixedTimeProvider(now ?? Now),
+        new AccountScope(CurrentUserFor(Username)));
 }

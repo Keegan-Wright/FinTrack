@@ -85,7 +85,8 @@ public class BankTransactionSplitTests
         BankTransaction transaction = Build(40m);
 
         // Act
-        transaction.Split([new(25m, _groceries.Id, null), new(15m, _household.Id, null)], [_groceries, _household], transaction.UserId);
+        transaction.Split([new(25m, _groceries.Id, null), new(15m, _household.Id, null)], [_groceries, _household],
+            transaction.UserId);
 
         // Assert
         await Assert.That(transaction.Splits.Sum(static x => x.Amount)).IsEqualTo(40m);
@@ -108,7 +109,8 @@ public class BankTransactionSplitTests
         BankTransaction transaction = Build(-100m);
 
         Assert.Throws<ArgumentException>(() =>
-            transaction.Split([new((decimal)first, null, null), new((decimal)second, null, null)], [], transaction.UserId));
+            transaction.Split([new((decimal)first, null, null), new((decimal)second, null, null)], [],
+                transaction.UserId));
     }
 
     [Test]
@@ -152,7 +154,8 @@ public class BankTransactionSplitTests
     {
         // Arrange
         BankTransaction transaction = Build(-100m);
-        transaction.Split([new(-60m, _groceries.Id, null), new(-40m, _household.Id, null)], [_groceries, _household], transaction.UserId);
+        transaction.Split([new(-60m, _groceries.Id, null), new(-40m, _household.Id, null)], [_groceries, _household],
+            transaction.UserId);
 
         // Act
         bool unsplit = transaction.Unsplit();
@@ -198,7 +201,9 @@ public class BankTransactionSplitTests
         using (Assert.Multiple())
         {
             await Assert.That(transaction.Splits)
-                .IsEquivalentTo([new TransactionSplit(-60m, null, "Food"), new TransactionSplit(-40m, _household.Id, null)]);
+                .IsEquivalentTo([
+                    new TransactionSplit(-60m, null, "Food"), new TransactionSplit(-40m, _household.Id, null)
+                ]);
             await Assert.That(transaction.CustomClassificationIds).IsEquivalentTo([_household.Id]);
         }
     }

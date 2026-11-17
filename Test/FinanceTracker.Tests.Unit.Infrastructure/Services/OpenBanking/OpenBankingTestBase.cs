@@ -1,5 +1,3 @@
-using FinanceTracker.Contracts;
-using FinanceTracker.Contracts.OpenBanking;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Domain.OpenBanking.Transactions;
@@ -11,10 +9,6 @@ using FinanceTracker.Tests.Unit.Shared.Fakers;
 using FinanceTracker.Tests.Unit.Shared.Fakers.TrueLayer;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Diagnostics.Metrics.Testing;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
 namespace FinanceTracker.Tests.Unit.Infrastructure.Services.OpenBanking;
@@ -50,7 +44,7 @@ public abstract class OpenBankingTestBase : InfrastructureTestBase
         Scenario.Do(s => s.UserScenario.WithUser(Username))
             .Do(s => s.BankConnectionScenario.WithConnection("bank", Username, userId =>
             {
-                List<string> scopes = [..BankConnectionFaker.Scopes];
+                List<string> scopes = [.. BankConnectionFaker.Scopes];
                 if (withCards)
                 {
                     scopes.Add("cards");
@@ -71,14 +65,16 @@ public abstract class OpenBankingTestBase : InfrastructureTestBase
     {
         OpenBankingApi.GetAllCardsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(_ =>
             new ExternalOpenBankingListAllCardsResponse { Results = cards.ToAsyncEnumerable() });
-        OpenBankingApi.GetCardBalanceAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(_ =>
-            new ExternalOpenBankingGetAccountBalanceResponse { Results = (balances ?? []).ToAsyncEnumerable() });
+        OpenBankingApi.GetCardBalanceAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+                new ExternalOpenBankingGetAccountBalanceResponse { Results = (balances ?? []).ToAsyncEnumerable() });
         OpenBankingApi.GetCardTransactionsAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<DateTime?>(),
             Arg.Any<CancellationToken>()).Returns(_ =>
             new ExternalOpenBankingAccountTransactionsResponse { Results = (transactions ?? []).ToAsyncEnumerable() });
         OpenBankingApi.GetCardPendingTransactionsAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<DateTime?>(),
             Arg.Any<CancellationToken>()).Returns(_ =>
-            new ExternalOpenBankingAccountTransactionsResponse { Results = AsyncEnumerable.Empty<ExternalOpenBankingAccountTransaction>() });
+            new ExternalOpenBankingAccountTransactionsResponse
+                { Results = AsyncEnumerable.Empty<ExternalOpenBankingAccountTransaction>() });
     }
 
     /// <summary>
@@ -106,18 +102,24 @@ public abstract class OpenBankingTestBase : InfrastructureTestBase
     {
         OpenBankingApi.GetAllAccountsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(_ =>
             new ExternalOpenBankingListAllAccountsResponse { Results = (accounts ?? []).ToAsyncEnumerable() });
-        OpenBankingApi.GetAccountBalanceAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(_ =>
-            new ExternalOpenBankingGetAccountBalanceResponse { Results = (balances ?? []).ToAsyncEnumerable() });
-        OpenBankingApi.GetAccountStandingOrdersAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(_ =>
-            new ExternalOpenBankingAccountStandingOrdersResponse { Results = (standingOrders ?? []).ToAsyncEnumerable() });
-        OpenBankingApi.GetAccountDirectDebitsAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(_ =>
-            new ExternalOpenBankingAccountDirectDebitsResponse { Results = (directDebits ?? []).ToAsyncEnumerable() });
+        OpenBankingApi.GetAccountBalanceAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+                new ExternalOpenBankingGetAccountBalanceResponse { Results = (balances ?? []).ToAsyncEnumerable() });
+        OpenBankingApi.GetAccountStandingOrdersAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+                new ExternalOpenBankingAccountStandingOrdersResponse
+                    { Results = (standingOrders ?? []).ToAsyncEnumerable() });
+        OpenBankingApi.GetAccountDirectDebitsAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+                new ExternalOpenBankingAccountDirectDebitsResponse
+                    { Results = (directDebits ?? []).ToAsyncEnumerable() });
         OpenBankingApi.GetAccountTransactionsAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<DateTime?>(),
             Arg.Any<CancellationToken>()).Returns(_ =>
             new ExternalOpenBankingAccountTransactionsResponse { Results = (transactions ?? []).ToAsyncEnumerable() });
         OpenBankingApi.GetAccountPendingTransactionsAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<DateTime?>(),
             Arg.Any<CancellationToken>()).Returns(_ =>
-            new ExternalOpenBankingAccountTransactionsResponse { Results = (pendingTransactions ?? []).ToAsyncEnumerable() });
+            new ExternalOpenBankingAccountTransactionsResponse
+                { Results = (pendingTransactions ?? []).ToAsyncEnumerable() });
     }
 
     protected async Task<List<BankAccount>> LoadAccountsAsync()
@@ -145,17 +147,19 @@ public abstract class OpenBankingTestBase : InfrastructureTestBase
     {
         await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
         Guid id = Scenario.ConnectionMappings[connectionName];
-        return await context.BankConnections.Include(x => x.AccessTokens).SingleAsync(x => x.Id == id, CancellationToken);
+        return await context.BankConnections.Include(x => x.AccessTokens)
+            .SingleAsync(x => x.Id == id, CancellationToken);
     }
 
     protected void GivenCodeExchangeFor(ExternalOpenBankingAccountConnection external)
     {
         OpenBankingApi.ExchangeCodeForAccessTokenAsync("new-code", CancellationToken).Returns(
             new ExternalOpenBankingAccessResponse { AccessToken = Token, RefreshToken = "refresh", ExpiresIn = 3600 });
-        OpenBankingApi.GetProviderInformation(Token, CancellationToken).Returns(new ExternalOpenBankingAccountConnectionResponse
-        {
-            Results = new[] { external }.ToAsyncEnumerable()
-        });
+        OpenBankingApi.GetProviderInformation(Token, CancellationToken).Returns(
+            new ExternalOpenBankingAccountConnectionResponse
+            {
+                Results = new[] { external }.ToAsyncEnumerable()
+            });
     }
 
     protected static Func<Guid, BankConnection> Named(string name) => userId =>

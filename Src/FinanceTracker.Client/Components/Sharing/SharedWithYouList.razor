@@ -4,7 +4,8 @@
 <div class="ft-from">
     @if (Shares.TheirAccounts.Count == 0 && Shares.TheirItems.Count == 0)
     {
-        <MudText Typo="Typo.body2" Class="mud-text-secondary">@Shares.Name hasn't shared anything with you yet.</MudText>
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">@Shares.Name hasn't shared anything with you yet.
+        </MudText>
     }
 
     @if (Shares.TheirAccounts.Count > 0)

@@ -3,7 +3,6 @@ using FinanceTracker.Contracts.Classifications;
 using FinanceTracker.Contracts.NetWorth;
 using FinanceTracker.Contracts.Sharing;
 using FinanceTracker.Contracts.Transactions;
-using FinanceTracker.Domain.Classifications;
 using FinanceTracker.Domain.NetWorth;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Balances;
@@ -78,7 +77,10 @@ public class JointAccountGapsTests : InfrastructureTestBase
 
         await Sharing(Sam).ChangeAccountSharesAsync(_linkId, new ChangeAccountShares
         {
-            Accounts = [new AccountShareChoice { AccountId = Account("sam-joint"), Mode = Contracts.Sharing.ShareMode.ReadOnly }]
+            Accounts =
+            [
+                new AccountShareChoice { AccountId = Account("sam-joint"), Mode = Contracts.Sharing.ShareMode.ReadOnly }
+            ]
         }, CancellationToken);
         await Sharing(Alex).MergeJointAccountsAsync(_linkId, new MergeJointAccounts
         {
@@ -108,7 +110,8 @@ public class JointAccountGapsTests : InfrastructureTestBase
         {
             await Assert.That(asSam.Select(static x => (x.Description, x.AccountName)))
                 .IsEquivalentTo([("TESCO", "Joint"), ("COFFEE", "Joint"), ("RENT", "Joint")]);
-            await Assert.That(asSam.Select(static x => x.AccountId)).All().Satisfy(x => x.IsEqualTo(Account("sam-joint")));
+            await Assert.That(asSam.Select(static x => x.AccountId)).All()
+                .Satisfy(x => x.IsEqualTo(Account("sam-joint")));
             await Assert.That(asAlex.Select(static x => x.Description)).IsEquivalentTo(["TESCO", "COFFEE", "RENT"]);
             await Assert.That(samsCard.AccountBalance).IsEqualTo(97m);
             await Assert.That(samsCard.Transactions!.Select(static x => x.Description))
@@ -254,7 +257,8 @@ public class JointAccountGapsTests : InfrastructureTestBase
     /// <summary>
     /// Sam renews, and the sync brings in <paramref name="transactions"/> on Sam's copy.
     /// </summary>
-    private async Task RenewSamAsync(params (string Name, DateTime At, decimal Amount, string Description)[] transactions)
+    private async Task RenewSamAsync(
+        params (string Name, DateTime At, decimal Amount, string Description)[] transactions)
     {
         await Scenario.Do(s => s.BankConnectionScenario.WithConsentExpiresAt("sam-bank", DateTime.UtcNow.AddDays(90)));
         foreach ((string name, DateTime at, decimal amount, string description) in transactions)

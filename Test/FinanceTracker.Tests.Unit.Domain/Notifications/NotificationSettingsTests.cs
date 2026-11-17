@@ -29,7 +29,8 @@ public class NotificationSettingsTests
         // Assert
         using (Assert.Multiple())
         {
-            await Assert.That(settings.Emailed).IsEquivalentTo([NotificationKind.ConsentEnded, NotificationKind.SyncFailed]);
+            await Assert.That(settings.Emailed)
+                .IsEquivalentTo([NotificationKind.ConsentEnded, NotificationKind.SyncFailed]);
             await Assert.That(settings.IsEmailed(NotificationKind.ConsentEndingSoon)).IsFalse();
         }
     }

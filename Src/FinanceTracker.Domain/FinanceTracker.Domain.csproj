@@ -12,7 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="OpenBanking\" />
+    <Folder Include="OpenBanking\"/>
   </ItemGroup>
 
 </Project>

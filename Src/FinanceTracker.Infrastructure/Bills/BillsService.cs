@@ -1,11 +1,10 @@
 using System.Runtime.CompilerServices;
+using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.Bills;
 using FinanceTracker.Contracts.Services;
-using FinanceTracker.Contracts;
 using FinanceTracker.Domain.Bills;
 using FinanceTracker.Domain.Budgeting;
 using FinanceTracker.Domain.Common;
-using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.PayPeriods;
 using FinanceTracker.Domain.Rules;
@@ -208,7 +207,8 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
 
-        DomainBill bill = await context.Bills.OwnedBy(UserId).SingleOrNotFoundAsync(x => x.Id == id, "bill", cancellationToken);
+        DomainBill bill = await context.Bills.OwnedBy(UserId)
+            .SingleOrNotFoundAsync(x => x.Id == id, "bill", cancellationToken);
         if (bill.SourceId is not null)
         {
             throw new NotSupportedException(

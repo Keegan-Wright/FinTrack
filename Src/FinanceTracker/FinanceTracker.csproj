@@ -19,14 +19,14 @@
 
 
   <ItemGroup>
-    <PackageReference Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL"/>
     <PackageReference Include="Blazilla"/>
     <PackageReference Include="FluentValidation"/>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect"/>
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server"/>
     <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore"/>
     <PackageReference Include="Microsoft.Extensions.Caching.Hybrid"/>
-    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore"/>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -36,20 +36,20 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect"/>
-    <PackageReference Include="MudBlazor" />
+    <PackageReference Include="MudBlazor"/>
     <PackageReference Include="Extensions.MudBlazor.StaticInput"/>
-    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL"/>
     <PackageReference Include="Quartz"/>
   </ItemGroup>
 
 
   <ItemGroup>
-    <ProjectReference Include="..\FinanceTracker.Infrastructure.Migrations\FinanceTracker.Infrastructure.Migrations.csproj" />
+    <ProjectReference Include="..\FinanceTracker.Infrastructure.Migrations\FinanceTracker.Infrastructure.Migrations.csproj"/>
     <ProjectReference Include="..\FinanceTracker.AppHost.ServiceDefaults\FinanceTracker.AppHost.ServiceDefaults.csproj"/>
-    <ProjectReference Include="..\FinanceTracker.Client\FinanceTracker.Client.csproj" />
-    <ProjectReference Include="..\FinanceTracker.Contracts\FinanceTracker.Contracts.csproj" />
-    <ProjectReference Include="..\FinanceTracker.Infrastructure.Migrations\FinanceTracker.Infrastructure.Migrations.csproj" />
-    <ProjectReference Include="..\FinanceTracker.Infrastructure\FinanceTracker.Infrastructure.csproj" />
+    <ProjectReference Include="..\FinanceTracker.Client\FinanceTracker.Client.csproj"/>
+    <ProjectReference Include="..\FinanceTracker.Contracts\FinanceTracker.Contracts.csproj"/>
+    <ProjectReference Include="..\FinanceTracker.Infrastructure.Migrations\FinanceTracker.Infrastructure.Migrations.csproj"/>
+    <ProjectReference Include="..\FinanceTracker.Infrastructure\FinanceTracker.Infrastructure.csproj"/>
     <ProjectReference Include="..\Generators\FinanceTracker.Generated.DependencyInjection\FinanceTracker.Generated.DependencyInjection\FinanceTracker.Generated.DependencyInjection.csproj" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false"/>
 
     <CompilerVisibleProperty Include="FinTrackServiceDestination"/>

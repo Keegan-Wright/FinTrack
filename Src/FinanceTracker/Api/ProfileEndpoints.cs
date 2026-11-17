@@ -34,12 +34,12 @@ public static class ProfileEndpoints
             });
 
             profile.MapPut("password", async Task<Results<Ok<ProfileChange>, Conflict>> (ChangePassword request,
-                    IProfileService service, CancellationToken cancellationToken) =>
+                        IProfileService service, CancellationToken cancellationToken) =>
                     OkOrConflict(await service.ChangePasswordAsync(request, cancellationToken)))
                 .Validated<ChangePassword>();
 
             profile.MapPut("email", async Task<Results<Ok<ProfileChange>, Conflict>> (ChangeEmail request,
-                    IProfileService service, CancellationToken cancellationToken) =>
+                        IProfileService service, CancellationToken cancellationToken) =>
                     OkOrConflict(await service.ChangeEmailAsync(request, cancellationToken)))
                 .Validated<ChangeEmail>();
 

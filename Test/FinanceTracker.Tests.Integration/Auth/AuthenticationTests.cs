@@ -23,7 +23,8 @@ public class AuthenticationTests : IntegrationTestBase
         using FinTrackClient client = CreateClient();
 
         // Act
-        HttpResponseMessage response = await client.RegisterAsync(existing.Username, SignedInUser.DefaultPassword, CancellationToken);
+        HttpResponseMessage response =
+            await client.RegisterAsync(existing.Username, SignedInUser.DefaultPassword, CancellationToken);
 
         // Assert
         using (Assert.Multiple())
@@ -42,7 +43,8 @@ public class AuthenticationTests : IntegrationTestBase
         using FinTrackClient client = CreateClient();
 
         // Act
-        HttpResponseMessage response = await client.LoginAsync(user.Username, SignedInUser.DefaultPassword, CancellationToken);
+        HttpResponseMessage response =
+            await client.LoginAsync(user.Username, SignedInUser.DefaultPassword, CancellationToken);
 
         // Assert
         using (Assert.Multiple())
@@ -66,7 +68,8 @@ public class AuthenticationTests : IntegrationTestBase
         using (Assert.Multiple())
         {
             await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-            await Assert.That(await response.Content.ReadAsStringAsync(CancellationToken)).Contains("Invalid login attempt.");
+            await Assert.That(await response.Content.ReadAsStringAsync(CancellationToken))
+                .Contains("Invalid login attempt.");
             await Assert.That(client.IsSignedIn).IsFalse();
         }
     }
@@ -85,7 +88,8 @@ public class AuthenticationTests : IntegrationTestBase
         }
 
         // Act
-        HttpResponseMessage response = await client.LoginAsync(user.Username, SignedInUser.DefaultPassword, CancellationToken);
+        HttpResponseMessage response =
+            await client.LoginAsync(user.Username, SignedInUser.DefaultPassword, CancellationToken);
 
         // Assert
         using (Assert.Multiple())

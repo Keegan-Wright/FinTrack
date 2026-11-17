@@ -124,7 +124,8 @@ public class EmailSectionTests : ComponentTestBase
         await TestButton(cut).ClickAsync(new());
 
         // Assert
-        snackbars.WaitForState(() => snackbars.Markup.Contains($"Test email sent to {Address}", StringComparison.Ordinal));
+        snackbars.WaitForState(() =>
+            snackbars.Markup.Contains($"Test email sent to {Address}", StringComparison.Ordinal));
         await Assert.That(cut.Find(".ft-email-test").TextContent).Contains("Last email sent");
     }
 
@@ -132,10 +133,11 @@ public class EmailSectionTests : ComponentTestBase
     public async Task TestEmail_Fails_SaysWhyBesideTheButton()
     {
         // Arrange
-        _notificationsService.SendTestEmailAsync(Arg.Any<CancellationToken>()).Returns(Create(lastEmail: new DeliveryStatus
-        {
-            At = SentAt, Failure = "The mail server didn't accept FinTrack's sign in."
-        }));
+        _notificationsService.SendTestEmailAsync(Arg.Any<CancellationToken>()).Returns(Create(
+            lastEmail: new DeliveryStatus
+            {
+                At = SentAt, Failure = "The mail server didn't accept FinTrack's sign in."
+            }));
         IRenderedComponent<MudSnackbarProvider> snackbars = Render<MudSnackbarProvider>();
         IRenderedComponent<EmailSection> cut = RenderSection(Create());
 
@@ -143,7 +145,8 @@ public class EmailSectionTests : ComponentTestBase
         await TestButton(cut).ClickAsync(new());
 
         // Assert
-        snackbars.WaitForState(() => snackbars.Markup.Contains("Couldn't send the test email", StringComparison.Ordinal));
+        snackbars.WaitForState(() =>
+            snackbars.Markup.Contains("Couldn't send the test email", StringComparison.Ordinal));
         await Assert.That(cut.Find(".ft-email-test .mud-error-text").TextContent)
             .Contains("The mail server didn't accept FinTrack's sign in.");
     }

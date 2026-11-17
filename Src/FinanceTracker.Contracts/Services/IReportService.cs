@@ -1,4 +1,3 @@
-using FinanceTracker.Contracts.Reports;
 using FinanceTracker.Contracts.Reports.Account;
 using FinanceTracker.Contracts.Reports.Category;
 using FinanceTracker.Contracts.Reports.SpentInTimePeriod;

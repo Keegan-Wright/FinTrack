@@ -1,5 +1,4 @@
 using System.Collections.Specialized;
-using FinanceTracker;
 using FinanceTracker.BackgroundJobs;
 using FinanceTracker.Tests.Unit.Shared;
 using Microsoft.Extensions.DependencyInjection;

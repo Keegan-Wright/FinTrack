@@ -3,7 +3,6 @@ using System.Runtime.CompilerServices;
 using FinanceTracker.Contracts.Account;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Domain.OpenBanking.Accounts;
-using FinanceTracker.Domain.OpenBanking.Balances;
 using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Generated.Attributes;
@@ -20,8 +19,10 @@ public class AccountService : ServiceBase<AccountService>, IAccountService
 {
     private readonly IAccountScope _accountScope;
 
-    public AccountService(ICurrentUser currentUser, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
-        ILogger<AccountService> logger, IAccountScope accountScope) : base(currentUser, financeTrackerContextFactory, logger)
+    public AccountService(ICurrentUser currentUser,
+        IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
+        ILogger<AccountService> logger, IAccountScope accountScope) : base(currentUser, financeTrackerContextFactory,
+        logger)
     {
         _accountScope = accountScope;
     }

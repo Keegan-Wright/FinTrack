@@ -34,7 +34,8 @@ public class TransactionListTests : ComponentTestBase
         List<Transaction> transactions = Enumerable.Range(0, TransactionList.PageSize + 5)
             .Select(static x => Transaction($"Transaction {x}", -1m))
             .ToList();
-        IRenderedComponent<TransactionList> cut = Render<TransactionList>(p => p.Add(x => x.Transactions, transactions));
+        IRenderedComponent<TransactionList>
+            cut = Render<TransactionList>(p => p.Add(x => x.Transactions, transactions));
         int firstPage = cut.FindAll(".ft-transaction").Count;
 
         // Act

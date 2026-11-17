@@ -1,12 +1,11 @@
 using System.Runtime.CompilerServices;
+using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.HouseholdMember;
 using FinanceTracker.Contracts.Services;
-using FinanceTracker.Contracts;
 using FinanceTracker.Domain.Common;
 using FinanceTracker.Domain.Identity;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Transfers;
-using FinanceTracker.Domain.Sharing;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using FinanceTracker.Infrastructure.OpenBanking.Transfers;
@@ -133,7 +132,6 @@ public class HouseholdMemberService : ServiceBase<HouseholdMemberService>, IHous
         // Their transactions were transfers because of them, so count again or go back to review
         await _transferMatchingService.MatchAsync(cancellationToken);
         return true;
-
     }
 
     /// <exception cref="NameTakenException">Someone else in the household has the same first and last name.

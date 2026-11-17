@@ -23,8 +23,8 @@ public static class DebtEndpoints
                 service.GetDebtsAsync(cancellationToken));
 
             debts.MapGet("{id:guid}", async Task<Ok<DebtDetail>> (Guid id, IDebtsService service,
-                        CancellationToken cancellationToken) =>
-                    TypedResults.Ok(await service.GetDebtAsync(id, cancellationToken)));
+                    CancellationToken cancellationToken) =>
+                TypedResults.Ok(await service.GetDebtAsync(id, cancellationToken)));
 
             debts.MapPost(string.Empty, async Task<Ok<Debt>> (SaveDebt request, IDebtsService service,
                         CancellationToken cancellationToken) =>
@@ -39,27 +39,27 @@ public static class DebtEndpoints
                 .ConflictWhenNameTaken();
 
             debts.MapDelete("{id:guid}", async Task<NoContent> (Guid id, IDebtsService service,
-                    CancellationToken cancellationToken) =>
-                {
-                    await service.DeleteDebtAsync(id, cancellationToken);
-                    return TypedResults.NoContent();
-                });
+                CancellationToken cancellationToken) =>
+            {
+                await service.DeleteDebtAsync(id, cancellationToken);
+                return TypedResults.NoContent();
+            });
 
             debts.MapGet("{id:guid}/forecast", async Task<Results<Ok<DebtForecast>, ProblemHttpResult>> (Guid id,
-                    decimal monthlyPayment, IDebtsService service, CancellationToken cancellationToken) =>
+                decimal monthlyPayment, IDebtsService service, CancellationToken cancellationToken) =>
+            {
+                if (monthlyPayment <= 0)
                 {
-                    if (monthlyPayment <= 0)
-                    {
-                        return TypedResults.Problem("The monthly payment must be more than 0.",
-                            statusCode: StatusCodes.Status400BadRequest);
-                    }
+                    return TypedResults.Problem("The monthly payment must be more than 0.",
+                        statusCode: StatusCodes.Status400BadRequest);
+                }
 
-                    return TypedResults.Ok(await service.ForecastAsync(id, monthlyPayment, cancellationToken));
-                });
+                return TypedResults.Ok(await service.ForecastAsync(id, monthlyPayment, cancellationToken));
+            });
 
             debts.MapPut("payments/{transactionId:guid}", async Task<Ok<Transaction>> (Guid transactionId,
-                        PayDebt request, IDebtsService service, CancellationToken cancellationToken) =>
-                    TypedResults.Ok(await service.PayDebtAsync(transactionId, request, cancellationToken)));
+                    PayDebt request, IDebtsService service, CancellationToken cancellationToken) =>
+                TypedResults.Ok(await service.PayDebtAsync(transactionId, request, cancellationToken)));
 
             return api;
         }

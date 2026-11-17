@@ -1,25 +1,23 @@
-using FinanceTracker.Infrastructure.Sharing;
-using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Transactions;
 using FinanceTracker.Domain.Bills;
 using FinanceTracker.Domain.Debts;
+using FinanceTracker.Domain.Household;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Domain.OpenBanking.Transactions;
+using FinanceTracker.Domain.OpenBanking.Transfers;
+using FinanceTracker.Domain.Rules;
+using FinanceTracker.Domain.SavingsGoals;
+using FinanceTracker.Infrastructure;
+using FinanceTracker.Infrastructure.OpenBanking.Transfers;
+using FinanceTracker.Infrastructure.Sharing;
 using FinanceTracker.Infrastructure.Transactions;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Fakers;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
-using Microsoft.Extensions.Logging.Abstractions;
-using NSubstitute;
-using Transaction = FinanceTracker.Contracts.Transactions.Transaction;
-using FinanceTracker.Domain.OpenBanking.Transfers;
-using FinanceTracker.Domain.Household;
-using FinanceTracker.Infrastructure.OpenBanking.Transfers;
-using FinanceTracker.Domain.Rules;
-using FinanceTracker.Domain.SavingsGoals;
-using FinanceTracker.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
+using Transaction = FinanceTracker.Contracts.Transactions.Transaction;
 
 namespace FinanceTracker.Tests.Unit.Infrastructure.Services.Transactions;
 
@@ -162,7 +160,8 @@ public class TransactionsServiceTests : InfrastructureTestBase
             .Do(s => s.TransactionScenario.WithTransaction("rent", "main", Details("J SMITH 01JAN26")));
 
         await new TransferMatchingService(CurrentUserFor(Username), DbContextFactory,
-            NullLogger<TransferMatchingService>.Instance, TimeProvider.System, TestMetrics.Unobserved).MatchAsync(CancellationToken);
+                NullLogger<TransferMatchingService>.Instance, TimeProvider.System, TestMetrics.Unobserved)
+            .MatchAsync(CancellationToken);
 
         TransactionsService subject = BuildSubject();
 
@@ -227,7 +226,8 @@ public class TransactionsServiceTests : InfrastructureTestBase
         TransactionsService subject = BuildSubject();
 
         // Act
-        List<Transaction> transactions = await GetAllAsync(subject, new FilterTransactions { FromDate = from, ToDate = to });
+        List<Transaction> transactions =
+            await GetAllAsync(subject, new FilterTransactions { FromDate = from, ToDate = to });
 
         // Assert
         await Assert.That(transactions.Select(x => x.Description)).IsEquivalentTo(["Start", "End"]);
@@ -296,9 +296,11 @@ public class TransactionsServiceTests : InfrastructureTestBase
     {
         // Arrange
         await SeedAccountAsync()
-            .Do(s => s.TransactionScenario.WithTransaction("purchase", "main", Details("Purchase") with { Category = "PURCHASE" }))
+            .Do(s => s.TransactionScenario.WithTransaction("purchase", "main",
+                Details("Purchase") with { Category = "PURCHASE" }))
             .Do(s => s.TransactionScenario.WithTransaction("atm", "main", Details("Atm") with { Category = "ATM" }))
-            .Do(s => s.TransactionScenario.WithTransaction("bill", "main", Details("Bill") with { Category = "BILL_PAYMENT" }));
+            .Do(s => s.TransactionScenario.WithTransaction("bill", "main",
+                Details("Bill") with { Category = "BILL_PAYMENT" }));
 
         TransactionsService subject = BuildSubject();
 
@@ -497,7 +499,8 @@ public class TransactionsServiceTests : InfrastructureTestBase
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
             .Do(s => s.UserScenario.WithUser(OtherUsername))
             .Do(s => s.BankConnectionScenario.WithConnection("bank", Username, userId =>
-                new BankConnection(userId, "ob-bank", "My Bank", "code", ["accounts"], [1], DateTime.UtcNow, DateTime.UtcNow.AddDays(90))))
+                new BankConnection(userId, "ob-bank", "My Bank", "code", ["accounts"], [1], DateTime.UtcNow,
+                    DateTime.UtcNow.AddDays(90))))
             .Do(s => s.BankConnectionScenario.WithConnection("other-bank", OtherUsername));
 
         TransactionsService subject = BuildSubject();
@@ -521,9 +524,12 @@ public class TransactionsServiceTests : InfrastructureTestBase
     {
         // Arrange
         await SeedAccountAsync()
-            .Do(s => s.TransactionScenario.WithTransaction("debit-1", "main", Details("1") with { Type = TransactionType.Debit }))
-            .Do(s => s.TransactionScenario.WithTransaction("debit-2", "main", Details("2") with { Type = TransactionType.Debit }))
-            .Do(s => s.TransactionScenario.WithTransaction("credit", "main", Details("3") with { Type = TransactionType.Credit }));
+            .Do(s => s.TransactionScenario.WithTransaction("debit-1", "main",
+                Details("1") with { Type = TransactionType.Debit }))
+            .Do(s => s.TransactionScenario.WithTransaction("debit-2", "main",
+                Details("2") with { Type = TransactionType.Debit }))
+            .Do(s => s.TransactionScenario.WithTransaction("credit", "main",
+                Details("3") with { Type = TransactionType.Credit }));
 
         TransactionsService subject = BuildSubject();
 
@@ -542,12 +548,14 @@ public class TransactionsServiceTests : InfrastructureTestBase
         await SeedAccountAsync()
             .Do(s => s.TransactionScenario.WithTransaction("atm-1", "main", Details("1") with { Category = "ATM" }))
             .Do(s => s.TransactionScenario.WithTransaction("atm-2", "main", Details("2") with { Category = "ATM" }))
-            .Do(s => s.TransactionScenario.WithTransaction("purchase", "main", Details("3") with { Category = "PURCHASE" }));
+            .Do(s => s.TransactionScenario.WithTransaction("purchase", "main",
+                Details("3") with { Category = "PURCHASE" }));
 
         TransactionsService subject = BuildSubject();
 
         // Act
-        List<TransactionCategoryFilter> categories = await subject.GetCategoriesForTransactionFiltersAsync(CancellationToken)
+        List<TransactionCategoryFilter> categories = await subject
+            .GetCategoriesForTransactionFiltersAsync(CancellationToken)
             .ToListAsync(CancellationToken);
 
         // Assert
@@ -561,9 +569,12 @@ public class TransactionsServiceTests : InfrastructureTestBase
         await SeedAccountAsync()
             .Do(s => s.ClassificationScenario.WithClassification("holiday", Username, "Holiday"))
             .Do(s => s.ClassificationScenario.WithClassification("food", Username, "Food"))
-            .Do(s => s.TransactionScenario.WithTransaction("1", "main", Details("1") with { ProviderClassifications = ["Food", "Bills"] }))
-            .Do(s => s.TransactionScenario.WithTransaction("2", "main", Details("2") with { ProviderClassifications = ["Food"] }))
-            .Do(s => s.TransactionScenario.WithTransaction("3", "main", Details("3") with { ProviderClassifications = [] }))
+            .Do(s => s.TransactionScenario.WithTransaction("1", "main",
+                Details("1") with { ProviderClassifications = ["Food", "Bills"] }))
+            .Do(s => s.TransactionScenario.WithTransaction("2", "main",
+                Details("2") with { ProviderClassifications = ["Food"] }))
+            .Do(s => s.TransactionScenario.WithTransaction("3", "main",
+                Details("3") with { ProviderClassifications = [] }))
             .Do(s => s.UserScenario.WithUser(OtherUsername))
             .Do(s => s.ClassificationScenario.WithClassification("theirs", OtherUsername, "Theirs"));
 

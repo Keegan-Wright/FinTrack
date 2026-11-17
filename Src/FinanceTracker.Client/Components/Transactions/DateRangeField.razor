@@ -15,7 +15,8 @@
             <div class="ft-date-range__presets">
                 @foreach ((string label, DateRange range) in Presets)
                 {
-                    <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="@(() => Choose(range))">@label</MudButton>
+                    <MudButton Variant="Variant.Text" Size="Size.Small"
+                               OnClick="@(() => Choose(range))">@label</MudButton>
                 }
             </div>
             <MudDateRangePicker DateRange="@_draft" DateRangeChanged="@OnDraftChangedAsync"
@@ -45,13 +46,23 @@
         {
             DateTime? start = Value?.Start;
             DateTime? end = Value?.End;
-            return (start, end) switch
+
+            if (start is { } from && end is { } until)
             {
-                (null, null) => string.Empty,
-                ({ } s, null) => $"From {Format(s)}",
-                (null, { } e) => $"Until {Format(e)}",
-                ({ } s, { } e) => $"{Format(s)} – {Format(e)}"
-            };
+                return $"{Format(from)} – {Format(until)}";
+            }
+
+            if (start is { } onlyFrom)
+            {
+                return $"From {Format(onlyFrom)}";
+            }
+
+            if (end is { } onlyUntil)
+            {
+                return $"Until {Format(onlyUntil)}";
+            }
+
+            return string.Empty;
         }
     }
 

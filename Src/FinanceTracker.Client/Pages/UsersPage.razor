@@ -42,7 +42,8 @@
                                 @if (user.IsAdmin)
                                 {
                                     <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
-                                             Color="Color.Primary">Admin</MudChip>
+                                             Color="Color.Primary">Admin
+                                    </MudChip>
                                 }
                                 @if (user.IsYou)
                                 {
@@ -51,7 +52,8 @@
                                 @if (user.IsLocked)
                                 {
                                     <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
-                                             Color="Color.Warning" Icon="@Icons.Material.Outlined.Lock">Locked</MudChip>
+                                             Color="Color.Warning" Icon="@Icons.Material.Outlined.Lock">Locked
+                                    </MudChip>
                                 }
                             </div>
                             <MudText Typo="Typo.body2" Class="mud-text-secondary ft-users__email">
@@ -65,21 +67,24 @@
                                 <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
                                            StartIcon="@Icons.Material.Outlined.Key" Disabled="@_busy"
                                            aria-label="@($"Make a reset link for {user.Username}")"
-                                           OnClick="@(() => MakeResetLinkAsync(user))">Reset link</MudButton>
+                                           OnClick="@(() => MakeResetLinkAsync(user))">Reset link
+                                </MudButton>
                             }
                             @if (user.IsLocked)
                             {
                                 <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
                                            StartIcon="@Icons.Material.Outlined.LockOpen" Disabled="@_busy"
                                            aria-label="@($"Unlock {user.Username}")"
-                                           OnClick="@(() => UnlockAsync(user))">Unlock</MudButton>
+                                           OnClick="@(() => UnlockAsync(user))">Unlock
+                                </MudButton>
                             }
                             else if (!user.IsYou)
                             {
                                 <MudButton Variant="Variant.Text" Color="Color.Warning" Size="Size.Small"
                                            StartIcon="@Icons.Material.Outlined.Lock" Disabled="@_busy"
                                            aria-label="@($"Lock {user.Username}")"
-                                           OnClick="@(() => LockAsync(user))">Lock</MudButton>
+                                           OnClick="@(() => LockAsync(user))">Lock
+                                </MudButton>
                             }
                         </div>
                     </div>
@@ -178,12 +183,12 @@
         }
 
         await ChangeAsync(async () =>
-        {
-            if (!await UsersService.LockAsync(user.Id, _cts.Token))
             {
-                Snackbar.Add("You can't lock yourself out", Severity.Warning);
-            }
-        }, $"Couldn't lock {user.Username}, try again");
+                if (!await UsersService.LockAsync(user.Id, _cts.Token))
+                {
+                    Snackbar.Add("You can't lock yourself out", Severity.Warning);
+                }
+            }, $"Couldn't lock {user.Username}, try again");
     }
 
     internal Task UnlockAsync(UserSummary user) =>

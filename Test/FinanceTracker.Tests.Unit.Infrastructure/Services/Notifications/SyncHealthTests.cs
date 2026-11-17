@@ -4,8 +4,8 @@ using FinanceTracker.Infrastructure.Notifications;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
 namespace FinanceTracker.Tests.Unit.Infrastructure.Services.Notifications;
@@ -52,7 +52,8 @@ public class SyncHealthTests : InfrastructureTestBase
         // Assert
         using (Assert.Multiple())
         {
-            await Assert.That(logger.Entries.Select(x => x.Level)).IsEquivalentTo([LogLevel.Warning, LogLevel.Information]);
+            await Assert.That(logger.Entries.Select(x => x.Level))
+                .IsEquivalentTo([LogLevel.Warning, LogLevel.Information]);
             await Assert.That(logger.Entries[0].Message).Contains($"Connection {ConnectionId}")
                 .And.Contains("started failing to sync");
             await Assert.That(logger.Entries[1].Message).Contains("syncs again");

@@ -1,12 +1,11 @@
-using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.SavingsGoals;
+using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Encryption;
 using FinanceTracker.Infrastructure.Persistence;
-using FinanceTracker.Infrastructure;
+using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Fakers;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
-using FinanceTracker.Tests.Unit.Shared;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -86,11 +85,13 @@ public class EncryptionKeyRotatorTests : InfrastructureTestBase
         await using FinanceTrackerContext context = await rotatedFactory.CreateDbContextAsync(CancellationToken);
         SavingsGoal category = await context.SavingsGoals.SingleAsync(CancellationToken);
         string blindIndex = await context.BankTransactions
-            .Select(static x => EF.Property<string>(x, EntityTypeBuilderExtensions.BlindIndexPropertyName(nameof(BankTransaction.ExternalId))))
+            .Select(static x => EF.Property<string>(x,
+                EntityTypeBuilderExtensions.BlindIndexPropertyName(nameof(BankTransaction.ExternalId))))
             .SingleAsync(CancellationToken);
 
         string dayBlindIndex = await context.BankTransactions
-            .Select(static x => EF.Property<string>(x, EntityTypeBuilderExtensions.DayBlindIndexPropertyName(nameof(BankTransaction.OccurredAt))))
+            .Select(static x => EF.Property<string>(x,
+                EntityTypeBuilderExtensions.DayBlindIndexPropertyName(nameof(BankTransaction.OccurredAt))))
             .SingleAsync(CancellationToken);
 
         using (Assert.Multiple())

@@ -1,13 +1,11 @@
 using FinanceTracker.Contracts.Bills;
 using FinanceTracker.Contracts.Sharing;
-using FinanceTracker.Contracts.Transactions;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Bills;
 using FinanceTracker.Infrastructure.Notifications;
 using FinanceTracker.Infrastructure.Sharing;
-using FinanceTracker.Infrastructure.Transactions;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Fakers;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;

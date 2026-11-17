@@ -120,17 +120,23 @@ public class TransactionDataApiTests : IntegrationTestBase
         ITransactionsService service = ApiFor(user).Get<ITransactionsService>();
 
         // Act
-        List<TransactionAccountFilter> accounts = await service.GetAccountsForTransactionFiltersAsync(CancellationToken).ToListAsync(CancellationToken);
-        List<TransactionProviderFilter> providers = await service.GetProvidersForTransactionFiltersAsync(CancellationToken).ToListAsync(CancellationToken);
-        List<TransactionTypeFilter> types = await service.GetTypesForTransactionFiltersAsync(CancellationToken).ToListAsync(CancellationToken);
-        List<TransactionCategoryFilter> categories = await service.GetCategoriesForTransactionFiltersAsync(CancellationToken).ToListAsync(CancellationToken);
-        List<TransactionTagFilter> tags = await service.GetTagsForTransactionFiltersAsync(CancellationToken).ToListAsync(CancellationToken);
+        List<TransactionAccountFilter> accounts = await service.GetAccountsForTransactionFiltersAsync(CancellationToken)
+            .ToListAsync(CancellationToken);
+        List<TransactionProviderFilter> providers =
+            await service.GetProvidersForTransactionFiltersAsync(CancellationToken).ToListAsync(CancellationToken);
+        List<TransactionTypeFilter> types = await service.GetTypesForTransactionFiltersAsync(CancellationToken)
+            .ToListAsync(CancellationToken);
+        List<TransactionCategoryFilter> categories = await service
+            .GetCategoriesForTransactionFiltersAsync(CancellationToken).ToListAsync(CancellationToken);
+        List<TransactionTagFilter> tags = await service.GetTagsForTransactionFiltersAsync(CancellationToken)
+            .ToListAsync(CancellationToken);
 
         // Assert
         using (Assert.Multiple())
         {
             await Assert.That(accounts.Select(x => x.AccountId)).IsEquivalentTo([Scenario.AccountMappings["main"]]);
-            await Assert.That(providers.Select(x => x.ProviderId)).IsEquivalentTo([Scenario.ConnectionMappings["bank"]]);
+            await Assert.That(providers.Select(x => x.ProviderId))
+                .IsEquivalentTo([Scenario.ConnectionMappings["bank"]]);
             await Assert.That(types.Select(x => x.TransactionType)).IsEquivalentTo(["Debit", "Credit"]);
             await Assert.That(categories.Select(x => x.TransactionCategory)).IsEquivalentTo(["PURCHASE", "CREDIT"]);
             await Assert.That(tags.Select(x => x.Tag)).Contains("Groceries");
@@ -146,9 +152,12 @@ public class TransactionDataApiTests : IntegrationTestBase
         FilterTransactions request = new();
 
         // Act
-        List<SpentInTimePeriodReport> inPeriod = await service.GetSpentInTimePeriodReportAsync(request, CancellationToken).ToListAsync(CancellationToken);
-        List<SpentInCategoryReport> byCategory = await service.GetCategoryBreakdownReportAsync(request, CancellationToken).ToListAsync(CancellationToken);
-        List<SpentInAccountReport> byAccount = await service.GetAccountBreakdownReportAsync(request, CancellationToken).ToListAsync(CancellationToken);
+        List<SpentInTimePeriodReport> inPeriod = await service
+            .GetSpentInTimePeriodReportAsync(request, CancellationToken).ToListAsync(CancellationToken);
+        List<SpentInCategoryReport> byCategory = await service
+            .GetCategoryBreakdownReportAsync(request, CancellationToken).ToListAsync(CancellationToken);
+        List<SpentInAccountReport> byAccount = await service.GetAccountBreakdownReportAsync(request, CancellationToken)
+            .ToListAsync(CancellationToken);
 
         // Assert
         SpentInTimePeriodReport report = inPeriod.Single();
@@ -174,9 +183,11 @@ public class TransactionDataApiTests : IntegrationTestBase
         IDashboardService service = ApiFor(user).Get<IDashboardService>();
 
         // Act
-        SpentInTimePeriod spent = await service.GetSpentInTimePeriod(new DateTime(2026, 3, 1, 0, 0, 0, DateTimeKind.Utc),
+        SpentInTimePeriod spent = await service.GetSpentInTimePeriod(
+            new DateTime(2026, 3, 1, 0, 0, 0, DateTimeKind.Utc),
             new DateTime(2026, 3, 31, 0, 0, 0, DateTimeKind.Utc), CancellationToken);
-        List<UpcomingPayment> upcoming = await service.GetUpcomingPaymentsAsync(5, CancellationToken).ToListAsync(CancellationToken);
+        List<UpcomingPayment> upcoming =
+            await service.GetUpcomingPaymentsAsync(5, CancellationToken).ToListAsync(CancellationToken);
 
         // Assert
         using (Assert.Multiple())
@@ -288,8 +299,10 @@ public class TransactionDataApiTests : IntegrationTestBase
         using (Assert.Multiple())
         {
             await Assert.That(days).Count().IsEqualTo(31);
-            await Assert.That(days.Single(x => x.Date.Day == 10).Transactions.Select(x => x.Amount)).IsEquivalentTo([-3.50m]);
-            await Assert.That(days.Single(x => x.Date.Day == 25).Transactions.Select(x => x.Amount)).IsEquivalentTo([2000m]);
+            await Assert.That(days.Single(x => x.Date.Day == 10).Transactions.Select(x => x.Amount))
+                .IsEquivalentTo([-3.50m]);
+            await Assert.That(days.Single(x => x.Date.Day == 25).Transactions.Select(x => x.Amount))
+                .IsEquivalentTo([2000m]);
         }
     }
 
@@ -303,7 +316,6 @@ public class TransactionDataApiTests : IntegrationTestBase
             .Do(s => s.BankAccountScenario.WithAccount("main", "bank"))
             .Do(s => s.BankAccountScenario.WithBalance("main"))
             .Do(s => s.BillScenario.WithBill("rent", user.Username, "main", (userId, accountId) =>
-
                 new Bill(userId, accountId, "Rent", "Landlord", BillFrequency.Quarterly, 650m, rentDue,
                     BillSource.Manual)))
             .Do(s => s.TransactionScenario.WithTransaction("coffee", "main", Details(-3.50m, TransactionType.Debit,

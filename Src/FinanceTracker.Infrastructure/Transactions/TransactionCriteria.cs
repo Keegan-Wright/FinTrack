@@ -138,7 +138,8 @@ internal sealed record TransactionCriteria(
     /// <summary>
     /// Provider tags the user hasn't hidden followed by the names of applied custom classifications.
     /// </summary>
-    public static IEnumerable<string> GetTags(BankTransaction transaction, IReadOnlyDictionary<Guid, string> customTags) =>
+    public static IEnumerable<string>
+        GetTags(BankTransaction transaction, IReadOnlyDictionary<Guid, string> customTags) =>
         transaction.VisibleProviderClassifications.Concat(transaction.CustomClassificationIds
             .Select(id => customTags.GetValueOrDefault(id))
             .OfType<string>());

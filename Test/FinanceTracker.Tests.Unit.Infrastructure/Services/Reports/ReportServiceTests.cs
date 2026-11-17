@@ -1,24 +1,20 @@
-using FinanceTracker.Infrastructure.Sharing;
 using System.Globalization;
 using FinanceTracker.Contracts.Reports;
 using FinanceTracker.Contracts.Reports.Account;
 using FinanceTracker.Contracts.Reports.Category;
 using FinanceTracker.Contracts.Reports.SpentInTimePeriod;
-using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Transactions;
 using FinanceTracker.Domain.Classifications;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Transactions;
-using FinanceTracker.Domain.PayPeriods;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Reports;
+using FinanceTracker.Infrastructure.Sharing;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Fakers;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
-using NSubstitute;
-using FinanceTracker.Domain.OpenBanking.Transfers;
 
 namespace FinanceTracker.Tests.Unit.Infrastructure.Services.Reports;
 
@@ -148,7 +144,8 @@ public class ReportServiceTests : InfrastructureTestBase
 
         // Assert
         SpentInTimePeriodReportYearlyBreakdown year2025 = report.YearlyBreakdown.Single(x => x.Year == 2025);
-        SpentInTimePeriodReportMonthlyBreakdown january = year2025.MonthlyBreakdown.Single(x => x.Month == MonthName(1));
+        SpentInTimePeriodReportMonthlyBreakdown
+            january = year2025.MonthlyBreakdown.Single(x => x.Month == MonthName(1));
         SpentInTimePeriodReportDailyBreakdown january15 = january.DailyBreakdown.Single(x => x.Day == 15);
 
         using (Assert.Multiple())
@@ -205,7 +202,8 @@ public class ReportServiceTests : InfrastructureTestBase
         ReportService subject = BuildSubject();
 
         // Act
-        List<SpentInTimePeriodReport> reports = await subject.GetSpentInTimePeriodReportAsync(Request(), CancellationToken)
+        List<SpentInTimePeriodReport> reports = await subject
+            .GetSpentInTimePeriodReportAsync(Request(), CancellationToken)
             .ToListAsync(CancellationToken);
 
         // Assert
@@ -220,7 +218,8 @@ public class ReportServiceTests : InfrastructureTestBase
         ReportService subject = BuildSubject();
 
         // Act
-        List<SpentInTimePeriodReport> reports = await subject.GetSpentInTimePeriodReportAsync(Request(), CancellationToken)
+        List<SpentInTimePeriodReport> reports = await subject
+            .GetSpentInTimePeriodReportAsync(Request(), CancellationToken)
             .ToListAsync(CancellationToken);
 
         // Assert
@@ -233,17 +232,20 @@ public class ReportServiceTests : InfrastructureTestBase
         // Arrange
         await SeedAccountAsync()
             .Do(s => s.ClassificationScenario.WithClassification("holiday", Username, "Holiday"))
-            .Do(s => s.TransactionScenario.WithTransaction("food", "main", Transaction(-10m, January15, classifications: ["Food"])))
+            .Do(s => s.TransactionScenario.WithTransaction("food", "main",
+                Transaction(-10m, January15, classifications: ["Food"])))
             .Do(s => s.TransactionScenario.WithTransaction("food-travel", "main",
                 Transaction(-20m, January20, classifications: ["Food", "Travel"])))
-            .Do(s => s.TransactionScenario.WithTransaction("refund", "main", Transaction(5m, February3, classifications: ["Food"])))
+            .Do(s => s.TransactionScenario.WithTransaction("refund", "main",
+                Transaction(5m, February3, classifications: ["Food"])))
             .Do(s => s.TransactionScenario.WithTransaction("untagged", "main", Transaction(-99m, February3)))
             .Do(s => s.TransactionScenario.WithCustomClassification("food-travel", "holiday"));
 
         ReportService subject = BuildSubject();
 
         // Act
-        List<SpentInCategoryReport> reports = await subject.GetCategoryBreakdownReportAsync(Request(), CancellationToken)
+        List<SpentInCategoryReport> reports = await subject
+            .GetCategoryBreakdownReportAsync(Request(), CancellationToken)
             .ToListAsync(CancellationToken);
 
         // Assert
@@ -268,9 +270,12 @@ public class ReportServiceTests : InfrastructureTestBase
     {
         // Arrange
         await SeedAccountAsync()
-            .Do(s => s.TransactionScenario.WithTransaction("food-a", "main", Transaction(-10m, January15, classifications: ["Food"])))
-            .Do(s => s.TransactionScenario.WithTransaction("food-b", "main", Transaction(4m, January15, classifications: ["Food"])))
-            .Do(s => s.TransactionScenario.WithTransaction("food-c", "main", Transaction(-2m, January20, classifications: ["Food"])));
+            .Do(s => s.TransactionScenario.WithTransaction("food-a", "main",
+                Transaction(-10m, January15, classifications: ["Food"])))
+            .Do(s => s.TransactionScenario.WithTransaction("food-b", "main",
+                Transaction(4m, January15, classifications: ["Food"])))
+            .Do(s => s.TransactionScenario.WithTransaction("food-c", "main",
+                Transaction(-2m, January20, classifications: ["Food"])));
 
         ReportService subject = BuildSubject();
 
@@ -297,8 +302,10 @@ public class ReportServiceTests : InfrastructureTestBase
     {
         // Arrange
         await SeedAccountAsync()
-            .Do(s => s.TransactionScenario.WithTransaction("food", "main", Transaction(-10m, January15, classifications: ["Food"])))
-            .Do(s => s.TransactionScenario.WithTransaction("travel", "main", Transaction(-20m, January15, classifications: ["Travel"])));
+            .Do(s => s.TransactionScenario.WithTransaction("food", "main",
+                Transaction(-10m, January15, classifications: ["Food"])))
+            .Do(s => s.TransactionScenario.WithTransaction("travel", "main",
+                Transaction(-20m, January15, classifications: ["Travel"])));
 
         ReportService subject = BuildSubject();
         FilterTransactions request = new() { Tags = ["Travel"] };
@@ -325,7 +332,8 @@ public class ReportServiceTests : InfrastructureTestBase
         ReportService subject = BuildSubject();
 
         // Act
-        List<SpentInCategoryReport> reports = await subject.GetCategoryBreakdownReportAsync(Request(), CancellationToken)
+        List<SpentInCategoryReport> reports = await subject
+            .GetCategoryBreakdownReportAsync(Request(), CancellationToken)
             .ToListAsync(CancellationToken);
 
         // Assert
@@ -352,7 +360,8 @@ public class ReportServiceTests : InfrastructureTestBase
         ReportService subject = BuildSubject();
 
         // Act
-        List<SpentInCategoryReport> reports = await subject.GetCategoryBreakdownReportAsync(Request(), CancellationToken)
+        List<SpentInCategoryReport> reports = await subject
+            .GetCategoryBreakdownReportAsync(Request(), CancellationToken)
             .ToListAsync(CancellationToken);
         List<SpentInCategoryReport> filteredToTv = await subject
             .GetCategoryBreakdownReportAsync(new FilterTransactions { Tags = ["TV"] }, CancellationToken)
@@ -397,7 +406,8 @@ public class ReportServiceTests : InfrastructureTestBase
             await Assert.That(main.TotalOut).IsEqualTo(-10m);
             await Assert.That(WithTransactions(main.YearlyBreakdown.Single().MonthlyBreakdown).Count)
                 .IsEqualTo(2);
-            await Assert.That(main.YearlyBreakdown.Single().MonthlyBreakdown.Sum(x => x.DailyBreakdown.Count)).IsEqualTo(2);
+            await Assert.That(main.YearlyBreakdown.Single().MonthlyBreakdown.Sum(x => x.DailyBreakdown.Count))
+                .IsEqualTo(2);
             await Assert.That(other.AccountName).IsEqualTo("Current");
             await Assert.That(other.TotalOut).IsEqualTo(-5m);
         }
@@ -432,7 +442,8 @@ public class ReportServiceTests : InfrastructureTestBase
         ReportService subject = BuildSubject();
 
         // Act
-        List<SpentInCategoryReport> reports = await subject.GetCategoryBreakdownReportAsync(Request(), CancellationToken)
+        List<SpentInCategoryReport> reports = await subject
+            .GetCategoryBreakdownReportAsync(Request(), CancellationToken)
             .ToListAsync(CancellationToken);
 
         // Assert, the bank's classification is on the whole of it
@@ -560,7 +571,8 @@ public class ReportServiceTests : InfrastructureTestBase
             .Do(s => s.BankConnectionScenario.WithConnection("bank", Username))
             .Do(s => s.BankAccountScenario.WithAccount("main", "bank", displayName is null
                 ? null
-                : (userId, connectionId) => new BankAccount(userId, connectionId, "acc-main", "TRANSACTION", displayName, "GBP")));
+                : (userId, connectionId) =>
+                    new BankAccount(userId, connectionId, "acc-main", "TRANSACTION", displayName, "GBP")));
 
     private static TransactionDetails Transaction(decimal amount, DateTime occurredAt, string category = "PURCHASE",
         string[]? classifications = null) =>

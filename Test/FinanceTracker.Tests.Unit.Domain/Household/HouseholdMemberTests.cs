@@ -1,4 +1,3 @@
-using FinanceTracker.Domain.Budgeting;
 using FinanceTracker.Domain.Household;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 
@@ -7,7 +6,6 @@ namespace FinanceTracker.Tests.Unit.Domain.Household;
 [Category("Domain")]
 public class HouseholdMemberTests
 {
-
     [Test]
     [Arguments("", "User", 100)]
     [Arguments("Test", "", 100)]
@@ -24,7 +22,7 @@ public class HouseholdMemberTests
     [Arguments("", "User")]
     public void HouseholdMember_Rename_EmptyString_Throws_ArgumentException(string firstName, string lastName)
     {
-        var householdMember = new HouseholdMember(Guid.NewGuid(),"Test", "User", 100m);
+        var householdMember = new HouseholdMember(Guid.NewGuid(), "Test", "User", 100m);
 
         Assert.Throws<ArgumentException>(() =>
             householdMember.Rename(firstName, lastName));
@@ -51,7 +49,7 @@ public class HouseholdMemberTests
     [Test]
     public void HouseholdMember_ChangeYearlyIncome_InvalidDecimal_Throws_ArgumentException()
     {
-        var householdMember = new HouseholdMember(Guid.NewGuid(),"Test", "User", 100m);
+        var householdMember = new HouseholdMember(Guid.NewGuid(), "Test", "User", 100m);
 
         Assert.Throws<ArgumentException>(() =>
             householdMember.ChangeYearlyIncome(-1m));
@@ -67,7 +65,6 @@ public class HouseholdMemberTests
         householdMember.ChangeYearlyIncome(newIncome);
 
         await Assert.That(householdMember.YearlyIncome).IsEqualTo(newIncome);
-
     }
 
     [Test]

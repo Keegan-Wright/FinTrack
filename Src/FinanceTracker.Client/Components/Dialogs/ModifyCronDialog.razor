@@ -52,6 +52,7 @@
     /// The job, see <see cref="AutomationCron.Function"/>.
     /// </summary>
     [Parameter] public string Function { get; set; } = null!;
+
     [Parameter] public string Description { get; set; } = null!;
     [Parameter] public string Expression { get; set; } = null!;
     [Parameter] public int Retries { get; set; }
@@ -132,4 +133,5 @@
 
         return _model;
     }
+
 }

@@ -14,8 +14,12 @@ namespace FinanceTracker.Domain.Rules;
 /// <param name="BillId">The bill <see cref="RuleActionType.PayBill"/> says it pays, null for the other types.</param>
 /// <param name="DebtId">The debt <see cref="RuleActionType.PayDebt"/> says it pays off, null for the other types.
 /// </param>
-public sealed record RuleAction(RuleActionType Type, Guid? ClassificationId, string? BankClassification = null,
-    Guid? BillId = null, Guid? DebtId = null)
+public sealed record RuleAction(
+    RuleActionType Type,
+    Guid? ClassificationId,
+    string? BankClassification = null,
+    Guid? BillId = null,
+    Guid? DebtId = null)
 {
     public static RuleAction AddTag(CustomClassification classification)
     {

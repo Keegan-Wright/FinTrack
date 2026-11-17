@@ -1,9 +1,9 @@
-using FinanceTracker.Domain.Notifications;
 using FinanceTracker.Domain.Bills;
 using FinanceTracker.Domain.Budgeting;
 using FinanceTracker.Domain.Calendar;
 using FinanceTracker.Domain.Debts;
 using FinanceTracker.Domain.Household;
+using FinanceTracker.Domain.Notifications;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.OpenBanking.Transfers;
@@ -48,6 +48,7 @@ public static class SeededUser
     /// The unread notification's title.
     /// </summary>
     public const string Notice = "Everyday bank access ends in 5 days";
+
     public const string MemberLastName = "Example";
     public const string Event = "Car service";
 

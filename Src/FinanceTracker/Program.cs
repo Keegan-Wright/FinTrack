@@ -65,7 +65,7 @@ public partial class Program
         else
         {
             app.UseExceptionHandler("/Error", true);
-            // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
+            // How long browsers keep to https is set in AddSecurityHeaders
             app.UseHsts();
         }
 

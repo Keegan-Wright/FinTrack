@@ -1,12 +1,12 @@
 using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.SavingsGoals;
-using FinanceTracker.Infrastructure.Persistence;
 using FinanceTracker.Infrastructure;
+using FinanceTracker.Infrastructure.Persistence;
 using FinanceTracker.Tests.Unit.Shared;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.Tests.Unit.Infrastructure.Persistence;
 
@@ -75,7 +75,8 @@ public class EncryptionModelConfigurationTests : InfrastructureTestBase
     {
         // Arrange
         await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
-        ValueComparer comparer = context.Model.FindEntityType(entityType)!.FindProperty(propertyName)!.GetValueComparer();
+        ValueComparer comparer =
+            context.Model.FindEntityType(entityType)!.FindProperty(propertyName)!.GetValueComparer();
         List<string> original = ["a", "b"];
 
         // Act

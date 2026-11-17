@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
-using NSubstitute.ExceptionExtensions;
 
 namespace FinanceTracker.Tests.Unit.Client.Diagnostics;
 
@@ -18,7 +17,8 @@ public class ClientErrorReporterTests : ComponentTestBase
     {
         Services.AddSingleton(_clientErrorsService);
         Services.AddSingleton<ClientErrorReporter>();
-        _clientErrorsService.ReportAsync(Arg.Do<ClientError>(_sent.Add), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        _clientErrorsService.ReportAsync(Arg.Do<ClientError>(_sent.Add), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
         Services.GetRequiredService<NavigationManager>().NavigateTo("Budgets?month=2026-11");
     }
 

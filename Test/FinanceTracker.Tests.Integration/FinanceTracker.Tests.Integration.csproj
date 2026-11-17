@@ -1,26 +1,26 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-    <PropertyGroup>
-        <TargetFramework>net10.0</TargetFramework>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
-    </PropertyGroup>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
 
-    <ItemGroup>
-        <PackageReference Include="Deque.AxeCore.Playwright" />
-        <PackageReference Include="Microsoft.Playwright" />
-        <PackageReference Include="TUnit" />
-        <PackageReference Include="TUnit.Aspire" />
-        <PackageReference Include="WireMock.Net" />
-        <!-- Overrides the vulnerable version WireMock.Net brings, see Directory.Packages.props -->
-        <PackageReference Include="Microsoft.AspNetCore.WebUtilities" />
-        <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
-    </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Deque.AxeCore.Playwright"/>
+    <PackageReference Include="Microsoft.Playwright"/>
+    <PackageReference Include="TUnit"/>
+    <PackageReference Include="TUnit.Aspire"/>
+    <PackageReference Include="WireMock.Net"/>
+    <!-- Overrides the vulnerable version WireMock.Net brings, see Directory.Packages.props -->
+    <PackageReference Include="Microsoft.AspNetCore.WebUtilities"/>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL"/>
+  </ItemGroup>
 
-    <ItemGroup>
-        <ProjectReference Include="..\..\Src\FinanceTracker.AppHost\FinanceTracker.AppHost.csproj" />
-        <ProjectReference Include="..\..\Src\FinanceTracker.Client\FinanceTracker.Client.csproj" />
-        <ProjectReference Include="..\FinanceTracker.Tests.Unit.Shared\FinanceTracker.Tests.Unit.Shared.csproj" />
-    </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Src\FinanceTracker.AppHost\FinanceTracker.AppHost.csproj"/>
+    <ProjectReference Include="..\..\Src\FinanceTracker.Client\FinanceTracker.Client.csproj"/>
+    <ProjectReference Include="..\FinanceTracker.Tests.Unit.Shared\FinanceTracker.Tests.Unit.Shared.csproj"/>
+  </ItemGroup>
 
 </Project>

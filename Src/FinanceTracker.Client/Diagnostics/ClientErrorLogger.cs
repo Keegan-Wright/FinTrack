@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Logging;
-
 namespace FinanceTracker.Client.Diagnostics;
 
 /// <summary>

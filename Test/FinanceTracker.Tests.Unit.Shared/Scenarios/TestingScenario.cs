@@ -66,5 +66,4 @@ public sealed class TestingScenario
         CalendarEventScenario = new CalendarEventScenario(this);
         NotificationScenario = new NotificationScenario(this);
     }
-
 }

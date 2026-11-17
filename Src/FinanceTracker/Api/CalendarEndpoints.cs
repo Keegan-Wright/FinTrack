@@ -37,11 +37,11 @@ public static class CalendarEndpoints
                 .ConflictWhenNameTaken();
 
             calendar.MapDelete("events/{id:guid}", async Task<NoContent> (Guid id, ICalendarService service,
-                    CancellationToken cancellationToken) =>
-                {
-                    await service.DeleteEventAsync(id, cancellationToken);
-                    return TypedResults.NoContent();
-                });
+                CancellationToken cancellationToken) =>
+            {
+                await service.DeleteEventAsync(id, cancellationToken);
+                return TypedResults.NoContent();
+            });
 
             return api;
         }

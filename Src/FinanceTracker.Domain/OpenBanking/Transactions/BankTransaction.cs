@@ -615,8 +615,9 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
     public bool HideClassification(string classification)
     {
         string bankClassification = BankClassification(classification)
-            ?? throw new ArgumentException($"The bank didn't classify this as '{classification}'.",
-                nameof(classification));
+                                    ?? throw new ArgumentException(
+                                        $"The bank didn't classify this as '{classification}'.",
+                                        nameof(classification));
 
         HiddenClassification? hidden = FindHidden(bankClassification);
         if (hidden is { HiddenByUser: true })

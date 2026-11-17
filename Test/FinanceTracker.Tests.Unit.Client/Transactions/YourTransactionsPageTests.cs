@@ -13,7 +13,6 @@ using MudBlazor;
 using MudBlazor.Services;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
-using FinanceTracker.Tests.Unit.Shared;
 
 namespace FinanceTracker.Tests.Unit.Client.Transactions;
 

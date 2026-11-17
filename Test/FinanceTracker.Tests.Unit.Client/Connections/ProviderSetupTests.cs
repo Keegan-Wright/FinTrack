@@ -40,7 +40,8 @@ public class ProviderSetupTests
         string? text = ProviderSetup.RecurringPaymentsText(connection);
 
         // Assert
-        await Assert.That(text).IsEqualTo("Standing orders and direct debits from 31 Jan 2099, renew to bring in new ones");
+        await Assert.That(text)
+            .IsEqualTo("Standing orders and direct debits from 31 Jan 2099, renew to bring in new ones");
     }
 
     [Test]

@@ -4,7 +4,6 @@ namespace FinanceTracker.Infrastructure.Persistence;
 
 public static class PropertyBuilderExtensions
 {
-
     extension<TProperty>(PropertyBuilder<TProperty> propertyBuilder)
     {
         public PropertyBuilder<TProperty> Encrypted()

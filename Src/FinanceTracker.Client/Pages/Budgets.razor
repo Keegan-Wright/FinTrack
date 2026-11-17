@@ -22,7 +22,8 @@
 <PageHeader Title="Budgets" Subtitle="What you plan to spend each month, and how it's going">
     <Actions>
         <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Add"
-                   OnClick="@AddAsync">New budget</MudButton>
+                   OnClick="@AddAsync">New budget
+        </MudButton>
     </Actions>
 </PageHeader>
 
@@ -74,7 +75,9 @@
             @if (Overview.Unbudgeted > 0)
             {
                 <MudText Typo="Typo.caption" Class="mud-text-secondary">
-                    Tag it with a <MudLink Href="Rules" Typo="Typo.caption">rule</MudLink> and add the tag to a budget
+                    Tag it with a
+                    <MudLink Href="Rules" Typo="Typo.caption">rule</MudLink>
+                    and add the tag to a budget
                     to track it.
                 </MudText>
             }

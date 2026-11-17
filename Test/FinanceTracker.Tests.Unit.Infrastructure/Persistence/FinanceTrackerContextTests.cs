@@ -1,5 +1,4 @@
 using FinanceTracker.Domain.Bills;
-using FinanceTracker.Domain.Budgeting;
 using FinanceTracker.Domain.Common;
 using FinanceTracker.Domain.Debts;
 using FinanceTracker.Domain.Household;
@@ -8,8 +7,8 @@ using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.SavingsGoals;
 using FinanceTracker.Infrastructure;
-using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using FinanceTracker.Tests.Unit.Shared;
+using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.Tests.Unit.Infrastructure.Persistence;
@@ -74,7 +73,8 @@ public class FinanceTrackerContextTests : InfrastructureTestBase
 
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
             .Do(s => s.BankConnectionScenario.WithConnection("bank", Username, userId =>
-                new BankConnection(userId, "ob-bank", "Bank", "code", ["accounts", "balance"], logo, DateTime.UtcNow, DateTime.UtcNow.AddDays(90))))
+                new BankConnection(userId, "ob-bank", "Bank", "code", ["accounts", "balance"], logo, DateTime.UtcNow,
+                    DateTime.UtcNow.AddDays(90))))
             .Do(s => s.BankAccountScenario.WithAccount("main", "bank"))
             .Do(s => s.TransactionScenario.WithTransaction("payment", "main", new TransactionDetails("ext-1", "Payment",
                 TransactionType.Credit, "CREDIT", 12.34m, "GBP", occurredAt, true, ["Food", "Bills"],
@@ -161,11 +161,13 @@ public class FinanceTrackerContextTests : InfrastructureTestBase
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
             .Do(s => s.BankConnectionScenario.WithConnection("bank", Username))
-            .Do(s => s.BankConnectionScenario.WithAccessToken("bank", token: "plain-token", refreshToken: "plain-refresh"));
+            .Do(s => s.BankConnectionScenario.WithAccessToken("bank", token: "plain-token",
+                refreshToken: "plain-refresh"));
 
         // Act
         await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
-        BankConnection connection = await context.BankConnections.Include(x => x.AccessTokens).SingleAsync(CancellationToken);
+        BankConnection connection =
+            await context.BankConnections.Include(x => x.AccessTokens).SingleAsync(CancellationToken);
         string storedToken = await context.Database
             .SqlQueryRaw<string>("SELECT \"Token\" AS \"Value\" FROM \"AccessTokens\"")
             .SingleAsync(CancellationToken);
@@ -259,7 +261,8 @@ public class FinanceTrackerContextTests : InfrastructureTestBase
             await context.SaveChangesAsync(CancellationToken);
         }
 
-        await using FinanceTrackerContext verificationContext = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        await using FinanceTrackerContext verificationContext =
+            await DbContextFactory.CreateDbContextAsync(CancellationToken);
         Debt updated = await verificationContext.Debts.SingleAsync(x => x.Id == debtId, CancellationToken);
 
         // Assert
@@ -295,7 +298,8 @@ public class FinanceTrackerContextTests : InfrastructureTestBase
         }
 
         // Assert
-        await using FinanceTrackerContext verificationContext = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        await using FinanceTrackerContext verificationContext =
+            await DbContextFactory.CreateDbContextAsync(CancellationToken);
         Debt loaded = await verificationContext.Debts.SingleAsync(x => x.Id == debtId, CancellationToken);
 
         using (Assert.Multiple())
@@ -356,7 +360,8 @@ public class FinanceTrackerContextTests : InfrastructureTestBase
             .Do(s => s.BankConnectionScenario.WithConnection("bank", Username))
             .Do(s => s.BankConnectionScenario.WithAccessToken("bank"))
             .Do(s => s.BankAccountScenario.WithAccount("main", "bank"))
-            .Do(s => s.BankAccountScenario.WithStandingOrders("main", new Shared.Fakers.StandingOrderDetailsFaker().Generate()))
+            .Do(s => s.BankAccountScenario.WithStandingOrders("main",
+                new Shared.Fakers.StandingOrderDetailsFaker().Generate()))
             .Do(s => s.TransactionScenario.WithTransactions("main", 2))
             .Do(s => s.ClassificationScenario.WithClassification("tag", Username))
             .Do(s => s.SavingsGoalScenario.WithSavingsGoal("budget", Username))
@@ -373,7 +378,8 @@ public class FinanceTrackerContextTests : InfrastructureTestBase
         }
 
         // Assert
-        await using FinanceTrackerContext verificationContext = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        await using FinanceTrackerContext verificationContext =
+            await DbContextFactory.CreateDbContextAsync(CancellationToken);
 
         using (Assert.Multiple())
         {
@@ -381,7 +387,8 @@ public class FinanceTrackerContextTests : InfrastructureTestBase
             await Assert.That(await verificationContext.Set<AccessToken>().CountAsync(CancellationToken)).IsEqualTo(0);
             await Assert.That(await verificationContext.BankAccounts.CountAsync(CancellationToken)).IsEqualTo(0);
             await Assert.That(await verificationContext.BankTransactions.CountAsync(CancellationToken)).IsEqualTo(0);
-            await Assert.That(await verificationContext.CustomClassifications.CountAsync(CancellationToken)).IsEqualTo(0);
+            await Assert.That(await verificationContext.CustomClassifications.CountAsync(CancellationToken))
+                .IsEqualTo(0);
             await Assert.That(await verificationContext.SavingsGoals.CountAsync(CancellationToken)).IsEqualTo(0);
             await Assert.That(await verificationContext.HouseholdMembers.CountAsync(CancellationToken)).IsEqualTo(0);
             await Assert.That(await verificationContext.Debts.Select(x => x.Id).ToListAsync(CancellationToken))
@@ -395,11 +402,14 @@ public class FinanceTrackerContextTests : InfrastructureTestBase
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
             .Do(s => s.BankConnectionScenario.WithConnection("bank", Username, userId =>
-                new BankConnection(userId, "ob-same", "Bank", "code", [], [1], DateTime.UtcNow, DateTime.UtcNow.AddDays(90))));
+                new BankConnection(userId, "ob-same", "Bank", "code", [], [1], DateTime.UtcNow,
+                    DateTime.UtcNow.AddDays(90))));
 
         // Act & Assert
         await Assert.ThrowsAsync<DbUpdateException>(() => Scenario.BankConnectionScenario.WithConnection("duplicate",
-            Username, userId => new BankConnection(userId, "ob-same", "Bank", "code", [], [1], DateTime.UtcNow, DateTime.UtcNow.AddDays(90))));
+            Username,
+            userId => new BankConnection(userId, "ob-same", "Bank", "code", [], [1], DateTime.UtcNow,
+                DateTime.UtcNow.AddDays(90))));
     }
 
     [Test]
@@ -409,11 +419,13 @@ public class FinanceTrackerContextTests : InfrastructureTestBase
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
             .Do(s => s.UserScenario.WithUser(OtherUsername))
             .Do(s => s.BankConnectionScenario.WithConnection("mine", Username, userId =>
-                new BankConnection(userId, "ob-same", "Bank", "code", [], [1], DateTime.UtcNow, DateTime.UtcNow.AddDays(90))));
+                new BankConnection(userId, "ob-same", "Bank", "code", [], [1], DateTime.UtcNow,
+                    DateTime.UtcNow.AddDays(90))));
 
         // Act
         await Scenario.BankConnectionScenario.WithConnection("theirs", OtherUsername, userId =>
-            new BankConnection(userId, "ob-same", "Bank", "code", [], [1], DateTime.UtcNow, DateTime.UtcNow.AddDays(90)));
+            new BankConnection(userId, "ob-same", "Bank", "code", [], [1], DateTime.UtcNow,
+                DateTime.UtcNow.AddDays(90)));
 
         // Assert
         await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
@@ -441,18 +453,21 @@ public class FinanceTrackerContextTests : InfrastructureTestBase
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser(Username))
             .Do(s => s.BankConnectionScenario.WithConnection("bank", Username, userId =>
-                new BankConnection(userId, "ob-bank", "Bank", "code", ["accounts"], [1], DateTime.UtcNow, DateTime.UtcNow.AddDays(90))));
+                new BankConnection(userId, "ob-bank", "Bank", "code", ["accounts"], [1], DateTime.UtcNow,
+                    DateTime.UtcNow.AddDays(90))));
 
         // Act
         await using (FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken))
         {
             BankConnection connection = await context.BankConnections.SingleAsync(CancellationToken);
-            connection.Reauthenticate("code", ["accounts", "transactions"], DateTime.UtcNow, DateTime.UtcNow.AddDays(90));
+            connection.Reauthenticate("code", ["accounts", "transactions"], DateTime.UtcNow,
+                DateTime.UtcNow.AddDays(90));
             await context.SaveChangesAsync(CancellationToken);
         }
 
         // Assert
-        await using FinanceTrackerContext verificationContext = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        await using FinanceTrackerContext verificationContext =
+            await DbContextFactory.CreateDbContextAsync(CancellationToken);
         BankConnection loaded = await verificationContext.BankConnections.SingleAsync(CancellationToken);
         await Assert.That(loaded.Scopes).IsEquivalentTo(["accounts", "transactions"]);
     }
@@ -497,13 +512,15 @@ public class FinanceTrackerContextTests : InfrastructureTestBase
         // Act
         await using (FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken))
         {
-            BankTransaction transaction = await context.BankTransactions.SingleAsync(x => x.Id == transactionId, CancellationToken);
+            BankTransaction transaction =
+                await context.BankTransactions.SingleAsync(x => x.Id == transactionId, CancellationToken);
             transaction.Unclassify(Scenario.ClassificationMappings["tag"]);
             await context.SaveChangesAsync(CancellationToken);
         }
 
         // Assert
-        await using FinanceTrackerContext verificationContext = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        await using FinanceTrackerContext verificationContext =
+            await DbContextFactory.CreateDbContextAsync(CancellationToken);
         BankTransaction loaded = await verificationContext.BankTransactions.SingleAsync(x => x.Id == transactionId,
             CancellationToken);
 

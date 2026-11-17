@@ -46,7 +46,8 @@ public class TransfersServiceTests : InfrastructureTestBase
             await Assert.That(outgoing.Transfer!.State).IsEqualTo(TransferState.NeedsReview);
             await Assert.That(outgoing.Transfer.Reason).IsEqualTo(TransferMatchReason.MirrorPair);
             await Assert.That(outgoing.Transfer.DecidedBy).IsEqualTo(TransferDecidedBy.FinTrack);
-            await Assert.That(outgoing.Transfer.PartnerTransactionId).IsEqualTo(Scenario.TransactionMappings["mine-in"]);
+            await Assert.That(outgoing.Transfer.PartnerTransactionId)
+                .IsEqualTo(Scenario.TransactionMappings["mine-in"]);
             await Assert.That(outgoing.Transfer.PartnerDescription).IsEqualTo("Into savings");
             await Assert.That(outgoing.Transfer.PartnerAccountName).IsEqualTo("Savings");
             await Assert.That(outgoing.AccountName).IsEqualTo("Current");
@@ -194,7 +195,8 @@ public class TransfersServiceTests : InfrastructureTestBase
 
     private Task<TransferMatchSummary> MatchAsync(string username) =>
         new TransferMatchingService(CurrentUserFor(username), DbContextFactory,
-            NullLogger<TransferMatchingService>.Instance, TimeProvider.System, TestMetrics.Unobserved).MatchAsync(CancellationToken);
+                NullLogger<TransferMatchingService>.Instance, TimeProvider.System, TestMetrics.Unobserved)
+            .MatchAsync(CancellationToken);
 
     private async Task<Dictionary<Guid, BankTransaction>> LoadTransactionsAsync()
     {

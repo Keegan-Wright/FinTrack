@@ -11,7 +11,6 @@ using FinanceTracker.Tests.Unit.Shared.Fakers;
 using FinanceTracker.Tests.Unit.Shared.Fakers.TrueLayer;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.Metrics.Testing;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -235,7 +234,8 @@ public class OpenBankingSyncServiceTests : OpenBankingTestBase
         // Arrange
         await SeedConnectionAsync();
         ExternalOpenBankingAccountBalance balance = new ExternalOpenBankingAccountBalanceFaker().Generate();
-        ExternalOpenBankingAccountStandingOrder standingOrder = new ExternalOpenBankingAccountStandingOrderFaker().Generate();
+        ExternalOpenBankingAccountStandingOrder standingOrder =
+            new ExternalOpenBankingAccountStandingOrderFaker().Generate();
         ExternalOpenBankingDirectDebit directDebit = new ExternalOpenBankingDirectDebitFaker().Generate();
 
         GivenProviderReturns(accounts: [new ExternalOpenBankingAccountFaker().Generate()], balances: [balance],
@@ -274,7 +274,10 @@ public class OpenBankingSyncServiceTests : OpenBankingTestBase
         DateTime unspecified = new(2026, 2, 1, 8, 0, 0, DateTimeKind.Unspecified);
 
         GivenProviderReturns(accounts: [new ExternalOpenBankingAccountFaker().Generate()],
-            balances: [new ExternalOpenBankingAccountBalance { Available = 1, Current = 1, UpdateTimestamp = unspecified }]);
+            balances:
+            [
+                new ExternalOpenBankingAccountBalance { Available = 1, Current = 1, UpdateTimestamp = unspecified }
+            ]);
 
         OpenBankingSyncService subject = BuildSubject();
 
@@ -384,7 +387,8 @@ public class OpenBankingSyncServiceTests : OpenBankingTestBase
     [Arguments("credit", -10, TransactionType.Credit)]
     [Arguments("", -10, TransactionType.Debit)]
     [Arguments("UNKNOWN", 10, TransactionType.Credit)]
-    public async Task SyncConnectionAsync_TransactionType_ParsedOrInferredFromAmount(string providerType, decimal amount,
+    public async Task SyncConnectionAsync_TransactionType_ParsedOrInferredFromAmount(string providerType,
+        decimal amount,
         TransactionType expected)
     {
         // Arrange
@@ -441,8 +445,10 @@ public class OpenBankingSyncServiceTests : OpenBankingTestBase
             await OpenBankingApi.ReceivedWithAnyArgs(1).GetAccountBalanceAsync(default!, default!, default);
             await OpenBankingApi.DidNotReceiveWithAnyArgs().GetAccountStandingOrdersAsync(default!, default!, default);
             await OpenBankingApi.DidNotReceiveWithAnyArgs().GetAccountDirectDebitsAsync(default!, default!, default);
-            await OpenBankingApi.DidNotReceiveWithAnyArgs().GetAccountTransactionsAsync(default!, default!, default, default);
-            await OpenBankingApi.DidNotReceiveWithAnyArgs().GetAccountPendingTransactionsAsync(default!, default!, default, default);
+            await OpenBankingApi.DidNotReceiveWithAnyArgs()
+                .GetAccountTransactionsAsync(default!, default!, default, default);
+            await OpenBankingApi.DidNotReceiveWithAnyArgs()
+                .GetAccountPendingTransactionsAsync(default!, default!, default, default);
             await Assert.That(await LoadSyncLogTypesAsync()).IsEquivalentTo([SyncType.Account, SyncType.Balance]);
         }
     }
@@ -457,13 +463,16 @@ public class OpenBankingSyncServiceTests : OpenBankingTestBase
         OpenBankingSyncService subject = BuildSubject();
 
         // Act
-        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.Transactions, CancellationToken);
+        await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.Transactions,
+            CancellationToken);
 
         // Assert
         using (Assert.Multiple())
         {
-            await OpenBankingApi.ReceivedWithAnyArgs(1).GetAccountTransactionsAsync(default!, default!, default, default);
-            await OpenBankingApi.ReceivedWithAnyArgs(1).GetAccountPendingTransactionsAsync(default!, default!, default, default);
+            await OpenBankingApi.ReceivedWithAnyArgs(1)
+                .GetAccountTransactionsAsync(default!, default!, default, default);
+            await OpenBankingApi.ReceivedWithAnyArgs(1)
+                .GetAccountPendingTransactionsAsync(default!, default!, default, default);
             await Assert.That(await LoadSyncLogTypesAsync()).IsEquivalentTo([
                 SyncType.Account, SyncType.Transactions
             ]);
@@ -533,8 +542,10 @@ public class OpenBankingSyncServiceTests : OpenBankingTestBase
             await Assert.That(spans.Names).Contains("Fetch direct debits");
             await Assert.That(spans.Root.GetTagItem(TelemetryTags.TransactionsAdded)).IsEqualTo(2);
             await Assert.That(added).IsEqualTo(2);
-            await Assert.That(logger.Entries.Single(x => x.Message.StartsWith("Synced connection", StringComparison.Ordinal)).Message)
-                .Contains(": 1 accounts, 0 cards, 2 transactions added, 0 updated, 0 stale pending removed, 0 fetches failed");
+            await Assert.That(logger.Entries
+                    .Single(x => x.Message.StartsWith("Synced connection", StringComparison.Ordinal)).Message)
+                .Contains(
+                    ": 1 accounts, 0 cards, 2 transactions added, 0 updated, 0 stale pending removed, 0 fetches failed");
         }
     }
 
@@ -567,7 +578,8 @@ public class OpenBankingSyncServiceTests : OpenBankingTestBase
             await Assert.That(spans.Named("Fetch transactions").Status).IsNotEqualTo(ActivityStatusCode.Error);
             await Assert.That(spans.Root.GetTagItem(TelemetryTags.FetchesFailed)).IsEqualTo(1);
             await Assert.That(failed.GetMeasurementSnapshot().Sum(static x => x.Value)).IsEqualTo(1);
-            await Assert.That(logger.Entries.Single(x => x.Message.StartsWith("Synced connection", StringComparison.Ordinal)).Message)
+            await Assert.That(logger.Entries
+                    .Single(x => x.Message.StartsWith("Synced connection", StringComparison.Ordinal)).Message)
                 .EndsWith("1 fetches failed");
         }
     }
@@ -610,7 +622,8 @@ public class OpenBankingSyncServiceTests : OpenBankingTestBase
     {
         // Arrange
         ExternalOpenBankingAccount externalAccount = new ExternalOpenBankingAccountFaker().Generate();
-        ExternalOpenBankingAccountTransaction stillPending = new ExternalOpenBankingAccountTransactionFaker().Generate();
+        ExternalOpenBankingAccountTransaction
+            stillPending = new ExternalOpenBankingAccountTransactionFaker().Generate();
         ExternalOpenBankingAccountTransaction settled = new ExternalOpenBankingAccountTransactionFaker().Generate();
 
         await SeedAccountAsync(externalAccount)
@@ -782,7 +795,8 @@ public class OpenBankingSyncServiceTests : OpenBankingTestBase
 
         // Assert
         BankAccount card = (await LoadAccountsAsync()).Single();
-        Dictionary<string, decimal> amounts = (await LoadTransactionsAsync()).ToDictionary(x => x.ExternalId, x => x.Amount);
+        Dictionary<string, decimal> amounts =
+            (await LoadTransactionsAsync()).ToDictionary(x => x.ExternalId, x => x.Amount);
 
         using (Assert.Multiple())
         {
@@ -794,7 +808,8 @@ public class OpenBankingSyncServiceTests : OpenBankingTestBase
             await Assert.That(card.Balance).IsEqualTo(new AccountBalance(2700m, -300m, balanceAt, 3000m));
             await Assert.That(amounts["purchase"]).IsEqualTo(-24.25m);
             await Assert.That(amounts["repayment"]).IsEqualTo(100m);
-            await OpenBankingApi.DidNotReceive().GetAccountStandingOrdersAsync(externalCard.AccountId, Arg.Any<string>(),
+            await OpenBankingApi.DidNotReceive().GetAccountStandingOrdersAsync(externalCard.AccountId,
+                Arg.Any<string>(),
                 Arg.Any<CancellationToken>());
             await OpenBankingApi.DidNotReceive().GetAccountDirectDebitsAsync(externalCard.AccountId, Arg.Any<string>(),
                 Arg.Any<CancellationToken>());
@@ -851,7 +866,8 @@ public class OpenBankingSyncServiceTests : OpenBankingTestBase
         await SeedAccountAsync(externalAccount)
             .Do(s => s.BankAccountScenario.WithAccount("other", "bank", (userId, connectionId) =>
                 new BankAccount(userId, connectionId, "other-external-id", "TRANSACTION", "Other", "GBP")))
-            .Do(s => s.TransactionScenario.WithTransaction("other-pending", "other", PendingDetails("other-pending-id")));
+            .Do(s => s.TransactionScenario.WithTransaction("other-pending", "other",
+                PendingDetails("other-pending-id")));
 
         // Only the main account is reported, so the other account is not synced
         GivenProviderReturns(accounts: [externalAccount]);
@@ -879,7 +895,8 @@ public class OpenBankingSyncServiceTests : OpenBankingTestBase
         await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
 
         // Assert
-        await OpenBankingApi.Received(1).GetAccountTransactionsAsync(externalAccount.AccountId, Token, null, CancellationToken);
+        await OpenBankingApi.Received(1)
+            .GetAccountTransactionsAsync(externalAccount.AccountId, Token, null, CancellationToken);
     }
 
     [Test]
@@ -892,7 +909,8 @@ public class OpenBankingSyncServiceTests : OpenBankingTestBase
                 "old-refresh"));
 
         OpenBankingApi.GetAccessTokenByRefreshTokenAsync("old-refresh", CancellationToken).Returns(
-            new ExternalOpenBankingAccessResponse { AccessToken = "new-token", RefreshToken = "new-refresh", ExpiresIn = 3600 });
+            new ExternalOpenBankingAccessResponse
+                { AccessToken = "new-token", RefreshToken = "new-refresh", ExpiresIn = 3600 });
 
         OpenBankingSyncService subject = BuildSubject();
 
@@ -999,15 +1017,18 @@ public class OpenBankingSyncServiceTests : OpenBankingTestBase
         switch (failingCall)
         {
             case "Balance":
-                OpenBankingApi.GetAccountBalanceAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+                OpenBankingApi
+                    .GetAccountBalanceAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
                     .ThrowsAsync(failure);
                 break;
             case "StandingOrders":
-                OpenBankingApi.GetAccountStandingOrdersAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+                OpenBankingApi.GetAccountStandingOrdersAsync(Arg.Any<string>(), Arg.Any<string>(),
+                        Arg.Any<CancellationToken>())
                     .ThrowsAsync(failure);
                 break;
             case "DirectDebits":
-                OpenBankingApi.GetAccountDirectDebitsAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+                OpenBankingApi
+                    .GetAccountDirectDebitsAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
                     .ThrowsAsync(failure);
                 break;
             case "Transactions":
@@ -1015,7 +1036,8 @@ public class OpenBankingSyncServiceTests : OpenBankingTestBase
                     Arg.Any<CancellationToken>()).ThrowsAsync(failure);
                 break;
             case "PendingTransactions":
-                OpenBankingApi.GetAccountPendingTransactionsAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<DateTime?>(),
+                OpenBankingApi.GetAccountPendingTransactionsAsync(Arg.Any<string>(), Arg.Any<string>(),
+                    Arg.Any<DateTime?>(),
                     Arg.Any<CancellationToken>()).ThrowsAsync(failure);
                 break;
         }
@@ -1027,7 +1049,8 @@ public class OpenBankingSyncServiceTests : OpenBankingTestBase
         await subject.SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
 
         // Assert
-        (LogLevel Level, string Message, Exception? Exception) error = logger.Entries.Single(x => x.Level == Microsoft.Extensions.Logging.LogLevel.Error);
+        (LogLevel Level, string Message, Exception? Exception) error =
+            logger.Entries.Single(x => x.Level == Microsoft.Extensions.Logging.LogLevel.Error);
         List<SyncType> logged = await LoadSyncLogTypesAsync();
         List<string> imported = (await LoadTransactionsAsync()).Select(x => x.ExternalId).ToList();
 
@@ -1052,7 +1075,8 @@ public class OpenBankingSyncServiceTests : OpenBankingTestBase
     {
         // Arrange
         await SeedConnectionAsync();
-        OpenBankingApi.GetAllAccountsAsync(Token, CancellationToken).Returns(new ExternalOpenBankingListAllAccountsResponse());
+        OpenBankingApi.GetAllAccountsAsync(Token, CancellationToken)
+            .Returns(new ExternalOpenBankingListAllAccountsResponse());
 
         OpenBankingSyncService subject = BuildSubject();
 
@@ -1144,7 +1168,8 @@ public class OpenBankingSyncServiceTests : OpenBankingTestBase
             new(writerLogger ?? NullLogger<AccountSnapshotWriter>.Instance);
 
         return new OpenBankingSyncService(CurrentUserFor(Username), DbContextFactory, OpenBankingApi,
-            logger ?? NullLogger<OpenBankingSyncService>.Instance, TimeProvider.System, accountSnapshotFetcher, accountSnapshotWriter,
+            logger ?? NullLogger<OpenBankingSyncService>.Instance, TimeProvider.System, accountSnapshotFetcher,
+            accountSnapshotWriter,
             metrics ?? TestMetrics.Unobserved);
     }
 }

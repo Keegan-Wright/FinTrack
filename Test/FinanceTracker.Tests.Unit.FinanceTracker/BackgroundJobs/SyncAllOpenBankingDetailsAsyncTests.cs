@@ -71,9 +71,12 @@ public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
             {
                 SyncNotifier.NotifyStartedAsync(Arg.Any<Guid>());
                 SyncNotifier.NotifyStartedAsync(Arg.Any<Guid>());
-                OpenBankingSyncService.SyncConnectionAsync(Arg.Any<Guid>(), SyncTypes.All, Arg.Any<CancellationToken>());
-                OpenBankingSyncService.SyncConnectionAsync(Arg.Any<Guid>(), SyncTypes.All, Arg.Any<CancellationToken>());
-                OpenBankingSyncService.SyncConnectionAsync(Arg.Any<Guid>(), SyncTypes.All, Arg.Any<CancellationToken>());
+                OpenBankingSyncService.SyncConnectionAsync(Arg.Any<Guid>(), SyncTypes.All,
+                    Arg.Any<CancellationToken>());
+                OpenBankingSyncService.SyncConnectionAsync(Arg.Any<Guid>(), SyncTypes.All,
+                    Arg.Any<CancellationToken>());
+                OpenBankingSyncService.SyncConnectionAsync(Arg.Any<Guid>(), SyncTypes.All,
+                    Arg.Any<CancellationToken>());
             });
         }
     }
@@ -112,7 +115,8 @@ public class SyncAllOpenBankingDetailsAsyncTests : OpenBankingSyncJobTestBase
             .Do(s => s.BankConnectionScenario.WithConnection("broken", Username))
             .Do(s => s.BankConnectionScenario.WithConnection("third", Username));
 
-        OpenBankingSyncService.SyncConnectionAsync(Scenario.ConnectionMappings["broken"], SyncTypes.All, CancellationToken)
+        OpenBankingSyncService
+            .SyncConnectionAsync(Scenario.ConnectionMappings["broken"], SyncTypes.All, CancellationToken)
             .ThrowsAsync(new InvalidOperationException("boom"));
 
         using TestMetrics metrics = new();

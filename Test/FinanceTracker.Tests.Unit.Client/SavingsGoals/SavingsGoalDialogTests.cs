@@ -7,7 +7,6 @@ using FluentValidation;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
-using FinanceTracker.Tests.Unit.Shared;
 
 namespace FinanceTracker.Tests.Unit.Client.SavingsGoals;
 

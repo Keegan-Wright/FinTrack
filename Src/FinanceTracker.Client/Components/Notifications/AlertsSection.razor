@@ -102,7 +102,8 @@
                                      Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small">
                                 @foreach (AccountLowBalance account in Unwatched)
                                 {
-                                    <MudMenuItem OnClick="@(() => Watch(account.AccountId))">@account.AccountName</MudMenuItem>
+                                    <MudMenuItem
+                                        OnClick="@(() => Watch(account.AccountId))">@account.AccountName</MudMenuItem>
                                 }
                             </MudMenu>
                         </div>
@@ -112,7 +113,8 @@
 
             <div>
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(_busy || !Changed)"
-                           OnClick="@SaveAsync">Save alerts</MudButton>
+                           OnClick="@SaveAsync">Save alerts
+                </MudButton>
             </div>
         </div>
     </MudForm>

@@ -315,10 +315,14 @@ public class JointAccountsTests : InfrastructureTestBase
         {
             context.Rules.Add(new FinanceTracker.Domain.Rules.Rule(Scenario.UserMappings[Alex], "Shops", 0,
                 FinanceTracker.Domain.Rules.RuleMatchMode.All,
-                [new FinanceTracker.Domain.Rules.RuleCondition(FinanceTracker.Domain.Rules.RuleField.Description,
-                    FinanceTracker.Domain.Rules.RuleOperator.Contains, "TESCO")],
-                [FinanceTracker.Domain.Rules.RuleAction.AddTag(
-                    await context.CustomClassifications.SingleAsync(x => x.Id == Tag("food"), CancellationToken))]));
+                [
+                    new FinanceTracker.Domain.Rules.RuleCondition(FinanceTracker.Domain.Rules.RuleField.Description,
+                        FinanceTracker.Domain.Rules.RuleOperator.Contains, "TESCO")
+                ],
+                [
+                    FinanceTracker.Domain.Rules.RuleAction.AddTag(
+                        await context.CustomClassifications.SingleAsync(x => x.Id == Tag("food"), CancellationToken))
+                ]));
             await context.SaveChangesAsync(CancellationToken);
         }
 
@@ -422,8 +426,10 @@ public class JointAccountsTests : InfrastructureTestBase
             .Do(s => s.BankAccountScenario.WithAccount("alex-garden", "alex-bank", Named("Garden")))
             .Do(s => s.BankAccountScenario.WithAccount("alex-holidays", "alex-bank", Named("Holidays")))
             .Do(s => s.BankAccountScenario.WithAccount("alex-rainy", "alex-bank", Named("Rainy Day")))
-            .Do(s => s.TransactionScenario.WithTransaction("christmas-sam", "sam-christmas", Details(-36m, "Christmas")))
-            .Do(s => s.TransactionScenario.WithTransaction("christmas-alex", "alex-christmas", Details(-36m, "Christmas")))
+            .Do(s => s.TransactionScenario.WithTransaction("christmas-sam", "sam-christmas",
+                Details(-36m, "Christmas")))
+            .Do(s => s.TransactionScenario.WithTransaction("christmas-alex", "alex-christmas",
+                Details(-36m, "Christmas")))
             .Do(s => s.TransactionScenario.WithTransaction("holiday-sam", "sam-holiday", Details(20m, "Holiday")))
             .Do(s => s.TransactionScenario.WithTransaction("holiday-alex", "alex-holidays", Details(20m, "Holiday")))
             .Do(s => s.TransactionScenario.WithTransaction("rainy-sam", "sam-rainy", Details(10m, "Rainy Day")))

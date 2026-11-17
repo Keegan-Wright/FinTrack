@@ -25,8 +25,10 @@
                     var node = _path[i];
                     if (index < _path.Count - 1)
                     {
-                        <button type="button" class="ft-trail__link" @onclick="@(() => GoBackTo(index))">@node.Title</button>
-                        <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="MudBlazor.Size.Small" Class="mud-text-secondary"/>
+                        <button type="button" class="ft-trail__link"
+                                @onclick="@(() => GoBackTo(index))">@node.Title</button>
+                        <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="MudBlazor.Size.Small"
+                                 Class="mud-text-secondary"/>
                     }
                     else
                     {
@@ -43,7 +45,8 @@
                     @if (_dayTransactions is { Count: 0 })
                     {
                         <MudText Typo="Typo.body2" Class="mud-text-secondary">
-                            Couldn't find the transactions behind this day, they may have changed since the report loaded.
+                            Couldn't find the transactions behind this day, they may have changed since the report
+                            loaded.
                         </MudText>
                     }
                     else if (_dayTransactions is not null)
@@ -57,8 +60,10 @@
                                             @transaction.Description
                                             @if (transaction.Pending)
                                             {
-                                                <MudChip T="string" Size="MudBlazor.Size.Small" Variant="Variant.Outlined"
-                                                         Color="MudBlazor.Color.Warning" Class="ml-2">Pending</MudChip>
+                                                <MudChip T="string" Size="MudBlazor.Size.Small"
+                                                         Variant="Variant.Outlined"
+                                                         Color="MudBlazor.Color.Warning" Class="ml-2">Pending
+                                                </MudChip>
                                             }
                                         </MudText>
                                         <MudText Typo="Typo.caption" Class="mud-text-secondary text-truncate d-block">
@@ -113,7 +118,8 @@
                             <div class="ft-list__end">
                                 <MoneyText Value="@child.Net" Signed="true" Typo="Typo.body1"/>
                                 <MudText Typo="Typo.caption" Class="mud-text-secondary ft-money">
-                                    @CurrencyFormatter.Format(child.TotalIn) in · @CurrencyFormatter.Format(Math.Abs(child.TotalOut)) out
+                                    @CurrencyFormatter.Format(child.TotalIn) in
+                                    · @CurrencyFormatter.Format(Math.Abs(child.TotalOut)) out
                                 </MudText>
                             </div>
                             @if (child.CanDrillInto)
@@ -136,7 +142,8 @@
 
     private const int MaxPhoneAxisLabels = 6;
 
-    [CascadingParameter(Name = "IsDarkMode")] public bool IsDarkMode { get; set; }
+    [CascadingParameter(Name = "IsDarkMode")]
+    public bool IsDarkMode { get; set; }
 
     /// <summary>
     /// The subject's whole report, all time.
