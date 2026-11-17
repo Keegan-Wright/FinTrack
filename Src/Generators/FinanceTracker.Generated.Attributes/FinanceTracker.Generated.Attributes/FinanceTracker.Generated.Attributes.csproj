@@ -11,6 +11,7 @@
 
     <RootNamespace>FinanceTracker.Generated.Attributes</RootNamespace>
     <PackageId>FinanceTracker.Generated.Attributes</PackageId>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
   <ItemGroup>

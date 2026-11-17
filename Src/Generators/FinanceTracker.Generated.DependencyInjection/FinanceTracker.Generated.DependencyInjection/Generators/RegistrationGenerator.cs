@@ -19,6 +19,7 @@ public abstract class RegistrationGenerator : IIncrementalGenerator
     /// </summary>
     private protected abstract string Category { get; }
 
+    /// <inheritdoc/>
     public void Initialize(IncrementalGeneratorInitializationContext context) =>
         context.RegisterSourceOutput(context.CompilationProvider.Combine(context.AnalyzerConfigOptionsProvider),
             (spc, source) =>

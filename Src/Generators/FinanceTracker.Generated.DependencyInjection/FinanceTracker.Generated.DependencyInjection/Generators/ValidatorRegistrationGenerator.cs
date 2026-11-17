@@ -8,7 +8,9 @@ namespace FinanceTracker.Generated.DependencyInjection;
 [Generator]
 public sealed class ValidatorRegistrationGenerator : RegistrationGenerator
 {
+    /// <inheritdoc/>
     private protected override string MethodName => "AddFinanceTrackerValidators";
 
+    /// <inheritdoc/>
     private protected override string Category => "Validator";
 }
