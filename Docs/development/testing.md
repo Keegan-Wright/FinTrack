@@ -35,3 +35,13 @@ A failed UI test saves a Playwright trace, which you can open at [trace.playwrig
   `await Scenario.Do(s => s.UserScenario.WithUser(Username))`.
 - Use made up names and numbers, never real ones.
 - UI tests act like a user, clicking and typing rather than calling code.
+
+## Screenshots
+
+The README's screenshots come from a test with six months of made up data. It only runs when asked for:
+
+```sh
+dotnet test --project Test/FinanceTracker.Tests.Integration -- --treenode-filter '/*/*/ScreenshotTests/*'
+```
+
+The images are saved to `Docs/images`. Run it again when a page they show changes.

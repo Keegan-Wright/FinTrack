@@ -3,6 +3,26 @@
 A self-hosted personal finance app. FinTrack syncs your bank accounts and cards, and helps you see where your money
 goes and plan what's coming.
 
+![The dashboard](Docs/images/dashboard-desktop.png)
+
+<table>
+  <tr>
+    <td><img src="Docs/images/transactions-desktop.png" alt="Transactions"></td>
+    <td><img src="Docs/images/bills-desktop.png" alt="Bills"></td>
+    <td><img src="Docs/images/net-worth-desktop.png" alt="Net worth"></td>
+  </tr>
+  <tr>
+    <td><img src="Docs/images/accounts-desktop.png" alt="Accounts from two banks"></td>
+    <td><img src="Docs/images/rule-desktop.png" alt="Editing a rule"></td>
+    <td><img src="Docs/images/sharing-desktop.png" alt="Choosing what to share"></td>
+  </tr>
+  <tr>
+    <td><img src="Docs/images/dashboard-phone.png" alt="The dashboard on a phone" width="240"></td>
+    <td><img src="Docs/images/transactions-phone.png" alt="Transactions on a phone" width="240"></td>
+    <td><img src="Docs/images/bills-phone.png" alt="Bills on a phone" width="240"></td>
+  </tr>
+</table>
+
 ## Highlights
 
 - **Bank sync.** UK bank accounts and credit cards through TrueLayer, synced on a schedule.

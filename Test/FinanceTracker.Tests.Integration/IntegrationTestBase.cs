@@ -127,10 +127,11 @@ public abstract class IntegrationTestBase
     /// added to <see cref="Scenario"/> under its username so scenarios can build data for it. Given
     /// <paramref name="at"/>, the app's clock reads that for everything the user does from registering on, time
     /// passing from there, see <see cref="TestClock"/>. Their email is confirmed, as an account's is once its link is
-    /// opened, unless <paramref name="confirmEmail"/> is false.
+    /// opened, unless <paramref name="confirmEmail"/> is false. Called "Integration Test" unless given
+    /// <paramref name="firstName"/> and <paramref name="lastName"/>.
     /// </summary>
     protected async Task<SignedInUser> RegisterUserAsync(string? username = null, DateTimeOffset? at = null,
-        bool confirmEmail = true)
+        bool confirmEmail = true, string firstName = "Integration", string lastName = "Test")
     {
         username ??= UniqueName();
         at ??= DefaultClock;
@@ -143,7 +144,8 @@ public abstract class IntegrationTestBase
         }
 
         HttpResponseMessage response =
-            await client.RegisterAsync(username, SignedInUser.DefaultPassword, CancellationToken);
+            await client.RegisterAsync(username, SignedInUser.DefaultPassword, firstName, lastName,
+                CancellationToken);
         if (response.StatusCode != HttpStatusCode.Redirect)
         {
             throw new InvalidOperationException(

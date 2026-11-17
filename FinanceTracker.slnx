@@ -13,6 +13,54 @@
     <File Path=".github\workflows\Build.yml"/>
     <File Path=".github\workflows\PublishDockerImages.yml"/>
   </Folder>
+  <Folder Name="/Misc/Docs/">
+    <File Path="README.md"/>
+    <File Path="CONTRIBUTING.md"/>
+    <File Path="SECURITY.md"/>
+    <File Path="Docker\README.md"/>
+    <File Path="Grafana\README.md"/>
+    <File Path="Docs\README.md"/>
+  </Folder>
+  <Folder Name="/Misc/Docs/Assets/">
+    <File Path="Docs\images\accounts-desktop.png"/>
+    <File Path="Docs\images\accounts-phone.png"/>
+    <File Path="Docs\images\bills-desktop.png"/>
+    <File Path="Docs\images\bills-phone.png"/>
+    <File Path="Docs\images\dashboard-desktop.png"/>
+    <File Path="Docs\images\dashboard-phone.png"/>
+    <File Path="Docs\images\net-worth-desktop.png"/>
+    <File Path="Docs\images\net-worth-phone.png"/>
+    <File Path="Docs\images\rule-desktop.png"/>
+    <File Path="Docs\images\rule-phone.png"/>
+    <File Path="Docs\images\sharing-desktop.png"/>
+    <File Path="Docs\images\sharing-phone.png"/>
+    <File Path="Docs\images\transactions-desktop.png"/>
+    <File Path="Docs\images\transactions-phone.png"/>
+  </Folder>
+  <Folder Name="/Misc/Docs/Development/">
+    <File Path="Docs\development\README.md"/>
+    <File Path="Docs\development\api.md"/>
+    <File Path="Docs\development\architecture.md"/>
+    <File Path="Docs\development\migrations.md"/>
+    <File Path="Docs\development\running-locally.md"/>
+    <File Path="Docs\development\testing.md"/>
+  </Folder>
+  <Folder Name="/Misc/Docs/Self-hosting/">
+    <File Path="Docs\self-hosting\README.md"/>
+    <File Path="Docs\self-hosting\backups-and-upgrades.md"/>
+    <File Path="Docs\self-hosting\configuration.md"/>
+    <File Path="Docs\self-hosting\email.md"/>
+    <File Path="Docs\self-hosting\encryption-keys.md"/>
+    <File Path="Docs\self-hosting\installing.md"/>
+    <File Path="Docs\self-hosting\monitoring.md"/>
+    <File Path="Docs\self-hosting\open-banking.md"/>
+    <File Path="Docs\self-hosting\reverse-proxy.md"/>
+    <File Path="Docs\self-hosting\single-sign-on.md"/>
+  </Folder>
+  <Folder Name="/Misc/Docs/Using/">
+    <File Path="Docs\using\README.md"/>
+    <File Path="Docs\using\getting-started.md"/>
+  </Folder>
   <Folder Name="/Misc/Docker/">
     <File Path="Docker\.env"/>
     <File Path="Docker\docker-compose.yaml"/>
