@@ -14,6 +14,12 @@ public sealed class Share : AggregateRoot
     {
     }
 
+    /// <param name="sharedBy">The user sharing it, who owns it.</param>
+    /// <param name="linkId">The link it's shared through.</param>
+    /// <param name="itemType">What kind of thing is shared.</param>
+    /// <param name="itemId">The id of what's shared.</param>
+    /// <param name="mode">Whether the other person can change it.</param>
+    /// <param name="sharedAt">When it was shared.</param>
     /// <param name="reason">Why it's shared. One that follows a transaction is read only.</param>
     /// <exception cref="ArgumentException">One that follows a transaction allows changes.</exception>
     public Share(Guid sharedBy, Guid linkId, ShareItemType itemType, Guid itemId, ShareMode mode, DateTime sharedAt,
@@ -40,6 +46,9 @@ public sealed class Share : AggregateRoot
     /// </summary>
     public Guid LinkId { get; private set; }
 
+    /// <summary>
+    /// What kind of thing is shared.
+    /// </summary>
     public ShareItemType ItemType { get; private set; }
 
     /// <summary>
@@ -47,12 +56,22 @@ public sealed class Share : AggregateRoot
     /// </summary>
     public Guid ItemId { get; private set; }
 
+    /// <summary>
+    /// Whether the other person can change it.
+    /// </summary>
     public ShareMode Mode { get; private set; }
 
+    /// <summary>
+    /// When it was shared.
+    /// </summary>
     public DateTime SharedAt { get; private set; }
 
+    /// <summary>
+    /// Why it's shared, chosen or because it's on a shared transaction.
+    /// </summary>
     public ShareReason Reason { get; private set; }
 
+    /// <param name="mode">Whether the other person can change it.</param>
     /// <exception cref="InvalidOperationException">It follows a transaction, so is read only.</exception>
     public void ChangeMode(ShareMode mode)
     {

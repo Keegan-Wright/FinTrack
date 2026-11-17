@@ -12,6 +12,8 @@ public sealed class TransferMatchCheckpoint : AggregateRoot
     {
     }
 
+    /// <param name="userId">The user it's for.</param>
+    /// <param name="matchedFrom">When the first run started loading.</param>
     public TransferMatchCheckpoint(Guid userId, DateTime matchedFrom) : base(userId) => MatchedFrom = matchedFrom;
 
     /// <summary>
@@ -20,5 +22,9 @@ public sealed class TransferMatchCheckpoint : AggregateRoot
     /// </summary>
     public DateTime MatchedFrom { get; private set; }
 
+    /// <summary>
+    /// Records a run, so the next only looks at what's changed since.
+    /// </summary>
+    /// <param name="matchedFrom">When the run started loading.</param>
     public void Record(DateTime matchedFrom) => MatchedFrom = matchedFrom;
 }

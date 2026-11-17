@@ -10,7 +10,14 @@ namespace FinanceTracker.Domain.PayPeriods;
 /// <param name="Month">The month it's named after, e.g. November for pay on 30 October.</param>
 public readonly record struct PayPeriod(DateOnly Start, DateOnly End, int Year, int Month)
 {
+    /// <summary>
+    /// Whether <paramref name="day"/> is in the period.
+    /// </summary>
+    /// <param name="day">The day to check.</param>
     public bool Contains(DateOnly day) => day >= Start && day <= End;
 
+    /// <summary>
+    /// How many days it has.
+    /// </summary>
     public int Days => End.DayNumber - Start.DayNumber + 1;
 }

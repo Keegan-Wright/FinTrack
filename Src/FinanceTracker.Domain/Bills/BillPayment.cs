@@ -14,14 +14,26 @@ namespace FinanceTracker.Domain.Bills;
 /// <see cref="DecisionSource.Rule"/>.</param>
 public sealed record BillPayment(Guid? BillId, DecisionSource Source, DateTime DecidedAt, Guid? RuleId = null)
 {
+    /// <summary>
+    /// The matcher decided it pays <paramref name="billId"/>.
+    /// </summary>
+    /// <param name="billId">The bill it pays.</param>
+    /// <param name="decidedAt">When it was decided.</param>
     public static BillPayment Matched(Guid billId, DateTime decidedAt) =>
         new(billId, DecisionSource.Matcher, decidedAt);
 
+    /// <summary>
+    /// A rule decided it pays <paramref name="billId"/>.
+    /// </summary>
+    /// <param name="billId">The bill it pays.</param>
+    /// <param name="ruleId">The rule that decided.</param>
+    /// <param name="decidedAt">When it was decided.</param>
     public static BillPayment FromRule(Guid billId, Guid ruleId, DateTime decidedAt) =>
         new(billId, DecisionSource.Rule, decidedAt, ruleId);
 
     /// <summary>
     /// Whether this says the same as <paramref name="other"/>, whenever each was decided.
     /// </summary>
+    /// <param name="other">The decision to compare with.</param>
     public bool IsSameAs(BillPayment? other) => other is not null && this with { DecidedAt = other.DecidedAt } == other;
 }

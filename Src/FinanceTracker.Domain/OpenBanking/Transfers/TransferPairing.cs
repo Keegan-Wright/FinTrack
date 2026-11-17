@@ -27,6 +27,8 @@ public sealed class TransferPairing
     /// <summary>
     /// Whether <paramref name="first"/> and <paramref name="second"/> could be the two halves of one transfer.
     /// </summary>
+    /// <param name="first">One transaction.</param>
+    /// <param name="second">The other transaction.</param>
     public bool CanPair(BankTransaction first, BankTransaction second)
     {
         ArgumentNullException.ThrowIfNull(first);
@@ -37,6 +39,8 @@ public sealed class TransferPairing
     /// <summary>
     /// Whether <paramref name="transaction"/> could have moved money to or from <paramref name="account"/>.
     /// </summary>
+    /// <param name="transaction">The transaction.</param>
+    /// <param name="account">The account.</param>
     public bool CanReach(BankTransaction transaction, BankAccount account)
     {
         ArgumentNullException.ThrowIfNull(transaction);
@@ -44,6 +48,14 @@ public sealed class TransferPairing
         return CanReach(transaction.UserId, transaction.AccountId, account.UserId, account.Id);
     }
 
+    /// <summary>
+    /// Whether money could move between the two accounts. Always for one person's own, otherwise when either account is
+    /// shared with the other person.
+    /// </summary>
+    /// <param name="firstOwner">Who owns the first account.</param>
+    /// <param name="firstAccount">The first account.</param>
+    /// <param name="secondOwner">Who owns the second account.</param>
+    /// <param name="secondAccount">The second account.</param>
     private bool CanReach(Guid firstOwner, Guid firstAccount, Guid secondOwner, Guid secondAccount)
     {
         if (firstOwner == secondOwner)

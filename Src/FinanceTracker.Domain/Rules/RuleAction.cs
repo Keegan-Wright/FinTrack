@@ -21,14 +21,24 @@ public sealed record RuleAction(
     Guid? BillId = null,
     Guid? DebtId = null)
 {
+    /// <summary>
+    /// Adds <paramref name="classification"/> to the transaction.
+    /// </summary>
+    /// <param name="classification">The tag to add.</param>
     public static RuleAction AddTag(CustomClassification classification)
     {
         ArgumentNullException.ThrowIfNull(classification);
         return new RuleAction(RuleActionType.AddTag, classification.Id);
     }
 
+    /// <summary>
+    /// Says the transaction is a transfer between the user's own accounts.
+    /// </summary>
     public static RuleAction MarkAsTransfer() => new(RuleActionType.MarkAsTransfer, null);
 
+    /// <summary>
+    /// Says the transaction isn't a transfer, so it counts as income or spending.
+    /// </summary>
     public static RuleAction MarkNotATransfer() => new(RuleActionType.MarkNotATransfer, null);
 
     /// <param name="bankClassification">As the bank sends it, matched in any case.</param>
@@ -38,12 +48,20 @@ public sealed record RuleAction(
         return new RuleAction(RuleActionType.HideClassification, null, bankClassification.Trim());
     }
 
+    /// <summary>
+    /// Says the transaction pays <paramref name="bill"/>.
+    /// </summary>
+    /// <param name="bill">The bill it pays.</param>
     public static RuleAction PayBill(Bill bill)
     {
         ArgumentNullException.ThrowIfNull(bill);
         return new RuleAction(RuleActionType.PayBill, null, null, bill.Id);
     }
 
+    /// <summary>
+    /// Says the transaction pays off <paramref name="debt"/>.
+    /// </summary>
+    /// <param name="debt">The debt it pays off.</param>
     public static RuleAction PayDebt(Debt debt)
     {
         ArgumentNullException.ThrowIfNull(debt);

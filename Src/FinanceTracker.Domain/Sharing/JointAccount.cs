@@ -18,6 +18,11 @@ public sealed class JointAccount : AggregateRoot
     {
     }
 
+    /// <param name="mergedBy">Whichever of the two merged them, who owns it.</param>
+    /// <param name="linkId">The link between the two people.</param>
+    /// <param name="shownAccountId">The copy both of them see and annotate.</param>
+    /// <param name="hiddenAccountId">The other person's copy.</param>
+    /// <param name="mergedAt">When they were merged.</param>
     public JointAccount(Guid mergedBy, Guid linkId, Guid shownAccountId, Guid hiddenAccountId, DateTime mergedAt)
         : base(mergedBy)
     {
@@ -50,6 +55,9 @@ public sealed class JointAccount : AggregateRoot
     /// </summary>
     public Guid HiddenAccountId { get; private set; }
 
+    /// <summary>
+    /// When they were merged.
+    /// </summary>
     public DateTime MergedAt { get; private set; }
 
     /// <summary>
@@ -57,6 +65,9 @@ public sealed class JointAccount : AggregateRoot
     /// </summary>
     public IReadOnlyList<JointAccountGap> Gaps => _gaps.AsReadOnly();
 
+    /// <summary>
+    /// Whether the shown copy's connection has lapsed and the hidden copy is filling in.
+    /// </summary>
     public bool HasOpenGap => _gaps.Count > 0 && _gaps[^1].IsOpen;
 
     /// <summary>
@@ -99,10 +110,12 @@ public sealed class JointAccount : AggregateRoot
     /// <summary>
     /// Whether a hidden copy's transaction at <paramref name="occurredAt"/> falls in one of the gaps.
     /// </summary>
+    /// <param name="occurredAt">When the transaction happened.</param>
     public bool InGap(DateTime occurredAt) => _gaps.Exists(x => x.Covers(occurredAt));
 
     /// <summary>
     /// Whether the shown copy's balance on <paramref name="day"/> is taken from the hidden copy.
     /// </summary>
+    /// <param name="day">The day to check.</param>
     public bool BalanceFromHiddenOn(DateOnly day) => _gaps.Exists(x => x.CoversBalanceOn(day));
 }

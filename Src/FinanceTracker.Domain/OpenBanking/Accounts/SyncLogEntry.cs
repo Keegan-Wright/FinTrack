@@ -13,6 +13,9 @@ public sealed class SyncLogEntry : Entity
     {
     }
 
+    /// <param name="accountId">The account that was synced.</param>
+    /// <param name="type">What was synced.</param>
+    /// <param name="occurredAt">When the sync finished.</param>
     internal SyncLogEntry(Guid accountId, SyncType type, DateTime occurredAt)
     {
         AccountId = accountId;
@@ -20,9 +23,18 @@ public sealed class SyncLogEntry : Entity
         OccurredAt = occurredAt;
     }
 
+    /// <summary>
+    /// The account that was synced.
+    /// </summary>
     public Guid AccountId { get; private set; }
 
+    /// <summary>
+    /// What was synced.
+    /// </summary>
     public SyncType Type { get; private set; }
 
+    /// <summary>
+    /// When the sync finished.
+    /// </summary>
     public DateTime OccurredAt { get; private set; }
 }

@@ -24,7 +24,12 @@ public sealed class Budget : AggregateRoot
     }
 #pragma warning restore CS8618
 
+    /// <param name="userId">The user it belongs to.</param>
+    /// <param name="name">What the user calls it.</param>
+    /// <param name="tagIds">The user's tags it covers.</param>
+    /// <param name="monthlyLimit">How much can be spent each month from <paramref name="from"/>.</param>
     /// <param name="from">The first month it runs.</param>
+    /// <param name="rolloverMode">What happens to what's left or overspent at the end of a month.</param>
     /// <exception cref="ArgumentException">There are no tags, or the limit is negative.</exception>
     public Budget(Guid userId, string name, IEnumerable<Guid> tagIds, decimal monthlyLimit, BudgetMonth from,
         RolloverMode rolloverMode) : base(userId)
@@ -35,6 +40,9 @@ public sealed class Budget : AggregateRoot
         ChangeLimit(monthlyLimit, from);
     }
 
+    /// <summary>
+    /// What the user calls it.
+    /// </summary>
     public string Name { get; private set; }
 
     /// <summary>
@@ -47,6 +55,9 @@ public sealed class Budget : AggregateRoot
     /// </summary>
     public IReadOnlyList<BudgetLimit> Limits => _limits.AsReadOnly();
 
+    /// <summary>
+    /// What happens to what's left or overspent at the end of a month.
+    /// </summary>
     public RolloverMode RolloverMode { get; private set; }
 
     /// <summary>
@@ -59,6 +70,10 @@ public sealed class Budget : AggregateRoot
     /// </summary>
     public BudgetMonth FirstMonth => _limits[0].Month;
 
+    /// <summary>
+    /// Changes what the user calls it.
+    /// </summary>
+    /// <param name="name">The new name.</param>
     [MemberNotNull(nameof(Name))]
     public void Rename(string name)
     {
@@ -70,6 +85,7 @@ public sealed class Budget : AggregateRoot
     /// Covers <paramref name="tagIds"/> from now on, each one of <paramref name="choices"/>. Its owner's own tags, or for
     /// someone it's shared with, its owner's tags shared with them.
     /// </summary>
+    /// <param name="tagIds">The tags it covers now.</param>
     /// <param name="choices">The tags whoever's changing it may give it.</param>
     /// <exception cref="ArgumentException">There are no tags.</exception>
     /// <exception cref="DomainRuleException">A tag isn't one of <paramref name="choices"/>.</exception>
@@ -88,6 +104,7 @@ public sealed class Budget : AggregateRoot
         SetTags(replacements);
     }
 
+    /// <param name="tagIds">The tags it covers.</param>
     /// <exception cref="ArgumentException">There are no tags.</exception>
     private void SetTags(IEnumerable<Guid> tagIds)
     {
@@ -107,9 +124,14 @@ public sealed class Budget : AggregateRoot
     /// Drops a tag being deleted. A budget left with none is kept, see <see cref="CoversNothing"/>, so the user can
     /// give it another rather than lose its history.
     /// </summary>
+    /// <param name="tagId">The tag being deleted.</param>
     /// <returns>Whether the budget covered the tag.</returns>
     public bool RemoveTag(Guid tagId) => _tagIds.Remove(tagId);
 
+    /// <summary>
+    /// Changes what happens to what's left or overspent at the end of a month.
+    /// </summary>
+    /// <param name="rolloverMode">The new mode.</param>
     public void ChangeRolloverMode(RolloverMode rolloverMode)
     {
         if (!Enum.IsDefined(rolloverMode))
@@ -124,6 +146,8 @@ public sealed class Budget : AggregateRoot
     /// Sets the limit from <paramref name="from"/> onwards, replacing any set for that month or later. The months
     /// before keep theirs. A month before the first starts the budget earlier.
     /// </summary>
+    /// <param name="amount">How much can be spent each month, 0 or more.</param>
+    /// <param name="from">The first month it applies to.</param>
     /// <returns>Whether the limit changed.</returns>
     /// <exception cref="ArgumentOutOfRangeException">The amount is negative.</exception>
     public bool ChangeLimit(decimal amount, BudgetMonth from)
@@ -144,6 +168,7 @@ public sealed class Budget : AggregateRoot
     /// <summary>
     /// The limit for <paramref name="month"/>, null before the budget's first month.
     /// </summary>
+    /// <param name="month">The month to look at.</param>
     public decimal? LimitFor(BudgetMonth month)
     {
         BudgetLimit? limit = _limits.LastOrDefault(x => x.Month <= month);
@@ -154,6 +179,7 @@ public sealed class Budget : AggregateRoot
     /// Whether <paramref name="transaction"/> carries any of the budget's tags. Transfers never count, see
     /// <see cref="BankTransaction.CountsAsIncomeOrSpending"/>.
     /// </summary>
+    /// <param name="transaction">The transaction to check.</param>
     public bool Covers(BankTransaction transaction)
     {
         ArgumentNullException.ThrowIfNull(transaction);

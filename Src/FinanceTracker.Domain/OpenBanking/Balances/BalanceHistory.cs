@@ -20,6 +20,7 @@ public static class BalanceHistory
     /// synced balance that have none, back to the day before its first transaction. Days that already have a snapshot
     /// are left as they are.
     /// </summary>
+    /// <param name="account">The account to work out.</param>
     /// <param name="snapshots">The account's snapshots. Those synced and not stale are worked back from, a stale one
     /// holds a balance from some earlier day so it's passed over.</param>
     /// <param name="transactions">The account's transactions.</param>
@@ -76,12 +77,19 @@ public static class BalanceHistory
         return derived;
     }
 
+    /// <summary>
+    /// Whether the snapshot is a synced balance from its own day, so earlier days can be worked back from it.
+    /// </summary>
+    /// <param name="snapshot">The snapshot to check.</param>
     private static bool IsWorkedBackFrom(BalanceSnapshot snapshot) =>
         snapshot is { Source: BalanceSnapshotSource.Synced, IsStale: false };
 
     /// <summary>
     /// What settled on each day where the user is, money in positive and out negative.
     /// </summary>
+    /// <param name="account">The account to work out.</param>
+    /// <param name="transactions">The account's transactions.</param>
+    /// <param name="timeZone">Where the user is, so a transaction falls on the day it was where they are.</param>
     private static Dictionary<DateOnly, decimal> MovedOn(BankAccount account, IEnumerable<BankTransaction> transactions,
         TimeZoneInfo timeZone)
     {
@@ -109,6 +117,9 @@ public static class BalanceHistory
     /// The balance the day before <paramref name="after"/>, keeping the same room between available and current, so
     /// an overdraft or a card's credit left carries back with it.
     /// </summary>
+    /// <param name="after">The balance at the end of <paramref name="day"/>.</param>
+    /// <param name="moved">What settled on <paramref name="day"/>.</param>
+    /// <param name="day">The day to step back over.</param>
     private static AccountBalance Before(AccountBalance after, decimal moved, DateOnly day)
     {
         decimal current = after.Current - moved;

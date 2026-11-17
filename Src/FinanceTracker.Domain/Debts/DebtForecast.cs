@@ -10,7 +10,13 @@ namespace FinanceTracker.Domain.Debts;
 /// <param name="Interest">The interest still to pay on the way, null when it's never paid off.</param>
 public sealed record DebtForecast(DateOnly? PaidOffOn, int? Months, decimal? Interest)
 {
+    /// <summary>
+    /// A debt the payment never clears.
+    /// </summary>
     public static DebtForecast Never { get; } = new(null, null, null);
 
+    /// <summary>
+    /// Whether the payment never clears it.
+    /// </summary>
     public bool IsNeverPaidOff => PaidOffOn is null;
 }

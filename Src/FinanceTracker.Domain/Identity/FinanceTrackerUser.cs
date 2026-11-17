@@ -13,6 +13,9 @@ public sealed class FinanceTrackerUser : IdentityUser<Guid>
     /// </summary>
     public static readonly DateTimeOffset LockedByAdminUntil = DateTimeOffset.MaxValue;
 
+    /// <summary>
+    /// Only for EF Core, which sets the properties when it loads one.
+    /// </summary>
     [Obsolete("EF Use Only")]
 #pragma warning disable CS8618 // EF Core sets the properties when it materialises the entity
     public FinanceTrackerUser()
@@ -20,6 +23,13 @@ public sealed class FinanceTrackerUser : IdentityUser<Guid>
     }
 #pragma warning restore CS8618
 
+    /// <summary>
+    /// Makes a user who signs in with a password.
+    /// </summary>
+    /// <param name="firstName">Their first name.</param>
+    /// <param name="lastName">Their last name.</param>
+    /// <param name="email">Their email address.</param>
+    /// <param name="username">What they sign in with.</param>
     public FinanceTrackerUser(string firstName, string lastName, string email, string username) : base(username)
     {
         FirstName = firstName;
@@ -27,13 +37,36 @@ public sealed class FinanceTrackerUser : IdentityUser<Guid>
         Email = email;
     }
 
+    /// <summary>
+    /// Makes a user who signs in through the OpenID Connect provider.
+    /// </summary>
+    /// <param name="firstName">Their first name.</param>
+    /// <param name="lastName">Their last name.</param>
+    /// <param name="email">Their email address.</param>
+    /// <param name="username">Their username.</param>
+    /// <param name="oidcSubject">Who the provider says they are, see <see cref="OpenIdConnectSubject"/>.</param>
     public FinanceTrackerUser(string firstName, string lastName, string email, string username, string oidcSubject) :
         this(firstName, lastName, email, username) => OpenIdConnectSubject = oidcSubject;
 
+    /// <summary>
+    /// Their first name.
+    /// </summary>
     public string FirstName { get; private set; }
+
+    /// <summary>
+    /// Their last name.
+    /// </summary>
     public string LastName { get; private set; }
 
+    /// <summary>
+    /// Their id at the OpenID Connect provider, null when they've never signed in through it.
+    /// </summary>
     public string? OpenIdConnectSubject { get; private set; }
+
+    /// <summary>
+    /// Links them to their account at the OpenID Connect provider.
+    /// </summary>
+    /// <param name="subject">Their id at the provider.</param>
     public void SetOidcSubject(string subject) => OpenIdConnectSubject = subject;
 
     /// <summary>

@@ -5,6 +5,12 @@ namespace FinanceTracker.Domain.Rules;
 /// </summary>
 public enum RuleMatchMode
 {
+    /// <summary>
+    /// Every condition.
+    /// </summary>
     All = 1,
+    /// <summary>
+    /// At least one condition.
+    /// </summary>
     Any = 2
 }

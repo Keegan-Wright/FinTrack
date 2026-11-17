@@ -3,12 +3,20 @@ namespace FinanceTracker.Domain.PayPeriods;
 /// <summary>
 /// When pay comes in each month, worked out from the pays so far, see <see cref="Fitting"/>.
 /// </summary>
+/// <param name="Rule">Whether pay comes on a set day or the last working day.</param>
 /// <param name="Day">The day of the month for <see cref="PayDayRule.DayOfMonth"/>, 1 to 31, the month's last day in
 /// shorter months. Unused for <see cref="PayDayRule.LastWorkingDay"/>.</param>
 public sealed record PayPattern(PayDayRule Rule, int Day)
 {
+    /// <summary>
+    /// Pay on the last working day of each month.
+    /// </summary>
     public static PayPattern LastWorkingDay { get; } = new(PayDayRule.LastWorkingDay, 0);
 
+    /// <summary>
+    /// Pay on <paramref name="day"/> of each month, or the working day before.
+    /// </summary>
+    /// <param name="day">The day of the month, 1 to 31.</param>
     public static PayPattern OnDay(int day)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(day, 1);
@@ -20,6 +28,8 @@ public sealed record PayPattern(PayDayRule Rule, int Day)
     /// The day pay is due for <paramref name="month"/> of <paramref name="year"/>. Can be in the month before, e.g.
     /// pay due on Sunday the 1st comes in on Friday the 30th.
     /// </summary>
+    /// <param name="year">The year.</param>
+    /// <param name="month">The month of the year, 1 to 12.</param>
     public DateOnly ExpectedFor(int year, int month)
     {
         if (Rule == PayDayRule.LastWorkingDay)
@@ -34,6 +44,7 @@ public sealed record PayPattern(PayDayRule Rule, int Day)
     /// <summary>
     /// Whether pay due under this pattern lands on <paramref name="payDay"/>, for the month it's in or the next.
     /// </summary>
+    /// <param name="payDay">The day pay came in.</param>
     public bool Fits(DateOnly payDay)
     {
         if (ExpectedFor(payDay.Year, payDay.Month) == payDay)
@@ -49,6 +60,7 @@ public sealed record PayPattern(PayDayRule Rule, int Day)
     /// The pattern every one of <paramref name="payDays"/> fits, the last working day first, then the earliest day
     /// of the month. Null when none fits them all, e.g. one came in a few days early.
     /// </summary>
+    /// <param name="payDays">The days pay came in.</param>
     public static PayPattern? Fitting(IReadOnlyCollection<DateOnly> payDays)
     {
         ArgumentNullException.ThrowIfNull(payDays);

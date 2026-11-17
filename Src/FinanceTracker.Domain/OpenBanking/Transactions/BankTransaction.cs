@@ -27,6 +27,9 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
     }
 #pragma warning restore CS8618
 
+    /// <param name="userId">The user it belongs to.</param>
+    /// <param name="accountId">The account it's on.</param>
+    /// <param name="details">What the provider reports for it.</param>
     private BankTransaction(Guid userId, Guid accountId, TransactionDetails details) : base(userId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(details.ExternalId);
@@ -36,22 +39,47 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
         UpdateFromSync(details);
     }
 
+    /// <inheritdoc/>
     public Guid AccountId { get; private set; }
 
+    /// <summary>
+    /// The provider's id for it.
+    /// </summary>
     public string ExternalId { get; private set; }
 
+    /// <summary>
+    /// The bank's description, usually who it was with.
+    /// </summary>
     public string Description { get; private set; }
 
+    /// <summary>
+    /// Whether money went out or came in.
+    /// </summary>
     public TransactionType Type { get; private set; }
 
+    /// <summary>
+    /// The provider's category for it, e.g. a purchase or a transfer.
+    /// </summary>
     public string Category { get; private set; }
 
+    /// <summary>
+    /// How much it was, negative for money going out.
+    /// </summary>
     public decimal Amount { get; private set; }
 
+    /// <summary>
+    /// Its currency code, e.g. GBP.
+    /// </summary>
     public string Currency { get; private set; }
 
+    /// <summary>
+    /// When it happened, in UTC.
+    /// </summary>
     public DateTime OccurredAt { get; private set; }
 
+    /// <summary>
+    /// Whether the bank hasn't settled it yet.
+    /// </summary>
     public bool IsPending { get; private set; }
 
     /// <summary>
@@ -63,6 +91,7 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
     /// <summary>
     /// Sets whether it fills a joint account's gap, see <see cref="FillsJointGap"/>.
     /// </summary>
+    /// <param name="fills">Whether it fills the gap.</param>
     /// <returns>Whether that changed.</returns>
     public bool MarkFillsJointGap(bool fills)
     {
@@ -145,12 +174,16 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
     /// </summary>
     public IReadOnlyList<TransactionSplit> Splits => _splits.AsReadOnly();
 
+    /// <summary>
+    /// Whether the user split it, see <see cref="Splits"/>.
+    /// </summary>
     public bool IsSplit => _splits.Count > 0;
 
     /// <summary>
     /// How much of it counts under any of <paramref name="tagIds"/>, e.g. for a budget: the parts tagged with one of
     /// them when it's split, otherwise all of it when it has one of them, otherwise nothing.
     /// </summary>
+    /// <param name="tagIds">The tags to count under.</param>
     public decimal AmountUnder(IReadOnlyCollection<Guid> tagIds)
     {
         ArgumentNullException.ThrowIfNull(tagIds);
@@ -168,6 +201,11 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
         return 0;
     }
 
+    /// <summary>
+    /// A transaction new from a sync on <paramref name="account"/>.
+    /// </summary>
+    /// <param name="account">The account it's on.</param>
+    /// <param name="details">What the provider reports for it.</param>
     public static BankTransaction Import(BankAccount account, TransactionDetails details)
     {
         ArgumentNullException.ThrowIfNull(account);
@@ -176,6 +214,11 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
         return new BankTransaction(account.UserId, account.Id, details);
     }
 
+    /// <summary>
+    /// Takes in what a later sync reports for it. A split whose amount changes is undone, its tags stay on the whole.
+    /// </summary>
+    /// <param name="details">What the provider reports for it now.</param>
+    /// <exception cref="InvalidOperationException">The details are for another transaction.</exception>
     [MemberNotNull(nameof(Description), nameof(Category), nameof(Currency), nameof(Metadata))]
     public void UpdateFromSync(TransactionDetails details)
     {
@@ -209,6 +252,7 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
     /// <summary>
     /// Records <paramref name="transfer"/> unless a source with higher precedence has already decided.
     /// </summary>
+    /// <param name="transfer">The decision.</param>
     /// <returns>Whether it was recorded.</returns>
     public bool DecideTransfer(TransferInfo transfer)
     {
@@ -230,6 +274,7 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
     /// <summary>
     /// Removes the decision if <paramref name="source"/> or a lower one made it, so the transaction counts again.
     /// </summary>
+    /// <param name="source">Who's clearing it.</param>
     /// <returns>Whether there was a decision to remove.</returns>
     public bool ClearTransfer(DecisionSource source)
     {
@@ -245,6 +290,7 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
     /// <summary>
     /// The user says this is a transfer, keeping any partner already found e.g. when confirming a match.
     /// </summary>
+    /// <param name="decidedAt">When they said so.</param>
     public void MarkAsTransfer(DateTime decidedAt) =>
         Transfer = new TransferInfo(TransferDecision.Transfer, DecisionSource.User, Transfer?.Reason,
             Transfer?.PartnerTransactionId, Transfer?.PartnerAccountId, Transfer?.PartnerHouseholdMemberId, decidedAt);
@@ -252,6 +298,7 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
     /// <summary>
     /// The user says this counts as income or spending, which the matcher then leaves alone.
     /// </summary>
+    /// <param name="decidedAt">When they said so.</param>
     public void MarkNotATransfer(DateTime decidedAt) =>
         Transfer = new TransferInfo(TransferDecision.NotATransfer, DecisionSource.User, null, null, null, null,
             decidedAt);
@@ -259,11 +306,13 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
     /// <summary>
     /// Whether this pays <paramref name="billId"/>.
     /// </summary>
+    /// <param name="billId">The bill to check.</param>
     public bool PaysBill(Guid billId) => BillPayment?.BillId == billId;
 
     /// <summary>
     /// Records <paramref name="payment"/> unless a source with higher precedence has already decided.
     /// </summary>
+    /// <param name="payment">The decision.</param>
     /// <returns>Whether it was recorded.</returns>
     public bool DecideBillPayment(BillPayment payment)
     {
@@ -281,6 +330,7 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
     /// <summary>
     /// Removes the decision if <paramref name="source"/> or a lower one made it.
     /// </summary>
+    /// <param name="source">Who's clearing it.</param>
     /// <returns>Whether there was a decision to remove.</returns>
     public bool ClearBillPayment(DecisionSource source)
     {
@@ -296,8 +346,10 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
     /// <summary>
     /// The user says this pays <paramref name="bill"/>, which matching and rules then leave alone.
     /// </summary>
+    /// <param name="bill">The bill it pays.</param>
     /// <param name="by">Who says so, the owner or someone they let change it. Only their own bills can be paid, or
     /// one shared with them.</param>
+    /// <param name="decidedAt">When they said so.</param>
     /// <param name="sharedWithThem">Whether the bill is shared with <paramref name="by"/>.</param>
     /// <exception cref="InvalidOperationException">The bill is neither <paramref name="by"/>'s nor shared with them.
     /// </exception>
@@ -322,6 +374,7 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
     /// paying their bill, and the owner couldn't name it.
     /// </summary>
     /// <param name="itemOwnerId">Whose the tag, bill or debt is.</param>
+    /// <param name="by">Who's putting it on.</param>
     /// <param name="what">What it is, for the message, e.g. <c>bill</c>.</param>
     /// <exception cref="InvalidOperationException">It's a third person's.</exception>
     private void EnsureEitherOfTheirs(Guid itemOwnerId, Guid by, string what)
@@ -339,6 +392,7 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
     /// Drops the payment of a bill being deleted, whoever decided it, so the transaction pays nothing until matched
     /// again.
     /// </summary>
+    /// <param name="billId">The bill being deleted.</param>
     /// <returns>Whether it paid the bill.</returns>
     public bool RemoveDeletedBill(Guid billId)
     {
@@ -354,18 +408,22 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
     /// <summary>
     /// The user says this pays no bill, which matching and rules then leave alone.
     /// </summary>
+    /// <param name="decidedAt">When they said so.</param>
     public void PayNoBill(DateTime decidedAt) => BillPayment = new BillPayment(null, DecisionSource.User, decidedAt);
 
     /// <summary>
     /// Whether this pays off <paramref name="debtId"/>.
     /// </summary>
+    /// <param name="debtId">The debt to check.</param>
     public bool PaysDebt(Guid debtId) => DebtPayment?.DebtId == debtId;
 
     /// <summary>
     /// The user says this pays off <paramref name="debt"/>, which rules then leave alone.
     /// </summary>
+    /// <param name="debt">The debt it pays off.</param>
     /// <param name="by">Who says so, the owner or someone they let change it. Only their own debts can be paid, or
     /// one shared with them.</param>
+    /// <param name="decidedAt">When they said so.</param>
     /// <param name="sharedWithThem">Whether the debt is shared with <paramref name="by"/>.</param>
     /// <exception cref="InvalidOperationException">The debt is neither <paramref name="by"/>'s nor shared with them.
     /// </exception>
@@ -385,11 +443,13 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
     /// <summary>
     /// The user says this pays off no debt, which rules then leave alone.
     /// </summary>
+    /// <param name="decidedAt">When they said so.</param>
     public void PayNoDebt(DateTime decidedAt) => DebtPayment = new DebtPayment(null, DecisionSource.User, decidedAt);
 
     /// <summary>
     /// Drops the payment of a debt being deleted, whoever decided it.
     /// </summary>
+    /// <param name="debtId">The debt being deleted.</param>
     /// <returns>Whether it paid the debt.</returns>
     public bool RemoveDeletedDebt(Guid debtId)
     {
@@ -405,6 +465,7 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
     /// <summary>
     /// The user tags the transaction, which from now on rules leave its tags alone, see <see cref="TagsSetByUser"/>.
     /// </summary>
+    /// <param name="classification">The tag to add.</param>
     /// <param name="by">Who tags it, the owner or someone they let change it. Only their own tags can be used, or
     /// those shared with them.</param>
     /// <param name="sharedWithThem">The tags another person has shared with <paramref name="by"/>.</param>
@@ -438,6 +499,7 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
     /// <summary>
     /// The user removes a tag, which from now on rules leave its tags alone, see <see cref="TagsSetByUser"/>.
     /// </summary>
+    /// <param name="customClassificationId">The tag to remove.</param>
     /// <exception cref="InvalidOperationException">The transaction is split and its tags are its parts.</exception>
     public void Unclassify(Guid customClassificationId)
     {
@@ -454,6 +516,7 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
     /// Removes a tag that's been deleted, leaving the parts it was on untagged. Not the user editing this transaction,
     /// so rules still apply to it.
     /// </summary>
+    /// <param name="customClassificationId">The tag being deleted.</param>
     public void RemoveDeletedClassification(Guid customClassificationId)
     {
         RemoveClassification(customClassificationId);
@@ -533,6 +596,7 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
     /// when it isn't split itself. For merging the two copies of a joint account and splitting them again, the tags
     /// may be either person's.
     /// </summary>
+    /// <param name="other">The other person's copy of the same transaction.</param>
     /// <param name="withSplit">Whether to take the split, which only the copy being shown decides.</param>
     public void TakeAnnotationsFrom(BankTransaction other, bool withSplit)
     {
@@ -570,9 +634,17 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
     /// <summary>
     /// Whether <paramref name="tagId"/> is on it already, on the whole or on one of its parts.
     /// </summary>
+    /// <param name="tagId">The tag to check.</param>
     private bool HasTag(Guid tagId) =>
         _customClassificationIds.Contains(tagId) || _splits.Exists(x => x.TagId == tagId);
 
+    /// <summary>
+    /// Checks a split before it's made.
+    /// </summary>
+    /// <param name="parts">The parts to split it into.</param>
+    /// <param name="tags">The tags the parts may have.</param>
+    /// <exception cref="ArgumentException">There are fewer than two parts, a part goes the wrong way or is 0, they
+    /// don't add up to the amount, or a part's tag doesn't exist.</exception>
     private void CheckParts(IReadOnlyList<TransactionSplit> parts, IReadOnlyCollection<CustomClassification> tags)
     {
         if (parts.Count < 2)
@@ -601,6 +673,7 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
     /// Whether rule <paramref name="ruleId"/> added one of its tags, gave its transfer answer or said which bill or
     /// debt it pays, so re-applying the rules here can take back what that rule no longer gives.
     /// </summary>
+    /// <param name="ruleId">The rule to check.</param>
     public bool WasDecidedBy(Guid ruleId) =>
         _ruleTags.Exists(x => x.RuleId == ruleId) || Transfer?.RuleId == ruleId ||
         _hiddenClassifications.Exists(x => x.RuleId == ruleId) || BillPayment?.RuleId == ruleId ||
@@ -637,6 +710,7 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
     /// <summary>
     /// Shows a bank classification the user hid. One a rule hid stays hidden until the rule changes.
     /// </summary>
+    /// <param name="classification">The bank classification to show, in any case.</param>
     /// <returns>Whether the user had hidden it.</returns>
     public bool ShowClassification(string classification)
     {
@@ -656,6 +730,8 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
     /// did. Tags are left alone once <see cref="TagsSetByUser"/>, and the user's transfer, bill and debt decisions are
     /// never replaced.
     /// </summary>
+    /// <param name="outcome">What the rules decided.</param>
+    /// <param name="decidedAt">When they decided.</param>
     /// <returns>Whether anything changed.</returns>
     public bool ApplyRules(RuleOutcome outcome, DateTime decidedAt)
     {
@@ -670,6 +746,12 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
         return tagsChanged || transferChanged || hiddenChanged || billChanged || debtChanged;
     }
 
+    /// <summary>
+    /// Records the debt the rules say it pays off, or takes back a rule's earlier answer when they no longer say.
+    /// </summary>
+    /// <param name="debt">The debt the rules say it pays off, null for none.</param>
+    /// <param name="decidedAt">When they decided.</param>
+    /// <returns>Whether it changed.</returns>
     private bool ApplyRuleDebt(RuleDebt? debt, DateTime decidedAt)
     {
         if (debt is null)
@@ -699,6 +781,12 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
         return true;
     }
 
+    /// <summary>
+    /// Records the bill the rules say it pays, or takes back a rule's earlier answer when they no longer say.
+    /// </summary>
+    /// <param name="bill">The bill the rules say it pays, null for none.</param>
+    /// <param name="decidedAt">When they decided.</param>
+    /// <returns>Whether it changed.</returns>
     private bool ApplyRuleBill(RuleBill? bill, DateTime decidedAt)
     {
         if (bill is null)
@@ -726,6 +814,7 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
     /// Hides what the rules hide that this transaction has, and shows again what they no longer hide. The user's own
     /// hiding is left as it is.
     /// </summary>
+    /// <param name="hidden">What the rules hide, each with the rule that hid it.</param>
     private bool ApplyRuleHiding(IReadOnlyList<HiddenClassification> hidden)
     {
         List<HiddenClassification> wanted = [];
@@ -752,12 +841,22 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
     /// <summary>
     /// The bank's own spelling of <paramref name="classification"/>, null when it didn't send it.
     /// </summary>
+    /// <param name="classification">The classification in any case.</param>
     private string? BankClassification(string classification) => _providerClassifications.Find(x =>
         string.Equals(x, classification, StringComparison.OrdinalIgnoreCase));
 
+    /// <summary>
+    /// The hiding of <paramref name="classification"/>, in any case, null when it isn't hidden.
+    /// </summary>
+    /// <param name="classification">The bank classification.</param>
     private HiddenClassification? FindHidden(string classification) => _hiddenClassifications.Find(x =>
         string.Equals(x.Classification, classification, StringComparison.OrdinalIgnoreCase));
 
+    /// <summary>
+    /// Replaces the tags rules added with <paramref name="tags"/>. Left alone once the user has set its tags.
+    /// </summary>
+    /// <param name="tags">The tags the rules add, each with the rule that added it.</param>
+    /// <returns>Whether it changed.</returns>
     private bool ApplyRuleTags(IReadOnlyList<RuleTag> tags)
     {
         if (TagsSetByUser || _ruleTags.ToHashSet().SetEquals(tags))
@@ -785,6 +884,12 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
         return true;
     }
 
+    /// <summary>
+    /// Records the rules' transfer answer, or takes back a rule's earlier answer when they no longer give one.
+    /// </summary>
+    /// <param name="transfer">The rules' transfer answer, null for none.</param>
+    /// <param name="decidedAt">When they decided.</param>
+    /// <returns>Whether it changed.</returns>
     private bool ApplyRuleTransfer(RuleTransfer? transfer, DateTime decidedAt)
     {
         if (transfer is null)
@@ -808,6 +913,10 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
         return DecideTransfer(decision);
     }
 
+    /// <summary>
+    /// Takes a tag off, and off the rule tags too.
+    /// </summary>
+    /// <param name="customClassificationId">The tag.</param>
     private void RemoveClassification(Guid customClassificationId)
     {
         _customClassificationIds.Remove(customClassificationId);

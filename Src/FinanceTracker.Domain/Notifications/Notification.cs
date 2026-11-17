@@ -17,7 +17,11 @@ public sealed class Notification : AggregateRoot
     }
 #pragma warning restore CS8618
 
+    /// <param name="userId">The user it's for.</param>
+    /// <param name="kind">What it's about.</param>
     /// <param name="key">Which event this is, e.g. a connection and the date its consent ends.</param>
+    /// <param name="title">Its heading.</param>
+    /// <param name="message">What it says.</param>
     /// <param name="link">Where in the app to deal with it, relative to the app, null for nowhere.</param>
     /// <param name="inApp">Whether it shows under the bell, false when the user only wants that kind sent
     /// elsewhere.</param>
@@ -34,6 +38,9 @@ public sealed class Notification : AggregateRoot
         InApp = inApp;
     }
 
+    /// <summary>
+    /// What it's about.
+    /// </summary>
     public NotificationKind Kind { get; private set; }
 
     /// <summary>
@@ -41,8 +48,14 @@ public sealed class Notification : AggregateRoot
     /// </summary>
     public string Key { get; private set; }
 
+    /// <summary>
+    /// Its heading.
+    /// </summary>
     public string Title { get; private set; }
 
+    /// <summary>
+    /// What it says.
+    /// </summary>
     public string Message { get; private set; }
 
     /// <summary>
@@ -55,6 +68,9 @@ public sealed class Notification : AggregateRoot
     /// </summary>
     public DateTime? ReadAt { get; private set; }
 
+    /// <summary>
+    /// Whether the user has read it.
+    /// </summary>
     public bool IsRead => ReadAt is not null;
 
     /// <summary>
@@ -66,8 +82,15 @@ public sealed class Notification : AggregateRoot
     /// <summary>
     /// Marks it read, keeping when it was first read.
     /// </summary>
+    /// <param name="now">The time now, in UTC.</param>
     public void MarkRead(DateTime now) => ReadAt ??= now;
 
+    /// <summary>
+    /// Sets its heading and what it says.
+    /// </summary>
+    /// <param name="title">Its heading, trimmed.</param>
+    /// <param name="message">What it says, trimmed.</param>
+    /// <exception cref="ArgumentException">The title or message is blank.</exception>
     [MemberNotNull(nameof(Title), nameof(Message))]
     private void Reword(string title, string message)
     {

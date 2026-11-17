@@ -11,11 +11,16 @@ namespace FinanceTracker.Domain.PayPeriods;
 /// </remarks>
 public static class BankHolidays
 {
+    /// <summary>
+    /// Whether <paramref name="day"/> is a bank holiday.
+    /// </summary>
+    /// <param name="day">The day to check.</param>
     public static bool IsBankHoliday(DateOnly day) => In(day.Year).Contains(day);
 
     /// <summary>
     /// The bank holidays in <paramref name="year"/>.
     /// </summary>
+    /// <param name="year">The year.</param>
     public static IReadOnlySet<DateOnly> In(int year)
     {
         DateOnly easterSunday = EasterSunday(year);
@@ -52,6 +57,10 @@ public static class BankHolidays
         return holidays;
     }
 
+    /// <summary>
+    /// Whether <paramref name="day"/> is a Saturday or Sunday.
+    /// </summary>
+    /// <param name="day">The day to check.</param>
     internal static bool IsWeekend(DateOnly day) => day.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
 
     /// <summary>
@@ -59,6 +68,7 @@ public static class BankHolidays
     /// the moon rather than the real one. This is the anonymous Gregorian algorithm (Meeus, Jones and Butcher), its
     /// steps named for what they work out.
     /// </summary>
+    /// <param name="year">The year.</param>
     private static DateOnly EasterSunday(int year)
     {
         // The moon's phases repeat on the same dates every 19 years, so where the year falls in that cycle says when
@@ -94,6 +104,12 @@ public static class BankHolidays
         return earliest.AddDays(daysToFullMoon + daysToSunday - (7 * weekEarlier));
     }
 
+    /// <summary>
+    /// The first <paramref name="dayOfWeek"/> of the month, e.g. the first Monday in May.
+    /// </summary>
+    /// <param name="dayOfWeek">The day of the week.</param>
+    /// <param name="year">The year.</param>
+    /// <param name="month">The month of the year, 1 to 12.</param>
     private static DateOnly First(DayOfWeek dayOfWeek, int year, int month)
     {
         DateOnly day = new(year, month, 1);
@@ -105,6 +121,12 @@ public static class BankHolidays
         return day;
     }
 
+    /// <summary>
+    /// The last <paramref name="dayOfWeek"/> of the month, e.g. the last Monday in August.
+    /// </summary>
+    /// <param name="dayOfWeek">The day of the week.</param>
+    /// <param name="year">The year.</param>
+    /// <param name="month">The month of the year, 1 to 12.</param>
     private static DateOnly Last(DayOfWeek dayOfWeek, int year, int month)
     {
         DateOnly day = new(year, month, DateTime.DaysInMonth(year, month));

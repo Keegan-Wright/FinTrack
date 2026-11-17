@@ -50,10 +50,19 @@ public sealed record RuleCondition
         Validate(field, @operator, value, secondValue, RegexOptions);
     }
 
+    /// <summary>
+    /// What it looks at.
+    /// </summary>
     public RuleField Field { get; private init; }
 
+    /// <summary>
+    /// How it compares.
+    /// </summary>
     public RuleOperator Operator { get; private init; }
 
+    /// <summary>
+    /// What it compares with.
+    /// </summary>
     public string Value { get; private init; }
 
     /// <summary>
@@ -69,6 +78,7 @@ public sealed record RuleCondition
     /// <summary>
     /// Whether <paramref name="transaction"/> meets this condition. A field the bank didn't send never matches.
     /// </summary>
+    /// <param name="transaction">The transaction to check.</param>
     public bool Matches(BankTransaction transaction)
     {
         ArgumentNullException.ThrowIfNull(transaction);
@@ -97,6 +107,10 @@ public sealed record RuleCondition
         }
     }
 
+    /// <summary>
+    /// Whether <paramref name="text"/> meets the condition. Null never does.
+    /// </summary>
+    /// <param name="text">The transaction's text for the field.</param>
     private bool MatchesText(string? text)
     {
         if (text is null)
@@ -123,6 +137,11 @@ public sealed record RuleCondition
         }
     }
 
+    /// <summary>
+    /// Whether <paramref name="text"/> matches the regular expression. Taking longer than
+    /// <see cref="RegexTimeout"/> counts as not matching.
+    /// </summary>
+    /// <param name="text">The transaction's text for the field.</param>
     private bool MatchesRegex(string text)
     {
         try
@@ -135,6 +154,10 @@ public sealed record RuleCondition
         }
     }
 
+    /// <summary>
+    /// Whether <paramref name="amount"/> meets the condition.
+    /// </summary>
+    /// <param name="amount">The transaction's amount, ignoring its sign.</param>
     private bool MatchesAmount(decimal amount)
     {
         decimal value = ParseAmount(Value);
@@ -154,9 +177,21 @@ public sealed record RuleCondition
         }
     }
 
+    /// <summary>
+    /// The options for the regular expression, ignoring case when the condition does.
+    /// </summary>
     private RegexOptions RegexOptions =>
         IgnoreCase ? RegexOptions.CultureInvariant | RegexOptions.IgnoreCase : RegexOptions.CultureInvariant;
 
+    /// <summary>
+    /// Checks the operator suits the field and the values suit both.
+    /// </summary>
+    /// <param name="field">What to look at.</param>
+    /// <param name="operator">How to compare it.</param>
+    /// <param name="value">What to compare it with.</param>
+    /// <param name="secondValue">The top of the range for <see cref="RuleOperator.Between"/>, null otherwise.</param>
+    /// <param name="regexOptions">The options a regular expression would run with.</param>
+    /// <exception cref="ArgumentException">Something doesn't suit.</exception>
     private static void Validate(RuleField field, RuleOperator @operator, string value, string? secondValue,
         RegexOptions regexOptions)
     {
@@ -198,6 +233,15 @@ public sealed record RuleCondition
         }
     }
 
+    /// <summary>
+    /// Checks a text field's operator, and that a regular expression is valid.
+    /// </summary>
+    /// <param name="field">What to look at.</param>
+    /// <param name="operator">How to compare it.</param>
+    /// <param name="value">What to compare it with.</param>
+    /// <param name="regexOptions">The options a regular expression would run with.</param>
+    /// <exception cref="ArgumentException">The operator doesn't suit text, or the regular expression is invalid.
+    /// </exception>
     private static void ValidateText(RuleField field, RuleOperator @operator, string value, RegexOptions regexOptions)
     {
         RequireOperator(field, @operator, RuleOperator.Equals, RuleOperator.Contains, RuleOperator.StartsWith,
@@ -219,6 +263,15 @@ public sealed record RuleCondition
         }
     }
 
+    /// <summary>
+    /// Checks an amount's operator, and that the values are amounts.
+    /// </summary>
+    /// <param name="field">What to look at.</param>
+    /// <param name="operator">How to compare it.</param>
+    /// <param name="value">What to compare it with.</param>
+    /// <param name="secondValue">The top of the range for <see cref="RuleOperator.Between"/>, null otherwise.</param>
+    /// <exception cref="ArgumentException">The operator doesn't suit an amount, or a value isn't an amount.
+    /// </exception>
     private static void ValidateAmount(RuleField field, RuleOperator @operator, string value, string? secondValue)
     {
         RequireOperator(field, @operator, RuleOperator.Equals, RuleOperator.GreaterThan, RuleOperator.LessThan,
@@ -246,6 +299,13 @@ public sealed record RuleCondition
         }
     }
 
+    /// <summary>
+    /// Checks <paramref name="operator"/> is one of <paramref name="allowed"/>.
+    /// </summary>
+    /// <param name="field">The field, for the message.</param>
+    /// <param name="operator">The operator to check.</param>
+    /// <param name="allowed">The operators the field takes.</param>
+    /// <exception cref="ArgumentException">It isn't one of them.</exception>
     private static void RequireOperator(RuleField field, RuleOperator @operator, params RuleOperator[] allowed)
     {
         if (!allowed.Contains(@operator))
@@ -254,14 +314,32 @@ public sealed record RuleCondition
         }
     }
 
+    /// <summary>
+    /// Reads an amount written with a <c>.</c> for the decimal point.
+    /// </summary>
+    /// <param name="value">The amount as written.</param>
+    /// <param name="amount">The amount read, 0 when it isn't one.</param>
     private static bool TryParseAmount(string? value, out decimal amount) =>
         decimal.TryParse(value, AmountStyle, CultureInfo.InvariantCulture, out amount);
 
+    /// <summary>
+    /// Reads an amount already checked by <see cref="TryParseAmount"/>.
+    /// </summary>
+    /// <param name="value">The amount as written.</param>
     private static decimal ParseAmount(string value) => decimal.Parse(value, AmountStyle,
         CultureInfo.InvariantCulture);
 
+    /// <summary>
+    /// Reads a transaction type by name, in any case. A number isn't taken.
+    /// </summary>
+    /// <param name="value">The type as written.</param>
+    /// <param name="type">The type read.</param>
     private static bool TryParseType(string value, out TransactionType type) =>
         Enum.TryParse(value, ignoreCase: true, out type) && Enum.IsDefined(type) && !int.TryParse(value, out _);
 
+    /// <summary>
+    /// Reads a transaction type already checked by <see cref="TryParseType"/>.
+    /// </summary>
+    /// <param name="value">The type as written.</param>
     private static TransactionType ParseType(string value) => Enum.Parse<TransactionType>(value, ignoreCase: true);
 }

@@ -8,6 +8,7 @@ namespace FinanceTracker.Domain.Bills;
 /// </summary>
 public static class StandingOrderFrequency
 {
+    /// <param name="frequency">The frequency as the bank sends it.</param>
     /// <returns>Null when it's one a bill can't follow, e.g. every working day, or isn't recognised.</returns>
     public static BillFrequency? Parse(string? frequency)
     {
@@ -59,6 +60,7 @@ public static class StandingOrderFrequency
     /// <summary>
     /// The number after the code, e.g. 2 in <c>IntrvlWkDay:02:03</c>, 0 when there isn't one.
     /// </summary>
+    /// <param name="parts">The frequency split on its colons.</param>
     private static int Interval(string[] parts)
     {
         if (parts.Length < 2 || !int.TryParse(parts[1], out int interval))
