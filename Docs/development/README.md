@@ -1,9 +1,9 @@
 # Development
 
-Coming soon:
+- [Running locally](running-locally.md)
+- [Architecture](architecture.md)
+- [Testing](testing.md)
+- [Migrations](migrations.md)
+- [The API](api.md)
 
-- Running locally with the Aspire AppHost
-- Architecture
-- Testing
-- Migrations
-- The API, at `/openapi/v1.json`
+See also the [contributing guide](../../CONTRIBUTING.md).

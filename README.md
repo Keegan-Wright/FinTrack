@@ -41,7 +41,7 @@ goes and plan what's coming.
 
 ## Contributing
 
-Contributions are welcome. Read the contributing guide before opening a pull request, and raise bugs, ideas and
+Contributions are welcome. Read the [contributing guide](CONTRIBUTING.md) before opening a pull request, and raise bugs, ideas and
 security issues as issues.
 
 ## Licence
