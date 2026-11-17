@@ -37,6 +37,7 @@ goes and plan what's coming.
 ## Getting started
 
 - [Self-hosting](Docs/self-hosting/README.md). Run FinTrack with Docker Compose.
+- [Using FinTrack](Docs/using/getting-started.md). Connect your bank and get going.
 - [Development](Docs/development/README.md). Run it locally with the Aspire AppHost.
 
 ## Contributing
