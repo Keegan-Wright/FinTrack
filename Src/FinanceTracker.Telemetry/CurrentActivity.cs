@@ -8,6 +8,10 @@ namespace FinanceTracker.Telemetry;
 /// </summary>
 public static class CurrentActivity
 {
+    /// <summary>
+    /// Sets each tag on the span.
+    /// </summary>
+    /// <param name="tags">The tags' keys and values.</param>
     public static void Tag(params ReadOnlySpan<(string Key, object? Value)> tags)
     {
         Activity? current = Activity.Current;
@@ -25,6 +29,7 @@ public static class CurrentActivity
     /// <summary>
     /// Adds one to a count on the span, starting it at one when the span has none yet.
     /// </summary>
+    /// <param name="key">The count's tag.</param>
     public static void Increment(string key)
     {
         Activity? current = Activity.Current;

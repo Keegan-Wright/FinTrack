@@ -18,8 +18,14 @@ public static class FinTrackActivitySources
     /// </summary>
     public const string InfrastructureName = "FinanceTracker.Infrastructure";
 
+    /// <summary>
+    /// The web app's source, see <see cref="AppName"/>.
+    /// </summary>
     public static readonly ActivitySource App = new(AppName);
 
+    /// <summary>
+    /// The services' source, see <see cref="InfrastructureName"/>.
+    /// </summary>
     public static readonly ActivitySource Infrastructure = new(InfrastructureName);
 
     /// <summary>
