@@ -126,7 +126,7 @@
                 Breakpoint = ChartDefaults.PhoneBreakpoint,
                 Options = new ApexChartOptions<CashflowPoint>
                 {
-                    Xaxis = new XAxis { TickAmount = Math.Min(_points.Count, MaxPhoneAxisLabels) },
+                    Xaxis = ChartDefaults.PhoneXAxis(Math.Min(_points.Count, MaxPhoneAxisLabels)),
                     Legend = new Legend { Position = LegendPosition.Bottom, HorizontalAlign = ApexCharts.Align.Center }
                 }
             }
