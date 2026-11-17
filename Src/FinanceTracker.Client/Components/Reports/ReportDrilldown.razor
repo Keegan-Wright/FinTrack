@@ -413,6 +413,7 @@
                 Breakpoint = ChartDefaults.PhoneBreakpoint,
                 Options = new ApexChartOptions<ReportNode>
                 {
+                    // Month names fit side by side, so they stay flat
                     Xaxis = new XAxis { TickAmount = Math.Min(points, MaxPhoneAxisLabels) },
                     Legend = new Legend { Position = LegendPosition.Bottom, HorizontalAlign = ApexCharts.Align.Center }
                 }

@@ -124,7 +124,7 @@ else
                 Breakpoint = ChartDefaults.PhoneBreakpoint,
                 Options = new ApexChartOptions<HistoryChartPoint>
                 {
-                    Xaxis = new XAxis { TickAmount = Math.Min(Points.Count, MaxPhoneAxisLabels) }
+                    Xaxis = ChartDefaults.PhoneXAxis(Math.Min(Points.Count, MaxPhoneAxisLabels))
                 }
             }
         ];

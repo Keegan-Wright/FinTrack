@@ -95,7 +95,7 @@ else
                 Breakpoint = ChartDefaults.PhoneBreakpoint,
                 Options = new ApexChartOptions<DebtBalancePoint>
                 {
-                    Xaxis = new XAxis { TickAmount = Math.Min(History.Count, MaxPhoneAxisLabels) }
+                    Xaxis = ChartDefaults.PhoneXAxis(Math.Min(History.Count, MaxPhoneAxisLabels))
                 }
             }
         ];

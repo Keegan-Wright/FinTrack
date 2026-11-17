@@ -16,6 +16,17 @@ public static class ChartDefaults
     public const int PhoneBreakpoint = 600;
 
     /// <summary>
+    /// A date axis on a phone, at most <paramref name="tickAmount"/> ticks. Its labels tilt when they'd overlap, as
+    /// dates like <c>17 Nov 26</c> don't fit side by side at a phone's width. Wider screens keep them flat.
+    /// </summary>
+    /// <param name="tickAmount">The most ticks to show.</param>
+    public static XAxis PhoneXAxis(int tickAmount) => new()
+    {
+        TickAmount = tickAmount,
+        Labels = new XAxisLabels { Rotate = -45, HideOverlappingLabels = true }
+    };
+
+    /// <summary>
     /// Options for a money chart, re-create them when <paramref name="isDarkMode"/> changes.
     /// </summary>
     public static ApexChartOptions<T> Create<T>(bool isDarkMode) where T : class => new()
