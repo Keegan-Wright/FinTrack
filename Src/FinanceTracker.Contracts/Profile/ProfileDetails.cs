@@ -22,8 +22,9 @@ public sealed class ProfileDetails
     public required bool EmailConfirmed { get; init; }
 
     /// <summary>
-    /// Whether the account has a password here. One made by signing in through the identity provider hasn't, its
-    /// password and email are the provider's, so neither changes here.
+    /// Whether the account has a password here it can use. One made by signing in through the identity provider
+    /// hasn't, and nobody can with password sign in turned off. Its password and email are then the provider's, so
+    /// neither changes here.
     /// </summary>
     public required bool HasPassword { get; init; }
 

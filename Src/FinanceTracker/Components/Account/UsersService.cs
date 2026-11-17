@@ -20,14 +20,17 @@ public sealed class UsersService : IUsersService
     private readonly IPasswordReset _passwordReset;
     private readonly ICurrentUser _currentUser;
     private readonly ILogger<UsersService> _logger;
+    private readonly SignInMethods _signInMethods;
 
     /// <param name="userManager">Finds and changes users.</param>
     /// <param name="passwordReset">Makes password reset links.</param>
     /// <param name="currentUser">The signed in user.</param>
+    /// <param name="signInMethods">Whether passwords can be used.</param>
     /// <param name="logger">Its logger.</param>
     public UsersService(UserManager<FinanceTrackerUser> userManager, IPasswordReset passwordReset,
-        ICurrentUser currentUser, ILogger<UsersService> logger)
+        ICurrentUser currentUser, SignInMethods signInMethods, ILogger<UsersService> logger)
     {
+        _signInMethods = signInMethods;
         _userManager = userManager;
         _passwordReset = passwordReset;
         _currentUser = currentUser;
@@ -54,7 +57,7 @@ public sealed class UsersService : IUsersService
                 Username = user.UserName ?? string.Empty,
                 Email = string.IsNullOrWhiteSpace(user.Email) ? null : user.Email,
                 EmailConfirmed = user.EmailConfirmed,
-                HasPassword = user.PasswordHash is not null,
+                HasPassword = _signInMethods.CanUsePassword(user.PasswordHash is not null),
                 UsesIdentityProvider = user.OpenIdConnectSubject is not null,
                 IsAdmin = admins.Contains(user.Id),
                 IsLocked = user.IsLockedByAdmin,
@@ -68,8 +71,8 @@ public sealed class UsersService : IUsersService
     {
         FinanceTrackerUser user = await FindAsync(userId);
 
-        // Their password is the identity provider's, a reset would give them a way in around it
-        if (!await _userManager.HasPasswordAsync(user))
+        // Their password is the identity provider's, a reset would give them a way in around it. Or passwords are off
+        if (!_signInMethods.CanUsePassword(await _userManager.HasPasswordAsync(user)))
         {
             return null;
         }

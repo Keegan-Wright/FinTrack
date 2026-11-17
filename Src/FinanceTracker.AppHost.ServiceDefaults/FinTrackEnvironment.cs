@@ -95,6 +95,12 @@ public static class FinTrackEnvironment
     public const string WebhookAllowPrivate = "WEBHOOK_ALLOW_PRIVATE";
 
     /// <summary>
+    /// <c>false</c> to turn off signing in, registering and resetting passwords with a username and password, leaving
+    /// single sign-on, which then has to be set up. On when not set.
+    /// </summary>
+    public const string PasswordSignIn = "PASSWORD_SIGN_IN";
+
+    /// <summary>
     /// How many times a minute one address may post a sign in, register or password reset form, 10 when not set.
     /// </summary>
     public const string SignInsPerMinute = "RATE_LIMIT_SIGN_INS_PER_MINUTE";

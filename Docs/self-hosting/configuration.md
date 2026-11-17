@@ -57,6 +57,7 @@ On when all three are set. See [Single sign-on](single-sign-on.md).
 | `OIDC_AUTHORITY`, as `OIDC_Authority` | For SSO | Your provider's address. |
 | `OIDC_CLIENT_ID`, as `OIDC_ClientId` | For SSO | FinTrack's client id. |
 | `OIDC_CLIENT_SECRET`, as `OIDC_ClientSecret` | For SSO | FinTrack's client secret. |
+| `PASSWORD_SIGN_IN` | No | `false` turns off username and password sign in, leaving only single sign-on. Defaults to `true`. |
 
 ## Network and limits
 

@@ -43,6 +43,13 @@ OIDC_CLIENT_ID=fintrack
 OIDC_CLIENT_SECRET=<the secret, before hashing>
 ```
 
+## Single sign-on only
+
+Set `PASSWORD_SIGN_IN=false` to turn off signing in, registering and resetting passwords with a username and
+password. The sign in page then only shows the single sign on button.
+
+FinTrack won't start with both turned off.
+
 ## Accounts
 
 The first time someone signs in this way, FinTrack links them to the user with the same email, or creates a new user.

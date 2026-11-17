@@ -27,5 +27,5 @@ The database is set up on first start. `docker compose logs -f fintrackweb` show
 Open FinTrack and register. The first person to register becomes the admin, who can manage other users from the Users
 page.
 
-Anyone who can reach FinTrack can register. If it's open to the internet, consider putting access controls in front of
-it at your reverse proxy.
+Anyone who can reach FinTrack can register. To leave sign in to your identity provider instead, see
+[Single sign-on](single-sign-on.md).
