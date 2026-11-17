@@ -1,0 +1,9 @@
+<Project>
+  <!-- The repository's settings, then what differs for the tests -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))"/>
+
+  <PropertyGroup>
+    <!-- Tests don't need doc comments. The shared test project turns them back on for its scenario builder -->
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+</Project>
