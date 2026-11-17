@@ -14,6 +14,9 @@ public sealed class NetWorthSnapshot : AggregateRoot
     {
     }
 
+    /// <param name="userId">The user it belongs to.</param>
+    /// <param name="date">The day it's for.</param>
+    /// <param name="balances">That day's balances for the user's accounts.</param>
     /// <param name="debts">What the debts not linked to an account owed that day, see <see cref="Total"/>.</param>
     public NetWorthSnapshot(Guid userId, DateOnly date, IReadOnlyCollection<BalanceSnapshot> balances,
         decimal debts = 0) : base(userId)
@@ -22,6 +25,9 @@ public sealed class NetWorthSnapshot : AggregateRoot
         Total(balances, debts);
     }
 
+    /// <summary>
+    /// The day it's for.
+    /// </summary>
     public DateOnly Date { get; private set; }
 
     /// <summary>
@@ -34,6 +40,9 @@ public sealed class NetWorthSnapshot : AggregateRoot
     /// </summary>
     public decimal Liabilities { get; private set; }
 
+    /// <summary>
+    /// What the user is worth, assets less liabilities.
+    /// </summary>
     public decimal NetWorth => Assets - Liabilities;
 
     /// <summary>
@@ -50,6 +59,7 @@ public sealed class NetWorthSnapshot : AggregateRoot
     /// Totals the day's balances, replacing the previous totals. Uses each account's current balance, not the
     /// available one, which can include an overdraft limit or pending payments.
     /// </summary>
+    /// <param name="balances">That day's balances for the user's accounts.</param>
     /// <param name="debts">What the debts not linked to an account owed that day, as a positive amount. A debt linked
     /// to an account is already in its balance.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="debts"/> is negative.</exception>

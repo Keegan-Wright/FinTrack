@@ -30,8 +30,14 @@ public sealed class Bill : AggregateRoot
     }
 #pragma warning restore CS8618
 
+    /// <param name="userId">The user it belongs to.</param>
+    /// <param name="accountId">The account it's paid from.</param>
+    /// <param name="name">What the user calls it.</param>
     /// <param name="payee">Who it's paid to as the bank names them, what payments are matched on.</param>
+    /// <param name="frequency">How often it's due.</param>
+    /// <param name="expectedAmount">What it's expected to cost from <paramref name="startsOn"/>.</param>
     /// <param name="startsOn">Its first due date, nothing is due before.</param>
+    /// <param name="source">Where it came from.</param>
     /// <param name="sourceId">The <see cref="StandingOrder"/> or <see cref="DirectDebit"/> it was seeded from, null
     /// for the other sources.</param>
     /// <exception cref="ArgumentException">The expected amount isn't more than 0, or <paramref name="sourceId"/>
@@ -63,6 +69,9 @@ public sealed class Bill : AggregateRoot
         ChangeAmount(expectedAmount, startsOn);
     }
 
+    /// <summary>
+    /// What the user calls it.
+    /// </summary>
     public string Name { get; private set; }
 
     /// <summary>
@@ -75,6 +84,9 @@ public sealed class Bill : AggregateRoot
     /// </summary>
     public string Payee { get; private set; }
 
+    /// <summary>
+    /// Where it came from.
+    /// </summary>
     public BillSource Source { get; private set; }
 
     /// <summary>
@@ -83,6 +95,9 @@ public sealed class Bill : AggregateRoot
     /// </summary>
     public Guid? SourceId { get; private set; }
 
+    /// <summary>
+    /// How often it's due.
+    /// </summary>
     public BillFrequency Frequency { get; private set; }
 
     /// <summary>
@@ -102,6 +117,9 @@ public sealed class Bill : AggregateRoot
     /// </summary>
     public DateOnly? EndedOn { get; private set; }
 
+    /// <summary>
+    /// Whether it has ended, see <see cref="EndedOn"/>.
+    /// </summary>
     public bool HasEnded => EndedOn is not null;
 
     /// <summary>
@@ -124,6 +142,10 @@ public sealed class Bill : AggregateRoot
     /// </summary>
     public decimal ExpectedAmount => _amounts[^1].Amount;
 
+    /// <summary>
+    /// Changes what the user calls it.
+    /// </summary>
+    /// <param name="name">The new name, trimmed.</param>
     [MemberNotNull(nameof(Name))]
     public void Rename(string name)
     {
@@ -131,6 +153,10 @@ public sealed class Bill : AggregateRoot
         Name = name.Trim();
     }
 
+    /// <summary>
+    /// Changes who it's paid to. Payments are matched on this.
+    /// </summary>
+    /// <param name="payee">The payee as the bank names them, trimmed.</param>
     [MemberNotNull(nameof(Payee))]
     public void ChangePayee(string payee)
     {
@@ -138,6 +164,10 @@ public sealed class Bill : AggregateRoot
         Payee = payee.Trim();
     }
 
+    /// <summary>
+    /// Moves it to be paid from another account.
+    /// </summary>
+    /// <param name="accountId">The account it's paid from now.</param>
     public void MoveToAccount(Guid accountId)
     {
         ArgumentOutOfRangeException.ThrowIfEqual(accountId, Guid.Empty);
@@ -148,6 +178,7 @@ public sealed class Bill : AggregateRoot
     /// Changes how often it's due, counted from <paramref name="anchor"/>. Past periods are worked out on the new
     /// schedule too, the payments that paid them stay linked.
     /// </summary>
+    /// <param name="frequency">How often it's due now.</param>
     /// <param name="anchor">Any due date, e.g. the next one a standing order reports.</param>
     public void Reschedule(BillFrequency frequency, DateOnly anchor)
     {
@@ -160,6 +191,10 @@ public sealed class Bill : AggregateRoot
         Anchor = anchor;
     }
 
+    /// <summary>
+    /// Changes how far a payment can be from the expected amount and still count as paid.
+    /// </summary>
+    /// <param name="percent">The tolerance as a percentage of the expected amount.</param>
     /// <exception cref="ArgumentOutOfRangeException">The percentage is negative or over 100.</exception>
     public void ChangeTolerance(decimal percent)
     {
@@ -172,6 +207,8 @@ public sealed class Bill : AggregateRoot
     /// Sets the expected amount from <paramref name="from"/> onwards, replacing any set for that day or later. Periods
     /// due before keep theirs.
     /// </summary>
+    /// <param name="amount">What it's expected to cost, more than 0.</param>
+    /// <param name="from">The first due date it applies to.</param>
     /// <returns>Whether the expected amount changed.</returns>
     /// <exception cref="ArgumentOutOfRangeException">The amount isn't more than 0.</exception>
     public bool ChangeAmount(decimal amount, DateOnly from)
@@ -192,6 +229,7 @@ public sealed class Bill : AggregateRoot
     /// <summary>
     /// What a period due on <paramref name="due"/> is expected to cost. Before the first amount, the first.
     /// </summary>
+    /// <param name="due">The period's due date.</param>
     public decimal ExpectedOn(DateOnly due)
     {
         BillAmount? amount = _amounts.LastOrDefault(x => x.From <= due);
@@ -202,6 +240,8 @@ public sealed class Bill : AggregateRoot
     /// Whether paying <paramref name="paid"/> for the period due on <paramref name="due"/> is within
     /// <see cref="TolerancePercent"/> of what was expected.
     /// </summary>
+    /// <param name="paid">What was paid.</param>
+    /// <param name="due">The period's due date.</param>
     public bool IsExpected(decimal paid, DateOnly due)
     {
         decimal expected = ExpectedOn(due);
@@ -213,6 +253,7 @@ public sealed class Bill : AggregateRoot
     /// paid outside the tolerance. The new amount applies from the day after that period's due date, so the period
     /// itself still shows <see cref="BillState.Changed"/> and the next one expects the new price.
     /// </summary>
+    /// <param name="latest">Its latest paid period.</param>
     /// <returns>Whether the expected amount changed.</returns>
     public bool FollowPrice(BillPeriod latest)
     {
@@ -229,6 +270,7 @@ public sealed class Bill : AggregateRoot
     /// <summary>
     /// Stops it being due after <paramref name="on"/>, e.g. its standing order was cancelled.
     /// </summary>
+    /// <param name="on">The last day it could be due.</param>
     /// <returns>Whether it was running.</returns>
     public bool End(DateOnly on)
     {
@@ -246,6 +288,7 @@ public sealed class Bill : AggregateRoot
     /// while its standing order or direct debit still runs, only <see cref="ReopenByUser"/> does. One that had
     /// already ended keeps the day it ended.
     /// </summary>
+    /// <param name="on">The last day it could be due.</param>
     /// <returns>Whether it changed.</returns>
     public bool EndByUser(DateOnly on)
     {
@@ -294,6 +337,8 @@ public sealed class Bill : AggregateRoot
     /// Its due dates from <paramref name="from"/> to <paramref name="to"/>, both included, between
     /// <see cref="StartsOn"/> and <see cref="EndedOn"/>.
     /// </summary>
+    /// <param name="from">The first day to look at.</param>
+    /// <param name="to">The last day to look at.</param>
     public IEnumerable<DateOnly> DueDatesBetween(DateOnly from, DateOnly to)
     {
         for (int index = IndexOnOrBefore(from); DueAt(index) <= to; index++)
@@ -309,6 +354,7 @@ public sealed class Bill : AggregateRoot
     /// <summary>
     /// Its first due date on or after <paramref name="day"/>, null once it has ended.
     /// </summary>
+    /// <param name="day">The day to look from.</param>
     public DateOnly? NextDue(DateOnly day)
     {
         // Nothing is due less often than yearly, so a year and a bit always finds the next one
@@ -324,6 +370,7 @@ public sealed class Bill : AggregateRoot
     /// The due date a payment on <paramref name="day"/> is for, the closest, the earlier one when it's halfway. Never
     /// before <see cref="StartsOn"/>.
     /// </summary>
+    /// <param name="day">The day the payment was made.</param>
     public DateOnly NearestDue(DateOnly day)
     {
         int index = IndexOnOrBefore(day);
@@ -362,6 +409,7 @@ public sealed class Bill : AggregateRoot
     /// <summary>
     /// Counts <paramref name="index"/> periods from <see cref="Anchor"/>, back when negative.
     /// </summary>
+    /// <param name="index">How many periods from the anchor.</param>
     private DateOnly DueAt(int index) => Frequency switch
     {
         BillFrequency.Weekly => Anchor.AddDays(7 * index),
@@ -375,6 +423,7 @@ public sealed class Bill : AggregateRoot
     /// <summary>
     /// The index of the last due date on or before <paramref name="day"/>, see <see cref="DueAt"/>.
     /// </summary>
+    /// <param name="day">The day to look from.</param>
     private int IndexOnOrBefore(DateOnly day)
     {
         int index = (day.DayNumber - Anchor.DayNumber) / ApproximateDays();

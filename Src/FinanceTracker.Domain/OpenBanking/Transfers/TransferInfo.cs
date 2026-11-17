@@ -25,16 +25,35 @@ public sealed record TransferInfo(
     DateTime DecidedAt,
     Guid? RuleId = null)
 {
+    /// <summary>
+    /// The matcher decided it's a transfer.
+    /// </summary>
+    /// <param name="reason">Why the matcher decided.</param>
+    /// <param name="partnerTransactionId">The other half, null when there isn't one to name.</param>
+    /// <param name="partnerAccountId">The account the money moved to or from.</param>
+    /// <param name="decidedAt">When it was decided.</param>
     public static TransferInfo Matched(TransferReason reason, Guid? partnerTransactionId, Guid partnerAccountId,
         DateTime decidedAt) =>
         new(TransferDecision.Transfer, DecisionSource.Matcher, reason, partnerTransactionId, partnerAccountId, null,
             decidedAt);
 
+    /// <summary>
+    /// The matcher thinks it might be a transfer, for the user to decide.
+    /// </summary>
+    /// <param name="reason">Why the matcher thinks so.</param>
+    /// <param name="partnerTransactionId">The suggested other half, null when there isn't one.</param>
+    /// <param name="partnerAccountId">The account the money may have moved to or from, null when unknown.</param>
+    /// <param name="decidedAt">When it was decided.</param>
     public static TransferInfo ToReview(TransferReason reason, Guid? partnerTransactionId, Guid? partnerAccountId,
         DateTime decidedAt) =>
         new(TransferDecision.NeedsReview, DecisionSource.Matcher, reason, partnerTransactionId, partnerAccountId, null,
             decidedAt);
 
+    /// <summary>
+    /// The matcher decided it's money to or from a household member.
+    /// </summary>
+    /// <param name="householdMemberId">The household member.</param>
+    /// <param name="decidedAt">When it was decided.</param>
     public static TransferInfo WithHouseholdMember(Guid householdMemberId, DateTime decidedAt) =>
         new(TransferDecision.Transfer, DecisionSource.Matcher, TransferReason.HouseholdMember, null, null,
             householdMemberId, decidedAt);
@@ -42,12 +61,16 @@ public sealed record TransferInfo(
     /// <summary>
     /// A rule's decision, which has no partner rule says what a transaction is, not where the money went.
     /// </summary>
+    /// <param name="decision">What the rule decided.</param>
+    /// <param name="ruleId">The rule that decided.</param>
+    /// <param name="decidedAt">When it was decided.</param>
     public static TransferInfo FromRule(TransferDecision decision, Guid ruleId, DateTime decidedAt) =>
         new(decision, DecisionSource.Rule, null, null, null, null, decidedAt, ruleId);
 
     /// <summary>
     /// Whether this says the same as <paramref name="other"/>, whenever each was decided.
     /// </summary>
+    /// <param name="other">The decision to compare with.</param>
     public bool IsSameAs(TransferInfo? other) =>
         other is not null && this with { DecidedAt = other.DecidedAt } == other;
 }

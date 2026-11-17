@@ -19,6 +19,9 @@ public sealed class UserLink : AggregateRoot
     /// <summary>
     /// <paramref name="inviterId"/> inviting <paramref name="inviteeId"/>, waiting for them to answer.
     /// </summary>
+    /// <param name="inviterId">The person sending the invite.</param>
+    /// <param name="inviteeId">The person invited.</param>
+    /// <param name="invitedAt">When it was sent.</param>
     public UserLink(Guid inviterId, Guid inviteeId, DateTime invitedAt) : base(inviterId)
     {
         ArgumentOutOfRangeException.ThrowIfEqual(inviteeId, Guid.Empty);
@@ -61,8 +64,14 @@ public sealed class UserLink : AggregateRoot
     /// </summary>
     public Guid InvitedUserId => OtherThan(InvitedBy);
 
+    /// <summary>
+    /// Where the link stands.
+    /// </summary>
     public UserLinkStatus Status { get; private set; }
 
+    /// <summary>
+    /// When the invite was last sent.
+    /// </summary>
     public DateTime InvitedAt { get; private set; }
 
     /// <summary>
@@ -85,11 +94,17 @@ public sealed class UserLink : AggregateRoot
     /// </summary>
     public bool IsLive => Status is UserLinkStatus.Pending or UserLinkStatus.Accepted;
 
+    /// <summary>
+    /// Whether <paramref name="userId"/> is one of the two people.
+    /// </summary>
+    /// <param name="userId">The user to check.</param>
     public bool Involves(Guid userId) => userId == UserId || userId == InviteeId;
 
     /// <summary>
     /// Two people in a set order, the same whichever is given first, as their link is stored.
     /// </summary>
+    /// <param name="oneUserId">One of the two.</param>
+    /// <param name="otherUserId">The other.</param>
     public static (Guid First, Guid Second) PairOf(Guid oneUserId, Guid otherUserId)
     {
         if (oneUserId.CompareTo(otherUserId) < 0)
@@ -104,6 +119,8 @@ public sealed class UserLink : AggregateRoot
     /// <paramref name="inviterId"/>, either of them, invites the other again after the invite was declined or
     /// withdrawn or the link ended. Waiting for the other to answer as a new invite.
     /// </summary>
+    /// <param name="inviterId">Whichever of them is inviting.</param>
+    /// <param name="now">The time now, in UTC.</param>
     /// <exception cref="InvalidOperationException"><paramref name="inviterId"/> isn't in the link, or it's waiting or
     /// linked already.</exception>
     public void InviteAgain(Guid inviterId, DateTime now)
@@ -129,6 +146,7 @@ public sealed class UserLink : AggregateRoot
     /// <summary>
     /// The other person in the link from <paramref name="userId"/>'s side.
     /// </summary>
+    /// <param name="userId">One of the two.</param>
     /// <exception cref="ArgumentException"><paramref name="userId"/> isn't in the link.</exception>
     public Guid OtherThan(Guid userId)
     {
@@ -148,6 +166,8 @@ public sealed class UserLink : AggregateRoot
     /// <summary>
     /// The person invited says yes.
     /// </summary>
+    /// <param name="userId">Who's accepting.</param>
+    /// <param name="now">The time now, in UTC.</param>
     /// <exception cref="InvalidOperationException">Someone other than the person invited is answering, or it isn't
     /// waiting for an answer.</exception>
     public void Accept(Guid userId, DateTime now)
@@ -160,6 +180,8 @@ public sealed class UserLink : AggregateRoot
     /// <summary>
     /// The person invited says no.
     /// </summary>
+    /// <param name="userId">Who's declining.</param>
+    /// <param name="now">The time now, in UTC.</param>
     /// <exception cref="InvalidOperationException">Someone other than the person invited is answering, or it isn't
     /// waiting for an answer.</exception>
     public void Decline(Guid userId, DateTime now)
@@ -173,6 +195,8 @@ public sealed class UserLink : AggregateRoot
     /// Either of them ends it: the inviter withdrawing an invite still waiting, or either of them ending a link they
     /// accepted. Whatever they shared stops being shared.
     /// </summary>
+    /// <param name="userId">Who's ending it.</param>
+    /// <param name="now">The time now, in UTC.</param>
     /// <exception cref="InvalidOperationException"><paramref name="userId"/> isn't in the link, it's already over,
     /// or the person invited is trying to withdraw rather than decline.</exception>
     public void End(Guid userId, DateTime now)
@@ -197,6 +221,12 @@ public sealed class UserLink : AggregateRoot
         EndedBy = userId;
     }
 
+    /// <summary>
+    /// Checks <paramref name="userId"/> can answer the invite.
+    /// </summary>
+    /// <param name="userId">Who's answering.</param>
+    /// <exception cref="DomainRuleException">They aren't the person invited, or it isn't waiting for an answer.
+    /// </exception>
     private void EnsureAnswerableBy(Guid userId)
     {
         if (userId != InvitedUserId)

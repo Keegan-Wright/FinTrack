@@ -19,6 +19,8 @@ public sealed class PaySchedule : AggregateRoot
     }
 #pragma warning restore CS8618
 
+    /// <param name="userId">The user it belongs to.</param>
+    /// <param name="pay">The pay to follow.</param>
     public PaySchedule(Guid userId, DetectedPay pay) : base(userId)
     {
         Follow(pay, chosen: false);
@@ -44,6 +46,9 @@ public sealed class PaySchedule : AggregateRoot
     /// </summary>
     public decimal Amount { get; private set; }
 
+    /// <summary>
+    /// Whether pay comes on a set day or the last working day.
+    /// </summary>
     public PayDayRule Rule { get; private set; }
 
     /// <summary>
@@ -51,6 +56,9 @@ public sealed class PaySchedule : AggregateRoot
     /// </summary>
     public int Day { get; private set; }
 
+    /// <summary>
+    /// When pay comes in each month.
+    /// </summary>
     public PayPattern Pattern => new(Rule, Day);
 
     /// <summary>
@@ -83,6 +91,10 @@ public sealed class PaySchedule : AggregateRoot
         return new PayCalendar(Pattern, _payDays, today);
     }
 
+    /// <summary>
+    /// Whether <paramref name="pay"/> is this pay, the same payer into the same account.
+    /// </summary>
+    /// <param name="pay">The pay found.</param>
     public bool IsFor(DetectedPay pay)
     {
         ArgumentNullException.ThrowIfNull(pay);
@@ -114,20 +126,29 @@ public sealed class PaySchedule : AggregateRoot
     /// <summary>
     /// The user said <paramref name="pay"/> is their pay, which turns pay periods back on.
     /// </summary>
+    /// <param name="pay">The income they chose.</param>
     public void Choose(DetectedPay pay)
     {
         Follow(pay, chosen: true);
         IsOff = false;
     }
 
+    /// <summary>
+    /// Turns pay periods off, back to calendar months.
+    /// </summary>
     public void TurnOff() => IsOff = true;
 
+    /// <summary>
+    /// Turns pay periods back on.
+    /// </summary>
     public void TurnOn() => IsOff = false;
 
     /// <summary>
     /// Follows <paramref name="pay"/>, adding its pay days to those seen, or starting again from them when it's
     /// another payer.
     /// </summary>
+    /// <param name="pay">The pay to follow.</param>
+    /// <param name="chosen">Whether the user chose it.</param>
     [MemberNotNull(nameof(Key), nameof(Name))]
     private void Follow(DetectedPay pay, bool chosen)
     {

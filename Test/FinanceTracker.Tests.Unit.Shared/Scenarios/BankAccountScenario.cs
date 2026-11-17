@@ -5,8 +5,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.Tests.Unit.Shared.Scenarios;
 
+/// <summary>
+/// Seeds bank accounts and what syncs onto them, mapped by name in <see cref="TestingScenario.AccountMappings"/>.
+/// </summary>
 public sealed class BankAccountScenario : ScenarioBuilder
 {
+    /// <param name="scenario">The scenario it seeds.</param>
     public BankAccountScenario(TestingScenario scenario) : base(scenario)
     {
     }
@@ -14,6 +18,8 @@ public sealed class BankAccountScenario : ScenarioBuilder
     /// <summary>
     /// Adds an account to the connection, owned by the connection's user.
     /// </summary>
+    /// <param name="accountName">The name to map the account by.</param>
+    /// <param name="connectionName">The connection, by its scenario name.</param>
     /// <param name="create">Builds the account from the user and connection ids, generated when omitted.</param>
     public Task<TestingScenario> WithAccount(string accountName, string connectionName,
         Func<Guid, Guid, BankAccount>? create = null) =>
@@ -32,6 +38,10 @@ public sealed class BankAccountScenario : ScenarioBuilder
             Scenario.AccountMappings.Add(accountName, account.Id);
         });
 
+    /// <summary>
+    /// Sets the account's balance.
+    /// </summary>
+    /// <param name="accountName">The account, by its scenario name.</param>
     /// <param name="balance">Generated when omitted.</param>
     public Task<TestingScenario> WithBalance(string accountName, AccountBalance? balance = null) =>
         PersistAsync(async context =>
@@ -44,6 +54,8 @@ public sealed class BankAccountScenario : ScenarioBuilder
     /// <summary>
     /// Sets the account's standing orders, replacing any it already has.
     /// </summary>
+    /// <param name="accountName">The account, by its scenario name.</param>
+    /// <param name="standingOrders">The standing orders as the bank reports them.</param>
     public Task<TestingScenario> WithStandingOrders(string accountName, params StandingOrderDetails[] standingOrders) =>
         PersistAsync(async context =>
         {
@@ -54,6 +66,8 @@ public sealed class BankAccountScenario : ScenarioBuilder
     /// <summary>
     /// Sets the account's direct debits, replacing any it already has.
     /// </summary>
+    /// <param name="accountName">The account, by its scenario name.</param>
+    /// <param name="directDebits">The direct debits as the bank reports them.</param>
     public Task<TestingScenario> WithDirectDebits(string accountName, params DirectDebitDetails[] directDebits) =>
         PersistAsync(async context =>
         {
@@ -61,6 +75,12 @@ public sealed class BankAccountScenario : ScenarioBuilder
             account.SyncDirectDebits(directDebits);
         });
 
+    /// <summary>
+    /// Records a sync of the account.
+    /// </summary>
+    /// <param name="accountName">The account, by its scenario name.</param>
+    /// <param name="type">What was synced.</param>
+    /// <param name="occurredAt">When the sync finished.</param>
     public Task<TestingScenario> WithSyncLog(string accountName, SyncType type, DateTime occurredAt) =>
         PersistAsync(async context =>
         {
@@ -68,6 +88,11 @@ public sealed class BankAccountScenario : ScenarioBuilder
             context.SyncLog.Add(account.RecordSync(type, occurredAt));
         });
 
+    /// <summary>
+    /// Loads the account to change, with its standing orders and direct debits.
+    /// </summary>
+    /// <param name="context">The context to load it in.</param>
+    /// <param name="accountName">The account, by its scenario name.</param>
     private Task<BankAccount> LoadAsync(FinanceTrackerContext context, string accountName)
     {
         Guid accountId = Scenario.AccountMappings[accountName];

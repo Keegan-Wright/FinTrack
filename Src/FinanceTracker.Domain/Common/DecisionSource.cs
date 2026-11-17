@@ -6,7 +6,16 @@ namespace FinanceTracker.Domain.Common;
 /// </summary>
 public enum DecisionSource
 {
+    /// <summary>
+    /// Matched automatically during a sync.
+    /// </summary>
     Matcher = 1,
+    /// <summary>
+    /// One of the user's rules.
+    /// </summary>
     Rule = 2,
+    /// <summary>
+    /// The user themselves. Nothing else overrides it.
+    /// </summary>
     User = 3
 }

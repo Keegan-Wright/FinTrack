@@ -16,11 +16,18 @@ namespace FinanceTracker.Domain.Debts;
 /// <see cref="DecisionSource.Rule"/>.</param>
 public sealed record DebtPayment(Guid? DebtId, DecisionSource Source, DateTime DecidedAt, Guid? RuleId = null)
 {
+    /// <summary>
+    /// A rule decided it pays off <paramref name="debtId"/>.
+    /// </summary>
+    /// <param name="debtId">The debt it pays.</param>
+    /// <param name="ruleId">The rule that decided.</param>
+    /// <param name="decidedAt">When it was decided.</param>
     public static DebtPayment FromRule(Guid debtId, Guid ruleId, DateTime decidedAt) =>
         new(debtId, DecisionSource.Rule, decidedAt, ruleId);
 
     /// <summary>
     /// Whether this says the same as <paramref name="other"/>, whenever each was decided.
     /// </summary>
+    /// <param name="other">The decision to compare with.</param>
     public bool IsSameAs(DebtPayment? other) => other is not null && this with { DecidedAt = other.DecidedAt } == other;
 }

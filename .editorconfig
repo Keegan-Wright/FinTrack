@@ -214,6 +214,16 @@ dotnet_diagnostic.CA1707.severity = none
 # Inline arrays keep test data readable, the per call allocation doesn't matter in tests
 dotnet_diagnostic.CA1861.severity = none
 
+# The shared test code builds its doc file for the scenario builder, the rest doesn't need doc comments (#53)
+[Test/FinanceTracker.Tests.Unit.Shared/**.cs]
+dotnet_diagnostic.CS1591.severity = none
+dotnet_diagnostic.CS1573.severity = none
+
+# The scenario builder is what tests are written with, so it's documented like the app
+[Test/FinanceTracker.Tests.Unit.Shared/Scenarios/**.cs]
+dotnet_diagnostic.CS1591.severity = warning
+dotnet_diagnostic.CS1573.severity = warning
+
 # Xml project and config files
 [*.{csproj,props,targets,config,nuspec,slnx,xml}]
 indent_size = 2

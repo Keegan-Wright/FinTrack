@@ -28,9 +28,13 @@ public sealed class Debt : AggregateRoot
     }
 #pragma warning restore CS8618
 
+    /// <param name="userId">The user it belongs to.</param>
+    /// <param name="name">What the user calls it.</param>
     /// <param name="lender">Who it's owed to, null when the user doesn't say.</param>
     /// <param name="startingBalance">What was owed on <paramref name="startedOn"/>.</param>
+    /// <param name="startedOn">The day the starting balance was owed.</param>
     /// <param name="interestRate">The yearly rate (APR) as a percentage, 0 for none.</param>
+    /// <param name="monthlyPayment">What the user pays each month.</param>
     /// <exception cref="ArgumentException">The name is blank, the starting balance or monthly payment isn't more than
     /// 0, or the rate is outside 0 to <see cref="MaximumInterestRate"/>.</exception>
     public Debt(Guid userId, string name, string? lender, decimal startingBalance, DateOnly startedOn,
@@ -43,6 +47,9 @@ public sealed class Debt : AggregateRoot
         ChangeMonthlyPayment(monthlyPayment);
     }
 
+    /// <summary>
+    /// What the user calls it.
+    /// </summary>
     public string Name { get; private set; }
 
     /// <summary>
@@ -81,6 +88,10 @@ public sealed class Debt : AggregateRoot
     /// </summary>
     public DateOnly? PayOffGoal { get; private set; }
 
+    /// <summary>
+    /// Changes what the user calls it.
+    /// </summary>
+    /// <param name="name">The new name, trimmed.</param>
     [MemberNotNull(nameof(Name))]
     public void Rename(string name)
     {
@@ -88,8 +99,14 @@ public sealed class Debt : AggregateRoot
         Name = name.Trim();
     }
 
+    /// <summary>
+    /// Changes who it's owed to. Blank clears it.
+    /// </summary>
+    /// <param name="lender">Who it's owed to, trimmed.</param>
     public void ChangeLender(string? lender) => Lender = string.IsNullOrWhiteSpace(lender) ? null : lender.Trim();
 
+    /// <param name="startingBalance">What was owed on <paramref name="startedOn"/>, more than 0.</param>
+    /// <param name="startedOn">The day it was owed.</param>
     /// <exception cref="ArgumentOutOfRangeException">The balance isn't more than 0.</exception>
     public void ChangeStartingBalance(decimal startingBalance, DateOnly startedOn)
     {
@@ -98,6 +115,7 @@ public sealed class Debt : AggregateRoot
         StartedOn = startedOn;
     }
 
+    /// <param name="interestRate">The yearly rate (APR) as a percentage, 0 for none.</param>
     /// <exception cref="ArgumentOutOfRangeException">The rate is outside 0 to <see cref="MaximumInterestRate"/>.
     /// </exception>
     public void ChangeInterestRate(decimal interestRate)
@@ -107,6 +125,7 @@ public sealed class Debt : AggregateRoot
         InterestRate = interestRate;
     }
 
+    /// <param name="monthlyPayment">What the user pays each month, more than 0.</param>
     /// <exception cref="ArgumentOutOfRangeException">The payment isn't more than 0.</exception>
     public void ChangeMonthlyPayment(decimal monthlyPayment)
     {
@@ -117,6 +136,7 @@ public sealed class Debt : AggregateRoot
     /// <summary>
     /// Says what's owed comes from <paramref name="account"/>'s balance.
     /// </summary>
+    /// <param name="account">The loan or card account.</param>
     /// <exception cref="InvalidOperationException">The account belongs to another user.</exception>
     public void LinkAccount(BankAccount account)
     {
@@ -134,5 +154,9 @@ public sealed class Debt : AggregateRoot
     /// </summary>
     public void UnlinkAccount() => AccountId = null;
 
+    /// <summary>
+    /// Sets when the user wants it paid off by.
+    /// </summary>
+    /// <param name="payOffGoal">The day, or null for no goal.</param>
     public void SetPayOffGoal(DateOnly? payOffGoal) => PayOffGoal = payOffGoal;
 }

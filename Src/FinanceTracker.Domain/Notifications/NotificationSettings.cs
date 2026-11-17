@@ -42,6 +42,7 @@ public sealed class NotificationSettings : AggregateRoot
     /// Settings as a user starts with them, every kind shown and emailed, and every kind sent to a webhook once they
     /// set one. Large transactions and low balances aren't watched until they set an amount.
     /// </summary>
+    /// <param name="userId">The user they're for.</param>
     public NotificationSettings(Guid userId) : base(userId)
     {
         BudgetWarningPercent = DefaultBudgetWarningPercent;
@@ -130,30 +131,45 @@ public sealed class NotificationSettings : AggregateRoot
     /// </summary>
     public IReadOnlyList<LowBalanceAlert> LowBalanceAlerts => _lowBalanceAlerts.AsReadOnly();
 
+    /// <summary>
+    /// Whether their notifications are posted to a webhook.
+    /// </summary>
     public bool HasWebhook => WebhookUrl is not null;
 
+    /// <summary>
+    /// Whether <paramref name="kind"/> shows under the bell.
+    /// </summary>
+    /// <param name="kind">The kind of notification.</param>
     public bool IsInApp(NotificationKind kind) => !_notInApp.Contains(kind);
 
+    /// <summary>
+    /// Whether <paramref name="kind"/> is emailed.
+    /// </summary>
+    /// <param name="kind">The kind of notification.</param>
     public bool IsEmailed(NotificationKind kind) => !_notEmailed.Contains(kind);
 
     /// <summary>
     /// Whether <paramref name="kind"/> is posted, which needs a webhook.
     /// </summary>
+    /// <param name="kind">The kind of notification.</param>
     public bool IsWebhooked(NotificationKind kind) => HasWebhook && !_notWebhooked.Contains(kind);
 
     /// <summary>
     /// Shows <paramref name="kinds"/> in the app from now on and no others.
     /// </summary>
+    /// <param name="kinds">The kinds to show.</param>
     public void ShowInAppOnly(IEnumerable<NotificationKind> kinds) => TurnOffAllBut(_notInApp, kinds);
 
     /// <summary>
     /// Emails <paramref name="kinds"/> from now on and no others.
     /// </summary>
+    /// <param name="kinds">The kinds to email.</param>
     public void EmailOnly(IEnumerable<NotificationKind> kinds) => TurnOffAllBut(_notEmailed, kinds);
 
     /// <summary>
     /// Posts <paramref name="kinds"/> to their webhook from now on and no others.
     /// </summary>
+    /// <param name="kinds">The kinds to post.</param>
     public void WebhookOnly(IEnumerable<NotificationKind> kinds) => TurnOffAllBut(_notWebhooked, kinds);
 
     /// <summary>
@@ -209,6 +225,9 @@ public sealed class NotificationSettings : AggregateRoot
     /// <summary>
     /// Records <paramref name="accountId"/>'s available balance, when they watch it.
     /// </summary>
+    /// <param name="accountId">The account.</param>
+    /// <param name="available">Its available balance.</param>
+    /// <param name="now">The time now, in UTC.</param>
     /// <returns>Whether it has just gone below what they set, which is when to tell them. Staying below says nothing
     /// more until it's been back above.</returns>
     public bool RecordBalance(Guid accountId, decimal available, DateTime now)
@@ -243,6 +262,7 @@ public sealed class NotificationSettings : AggregateRoot
     /// <summary>
     /// Records an email sent at <paramref name="at"/>, or that it couldn't be and why.
     /// </summary>
+    /// <param name="at">When it was sent or tried.</param>
     /// <param name="failure">Why it couldn't be sent, null when it was.</param>
     public void RecordEmail(DateTime at, string? failure)
     {
@@ -255,6 +275,7 @@ public sealed class NotificationSettings : AggregateRoot
     /// <paramref name="secret"/> and forgets how the last one went; changing the address keeps the secret, so what
     /// receives it keeps checking posts the same way.
     /// </summary>
+    /// <param name="url">The address to post to.</param>
     /// <param name="secret">The secret for a new webhook, unused when they already have one.</param>
     /// <exception cref="ArgumentException">The address or secret is blank.</exception>
     public void SetWebhook(string url, string secret)
@@ -275,6 +296,7 @@ public sealed class NotificationSettings : AggregateRoot
     /// <summary>
     /// Signs posts with <paramref name="secret"/> from now on, e.g. the old one leaked.
     /// </summary>
+    /// <param name="secret">The new secret.</param>
     /// <returns>Whether they have a webhook to sign for.</returns>
     public bool ReplaceWebhookSecret(string secret)
     {
@@ -302,6 +324,7 @@ public sealed class NotificationSettings : AggregateRoot
     /// <summary>
     /// Records a post delivered at <paramref name="at"/>, or that it failed and why.
     /// </summary>
+    /// <param name="at">When it was posted or tried.</param>
     /// <param name="failure">Why it failed, null when it was delivered.</param>
     public void RecordWebhook(DateTime at, string? failure)
     {
@@ -313,6 +336,8 @@ public sealed class NotificationSettings : AggregateRoot
     /// Whether <paramref name="kind"/> shows in the app for a user with <paramref name="settings"/>, null when they've
     /// never changed them.
     /// </summary>
+    /// <param name="settings">The user's settings, null when they've never changed them.</param>
+    /// <param name="kind">The kind of notification.</param>
     public static bool IsInAppFor(NotificationSettings? settings, NotificationKind kind) =>
         settings is null || settings.IsInApp(kind);
 
@@ -320,9 +345,16 @@ public sealed class NotificationSettings : AggregateRoot
     /// Whether <paramref name="kind"/> is emailed for a user with <paramref name="settings"/>, null when they've never
     /// changed them.
     /// </summary>
+    /// <param name="settings">The user's settings, null when they've never changed them.</param>
+    /// <param name="kind">The kind of notification.</param>
     public static bool IsEmailedFor(NotificationSettings? settings, NotificationKind kind) =>
         settings is null || settings.IsEmailed(kind);
 
+    /// <summary>
+    /// Turns off every kind but <paramref name="on"/> in <paramref name="off"/>.
+    /// </summary>
+    /// <param name="off">The kinds turned off for one channel.</param>
+    /// <param name="on">The kinds to keep on.</param>
     private static void TurnOffAllBut(List<NotificationKind> off, IEnumerable<NotificationKind> on)
     {
         ArgumentNullException.ThrowIfNull(on);
@@ -331,8 +363,16 @@ public sealed class NotificationSettings : AggregateRoot
         off.AddRange(Enum.GetValues<NotificationKind>().Where(x => !wanted.Contains(x)));
     }
 
+    /// <summary>
+    /// The kinds that aren't in <paramref name="off"/>.
+    /// </summary>
+    /// <param name="off">The kinds turned off for one channel.</param>
     private static List<NotificationKind> AllBut(List<NotificationKind> off) =>
         Enum.GetValues<NotificationKind>().Where(x => !off.Contains(x)).ToList();
 
+    /// <summary>
+    /// The failure trimmed, null when it's blank.
+    /// </summary>
+    /// <param name="failure">Why it failed, as given.</param>
     private static string? Trimmed(string? failure) => string.IsNullOrWhiteSpace(failure) ? null : failure.Trim();
 }

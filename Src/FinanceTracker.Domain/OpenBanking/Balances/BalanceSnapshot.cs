@@ -18,6 +18,12 @@ public sealed class BalanceSnapshot : AggregateRoot, IBelongsToAccount
     }
 #pragma warning restore CS8618
 
+    /// <param name="userId">The user it belongs to.</param>
+    /// <param name="accountId">The account it's the balance of.</param>
+    /// <param name="date">The day it's the balance for.</param>
+    /// <param name="balance">The balance as the bank reported it.</param>
+    /// <param name="source">Whether it was synced or worked out from transactions.</param>
+    /// <param name="isStale">Whether the balance couldn't be synced, so it's the last one stored.</param>
     public BalanceSnapshot(Guid userId, Guid accountId, DateOnly date, AccountBalance balance,
         BalanceSnapshotSource source, bool isStale) : base(userId)
     {
@@ -28,6 +34,7 @@ public sealed class BalanceSnapshot : AggregateRoot, IBelongsToAccount
         Replace(balance, source, isStale);
     }
 
+    /// <inheritdoc/>
     public Guid AccountId { get; private set; }
 
     /// <summary>
@@ -40,6 +47,9 @@ public sealed class BalanceSnapshot : AggregateRoot, IBelongsToAccount
     /// </summary>
     public AccountBalance Balance { get; private set; }
 
+    /// <summary>
+    /// Whether it was synced or worked out from transactions.
+    /// </summary>
     public BalanceSnapshotSource Source { get; private set; }
 
     /// <summary>
@@ -52,6 +62,7 @@ public sealed class BalanceSnapshot : AggregateRoot, IBelongsToAccount
     /// alone, so a refused call never replaces one that synced earlier, and a stale snapshot stays stale until one
     /// does.
     /// </summary>
+    /// <param name="account">The account it's the balance of.</param>
     /// <param name="synced">Whether the account's balance synced this time.</param>
     /// <exception cref="ArgumentException">The account isn't this snapshot's, or has no balance.</exception>
     public void Refresh(BankAccount account, bool synced)
@@ -77,6 +88,12 @@ public sealed class BalanceSnapshot : AggregateRoot, IBelongsToAccount
         Replace(account.Balance with { }, BalanceSnapshotSource.Synced, isStale: false);
     }
 
+    /// <summary>
+    /// Sets the balance and where it came from.
+    /// </summary>
+    /// <param name="balance">The balance as the bank reported it.</param>
+    /// <param name="source">Whether it was synced or worked out from transactions.</param>
+    /// <param name="isStale">Whether the balance couldn't be synced, so it's the last one stored.</param>
     [MemberNotNull(nameof(Balance))]
     private void Replace(AccountBalance balance, BalanceSnapshotSource source, bool isStale)
     {

@@ -8,8 +8,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.Tests.Unit.Shared.Scenarios;
 
+/// <summary>
+/// Seeds transactions and the decisions on them, mapped by name in <see cref="TestingScenario.TransactionMappings"/>.
+/// </summary>
 public sealed class TransactionScenario : ScenarioBuilder
 {
+    /// <param name="scenario">The scenario it seeds.</param>
     public TransactionScenario(TestingScenario scenario) : base(scenario)
     {
     }
@@ -17,6 +21,8 @@ public sealed class TransactionScenario : ScenarioBuilder
     /// <summary>
     /// Imports a transaction onto the account.
     /// </summary>
+    /// <param name="transactionName">The name to map the transaction by.</param>
+    /// <param name="accountName">The account, by its scenario name.</param>
     /// <param name="details">
     /// Generated when omitted, use <c>new TransactionDetailsFaker().Generate() with { ... }</c> to set specific values.
     /// </param>
@@ -35,6 +41,8 @@ public sealed class TransactionScenario : ScenarioBuilder
     /// <summary>
     /// Imports <paramref name="count"/> generated transactions onto the account.
     /// </summary>
+    /// <param name="accountName">The account, by its scenario name.</param>
+    /// <param name="count">How many to import.</param>
     public Task<TestingScenario> WithTransactions(string accountName, int count) =>
         WithTransactions(accountName, new TransactionDetailsFaker().Generate(count));
 
@@ -42,6 +50,8 @@ public sealed class TransactionScenario : ScenarioBuilder
     /// Imports each of <paramref name="details"/> into the account, unnamed, e.g. made-up ones given dates of the
     /// test's choosing.
     /// </summary>
+    /// <param name="accountName">The account, by its scenario name.</param>
+    /// <param name="details">What the provider reports for each.</param>
     public Task<TestingScenario> WithTransactions(string accountName, IEnumerable<TransactionDetails> details) =>
         PersistAsync(async context =>
         {
@@ -52,6 +62,8 @@ public sealed class TransactionScenario : ScenarioBuilder
     /// <summary>
     /// Records the transaction as a payment of the bill, as the user choosing it does.
     /// </summary>
+    /// <param name="transactionName">The transaction, by its scenario name.</param>
+    /// <param name="billName">The bill, by its scenario name.</param>
     public Task<TestingScenario> WithBillPayment(string transactionName, string billName) =>
         PersistAsync(async context =>
         {
@@ -64,6 +76,11 @@ public sealed class TransactionScenario : ScenarioBuilder
             transaction.PayBill(bill, transaction.UserId, DateTime.UtcNow);
         });
 
+    /// <summary>
+    /// Tags the transaction, as its owner does.
+    /// </summary>
+    /// <param name="transactionName">The transaction, by its scenario name.</param>
+    /// <param name="classificationName">The tag, by its scenario name.</param>
     public Task<TestingScenario> WithCustomClassification(string transactionName, string classificationName) =>
         PersistAsync(async context =>
         {
@@ -82,6 +99,8 @@ public sealed class TransactionScenario : ScenarioBuilder
     /// Records the matcher's <paramref name="decision"/> on the transaction, <see cref="TransferDecision.Transfer"/>
     /// leaves it out of income and spending, <see cref="TransferDecision.NeedsReview"/> still counts it.
     /// </summary>
+    /// <param name="transactionName">The transaction, by its scenario name.</param>
+    /// <param name="decision">What the matcher decided.</param>
     public Task<TestingScenario> WithTransfer(string transactionName,
         TransferDecision decision = TransferDecision.Transfer) =>
         PersistAsync(async context =>
@@ -95,6 +114,11 @@ public sealed class TransactionScenario : ScenarioBuilder
                 : TransferInfo.ToReview(TransferReason.BankTransferLabel, null, null, DateTime.UtcNow));
         });
 
+    /// <summary>
+    /// Loads the account a transaction is imported onto, untracked.
+    /// </summary>
+    /// <param name="context">The context to load it in.</param>
+    /// <param name="accountName">The account, by its scenario name.</param>
     private Task<BankAccount> LoadAccountAsync(Infrastructure.FinanceTrackerContext context, string accountName)
     {
         Guid accountId = Scenario.AccountMappings[accountName];

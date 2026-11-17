@@ -26,9 +26,14 @@ public sealed record RuleOutcome(
     /// <summary>
     /// Tags and a transfer answer, hiding nothing.
     /// </summary>
+    /// <param name="tags">The tags to add, each with the rule that added it.</param>
+    /// <param name="transfer">The transfer answer, null when no rule gave one.</param>
     public RuleOutcome(IReadOnlyList<RuleTag> tags, RuleTransfer? transfer) : this(tags, transfer, [])
     {
     }
 
+    /// <summary>
+    /// Nothing to do.
+    /// </summary>
     public static RuleOutcome None { get; } = new([], null);
 }

@@ -20,14 +20,24 @@ public sealed class HouseholdMember : AggregateRoot
     }
 #pragma warning restore CS8618
 
+    /// <param name="userId">The user whose household they're in.</param>
+    /// <param name="firstName">Their first name.</param>
+    /// <param name="lastName">Their last name.</param>
+    /// <param name="yearlyIncome">What they earn a year, null when not given.</param>
     public HouseholdMember(Guid userId, string firstName, string lastName, decimal? yearlyIncome) : base(userId)
     {
         Rename(firstName, lastName);
         ChangeYearlyIncome(yearlyIncome);
     }
 
+    /// <summary>
+    /// Their first name.
+    /// </summary>
     public string FirstName { get; private set; }
 
+    /// <summary>
+    /// Their last name.
+    /// </summary>
     public string LastName { get; private set; }
 
     /// <summary>
@@ -53,6 +63,11 @@ public sealed class HouseholdMember : AggregateRoot
     /// </summary>
     public IReadOnlyList<string> PayeeNames => _payeeNames.AsReadOnly();
 
+    /// <summary>
+    /// Changes their name.
+    /// </summary>
+    /// <param name="firstName">Their first name.</param>
+    /// <param name="lastName">Their last name.</param>
     [MemberNotNull(nameof(FirstName), nameof(LastName))]
     public void Rename(string firstName, string lastName)
     {
@@ -65,6 +80,9 @@ public sealed class HouseholdMember : AggregateRoot
     /// <summary>
     /// The member is <paramref name="userId"/>, taking their name.
     /// </summary>
+    /// <param name="userId">The user they are.</param>
+    /// <param name="firstName">That user's first name.</param>
+    /// <param name="lastName">That user's last name.</param>
     /// <exception cref="ArgumentException">It's the member's owner, who can't be in their own household.</exception>
     public void LinkToUser(Guid userId, string firstName, string lastName)
     {
@@ -83,6 +101,10 @@ public sealed class HouseholdMember : AggregateRoot
     /// </summary>
     public void UnlinkUser() => LinkedUserId = null;
 
+    /// <summary>
+    /// Changes what they earn a year.
+    /// </summary>
+    /// <param name="yearlyIncome">What they earn, null when not given.</param>
     public void ChangeYearlyIncome(decimal? yearlyIncome)
     {
         if (yearlyIncome.HasValue)
@@ -96,6 +118,7 @@ public sealed class HouseholdMember : AggregateRoot
     /// <summary>
     /// Links one of the member's accounts, ignored when it's already linked.
     /// </summary>
+    /// <param name="account">The account to link.</param>
     public void LinkAccount(AccountIdentifier account)
     {
         ArgumentNullException.ThrowIfNull(account);
@@ -108,6 +131,7 @@ public sealed class HouseholdMember : AggregateRoot
     /// <summary>
     /// Adds a name the member is paid or pays as, ignored when it's already there in any case.
     /// </summary>
+    /// <param name="payeeName">The name as it appears in transaction descriptions.</param>
     public void AddPayeeName(string payeeName)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(payeeName);
@@ -124,6 +148,8 @@ public sealed class HouseholdMember : AggregateRoot
     /// <paramref name="linkedAccounts"/>, duplicates dropped as <see cref="AddPayeeName"/> and
     /// <see cref="LinkAccount"/> do. Nothing changes when any of them is invalid.
     /// </summary>
+    /// <param name="payeeNames">The names they're paid or pay as.</param>
+    /// <param name="linkedAccounts">Their own accounts.</param>
     public void ReplaceRecognition(IEnumerable<string> payeeNames, IEnumerable<AccountIdentifier> linkedAccounts)
     {
         ArgumentNullException.ThrowIfNull(payeeNames);
@@ -151,6 +177,8 @@ public sealed class HouseholdMember : AggregateRoot
     /// Whether a transaction is money to or from this member, its reference names one of their linked accounts or
     /// one of <paramref name="theirOwnAccounts"/>, or its description starts with one of their payee names.
     /// </summary>
+    /// <param name="description">The transaction's description.</param>
+    /// <param name="reference">The transaction's reference.</param>
     /// <param name="theirOwnAccounts">For a member who's a user, see <see cref="LinkedUserId"/>, the accounts they've
     /// connected themselves, so money to or from any of them is recognised without the owner adding them.</param>
     /// <remarks>
@@ -164,6 +192,12 @@ public sealed class HouseholdMember : AggregateRoot
         (theirOwnAccounts ?? []).Any(x => x.IsNamedIn(reference)) ||
         _payeeNames.Any(x => StartsWithName(description, x));
 
+    /// <summary>
+    /// Whether <paramref name="description"/> starts with <paramref name="payeeName"/> in any case, ending at a word
+    /// boundary.
+    /// </summary>
+    /// <param name="description">The transaction's description.</param>
+    /// <param name="payeeName">One of the member's payee names.</param>
     private static bool StartsWithName(string? description, string payeeName)
     {
         ReadOnlySpan<char> text = description.AsSpan().TrimStart();

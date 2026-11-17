@@ -20,6 +20,10 @@ public static class DebtCalculator
     /// </summary>
     public const int MaximumMonths = 600;
 
+    /// <summary>
+    /// What's owed on <paramref name="debt"/> today, and how it got there.
+    /// </summary>
+    /// <param name="debt">The debt to work out.</param>
     /// <param name="account">The debt's linked account, null when it isn't linked or the account has gone.</param>
     /// <param name="payments">The user's transactions, at least those paying off this debt.</param>
     /// <param name="timeZone">Where the user is, so a payment falls on the day it was where they are.</param>
@@ -44,6 +48,10 @@ public static class DebtCalculator
     /// What a debt not linked to an account owed on <paramref name="day"/>, for net worth on that day. Nothing before
     /// it started.
     /// </summary>
+    /// <param name="debt">The debt to work out.</param>
+    /// <param name="payments">The user's transactions, at least those paying off this debt.</param>
+    /// <param name="timeZone">Where the user is, so a payment falls on the day it was where they are.</param>
+    /// <param name="day">The day to work out.</param>
     /// <exception cref="InvalidOperationException">The debt is linked to an account, whose balance counts instead.
     /// </exception>
     public static decimal OwedOn(Debt debt, IEnumerable<BankTransaction> payments, TimeZoneInfo timeZone, DateOnly day)
@@ -68,6 +76,10 @@ public static class DebtCalculator
     /// <summary>
     /// What a debt not linked to an account owed at its start, the end of each month since and today, oldest first.
     /// </summary>
+    /// <param name="debt">The debt to work out.</param>
+    /// <param name="payments">The user's transactions, at least those paying off this debt.</param>
+    /// <param name="timeZone">Where the user is, so a payment falls on the day it was where they are.</param>
+    /// <param name="today">Today where the user is.</param>
     public static IReadOnlyList<DebtBalance> History(Debt debt, IEnumerable<BankTransaction> payments,
         TimeZoneInfo timeZone, DateOnly today)
     {
@@ -82,7 +94,10 @@ public static class DebtCalculator
     /// When <paramref name="owed"/> is paid off paying <paramref name="monthlyPayment"/> at the end of each month from
     /// <paramref name="today"/>, with interest added on what's left after each payment.
     /// </summary>
+    /// <param name="owed">What's owed now.</param>
     /// <param name="interestRate">The yearly rate (APR) as a percentage.</param>
+    /// <param name="monthlyPayment">What's paid at the end of each month.</param>
+    /// <param name="today">Today where the user is.</param>
     public static DebtForecast Forecast(decimal owed, decimal interestRate, decimal monthlyPayment, DateOnly today)
     {
         if (owed <= 0)
@@ -124,6 +139,8 @@ public static class DebtCalculator
     /// What a debt linked to an account owes, what's owed on the account as a positive amount and nothing when it's in
     /// credit. Null when the debt isn't linked, or the account is gone or has no balance yet.
     /// </summary>
+    /// <param name="debt">The debt to work out.</param>
+    /// <param name="account">The debt's linked account, null when it has gone.</param>
     public static decimal? OwedByAccount(Debt debt, BankAccount? account)
     {
         ArgumentNullException.ThrowIfNull(debt);
@@ -139,6 +156,9 @@ public static class DebtCalculator
     /// <summary>
     /// What's owed at the start, at the end of each whole month since and on <paramref name="until"/>.
     /// </summary>
+    /// <param name="debt">The debt to work out.</param>
+    /// <param name="paid">Its payments, oldest first.</param>
+    /// <param name="until">The last day to work out.</param>
     private static List<DebtBalance> Walk(Debt debt, List<Paid> paid, DateOnly until)
     {
         decimal owed = debt.StartingBalance;
@@ -173,12 +193,27 @@ public static class DebtCalculator
     /// <summary>
     /// Paid from <paramref name="from"/> up to but not including <paramref name="before"/>.
     /// </summary>
+    /// <param name="paid">The debt's payments.</param>
+    /// <param name="from">The first day to count.</param>
+    /// <param name="before">The day after the last to count.</param>
     private static decimal PaidBetween(List<Paid> paid, DateOnly from, DateOnly before) =>
         paid.Where(x => x.On >= from && x.On < before).Sum(static x => x.Amount);
 
+    /// <summary>
+    /// A month's interest on <paramref name="owed"/>, a twelfth of the yearly rate, rounded to the penny.
+    /// </summary>
+    /// <param name="owed">What's owed.</param>
+    /// <param name="interestRate">The yearly rate (APR) as a percentage.</param>
     private static decimal MonthlyInterest(decimal owed, decimal interestRate) =>
         Math.Round(owed * interestRate / 100 / 12, 2, MidpointRounding.AwayFromZero);
 
+    /// <summary>
+    /// The payments that pay off <paramref name="debt"/> from its start to <paramref name="until"/>.
+    /// </summary>
+    /// <param name="debt">The debt.</param>
+    /// <param name="payments">The user's transactions.</param>
+    /// <param name="timeZone">Where the user is, so a payment falls on the day it was where they are.</param>
+    /// <param name="until">The last day to count.</param>
     private static List<Paid> PaymentsFor(Debt debt, IEnumerable<BankTransaction> payments, TimeZoneInfo timeZone,
         DateOnly until)
     {
@@ -200,12 +235,22 @@ public static class DebtCalculator
         return paid;
     }
 
+    /// <summary>
+    /// How much of the starting balance is paid off, as a percentage from 0 to 100.
+    /// </summary>
+    /// <param name="debt">The debt.</param>
+    /// <param name="owed">What's owed now.</param>
     private static decimal PaidOffPercent(Debt debt, decimal owed)
     {
         decimal percent = (debt.StartingBalance - owed) / debt.StartingBalance * 100;
         return Math.Clamp(percent, 0, 100);
     }
 
+    /// <summary>
+    /// Whether it's forecast to be paid off by the user's goal. Null when there's no goal.
+    /// </summary>
+    /// <param name="debt">The debt.</param>
+    /// <param name="forecast">When it's forecast to be paid off.</param>
     private static bool? OnTrack(Debt debt, DebtForecast forecast)
     {
         if (debt.PayOffGoal is not { } goal)
@@ -217,5 +262,10 @@ public static class DebtCalculator
     }
 
 
+    /// <summary>
+    /// A payment towards a debt.
+    /// </summary>
+    /// <param name="On">The day it was paid where the user is.</param>
+    /// <param name="Amount">How much was paid, as a positive amount.</param>
     private sealed record Paid(DateOnly On, decimal Amount);
 }

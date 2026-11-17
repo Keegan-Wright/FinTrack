@@ -16,8 +16,11 @@ public static class BillCalculator
     /// <summary>
     /// Each period of <paramref name="bill"/> due from <paramref name="from"/> to <paramref name="to"/>, both included.
     /// </summary>
+    /// <param name="bill">The bill to work out.</param>
     /// <param name="transactions">The user's transactions, at least those paying the bill around those dates. Each
     /// counts for the due date nearest it, see <see cref="Bill.NearestDue"/>.</param>
+    /// <param name="from">The first due date to include.</param>
+    /// <param name="to">The last due date to include.</param>
     /// <param name="timeZone">Where the user is, so a payment falls on the day it was where they are.</param>
     /// <param name="today">Today where the user is, for when a period is late.</param>
     public static IReadOnlyList<BillPeriod> Periods(Bill bill, IEnumerable<BankTransaction> transactions,
@@ -46,6 +49,8 @@ public static class BillCalculator
     /// What <paramref name="bill"/> costs a month at the amount expected on <paramref name="on"/>, e.g. a weekly £10
     /// is £43.33, for the committed spending total. Nothing once it has ended by then.
     /// </summary>
+    /// <param name="bill">The bill to work out.</param>
+    /// <param name="on">The day to price it on.</param>
     public static decimal MonthlyCost(Bill bill, DateOnly on)
     {
         ArgumentNullException.ThrowIfNull(bill);
@@ -58,6 +63,14 @@ public static class BillCalculator
         return Math.Round(bill.ExpectedOn(on) * PerMonth(bill.Frequency), 2);
     }
 
+    /// <summary>
+    /// How the period due on <paramref name="due"/> stands, from the payments that paid it.
+    /// </summary>
+    /// <param name="bill">The bill.</param>
+    /// <param name="due">The period's due date.</param>
+    /// <param name="payments">The payments for the period.</param>
+    /// <param name="timeZone">Where the user is, so a payment falls on the day it was where they are.</param>
+    /// <param name="today">Today where the user is, for when a period is late.</param>
     private static BillPeriod Period(Bill bill, DateOnly due, List<BankTransaction> payments, TimeZoneInfo timeZone,
         DateOnly today)
     {
@@ -87,6 +100,10 @@ public static class BillCalculator
         return new BillPeriod(due, expected, state, paid, paidOn, payments.Select(static x => x.Id).ToList());
     }
 
+    /// <summary>
+    /// How many times a month it's due on average, e.g. 13 a year for four-weekly is 13/12.
+    /// </summary>
+    /// <param name="frequency">How often it's due.</param>
     private static decimal PerMonth(BillFrequency frequency) => frequency switch
     {
         BillFrequency.Weekly => 52m / 12,

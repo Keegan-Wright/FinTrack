@@ -37,6 +37,14 @@ public sealed class BankConnection : AggregateRoot
     }
 #pragma warning restore CS8618
 
+    /// <param name="userId">The user it belongs to.</param>
+    /// <param name="externalProviderId">The provider's id for the bank.</param>
+    /// <param name="name">The bank's name.</param>
+    /// <param name="accessCode">The code the bank gave back when the user consented.</param>
+    /// <param name="scopes">What the user consented to share.</param>
+    /// <param name="logo">The bank's logo.</param>
+    /// <param name="consentGrantedAt">When the user consented.</param>
+    /// <param name="consentExpiresAt">When the consent ends.</param>
     public BankConnection(Guid userId, string externalProviderId, string name, string accessCode,
         IEnumerable<string> scopes, byte[] logo, DateTime consentGrantedAt, DateTime consentExpiresAt) : base(userId)
     {
@@ -50,16 +58,34 @@ public sealed class BankConnection : AggregateRoot
         Reauthenticate(accessCode, scopes, consentGrantedAt, consentExpiresAt);
     }
 
+    /// <summary>
+    /// The provider's id for the bank.
+    /// </summary>
     public string ExternalProviderId { get; private set; }
 
+    /// <summary>
+    /// The bank's name.
+    /// </summary>
     public string Name { get; private set; }
 
+    /// <summary>
+    /// The code the bank gave back when the user last consented.
+    /// </summary>
     public string AccessCode { get; private set; }
 
+    /// <summary>
+    /// The bank's logo.
+    /// </summary>
     public byte[] Logo { get; private set; }
 
+    /// <summary>
+    /// What the user consented to share.
+    /// </summary>
     public IReadOnlyCollection<string> Scopes => _scopes.AsReadOnly();
 
+    /// <summary>
+    /// Every token issued for it, see the remarks on loading them.
+    /// </summary>
     public IReadOnlyCollection<AccessToken> AccessTokens => _accessTokens.AsReadOnly();
 
     /// <summary>
@@ -72,19 +98,28 @@ public sealed class BankConnection : AggregateRoot
     /// </summary>
     public DateTime ConsentExpiresAt { get; private set; }
 
+    /// <summary>
+    /// The token in use, null when none is loaded or all have been revoked.
+    /// </summary>
     public AccessToken? ActiveToken => _accessTokens.SingleOrDefault(x => !x.IsRevoked);
 
+    /// <summary>
+    /// Whether consent has ended, so it can't sync until the user renews it.
+    /// </summary>
+    /// <param name="now">The time now, in UTC.</param>
     public bool HasConsentLapsed(DateTime now) => now >= ConsentExpiresAt;
 
     /// <summary>
     /// Consent ends within <see cref="RenewalWindow"/>, or already has, so the user should renew it.
     /// </summary>
+    /// <param name="now">The time now, in UTC.</param>
     public bool NeedsRenewal(DateTime now) => now >= ConsentExpiresAt - RenewalWindow;
 
     /// <summary>
     /// The user authenticated within <see cref="EnhancedAuthenticationWindow"/>, connecting or renewing, so the bank
     /// still releases standing orders and direct debits.
     /// </summary>
+    /// <param name="now">The time now, in UTC.</param>
     public bool IsWithinEnhancedAuthenticationWindow(DateTime now) =>
         now < ConsentGrantedAt + EnhancedAuthenticationWindow;
 
@@ -107,6 +142,10 @@ public sealed class BankConnection : AggregateRoot
     /// <summary>
     /// Replaces the consent for this connection. Any active token belongs to the old consent and is revoked.
     /// </summary>
+    /// <param name="accessCode">The code the bank gave back when the user consented again.</param>
+    /// <param name="scopes">What the user consented to share.</param>
+    /// <param name="reauthenticatedAt">When the user consented again.</param>
+    /// <param name="consentExpiresAt">When the new consent ends.</param>
     [MemberNotNull(nameof(AccessCode))]
     public void Reauthenticate(string accessCode, IEnumerable<string> scopes, DateTime reauthenticatedAt,
         DateTime consentExpiresAt)
@@ -126,6 +165,10 @@ public sealed class BankConnection : AggregateRoot
     /// <summary>
     /// Records a newly issued token (code exchange or refresh), revoking the previously active one.
     /// </summary>
+    /// <param name="accessToken">The new access token.</param>
+    /// <param name="refreshToken">The new refresh token.</param>
+    /// <param name="issuedAt">When it was issued.</param>
+    /// <param name="expiresInSeconds">How long the access token lasts.</param>
     public AccessToken IssueToken(string accessToken, string refreshToken, DateTime issuedAt, int expiresInSeconds)
     {
         ActiveToken?.Revoke(issuedAt);
@@ -138,6 +181,7 @@ public sealed class BankConnection : AggregateRoot
     /// <summary>
     /// Ends the current consent, e.g. when the banking provider's consent window has elapsed.
     /// </summary>
+    /// <param name="revokedAt">When it ended.</param>
     public void RevokeActiveToken(DateTime revokedAt) => ActiveToken?.Revoke(revokedAt);
 
     /// <summary>
@@ -148,6 +192,7 @@ public sealed class BankConnection : AggregateRoot
     /// <summary>
     /// A sync failed.
     /// </summary>
+    /// <param name="failedAt">When it failed.</param>
     /// <returns>Whether it has just started failing, so the user is told once rather than on every failed run.</returns>
     public bool RecordSyncFailed(DateTime failedAt)
     {

@@ -42,6 +42,9 @@ public sealed class PayCalendar
         _today = today;
     }
 
+    /// <summary>
+    /// Calendar months, with no pay to go by, see <see cref="CalendarMonths"/>.
+    /// </summary>
     private PayCalendar()
     {
         _payDays = [];
@@ -60,6 +63,8 @@ public sealed class PayCalendar
     /// <summary>
     /// The period named after <paramref name="month"/> of <paramref name="year"/>.
     /// </summary>
+    /// <param name="year">The year of the month it's named after.</param>
+    /// <param name="month">The month it's named after.</param>
     public PayPeriod Named(int year, int month)
     {
         DateOnly named = new(year, month, 1);
@@ -75,6 +80,7 @@ public sealed class PayCalendar
     /// <summary>
     /// The period <paramref name="day"/> falls in.
     /// </summary>
+    /// <param name="day">The day to look for.</param>
     public PayPeriod Containing(DateOnly day)
     {
         // A month's pay can come in the month before, e.g. pay due on Sunday the 1st
@@ -94,6 +100,8 @@ public sealed class PayCalendar
     /// <summary>
     /// The period starting with the pay for <paramref name="month"/> of <paramref name="year"/>.
     /// </summary>
+    /// <param name="year">The year of the month it's named after.</param>
+    /// <param name="month">The month it's named after.</param>
     private PayPeriod From(int year, int month)
     {
         DateOnly paidFor = new(year, month, 1);
@@ -113,6 +121,8 @@ public sealed class PayCalendar
     /// The day the period starting with the pay for the month begins the day it came in, otherwise the day it's due,
     /// or tomorrow while it's late.
     /// </summary>
+    /// <param name="year">The year of the month it's named after.</param>
+    /// <param name="month">The month it's named after.</param>
     private DateOnly StartFor(int year, int month)
     {
         if (_pattern is null)
@@ -138,6 +148,7 @@ public sealed class PayCalendar
     /// <summary>
     /// The pay closest to <paramref name="due"/>, null when none came within <see cref="MatchDays"/> of it.
     /// </summary>
+    /// <param name="due">The day pay is due.</param>
     private DateOnly? PaidNear(DateOnly due)
     {
         DateOnly? closest = null;
@@ -156,6 +167,10 @@ public sealed class PayCalendar
         return closest;
     }
 
+    /// <summary>
+    /// Whether a period is named after the month after its pay, see <see cref="NamedAfterNextMonthFromDay"/>. Pay on
+    /// the last working day always is.
+    /// </summary>
     private bool NamedAfterNextMonth()
     {
         if (_pattern is null)

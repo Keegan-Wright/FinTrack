@@ -5,5 +5,8 @@ namespace FinanceTracker.Domain.Common;
 /// </summary>
 public interface IUserOwned
 {
+    /// <summary>
+    /// The user who owns it.
+    /// </summary>
     Guid UserId { get; }
 }

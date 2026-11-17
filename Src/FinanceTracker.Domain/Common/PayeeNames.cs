@@ -14,6 +14,7 @@ public static class PayeeNames
     /// they're usually a reference that changes each time, e.g. <c>NETFLIX.COM 866-579</c> or
     /// <c>ACME PAYROLL REF00P2118CXWF4</c>. When that leaves nothing, e.g. <c>7ELEVEN</c>, only the digits go.
     /// </summary>
+    /// <param name="transaction">The transaction to name.</param>
     public static string Name(BankTransaction transaction)
     {
         ArgumentNullException.ThrowIfNull(transaction);
@@ -35,6 +36,7 @@ public static class PayeeNames
     /// <summary>
     /// Upper case letters only, so <c>Netflix.com</c> and <c>NETFLIX COM</c> are the same payee.
     /// </summary>
+    /// <param name="name">The payee's name.</param>
     public static string Key(string name)
     {
         ArgumentNullException.ThrowIfNull(name);
@@ -51,6 +53,10 @@ public static class PayeeNames
         return builder.ToString();
     }
 
+    /// <summary>
+    /// The word with its digits taken out.
+    /// </summary>
+    /// <param name="word">The word.</param>
     private static string WithoutDigits(string word)
     {
         StringBuilder builder = new(word.Length);
@@ -65,5 +71,9 @@ public static class PayeeNames
         return builder.ToString();
     }
 
+    /// <summary>
+    /// The words joined with spaces, without the punctuation banks leave at either end.
+    /// </summary>
+    /// <param name="words">The words to join.</param>
     private static string Tidy(List<string> words) => string.Join(' ', words).Trim(' ', '-', '*', '#', '/', '.');
 }
