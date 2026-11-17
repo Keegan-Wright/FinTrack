@@ -54,6 +54,8 @@ public partial class Program
 
         builder.AddFinTrackClock();
 
+        builder.Services.AddFinTrackOpenApi();
+
         // Source generated from the [Scoped]/[Singleton]/[Transient] attributes
         AddFinanceTrackerServices(builder.Services);
         AddFinanceTrackerValidators(builder.Services);
@@ -96,6 +98,7 @@ public partial class Program
 
         app.MapAdditionalIdentityEndpoints();
         app.MapFinTrackApi();
+        app.MapFinTrackOpenApi();
 
         await app.RunAsync();
     }

@@ -48,7 +48,7 @@ public static class ApiEndpoints
 
             // An API address that isn't an endpoint answers a bare 404 for the app to read, rather than the front
             // end's not found page, whose catch-all route it otherwise matches
-            api.Map("api/{**path}", static () => TypedResults.NotFound());
+            api.Map("api/{**path}", static () => TypedResults.NotFound()).ExcludeFromDescription();
 
             endpoints.MapHub<SyncHub>(SyncHubContract.Path);
 
