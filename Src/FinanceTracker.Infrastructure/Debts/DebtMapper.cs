@@ -10,9 +10,14 @@ using DomainDebtForecast = FinanceTracker.Domain.Debts.DebtForecast;
 
 namespace FinanceTracker.Infrastructure.Debts;
 
+/// <summary>
+/// Debts between the domain and the API.
+/// </summary>
 internal static class DebtMapper
 {
+    /// <param name="debt">The debt.</param>
     /// <param name="accountName">The linked account's name, null when it isn't linked.</param>
+    /// <param name="progress">How it's doing.</param>
     /// <param name="sharedBy">Whoever shares it with the user, null when it's theirs.</param>
     /// <param name="canChange">Whether the user can edit it.</param>
     public static Debt ToContract(DomainDebt debt, string? accountName, DebtProgress progress,
@@ -51,6 +56,8 @@ internal static class DebtMapper
     };
 
     /// <param name="payment">A transaction paying off the debt.</param>
+    /// <param name="accountName">The account's name.</param>
+    /// <param name="ruleName">The rule that linked it, null when none did.</param>
     public static DebtPaymentItem ToItem(BankTransaction payment, string accountName, string? ruleName) => new()
     {
         TransactionId = payment.Id,

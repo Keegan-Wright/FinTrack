@@ -7,9 +7,13 @@ namespace FinanceTracker.Infrastructure.Exports.Pdf;
 /// A name, a <see cref="ProgressBar"/> and an amount on one line, e.g. a tag and what was spent on it, with the bar
 /// against the biggest in the list.
 /// </summary>
+/// <param name="label">The name, e.g. a tag.</param>
 /// <param name="share">The bar's fill, from 0 to 1.</param>
+/// <param name="amount">The amount, formatted.</param>
+/// <param name="colour">The bar's colour.</param>
 internal sealed class BarRow(string label, decimal share, string amount, string colour) : IComponent
 {
+    /// <inheritdoc/>
     public void Compose(IContainer container)
     {
         container.Row(row =>

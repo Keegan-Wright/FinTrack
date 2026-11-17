@@ -5,8 +5,12 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace FinanceTracker.Infrastructure.Persistence.Configurations;
 
+/// <summary>
+/// Maps <see cref="BalanceSnapshot"/> to its table.
+/// </summary>
 internal sealed class BalanceSnapshotConfiguration : AggregateRootConfiguration<BalanceSnapshot>
 {
+    /// <inheritdoc/>
     protected override void ConfigureAggregate(EntityTypeBuilder<BalanceSnapshot> builder)
     {
         builder.ToTable("BalanceSnapshots");

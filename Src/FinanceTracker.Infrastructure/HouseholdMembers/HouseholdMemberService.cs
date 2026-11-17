@@ -16,12 +16,17 @@ using HouseholdMember = FinanceTracker.Contracts.HouseholdMember.HouseholdMember
 
 namespace FinanceTracker.Infrastructure.HouseholdMembers;
 
+/// <inheritdoc cref="IHouseholdMemberService"/>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<IHouseholdMemberService>]
 public class HouseholdMemberService : ServiceBase<HouseholdMemberService>, IHouseholdMemberService
 {
     private readonly ITransferMatchingService _transferMatchingService;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="transferMatchingService">Matches transfers.</param>
     public HouseholdMemberService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<HouseholdMemberService> logger,
         ITransferMatchingService transferMatchingService) : base(currentUser, financeTrackerContextFactory, logger)
@@ -29,6 +34,7 @@ public class HouseholdMemberService : ServiceBase<HouseholdMemberService>, IHous
         _transferMatchingService = transferMatchingService;
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<HouseholdMember> GetHouseholdMembersAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -44,6 +50,7 @@ public class HouseholdMemberService : ServiceBase<HouseholdMemberService>, IHous
         }
     }
 
+    /// <inheritdoc/>
     public async Task<HouseholdMember> AddHouseholdMemberAsync(AddHouseholdMember categoryToAdd,
         CancellationToken cancellationToken)
     {
@@ -62,6 +69,7 @@ public class HouseholdMemberService : ServiceBase<HouseholdMemberService>, IHous
         return ToContract(householdMember, await UsernamesAsync(context, [householdMember], cancellationToken));
     }
 
+    /// <inheritdoc/>
     public async Task<HouseholdMember> UpdateHouseholdMemberAsync(Guid id, UpdateHouseholdMember request,
         CancellationToken cancellationToken)
     {
@@ -82,6 +90,7 @@ public class HouseholdMemberService : ServiceBase<HouseholdMemberService>, IHous
         return ToContract(householdMember, await UsernamesAsync(context, [householdMember], cancellationToken));
     }
 
+    /// <inheritdoc/>
     public async Task<HouseholdMemberRecognitionSaved> UpdateRecognitionAsync(Guid id,
         UpdateHouseholdMemberRecognition request, CancellationToken cancellationToken)
     {
@@ -113,6 +122,7 @@ public class HouseholdMemberService : ServiceBase<HouseholdMemberService>, IHous
         };
     }
 
+    /// <inheritdoc/>
     public async Task<bool> DeleteHouseholdMemberAsync(Guid id, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -134,6 +144,11 @@ public class HouseholdMemberService : ServiceBase<HouseholdMemberService>, IHous
         return true;
     }
 
+    /// <param name="context">The context to work through.</param>
+    /// <param name="firstName">Their first name.</param>
+    /// <param name="lastName">Their last name.</param>
+    /// <param name="exceptId">The one being renamed, which can keep its own name, null for a new one.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <exception cref="NameTakenException">Someone else in the household has the same first and last name.
     /// </exception>
     private async Task EnsureNameIsFreeAsync(FinanceTrackerContext context, string firstName, string lastName,
@@ -146,8 +161,14 @@ public class HouseholdMemberService : ServiceBase<HouseholdMemberService>, IHous
             FullName(firstName, lastName), exceptId, NameTakenException.Person);
     }
 
+    /// <summary>
+    /// The first and last name, trimmed.
+    /// </summary>
+    /// <param name="firstName">The first name.</param>
+    /// <param name="lastName">The last name.</param>
     private static string FullName(string firstName, string lastName) => $"{firstName.Trim()} {lastName.Trim()}";
 
+    /// <inheritdoc/>
     public async Task<HouseholdMember> LinkHouseholdMemberAsync(Guid id, LinkHouseholdMember request,
         CancellationToken cancellationToken)
     {
@@ -205,6 +226,9 @@ public class HouseholdMemberService : ServiceBase<HouseholdMemberService>, IHous
     /// <summary>
     /// The usernames of the users <paramref name="members"/> are linked to, by user.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="members">The household members.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<Dictionary<Guid, string>> UsernamesAsync(FinanceTrackerContext context,
         List<Domain.Household.HouseholdMember> members, CancellationToken cancellationToken)
     {
@@ -214,6 +238,11 @@ public class HouseholdMemberService : ServiceBase<HouseholdMemberService>, IHous
             .ToDictionaryAsync(static x => x.Id, static x => x.UserName ?? string.Empty, cancellationToken);
     }
 
+    /// <summary>
+    /// A household member as the API sends it.
+    /// </summary>
+    /// <param name="householdMember">The member.</param>
+    /// <param name="usernames">The usernames of the users members are linked to, by user.</param>
     private static HouseholdMember ToContract(Domain.Household.HouseholdMember householdMember,
         Dictionary<Guid, string> usernames) => new()
     {

@@ -7,23 +7,38 @@ using FinanceTracker.Infrastructure.Notifications.Email;
 
 namespace FinanceTracker.Infrastructure.Account.Email;
 
+/// <inheritdoc cref="IAccountEmails"/>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Singleton<IAccountEmails>]
 public sealed class AccountEmails : IAccountEmails
 {
+    /// <summary>
+    /// The subject of the email confirming a new account's email.
+    /// </summary>
     public const string ConfirmEmailSubject = "Confirm your email for FinTrack";
+
+    /// <summary>
+    /// The subject of the password reset email.
+    /// </summary>
     public const string ResetPasswordSubject = "Reset your FinTrack password";
+
+    /// <summary>
+    /// The subject of the email confirming a new email.
+    /// </summary>
     public const string ChangeEmailSubject = "Confirm your new email for FinTrack";
 
     private readonly IEmailRenderer _emailRenderer;
     private readonly PublicAddress _publicAddress;
 
+    /// <param name="emailRenderer">Renders the emails.</param>
+    /// <param name="publicAddress">The app's address as people reach it.</param>
     public AccountEmails(IEmailRenderer emailRenderer, PublicAddress publicAddress)
     {
         _emailRenderer = emailRenderer;
         _publicAddress = publicAddress;
     }
 
+    /// <inheritdoc/>
     public Task<MailMessage> ConfirmEmailAsync(string to, Uri link) =>
         CreateAsync(to, link, new AccountEmail(
             ConfirmEmailSubject,
@@ -34,6 +49,7 @@ public sealed class AccountEmails : IAccountEmails
             "You're getting this because a FinTrack account was made with this email. If that wasn't you, you can " +
             "ignore it."));
 
+    /// <inheritdoc/>
     public Task<MailMessage> ResetPasswordAsync(string to, Uri link) =>
         CreateAsync(to, link, new AccountEmail(
             ResetPasswordSubject,
@@ -43,6 +59,7 @@ public sealed class AccountEmails : IAccountEmails
             "You're getting this because someone asked to reset your FinTrack password. If that wasn't you, you can " +
             "ignore it and your password stays the same."));
 
+    /// <inheritdoc/>
     public Task<MailMessage> ChangeEmailAsync(string to, Uri link) =>
         CreateAsync(to, link, new AccountEmail(
             ChangeEmailSubject,
@@ -52,6 +69,12 @@ public sealed class AccountEmails : IAccountEmails
             "You're getting this because someone asked to move a FinTrack account to this email. If that wasn't " +
             "you, you can ignore it."));
 
+    /// <summary>
+    /// Renders an account email, with its link as the button.
+    /// </summary>
+    /// <param name="to">Who it's sent to.</param>
+    /// <param name="link">The link the email is for.</param>
+    /// <param name="email">What the email says.</param>
     private async Task<MailMessage> CreateAsync(string to, Uri link, AccountEmail email)
     {
         ArgumentNullException.ThrowIfNull(link);

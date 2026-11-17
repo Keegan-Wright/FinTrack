@@ -22,6 +22,7 @@ using Transaction = FinanceTracker.Contracts.Transactions.Transaction;
 
 namespace FinanceTracker.Infrastructure.Debts;
 
+/// <inheritdoc cref="IDebtsService"/>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<IDebtsService>]
 public class DebtsService : ServiceBase<DebtsService>, IDebtsService
@@ -29,6 +30,11 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
     private readonly TimeProvider _timeProvider;
     private readonly IAccountScope _accountScope;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="timeProvider">The clock.</param>
+    /// <param name="accountScope">Which accounts the user can see and change.</param>
     public DebtsService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<DebtsService> logger,
         TimeProvider timeProvider, IAccountScope accountScope) : base(currentUser, financeTrackerContextFactory, logger)
@@ -37,6 +43,7 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
         _accountScope = accountScope;
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<Debt> GetDebtsAsync([EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -55,6 +62,7 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
         }
     }
 
+    /// <inheritdoc/>
     public async Task<DebtDetail> GetDebtAsync(Guid id, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -90,6 +98,7 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
         };
     }
 
+    /// <inheritdoc/>
     public async Task<Debt> AddDebtAsync(SaveDebt debt, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -109,6 +118,7 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
         return await ToContractAsync(context, new VisibleItem<DomainDebt>(added, null, true), cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<Debt> UpdateDebtAsync(Guid id, SaveDebt debt, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -145,6 +155,11 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
     /// <summary>
     /// Paid off debts count, as their payments still name them.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="ownerId">The owner.</param>
+    /// <param name="name">The debt's name.</param>
+    /// <param name="exceptId">The one being renamed, which can keep its own name, null for a new one.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <exception cref="NameTakenException">Another of <paramref name="ownerId"/>'s debts is called
     /// <paramref name="name"/>.</exception>
     private static async Task EnsureNameIsFreeAsync(FinanceTrackerContext context, Guid ownerId, string name,
@@ -154,6 +169,7 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
         NameCheck.EnsureFree(existing.Select(static x => (x.Id, x.Name)), name, exceptId, NameTakenException.Debt);
     }
 
+    /// <inheritdoc/>
     public async Task DeleteDebtAsync(Guid id, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -188,6 +204,7 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
         Logger.LogDeletedDebt(UserId, id, payments.Count, rulesChanged);
     }
 
+    /// <inheritdoc/>
     public async Task<DebtForecast> ForecastAsync(Guid id, decimal monthlyPayment,
         CancellationToken cancellationToken)
     {
@@ -205,6 +222,7 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
             monthlyPayment, _timeProvider.Today));
     }
 
+    /// <inheritdoc/>
     public async Task<Transaction> PayDebtAsync(Guid transactionId, PayDebt payment,
         CancellationToken cancellationToken)
     {
@@ -248,6 +266,10 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
     /// Links <paramref name="debt"/> to <paramref name="accountId"/>, or works it out from its payments again when
     /// null.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="debt">The debt.</param>
+    /// <param name="accountId">The account.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <exception cref="InvalidOperationException">The account doesn't exist or isn't the user's.</exception>
     private async Task LinkAsync(FinanceTrackerContext context, DomainDebt debt, Guid? accountId,
         CancellationToken cancellationToken)
@@ -272,6 +294,10 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
     /// The linked account's daily balances, the last of each month and the latest, or the debt worked out from its
     /// payments when it isn't linked.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="debt">The debt.</param>
+    /// <param name="payments">The debt's payments.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<IReadOnlyList<DebtBalance>> HistoryAsync(FinanceTrackerContext context, DomainDebt debt,
         List<BankTransaction> payments, CancellationToken cancellationToken)
     {
@@ -304,10 +330,21 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
         return history;
     }
 
+    /// <summary>
+    /// How a debt is doing today.
+    /// </summary>
+    /// <param name="debt">The debt.</param>
+    /// <param name="figures">Its account and payments.</param>
     private DebtProgress Progress(DomainDebt debt, DebtFigures figures) =>
         DebtCalculator.Progress(debt, figures.Account, figures.Payments, _timeProvider.LocalTimeZone,
             _timeProvider.Today);
 
+    /// <summary>
+    /// A debt as the API sends it, with how it's doing.
+    /// </summary>
+    /// <param name="context">The context to read through.</param>
+    /// <param name="debt">The debt, as the user sees it.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<Debt> ToContractAsync(FinanceTrackerContext context, VisibleItem<DomainDebt> debt,
         CancellationToken cancellationToken)
     {
@@ -317,6 +354,12 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
         return ToContract(debt, figures, accountNames);
     }
 
+    /// <summary>
+    /// A debt as the API sends it, from figures already loaded.
+    /// </summary>
+    /// <param name="debt">The debt, as the user sees it.</param>
+    /// <param name="figures">Its account and payments.</param>
+    /// <param name="accountNames">The accounts' names, by id.</param>
     private Debt ToContract(VisibleItem<DomainDebt> debt, DebtFigures figures, Dictionary<Guid, string> accountNames) =>
         DebtMapper.ToContract(debt.Item, AccountNameOf(debt.Item, accountNames), Progress(debt.Item, figures),
             debt.SharedBy, debt.CanChange);
@@ -325,6 +368,8 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
     /// The name of the account <paramref name="debt"/> follows, private when the user can't see it, null when it
     /// follows none.
     /// </summary>
+    /// <param name="debt">The debt.</param>
+    /// <param name="accountNames">The accounts' names, by id.</param>
     private static string? AccountNameOf(DomainDebt debt, Dictionary<Guid, string> accountNames)
     {
         if (debt.AccountId is not { } accountId)
@@ -338,6 +383,9 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
     /// <summary>
     /// The names of the accounts the user sees.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="all">Every account the user sees.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<Dictionary<Guid, string>> AccountNamesAsync(FinanceTrackerContext context,
         AccountsInView all, CancellationToken cancellationToken) =>
         await context.BankAccounts.InView(all).AsNoTracking()
@@ -346,7 +394,11 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
     /// <summary>
     /// Debt <paramref name="id"/>, the user's own or one shared with them.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="all">Every account the user sees.</param>
+    /// <param name="id">Its id.</param>
     /// <param name="mustChange">Whether they must be allowed to change it.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <exception cref="InvalidOperationException">They can't see it, or can't change it.</exception>
     private async Task<VisibleItem<DomainDebt>> VisibleAsync(FinanceTrackerContext context, AccountsInView all, Guid id,
         bool mustChange, CancellationToken cancellationToken)
@@ -365,6 +417,10 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
     /// The names of the rules that linked <paramref name="payments"/>, <paramref name="people"/>'s, as a debt's
     /// owner's rules and those of anyone they let change its accounts may have. Empty when none did.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="people">The users whose rules may have linked them.</param>
+    /// <param name="payments">The debt's payments.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<Dictionary<Guid, string>> LoadRuleNamesAsync(FinanceTrackerContext context,
         IReadOnlyCollection<Guid> people, List<BankTransaction> payments, CancellationToken cancellationToken)
     {
@@ -378,6 +434,11 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
         return rules.ToDictionary(static x => x.Id, static x => x.Name);
     }
 
+    /// <summary>
+    /// The name of the rule that linked a payment, null when none did.
+    /// </summary>
+    /// <param name="ruleNames">The rules' names, by id.</param>
+    /// <param name="ruleId">The rule, null for none.</param>
     private static string? RuleName(Dictionary<Guid, string> ruleNames, Guid? ruleId)
     {
         if (ruleId is not { } id)

@@ -21,6 +21,8 @@ public sealed class StatementDocument : FinTrackDocument
     private readonly Statement _statement;
     private readonly TimeZoneInfo _timeZone;
 
+    /// <param name="statement">The statement to print.</param>
+    /// <param name="timeZone">Where the user is, for the transactions' times.</param>
     public StatementDocument(Statement statement, TimeZoneInfo timeZone)
         : base(statement.MadeOn)
     {
@@ -28,13 +30,17 @@ public sealed class StatementDocument : FinTrackDocument
         _timeZone = timeZone;
     }
 
+    /// <inheritdoc/>
     protected override string Title => $"Statement for {_statement.Month.ToString("MMMM yyyy", Culture)}";
 
+    /// <inheritdoc/>
     protected override string Covers => DateRange(_statement.Start, _statement.End);
 
+    /// <inheritdoc/>
     protected override string CoversDetail =>
         _statement.FromPayDay ? "Pay day to pay day, all accounts" : "Calendar month, all accounts";
 
+    /// <inheritdoc/>
     protected override void ComposeContent(IContainer container)
     {
         container.Column(column =>
@@ -62,6 +68,10 @@ public sealed class StatementDocument : FinTrackDocument
         });
     }
 
+    /// <summary>
+    /// The month's money in, out and what's left over.
+    /// </summary>
+    /// <param name="container">Where it's laid out.</param>
     private void ComposeSummary(IContainer container)
     {
         decimal moneyIn = _statement.Totals.TotalIn;
@@ -69,6 +79,9 @@ public sealed class StatementDocument : FinTrackDocument
         container.Component(new InOutSummary(moneyIn, moneyOut, "Left over", SummaryNotes().ToList()));
     }
 
+    /// <summary>
+    /// The notes under the summary, such as the period still running.
+    /// </summary>
     private IEnumerable<string> SummaryNotes()
     {
         if (_statement.IsCurrent)
@@ -85,6 +98,10 @@ public sealed class StatementDocument : FinTrackDocument
         }
     }
 
+    /// <summary>
+    /// What was spent on each tag, as bars.
+    /// </summary>
+    /// <param name="container">Where it's laid out.</param>
     private void ComposeTags(IContainer container)
     {
         decimal untagged = _statement.Untagged;
@@ -115,6 +132,7 @@ public sealed class StatementDocument : FinTrackDocument
     /// <summary>
     /// The longest bar, the most spent on one tag or with no tag, which the others are drawn against.
     /// </summary>
+    /// <param name="untagged">What was spent with no tag.</param>
     private decimal MostSpentOnOneLine(decimal untagged)
     {
         if (_statement.Tags.Count == 0)
@@ -125,6 +143,10 @@ public sealed class StatementDocument : FinTrackDocument
         return Math.Max(-_statement.Tags[0].TotalOut, untagged);
     }
 
+    /// <summary>
+    /// Each bill period due in the month and how it stands.
+    /// </summary>
+    /// <param name="container">Where it's laid out.</param>
     private void ComposeBills(IContainer container)
     {
         List<(Bill Bill, BillPeriod Period)> due = _statement.Bills.Bills
@@ -169,6 +191,10 @@ public sealed class StatementDocument : FinTrackDocument
         });
     }
 
+    /// <summary>
+    /// How each budget went.
+    /// </summary>
+    /// <param name="container">Where it's laid out.</param>
     private void ComposeBudgets(IContainer container)
     {
         if (_statement.Budgets.Budgets.Count == 0)
@@ -210,6 +236,10 @@ public sealed class StatementDocument : FinTrackDocument
         });
     }
 
+    /// <summary>
+    /// The savings goals and debts, side by side.
+    /// </summary>
+    /// <param name="container">Where it's laid out.</param>
     private void ComposeGoalsAndDebts(IContainer container)
     {
         container.Row(row =>
@@ -245,6 +275,10 @@ public sealed class StatementDocument : FinTrackDocument
         });
     }
 
+    /// <summary>
+    /// Every transaction in the month.
+    /// </summary>
+    /// <param name="container">Where it's laid out.</param>
     private void ComposeTransactions(IContainer container)
     {
         if (_statement.Transactions.Count == 0)
@@ -287,12 +321,19 @@ public sealed class StatementDocument : FinTrackDocument
         });
     }
 
+    /// <summary>
+    /// e.g. <c>£450.00 paid of £520.00 due</c>.
+    /// </summary>
     private string BillsCaption()
     {
         BillMonthOverview bills = _statement.Bills;
         return $"{Money(Math.Abs(bills.Paid))} paid of {Money(Math.Abs(bills.Due))} due";
     }
 
+    /// <summary>
+    /// A bill period's state, in words.
+    /// </summary>
+    /// <param name="state">How it stands.</param>
     private static string BillStateText(BillState state) => state switch
     {
         BillState.Paid => "Paid",
@@ -301,6 +342,10 @@ public sealed class StatementDocument : FinTrackDocument
         _ => "Upcoming"
     };
 
+    /// <summary>
+    /// The colour a bill period's state is shown in.
+    /// </summary>
+    /// <param name="state">How it stands.</param>
     private static string BillStateColour(BillState state) => state switch
     {
         BillState.Paid => MoneyIn,
@@ -309,6 +354,10 @@ public sealed class StatementDocument : FinTrackDocument
         _ => TextSecondary
     };
 
+    /// <summary>
+    /// Red when overspent.
+    /// </summary>
+    /// <param name="budget">How the budget went.</param>
     private static string BudgetColour(BudgetStatus budget)
     {
         if (budget.Remaining < 0)
@@ -324,6 +373,10 @@ public sealed class StatementDocument : FinTrackDocument
         return Primary;
     }
 
+    /// <summary>
+    /// What a goal has saved, of its target when it has one.
+    /// </summary>
+    /// <param name="goal">The goal.</param>
     private static string GoalText(SavingsGoal goal)
     {
         if (goal.Target <= 0)
@@ -334,6 +387,7 @@ public sealed class StatementDocument : FinTrackDocument
         return $"{Money(goal.Saved)} of {Money(goal.Target)}";
     }
 
+    /// <param name="goal">The goal.</param>
     /// <returns>Null for a goal with no target, as there's nothing to fill.</returns>
     private static decimal? GoalShare(SavingsGoal goal)
     {
@@ -348,6 +402,7 @@ public sealed class StatementDocument : FinTrackDocument
     /// <summary>
     /// Its tags, then whether it's a transfer or pending, e.g. <c>Groceries, Household · Pending</c>.
     /// </summary>
+    /// <param name="transaction">The transaction.</param>
     private static string TransactionNotes(Transaction transaction)
     {
         List<string> notes = [];
@@ -374,6 +429,7 @@ public sealed class StatementDocument : FinTrackDocument
     /// Money in green and money out red, as the transactions page and the other PDFs show amounts. Transfers too, the
     /// notes column says they're a transfer.
     /// </summary>
+    /// <param name="amount">The amount.</param>
     private static string AmountColour(decimal amount)
     {
         if (amount > 0)
@@ -389,6 +445,10 @@ public sealed class StatementDocument : FinTrackDocument
         return TextPrimary;
     }
 
+    /// <summary>
+    /// The day a transaction happened, where the user is.
+    /// </summary>
+    /// <param name="transaction">The transaction.</param>
     private DateOnly LocalDay(Transaction transaction)
     {
         DateTime utc = DateTime.SpecifyKind(transaction.TransactionTime, DateTimeKind.Utc);

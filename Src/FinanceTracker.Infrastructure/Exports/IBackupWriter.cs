@@ -10,5 +10,7 @@ public interface IBackupWriter
     /// <summary>
     /// Writes the backup zip to <paramref name="destination"/>.
     /// </summary>
+    /// <param name="destination">Where the zip is written.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     Task WriteAsync(Stream destination, CancellationToken cancellationToken);
 }

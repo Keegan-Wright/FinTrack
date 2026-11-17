@@ -12,12 +12,17 @@ using PayPeriod = FinanceTracker.Contracts.PayPeriods.PayPeriod;
 
 namespace FinanceTracker.Infrastructure.PayPeriods;
 
+/// <inheritdoc cref="IPayPeriodsService"/>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<IPayPeriodsService>]
 public class PayPeriodsService : ServiceBase<PayPeriodsService>, IPayPeriodsService
 {
     private readonly TimeProvider _timeProvider;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="timeProvider">The clock.</param>
     public PayPeriodsService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<PayPeriodsService> logger,
         TimeProvider timeProvider) : base(currentUser, financeTrackerContextFactory, logger)
@@ -25,6 +30,7 @@ public class PayPeriodsService : ServiceBase<PayPeriodsService>, IPayPeriodsServ
         _timeProvider = timeProvider;
     }
 
+    /// <inheritdoc/>
     public async Task<YourPay> GetYourPayAsync(CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -35,6 +41,7 @@ public class PayPeriodsService : ServiceBase<PayPeriodsService>, IPayPeriodsServ
         return await ToYourPayAsync(context, schedule, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<Income> GetIncomesAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -53,6 +60,7 @@ public class PayPeriodsService : ServiceBase<PayPeriodsService>, IPayPeriodsServ
         }
     }
 
+    /// <inheritdoc/>
     public async Task<YourPay> ChooseAsync(ChooseIncome income, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(income);
@@ -79,6 +87,7 @@ public class PayPeriodsService : ServiceBase<PayPeriodsService>, IPayPeriodsServ
         return await ToYourPayAsync(context, schedule, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<YourPay> TurnOffAsync(CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -95,6 +104,7 @@ public class PayPeriodsService : ServiceBase<PayPeriodsService>, IPayPeriodsServ
         return await ToYourPayAsync(context, schedule, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<YourPay> TurnOnAsync(CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -109,6 +119,12 @@ public class PayPeriodsService : ServiceBase<PayPeriodsService>, IPayPeriodsServ
         return await ToYourPayAsync(context, schedule, cancellationToken);
     }
 
+    /// <summary>
+    /// The user's pay and periods as the API sends them.
+    /// </summary>
+    /// <param name="context">The context to read through.</param>
+    /// <param name="schedule">The user's pay, null when it isn't known.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<YourPay> ToYourPayAsync(FinanceTrackerContext context, PaySchedule? schedule,
         CancellationToken cancellationToken)
     {
@@ -133,6 +149,11 @@ public class PayPeriodsService : ServiceBase<PayPeriodsService>, IPayPeriodsServ
         };
     }
 
+    /// <summary>
+    /// The user's accounts' names, by id.
+    /// </summary>
+    /// <param name="context">The context to read through.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private Task<Dictionary<Guid, string>> AccountNamesAsync(FinanceTrackerContext context,
         CancellationToken cancellationToken)
     {
@@ -140,6 +161,16 @@ public class PayPeriodsService : ServiceBase<PayPeriodsService>, IPayPeriodsServ
             .ToDictionaryAsync(static x => x.Id, static x => x.DisplayName, cancellationToken);
     }
 
+    /// <summary>
+    /// An income as the API sends it.
+    /// </summary>
+    /// <param name="accountId">The account it's paid into.</param>
+    /// <param name="key">The payer in upper case letters only.</param>
+    /// <param name="name">The payer as the bank names them.</param>
+    /// <param name="amount">The latest pay.</param>
+    /// <param name="pattern">When it comes each month.</param>
+    /// <param name="lastPaidOn">When it last came.</param>
+    /// <param name="accountNames">The user's accounts' names, by id.</param>
     private static Income ToIncome(Guid accountId, string key, string name, decimal amount, PayPattern pattern,
         DateOnly lastPaidOn, Dictionary<Guid, string> accountNames) => new()
     {
@@ -154,6 +185,10 @@ public class PayPeriodsService : ServiceBase<PayPeriodsService>, IPayPeriodsServ
         LastPaidOn = lastPaidOn
     };
 
+    /// <summary>
+    /// A period as the API sends it.
+    /// </summary>
+    /// <param name="period">The period.</param>
     internal static PayPeriod ToContract(Domain.PayPeriods.PayPeriod period) => new()
     {
         Start = period.Start,

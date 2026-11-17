@@ -10,6 +10,7 @@ namespace FinanceTracker.Infrastructure;
 /// <typeparam name="TModel">The value to encrypt|Decrypt</typeparam>
 public class EncryptionConverter<TModel> : ValueConverter<TModel, string>
 {
+    /// <param name="columnEncryptionService">Encrypts and decrypts the values.</param>
     public EncryptionConverter(IColumnEncryptionService columnEncryptionService) : base(
         v => columnEncryptionService.Encrypt(v),
         v => columnEncryptionService.Decrypt<TModel>(v)!)

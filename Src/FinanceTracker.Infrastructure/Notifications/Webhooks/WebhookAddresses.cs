@@ -40,6 +40,7 @@ public static class WebhookAddresses
     /// Whether <paramref name="address"/> is on the public internet. An IPv4 address written as IPv6 is judged as
     /// IPv4.
     /// </summary>
+    /// <param name="address">The address.</param>
     public static bool IsPublic(IPAddress address)
     {
         ArgumentNullException.ThrowIfNull(address);
@@ -48,6 +49,11 @@ public static class WebhookAddresses
         return !NotPublic.Any(x => x.BaseAddress.AddressFamily == judged.AddressFamily && x.Contains(judged));
     }
 
+    /// <summary>
+    /// Whether a webhook may be posted to <paramref name="address"/>, public or allowed to be private.
+    /// </summary>
+    /// <param name="address">The address.</param>
+    /// <param name="settings">Whether private addresses are allowed.</param>
     public static bool IsAllowed(IPAddress address, WebhookSettings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
@@ -58,6 +64,8 @@ public static class WebhookAddresses
     /// Why <paramref name="url"/> won't be posted to, as far as can be told without looking its name up: an address
     /// written as a private IP, or this machine by name. Null when it may be.
     /// </summary>
+    /// <param name="url">The webhook's address.</param>
+    /// <param name="settings">The user's notification settings.</param>
     public static string? RefusalFor(Uri url, WebhookSettings settings)
     {
         ArgumentNullException.ThrowIfNull(url);
@@ -84,6 +92,9 @@ public static class WebhookAddresses
     /// <summary>
     /// The addresses of <paramref name="host"/> a webhook may connect to, none when every one is refused.
     /// </summary>
+    /// <param name="host">The webhook's host name.</param>
+    /// <param name="settings">The user's notification settings.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     internal static async Task<IPAddress[]> AllowedAsync(string host, WebhookSettings settings,
         CancellationToken cancellationToken)
     {

@@ -7,6 +7,7 @@ using FinanceTracker.Generated.Enums;
 
 namespace FinanceTracker.Infrastructure.Exports.Reports;
 
+/// <inheritdoc cref="IReportDocumentBuilder"/>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<IReportDocumentBuilder>]
 public sealed class ReportDocumentBuilder : IReportDocumentBuilder
@@ -18,6 +19,12 @@ public sealed class ReportDocumentBuilder : IReportDocumentBuilder
     private readonly ISavingsGoalsService _savingsGoalsService;
     private readonly TimeProvider _timeProvider;
 
+    /// <param name="reportService">Gives the reports.</param>
+    /// <param name="transactionsService">Gives the transactions.</param>
+    /// <param name="billsService">Gives the bills.</param>
+    /// <param name="debtsService">Gives the debts.</param>
+    /// <param name="savingsGoalsService">Gives the savings goals.</param>
+    /// <param name="timeProvider">The clock.</param>
     public ReportDocumentBuilder(IReportService reportService, ITransactionsService transactionsService,
         IBillsService billsService, IDebtsService debtsService, ISavingsGoalsService savingsGoalsService,
         TimeProvider timeProvider)
@@ -30,6 +37,7 @@ public sealed class ReportDocumentBuilder : IReportDocumentBuilder
         _timeProvider = timeProvider;
     }
 
+    /// <inheritdoc/>
     public async Task<ReportContent> BuildAsync(ExportReport report, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(report);
@@ -51,6 +59,12 @@ public sealed class ReportDocumentBuilder : IReportDocumentBuilder
         };
     }
 
+    /// <summary>
+    /// The report's lines, everything over time, or each account or tag.
+    /// </summary>
+    /// <param name="breakdown">What it's broken down by.</param>
+    /// <param name="filters">The filters chosen.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<List<ReportRow>> SubjectsAsync(ReportBreakdown breakdown, FilterTransactions filters,
         CancellationToken cancellationToken)
     {
@@ -76,6 +90,8 @@ public sealed class ReportDocumentBuilder : IReportDocumentBuilder
     /// <summary>
     /// Each filter chosen apart from the dates, by the names the filter bar shows, e.g. Accounts: Main, Savings.
     /// </summary>
+    /// <param name="filters">The filters chosen.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<List<string>> DescribeAsync(FilterTransactions filters, CancellationToken cancellationToken)
     {
         List<string> described = [];
@@ -148,8 +164,17 @@ public sealed class ReportDocumentBuilder : IReportDocumentBuilder
         return described;
     }
 
+    /// <summary>
+    /// e.g. <c>Accounts: Main, Savings</c>.
+    /// </summary>
+    /// <param name="filter">The filter's name.</param>
+    /// <param name="names">What's chosen in it.</param>
     private static string Named(string filter, IEnumerable<string> names) => $"{filter}: {string.Join(", ", names)}";
 
+    /// <summary>
+    /// The date's day, null for none.
+    /// </summary>
+    /// <param name="date">The date.</param>
     private static DateOnly? Day(DateTime? date)
     {
         if (date is null)

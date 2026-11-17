@@ -8,12 +8,17 @@ using PayPeriod = FinanceTracker.Domain.PayPeriods.PayPeriod;
 
 namespace FinanceTracker.Infrastructure.Exports.Statements;
 
+/// <inheritdoc cref="IStatementPeriods"/>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<IStatementPeriods>]
 public sealed class StatementPeriods : ServiceBase<StatementPeriods>, IStatementPeriods
 {
     private readonly TimeProvider _timeProvider;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="timeProvider">The clock.</param>
     public StatementPeriods(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<StatementPeriods> logger,
         TimeProvider timeProvider) : base(currentUser, financeTrackerContextFactory, logger)
@@ -21,6 +26,7 @@ public sealed class StatementPeriods : ServiceBase<StatementPeriods>, IStatement
         _timeProvider = timeProvider;
     }
 
+    /// <inheritdoc/>
     public async Task<List<Contracts.PayPeriods.PayPeriod>> GetAsync(CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -55,6 +61,8 @@ public sealed class StatementPeriods : ServiceBase<StatementPeriods>, IStatement
     /// The day the user's oldest transaction happened where they are, null when they have none. The dates are
     /// encrypted, so they're read and compared here rather than in the database.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<DateOnly?> OldestDayAsync(FinanceTrackerContext context, CancellationToken cancellationToken)
     {
         List<DateTime> occurred = await context.BankTransactions.OwnedBy(UserId)

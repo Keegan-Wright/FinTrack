@@ -10,6 +10,9 @@ namespace FinanceTracker.Infrastructure.Exports.Pdf;
 /// </summary>
 internal sealed class InOutChart(IReadOnlyList<InOutChartBar> bars) : IComponent
 {
+    /// <summary>
+    /// The bars' area height, in points.
+    /// </summary>
     private const float PlotHeight = 90;
 
     public void Compose(IContainer container)
@@ -56,6 +59,10 @@ internal sealed class InOutChart(IReadOnlyList<InOutChartBar> bars) : IComponent
     /// <summary>
     /// A bar as tall as <paramref name="amount"/> is of <paramref name="biggest"/>, nothing for nothing.
     /// </summary>
+    /// <param name="container">Where it's drawn.</param>
+    /// <param name="amount">The bar's amount.</param>
+    /// <param name="biggest">The biggest amount, which the bar is drawn against.</param>
+    /// <param name="colour">The bar's colour.</param>
     private static void Bar(IContainer container, decimal amount, decimal biggest, string colour)
     {
         if (amount <= 0 || biggest <= 0)
@@ -67,6 +74,12 @@ internal sealed class InOutChart(IReadOnlyList<InOutChartBar> bars) : IComponent
         container.Height(height).Background(colour).CornerRadius(2);
     }
 
+    /// <summary>
+    /// One entry in the chart's key, a swatch and its name.
+    /// </summary>
+    /// <param name="container">Where it's drawn.</param>
+    /// <param name="colour">The swatch's colour.</param>
+    /// <param name="text">What it stands for.</param>
     private static void Key(IContainer container, string colour, string text)
     {
         container.Row(key =>

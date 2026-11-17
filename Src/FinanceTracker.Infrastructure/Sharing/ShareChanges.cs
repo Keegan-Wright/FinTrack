@@ -12,6 +12,10 @@ internal static class ShareChanges
     /// What <paramref name="userId"/> chose to share in <paramref name="linkId"/>, and how, by kind and item. Not
     /// what's shared because it's on a shared transaction, which comes and goes with the transactions.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="linkId">The link.</param>
+    /// <param name="userId">The user.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     public static async Task<Dictionary<(ShareItemType Kind, Guid ItemId), ShareMode>> ChosenAsync(
         FinanceTrackerContext context, Guid linkId, Guid userId, CancellationToken cancellationToken)
     {
@@ -26,6 +30,8 @@ internal static class ShareChanges
     /// What changed from <paramref name="before"/> to <paramref name="after"/>, one sentence for each of shared,
     /// stopped, now changeable and now only seen. Null when nothing did.
     /// </summary>
+    /// <param name="before">What was shared before, and how.</param>
+    /// <param name="after">What's shared now, and how.</param>
     public static string? Describe(Dictionary<(ShareItemType Kind, Guid ItemId), ShareMode> before,
         Dictionary<(ShareItemType Kind, Guid ItemId), ShareMode> after)
     {
@@ -70,6 +76,9 @@ internal static class ShareChanges
     /// <summary>
     /// Adds <paramref name="sentence"/> naming how many of each kind <paramref name="kinds"/> holds, when any.
     /// </summary>
+    /// <param name="sentences">The sentences so far.</param>
+    /// <param name="kinds">The kinds of thing it's about.</param>
+    /// <param name="sentence">The sentence, given the kinds.</param>
     private static void AddSentence(List<string> sentences, List<ShareItemType> kinds, string sentence)
     {
         if (kinds.Count == 0)
@@ -88,6 +97,7 @@ internal static class ShareChanges
     /// <summary>
     /// One of a kind, as it reads in a sentence, e.g. <c>savings goal</c>.
     /// </summary>
+    /// <param name="kind">What it's about.</param>
     private static string KindText(ShareItemType kind) => kind switch
     {
         ShareItemType.BankAccount => "account",
@@ -101,6 +111,11 @@ internal static class ShareChanges
         _ => "item"
     };
 
+    /// <summary>
+    /// e.g. <c>2 tags</c>.
+    /// </summary>
+    /// <param name="count">How many.</param>
+    /// <param name="what">What's counted, singular.</param>
     private static string CountText(int count, string what)
     {
         if (count == 1)
@@ -114,6 +129,7 @@ internal static class ShareChanges
     /// <summary>
     /// <paramref name="parts"/> as a list, e.g. <c>a, b and c</c>.
     /// </summary>
+    /// <param name="parts">The parts to list.</param>
     private static string ListText(List<string> parts)
     {
         if (parts.Count == 1)

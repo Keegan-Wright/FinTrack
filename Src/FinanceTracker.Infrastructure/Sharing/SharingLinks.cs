@@ -13,6 +13,7 @@ using DomainLink = FinanceTracker.Domain.Sharing.UserLink;
 
 namespace FinanceTracker.Infrastructure.Sharing;
 
+/// <inheritdoc cref="ISharingLinks"/>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<ISharingLinks>]
 public sealed class SharingLinks : ServiceBase<SharingService>, ISharingLinks
@@ -21,6 +22,12 @@ public sealed class SharingLinks : ServiceBase<SharingService>, ISharingLinks
     private readonly ISharingEffects _sharingEffects;
     private readonly ISharingJointAccounts _sharingJointAccounts;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="timeProvider">The clock.</param>
+    /// <param name="sharingEffects">Takes off what stops being shared.</param>
+    /// <param name="sharingJointAccounts">Merges and splits joint accounts.</param>
     public SharingLinks(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<SharingService> logger,
         TimeProvider timeProvider, ISharingEffects sharingEffects, ISharingJointAccounts sharingJointAccounts)
@@ -31,6 +38,7 @@ public sealed class SharingLinks : ServiceBase<SharingService>, ISharingLinks
         _sharingJointAccounts = sharingJointAccounts;
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<ContractLink> GetLinksAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -85,6 +93,7 @@ public sealed class SharingLinks : ServiceBase<SharingService>, ISharingLinks
         }
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<ContractLink> GetPeopleAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -109,6 +118,7 @@ public sealed class SharingLinks : ServiceBase<SharingService>, ISharingLinks
         }
     }
 
+    /// <inheritdoc/>
     public async Task<InviteOutcome> InviteAsync(InviteToShare request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -173,6 +183,7 @@ public sealed class SharingLinks : ServiceBase<SharingService>, ISharingLinks
         return InviteOutcome.Sent(ToContract(link, invitee));
     }
 
+    /// <inheritdoc/>
     public async Task<bool> AcceptAsync(Guid id, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -196,6 +207,7 @@ public sealed class SharingLinks : ServiceBase<SharingService>, ISharingLinks
         return true;
     }
 
+    /// <inheritdoc/>
     public async Task<bool> DeclineAsync(Guid id, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -217,6 +229,7 @@ public sealed class SharingLinks : ServiceBase<SharingService>, ISharingLinks
         return true;
     }
 
+    /// <inheritdoc/>
     public async Task<bool> EndAsync(Guid id, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -277,6 +290,10 @@ public sealed class SharingLinks : ServiceBase<SharingService>, ISharingLinks
     /// <summary>
     /// <paramref name="userId"/>'s accepted link with <paramref name="linkId"/>, from either side.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="userId">The user.</param>
+    /// <param name="linkId">The link.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     public static Task<DomainLink?> AcceptedLinkAsync(FinanceTrackerContext context, Guid userId, Guid linkId,
         CancellationToken cancellationToken) =>
         context.UserLinks.SingleOrDefaultAsync(
@@ -286,6 +303,10 @@ public sealed class SharingLinks : ServiceBase<SharingService>, ISharingLinks
     /// <summary>
     /// Tells the other person the link has ended, or that the invite they had was withdrawn.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="link">The link between the two people.</param>
+    /// <param name="wasLinked">Whether they were linked, rather than only invited.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task NotifyEndedAsync(FinanceTrackerContext context, DomainLink link, bool wasLinked,
         CancellationToken cancellationToken)
     {
@@ -308,6 +329,9 @@ public sealed class SharingLinks : ServiceBase<SharingService>, ISharingLinks
     /// The user <paramref name="who"/> names, by username or email in any case. A username that's also someone
     /// else's email is the username's, as that's what's shown to people.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="who">The username or email typed.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<FinanceTrackerUser?> InviteeAsync(FinanceTrackerContext context, string who,
         CancellationToken cancellationToken)
     {
@@ -324,6 +348,9 @@ public sealed class SharingLinks : ServiceBase<SharingService>, ISharingLinks
     /// <summary>
     /// The user's one link with <paramref name="otherId"/>, live or not, null when they've never had one.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="otherId">The other person.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<DomainLink?> PairsLinkAsync(FinanceTrackerContext context, Guid otherId,
         CancellationToken cancellationToken)
     {
@@ -336,11 +363,15 @@ public sealed class SharingLinks : ServiceBase<SharingService>, ISharingLinks
     /// A notification's key for one round of <paramref name="link"/>, from its invite, so inviting again after it's
     /// over is told afresh, e.g. <c>sharing-invite:{link}:{invited at}</c>.
     /// </summary>
+    /// <param name="what">What the notification is about.</param>
+    /// <param name="link">The link between the two people.</param>
     private static string RoundKey(string what, DomainLink link) => $"{what}:{link.Id:N}:{link.InvitedAt.Ticks}";
 
     /// <summary>
     /// The user's live link with <paramref name="otherId"/>, read afresh, null when there's none.
     /// </summary>
+    /// <param name="otherId">The other person.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<DomainLink?> LiveLinkWithAsync(Guid otherId, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -352,6 +383,8 @@ public sealed class SharingLinks : ServiceBase<SharingService>, ISharingLinks
     /// <summary>
     /// The links <paramref name="userId"/> is in, from either side, that are waiting for an answer or accepted.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="userId">The user.</param>
     private static IQueryable<DomainLink> LiveLinksOf(FinanceTrackerContext context, Guid userId) =>
         context.UserLinks.Where(x => (x.UserId == userId || x.InviteeId == userId) &&
                                      (x.Status == UserLinkStatus.Pending || x.Status == UserLinkStatus.Accepted));
@@ -359,12 +392,19 @@ public sealed class SharingLinks : ServiceBase<SharingService>, ISharingLinks
     /// <summary>
     /// The invite with <paramref name="id"/> sent to the user and still waiting for their answer.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="id">Its id.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private Task<DomainLink?> InviteWaitingFor(FinanceTrackerContext context, Guid id,
         CancellationToken cancellationToken) =>
         context.UserLinks.SingleOrDefaultAsync(
             x => x.Id == id && x.Status == UserLinkStatus.Pending && x.InvitedBy != UserId &&
                  (x.UserId == UserId || x.InviteeId == UserId), cancellationToken);
 
+    /// <summary>
+    /// Why an invite is refused, already linked or already invited.
+    /// </summary>
+    /// <param name="existing">The link the two already have.</param>
     private static InviteRefusal RefusalFor(DomainLink existing)
     {
         if (existing.Status == UserLinkStatus.Accepted)
@@ -375,6 +415,11 @@ public sealed class SharingLinks : ServiceBase<SharingService>, ISharingLinks
         return InviteRefusal.AlreadyInvited;
     }
 
+    /// <summary>
+    /// A link as the API sends it, named after the other person.
+    /// </summary>
+    /// <param name="link">The link.</param>
+    /// <param name="other">The other person.</param>
     private ContractLink ToContract(DomainLink link, FinanceTrackerUser other) => new()
     {
         Id = link.Id,
@@ -384,6 +429,10 @@ public sealed class SharingLinks : ServiceBase<SharingService>, ISharingLinks
         Since = link.AnsweredAt ?? link.InvitedAt
     };
 
+    /// <summary>
+    /// Where the link stands for the user, linked, invited by them or inviting them.
+    /// </summary>
+    /// <param name="link">The link.</param>
     private LinkState StateFor(DomainLink link)
     {
         if (link.Status == UserLinkStatus.Accepted)

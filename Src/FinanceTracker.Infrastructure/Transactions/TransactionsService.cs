@@ -13,6 +13,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Infrastructure.Transactions;
 
+/// <inheritdoc cref="ITransactionsService"/>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<ITransactionsService>]
 public class TransactionsService : ServiceBase<TransactionsService>, ITransactionsService
@@ -20,6 +21,11 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
     private readonly TimeProvider _timeProvider;
     private readonly IAccountScope _accountScope;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="timeProvider">The clock.</param>
+    /// <param name="accountScope">Which accounts the user can see and change.</param>
     public TransactionsService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
         ILogger<TransactionsService> logger, TimeProvider timeProvider, IAccountScope accountScope)
@@ -29,6 +35,7 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
         _accountScope = accountScope;
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<Transaction> GetAllTransactionsAsync(
         FilterTransactions filterTransactions,
         [EnumeratorCancellation] CancellationToken cancellationToken)
@@ -65,6 +72,7 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
         }
     }
 
+    /// <inheritdoc/>
     public Task<Transaction> HideBankClassificationAsync(Guid transactionId, ChangeBankClassification request,
         CancellationToken cancellationToken) =>
         ChangeAsync(transactionId, "hid a bank classification on", (_, transaction) =>
@@ -79,6 +87,7 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
             return Task.CompletedTask;
         }, cancellationToken);
 
+    /// <inheritdoc/>
     public Task<Transaction> ShowBankClassificationAsync(Guid transactionId, ChangeBankClassification request,
         CancellationToken cancellationToken)
     {
@@ -89,6 +98,7 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
         }, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public Task<Transaction> SplitAsync(Guid transactionId, SplitTransaction request,
         CancellationToken cancellationToken)
     {
@@ -136,6 +146,7 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
         }, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public Task<Transaction> UnsplitAsync(Guid transactionId, CancellationToken cancellationToken)
     {
         return ChangeAsync(transactionId, "unsplit", (_, transaction) =>
@@ -145,6 +156,10 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
         }, cancellationToken);
     }
 
+    /// <summary>
+    /// A note trimmed, null when it's blank.
+    /// </summary>
+    /// <param name="note">The note.</param>
     private static string? Trimmed(string? note)
     {
         if (string.IsNullOrWhiteSpace(note))
@@ -159,7 +174,10 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
     /// Makes <paramref name="change"/> to a transaction the user can change, their own or one on an account shared
     /// with changes allowed, and returns it as it is now.
     /// </summary>
+    /// <param name="transactionId">The transaction.</param>
     /// <param name="action">What the change was, for the log, e.g. <c>split</c>.</param>
+    /// <param name="change">The change.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <exception cref="InvalidOperationException">The user can't change any such transaction.</exception>
     private async Task<Transaction> ChangeAsync(Guid transactionId, string action,
         Func<FinanceTrackerContext, BankTransaction, Task> change, CancellationToken cancellationToken)
@@ -186,6 +204,8 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
     /// The classifications not among <paramref name="hidden"/>. A transaction from before hiding existed has no hidden
     /// list at all, and projected on its own that comes back null rather than empty.
     /// </summary>
+    /// <param name="classifications">The bank's classifications.</param>
+    /// <param name="hidden">Those hidden.</param>
     private static IEnumerable<string> VisibleClassifications(IEnumerable<string> classifications,
         IReadOnlyList<HiddenClassification>? hidden)
     {
@@ -198,6 +218,7 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
             string.Equals(x.Classification, classification, StringComparison.OrdinalIgnoreCase)));
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<TransactionAccountFilter> GetAccountsForTransactionFiltersAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -216,6 +237,7 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
         }
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<TransactionProviderFilter> GetProvidersForTransactionFiltersAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -243,6 +265,7 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
         }
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<TransactionTypeFilter> GetTypesForTransactionFiltersAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -261,6 +284,7 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
         }
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<TransactionCategoryFilter> GetCategoriesForTransactionFiltersAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -279,6 +303,7 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
         }
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<TransactionTagFilter> GetTagsForTransactionFiltersAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {

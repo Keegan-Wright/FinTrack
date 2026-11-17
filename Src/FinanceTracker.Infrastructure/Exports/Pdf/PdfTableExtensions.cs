@@ -20,6 +20,8 @@ internal static class PdfTableExtensions
         /// <summary>
         /// A column's heading, right aligned over amounts.
         /// </summary>
+        /// <param name="text">The text.</param>
+        /// <param name="alignRight">Whether it's over amounts.</param>
         public void TableHeaderCell(string text, bool alignRight = false)
         {
             IContainer cell = container.BorderBottom(1).BorderColor(Divider).PaddingBottom(4).PaddingRight(6);
@@ -34,6 +36,7 @@ internal static class PdfTableExtensions
         /// <summary>
         /// What's shown in place of a table or list with nothing in it, e.g. No bills were due in this period.
         /// </summary>
+        /// <param name="text">The text.</param>
         public void EmptyNote(string text) => container.Text(text).FontColor(TextSecondary);
     }
 }

@@ -6,14 +6,20 @@ namespace FinanceTracker.Infrastructure.Notifications.Webhooks;
 /// </summary>
 public sealed class WebhookAddressRefusedException : Exception
 {
+    /// <summary>
+    /// Says the address is private.
+    /// </summary>
     public WebhookAddressRefusedException() : base(WebhookAddresses.PrivateRefusal)
     {
     }
 
+    /// <param name="message">What went wrong.</param>
     public WebhookAddressRefusedException(string message) : base(message)
     {
     }
 
+    /// <param name="message">What went wrong.</param>
+    /// <param name="innerException">What caused it.</param>
     public WebhookAddressRefusedException(string message, Exception innerException) : base(message, innerException)
     {
     }

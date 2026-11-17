@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Infrastructure.Rules;
 
+/// <inheritdoc cref="IRuleApplicationService"/>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<IRuleApplicationService>]
 public class RuleApplicationService : ServiceBase<RuleApplicationService>, IRuleApplicationService
@@ -21,6 +22,13 @@ public class RuleApplicationService : ServiceBase<RuleApplicationService>, IRule
     private readonly TimeProvider _timeProvider;
     private readonly FinTrackMetrics _metrics;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="transferMatchingService">Matches transfers.</param>
+    /// <param name="accountScope">Which accounts the user can see and change.</param>
+    /// <param name="timeProvider">The clock.</param>
+    /// <param name="metrics">Records its metrics.</param>
     public RuleApplicationService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<RuleApplicationService> logger,
         ITransferMatchingService transferMatchingService, IAccountScope accountScope, TimeProvider timeProvider,
@@ -33,6 +41,7 @@ public class RuleApplicationService : ServiceBase<RuleApplicationService>, IRule
         _timeProvider = timeProvider;
     }
 
+    /// <inheritdoc/>
     public async Task<int> ApplyChangesAsync(DateTime firstRunFrom, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -68,6 +77,7 @@ public class RuleApplicationService : ServiceBase<RuleApplicationService>, IRule
         return run.Changed;
     }
 
+    /// <inheritdoc/>
     public async Task<int> ReapplyAsync(Guid ruleId, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -110,6 +120,7 @@ public class RuleApplicationService : ServiceBase<RuleApplicationService>, IRule
         return run.Changed;
     }
 
+    /// <inheritdoc/>
     public async Task<int> ApplyToExistingAsync(Guid ruleId, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -132,6 +143,7 @@ public class RuleApplicationService : ServiceBase<RuleApplicationService>, IRule
         return changed;
     }
 
+    /// <inheritdoc/>
     public async Task<int> ReapplyToAccountsAsync(IReadOnlyCollection<Guid> accountIds,
         CancellationToken cancellationToken)
     {
@@ -156,6 +168,8 @@ public class RuleApplicationService : ServiceBase<RuleApplicationService>, IRule
     /// <summary>
     /// The transactions the user can change: their own, and those on accounts shared with them with changes allowed.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<IQueryable<BankTransaction>> ChangeableAsync(FinanceTrackerContext context,
         CancellationToken cancellationToken)
     {
@@ -167,6 +181,9 @@ public class RuleApplicationService : ServiceBase<RuleApplicationService>, IRule
     /// Applies the rules that reach <paramref name="transactions"/>, saves, then re-matches transfers around those
     /// whose transfer answer changed.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="transactions">The transactions.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <returns>How many changed.</returns>
     private async Task<int> ApplyAndRematchAsync(FinanceTrackerContext context, List<BankTransaction> transactions,
         CancellationToken cancellationToken)
@@ -193,6 +210,11 @@ public class RuleApplicationService : ServiceBase<RuleApplicationService>, IRule
         return run.Changed;
     }
 
+    /// <summary>
+    /// Whether the transfer answer changed, whenever each was decided.
+    /// </summary>
+    /// <param name="before">The answer before, null for none.</param>
+    /// <param name="after">The answer now, null for none.</param>
     private static bool TransferChanged(TransferInfo? before, TransferInfo? after)
     {
         if (before is null)
@@ -208,6 +230,10 @@ public class RuleApplicationService : ServiceBase<RuleApplicationService>, IRule
     /// their rule puts on a transaction is shared with its owner, so they see its name. Tracked changes, saved by the
     /// caller.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="reach">The rules that reach each transaction.</param>
+    /// <param name="transactions">The transactions.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<RuleRun> ApplyAsync(FinanceTrackerContext context, RuleReach reach,
         List<BankTransaction> transactions, CancellationToken cancellationToken)
     {
@@ -238,6 +264,11 @@ public class RuleApplicationService : ServiceBase<RuleApplicationService>, IRule
     /// Shares the tags, bill and debt another person's rules put on <paramref name="transaction"/> with its owner, as
     /// when that person puts them on by hand.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="reach">The rules that reach each transaction.</param>
+    /// <param name="transaction">The transaction.</param>
+    /// <param name="now">The time now, in UTC.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task ShareWhatOthersRulesPutOnAsync(FinanceTrackerContext context, RuleReach reach,
         BankTransaction transaction, DateTime now, CancellationToken cancellationToken)
     {
@@ -270,6 +301,7 @@ public class RuleApplicationService : ServiceBase<RuleApplicationService>, IRule
     /// Tags the span the rules ran in with what they did, and logs how many transactions each rule matched at
     /// Debug, for working out why a rule does or doesn't fire.
     /// </summary>
+    /// <param name="run">What the rules did.</param>
     private void Report(RuleRun run)
     {
         CurrentActivity.Tag(

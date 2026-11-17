@@ -8,5 +8,6 @@ public interface INotificationPublisher
     /// <summary>
     /// Never throws, a missed message only leaves the bell's count behind until the page loads again.
     /// </summary>
+    /// <param name="userId">The user.</param>
     Task NotificationAddedAsync(Guid userId);
 }

@@ -25,6 +25,12 @@ internal static class ReportRows
         Subject(report.Category, report, report.YearlyBreakdown.Select(static year => Year(year.Year, year,
             year.MonthlyBreakdown.Select(month => Month(year.Year, month.Month, month.Start, month.End, month)))));
 
+    /// <summary>
+    /// The line for everything, an account or a tag.
+    /// </summary>
+    /// <param name="name">What it's about.</param>
+    /// <param name="totals">Its totals.</param>
+    /// <param name="years">Its years.</param>
     private static ReportRow Subject(string name, IReport totals, IEnumerable<ReportRow> years) => new()
     {
         Title = name,
@@ -35,6 +41,12 @@ internal static class ReportRows
         Periods = years.OrderBy(static x => x.Title, StringComparer.Ordinal).ToList()
     };
 
+    /// <summary>
+    /// A year's line, with every month in it.
+    /// </summary>
+    /// <param name="year">The year.</param>
+    /// <param name="totals">Its totals.</param>
+    /// <param name="months">Its months that have transactions.</param>
     private static ReportRow Year(int year, IReport totals, IEnumerable<(int Number, ReportRow Row)> months)
     {
         Dictionary<int, ReportRow> byNumber = [];
@@ -57,10 +69,12 @@ internal static class ReportRows
         };
     }
 
+    /// <param name="year">The year.</param>
     /// <param name="monthName">The month the period is named after, in the server's culture, as the report service
     /// names it.</param>
     /// <param name="start">The period's first day, from pay day or the 1st.</param>
     /// <param name="end">Its last day, inclusive.</param>
+    /// <param name="totals">The period's totals.</param>
     private static (int Number, ReportRow Row) Month(int year, string monthName, DateOnly start, DateOnly end,
         IReport totals)
     {
@@ -77,6 +91,11 @@ internal static class ReportRows
         });
     }
 
+    /// <summary>
+    /// A calendar month with no transactions.
+    /// </summary>
+    /// <param name="year">The year.</param>
+    /// <param name="number">The month of the year, 1 to 12.</param>
     private static ReportRow EmptyMonth(int year, int number)
     {
         DateOnly named = new(year, number, 1);
@@ -90,6 +109,9 @@ internal static class ReportRows
     /// <summary>
     /// Whether the period isn't simply the calendar month it's named after.
     /// </summary>
+    /// <param name="named">The first day of the month it's named after.</param>
+    /// <param name="start">The period's first day.</param>
+    /// <param name="end">The period's last day.</param>
     private static bool FromPayDay(DateOnly named, DateOnly start, DateOnly end) =>
         start != named || end != named.AddMonths(1).AddDays(-1);
 }

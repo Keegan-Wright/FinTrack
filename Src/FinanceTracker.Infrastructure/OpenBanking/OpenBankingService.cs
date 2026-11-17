@@ -14,6 +14,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Infrastructure.OpenBanking;
 
+/// <inheritdoc cref="IOpenBankingService"/>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<IOpenBankingService>]
 public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingService
@@ -23,6 +24,9 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
     /// </summary>
     private static readonly TimeSpan DefaultConsentLifetime = TimeSpan.FromDays(90);
 
+    /// <summary>
+    /// The cache key for the banks the provider offers.
+    /// </summary>
     private const string ProvidersCacheKey = "open-banking:providers";
 
     // The same for every user and rarely changes, so the provider is asked at most every few hours
@@ -37,6 +41,13 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
     private readonly HybridCache _cache;
     private readonly IOpenBankingSyncScheduler _openBankingSyncScheduler;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="openBankingApiService">Calls the bank's provider.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="timeProvider">The clock.</param>
+    /// <param name="cache">Caches the banks the provider offers.</param>
+    /// <param name="openBankingSyncScheduler">Queues syncs.</param>
     public OpenBankingService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
         IOpenBankingApiService openBankingApiService, ILogger<OpenBankingService> logger,
@@ -49,6 +60,7 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
         _openBankingSyncScheduler = openBankingSyncScheduler;
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<OpenBankingProvider> GetOpenBankingProvidersForClientAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -62,6 +74,10 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
     }
 
     // A failed request throws, so nothing is cached and the next visit asks again
+    /// <summary>
+    /// Loads the banks the provider offers, by name, with their logos.
+    /// </summary>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async ValueTask<List<OpenBankingProvider>> LoadProvidersAsync(CancellationToken cancellationToken)
     {
         List<OpenBankingProvider> providers = [];
@@ -75,9 +91,11 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
         return providers;
     }
 
+    /// <inheritdoc/>
     public Task<string> BuildAuthUrlAsync(ProviderSetupUrl setupProvider, CancellationToken cancellationToken) =>
         Task.FromResult(_openBankingApiService.BuildAuthUrl(setupProvider.ProviderIds, setupProvider.Scopes));
 
+    /// <inheritdoc/>
     public async Task<bool> AddVendorViaAccessCodeAsync(AddVendor addVendor, CancellationToken cancellationToken)
     {
         ExternalOpenBankingAccessResponse providerAccessToken =
@@ -141,6 +159,7 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
         return true;
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<BankConnectionSummary> GetConnectionsAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -171,6 +190,11 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
     }
 
     // A connection missing from the dictionary has never had them, which is null rather than DateTime's default
+    /// <summary>
+    /// When a connection's standing orders and direct debits last updated, null when never.
+    /// </summary>
+    /// <param name="updatedAt">When each connection's last updated.</param>
+    /// <param name="connectionId">The connection.</param>
     private static DateTime? UpdatedAtOrNull(Dictionary<Guid, DateTime> updatedAt, Guid connectionId)
     {
         if (updatedAt.TryGetValue(connectionId, out DateTime at))
@@ -185,6 +209,9 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
     /// When each of <paramref name="connections"/> last had its standing orders or direct debits fetched, from the
     /// entries a sync leaves only when it saved them. Connections that never have are left out.
     /// </summary>
+    /// <param name="context">The context to read through.</param>
+    /// <param name="connections">The connections.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<Dictionary<Guid, DateTime>> RecurringPaymentsUpdatedAtAsync(
         FinanceTrackerContext context, List<BankConnection> connections, CancellationToken cancellationToken)
     {
@@ -200,6 +227,7 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
             .ToDictionaryAsync(static x => x.ConnectionId, static x => x.UpdatedAt, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<string> GetRenewalUrlAsync(Guid connectionId, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -215,6 +243,11 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
             cancellationToken);
     }
 
+    /// <summary>
+    /// Whether a connection's consent has ended, ends soon or is fine.
+    /// </summary>
+    /// <param name="connection">The connection.</param>
+    /// <param name="now">The time now, in UTC.</param>
     private static ConsentState ConsentStateOf(BankConnection connection, DateTime now)
     {
         if (connection.HasConsentLapsed(now))
@@ -233,6 +266,7 @@ public class OpenBankingService : ServiceBase<OpenBankingService>, IOpenBankingS
     /// <summary>
     /// When the provider says the consent ends, or the usual lifetime from now if it doesn't say.
     /// </summary>
+    /// <param name="externalConnection">The connection as TrueLayer sends it.</param>
     private DateTime ConsentExpiresAt(ExternalOpenBankingAccountConnection externalConnection)
     {
         DateTime reported = externalConnection.ConsentExpiresAt.ToUtc();

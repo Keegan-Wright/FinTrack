@@ -2,6 +2,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.Infrastructure.Sharing;
 
+/// <summary>
+/// Helpers for the accounts in a user's view.
+/// </summary>
 public static class AccountsInViewExtensions
 {
     extension(AccountsInView view)
@@ -10,6 +13,8 @@ public static class AccountsInViewExtensions
         /// The first and last name of whoever shares each shared account in view, by account. Their own accounts
         /// aren't in it.
         /// </summary>
+        /// <param name="context">The context to work through.</param>
+        /// <param name="cancellationToken">Stops the work.</param>
         public async Task<Dictionary<Guid, string>> SharedByAsync(FinanceTrackerContext context,
             CancellationToken cancellationToken)
         {
@@ -30,6 +35,8 @@ public static class AccountsInViewExtensions
         /// The first and last name of the other person each merged joint account in view is joint with, by its shown
         /// copy.
         /// </summary>
+        /// <param name="context">The context to work through.</param>
+        /// <param name="cancellationToken">Stops the work.</param>
         public async Task<Dictionary<Guid, string>> JointWithAsync(FinanceTrackerContext context,
             CancellationToken cancellationToken)
         {
@@ -62,6 +69,8 @@ public static class AccountsInViewExtensions
         /// Each account in view by what it's called where the user's told about it, e.g. in a notification. Their
         /// own and merged joint accounts by name, another person's saying whose, e.g. <c>Joint · Jane Doe's</c>.
         /// </summary>
+        /// <param name="context">The context to work through.</param>
+        /// <param name="cancellationToken">Stops the work.</param>
         public async Task<Dictionary<Guid, string>> LabelsAsync(FinanceTrackerContext context,
             CancellationToken cancellationToken)
         {

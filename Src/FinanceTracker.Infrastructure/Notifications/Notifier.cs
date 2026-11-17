@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Infrastructure.Notifications;
 
+/// <inheritdoc cref="INotifier"/>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<INotifier>]
 public sealed class Notifier : ServiceBase<Notifier>, INotifier
@@ -22,6 +23,16 @@ public sealed class Notifier : ServiceBase<Notifier>, INotifier
     private readonly TimeProvider _timeProvider;
     private readonly FinTrackMetrics _metrics;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="notificationPublisher">Pushes notifications to browsers.</param>
+    /// <param name="mailSender">Sends the emails.</param>
+    /// <param name="notificationEmails">Writes the notification emails.</param>
+    /// <param name="webhookSender">Posts to webhooks.</param>
+    /// <param name="publicAddress">The app's address as people reach it.</param>
+    /// <param name="timeProvider">The clock.</param>
+    /// <param name="metrics">Records its metrics.</param>
     public Notifier(ICurrentUser currentUser, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
         ILogger<Notifier> logger, INotificationPublisher notificationPublisher, IMailSender mailSender,
         INotificationEmails notificationEmails, IWebhookSender webhookSender, PublicAddress publicAddress,
@@ -37,6 +48,7 @@ public sealed class Notifier : ServiceBase<Notifier>, INotifier
         _timeProvider = timeProvider;
     }
 
+    /// <inheritdoc/>
     public async Task<bool> NotifyAsync(NotificationKind kind, string key, string title, string message,
         string? link, CancellationToken cancellationToken)
     {
@@ -95,8 +107,12 @@ public sealed class Notifier : ServiceBase<Notifier>, INotifier
     /// Emails it and posts it to their webhook, each when they want that kind sent there. A failure is logged, the
     /// notification stands, and how each went is recorded for the Notifications page.
     /// </summary>
+    /// <param name="context">The context to save through.</param>
+    /// <param name="settings">The user's settings, null when they've never changed them.</param>
+    /// <param name="notification">The notification.</param>
     /// <param name="address">Where to email it, null when it isn't emailed.</param>
     /// <param name="webhooked">Whether to post it to their webhook.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task SendOnAsync(FinanceTrackerContext context, NotificationSettings? settings,
         Notification notification, string? address, bool webhooked, CancellationToken cancellationToken)
     {
@@ -137,6 +153,10 @@ public sealed class Notifier : ServiceBase<Notifier>, INotifier
     /// Where to email <paramref name="kind"/>: the user's address when they have that kind emailed, have a confirmed
     /// address, and a mail server is set up. Null when it isn't emailed.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="settings">The user's notification settings.</param>
+    /// <param name="kind">What it's about.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<string?> AddressIfEmailedAsync(FinanceTrackerContext context, NotificationSettings? settings,
         NotificationKind kind, CancellationToken cancellationToken)
     {
@@ -157,6 +177,9 @@ public sealed class Notifier : ServiceBase<Notifier>, INotifier
         return address;
     }
 
+    /// <param name="notification">The notification.</param>
+    /// <param name="address">Where to email it.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <returns>Null when it was sent, otherwise why not.</returns>
     private async Task<string?> EmailAsync(Notification notification, string address,
         CancellationToken cancellationToken)
@@ -173,6 +196,9 @@ public sealed class Notifier : ServiceBase<Notifier>, INotifier
         }
     }
 
+    /// <param name="settings">The user's notification settings.</param>
+    /// <param name="notification">The notification.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <returns>Null when it was delivered, otherwise why not.</returns>
     private async Task<string?> PostAsync(NotificationSettings settings, Notification notification,
         CancellationToken cancellationToken)
@@ -190,6 +216,10 @@ public sealed class Notifier : ServiceBase<Notifier>, INotifier
         }
     }
 
+    /// <summary>
+    /// Adds settings for a user who's never changed them.
+    /// </summary>
+    /// <param name="context">The context to add them to.</param>
     private NotificationSettings AddSettings(FinanceTrackerContext context)
     {
         NotificationSettings settings = new(UserId);

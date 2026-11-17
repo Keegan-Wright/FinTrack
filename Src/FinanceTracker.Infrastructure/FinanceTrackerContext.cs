@@ -27,6 +27,10 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace FinanceTracker.Infrastructure;
 
+/// <summary>
+/// The app's database, Identity's tables with the users' data. Sensitive columns are encrypted, see
+/// <see cref="EncryptionService"/>.
+/// </summary>
 public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, FinanceTrackerRole, Guid>,
     IDesignTimeDbContextFactory<FinanceTrackerContext>,
     IDataProtectionKeyContext
@@ -48,6 +52,9 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
     /// </summary>
     internal TimeProvider TimeProvider { get; } = TimeProvider.System;
 
+    /// <summary>
+    /// Only for the design time tools, to reach <see cref="CreateDbContext"/>.
+    /// </summary>
     [Obsolete("Used by design time only")]
 #pragma warning disable CS8618 // Only used to reach CreateDbContext, which builds a fully initialised context
     public FinanceTrackerContext()
@@ -55,6 +62,9 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
     }
 #pragma warning restore CS8618
 
+    /// <param name="options">EF Core's options.</param>
+    /// <param name="columnEncryptionService">Encrypts and decrypts columns.</param>
+    /// <param name="timeProvider">The clock.</param>
     [ActivatorUtilitiesConstructor]
     public FinanceTrackerContext(DbContextOptions<FinanceTrackerContext> options,
         IColumnEncryptionService columnEncryptionService, TimeProvider timeProvider) : base(options)
@@ -66,28 +76,119 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
 
     #region Aggregates
 
+    /// <summary>
+    /// Users' connections to their banks.
+    /// </summary>
     public DbSet<BankConnection> BankConnections { get; private set; }
+
+    /// <summary>
+    /// The accounts and cards synced from the banks.
+    /// </summary>
     public DbSet<BankAccount> BankAccounts { get; private set; }
+
+    /// <summary>
+    /// The transactions synced from the banks.
+    /// </summary>
     public DbSet<BankTransaction> BankTransactions { get; private set; }
+
+    /// <summary>
+    /// Users' tags.
+    /// </summary>
     public DbSet<CustomClassification> CustomClassifications { get; private set; }
+
+    /// <summary>
+    /// Users' savings goals.
+    /// </summary>
     public DbSet<SavingsGoal> SavingsGoals { get; private set; }
+
+    /// <summary>
+    /// Users' budgets.
+    /// </summary>
     public DbSet<Budget> Budgets { get; private set; }
+
+    /// <summary>
+    /// Users' bills.
+    /// </summary>
     public DbSet<Bill> Bills { get; private set; }
+
+    /// <summary>
+    /// Repeat payments suggested as bills.
+    /// </summary>
     public DbSet<BillSuggestion> BillSuggestions { get; private set; }
+
+    /// <summary>
+    /// Users' pay.
+    /// </summary>
     public DbSet<PaySchedule> PaySchedules { get; private set; }
+
+    /// <summary>
+    /// Users' debts.
+    /// </summary>
     public DbSet<Debt> Debts { get; private set; }
+
+    /// <summary>
+    /// Users' calendar events.
+    /// </summary>
     public DbSet<CalendarEvent> CalendarEvents { get; private set; }
+
+    /// <summary>
+    /// Users' household members.
+    /// </summary>
     public DbSet<HouseholdMember> HouseholdMembers { get; private set; }
+
+    /// <summary>
+    /// Links between two users who share.
+    /// </summary>
     public DbSet<UserLink> UserLinks { get; private set; }
+
+    /// <summary>
+    /// What users share through their links.
+    /// </summary>
     public DbSet<Share> Shares { get; private set; }
+
+    /// <summary>
+    /// How users see what's shared with them.
+    /// </summary>
     public DbSet<SharingSettings> SharingSettings { get; private set; }
+
+    /// <summary>
+    /// Joint accounts two linked users both connected, merged.
+    /// </summary>
     public DbSet<JointAccount> JointAccounts { get; private set; }
+
+    /// <summary>
+    /// When each user's transfers were last matched.
+    /// </summary>
     public DbSet<TransferMatchCheckpoint> TransferMatchCheckpoints { get; private set; }
+
+    /// <summary>
+    /// Each account's closing balance by day.
+    /// </summary>
     public DbSet<BalanceSnapshot> BalanceSnapshots { get; private set; }
+
+    /// <summary>
+    /// Each user's net worth by day.
+    /// </summary>
     public DbSet<NetWorthSnapshot> NetWorthSnapshots { get; private set; }
+
+    /// <summary>
+    /// Users' rules.
+    /// </summary>
     public DbSet<Rule> Rules { get; private set; }
+
+    /// <summary>
+    /// When each user's rules were last applied.
+    /// </summary>
     public DbSet<RuleCheckpoint> RuleCheckpoints { get; private set; }
+
+    /// <summary>
+    /// What users have been notified of.
+    /// </summary>
     public DbSet<Notification> Notifications { get; private set; }
+
+    /// <summary>
+    /// How users want to be notified.
+    /// </summary>
     public DbSet<NotificationSettings> NotificationSettings { get; private set; }
 
     #endregion
@@ -105,12 +206,14 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
     public DbSet<DataProtectionKey> DataProtectionKeys { get; private set; }
 
 
+    /// <inheritdoc/>
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         optionsBuilder.AddInterceptors(AuditingInterceptor.Instance, BlindIndexInterceptor.Instance);
         optionsBuilder.ReplaceService<IModelCacheKeyFactory, EncryptionModelCacheKeyFactory>();
     }
 
+    /// <inheritdoc/>
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -121,10 +224,10 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
     }
 
     /// <summary>
-    /// Design time only - creates a mock instance of this context for migration creation
+    /// Design time only, a context for making migrations, not connected to a real database.
     /// </summary>
-    /// <param name="args"></param>
-    /// <returns></returns>
+    /// <param name="args">The design time tools' arguments, unused.</param>
+    /// <returns>The context.</returns>
     public FinanceTrackerContext CreateDbContext(string[] args)
     {
         var builder = new DbContextOptionsBuilder<FinanceTrackerContext>();

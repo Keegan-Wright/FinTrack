@@ -13,6 +13,7 @@ namespace FinanceTracker.Infrastructure.Budgets;
 /// </summary>
 internal static class BudgetMapper
 {
+    /// <param name="budget">The budget.</param>
     /// <param name="currentMonth">The month whose limit is shown as the budget's monthly limit.</param>
     /// <param name="sharing">How it's shared with the user, none for their own unshared one.</param>
     public static Budget ToContract(DomainBudget budget, BudgetMonth currentMonth, BudgetSharing? sharing = null) =>

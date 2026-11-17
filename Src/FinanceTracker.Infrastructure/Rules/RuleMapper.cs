@@ -35,6 +35,7 @@ internal static class RuleMapper
     /// <summary>
     /// A blank second value, as a form sends it, is no second value.
     /// </summary>
+    /// <param name="condition">The condition.</param>
     public static DomainRuleCondition ToDomain(RuleCondition condition)
     {
         string? secondValue = string.IsNullOrWhiteSpace(condition.SecondValue) ? null : condition.SecondValue;
@@ -47,6 +48,7 @@ internal static class RuleMapper
     /// <summary>
     /// A blank bank classification, as a form sends it.
     /// </summary>
+    /// <param name="action">The action.</param>
     public static DomainRuleAction ToDomain(RuleAction action) =>
         new(MapEnum<RuleActionType, DomainRuleActionType>(action.Type), action.ClassificationId,
             string.IsNullOrWhiteSpace(action.BankClassification) ? null : action.BankClassification.Trim(),
@@ -57,6 +59,7 @@ internal static class RuleMapper
     /// bank sent none, adding the user's tags on it, hiding the bank classifications they hid and giving their transfer
     /// answer. Without any of those it adds a tag the user still has to choose.
     /// </summary>
+    /// <param name="transaction">The transaction.</param>
     /// <param name="tagIds">The user's tags, so only theirs are added.</param>
     public static SaveRule DraftFrom(BankTransaction transaction, IReadOnlySet<Guid> tagIds)
     {
@@ -108,12 +111,17 @@ internal static class RuleMapper
     public static TTo MapEnum<TFrom, TTo>(TFrom value) where TFrom : struct, Enum where TTo : struct, Enum =>
         Enum.Parse<TTo>(value.ToString());
 
+    /// <summary>
+    /// The first value that isn't blank, trimmed, null when they all are.
+    /// </summary>
+    /// <param name="values">The values.</param>
     private static string? FirstNonBlank(params string?[] values) =>
         values.FirstOrDefault(static x => !string.IsNullOrWhiteSpace(x))?.Trim();
 
     /// <summary>
     /// The user's own answer as an action, null when they haven't decided or it's for review.
     /// </summary>
+    /// <param name="transfer">The transfer, null when nothing's decided.</param>
     private static RuleActionType? UsersTransferAction(TransferInfo? transfer)
     {
         if (transfer is not { Source: DecisionSource.User })
@@ -129,6 +137,10 @@ internal static class RuleMapper
         };
     }
 
+    /// <summary>
+    /// A condition as the API sends it.
+    /// </summary>
+    /// <param name="condition">The condition.</param>
     private static RuleCondition ToContract(DomainRuleCondition condition) => new()
     {
         Field = MapEnum<DomainRuleField, RuleField>(condition.Field),
@@ -138,6 +150,10 @@ internal static class RuleMapper
         IgnoreCase = condition.IgnoreCase
     };
 
+    /// <summary>
+    /// An action as the API sends it.
+    /// </summary>
+    /// <param name="action">The action.</param>
     private static RuleAction ToContract(DomainRuleAction action) => new()
     {
         Type = MapEnum<DomainRuleActionType, RuleActionType>(action.Type),

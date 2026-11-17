@@ -5,8 +5,12 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace FinanceTracker.Infrastructure.Persistence.Configurations;
 
+/// <summary>
+/// Maps <see cref="JointAccount"/> to its table.
+/// </summary>
 internal sealed class JointAccountConfiguration : AggregateRootConfiguration<JointAccount>
 {
+    /// <inheritdoc/>
     protected override void ConfigureAggregate(EntityTypeBuilder<JointAccount> builder)
     {
         builder.ToTable("JointAccounts");

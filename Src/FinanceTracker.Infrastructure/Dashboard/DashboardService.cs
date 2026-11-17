@@ -13,14 +13,29 @@ using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Infrastructure.Dashboard;
 
+/// <inheritdoc cref="IDashboardService"/>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<IDashboardService>]
 public class DashboardService : ServiceBase<DashboardService>, IDashboardService
 {
+    /// <summary>
+    /// The little of a transaction the dashboard's totals need, so the rest isn't loaded.
+    /// </summary>
     private sealed class TransactionLite
     {
+        /// <summary>
+        /// How much, negative for money out.
+        /// </summary>
         public decimal Amount { get; init; }
+
+        /// <summary>
+        /// When it happened, in UTC.
+        /// </summary>
         public DateTime TransactionTime { get; init; }
+
+        /// <summary>
+        /// Whether it's a transfer, left out of the totals.
+        /// </summary>
         public bool IsTransfer { get; init; }
     }
 
@@ -37,6 +52,11 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
     private readonly TimeProvider _timeProvider;
     private readonly IAccountScope _accountScope;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="timeProvider">The clock.</param>
+    /// <param name="accountScope">Which accounts the user can see and change.</param>
     public DashboardService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
         ILogger<DashboardService> logger, TimeProvider timeProvider, IAccountScope accountScope)
@@ -46,6 +66,7 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
         _accountScope = accountScope;
     }
 
+    /// <inheritdoc/>
     public async Task<SpentInTimePeriod> GetSpentInTimePeriod(DateTime fromDate, DateTime toDate,
         CancellationToken cancellationToken)
     {
@@ -83,6 +104,7 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
         };
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<UpcomingPayment> GetUpcomingPaymentsAsync(int numberToFetch,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -114,6 +136,11 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
         }
     }
 
+    /// <summary>
+    /// A bill period as the dashboard shows it, what was paid once it's paid.
+    /// </summary>
+    /// <param name="bill">The bill.</param>
+    /// <param name="period">The period.</param>
     private static UpcomingPayment ToUpcoming(Bill bill, BillPeriod period)
     {
         decimal amount = period.Expected;
@@ -133,6 +160,10 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
         };
     }
 
+    /// <summary>
+    /// Where a bill came from, in words.
+    /// </summary>
+    /// <param name="source">Where it came from.</param>
     private static string SourceName(BillSource source) => source switch
     {
         BillSource.StandingOrder => "Standing order",

@@ -9,6 +9,10 @@ public interface IWebhookSender
     /// Posts <paramref name="payload"/> to <paramref name="url"/> as JSON, signed with <paramref name="secret"/>, see
     /// <see cref="WebhookSignature"/>. One try.
     /// </summary>
+    /// <param name="url">The webhook's address.</param>
+    /// <param name="secret">The secret posts are signed with.</param>
+    /// <param name="payload">What's posted.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <exception cref="WebhookRejectedException">It answered, but not with success.</exception>
     /// <exception cref="HttpRequestException">It couldn't be reached, or its address is refused, see
     /// <see cref="WebhookAddressRefusedException"/>.</exception>

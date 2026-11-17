@@ -1,5 +1,8 @@
 namespace FinanceTracker.Infrastructure;
 
+/// <summary>
+/// Helpers for the clock.
+/// </summary>
 public static class TimeProviderExtensions
 {
     extension(TimeProvider timeProvider)
@@ -17,6 +20,7 @@ public static class TimeProviderExtensions
         /// <summary>
         /// A stored UTC time in the server's local time, as the app shows it.
         /// </summary>
+        /// <param name="utc">The time, in UTC.</param>
         public DateTime ToLocal(DateTime utc) =>
             TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), timeProvider.LocalTimeZone);
     }

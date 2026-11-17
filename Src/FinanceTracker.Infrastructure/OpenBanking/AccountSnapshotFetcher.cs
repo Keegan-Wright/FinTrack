@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Infrastructure.OpenBanking;
 
+/// <inheritdoc cref="IAccountSnapshotFetcher"/>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<IAccountSnapshotFetcher>]
 public sealed class AccountSnapshotFetcher : IAccountSnapshotFetcher
@@ -17,6 +18,8 @@ public sealed class AccountSnapshotFetcher : IAccountSnapshotFetcher
     private readonly IOpenBankingApiService _openBankingApiService;
     private readonly ILogger<AccountSnapshotFetcher> _logger;
 
+    /// <param name="openBankingApiService">Calls the bank's provider.</param>
+    /// <param name="logger">Its logger.</param>
     public AccountSnapshotFetcher(IOpenBankingApiService openBankingApiService,
         ILogger<AccountSnapshotFetcher> logger)
     {
@@ -24,6 +27,7 @@ public sealed class AccountSnapshotFetcher : IAccountSnapshotFetcher
         _logger = logger;
     }
 
+    /// <inheritdoc/>
     public async Task<AccountSnapshot> FetchAccountAsync(BankConnection connection, BankAccount account,
         string authToken, SyncTypes syncFlags, SyncTypes enhancedAuthenticationWindowFlags, DateTime? transactionsFrom,
         ConnectionSyncTally tally, CancellationToken cancellationToken)
@@ -75,6 +79,7 @@ public sealed class AccountSnapshotFetcher : IAccountSnapshotFetcher
             await pendingTransactions);
     }
 
+    /// <inheritdoc/>
     public async Task<AccountSnapshot> FetchCardAsync(BankConnection connection, BankAccount card, string authToken,
         SyncTypes syncFlags, DateTime? transactionsFrom, ConnectionSyncTally tally,
         CancellationToken cancellationToken)
@@ -115,6 +120,16 @@ public sealed class AccountSnapshotFetcher : IAccountSnapshotFetcher
     /// Fetches one kind of account data in a span named <paramref name="name"/>, tagged with how many items came
     /// back. Returns null when it was not requested or the provider call failed.
     /// </summary>
+    /// <typeparam name="TResponse">The provider's answer.</typeparam>
+    /// <typeparam name="T">The items in it.</typeparam>
+    /// <param name="name">The span's name.</param>
+    /// <param name="syncFlags">What the sync fetches.</param>
+    /// <param name="syncType">What this fetch is.</param>
+    /// <param name="fetch">Calls the provider.</param>
+    /// <param name="results">The items in its answer.</param>
+    /// <param name="onError">Logs a failed fetch.</param>
+    /// <param name="tally">Counts the failure.</param>
+    /// <param name="cancellationToken">Stops the fetch.</param>
     private static async Task<List<T>?> FetchAsync<TResponse, T>(string name, SyncTypes syncFlags,
         SyncTypes syncType, Func<Task<TResponse>> fetch, Func<TResponse, IAsyncEnumerable<T>?> results,
         Action<Exception> onError, ConnectionSyncTally tally, CancellationToken cancellationToken)

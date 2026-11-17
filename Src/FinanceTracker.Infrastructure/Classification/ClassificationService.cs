@@ -16,6 +16,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Infrastructure.Classification;
 
+/// <inheritdoc cref="IClassificationService"/>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<IClassificationService>]
 public class ClassificationService : ServiceBase<ClassificationService>, IClassificationService
@@ -23,6 +24,11 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
     private readonly IAccountScope _accountScope;
     private readonly TimeProvider _timeProvider;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="accountScope">Which accounts the user can see and change.</param>
+    /// <param name="timeProvider">The clock.</param>
     public ClassificationService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<ClassificationService> logger,
         IAccountScope accountScope, TimeProvider timeProvider) : base(currentUser, financeTrackerContextFactory, logger)
@@ -31,6 +37,7 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
         _timeProvider = timeProvider;
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<Contracts.Classifications.Classification> GetAllCustomClassificationsAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -62,6 +69,7 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
         }
     }
 
+    /// <inheritdoc/>
     public async Task<GetClassification> GetClassificationAsync(Guid id, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -74,6 +82,7 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
         return new GetClassification { Tag = classification.Tag, ClassificationId = classification.Id };
     }
 
+    /// <inheritdoc/>
     public async Task<Contracts.Classifications.Classification> AddCustomClassificationAsync(
         AddClassifications classification,
         CancellationToken cancellationToken)
@@ -94,6 +103,7 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
             { Tag = newClassification.Tag, ClassificationId = newClassification.Id };
     }
 
+    /// <inheritdoc/>
     public async Task<Contracts.Classifications.Classification> RenameCustomClassificationAsync(Guid id,
         RenameClassification request, CancellationToken cancellationToken)
     {
@@ -117,6 +127,7 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
             { Tag = classification.Tag, ClassificationId = classification.Id };
     }
 
+    /// <inheritdoc/>
     public async Task AddCustomClassificationsToTransactionAsync(
         AddCustomClassificationsToTransaction model,
         CancellationToken cancellationToken)
@@ -150,6 +161,7 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
         Logger.LogChanged(UserId, "tagged", "transaction", model.TransactionId);
     }
 
+    /// <inheritdoc/>
     public async Task RemoveCustomClassificationAsync(Guid id, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -194,12 +206,15 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
     /// <summary>
     /// The tags another person chose to share with the user. A query, to be used inside another.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
     private IQueryable<Guid> ChosenSharedIds(FinanceTrackerContext context) =>
         context.ChosenSharesWith(UserId, ShareItemType.Classification).Select(static x => x.ItemId);
 
     /// <summary>
     /// The tags other people chose to share with the user, each with who shares it and whether they can rename it.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<List<(CustomClassification Tag, string SharedBy, bool CanChange)>> SharedWithThemAsync(
         FinanceTrackerContext context, CancellationToken cancellationToken)
     {
@@ -219,6 +234,11 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
             .ToList();
     }
 
+    /// <param name="context">The context to work through.</param>
+    /// <param name="ownerId">The owner.</param>
+    /// <param name="tag">The tag's name.</param>
+    /// <param name="exceptId">The one being renamed, which can keep its own name, null for a new one.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <exception cref="NameTakenException">Another of <paramref name="ownerId"/>'s tags is called
     /// <paramref name="tag"/>.</exception>
     private static async Task EnsureTagIsFreeAsync(FinanceTrackerContext context, Guid ownerId, string tag,

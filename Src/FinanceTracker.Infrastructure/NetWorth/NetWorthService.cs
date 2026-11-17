@@ -14,6 +14,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Infrastructure.NetWorth;
 
+/// <inheritdoc cref="INetWorthService"/>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<INetWorthService>]
 public class NetWorthService : ServiceBase<NetWorthService>, INetWorthService
@@ -21,6 +22,11 @@ public class NetWorthService : ServiceBase<NetWorthService>, INetWorthService
     private readonly TimeProvider _timeProvider;
     private readonly IAccountScope _accountScope;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="timeProvider">The clock.</param>
+    /// <param name="accountScope">Which accounts the user can see and change.</param>
     public NetWorthService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<NetWorthService> logger,
         TimeProvider timeProvider, IAccountScope accountScope) : base(currentUser, financeTrackerContextFactory, logger)
@@ -29,6 +35,7 @@ public class NetWorthService : ServiceBase<NetWorthService>, INetWorthService
         _accountScope = accountScope;
     }
 
+    /// <inheritdoc/>
     public async Task<NetWorthHistory> GetNetWorthAsync(DateOnly? from, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -70,6 +77,11 @@ public class NetWorthService : ServiceBase<NetWorthService>, INetWorthService
     /// hidden copy's balance, see <see cref="JointGapBalances"/>. Debts shared with them not linked to an account count
     /// as owed, see <see cref="SharedDebtsOwed"/>.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="view">The accounts the user sees.</param>
+    /// <param name="own">The user's own daily net worth.</param>
+    /// <param name="sharedDebts">The debts shared with the user.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<List<NetWorthPoint>> WithSharedAccountsAsync(FinanceTrackerContext context,
         AccountsInView view, List<NetWorthSnapshot> own, SharedDebtsOwed sharedDebts,
         CancellationToken cancellationToken)
@@ -143,6 +155,7 @@ public class NetWorthService : ServiceBase<NetWorthService>, INetWorthService
         return combined;
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<AccountBalanceHistory> GetBalanceHistoriesAsync(DateOnly? from,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -170,6 +183,10 @@ public class NetWorthService : ServiceBase<NetWorthService>, INetWorthService
         }
     }
 
+    /// <summary>
+    /// A day's balance as the API sends it.
+    /// </summary>
+    /// <param name="snapshot">The balance.</param>
     internal static BalancePoint ToPoint(BalanceSnapshot snapshot) => new()
     {
         Date = snapshot.Date,
@@ -177,6 +194,10 @@ public class NetWorthService : ServiceBase<NetWorthService>, INetWorthService
         IsDerived = snapshot.Source == BalanceSnapshotSource.Derived
     };
 
+    /// <summary>
+    /// A day's net worth as the API sends it.
+    /// </summary>
+    /// <param name="snapshot">The net worth.</param>
     private static NetWorthPoint ToPoint(NetWorthSnapshot snapshot) => new()
     {
         Date = snapshot.Date,
@@ -190,6 +211,9 @@ public class NetWorthService : ServiceBase<NetWorthService>, INetWorthService
     /// <summary>
     /// <paramref name="latest"/> less the last net worth before <paramref name="start"/>, null when there's none.
     /// </summary>
+    /// <param name="history">The net worth history.</param>
+    /// <param name="latest">The latest net worth.</param>
+    /// <param name="start">The start of the range.</param>
     private static decimal? ChangeSince(List<NetWorthPoint> history, NetWorthPoint latest, DateOnly start)
     {
         NetWorthPoint? before = history.LastOrDefault(x => x.Date < start);
@@ -204,6 +228,11 @@ public class NetWorthService : ServiceBase<NetWorthService>, INetWorthService
     /// <summary>
     /// Each account and card's balance on <paramref name="day"/>, and what each debt not linked to an account owed.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="view">The accounts the user sees.</param>
+    /// <param name="sharedDebts">The debts shared with the user.</param>
+    /// <param name="day">The day.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<List<NetWorthItem>> BreakdownAsync(FinanceTrackerContext context, AccountsInView view,
         SharedDebtsOwed sharedDebts, DateOnly day, CancellationToken cancellationToken)
     {
@@ -262,6 +291,9 @@ public class NetWorthService : ServiceBase<NetWorthService>, INetWorthService
     /// What each debt not linked to an account owed on <paramref name="day"/>, those paid off left out. A linked one
     /// is in its account's balance already.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="day">The day.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<List<NetWorthItem>> DebtsAsync(FinanceTrackerContext context, DateOnly day,
         CancellationToken cancellationToken)
     {

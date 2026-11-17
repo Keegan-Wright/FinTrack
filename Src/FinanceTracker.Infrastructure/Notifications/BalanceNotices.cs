@@ -28,6 +28,11 @@ public sealed class BalanceNotices : ServiceBase<BalanceNotices>, ISyncNotices
     private readonly TimeProvider _timeProvider;
     private readonly INotifier _notifier;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="timeProvider">The clock.</param>
+    /// <param name="notifier">Raises notifications.</param>
     public BalanceNotices(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<BalanceNotices> logger,
         TimeProvider timeProvider, INotifier notifier)
@@ -37,6 +42,7 @@ public sealed class BalanceNotices : ServiceBase<BalanceNotices>, ISyncNotices
         _notifier = notifier;
     }
 
+    /// <inheritdoc/>
     public async Task NotifyAsync(CancellationToken cancellationToken)
     {
         List<(BankAccount Account, decimal Available, LowBalanceAlert Alert)> wentLow = [];
@@ -75,6 +81,8 @@ public sealed class BalanceNotices : ServiceBase<BalanceNotices>, ISyncNotices
     /// <summary>
     /// Records each watched account's available balance.
     /// </summary>
+    /// <param name="settings">The user's notification settings.</param>
+    /// <param name="accounts">The watched accounts.</param>
     /// <returns>The accounts that have just gone below, with that balance and their alert as it is now.</returns>
     private List<(BankAccount Account, decimal Available, LowBalanceAlert Alert)> RecordBalances(
         NotificationSettings settings, List<BankAccount> accounts)

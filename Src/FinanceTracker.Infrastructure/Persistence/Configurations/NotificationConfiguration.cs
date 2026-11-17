@@ -4,8 +4,12 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace FinanceTracker.Infrastructure.Persistence.Configurations;
 
+/// <summary>
+/// Maps <see cref="Notification"/> to its table.
+/// </summary>
 internal sealed class NotificationConfiguration : AggregateRootConfiguration<Notification>
 {
+    /// <inheritdoc/>
     protected override void ConfigureAggregate(EntityTypeBuilder<Notification> builder)
     {
         builder.ToTable("Notifications");

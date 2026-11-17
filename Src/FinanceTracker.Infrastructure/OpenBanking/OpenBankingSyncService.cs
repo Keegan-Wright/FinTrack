@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Infrastructure.OpenBanking;
 
+/// <inheritdoc cref="IOpenBankingSyncService"/>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<IOpenBankingSyncService>]
 public sealed class OpenBankingSyncService : ServiceBase<OpenBankingSyncService>, IOpenBankingSyncService
@@ -29,6 +30,14 @@ public sealed class OpenBankingSyncService : ServiceBase<OpenBankingSyncService>
     private readonly IAccountSnapshotWriter _accountSnapshotWriter;
     private readonly FinTrackMetrics _metrics;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="openBankingApiService">Calls the bank's provider.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="timeProvider">The clock.</param>
+    /// <param name="accountSnapshotFetcher">Fetches an account from the bank.</param>
+    /// <param name="accountSnapshotWriter">Saves an account's snapshot.</param>
+    /// <param name="metrics">Records its metrics.</param>
     public OpenBankingSyncService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
         IOpenBankingApiService openBankingApiService, ILogger<OpenBankingSyncService> logger,
@@ -43,6 +52,7 @@ public sealed class OpenBankingSyncService : ServiceBase<OpenBankingSyncService>
         _metrics = metrics;
     }
 
+    /// <inheritdoc/>
     public async Task PerformSyncAsync(SyncTypes syncFlags, CancellationToken cancellationToken)
     {
         List<Guid> connectionIds;
@@ -60,6 +70,7 @@ public sealed class OpenBankingSyncService : ServiceBase<OpenBankingSyncService>
         }
     }
 
+    /// <inheritdoc/>
     public async Task SyncConnectionAsync(Guid connectionId, SyncTypes syncFlags, CancellationToken cancellationToken)
     {
         long startedAt = Stopwatch.GetTimestamp();
@@ -146,6 +157,8 @@ public sealed class OpenBankingSyncService : ServiceBase<OpenBankingSyncService>
     /// Where the account's booked transactions are fetched from, a week before its last sync of them so late arrivals
     /// are caught. Null, for all of them, when it's never had them.
     /// </summary>
+    /// <param name="lastTransactionSync">When each account's transactions last synced.</param>
+    /// <param name="account">The account.</param>
     private static DateTime? TransactionsFrom(Dictionary<Guid, DateTime> lastTransactionSync, BankAccount account)
     {
         if (lastTransactionSync.TryGetValue(account.Id, out DateTime lastSync))
@@ -162,6 +175,9 @@ public sealed class OpenBankingSyncService : ServiceBase<OpenBankingSyncService>
     /// rather than have every account's fetches refused. The ones already stored are kept, and the next connect or
     /// renewal refreshes them.
     /// </summary>
+    /// <param name="connection">The connection.</param>
+    /// <param name="syncFlags">What the sync fetches.</param>
+    /// <param name="now">The time now, in UTC.</param>
     private SyncTypes EnhancedAuthenticationWindowSyncFlags(BankConnection connection, SyncTypes syncFlags,
         DateTime now)
     {
@@ -182,6 +198,9 @@ public sealed class OpenBankingSyncService : ServiceBase<OpenBankingSyncService>
     /// <summary>
     /// Logs what the connection's sync did and tags its span with the same, the job's <c>Sync connection</c>.
     /// </summary>
+    /// <param name="connection">The connection.</param>
+    /// <param name="tally">What the sync did.</param>
+    /// <param name="took">How long it took.</param>
     private void Summarise(BankConnection connection, ConnectionSyncTally tally, TimeSpan took)
     {
         Logger.LogSyncedConnection(connection.Id, UserId, tally.Accounts, tally.Cards, tally.TransactionsAdded,
@@ -199,6 +218,11 @@ public sealed class OpenBankingSyncService : ServiceBase<OpenBankingSyncService>
     }
 
     // A span for one account or card's sync
+    /// <summary>
+    /// Starts a span for work on one account, tagged with the account.
+    /// </summary>
+    /// <param name="name">The span's name.</param>
+    /// <param name="account">The account.</param>
     private static Activity? StartAccountActivity(string name, BankAccount account)
     {
         Activity? activity = FinTrackActivitySources.Infrastructure.StartActivity(name);
@@ -210,6 +234,15 @@ public sealed class OpenBankingSyncService : ServiceBase<OpenBankingSyncService>
     /// Syncs the connection's credit and charge cards like its accounts, each stored as a card
     /// <see cref="BankAccount"/>. Cards have no standing orders or direct debits.
     /// </summary>
+    /// <param name="context">The context to save through.</param>
+    /// <param name="connection">The connection.</param>
+    /// <param name="accounts">The connection's accounts and cards so far.</param>
+    /// <param name="lastTransactionSync">When each account's transactions last synced.</param>
+    /// <param name="authToken">The connection's access token.</param>
+    /// <param name="syncFlags">What to fetch.</param>
+    /// <param name="now">The time now, in UTC.</param>
+    /// <param name="tally">Counts what the sync does.</param>
+    /// <param name="cancellationToken">Stops the sync.</param>
     private async Task SyncCardsAsync(FinanceTrackerContext context, BankConnection connection,
         Dictionary<string, BankAccount> accounts, Dictionary<Guid, DateTime> lastTransactionSync, string authToken,
         SyncTypes syncFlags, DateTime now, ConnectionSyncTally tally, CancellationToken cancellationToken)
@@ -253,6 +286,9 @@ public sealed class OpenBankingSyncService : ServiceBase<OpenBankingSyncService>
     /// Returns a usable access token, refreshing and persisting a new one when the current token has lapsed.
     /// Null when the connection has no active consent.
     /// </summary>
+    /// <param name="context">The context to save through.</param>
+    /// <param name="connection">The connection.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<string?> GetValidAccessTokenAsync(FinanceTrackerContext context, BankConnection connection,
         CancellationToken cancellationToken)
     {

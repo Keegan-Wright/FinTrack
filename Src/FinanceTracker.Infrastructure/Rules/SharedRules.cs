@@ -39,6 +39,9 @@ internal static class SharedRules
     /// The rules shared with <paramref name="userId"/>, untracked, each with whoever shares it and whether they can
     /// change it, by sharer then in the order they run.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="userId">The user.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     public static async Task<List<VisibleItem<DomainRule>>> WithAsync(FinanceTrackerContext context, Guid userId,
         CancellationToken cancellationToken)
     {
@@ -67,7 +70,11 @@ internal static class SharedRules
     /// <paramref name="shared"/> as the user sees it. Who shares it, the names of what it uses, and when they can
     /// change it, the tags they can give it.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="userId">The user.</param>
     /// <param name="seen">Every account the user can see, so those they can't are named as private.</param>
+    /// <param name="shared">The rule.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     public static async Task<Rule> ToContractAsync(FinanceTrackerContext context, Guid userId, AccountsInView seen,
         VisibleItem<DomainRule> shared, CancellationToken cancellationToken)
     {
@@ -109,6 +116,12 @@ internal static class SharedRules
     /// what they may. Its owner's tags, bills and debts shared with them or already on it, and accounts they can see or
     /// it already looks at.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="userId">The user.</param>
+    /// <param name="seen">Every account the user can see.</param>
+    /// <param name="existing">The rule as it is.</param>
+    /// <param name="rule">The rule.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <exception cref="InvalidOperationException">The edit uses something else.</exception>
     public static async Task EnsureAllowedAsync(FinanceTrackerContext context, Guid userId, AccountsInView seen,
         DomainRule existing, SaveRule rule, CancellationToken cancellationToken)
@@ -156,6 +169,10 @@ internal static class SharedRules
     /// The tags <paramref name="userId"/> can give <paramref name="rule"/>, someone else's: its owner's tags they
     /// share with them, and those already on it.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="userId">The user.</param>
+    /// <param name="rule">The rule.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<Dictionary<Guid, string>> TagChoicesAsync(FinanceTrackerContext context, Guid userId,
         DomainRule rule, CancellationToken cancellationToken)
     {
@@ -173,6 +190,11 @@ internal static class SharedRules
     /// The bills <paramref name="userId"/> can have <paramref name="rule"/>, someone else's, pay. Its owner's bills
     /// they see, shared with them or paid from an account shared with them, and those already on it.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="userId">The user.</param>
+    /// <param name="seen">Every account the user can see.</param>
+    /// <param name="rule">The rule.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<Dictionary<Guid, string>> BillChoicesAsync(FinanceTrackerContext context, Guid userId,
         AccountsInView seen, DomainRule rule, CancellationToken cancellationToken)
     {
@@ -198,6 +220,11 @@ internal static class SharedRules
     /// The debts <paramref name="userId"/> can have <paramref name="rule"/>, someone else's, pay off. Its owner's debts
     /// they see, shared with them or following an account shared with them, and those already on it.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="userId">The user.</param>
+    /// <param name="seen">Every account the user can see.</param>
+    /// <param name="rule">The rule.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<Dictionary<Guid, string>> DebtChoicesAsync(FinanceTrackerContext context, Guid userId,
         AccountsInView seen, DomainRule rule, CancellationToken cancellationToken)
     {
@@ -222,6 +249,10 @@ internal static class SharedRules
     /// Those of <paramref name="tagIds"/> the user sees by name: their own, and those shared with them, whether chosen
     /// or for being on a transaction of theirs.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="userId">The user.</param>
+    /// <param name="tagIds">The tags.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<HashSet<Guid>> SeenTagIdsAsync(FinanceTrackerContext context, Guid userId,
         List<Guid> tagIds, CancellationToken cancellationToken)
     {
@@ -245,6 +276,11 @@ internal static class SharedRules
     /// The names of the accounts, tags, bills and debts <paramref name="rule"/> uses, by id. Any the user can't see
     /// otherwise is named as private, its real name being its owner's to share.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="userId">The user.</param>
+    /// <param name="seen">Every account the user can see.</param>
+    /// <param name="rule">The rule.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<Dictionary<Guid, string>> NamesAsync(FinanceTrackerContext context, Guid userId,
         AccountsInView seen, DomainRule rule, CancellationToken cancellationToken)
     {
@@ -294,6 +330,10 @@ internal static class SharedRules
         return names;
     }
 
+    /// <summary>
+    /// The accounts the rule's conditions name.
+    /// </summary>
+    /// <param name="rule">The rule.</param>
     private static IEnumerable<Guid> AccountsOf(DomainRule rule) =>
         rule.Conditions
             .Where(static x => x.Field == Domain.Rules.RuleField.Account)

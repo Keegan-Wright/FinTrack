@@ -13,10 +13,12 @@ public interface IBalanceSnapshotService
     /// re-totals the day's <see cref="NetWorthSnapshot"/>. Each sync replaces the last, so once the day is over its
     /// snapshots hold the balances from its last sync.
     /// </summary>
+    /// <param name="day">The day, where the user is.</param>
     /// <param name="balancesSyncedFrom">
     /// When the sync started. An account whose balance hasn't synced since keeps the day's snapshot it already has,
     /// or gets a stale one of its last stored balance if the day doesn't have one yet.
     /// </param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <returns>The day's net worth, or null when no account has a balance yet.</returns>
     Task<NetWorthSnapshot?> SnapshotAsync(DateOnly day, DateTime balancesSyncedFrom,
         CancellationToken cancellationToken);
@@ -26,6 +28,7 @@ public interface IBalanceSnapshotService
     /// <see cref="BalanceHistory"/>, then re-totals the net worth of each day that gained one. Once per account,
     /// after the sync that gives it a balance.
     /// </summary>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <returns>How many days of balances were added, across the accounts.</returns>
     Task<int> BackfillAsync(CancellationToken cancellationToken);
 }

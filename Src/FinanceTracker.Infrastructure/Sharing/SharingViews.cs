@@ -7,16 +7,21 @@ using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Infrastructure.Sharing;
 
+/// <inheritdoc cref="ISharingViews"/>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<ISharingViews>]
 public sealed class SharingViews : ServiceBase<SharingService>, ISharingViews
 {
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
     public SharingViews(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<SharingService> logger)
         : base(currentUser, financeTrackerContextFactory, logger)
     {
     }
 
+    /// <inheritdoc/>
     public async Task<SharingView> GetViewAsync(CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -24,6 +29,7 @@ public sealed class SharingViews : ServiceBase<SharingService>, ISharingViews
         return await ViewAsync(context, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<SharingView> ChangeViewAsync(ChangeSharingView request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -48,6 +54,8 @@ public sealed class SharingViews : ServiceBase<SharingService>, ISharingViews
     /// <summary>
     /// Their choice, and whether anything's shared with them whichever they chose.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<SharingView> ViewAsync(FinanceTrackerContext context, CancellationToken cancellationToken)
     {
         SharingSettings? settings = await context.SharingSettings.OwnedBy(UserId).AsNoTracking()

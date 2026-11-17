@@ -4,8 +4,12 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace FinanceTracker.Infrastructure.Persistence.Configurations;
 
+/// <summary>
+/// Maps <see cref="SyncLogEntry"/> to its table.
+/// </summary>
 internal sealed class SyncLogEntryConfiguration : IEntityTypeConfiguration<SyncLogEntry>
 {
+    /// <inheritdoc/>
     public void Configure(EntityTypeBuilder<SyncLogEntry> builder)
     {
         builder.ToTable("SyncLog");

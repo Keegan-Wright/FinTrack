@@ -8,5 +8,6 @@ public interface IStatementPeriods
     /// <summary>
     /// Newest first, just today's when the user has no transactions yet.
     /// </summary>
+    /// <param name="cancellationToken">Stops the work.</param>
     Task<List<Contracts.PayPeriods.PayPeriod>> GetAsync(CancellationToken cancellationToken);
 }

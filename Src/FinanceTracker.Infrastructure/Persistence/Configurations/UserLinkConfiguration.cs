@@ -5,6 +5,9 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace FinanceTracker.Infrastructure.Persistence.Configurations;
 
+/// <summary>
+/// Maps <see cref="UserLink"/> to its table.
+/// </summary>
 internal sealed class UserLinkConfiguration : AggregateRootConfiguration<UserLink>
 {
     /// <summary>
@@ -12,6 +15,7 @@ internal sealed class UserLinkConfiguration : AggregateRootConfiguration<UserLin
     /// </summary>
     public const string OneLinkPerPairIndex = "IX_UserLinks_OneLinkPerPair";
 
+    /// <inheritdoc/>
     protected override void ConfigureAggregate(EntityTypeBuilder<UserLink> builder)
     {
         builder.ToTable("UserLinks");

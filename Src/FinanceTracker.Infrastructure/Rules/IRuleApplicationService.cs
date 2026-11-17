@@ -20,6 +20,7 @@ public interface IRuleApplicationService
     /// </summary>
     /// <param name="firstRunFrom">Where the first run starts, the start of the sync that called it, so the first run
     /// covers that sync but none of the history before it.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <returns>How many transactions the rules changed.</returns>
     Task<int> ApplyChangesAsync(DateTime firstRunFrom, CancellationToken cancellationToken);
 
@@ -28,6 +29,8 @@ public interface IRuleApplicationService
     /// disabled or deleted, so anything it no longer gives is taken back. Transfers are then re-matched around any
     /// whose transfer answer it gave.
     /// </summary>
+    /// <param name="ruleId">The rule.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <returns>How many transactions the rules changed.</returns>
     Task<int> ReapplyAsync(Guid ruleId, CancellationToken cancellationToken);
 
@@ -36,6 +39,8 @@ public interface IRuleApplicationService
     /// however old, when the user asks. All the user's rules run on those, in order, as a sync would. Transfers are
     /// then re-matched around any whose transfer answer changed.
     /// </summary>
+    /// <param name="ruleId">The rule.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <returns>How many transactions changed, 0 when the rule is off.</returns>
     /// <exception cref="InvalidOperationException">The user has no rule with <paramref name="ruleId"/>.</exception>
     Task<int> ApplyToExistingAsync(Guid ruleId, CancellationToken cancellationToken);
@@ -46,6 +51,7 @@ public interface IRuleApplicationService
     /// are then re-matched around any whose transfer answer changed.
     /// </summary>
     /// <param name="accountIds">Accounts the user can change, others are left alone.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <returns>How many transactions changed.</returns>
     Task<int> ReapplyToAccountsAsync(IReadOnlyCollection<Guid> accountIds, CancellationToken cancellationToken);
 }

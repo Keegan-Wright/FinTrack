@@ -14,12 +14,15 @@ public interface IBillSyncService
     /// to them, every transaction since it started for a bill new this run, then suggests the subscriptions left among
     /// them. Run after rules and transfers, so the matcher sees which bills rules said were paid.
     /// </summary>
+    /// <param name="cancellationToken">Stops the work.</param>
     Task<BillSyncSummary> SyncAsync(CancellationToken cancellationToken);
 
     /// <summary>
     /// Matches the transactions from <paramref name="from"/> on to the user's bills and follows prices, e.g. after a
     /// bill is added or changed, so its history shows straight away.
     /// </summary>
+    /// <param name="from">The first day to match.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <returns>How many transactions' bill changed.</returns>
     Task<int> MatchFromAsync(DateOnly from, CancellationToken cancellationToken);
 
@@ -27,6 +30,9 @@ public interface IBillSyncService
     /// <see cref="MatchFromAsync"/> for <paramref name="ownerId"/>'s bills and transactions, after someone they share a
     /// bill with changed it.
     /// </summary>
+    /// <param name="ownerId">The owner.</param>
+    /// <param name="from">The first day to match.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <returns>How many transactions' bill changed.</returns>
     Task<int> MatchFromForAsync(Guid ownerId, DateOnly from, CancellationToken cancellationToken);
 }

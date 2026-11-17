@@ -17,9 +17,15 @@ public sealed partial record TransactionCsvRow
     [CsvColumn("Date", Index = 0)]
     public string Date { get; init; } = string.Empty;
 
+    /// <summary>
+    /// The account's name.
+    /// </summary>
     [CsvColumn("Account", Index = 1)]
     public string Account { get; init; } = string.Empty;
 
+    /// <summary>
+    /// The bank's description.
+    /// </summary>
     [CsvColumn("Description", Index = 2)]
     public string Description { get; init; } = string.Empty;
 
@@ -29,12 +35,21 @@ public sealed partial record TransactionCsvRow
     [CsvColumn("Amount", Index = 3)]
     public decimal Amount { get; init; }
 
+    /// <summary>
+    /// The currency code, e.g. GBP.
+    /// </summary>
     [CsvColumn("Currency", Index = 4)]
     public string Currency { get; init; } = string.Empty;
 
+    /// <summary>
+    /// Money in or money out.
+    /// </summary>
     [CsvColumn("Type", Index = 5)]
     public string Type { get; init; } = string.Empty;
 
+    /// <summary>
+    /// The bank's category.
+    /// </summary>
     [CsvColumn("Category", Index = 6)]
     public string Category { get; init; } = string.Empty;
 
@@ -44,6 +59,9 @@ public sealed partial record TransactionCsvRow
     [CsvColumn("Tags", Index = 7)]
     public string Tags { get; init; } = string.Empty;
 
+    /// <summary>
+    /// Yes while the bank hasn't settled it.
+    /// </summary>
     [CsvColumn("Pending", Index = 8)]
     [CsvBooleanValues("Yes", "No")]
     public bool Pending { get; init; }
@@ -87,6 +105,7 @@ public sealed partial record TransactionCsvRow
     [CsvColumn("Split", Index = 14)]
     public string Split { get; init; } = string.Empty;
 
+    /// <param name="transaction">The transaction.</param>
     /// <param name="timeZone">Where the user is, so a transaction falls on the day it was for them.</param>
     public static TransactionCsvRow From(Transaction transaction, TimeZoneInfo timeZone)
     {
@@ -120,12 +139,14 @@ public sealed partial record TransactionCsvRow
     /// Rounded to the penny and written with two places, e.g. <c>-3.50</c> rather than <c>-3.5</c>. A decimal keeps
     /// the places it's given, and adding <c>0.00m</c> gives it at least two.
     /// </summary>
+    /// <param name="amount">The amount.</param>
     private static decimal ToPence(decimal amount) => decimal.Round(amount, 2) + 0.00m;
 
     /// <summary>
     /// e.g. <c>Groceries -60.00</c>, <c>Untagged -10.00</c> for a part with no tag, and the part's note in brackets
     /// when it has one, e.g. <c>Household -40.00 (light bulbs)</c>.
     /// </summary>
+    /// <param name="part">The part.</param>
     private static string SplitPart(TransactionSplitPart part)
     {
         string tag = string.IsNullOrWhiteSpace(part.Tag) ? "Untagged" : part.Tag;
@@ -138,6 +159,10 @@ public sealed partial record TransactionCsvRow
         return $"{text} ({part.Note})";
     }
 
+    /// <summary>
+    /// The account or household member the money moved with, empty unless it's a transfer.
+    /// </summary>
+    /// <param name="transfer">The transfer, null when nothing's decided.</param>
     private static string TransferredWith(TransactionTransfer? transfer)
     {
         if (transfer is not { State: TransferState.Transfer })
@@ -148,6 +173,10 @@ public sealed partial record TransactionCsvRow
         return transfer.PartnerAccountName ?? transfer.PartnerHouseholdMemberName ?? string.Empty;
     }
 
+    /// <summary>
+    /// The transfer answer, in words, empty when nothing's decided.
+    /// </summary>
+    /// <param name="transfer">The transfer, null when nothing's decided.</param>
     private static string TransferStatus(TransactionTransfer? transfer) => transfer?.State switch
     {
         TransferState.Transfer => "Transfer",

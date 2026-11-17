@@ -13,6 +13,9 @@ internal static class TagNames
     /// Tag names by id the user's own, those of whoever shares accounts in <paramref name="view"/>, and those the
     /// other person put on the user's transactions. Only those on transactions in view ever show.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="view">The accounts the user sees.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     public static async Task<Dictionary<Guid, string>> LoadAsync(FinanceTrackerContext context, AccountsInView view,
         CancellationToken cancellationToken)
     {

@@ -11,6 +11,8 @@ public interface IOpenBankingSyncService
     /// <summary>
     /// Syncs each of the current user's connections in turn.
     /// </summary>
+    /// <param name="syncFlags">What to fetch.</param>
+    /// <param name="cancellationToken">Stops the sync.</param>
     Task PerformSyncAsync(SyncTypes syncFlags, CancellationToken cancellationToken);
 
     /// <summary>
@@ -18,6 +20,9 @@ public interface IOpenBankingSyncService
     /// data, refreshing the access token first if it has expired. Each kind of data synced is written to the sync
     /// log.
     /// </summary>
+    /// <param name="connectionId">The connection.</param>
+    /// <param name="syncFlags">What to fetch.</param>
+    /// <param name="cancellationToken">Stops the sync.</param>
     /// <remarks>
     /// A connection without an active token is skipped. A provider call that fails is logged and skips only that
     /// data, the rest still syncs.

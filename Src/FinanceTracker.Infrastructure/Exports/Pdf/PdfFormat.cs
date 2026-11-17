@@ -15,21 +15,26 @@ internal static class PdfFormat
     /// <summary>
     /// e.g. £1,234.56 or -£3.50 in en-GB.
     /// </summary>
+    /// <param name="amount">The amount.</param>
     public static string Money(decimal amount) => amount.ToString("C", Culture);
 
     /// <summary>
     /// e.g. 4 Nov.
     /// </summary>
+    /// <param name="day">The day.</param>
     public static string ShortDate(DateOnly day) => day.ToString("d MMM", Culture);
 
     /// <summary>
     /// e.g. 4 November 2026.
     /// </summary>
+    /// <param name="day">The day.</param>
     public static string LongDate(DateOnly day) => day.ToString("d MMMM yyyy", Culture);
 
     /// <summary>
     /// e.g. 30 Oct to 27 Nov 2026, or 30 Dec 2025 to 27 Jan 2026 across a new year.
     /// </summary>
+    /// <param name="start">The first day.</param>
+    /// <param name="end">The last day.</param>
     public static string DateRange(DateOnly start, DateOnly end)
     {
         string format = start.Year == end.Year ? "d MMM" : "d MMM yyyy";
@@ -39,6 +44,7 @@ internal static class PdfFormat
     /// <summary>
     /// e.g. 1 transaction, 12 transactions.
     /// </summary>
+    /// <param name="count">How many.</param>
     public static string TransactionCount(int count) =>
         count == 1 ? "1 transaction" : $"{count.ToString("N0", Culture)} transactions";
 }

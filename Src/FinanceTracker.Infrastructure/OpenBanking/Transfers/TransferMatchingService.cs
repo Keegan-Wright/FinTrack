@@ -11,6 +11,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Infrastructure.OpenBanking.Transfers;
 
+/// <inheritdoc cref="ITransferMatchingService"/>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<ITransferMatchingService>]
 public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITransferMatchingService
@@ -18,6 +19,11 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
     private readonly TimeProvider _timeProvider;
     private readonly FinTrackMetrics _metrics;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="timeProvider">The clock.</param>
+    /// <param name="metrics">Records its metrics.</param>
     public TransferMatchingService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<TransferMatchingService> logger,
         TimeProvider timeProvider, FinTrackMetrics metrics) : base(currentUser, financeTrackerContextFactory, logger)
@@ -26,6 +32,7 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
         _metrics = metrics;
     }
 
+    /// <inheritdoc/>
     public async Task<TransferMatchSummary> MatchAsync(CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -42,6 +49,7 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
             cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<TransferMatchSummary?> MatchChangesAsync(CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -75,6 +83,7 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
         return await MatchAroundAsync(context, group, changed, startedAt, recordCheckpoint: true, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<TransferMatchSummary> MatchAroundAsync(IReadOnlyCollection<Guid> transactionIds,
         CancellationToken cancellationToken)
     {
@@ -101,6 +110,9 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
     }
 
     // The span still says what matching did when there was nothing to look at
+    /// <summary>
+    /// Tags the span with nothing considered or matched.
+    /// </summary>
     private static void TagNothingMatched() =>
         CurrentActivity.Tag(
             (TelemetryTags.TransactionsConsidered, 0),
@@ -113,6 +125,12 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
     /// close enough to be its mirror, so the window runs that far either side, and up to now as late ones are the
     /// likeliest to change.
     /// </summary>
+    /// <param name="context">The context to save through.</param>
+    /// <param name="group">The accounts that can pair.</param>
+    /// <param name="dates">The days of the transactions that changed.</param>
+    /// <param name="startedAt">When the run started loading.</param>
+    /// <param name="recordCheckpoint">Whether to record the run, so the next looks only at what's new.</param>
+    /// <param name="cancellationToken">Stops the matching.</param>
     private async Task<TransferMatchSummary> MatchAroundAsync(FinanceTrackerContext context, TransferGroup group,
         List<DateTime> dates, DateTime startedAt, bool recordCheckpoint, CancellationToken cancellationToken)
     {
@@ -133,6 +151,10 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
     /// treats what it's given as the whole picture, without them it would clear a match whose other half is outside
     /// the window, and could pair a user's confirmed partner with something else.
     /// </summary>
+    /// <param name="context">The context to read through.</param>
+    /// <param name="group">The accounts that can pair.</param>
+    /// <param name="loaded">The transactions loaded so far.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<List<BankTransaction>> LoadPartnersOutsideAsync(FinanceTrackerContext context,
         TransferGroup group, List<BankTransaction> loaded, CancellationToken cancellationToken)
     {
@@ -157,6 +179,12 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
     /// Matches <paramref name="transactions"/>, the group's, saves the decisions and, with
     /// <paramref name="recordCheckpoint"/>, records that the user's run started from <paramref name="startedAt"/>.
     /// </summary>
+    /// <param name="context">The context to save through.</param>
+    /// <param name="group">The accounts that can pair.</param>
+    /// <param name="transactions">The transactions to match.</param>
+    /// <param name="startedAt">When the run started loading.</param>
+    /// <param name="recordCheckpoint">Whether to record the run, so the next looks only at what's new.</param>
+    /// <param name="cancellationToken">Stops the matching.</param>
     private async Task<TransferMatchSummary> MatchAndSaveAsync(FinanceTrackerContext context, TransferGroup group,
         List<BankTransaction> transactions, DateTime startedAt, bool recordCheckpoint,
         CancellationToken cancellationToken)
@@ -193,6 +221,9 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
     /// The identifiers of the accounts each member who's a user connected themselves, by member, so money to or from
     /// them is recognised. Their own, whether or not they share them, as only the match is shown, never the account.
     /// </summary>
+    /// <param name="context">The context to read through.</param>
+    /// <param name="householdMembers">The household members.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<Dictionary<Guid, IReadOnlyCollection<AccountIdentifier>>> MembersOwnAccountsAsync(
         FinanceTrackerContext context, List<HouseholdMember> householdMembers, CancellationToken cancellationToken)
     {
@@ -221,6 +252,9 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
     /// <summary>
     /// From when the run started rather than finished, so a transaction synced while it ran is picked up next time.
     /// </summary>
+    /// <param name="context">The context to save through.</param>
+    /// <param name="startedAt">When the run started loading.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task RecordCheckpointAsync(FinanceTrackerContext context, DateTime startedAt,
         CancellationToken cancellationToken)
     {

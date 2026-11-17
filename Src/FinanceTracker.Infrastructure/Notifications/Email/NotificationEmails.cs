@@ -6,6 +6,7 @@ using FinanceTracker.Generated.Enums;
 
 namespace FinanceTracker.Infrastructure.Notifications.Email;
 
+/// <inheritdoc cref="INotificationEmails"/>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Singleton<INotificationEmails>]
 public sealed class NotificationEmails : INotificationEmails
@@ -15,17 +16,23 @@ public sealed class NotificationEmails : INotificationEmails
     /// </summary>
     public const string SettingsPath = "Notifications/Settings";
 
+    /// <summary>
+    /// The test email's subject.
+    /// </summary>
     public const string TestSubject = TestEmailBody.Subject;
 
     private readonly IEmailRenderer _emailRenderer;
     private readonly PublicAddress _publicAddress;
 
+    /// <param name="emailRenderer">Renders the emails.</param>
+    /// <param name="publicAddress">The app's address as people reach it.</param>
     public NotificationEmails(IEmailRenderer emailRenderer, PublicAddress publicAddress)
     {
         _emailRenderer = emailRenderer;
         _publicAddress = publicAddress;
     }
 
+    /// <inheritdoc/>
     public async Task<MailMessage> ForAsync(Notification notification, string to)
     {
         ArgumentNullException.ThrowIfNull(notification);
@@ -50,6 +57,7 @@ public sealed class NotificationEmails : INotificationEmails
         return new MailMessage(to, notification.Title, text, html) { Images = [EmailBrand.Logo] };
     }
 
+    /// <inheritdoc/>
     public async Task<MailMessage> TestAsync(string to)
     {
         Uri? settings = _publicAddress.LinkTo(SettingsPath);
@@ -66,6 +74,10 @@ public sealed class NotificationEmails : INotificationEmails
         return new MailMessage(to, TestSubject, text, html) { Images = [EmailBrand.Logo] };
     }
 
+    /// <summary>
+    /// The plain text footer, saying where to change which emails come.
+    /// </summary>
+    /// <param name="settings">The settings page, null when the app's address isn't known.</param>
     private static string TextFooter(Uri? settings)
     {
         if (settings is null)

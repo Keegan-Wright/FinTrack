@@ -30,6 +30,7 @@ public static class DayBlindIndex
     /// What's hashed for <paramref name="value"/>'s UTC day. Prefixed so it never shares a hash with another index's
     /// value that happens to look like a date.
     /// </summary>
+    /// <param name="value">The date.</param>
     public static string Value(DateTime value) =>
         $"day:{DateOnly.FromDateTime(ToUtc(value)).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}";
 
@@ -37,6 +38,8 @@ public static class DayBlindIndex
     /// <see cref="Value"/> for every day from <paramref name="from"/> to <paramref name="to"/>, a day added either side.
     /// Null when that's more than <see cref="MaxDays"/>, or the range is backwards.
     /// </summary>
+    /// <param name="from">The first day.</param>
+    /// <param name="to">The last day.</param>
     public static List<string>? Values(DateTime from, DateTime to)
     {
         DateTime first = ToUtc(from).Date.AddDays(-Margin);
@@ -54,6 +57,8 @@ public static class DayBlindIndex
     /// leave them out. Only the latest <see cref="MaxDays"/> when there are more, leaving out fewer is still right.
     /// Empty when <paramref name="to"/> is that late already.
     /// </summary>
+    /// <param name="to">The last day.</param>
+    /// <param name="now">The time now, in UTC.</param>
     public static List<string> ValuesAfter(DateTime to, DateTime now)
     {
         DateTime first = ToUtc(to).Date.AddDays(Margin + 1);
@@ -64,6 +69,10 @@ public static class DayBlindIndex
     }
 
     // Stored dates are UTC, an unspecified one is taken as already UTC rather than shifted
+    /// <summary>
+    /// The time in UTC. One without a kind is taken as UTC already.
+    /// </summary>
+    /// <param name="value">The time.</param>
     private static DateTime ToUtc(DateTime value) =>
         value.Kind == DateTimeKind.Local ? value.ToUniversalTime() : value;
 }

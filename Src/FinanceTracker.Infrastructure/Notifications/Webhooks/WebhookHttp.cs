@@ -9,6 +9,10 @@ namespace FinanceTracker.Infrastructure.Notifications.Webhooks;
 /// </summary>
 public static class WebhookHttp
 {
+    /// <summary>
+    /// Makes the handler.
+    /// </summary>
+    /// <param name="settings">Whether private addresses are allowed.</param>
     public static SocketsHttpHandler CreateHandler(WebhookSettings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
@@ -23,6 +27,13 @@ public static class WebhookHttp
         };
     }
 
+    /// <summary>
+    /// Connects only to the addresses the host has that are allowed.
+    /// </summary>
+    /// <param name="context">What to connect to.</param>
+    /// <param name="settings">Whether private addresses are allowed.</param>
+    /// <param name="cancellationToken">Stops the connection.</param>
+    /// <exception cref="WebhookAddressRefusedException">None of its addresses are allowed.</exception>
     private static async ValueTask<Stream> ConnectAsync(SocketsHttpConnectionContext context,
         WebhookSettings settings, CancellationToken cancellationToken)
     {

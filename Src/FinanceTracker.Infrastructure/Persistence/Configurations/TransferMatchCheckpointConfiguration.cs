@@ -4,8 +4,12 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace FinanceTracker.Infrastructure.Persistence.Configurations;
 
+/// <summary>
+/// Maps <see cref="TransferMatchCheckpoint"/> to its table.
+/// </summary>
 internal sealed class TransferMatchCheckpointConfiguration : AggregateRootConfiguration<TransferMatchCheckpoint>
 {
+    /// <inheritdoc/>
     protected override void ConfigureAggregate(EntityTypeBuilder<TransferMatchCheckpoint> builder)
     {
         builder.ToTable("TransferMatchCheckpoints");

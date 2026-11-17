@@ -34,6 +34,7 @@ internal static class PdfTheme
     /// <summary>
     /// What's left after money out, the brand colour, or money out's when below zero.
     /// </summary>
+    /// <param name="net">What's left after money out.</param>
     public static string NetColour(decimal net)
     {
         if (net < 0)

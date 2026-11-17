@@ -11,6 +11,13 @@ namespace FinanceTracker.Infrastructure.OpenBanking;
 /// </summary>
 public static class ConnectionHealthReport
 {
+    /// <summary>
+    /// Records every connection's state, and when the one that's waited longest last synced.
+    /// </summary>
+    /// <param name="context">The context to read through.</param>
+    /// <param name="metrics">Records the metrics.</param>
+    /// <param name="now">The time now, in UTC.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     public static async Task RecordAsync(FinanceTrackerContext context, FinTrackMetrics metrics, DateTime now,
         CancellationToken cancellationToken)
     {
@@ -25,6 +32,12 @@ public static class ConnectionHealthReport
     }
 
     // Each connection once, in the first state that fits, worst first
+    /// <summary>
+    /// Counts the connections in each state, each in the first that fits: lapsed, failing, renewal due, ok.
+    /// </summary>
+    /// <param name="connections">Every connection.</param>
+    /// <param name="metrics">Records the counts.</param>
+    /// <param name="now">The time now, in UTC.</param>
     private static void CountStates(List<BankConnection> connections, FinTrackMetrics metrics, DateTime now)
     {
         int ok = 0;
@@ -59,6 +72,10 @@ public static class ConnectionHealthReport
     /// When the connection that's waited longest last synced, of those that should be syncing: consent not lapsed,
     /// owner not locked by an admin, and synced at least once. Null when there are none.
     /// </summary>
+    /// <param name="context">The context to read through.</param>
+    /// <param name="connections">Every connection.</param>
+    /// <param name="now">The time now, in UTC.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<DateTimeOffset?> OldestSyncAsync(FinanceTrackerContext context,
         List<BankConnection> connections, DateTime now, CancellationToken cancellationToken)
     {

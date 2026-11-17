@@ -23,6 +23,7 @@ internal sealed record TransferGroup(
     /// <summary>
     /// The group's transactions, the hidden copies' aside unless they fill a gap.
     /// </summary>
+    /// <param name="context">The context to read through.</param>
     public IQueryable<BankTransaction> Transactions(FinanceTrackerContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
@@ -34,6 +35,7 @@ internal sealed record TransferGroup(
     /// <summary>
     /// The group's accounts, the hidden copies aside.
     /// </summary>
+    /// <param name="context">The context to read through.</param>
     public IQueryable<BankAccount> Accounts(FinanceTrackerContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
@@ -44,6 +46,9 @@ internal sealed record TransferGroup(
     /// <summary>
     /// <paramref name="userId"/>'s group, just them when nothing's shared with or by them.
     /// </summary>
+    /// <param name="context">The context to read through.</param>
+    /// <param name="userId">The user.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     public static async Task<TransferGroup> ForAsync(FinanceTrackerContext context, Guid userId,
         CancellationToken cancellationToken)
     {

@@ -25,6 +25,9 @@ public interface ISharingChoices
     /// What's shared both ways in <paramref name="link"/>. Every account of the user's with how it's shared, and the
     /// accounts the other person shares.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="link">The link between the two people.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     Task<LinkShares> LinkSharesAsync(FinanceTrackerContext context, DomainLink link,
         CancellationToken cancellationToken);
 }

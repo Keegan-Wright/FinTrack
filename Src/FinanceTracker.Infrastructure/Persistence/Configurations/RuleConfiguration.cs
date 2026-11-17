@@ -4,8 +4,12 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace FinanceTracker.Infrastructure.Persistence.Configurations;
 
+/// <summary>
+/// Maps <see cref="Rule"/> to its table.
+/// </summary>
 internal sealed class RuleConfiguration : AggregateRootConfiguration<Rule>
 {
+    /// <inheritdoc/>
     protected override void ConfigureAggregate(EntityTypeBuilder<Rule> builder)
     {
         builder.ToTable("Rules");

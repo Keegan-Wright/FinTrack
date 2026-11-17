@@ -14,6 +14,7 @@ using Transaction = FinanceTracker.Contracts.Transactions.Transaction;
 
 namespace FinanceTracker.Infrastructure.OpenBanking.Transfers;
 
+/// <inheritdoc cref="ITransfersService"/>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<ITransfersService>]
 public class TransfersService : ServiceBase<TransfersService>, ITransfersService
@@ -23,6 +24,13 @@ public class TransfersService : ServiceBase<TransfersService>, ITransfersService
     private readonly IAccountScope _accountScope;
     private readonly IServiceScopeFactory _serviceScopeFactory;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="transferMatchingService">Matches transfers.</param>
+    /// <param name="timeProvider">The clock.</param>
+    /// <param name="accountScope">Which accounts the user can see and change.</param>
+    /// <param name="serviceScopeFactory">Makes the scopes its services run in.</param>
     public TransfersService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<TransfersService> logger,
         ITransferMatchingService transferMatchingService, TimeProvider timeProvider, IAccountScope accountScope,
@@ -35,6 +43,7 @@ public class TransfersService : ServiceBase<TransfersService>, ITransfersService
         _serviceScopeFactory = serviceScopeFactory;
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<Transaction> GetTransfersToReviewAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -59,6 +68,7 @@ public class TransfersService : ServiceBase<TransfersService>, ITransfersService
         }
     }
 
+    /// <inheritdoc/>
     public async Task<int> GetReviewCountAsync(CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -69,6 +79,7 @@ public class TransfersService : ServiceBase<TransfersService>, ITransfersService
                 cancellationToken);
     }
 
+    /// <inheritdoc/>
     public Task<IReadOnlyList<Transaction>> MarkAsTransferAsync(Guid id, CancellationToken cancellationToken) =>
         DecideAsync(id, "marked as a transfer", (transaction, partner, decidedAt) =>
         {
@@ -77,6 +88,7 @@ public class TransfersService : ServiceBase<TransfersService>, ITransfersService
             partner?.MarkAsTransfer(decidedAt);
         }, cancellationToken);
 
+    /// <inheritdoc/>
     public Task<IReadOnlyList<Transaction>> MarkNotATransferAsync(Guid id, CancellationToken cancellationToken) =>
         DecideAsync(id, "marked as not a transfer", (transaction, partner, decidedAt) =>
         {
@@ -85,6 +97,7 @@ public class TransfersService : ServiceBase<TransfersService>, ITransfersService
             partner?.ClearTransfer(DecisionSource.User);
         }, cancellationToken);
 
+    /// <inheritdoc/>
     public Task<IReadOnlyList<Transaction>> ResetTransferAsync(Guid id, CancellationToken cancellationToken) =>
         DecideAsync(id, "reset the transfer answer on", static (transaction, partner, _) =>
         {
@@ -101,7 +114,10 @@ public class TransfersService : ServiceBase<TransfersService>, ITransfersService
     /// re-matches around them so the pairs they affect update. The transaction is the user's own, or on an account
     /// shared with them with changes allowed.
     /// </summary>
+    /// <param name="id">The transaction.</param>
     /// <param name="action">What the user decided, for the log, e.g. <c>marked as a transfer</c>.</param>
+    /// <param name="decide">Records the decision on the transaction and its other half, with the time.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <returns>The transaction and its other halves before and after, as they are now, those the user can see.
     /// </returns>
     private async Task<IReadOnlyList<Transaction>> DecideAsync(Guid id, string action,
@@ -149,6 +165,9 @@ public class TransfersService : ServiceBase<TransfersService>, ITransfersService
     /// Re-matches around <paramref name="affected"/> as <paramref name="ownerId"/>, whose transactions they are, so
     /// it's among their accounts, the other person's included only on their side.
     /// </summary>
+    /// <param name="ownerId">The owner it runs as.</param>
+    /// <param name="affected">The transactions the decision changed.</param>
+    /// <param name="cancellationToken">Stops the matching.</param>
     private async Task MatchAroundAsOwnerAsync(Guid ownerId, HashSet<Guid> affected,
         CancellationToken cancellationToken)
     {
@@ -166,6 +185,8 @@ public class TransfersService : ServiceBase<TransfersService>, ITransfersService
     /// <summary>
     /// <paramref name="ids"/> and whatever they're paired with now, mapped, those on accounts the user can see.
     /// </summary>
+    /// <param name="ids">The transactions.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<IReadOnlyList<Transaction>> LoadAffectedAsync(HashSet<Guid> ids,
         CancellationToken cancellationToken)
     {

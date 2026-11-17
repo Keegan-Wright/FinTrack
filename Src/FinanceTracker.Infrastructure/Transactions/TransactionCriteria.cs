@@ -10,6 +10,17 @@ namespace FinanceTracker.Infrastructure.Transactions;
 /// <summary>
 /// Transaction filters shared by the transaction listing and reports.
 /// </summary>
+/// <param name="AccountIds">The accounts chosen.</param>
+/// <param name="ProviderIds">The banks chosen.</param>
+/// <param name="Types">Money in, money out or both.</param>
+/// <param name="Categories">The bank's categories chosen.</param>
+/// <param name="Tags">The tags, by id.</param>
+/// <param name="SearchTerm">The text searched for, null for none.</param>
+/// <param name="FromDate">The first day, null from the start.</param>
+/// <param name="ToDate">The last day, null up to today.</param>
+/// <param name="BillIds">The bills chosen.</param>
+/// <param name="DebtIds">The debts chosen.</param>
+/// <param name="SavingsGoalIds">The savings goals chosen.</param>
 internal sealed record TransactionCriteria(
     IReadOnlyCollection<Guid>? AccountIds,
     IReadOnlyCollection<Guid>? ProviderIds,
@@ -38,7 +49,10 @@ internal sealed record TransactionCriteria(
     /// Loads the goals chosen in <see cref="SavingsGoalIds"/>, which <see cref="MatchesClientFilters"/> needs to tell
     /// what counts towards them. Goals that aren't the user's are left out, so they match nothing.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="userId">The user.</param>
     /// <param name="timeZone">Where the user is, for the day a tag goal tracks from.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     public async Task<TransactionCriteria> WithSavingsGoalsAsync(FinanceTrackerContext context, Guid userId,
         TimeZoneInfo timeZone, CancellationToken cancellationToken)
     {
@@ -54,6 +68,8 @@ internal sealed record TransactionCriteria(
         return this with { _savingsGoals = goals, _timeZone = timeZone };
     }
 
+    /// <param name="query">The query.</param>
+    /// <param name="context">The context to work through.</param>
     /// <param name="view">What the user sees, so choosing a joint account takes in the hidden copy's transactions
     /// that fill in for it.</param>
     public IQueryable<BankTransaction> ApplyServerFilters(IQueryable<BankTransaction> query,
@@ -95,6 +111,8 @@ internal sealed record TransactionCriteria(
     /// <summary>
     /// Filters on encrypted columns, which can only be compared once decrypted.
     /// </summary>
+    /// <param name="transaction">The transaction.</param>
+    /// <param name="customTags">The user's tag names, by id.</param>
     /// <param name="view">What the user sees, so a search only finds a description they'd be shown, see
     /// <see cref="PrivateTransfers"/>.</param>
     public bool MatchesClientFilters(BankTransaction transaction, IReadOnlyDictionary<Guid, string> customTags,
@@ -138,6 +156,8 @@ internal sealed record TransactionCriteria(
     /// <summary>
     /// Provider tags the user hasn't hidden followed by the names of applied custom classifications.
     /// </summary>
+    /// <param name="transaction">The transaction.</param>
+    /// <param name="customTags">The user's tag names, by id.</param>
     public static IEnumerable<string>
         GetTags(BankTransaction transaction, IReadOnlyDictionary<Guid, string> customTags) =>
         transaction.VisibleProviderClassifications.Concat(transaction.CustomClassificationIds

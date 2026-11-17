@@ -25,6 +25,10 @@ internal static class JointAccountGaps
     /// too, hands its tags, split and hidden bank classifications to the shown copy's, and its transfer is cleared.
     /// Tracked changes, saved by the caller.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="joint">The merged joint account.</param>
+    /// <param name="now">The time now, in UTC.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <returns>The transactions whose part in matching changed, to match again.</returns>
     public static async Task<List<Guid>> RefreshAsync(FinanceTrackerContext context, JointAccount joint, DateTime now,
         CancellationToken cancellationToken)
@@ -45,6 +49,10 @@ internal static class JointAccountGaps
     /// Opens a gap when the shown copy's connection has lapsed, and closes it once the shown copy has synced its
     /// transactions again since.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="joint">The merged joint account.</param>
+    /// <param name="now">The time now, in UTC.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task UpdateGapAsync(FinanceTrackerContext context, JointAccount joint, DateTime now,
         CancellationToken cancellationToken)
     {
@@ -98,6 +106,8 @@ internal static class JointAccountGaps
     /// Whether <paramref name="connection"/> can no longer sync: its consent has lapsed, or its syncs have been
     /// failing for <see cref="FailingFor"/>.
     /// </summary>
+    /// <param name="connection">The shown copy's connection.</param>
+    /// <param name="now">The time now, in UTC.</param>
     public static bool HasLapsed(BankConnection connection, DateTime now)
     {
         ArgumentNullException.ThrowIfNull(connection);
@@ -113,6 +123,10 @@ internal static class JointAccountGaps
     /// Marks the hidden copy's transactions in a gap that the shown copy doesn't have as filling it, and unmarks the
     /// rest.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="joint">The merged joint account.</param>
+    /// <param name="now">The time now, in UTC.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<List<Guid>> MarkFillingAsync(FinanceTrackerContext context, JointAccount joint,
         DateTime now, CancellationToken cancellationToken)
     {
@@ -169,6 +183,10 @@ internal static class JointAccountGaps
     /// The settled transactions of <paramref name="accountId"/> on or after <paramref name="from"/>'s day, all of
     /// them when null, untracked.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="accountId">The account.</param>
+    /// <param name="from">The earliest to load, null for all.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<List<BankTransaction>> SettledAsync(FinanceTrackerContext context, Guid accountId,
         DateTime? from, CancellationToken cancellationToken)
     {
@@ -185,6 +203,10 @@ internal static class JointAccountGaps
     /// The transactions of <paramref name="accountId"/> on or after <paramref name="from"/>'s day, all of them when
     /// null, tracked.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="accountId">The account.</param>
+    /// <param name="from">The earliest to load, null for all.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<List<BankTransaction>> TrackedAsync(FinanceTrackerContext context, Guid accountId,
         DateTime? from, CancellationToken cancellationToken)
     {
@@ -199,6 +221,9 @@ internal static class JointAccountGaps
     /// <summary>
     /// The joint accounts in <paramref name="view"/> that have had a gap, untracked.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="view">The accounts the user sees.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     public static async Task<List<JointAccount>> InViewAsync(FinanceTrackerContext context, AccountsInView view,
         CancellationToken cancellationToken)
     {
@@ -221,6 +246,9 @@ internal static class JointAccountGaps
     /// The balance of each joint account in <paramref name="view"/> with an open gap, by shown copy: the hidden copy's,
     /// as the shown copy's has stopped updating.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="view">The accounts the user sees.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     public static async Task<Dictionary<Guid, AccountBalance?>> OpenGapBalancesAsync(FinanceTrackerContext context,
         AccountsInView view, CancellationToken cancellationToken)
     {

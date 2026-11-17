@@ -7,9 +7,12 @@ namespace FinanceTracker.Infrastructure.Exports.Pdf;
 /// <summary>
 /// One headline figure on a rounded tile, e.g. Money in £2,450.00, like the dashboard's.
 /// </summary>
+/// <param name="label">What the figure is, e.g. Money in.</param>
+/// <param name="amount">The figure.</param>
 /// <param name="colour">The figure's colour.</param>
 internal sealed class SummaryTile(string label, decimal amount, string colour) : IComponent
 {
+    /// <inheritdoc/>
     public void Compose(IContainer container)
     {
         container.Background(Background).CornerRadius(CornerRadius).Padding(12).Column(tile =>

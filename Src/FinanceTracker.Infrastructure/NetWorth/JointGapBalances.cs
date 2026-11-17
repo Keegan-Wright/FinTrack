@@ -16,6 +16,9 @@ internal sealed class JointGapBalances
     private readonly AccountsInView _view;
     private readonly ILookup<Guid, BalanceSnapshot> _snapshots;
 
+    /// <param name="joints">The merged joint accounts in view with a gap.</param>
+    /// <param name="view">The accounts the user sees.</param>
+    /// <param name="snapshots">The hidden copies' daily balances, by account.</param>
     private JointGapBalances(List<JointAccount> joints, AccountsInView view, ILookup<Guid, BalanceSnapshot> snapshots)
     {
         _joints = joints;
@@ -23,6 +26,9 @@ internal sealed class JointGapBalances
         _snapshots = snapshots;
     }
 
+    /// <summary>
+    /// Whether there's no gap to adjust for.
+    /// </summary>
     public bool IsEmpty => _joints.Count == 0;
 
     /// <summary>
@@ -53,6 +59,9 @@ internal sealed class JointGapBalances
     /// the hidden copy's in. A copy that's the user's own is counted in their own total as of
     /// <paramref name="lastOwn"/>'s day, another's as of its latest balance by <paramref name="day"/>.
     /// </summary>
+    /// <param name="tally">The day's tally.</param>
+    /// <param name="day">The day.</param>
+    /// <param name="lastOwn">The user's own latest net worth, null for none.</param>
     public void Adjust(NetWorthTally tally, DateOnly day, NetWorthPoint? lastOwn)
     {
         foreach (JointAccount joint in _joints.Where(x => x.BalanceFromHiddenOn(day)))
@@ -77,6 +86,9 @@ internal sealed class JointGapBalances
     /// The balance <paramref name="accountId"/> shows on <paramref name="day"/>: the hidden copy's when it's the shown
     /// copy of a joint account in a gap that day, otherwise <paramref name="balance"/>.
     /// </summary>
+    /// <param name="accountId">The account.</param>
+    /// <param name="day">The day.</param>
+    /// <param name="balance">The balance its own snapshot has.</param>
     public decimal BalanceOn(Guid accountId, DateOnly day, decimal balance)
     {
         JointAccount? joint = _joints.Find(x => x.ShownAccountId == accountId && x.BalanceFromHiddenOn(day));
@@ -98,6 +110,8 @@ internal sealed class JointGapBalances
     /// <paramref name="points"/>, an account's balance history, with the days in a gap taken from the hidden copy when
     /// it's the shown copy of a joint account.
     /// </summary>
+    /// <param name="accountId">The account.</param>
+    /// <param name="points">The account's balance history.</param>
     public List<BalancePoint> History(Guid accountId, List<BalancePoint> points)
     {
         JointAccount? joint = _joints.Find(x => x.ShownAccountId == accountId);
@@ -120,6 +134,10 @@ internal sealed class JointGapBalances
     /// The balance of <paramref name="accountId"/> counted for <paramref name="day"/>: as of <paramref
     /// name="lastOwn"/>'s day when it's in the user's own total, otherwise its latest by <paramref name="day"/>.
     /// </summary>
+    /// <param name="accountId">The account.</param>
+    /// <param name="day">The day.</param>
+    /// <param name="lastOwn">The user's own latest net worth, null for none.</param>
+    /// <param name="ownTotalHasIt">Whether the user's own total counts it.</param>
     private BalanceSnapshot? Counted(Guid accountId, DateOnly day, NetWorthPoint? lastOwn, bool ownTotalHasIt)
     {
         if (!ownTotalHasIt)
@@ -135,6 +153,11 @@ internal sealed class JointGapBalances
         return _snapshots[accountId].FirstOrDefault(x => x.Date == lastOwn.Date);
     }
 
+    /// <summary>
+    /// An account's latest balance on or before <paramref name="day"/>, null when there's none.
+    /// </summary>
+    /// <param name="accountId">The account.</param>
+    /// <param name="day">The day.</param>
     private BalanceSnapshot? LatestBy(Guid accountId, DateOnly day) =>
         _snapshots[accountId].Where(x => x.Date <= day).MaxBy(static x => x.Date);
 }

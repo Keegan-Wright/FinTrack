@@ -7,6 +7,9 @@ namespace FinanceTracker.Infrastructure.OpenBanking.TrueLayer;
 /// </summary>
 public sealed class TrueLayerThrottlingOptions
 {
+    /// <summary>
+    /// The configuration section the options are read from.
+    /// </summary>
     public const string SectionName = "OpenBanking:Throttling";
 
     /// <summary>

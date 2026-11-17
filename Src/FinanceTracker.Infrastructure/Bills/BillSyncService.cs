@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Infrastructure.Bills;
 
+/// <inheritdoc cref="IBillSyncService"/>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<IBillSyncService>]
 public class BillSyncService : ServiceBase<BillSyncService>, IBillSyncService
@@ -26,6 +27,11 @@ public class BillSyncService : ServiceBase<BillSyncService>, IBillSyncService
     private readonly TimeProvider _timeProvider;
     private readonly FinTrackMetrics _metrics;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="timeProvider">The clock.</param>
+    /// <param name="metrics">Records its metrics.</param>
     public BillSyncService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<BillSyncService> logger,
         TimeProvider timeProvider, FinTrackMetrics metrics) : base(currentUser, financeTrackerContextFactory, logger)
@@ -34,6 +40,7 @@ public class BillSyncService : ServiceBase<BillSyncService>, IBillSyncService
         _metrics = metrics;
     }
 
+    /// <inheritdoc/>
     public async Task<BillSyncSummary> SyncAsync(CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -89,9 +96,11 @@ public class BillSyncService : ServiceBase<BillSyncService>, IBillSyncService
         return summary;
     }
 
+    /// <inheritdoc/>
     public Task<int> MatchFromAsync(DateOnly from, CancellationToken cancellationToken) =>
         MatchFromForAsync(UserId, from, cancellationToken);
 
+    /// <inheritdoc/>
     public async Task<int> MatchFromForAsync(Guid ownerId, DateOnly from, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -110,6 +119,8 @@ public class BillSyncService : ServiceBase<BillSyncService>, IBillSyncService
     /// <summary>
     /// The recent days, or back to the start of a bill new this run so its history is matched once.
     /// </summary>
+    /// <param name="added">The bills added this run.</param>
+    /// <param name="today">Today where the user is.</param>
     private static DateOnly MatchFrom(IReadOnlyList<Bill> added, DateOnly today)
     {
         DateOnly from = today.AddDays(-RecentDays);
@@ -129,6 +140,10 @@ public class BillSyncService : ServiceBase<BillSyncService>, IBillSyncService
     /// Tracked, so saving writes only the transactions the matcher changed. Dates are encrypted, so the day index
     /// narrows them and the decrypted dates give the exact range.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="ownerId">The owner.</param>
+    /// <param name="from">The first day to match.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<List<BankTransaction>> LoadTransactionsAsync(FinanceTrackerContext context,
         Guid ownerId, DateOnly from, CancellationToken cancellationToken)
     {
@@ -145,6 +160,11 @@ public class BillSyncService : ServiceBase<BillSyncService>, IBillSyncService
     /// Follows a price change from each bill's latest paid period. Not for standing orders, the bank reports what
     /// their next payment will be, see <see cref="BillSeeder"/>.
     /// </summary>
+    /// <param name="bills">The user's bills.</param>
+    /// <param name="transactions">The transactions.</param>
+    /// <param name="from">The first day to match.</param>
+    /// <param name="timeZone">Where the user is.</param>
+    /// <param name="today">Today where the user is.</param>
     /// <returns>How many bills' expected amount changed.</returns>
     private static int FollowPrices(List<Bill> bills, List<BankTransaction> transactions, DateOnly from,
         TimeZoneInfo timeZone, DateOnly today)

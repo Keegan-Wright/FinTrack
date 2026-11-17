@@ -13,7 +13,7 @@ public sealed class ExternalOpenBankingAccountStandingOrderFaker : Faker<Externa
         RuleFor(x => x.Status, "Active");
         RuleFor(x => x.Currency, "GBP");
         RuleFor(x => x.NextPaymentDate, f => f.Date.Soon(28, DateTime.UtcNow));
-        RuleFor(x => x.NextPaymentAmount, f => f.Random.Int(5, 500));
+        RuleFor(x => x.NextPaymentAmount, f => f.Finance.Amount(5, 500));
         RuleFor(x => x.FirstPaymentDate, f => f.Date.Past(1, DateTime.UtcNow));
         RuleFor(x => x.FirstPaymentAmount, (_, x) => x.NextPaymentAmount);
         RuleFor(x => x.FinalPaymentDate, f => f.Date.Future(2, DateTime.UtcNow));

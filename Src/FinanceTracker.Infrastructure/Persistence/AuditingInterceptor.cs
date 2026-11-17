@@ -25,6 +25,10 @@ internal sealed class AuditingInterceptor : SaveChangesInterceptor
         return ValueTask.FromResult(result);
     }
 
+    /// <summary>
+    /// Stamps the created and updated times on what's being saved.
+    /// </summary>
+    /// <param name="context">The context being saved.</param>
     private static void Stamp(DbContext? context)
     {
         if (context is null)

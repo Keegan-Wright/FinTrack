@@ -4,8 +4,12 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace FinanceTracker.Infrastructure.Persistence.Configurations;
 
+/// <summary>
+/// Maps <see cref="StandingOrder"/> to its table.
+/// </summary>
 internal sealed class StandingOrderConfiguration : IEntityTypeConfiguration<StandingOrder>
 {
+    /// <inheritdoc/>
     public void Configure(EntityTypeBuilder<StandingOrder> builder)
     {
         builder.ToTable("StandingOrders");

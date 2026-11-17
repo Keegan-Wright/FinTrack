@@ -7,5 +7,9 @@ namespace FinanceTracker.Infrastructure.Notifications;
 /// </summary>
 public interface ISyncNotices
 {
+    /// <summary>
+    /// Raises the notifications for what the sync changed.
+    /// </summary>
+    /// <param name="cancellationToken">Stops the work.</param>
     Task NotifyAsync(CancellationToken cancellationToken);
 }

@@ -10,5 +10,6 @@ public interface IJointAccountGapService
     /// Opens or closes the gap of each joint account the user has a copy of, marks the hidden copy's transactions
     /// that fill it, and matches transfers again around those that changed.
     /// </summary>
+    /// <param name="cancellationToken">Stops the work.</param>
     Task RefreshAsync(CancellationToken cancellationToken);
 }

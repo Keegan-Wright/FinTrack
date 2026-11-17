@@ -16,8 +16,11 @@ internal static class SharedDebts
     /// <summary>
     /// Every debt <paramref name="userId"/> sees through <paramref name="view"/>, untracked, their own first.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="userId">The user.</param>
     /// <param name="view">Their accounts and those shared with them. A debt following one shared with changes allowed
     /// can be changed. Just mine leaves out those chosen for them, as it does accounts.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     public static async Task<List<VisibleItem<DomainDebt>>> ForAsync(FinanceTrackerContext context, Guid userId,
         AccountsInView view, CancellationToken cancellationToken)
     {
@@ -39,7 +42,10 @@ internal static class SharedDebts
     /// Each of <paramref name="debts"/>' figures, by debt: the account it follows, and its payments from the accounts
     /// its owner sees. The same as its owner gets, whoever's asking.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
     /// <param name="all">Every account the user sees, which their own debts' payments come from.</param>
+    /// <param name="debts">The debts.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     public static async Task<Dictionary<Guid, DebtFigures>> FiguresAsync(FinanceTrackerContext context,
         AccountsInView all, IReadOnlyCollection<VisibleItem<DomainDebt>> debts, CancellationToken cancellationToken)
     {

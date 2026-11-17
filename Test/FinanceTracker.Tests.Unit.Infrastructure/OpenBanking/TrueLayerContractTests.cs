@@ -114,6 +114,31 @@ public class TrueLayerContractTests : UnitTestBase
     }
 
     [Test]
+    public async Task StandingOrder_DeserialisesAmountsInPence()
+    {
+        // Arrange
+        const string json = """
+                            {
+                              "next_payment_amount": 12.50,
+                              "first_payment_amount": 9.99,
+                              "final_payment_amount": 120.05
+                            }
+                            """;
+
+        // Act
+        ExternalOpenBankingAccountStandingOrder standingOrder =
+            JsonSerializer.Deserialize<ExternalOpenBankingAccountStandingOrder>(json, WebOptions)!;
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(standingOrder.NextPaymentAmount).IsEqualTo(12.50m);
+            await Assert.That(standingOrder.FirstPaymentAmount).IsEqualTo(9.99m);
+            await Assert.That(standingOrder.FinalPaymentAmount).IsEqualTo(120.05m);
+        }
+    }
+
+    [Test]
     public async Task ProviderStep_DeserialisesFieldsValuesAndValidations()
     {
         // Arrange

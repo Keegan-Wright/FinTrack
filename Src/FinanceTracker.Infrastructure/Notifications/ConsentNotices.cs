@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Infrastructure.Notifications;
 
+/// <inheritdoc cref="IConsentNotices"/>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<IConsentNotices>]
 public sealed class ConsentNotices : ServiceBase<ConsentNotices>, IConsentNotices
@@ -29,6 +30,11 @@ public sealed class ConsentNotices : ServiceBase<ConsentNotices>, IConsentNotice
     private readonly TimeProvider _timeProvider;
     private readonly INotifier _notifier;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="timeProvider">The clock.</param>
+    /// <param name="notifier">Raises notifications.</param>
     public ConsentNotices(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<ConsentNotices> logger,
         TimeProvider timeProvider, INotifier notifier)
@@ -38,6 +44,7 @@ public sealed class ConsentNotices : ServiceBase<ConsentNotices>, IConsentNotice
         _notifier = notifier;
     }
 
+    /// <inheritdoc/>
     public async Task NotifyAsync(CancellationToken cancellationToken)
     {
         DateTime now = _timeProvider.UtcNow;
@@ -67,8 +74,17 @@ public sealed class ConsentNotices : ServiceBase<ConsentNotices>, IConsentNotice
     /// notifications are kept is passed over, so pruning its notice doesn't raise it again, see
     /// <see cref="NotificationRetention"/>.
     /// </summary>
+    /// <param name="now">The time now, in UTC.</param>
     public static DateTime EndedSince(DateTime now) => now - NotificationRetention.ReadKeptFor;
 
+    /// <summary>
+    /// Says a connection's consent has ended, or ends within a day or soon.
+    /// </summary>
+    /// <param name="connectionId">The connection.</param>
+    /// <param name="name">The bank's name.</param>
+    /// <param name="endsAt">When consent ends.</param>
+    /// <param name="now">The time now, in UTC.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private Task<bool> NotifyForAsync(Guid connectionId, string name, DateTime endsAt, DateTime now,
         CancellationToken cancellationToken)
     {
@@ -98,6 +114,10 @@ public sealed class ConsentNotices : ServiceBase<ConsentNotices>, IConsentNotice
     }
 
     // The day as the app's users see it, in the app's time zone and culture
+    /// <summary>
+    /// The day, where the user is, e.g. <c>14 November</c>.
+    /// </summary>
+    /// <param name="utc">The time, in UTC.</param>
     private string LocalDate(DateTime utc) =>
         TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), _timeProvider.LocalTimeZone)
             .ToString("d MMMM", CultureInfo.CurrentCulture);

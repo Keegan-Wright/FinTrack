@@ -21,6 +21,9 @@ namespace FinanceTracker.Infrastructure.Automation;
 public class AutomationService : ServiceBase<AutomationService>, IAutomationService
 {
     // Enough of the newest runs to find the success rate's finished ones among retries
+    /// <summary>
+    /// How many recent runs are loaded, enough to find the finished ones the success rate counts.
+    /// </summary>
     private const int SuccessRateLookBack = AutomationJobSummary.SuccessRateRuns * 3;
 
     private readonly ISchedulerFactory _schedulerFactory;
@@ -28,6 +31,13 @@ public class AutomationService : ServiceBase<AutomationService>, IAutomationServ
     private readonly IOpenBankingSyncScheduler _openBankingSyncScheduler;
     private readonly TimeProvider _timeProvider;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="schedulerFactory">Gives Quartz's scheduler.</param>
+    /// <param name="executionHistoryStore">Keeps the jobs' run history.</param>
+    /// <param name="openBankingSyncScheduler">Queues syncs.</param>
+    /// <param name="timeProvider">The clock.</param>
     public AutomationService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<AutomationService> logger,
         ISchedulerFactory schedulerFactory, IExecutionHistoryStore executionHistoryStore,
@@ -40,6 +50,7 @@ public class AutomationService : ServiceBase<AutomationService>, IAutomationServ
         _timeProvider = timeProvider;
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<AutomationCron> GetJobsAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -50,6 +61,7 @@ public class AutomationService : ServiceBase<AutomationService>, IAutomationServ
         }
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<AutomationJobSummary> GetJobSummariesAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -73,6 +85,7 @@ public class AutomationService : ServiceBase<AutomationService>, IAutomationServ
         }
     }
 
+    /// <inheritdoc/>
     public async Task<AutomationRunPage> GetRunsAsync(string function, int page, int pageSize,
         CancellationToken cancellationToken)
     {
@@ -109,6 +122,7 @@ public class AutomationService : ServiceBase<AutomationService>, IAutomationServ
         return new AutomationRunPage(runs, total);
     }
 
+    /// <inheritdoc/>
     public async Task<bool> UpdateJobSettingsAsync(UpdateCronJob request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -142,6 +156,7 @@ public class AutomationService : ServiceBase<AutomationService>, IAutomationServ
         return true;
     }
 
+    /// <inheritdoc/>
     public async Task RunNowAsync(string function, CancellationToken cancellationToken)
     {
         IScheduler scheduler = await _schedulerFactory.GetScheduler(cancellationToken);
@@ -160,6 +175,7 @@ public class AutomationService : ServiceBase<AutomationService>, IAutomationServ
         Logger.LogJobRunNow(UserId, function);
     }
 
+    /// <inheritdoc/>
     public async Task<DateTime?> GetLastSyncTimeAsync(CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -172,6 +188,14 @@ public class AutomationService : ServiceBase<AutomationService>, IAutomationServ
         return lastSync?.ToLocalTime();
     }
 
+    /// <summary>
+    /// A job's summary, its schedule, last run, next run and success rate.
+    /// </summary>
+    /// <param name="scheduler">Quartz's scheduler.</param>
+    /// <param name="job">The job.</param>
+    /// <param name="cron">Its schedule as the API sends it, null when it has none.</param>
+    /// <param name="schedule">Its schedule in Quartz, null when it has none.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<AutomationJobSummary> SummariseAsync(IScheduler scheduler, JobKey job, AutomationCron? cron,
         ICronTrigger? schedule, CancellationToken cancellationToken)
     {
@@ -209,6 +233,11 @@ public class AutomationService : ServiceBase<AutomationService>, IAutomationServ
     }
 
     // A paused job won't run on its schedule
+    /// <summary>
+    /// When the job next runs, local, null while it's paused or has no schedule.
+    /// </summary>
+    /// <param name="cron">Its schedule as the API sends it, null when it has none.</param>
+    /// <param name="schedule">Its schedule in Quartz, null when it has none.</param>
     private DateTime? NextRunAt(AutomationCron? cron, ICronTrigger? schedule)
     {
         if (cron is not { IsEnabled: true } || schedule?.NextFireTimeUtc is not { } next)
@@ -222,6 +251,9 @@ public class AutomationService : ServiceBase<AutomationService>, IAutomationServ
     /// <summary>
     /// The run of <paramref name="job"/> going now, from its schedule or by hand, null when none is.
     /// </summary>
+    /// <param name="scheduler">Quartz's scheduler.</param>
+    /// <param name="job">The job.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<AutomationRun?> RunningAsync(IScheduler scheduler, JobKey job,
         CancellationToken cancellationToken)
     {
@@ -248,6 +280,10 @@ public class AutomationService : ServiceBase<AutomationService>, IAutomationServ
         return null;
     }
 
+    /// <summary>
+    /// A run as the API sends it, its times local.
+    /// </summary>
+    /// <param name="entry">The run's history entry.</param>
     private AutomationRun ToRun(ExecutionHistoryEntry entry)
     {
         DateTime firedAt = _timeProvider.ToLocal(entry.FiredAtUtc.UtcDateTime);
@@ -256,6 +292,10 @@ public class AutomationService : ServiceBase<AutomationService>, IAutomationServ
             entry.ExceptionMessage);
     }
 
+    /// <summary>
+    /// How a run went.
+    /// </summary>
+    /// <param name="entry">The run's history entry.</param>
     private static AutomationRunStatus StatusOf(ExecutionHistoryEntry entry) => entry.EffectiveResult switch
     {
         JobRunResult.Succeeded => AutomationRunStatus.Done,
@@ -265,6 +305,11 @@ public class AutomationService : ServiceBase<AutomationService>, IAutomationServ
         _ => AutomationRunStatus.Failed
     };
 
+    /// <summary>
+    /// The jobs' schedules, by name.
+    /// </summary>
+    /// <param name="scheduler">Quartz's scheduler.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<List<ICronTrigger>> SchedulesAsync(IScheduler scheduler,
         CancellationToken cancellationToken)
     {
@@ -283,6 +328,12 @@ public class AutomationService : ServiceBase<AutomationService>, IAutomationServ
         return schedules;
     }
 
+    /// <summary>
+    /// A schedule as the API sends it, with whether it's paused.
+    /// </summary>
+    /// <param name="scheduler">Quartz's scheduler.</param>
+    /// <param name="schedule">The schedule.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<AutomationCron> ToCronAsync(IScheduler scheduler, ICronTrigger schedule,
         CancellationToken cancellationToken)
     {
@@ -295,6 +346,7 @@ public class AutomationService : ServiceBase<AutomationService>, IAutomationServ
     }
 
     // The user comes from the scope, never the page, so nobody can queue a sync of someone else's connections
+    /// <inheritdoc/>
     public Task RequestSyncAsync(CancellationToken cancellationToken) =>
         _openBankingSyncScheduler.ScheduleUserSyncAsync(UserId, cancellationToken);
 }

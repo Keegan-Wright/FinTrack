@@ -8,6 +8,9 @@ namespace FinanceTracker.Infrastructure.Exports.Reports;
 /// </summary>
 public sealed class ReportContent
 {
+    /// <summary>
+    /// What the report is broken down by, over time, by account or by tag.
+    /// </summary>
     public required ReportBreakdown Breakdown { get; init; }
 
     /// <summary>

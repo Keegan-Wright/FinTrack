@@ -14,13 +14,21 @@ public sealed class EncryptionConfiguration
     /// </summary>
     public const int KeySize = 32;
 
+    /// <summary>
+    /// Every key, by id.
+    /// </summary>
     public required IReadOnlyDictionary<int, byte[]> Keys { get; init; }
 
+    /// <summary>
+    /// The key new values are encrypted with.
+    /// </summary>
     public required int CurrentKeyId { get; init; }
 
     /// <summary>
     /// Reads keys written as <c>id:base64key</c> pairs separated by <c>;</c>, e.g. <c>1:AbC...=;2:XyZ...=</c>.
     /// </summary>
+    /// <param name="keys">The keys, as written.</param>
+    /// <param name="currentKeyId">The key new values are encrypted with.</param>
     /// <exception cref="FormatException">The keys aren't in that format.</exception>
     public static EncryptionConfiguration Parse(string keys, int currentKeyId)
     {

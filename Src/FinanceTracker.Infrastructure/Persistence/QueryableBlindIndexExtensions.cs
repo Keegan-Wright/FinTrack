@@ -41,6 +41,10 @@ internal static class QueryableBlindIndexExtensions
         /// a day either side. Through its <see cref="DayBlindIndex"/>. Filter the decrypted dates for
         /// the exact range. Left as it is when the range is too long to look up by day.
         /// </summary>
+        /// <param name="encryptedProperty">The encrypted property.</param>
+        /// <param name="from">The first day, null for no start.</param>
+        /// <param name="to">The last day, null for no end.</param>
+        /// <param name="context">The context to work through.</param>
         public IQueryable<TEntity> WhereEncryptedDayBetween(Expression<Func<TEntity, DateTime>> encryptedProperty,
             DateTime from, DateTime to, FinanceTrackerContext context)
         {
@@ -52,6 +56,10 @@ internal static class QueryableBlindIndexExtensions
         /// <summary>
         /// <see cref="WhereEncryptedDayBetween"/> for a range that may be open at either end.
         /// </summary>
+        /// <param name="encryptedProperty">The encrypted property.</param>
+        /// <param name="from">The first day, null for no start.</param>
+        /// <param name="to">The last day, null for no end.</param>
+        /// <param name="context">The context to work through.</param>
         public IQueryable<TEntity> WhereEncryptedDayWithin(Expression<Func<TEntity, DateTime>> encryptedProperty,
             DateTime? from, DateTime? to, FinanceTrackerContext context)
         {
@@ -79,6 +87,10 @@ internal static class QueryableBlindIndexExtensions
         /// Rows whose day blind index is, or with <paramref name="included"/> false isn't, one of
         /// <paramref name="days"/>.
         /// </summary>
+        /// <param name="encryptedProperty">The encrypted property.</param>
+        /// <param name="days">The days' index values.</param>
+        /// <param name="context">The context to work through.</param>
+        /// <param name="included">Whether to keep rows on those days, or leave them out.</param>
         private IQueryable<TEntity> WhereDayIn(Expression<Func<TEntity, DateTime>> encryptedProperty,
             List<string> days, FinanceTrackerContext context, bool included)
         {
@@ -100,6 +112,7 @@ internal static class QueryableBlindIndexExtensions
     /// Builds an <see cref="EF.Property{TProperty}"/> access to the encrypted property's blind index column, the
     /// shadow property named by <see cref="EntityTypeBuilderExtensions.BlindIndexPropertyName"/>.
     /// </summary>
+    /// <param name="encryptedProperty">The encrypted property.</param>
     private static (ParameterExpression Entity, Expression BlindIndex) BlindIndexAccess<TEntity>(
         Expression<Func<TEntity, string>> encryptedProperty)
     {

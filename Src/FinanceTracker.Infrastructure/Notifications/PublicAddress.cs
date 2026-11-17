@@ -15,6 +15,7 @@ public sealed record PublicAddress(Uri? Url)
     /// <paramref name="path"/> in the app as a whole address, null when the app's address isn't known or there's no
     /// path.
     /// </summary>
+    /// <param name="path">Where in the app, relative to it, null for nowhere.</param>
     public Uri? LinkTo(string? path)
     {
         if (Url is null || path is null)

@@ -17,6 +17,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Infrastructure.Reports;
 
+/// <inheritdoc cref="IReportService"/>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<IReportService>]
 public class ReportService : ServiceBase<ReportService>, IReportService
@@ -25,6 +26,11 @@ public class ReportService : ServiceBase<ReportService>, IReportService
 
     private readonly IAccountScope _accountScope;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="timeProvider">The clock.</param>
+    /// <param name="accountScope">Which accounts the user can see and change.</param>
     public ReportService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
         ILogger<ReportService> logger, TimeProvider timeProvider, IAccountScope accountScope)
@@ -34,6 +40,7 @@ public class ReportService : ServiceBase<ReportService>, IReportService
         _accountScope = accountScope;
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<SpentInTimePeriodReport> GetSpentInTimePeriodReportAsync(
         FilterTransactions request, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -101,6 +108,7 @@ public class ReportService : ServiceBase<ReportService>, IReportService
         yield return rsp;
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<SpentInCategoryReport> GetCategoryBreakdownReportAsync(
         FilterTransactions request, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -173,6 +181,7 @@ public class ReportService : ServiceBase<ReportService>, IReportService
         }
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<SpentInAccountReport> GetAccountBreakdownReportAsync(
         FilterTransactions request, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -255,6 +264,9 @@ public class ReportService : ServiceBase<ReportService>, IReportService
     /// none. The bank's classifications are on the whole of it, as are the user's tags unless it's split, then only
     /// the parts with one of them count.
     /// </summary>
+    /// <param name="transaction">The transaction.</param>
+    /// <param name="tags">The tags the report is about.</param>
+    /// <param name="customTags">The user's tag names, by id.</param>
     private static ReportAmount Matching(BankTransaction transaction, IReadOnlyCollection<string>? tags,
         IReadOnlyDictionary<Guid, string> customTags)
     {
@@ -272,12 +284,23 @@ public class ReportService : ServiceBase<ReportService>, IReportService
         return whole with { Amount = parts };
     }
 
+    /// <summary>
+    /// The money in, 0 or more.
+    /// </summary>
+    /// <param name="amounts">The amounts.</param>
     private static decimal TotalIn(IEnumerable<ReportAmount> amounts) =>
         amounts.Where(static x => !decimal.IsNegative(x.Amount)).Sum(static x => x.Amount);
 
+    /// <summary>
+    /// The money out, 0 or less.
+    /// </summary>
+    /// <param name="amounts">The amounts.</param>
     private static decimal TotalOut(IEnumerable<ReportAmount> amounts) =>
         amounts.Where(static x => decimal.IsNegative(x.Amount)).Sum(static x => x.Amount);
 
+    /// <param name="request">The filters.</param>
+    /// <param name="context">The context to read through.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <param name="includeTransfers">Whether transfers between the user's own accounts or within their household are
     /// kept, for the account breakdown, which shows an account's own money in and out. The other reports are income
     /// and spending, so leave them out.</param>

@@ -15,17 +15,23 @@ public sealed class CurrentUser : ICurrentUser
     /// </summary>
     public Guid? UserIdIfSet => _userId;
 
+    /// <inheritdoc/>
     public Guid UserId => _userId ?? throw new InvalidOperationException(
         "No user is set for this scope. Services need a signed in user, or a scope created for a user.");
 
     /// <summary>
     /// Acts as <paramref name="principal"/>, or as nobody when it isn't a signed in user.
     /// </summary>
+    /// <param name="principal">Who's signed in, null for nobody.</param>
     public void Set(ClaimsPrincipal? principal) =>
         _userId = Guid.TryParse(principal?.FindFirstValue(ClaimTypes.NameIdentifier), out Guid userId)
             ? userId
             : null;
 
+    /// <summary>
+    /// Acts as <paramref name="userId"/>, e.g. for a background job's work for one user.
+    /// </summary>
+    /// <param name="userId">The user.</param>
     public void Set(Guid userId)
     {
         ArgumentOutOfRangeException.ThrowIfEqual(userId, Guid.Empty);

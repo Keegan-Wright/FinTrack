@@ -17,6 +17,10 @@ internal static class JointAccounts
     /// same account, see <see cref="IsSameAccount"/>, the other person's shared with them in the link, and neither
     /// already merged. Each account in one pair at most.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="link">The link between the two people.</param>
+    /// <param name="userId">The user.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     public static async Task<List<(BankAccount Yours, BankAccount Theirs)>> SuggestionsAsync(
         FinanceTrackerContext context, UserLink link, Guid userId, CancellationToken cancellationToken)
     {
@@ -50,6 +54,11 @@ internal static class JointAccounts
     /// name="allowed"/> lets it pair with and is the same account, see <see cref="IsSameAccount"/>. Each account in
     /// one pair at most.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="yours">The user's account.</param>
+    /// <param name="theirs">The other person's account.</param>
+    /// <param name="allowed">The accounts each can pair with.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<List<(BankAccount Yours, BankAccount Theirs)>> PairAsync(
         FinanceTrackerContext context, List<BankAccount> yours, List<BankAccount> theirs,
         Func<BankAccount, BankAccount, bool> allowed, CancellationToken cancellationToken)
@@ -103,6 +112,9 @@ internal static class JointAccounts
     /// compared. The same sort code and number or IBAN when either has one, that settles it. A savings pot has
     /// neither, so then the same bank, name, currency and kind.
     /// </summary>
+    /// <param name="yours">The user's account.</param>
+    /// <param name="theirs">The other person's account.</param>
+    /// <param name="banks">The bank each connection is to, by connection.</param>
     private static bool LooksAlike(BankAccount yours, BankAccount theirs, Dictionary<Guid, string> banks)
     {
         if (yours.Identifier.IsKnown || theirs.Identifier.IsKnown)
@@ -123,6 +135,9 @@ internal static class JointAccounts
     /// or the same balance when neither has any yet. Someone confirms each merge, so a near miss costs them a look
     /// rather than a wrong merge.
     /// </summary>
+    /// <param name="yours">The user's account.</param>
+    /// <param name="theirs">The other person's account.</param>
+    /// <param name="transactions">The settled transactions of accounts with no numbers, by account.</param>
     private static bool IsSameAccount(BankAccount yours, BankAccount theirs,
         ILookup<Guid, (DateOnly, decimal, string)> transactions)
     {
@@ -144,6 +159,9 @@ internal static class JointAccounts
     /// <summary>
     /// The bank each account's connection is to, by connection.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="accounts">The accounts.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<Dictionary<Guid, string>> BanksAsync(FinanceTrackerContext context,
         List<BankAccount> accounts, CancellationToken cancellationToken)
     {
@@ -157,6 +175,9 @@ internal static class JointAccounts
     /// The settled transactions of the accounts with no sort code, number or IBAN, as compared across copies, by
     /// account.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="accounts">The accounts.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<ILookup<Guid, (DateOnly, decimal, string)>> TransactionsOfUnnumberedAsync(
         FinanceTrackerContext context, List<BankAccount> accounts, CancellationToken cancellationToken)
     {
@@ -178,6 +199,12 @@ internal static class JointAccounts
     /// shown and the other hidden. The hidden copy's tags and hidden bank classifications join the shown one's, its
     /// transfers are left for matching to find again from the shown one. Added to the context, saved by the caller.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="link">The link between the two people.</param>
+    /// <param name="userId">The user.</param>
+    /// <param name="pairs">The copies to merge, each the user's and the other person's.</param>
+    /// <param name="now">The time now, in UTC.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <exception cref="InvalidOperationException">One isn't among the link's suggestions.</exception>
     public static async Task<List<JointAccount>> MergeAsync(FinanceTrackerContext context, UserLink link,
         Guid userId, IReadOnlyCollection<(Guid Yours, Guid Theirs)> pairs, DateTime now,
@@ -201,6 +228,16 @@ internal static class JointAccounts
         return merged;
     }
 
+    /// <summary>
+    /// Merges two copies of one joint account, the one connected first shown and the other hidden.
+    /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="link">The link between the two people.</param>
+    /// <param name="userId">The user merging them, who owns the merge.</param>
+    /// <param name="yours">The user's copy.</param>
+    /// <param name="theirs">The other person's copy.</param>
+    /// <param name="now">The time now, in UTC.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<JointAccount> MergeAsync(FinanceTrackerContext context, UserLink link, Guid userId,
         BankAccount yours, BankAccount theirs, DateTime now, CancellationToken cancellationToken)
     {
@@ -224,6 +261,11 @@ internal static class JointAccounts
     /// Splits <paramref name="joint"/>, the hidden copy taking the shown one's tags, splits and hidden bank
     /// classifications as they stand. Added to the context, saved by the caller.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="link">The link between the two people.</param>
+    /// <param name="joint">The merged joint account.</param>
+    /// <param name="now">The time now, in UTC.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     public static async Task SplitAsync(FinanceTrackerContext context, UserLink link, JointAccount joint,
         DateTime now, CancellationToken cancellationToken)
     {
@@ -246,6 +288,8 @@ internal static class JointAccounts
     /// Whether <paramref name="first"/> was connected before <paramref name="second"/>, by id when they were at the
     /// same moment, so it's always the same one.
     /// </summary>
+    /// <param name="first">One copy.</param>
+    /// <param name="second">The other copy.</param>
     private static bool ConnectedFirst(BankAccount first, BankAccount second)
     {
         if (first.Created != second.Created)
@@ -259,6 +303,7 @@ internal static class JointAccounts
     /// <summary>
     /// Both copies of every merged joint account.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
     public static IQueryable<Guid> MergedAccountIds(FinanceTrackerContext context) =>
         context.JointAccounts.Select(static x => x.ShownAccountId)
             .Concat(context.JointAccounts.Select(static x => x.HiddenAccountId));
@@ -268,6 +313,13 @@ internal static class JointAccounts
     /// <paramref name="toAccountId"/>, each copy's own record of them from its own connection. Tags of the person who
     /// doesn't own the receiving copy are shared with its owner, so they see their names.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="link">The link between the two people.</param>
+    /// <param name="fromAccountId">The copy to copy from.</param>
+    /// <param name="toAccountId">The copy to copy to.</param>
+    /// <param name="withSplits">Whether to copy splits too.</param>
+    /// <param name="now">The time now, in UTC.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task CopyAnnotationsAsync(FinanceTrackerContext context, UserLink link, Guid fromAccountId,
         Guid toAccountId, bool withSplits, DateTime now, CancellationToken cancellationToken)
     {
@@ -293,6 +345,8 @@ internal static class JointAccounts
     /// Two logins can describe one transaction differently, so what's left is paired by day and amount when that's
     /// the only one on each side. Settled ones only, a pending one may still change.
     /// </summary>
+    /// <param name="from">One copy's transactions.</param>
+    /// <param name="to">The other copy's transactions.</param>
     internal static List<(BankTransaction From, BankTransaction To)> SameTransactions(List<BankTransaction> from,
         List<BankTransaction> to)
     {
@@ -320,6 +374,9 @@ internal static class JointAccounts
     /// Pairs of <paramref name="from"/> and <paramref name="to"/> not in <paramref name="paired"/> that are each the
     /// only one left on their side with that day and amount, so their descriptions differing can't mix two up.
     /// </summary>
+    /// <param name="from">One copy's transactions.</param>
+    /// <param name="to">The other copy's transactions.</param>
+    /// <param name="paired">The pairs found so far.</param>
     private static List<(BankTransaction From, BankTransaction To)> OnlyOnesOfTheirDayAndAmount(
         List<BankTransaction> from, List<BankTransaction> to, List<(BankTransaction From, BankTransaction To)> paired)
     {
@@ -347,9 +404,17 @@ internal static class JointAccounts
         return pairs;
     }
 
+    /// <summary>
+    /// A transaction's day and amount, what two copies are paired by when descriptions differ.
+    /// </summary>
+    /// <param name="transaction">The transaction.</param>
     private static (DateOnly Day, decimal Amount) DayAndAmount(BankTransaction transaction) =>
         (DateOnly.FromDateTime(transaction.OccurredAt), transaction.Amount);
 
+    /// <summary>
+    /// A transaction's day, amount and description, spaces tidied and in upper case, what two copies are paired by.
+    /// </summary>
+    /// <param name="transaction">The transaction.</param>
     private static (DateOnly Day, decimal Amount, string Description) Key(BankTransaction transaction) =>
         (DateOnly.FromDateTime(transaction.OccurredAt), transaction.Amount,
             string.Join(' ', transaction.Description.Split(' ', StringSplitOptions.RemoveEmptyEntries))
@@ -359,6 +424,11 @@ internal static class JointAccounts
     /// Shares the tags on <paramref name="transactions"/> that are the other person's in <paramref name="link"/> with
     /// each transaction's owner, so they see their names.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="link">The link between the two people.</param>
+    /// <param name="transactions">The settled transactions of accounts with no numbers, by account.</param>
+    /// <param name="now">The time now, in UTC.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     internal static async Task ShareForeignTagsAsync(FinanceTrackerContext context, UserLink link,
         List<BankTransaction> transactions, DateTime now, CancellationToken cancellationToken)
     {
@@ -392,6 +462,9 @@ internal static class JointAccounts
     /// Takes the transfer answers off the hidden copy's transactions, and the other halves paired with them, matching
     /// finds the pairs again from the shown copy.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="hiddenAccountId">The hidden copy.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task ClearTransfersAsync(FinanceTrackerContext context, Guid hiddenAccountId,
         CancellationToken cancellationToken)
     {
@@ -405,6 +478,9 @@ internal static class JointAccounts
     /// Takes the transfer answers off <paramref name="hidden"/>, tracked, and the other halves paired with them, for
     /// transactions of a hidden copy leaving the views.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="hidden">The hidden copy's transactions.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <returns>The other halves cleared.</returns>
     internal static async Task<List<BankTransaction>> ClearTransfersAsync(FinanceTrackerContext context,
         IReadOnlyCollection<BankTransaction> hidden, CancellationToken cancellationToken)

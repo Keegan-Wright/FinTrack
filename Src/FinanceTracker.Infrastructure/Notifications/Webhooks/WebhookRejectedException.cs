@@ -7,20 +7,30 @@ namespace FinanceTracker.Infrastructure.Notifications.Webhooks;
 /// </summary>
 public sealed class WebhookRejectedException : Exception
 {
+    /// <param name="statusCode">What the webhook answered.</param>
     public WebhookRejectedException(HttpStatusCode statusCode)
         : base($"The webhook answered {(int)statusCode}") => StatusCode = statusCode;
 
+    /// <summary>
+    /// Says the webhook didn't answer with success.
+    /// </summary>
     public WebhookRejectedException() : base("The webhook didn't answer with success")
     {
     }
 
+    /// <param name="message">What went wrong.</param>
     public WebhookRejectedException(string message) : base(message)
     {
     }
 
+    /// <param name="message">What went wrong.</param>
+    /// <param name="innerException">What caused it.</param>
     public WebhookRejectedException(string message, Exception innerException) : base(message, innerException)
     {
     }
 
+    /// <summary>
+    /// What the webhook answered, null when it isn't known.
+    /// </summary>
     public HttpStatusCode? StatusCode { get; }
 }

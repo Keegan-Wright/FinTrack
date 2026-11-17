@@ -9,8 +9,10 @@ namespace FinanceTracker.Infrastructure.Persistence.Configurations;
 /// Shared mapping for every aggregate root: client generated key, xmin concurrency token and a required,
 /// cascading owner.
 /// </summary>
+/// <typeparam name="T">The aggregate.</typeparam>
 internal abstract class AggregateRootConfiguration<T> : IEntityTypeConfiguration<T> where T : AggregateRoot
 {
+    /// <inheritdoc/>
     public void Configure(EntityTypeBuilder<T> builder)
     {
         builder.HasKey(x => x.Id);
@@ -25,5 +27,9 @@ internal abstract class AggregateRootConfiguration<T> : IEntityTypeConfiguration
         ConfigureAggregate(builder);
     }
 
+    /// <summary>
+    /// Maps what's particular to the aggregate.
+    /// </summary>
+    /// <param name="builder">The aggregate's builder.</param>
     protected abstract void ConfigureAggregate(EntityTypeBuilder<T> builder);
 }

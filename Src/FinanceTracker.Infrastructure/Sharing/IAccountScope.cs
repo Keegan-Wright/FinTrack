@@ -9,17 +9,23 @@ public interface IAccountScope
     /// <summary>
     /// What the money views show: their own accounts, and those shared with them unless they chose Just mine.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     Task<AccountsInView> ResolveAsync(FinanceTrackerContext context, CancellationToken cancellationToken);
 
     /// <summary>
     /// Their own accounts and every account shared with them, whichever view they chose. For what's theirs wherever
     /// it's paid from, such as their bills' payments.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     Task<AccountsInView> ResolveAllAsync(FinanceTrackerContext context, CancellationToken cancellationToken);
 
     /// <summary>
     /// The accounts whose transactions they can change: their own, and those shared with them with changes allowed,
     /// whichever view they chose.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     Task<AccountsInView> ResolveChangeableAsync(FinanceTrackerContext context, CancellationToken cancellationToken);
 }

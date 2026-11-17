@@ -21,8 +21,14 @@ public static class JobSchedules
     /// </summary>
     public const CronTriggerMisfireInstruction MissedRuns = CronTriggerMisfireInstruction.FireAndProceed;
 
+    /// <summary>
+    /// The key of a job's schedule in Quartz.
+    /// </summary>
+    /// <param name="function">The job's name.</param>
     public static TriggerKey KeyFor(string function) => new(function, JobNames.ScheduleGroup);
 
+    /// <param name="function">The job's name.</param>
+    /// <param name="description">What the job does.</param>
     /// <param name="expression">A Quartz cron expression, see <see cref="IsReadable"/>.</param>
     /// <param name="retries">How many times a failed run is retried.</param>
     /// <param name="retryIntervals">Seconds before each retry, the last used for any after it.</param>
@@ -38,6 +44,12 @@ public static class JobSchedules
     /// Sets up <paramref name="trigger"/> as the schedule, for a trigger Quartz builds itself, e.g. one declared in
     /// its configuration. See <see cref="Build"/>.
     /// </summary>
+    /// <param name="trigger">The trigger.</param>
+    /// <param name="function">The job's name.</param>
+    /// <param name="description">What the job does.</param>
+    /// <param name="expression">A Quartz cron expression.</param>
+    /// <param name="retries">How many times a failed run is retried.</param>
+    /// <param name="retryIntervals">Seconds before each retry, the last used for any after it.</param>
     public static void Configure(ITriggerConfigurator<IJob> trigger, string function, string description,
         string expression, int retries, IReadOnlyList<int> retryIntervals)
     {
@@ -57,11 +69,13 @@ public static class JobSchedules
     /// <summary>
     /// Whether Quartz can read <paramref name="expression"/>.
     /// </summary>
+    /// <param name="expression">A Quartz cron expression.</param>
     public static bool IsReadable(string expression) => CronExpression.TryParse(expression, out _);
 
     /// <summary>
     /// The seconds before each retry, one per retry.
     /// </summary>
+    /// <param name="policy">The schedule's retry policy, null for none.</param>
     public static int[] RetryIntervals(RetryPolicy? policy)
     {
         if (policy is null || policy.MaxAttempts == 0)
@@ -74,6 +88,11 @@ public static class JobSchedules
             .ToArray();
     }
 
+    /// <summary>
+    /// The retry policy for a schedule, none without retries.
+    /// </summary>
+    /// <param name="retries">How many times a failed run is retried.</param>
+    /// <param name="retryIntervals">Seconds before each retry, the last used for any after it.</param>
     private static RetryPolicy RetryPolicyFor(int retries, IReadOnlyList<int> retryIntervals)
     {
         if (retries <= 0)
@@ -90,6 +109,11 @@ public static class JobSchedules
         return RetryPolicy.Explicit(delays);
     }
 
+    /// <summary>
+    /// How long to wait before a retry, the default without intervals.
+    /// </summary>
+    /// <param name="retry">The retry, from 0.</param>
+    /// <param name="retryIntervals">Seconds before each retry, the last used for any after it.</param>
     private static TimeSpan WaitBefore(int retry, IReadOnlyList<int> retryIntervals)
     {
         if (retryIntervals.Count == 0)

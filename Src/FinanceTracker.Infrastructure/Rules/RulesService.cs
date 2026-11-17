@@ -15,6 +15,7 @@ using DomainRuleCondition = FinanceTracker.Domain.Rules.RuleCondition;
 
 namespace FinanceTracker.Infrastructure.Rules;
 
+/// <inheritdoc cref="IRulesService"/>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<IRulesService>]
 public class RulesService : ServiceBase<RulesService>, IRulesService
@@ -23,6 +24,12 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
     private readonly IAccountScope _accountScope;
     private readonly TimeProvider _timeProvider;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="ruleApplicationService">Applies the rules.</param>
+    /// <param name="accountScope">Which accounts the user can see and change.</param>
+    /// <param name="timeProvider">The clock.</param>
     public RulesService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<RulesService> logger,
         IRuleApplicationService ruleApplicationService, IAccountScope accountScope, TimeProvider timeProvider)
@@ -33,6 +40,7 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
         _timeProvider = timeProvider;
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<Rule> GetRulesAsync([EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -64,6 +72,7 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
         }
     }
 
+    /// <inheritdoc/>
     public async Task<Rule> GetRuleAsync(Guid id, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -82,6 +91,7 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
         return await SharedRules.ToContractAsync(context, UserId, seen, shared, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<Rule> AddRuleAsync(SaveRule rule, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -108,6 +118,7 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
         return RuleMapper.ToContract(newRule);
     }
 
+    /// <inheritdoc/>
     public async Task<Rule> UpdateRuleAsync(Guid id, SaveRule rule, CancellationToken cancellationToken)
     {
         DomainRule updated;
@@ -154,6 +165,7 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
         return await SharedRules.ToContractAsync(context, UserId, visible, saved, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task ReorderRulesAsync(ReorderRules order, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -176,6 +188,7 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
         Logger.LogChangedTheir(UserId, "reordered", "rules");
     }
 
+    /// <inheritdoc/>
     public async Task<RulePreview> PreviewRuleAsync(Guid? id, SaveRule rule, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -214,9 +227,11 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
             _timeProvider.UtcNow);
     }
 
+    /// <inheritdoc/>
     public Task<int> ApplyRuleToExistingAsync(Guid id, CancellationToken cancellationToken) =>
         _ruleApplicationService.ApplyToExistingAsync(id, cancellationToken);
 
+    /// <inheritdoc/>
     public async Task<SaveRule> GetDraftFromTransactionAsync(Guid transactionId,
         CancellationToken cancellationToken)
     {
@@ -235,6 +250,7 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
         return RuleMapper.DraftFrom(transaction, tagIds.ToHashSet());
     }
 
+    /// <inheritdoc/>
     public async Task DeleteRuleAsync(Guid id, CancellationToken cancellationToken)
     {
         await using (FinanceTrackerContext context =
@@ -255,6 +271,9 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
     /// The page only offers the user's own tags, bills and debts and the accounts they see, this covers calls that
     /// don't come from it.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="rule">What the user saved.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <exception cref="InvalidOperationException">An action adds a tag or pays a bill or debt, or a condition names
     /// an account, that doesn't exist or isn't the user's.</exception>
     private async Task EnsureTheUsersOwnAsync(FinanceTrackerContext context, SaveRule rule,
@@ -266,6 +285,13 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
         await EnsureAccountsAreTheUsersAsync(context, rule, cancellationToken);
     }
 
+    /// <summary>
+    /// Checks the bills the rule's actions pay are the user's.
+    /// </summary>
+    /// <param name="context">The context to read through.</param>
+    /// <param name="rule">The rule.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
+    /// <exception cref="DomainRuleException">A bill isn't the user's.</exception>
     private async Task EnsureBillsAreTheUsersAsync(FinanceTrackerContext context, SaveRule rule,
         CancellationToken cancellationToken)
     {
@@ -289,6 +315,13 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
         }
     }
 
+    /// <summary>
+    /// Checks the debts the rule's actions pay off are the user's.
+    /// </summary>
+    /// <param name="context">The context to read through.</param>
+    /// <param name="rule">The rule.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
+    /// <exception cref="DomainRuleException">A debt isn't the user's.</exception>
     private async Task EnsureDebtsAreTheUsersAsync(FinanceTrackerContext context, SaveRule rule,
         CancellationToken cancellationToken)
     {
@@ -312,6 +345,13 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
         }
     }
 
+    /// <summary>
+    /// Checks the tags the rule's actions add are the user's.
+    /// </summary>
+    /// <param name="context">The context to read through.</param>
+    /// <param name="rule">The rule.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
+    /// <exception cref="DomainRuleException">A tag isn't the user's.</exception>
     private async Task EnsureTagsAreTheUsersAsync(FinanceTrackerContext context, SaveRule rule,
         CancellationToken cancellationToken)
     {
@@ -335,6 +375,13 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
         }
     }
 
+    /// <summary>
+    /// Checks the accounts the rule's conditions name are ones the user can see.
+    /// </summary>
+    /// <param name="context">The context to read through.</param>
+    /// <param name="rule">The rule.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
+    /// <exception cref="DomainRuleException">An account isn't one they can see.</exception>
     private async Task EnsureAccountsAreTheUsersAsync(FinanceTrackerContext context, SaveRule rule,
         CancellationToken cancellationToken)
     {
@@ -365,6 +412,10 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
     /// The rule to preview. One of theirs or a new one, see <see cref="DraftOf"/>, or one shared with them with changes
     /// allowed, with the edit checked as for saving.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="id">Its id.</param>
+    /// <param name="rule">What the user saved.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<DomainRule> PreviewDraftAsync(FinanceTrackerContext context, Guid? id, SaveRule rule,
         CancellationToken cancellationToken)
     {
@@ -388,7 +439,10 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
     /// <summary>
     /// Rule <paramref name="id"/>, shared with the user.
     /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="id">Its id.</param>
     /// <param name="mustChange">Whether they must be allowed to change it.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <exception cref="InvalidOperationException">It isn't shared with them, or not so they can change it.</exception>
     private async Task<VisibleItem<DomainRule>> SharedRuleAsync(FinanceTrackerContext context, Guid id, bool mustChange,
         CancellationToken cancellationToken)
@@ -407,6 +461,8 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
     /// <paramref name="rule"/> as a domain rule to preview, switched on whatever it says. The saved one with the
     /// changes when editing so it keeps its id and place, or a new one running last.
     /// </summary>
+    /// <param name="id">Its id.</param>
+    /// <param name="rule">What the user saved.</param>
     /// <param name="saved">The user's rules, untracked.</param>
     /// <exception cref="InvalidOperationException">None of <paramref name="saved"/> has <paramref name="id"/>.
     /// </exception>
@@ -432,6 +488,8 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
     /// <summary>
     /// Everything about <paramref name="target"/> from <paramref name="rule"/> except its order and whether it's on.
     /// </summary>
+    /// <param name="target">The rule to change.</param>
+    /// <param name="rule">What the user saved.</param>
     private static void Overwrite(DomainRule target, SaveRule rule)
     {
         target.Rename(rule.Name);
@@ -441,9 +499,17 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
         target.ReplaceActions(ToDomainActions(rule));
     }
 
+    /// <summary>
+    /// The rule's conditions as the domain has them.
+    /// </summary>
+    /// <param name="rule">The rule.</param>
     private static List<DomainRuleCondition> ToDomainConditions(SaveRule rule) =>
         rule.Conditions.Select(RuleMapper.ToDomain).ToList();
 
+    /// <summary>
+    /// The rule's actions as the domain has them.
+    /// </summary>
+    /// <param name="rule">The rule.</param>
     private static List<DomainRuleAction> ToDomainActions(SaveRule rule) =>
         rule.Actions.Select(RuleMapper.ToDomain).ToList();
 }

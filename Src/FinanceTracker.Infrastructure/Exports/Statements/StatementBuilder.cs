@@ -11,6 +11,7 @@ using FinanceTracker.Generated.Enums;
 
 namespace FinanceTracker.Infrastructure.Exports.Statements;
 
+/// <inheritdoc cref="IStatementBuilder"/>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<IStatementBuilder>]
 public sealed class StatementBuilder : IStatementBuilder
@@ -24,6 +25,14 @@ public sealed class StatementBuilder : IStatementBuilder
     private readonly IDebtsService _debtsService;
     private readonly TimeProvider _timeProvider;
 
+    /// <param name="budgetsService">Gives the budgets.</param>
+    /// <param name="billsService">Gives the bills.</param>
+    /// <param name="dashboardService">Gives the dashboard.</param>
+    /// <param name="reportService">Gives the reports.</param>
+    /// <param name="transactionsService">Gives the transactions.</param>
+    /// <param name="savingsGoalsService">Gives the savings goals.</param>
+    /// <param name="debtsService">Gives the debts.</param>
+    /// <param name="timeProvider">The clock.</param>
     public StatementBuilder(IBudgetsService budgetsService, IBillsService billsService,
         IDashboardService dashboardService, IReportService reportService, ITransactionsService transactionsService,
         ISavingsGoalsService savingsGoalsService, IDebtsService debtsService, TimeProvider timeProvider)
@@ -38,6 +47,7 @@ public sealed class StatementBuilder : IStatementBuilder
         _timeProvider = timeProvider;
     }
 
+    /// <inheritdoc/>
     public async Task<Statement> BuildAsync(int year, int month, CancellationToken cancellationToken)
     {
         // The budgets page's period for the month, from pay to pay once the user's pay is picked up
@@ -84,6 +94,11 @@ public sealed class StatementBuilder : IStatementBuilder
         };
     }
 
+    /// <summary>
+    /// When <paramref name="day"/> starts where the user is, in UTC.
+    /// </summary>
+    /// <param name="day">The day.</param>
+    /// <param name="timeZone">Where the user is.</param>
     private static DateTime StartOfDayUtc(DateOnly day, TimeZoneInfo timeZone) =>
         TimeZoneInfo.ConvertTimeToUtc(day.ToDateTime(TimeOnly.MinValue, DateTimeKind.Unspecified), timeZone);
 }

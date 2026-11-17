@@ -10,5 +10,6 @@ internal static class PersonNames
     /// <summary>
     /// <paramref name="user"/>'s first and last name, e.g. <c>Jane Doe</c>.
     /// </summary>
+    /// <param name="user">The user.</param>
     public static string Full(FinanceTrackerUser user) => $"{user.FirstName} {user.LastName}".Trim();
 }
