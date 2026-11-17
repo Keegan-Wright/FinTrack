@@ -6,6 +6,9 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <AnalysisLevel>latest</AnalysisLevel>
     <AnalysisMode>Recommended</AnalysisMode>
+    <!-- Every public member needs a doc comment, the build fails without one (#53). Tests turn it off, see
+         Test/Directory.Build.props -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <!-- Release builds set the version from the git tag (Src/Dockerfile), anything else is a dev build. The SDK adds
          the commit to the informational version, shown in the app, see AppVersion.cs -->
     <Version Condition="'$(Version)' == ''">0.0.0-dev</Version>
