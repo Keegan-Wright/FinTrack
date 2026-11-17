@@ -6,11 +6,15 @@ using Microsoft.CodeAnalysis;
 
 namespace FinanceTracker.Generated.DependencyInjection;
 
+/// <summary>
+/// Finds the classes to register, by their attributes.
+/// </summary>
 internal static class InjectableTypeCollector
 {
     /// <summary>
     /// Every class marked <c>[InjectionCategory]</c> in the project and the referenced assemblies.
     /// </summary>
+    /// <param name="compilation">The project being built.</param>
     public static List<InjectableType> Collect(Compilation compilation)
     {
         List<InjectableType> types = [];
@@ -29,6 +33,11 @@ internal static class InjectableTypeCollector
         return types;
     }
 
+    /// <summary>
+    /// Adds the classes to register in <paramref name="namespaceSymbol"/> and the namespaces inside it.
+    /// </summary>
+    /// <param name="namespaceSymbol">The namespace to look in.</param>
+    /// <param name="types">The classes found so far.</param>
     private static void Collect(INamespaceSymbol namespaceSymbol, List<InjectableType> types)
     {
         foreach (INamespaceOrTypeSymbol member in namespaceSymbol.GetMembers())
@@ -61,22 +70,15 @@ internal static class InjectableTypeCollector
         }
     }
 
+    /// <summary>
+    /// Each <c>[Scoped]</c>, <c>[Transient]</c> or <c>[Singleton]</c> on the class, with what it's registered as.
+    /// </summary>
+    /// <param name="typeSymbol">The class.</param>
     private static IEnumerable<(string Lifetime, string ServiceType)> GetLifetimeAttributes(INamedTypeSymbol typeSymbol)
     {
         foreach (AttributeData attribute in typeSymbol.GetAttributes())
         {
-            string attributeName = attribute.AttributeClass?.Name ?? string.Empty;
-
-            string? lifetime =
-                attributeName.StartsWith(SourceGeneratorConstants.ScopedAttributeName, StringComparison.Ordinal)
-                    ? "Scoped"
-                    : attributeName.StartsWith(SourceGeneratorConstants.TransientAttributeName,
-                        StringComparison.Ordinal)
-                        ? "Transient"
-                        : attributeName.StartsWith(SourceGeneratorConstants.SingletonAttributeName,
-                            StringComparison.Ordinal)
-                            ? "Singleton"
-                            : null;
+            string? lifetime = LifetimeOf(attribute.AttributeClass?.Name ?? string.Empty);
 
             if (lifetime is not null && attribute.AttributeClass is { TypeArguments.Length: > 0 } attributeClass)
             {
@@ -87,8 +89,33 @@ internal static class InjectableTypeCollector
     }
 
     /// <summary>
+    /// The lifetime a registration attribute gives, null when it isn't one.
+    /// </summary>
+    /// <param name="attributeName">The attribute's class name, e.g. <c>ScopedAttribute</c>.</param>
+    private static string? LifetimeOf(string attributeName)
+    {
+        if (attributeName.StartsWith(SourceGeneratorConstants.ScopedAttributeName, StringComparison.Ordinal))
+        {
+            return "Scoped";
+        }
+
+        if (attributeName.StartsWith(SourceGeneratorConstants.TransientAttributeName, StringComparison.Ordinal))
+        {
+            return "Transient";
+        }
+
+        if (attributeName.StartsWith(SourceGeneratorConstants.SingletonAttributeName, StringComparison.Ordinal))
+        {
+            return "Singleton";
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// The category and destinations of the class's <c>[InjectionCategory]</c>, if it has one.
     /// </summary>
+    /// <param name="typeSymbol">The class.</param>
     private static (string Category, IReadOnlyCollection<string> Destinations)? GetInjectionCategory(
         INamedTypeSymbol typeSymbol)
     {
@@ -107,6 +134,10 @@ internal static class InjectableTypeCollector
         return (category, destinations);
     }
 
+    /// <summary>
+    /// The name of the enum member <paramref name="value"/> is, null when it isn't an enum.
+    /// </summary>
+    /// <param name="value">The attribute's argument.</param>
     private static string? GetEnumMemberName(TypedConstant value) =>
         value is { Value: int enumValue, Type: INamedTypeSymbol { TypeKind: TypeKind.Enum } enumType }
             ? enumType.GetMembers()
@@ -117,6 +148,7 @@ internal static class InjectableTypeCollector
     /// <summary>
     /// The names of the flags set in a <c>[Flags]</c> enum value.
     /// </summary>
+    /// <param name="value">The attribute's argument.</param>
     private static List<string>? GetEnumFlagNames(TypedConstant value) =>
         value is { Value: int enumValue, Type: INamedTypeSymbol { TypeKind: TypeKind.Enum } enumType }
             ? enumType.GetMembers()

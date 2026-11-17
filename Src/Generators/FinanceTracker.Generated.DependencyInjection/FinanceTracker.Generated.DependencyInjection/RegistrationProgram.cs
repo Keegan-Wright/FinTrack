@@ -15,6 +15,8 @@ internal sealed class RegistrationProgram
 {
     private readonly INamedTypeSymbol _program;
 
+    /// <param name="program">The project's <c>Program</c>.</param>
+    /// <param name="destination">The project's <c>FinTrackServiceDestination</c>.</param>
     private RegistrationProgram(INamedTypeSymbol program, string destination)
     {
         _program = program;
@@ -29,6 +31,8 @@ internal sealed class RegistrationProgram
     /// <summary>
     /// The project's <c>Program</c>, <see langword="null"/> without one or without a destination.
     /// </summary>
+    /// <param name="compilation">The project being built.</param>
+    /// <param name="options">The build's options, where the destination is.</param>
     public static RegistrationProgram? Find(Compilation compilation, AnalyzerConfigOptionsProvider options)
     {
         // Skip if there is no Service Destination MSBuildProperty, not code in need of processing.
@@ -46,6 +50,8 @@ internal sealed class RegistrationProgram
     /// <summary>
     /// A part of <c>Program</c> with a <paramref name="methodName"/> registering the <paramref name="types"/>.
     /// </summary>
+    /// <param name="methodName">The method's name.</param>
+    /// <param name="types">The classes to register.</param>
     public SourceText Write(string methodName, IEnumerable<InjectableType> types)
     {
         List<InjectableType> all = types.ToList();
@@ -81,6 +87,7 @@ internal sealed class RegistrationProgram
     /// <summary>
     /// The service types more than one class is registered as, e.g. each check a sync runs.
     /// </summary>
+    /// <param name="types">The classes to register.</param>
     private static HashSet<string> SharedServiceTypes(IEnumerable<InjectableType> types) =>
         new(types
             .GroupBy(static x => x.ServiceType)
@@ -91,6 +98,8 @@ internal sealed class RegistrationProgram
     /// One registration, unless one's already there. A service type several classes share gets each of them,
     /// resolved together as an <c>IEnumerable</c>, the rest only the first, so one registered before wins.
     /// </summary>
+    /// <param name="type">The class to register.</param>
+    /// <param name="shared">The service types more than one class is registered as.</param>
     private static string Registration(InjectableType type, HashSet<string> shared)
     {
         if (shared.Contains(type.ServiceType))

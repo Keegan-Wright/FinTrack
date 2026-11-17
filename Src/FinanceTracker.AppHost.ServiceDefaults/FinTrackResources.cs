@@ -6,8 +6,17 @@ namespace FinanceTracker.AppHost.ServiceDefaults;
 /// </summary>
 public static class FinTrackResources
 {
+    /// <summary>
+    /// The web app.
+    /// </summary>
     public const string Web = "FinTrack";
+    /// <summary>
+    /// The Postgres server.
+    /// </summary>
     public const string Postgres = "FinTrack-Postgres";
+    /// <summary>
+    /// The app's database on the Postgres server.
+    /// </summary>
     public const string Database = "FinTrackDb";
 
     /// <summary>

@@ -19,6 +19,7 @@ public static class ServiceVersion
     /// <paramref name="informationalVersion"/> without the commit the SDK adds after a <c>+</c>, which would make
     /// every build its own release.
     /// </summary>
+    /// <param name="informationalVersion">The assembly's informational version, e.g. <c>0.1.6+abc123</c>.</param>
     public static string From(string? informationalVersion)
     {
         if (string.IsNullOrWhiteSpace(informationalVersion))

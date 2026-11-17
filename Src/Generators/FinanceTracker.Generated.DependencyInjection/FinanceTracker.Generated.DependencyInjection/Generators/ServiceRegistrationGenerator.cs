@@ -8,7 +8,9 @@ namespace FinanceTracker.Generated.DependencyInjection;
 [Generator]
 public sealed class ServiceRegistrationGenerator : RegistrationGenerator
 {
+    /// <inheritdoc/>
     private protected override string MethodName => "AddFinanceTrackerServices";
 
+    /// <inheritdoc/>
     private protected override string Category => "Service";
 }

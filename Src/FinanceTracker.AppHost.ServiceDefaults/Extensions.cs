@@ -18,6 +18,9 @@ namespace FinanceTracker.AppHost.ServiceDefaults;
 /// </summary>
 public static class Extensions
 {
+    /// <summary>
+    /// Where the health checks answer, every check.
+    /// </summary>
     internal const string HealthEndpointPath = "/health";
 
     /// <summary>
@@ -26,6 +29,9 @@ public static class Extensions
     /// </summary>
     private const string QuartzInstrumentationName = "Quartz";
 
+    /// <summary>
+    /// Where the liveness check answers, only the checks tagged <c>live</c>.
+    /// </summary>
     internal const string AlivenessEndpointPath = "/alive";
 
     /// <summary>
@@ -57,6 +63,10 @@ public static class Extensions
 
     extension<TBuilder>(TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
+        /// <summary>
+        /// Adds OpenTelemetry, the health checks, service discovery, and resilience and service discovery on every HTTP
+        /// client.
+        /// </summary>
         public void AddServiceDefaults()
         {
             builder.ConfigureOpenTelemetry();
@@ -75,6 +85,9 @@ public static class Extensions
             });
         }
 
+        /// <summary>
+        /// Sends logs, traces and metrics through OpenTelemetry, from FinTrack and the libraries it uses.
+        /// </summary>
         private void ConfigureOpenTelemetry()
         {
             builder.Logging.AddOpenTelemetry(logging =>
@@ -147,6 +160,9 @@ public static class Extensions
             builder.AddOpenTelemetryExporters();
         }
 
+        /// <summary>
+        /// Exports over OTLP when <c>OTEL_EXPORTER_OTLP_ENDPOINT</c> is set.
+        /// </summary>
         private void AddOpenTelemetryExporters()
         {
             bool useOtlpExporter = !string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]);
@@ -157,6 +173,9 @@ public static class Extensions
             }
         }
 
+        /// <summary>
+        /// Adds a <c>self</c> check tagged <c>live</c>, healthy whenever the app answers.
+        /// </summary>
         private void AddDefaultHealthChecks()
         {
             builder.Services.AddHealthChecks()
@@ -166,6 +185,9 @@ public static class Extensions
 
     extension(WebApplication app)
     {
+        /// <summary>
+        /// Maps the health and liveness checks, only while developing.
+        /// </summary>
         public WebApplication MapDefaultEndpoints()
         {
             if (!app.Environment.IsDevelopment())

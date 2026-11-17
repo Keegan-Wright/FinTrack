@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
     <AnalysisMode>Recommended</AnalysisMode>
     <IsAspireSharedProject>true</IsAspireSharedProject>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
   <ItemGroup>

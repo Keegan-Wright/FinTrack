@@ -20,12 +20,15 @@ public sealed class EmailRenderer : IEmailRenderer
     private readonly IServiceScopeFactory _serviceScopeFactory;
     private readonly ILoggerFactory _loggerFactory;
 
+    /// <param name="serviceScopeFactory">Makes the scope each render gets.</param>
+    /// <param name="loggerFactory">The renderer's loggers.</param>
     public EmailRenderer(IServiceScopeFactory serviceScopeFactory, ILoggerFactory loggerFactory)
     {
         _serviceScopeFactory = serviceScopeFactory;
         _loggerFactory = loggerFactory;
     }
 
+    /// <inheritdoc/>
     public async Task<string> RenderAsync<TComponent>(IDictionary<string, object?> parameters)
         where TComponent : IComponent
     {
