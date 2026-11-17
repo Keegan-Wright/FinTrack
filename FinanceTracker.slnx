@@ -62,7 +62,7 @@
     <File Path="Docs\using\getting-started.md"/>
   </Folder>
   <Folder Name="/Misc/Docker/">
-    <File Path="Docker\.env"/>
+    <File Path="Docker\.env.example"/>
     <File Path="Docker\docker-compose.yaml"/>
     <File Path="Src\Dockerfile"/>
   </Folder>
