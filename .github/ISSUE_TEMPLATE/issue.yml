@@ -1,4 +1,4 @@
-name: Issue
+name: Feature or change
 description: Describe a problem, how things work today, and the proposed resolution.
 body:
   - type: textarea
