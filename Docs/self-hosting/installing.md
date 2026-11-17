@@ -20,7 +20,8 @@ You'll need a machine with Docker Compose, and TrueLayer credentials for connect
    docker compose up -d
    ```
 
-The database is set up on first start. `docker compose logs -f fintrackweb` shows how it's going.
+FinTrack waits for the database's health check to pass before starting, then sets the database up on first start.
+`docker compose logs -f fintrackweb` shows how it's going.
 
 ## Your account
 
