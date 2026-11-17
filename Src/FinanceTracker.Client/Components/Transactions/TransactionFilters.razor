@@ -175,8 +175,16 @@
     /// <param name="list">What's chosen.</param>
     /// <param name="one">The word for one.</param>
     /// <param name="many">The word for more.</param>
-    private static string CountText(IReadOnlyList<string?>? list, string one, string many) =>
-        list is null || list.Count == 0 ? string.Empty : $"{list.Count} {(list.Count == 1 ? one : many)}";
+    private static string CountText(IReadOnlyList<string?>? list, string one, string many)
+    {
+        if (list is null || list.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        string word = list.Count == 1 ? one : many;
+        return $"{list.Count} {word}";
+    }
 
     /// <summary>
     /// Searches when Enter is pressed.
