@@ -76,13 +76,24 @@
 @code {
     private IEnumerable<IdentityError>? identityErrors;
 
+    /// <summary>
+    /// The posted form.
+    /// </summary>
     [SupplyParameterFromForm] private RegisterRequest RegisterRequest { get; set; } = default!;
 
     // Form posts bind the property before initialisation, so only create a model when nothing was posted
+    /// <inheritdoc/>
     protected override void OnInitialized() => RegisterRequest ??= new();
 
+    /// <summary>
+    /// Where to go once registered.
+    /// </summary>
     [SupplyParameterFromQuery] private string? ReturnUrl { get; set; }
 
+    /// <summary>
+    /// Creates the user from the posted form, the first one becoming the admin.
+    /// </summary>
+    /// <param name="editContext">The form's edit context.</param>
     private async Task RegisterUser(EditContext editContext)
     {
         var validationResult = await Validator.ValidateAsync(RegisterRequest);

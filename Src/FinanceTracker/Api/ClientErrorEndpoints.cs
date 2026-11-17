@@ -5,6 +5,9 @@ using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace FinanceTracker.Api;
 
+/// <summary>
+/// Maps the browser error API.
+/// </summary>
 public static class ClientErrorEndpoints
 {
     extension(RouteGroupBuilder api)

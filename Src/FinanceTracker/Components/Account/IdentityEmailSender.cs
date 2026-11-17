@@ -16,6 +16,9 @@ public sealed class IdentityEmailSender : IEmailSender<FinanceTrackerUser>
     private readonly IAccountEmails _accountEmails;
     private readonly ILogger<IdentityEmailSender> _logger;
 
+    /// <param name="mailSender">Sends the emails.</param>
+    /// <param name="accountEmails">Writes the account emails.</param>
+    /// <param name="logger">Its logger.</param>
     public IdentityEmailSender(IMailSender mailSender, IAccountEmails accountEmails,
         ILogger<IdentityEmailSender> logger)
     {
@@ -24,6 +27,7 @@ public sealed class IdentityEmailSender : IEmailSender<FinanceTrackerUser>
         _logger = logger;
     }
 
+    /// <inheritdoc/>
     public async Task SendConfirmationLinkAsync(FinanceTrackerUser user, string email, string confirmationLink)
     {
         if (CanSend(user))
@@ -33,6 +37,7 @@ public sealed class IdentityEmailSender : IEmailSender<FinanceTrackerUser>
         }
     }
 
+    /// <inheritdoc/>
     public async Task SendPasswordResetLinkAsync(FinanceTrackerUser user, string email, string resetLink)
     {
         if (CanSend(user))
@@ -45,10 +50,17 @@ public sealed class IdentityEmailSender : IEmailSender<FinanceTrackerUser>
     /// <summary>
     /// Only for Identity's own API, which FinTrack doesn't map; its pages send links.
     /// </summary>
+    /// <param name="user">The user.</param>
+    /// <param name="email">Their email.</param>
+    /// <param name="resetCode">The reset code.</param>
     /// <exception cref="NotSupportedException">Always.</exception>
     public Task SendPasswordResetCodeAsync(FinanceTrackerUser user, string email, string resetCode) =>
         throw new NotSupportedException("FinTrack sends password reset links, not codes.");
 
+    /// <summary>
+    /// Whether there's a mail server to send through. Logs the email being skipped when there isn't.
+    /// </summary>
+    /// <param name="user">Who the email is for.</param>
     private bool CanSend(FinanceTrackerUser user)
     {
         if (_mailSender.IsAvailable)

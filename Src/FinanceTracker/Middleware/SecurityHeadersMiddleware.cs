@@ -10,6 +10,9 @@ public sealed class SecurityHeadersMiddleware
     private readonly RequestDelegate _next;
     private readonly bool _isDevelopment;
 
+    /// <param name="next">The rest of the pipeline.</param>
+    /// <param name="environment">Whether it's development, where the policy lets hot reload connect to localhost.
+    /// </param>
     public SecurityHeadersMiddleware(RequestDelegate next, IHostEnvironment environment)
     {
         ArgumentNullException.ThrowIfNull(environment);
@@ -17,6 +20,11 @@ public sealed class SecurityHeadersMiddleware
         _isDevelopment = environment.IsDevelopment();
     }
 
+    /// <summary>
+    /// Adds the headers as the response starts, then runs the rest of the request.
+    /// </summary>
+    /// <param name="context">The request.</param>
+    /// <param name="nonce">The response's nonce, which the policy lets inline scripts run with.</param>
     public Task InvokeAsync(HttpContext context, ContentSecurityNonce nonce)
     {
         ArgumentNullException.ThrowIfNull(context);
@@ -47,6 +55,7 @@ public sealed class SecurityHeadersMiddleware
     /// app's own, see css/fonts.css. Bank logos come from the banks' own sites. No form action rule, as signing in with OIDC or connecting a
     /// bank posts a form that then goes to the provider.
     /// </summary>
+    /// <param name="nonce">The response's nonce.</param>
     private string ContentSecurityPolicy(string nonce)
     {
         // Hot reload talks to the dev server over its own socket

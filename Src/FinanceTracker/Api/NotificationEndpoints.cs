@@ -5,6 +5,9 @@ using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace FinanceTracker.Api;
 
+/// <summary>
+/// Maps the notification API.
+/// </summary>
 public static class NotificationEndpoints
 {
     /// <summary>

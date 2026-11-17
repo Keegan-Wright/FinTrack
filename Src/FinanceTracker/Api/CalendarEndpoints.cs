@@ -5,6 +5,9 @@ using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace FinanceTracker.Api;
 
+/// <summary>
+/// Maps the calendar API.
+/// </summary>
 public static class CalendarEndpoints
 {
     extension(RouteGroupBuilder api)

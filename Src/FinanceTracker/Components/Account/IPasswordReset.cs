@@ -16,5 +16,6 @@ public interface IPasswordReset
     /// A link for <paramref name="user"/> to choose a new password with. Using it, or changing their password or
     /// email meanwhile, stops it working.
     /// </summary>
+    /// <param name="user">The user whose password is reset.</param>
     Task<Uri> CreateLinkAsync(FinanceTrackerUser user);
 }

@@ -15,6 +15,8 @@ public static class RateLimitedActions
     /// <summary>
     /// What <paramref name="method"/> to <paramref name="path"/> does that's limited, null when it isn't.
     /// </summary>
+    /// <param name="method">The request's method.</param>
+    /// <param name="path">The request's path.</param>
     public static RateLimitedAction? Of(string method, PathString path)
     {
         if (!HttpMethods.IsPost(method))

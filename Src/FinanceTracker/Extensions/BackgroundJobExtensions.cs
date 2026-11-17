@@ -5,6 +5,9 @@ using Quartz;
 
 namespace FinanceTracker.Extensions;
 
+/// <summary>
+/// Sets up the background jobs on Quartz.
+/// </summary>
 public static class BackgroundJobExtensions
 {
     /// <summary>

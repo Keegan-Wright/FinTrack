@@ -17,6 +17,8 @@ public class MoveEventSavingsGoalsOnAsync : IJob
     private readonly IDbContextFactory<FinanceTrackerContext> _dbContextFactory;
     private readonly TimeProvider _timeProvider;
 
+    /// <param name="dbContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="timeProvider">The clock.</param>
     public MoveEventSavingsGoalsOnAsync(IDbContextFactory<FinanceTrackerContext> dbContextFactory,
         TimeProvider timeProvider)
     {
@@ -24,9 +26,14 @@ public class MoveEventSavingsGoalsOnAsync : IJob
         _timeProvider = timeProvider;
     }
 
+    /// <inheritdoc/>
     public async ValueTask Execute(IJobExecutionContext context, CancellationToken cancellationToken) =>
         await MoveGoalsOnAsync(cancellationToken);
 
+    /// <summary>
+    /// Moves each rolling event's goal on to the event's next date once its date has passed.
+    /// </summary>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task MoveGoalsOnAsync(CancellationToken cancellationToken)
     {
         using Activity? activity = FinTrackActivitySources.App.StartActivity(nameof(MoveEventSavingsGoalsOnAsync));

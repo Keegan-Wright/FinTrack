@@ -7,6 +7,9 @@ using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace FinanceTracker.Api;
 
+/// <summary>
+/// Maps the export API.
+/// </summary>
 public static class ExportEndpoints
 {
     extension(RouteGroupBuilder api)

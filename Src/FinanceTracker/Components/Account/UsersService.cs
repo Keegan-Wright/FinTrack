@@ -21,6 +21,10 @@ public sealed class UsersService : IUsersService
     private readonly ICurrentUser _currentUser;
     private readonly ILogger<UsersService> _logger;
 
+    /// <param name="userManager">Finds and changes users.</param>
+    /// <param name="passwordReset">Makes password reset links.</param>
+    /// <param name="currentUser">The signed in user.</param>
+    /// <param name="logger">Its logger.</param>
     public UsersService(UserManager<FinanceTrackerUser> userManager, IPasswordReset passwordReset,
         ICurrentUser currentUser, ILogger<UsersService> logger)
     {
@@ -30,6 +34,7 @@ public sealed class UsersService : IUsersService
         _logger = logger;
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<UserSummary> GetUsersAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -58,6 +63,7 @@ public sealed class UsersService : IUsersService
         }
     }
 
+    /// <inheritdoc/>
     public async Task<ResetLink?> CreateResetLinkAsync(Guid userId, CancellationToken cancellationToken)
     {
         FinanceTrackerUser user = await FindAsync(userId);
@@ -73,6 +79,7 @@ public sealed class UsersService : IUsersService
         return new ResetLink { Url = link.AbsoluteUri, ExpiresAt = _passwordReset.ExpiresAt };
     }
 
+    /// <inheritdoc/>
     public async Task<bool> LockAsync(Guid userId, CancellationToken cancellationToken)
     {
         // The admin locking would lose the page to unlock themselves with, and admins are never all locked
@@ -90,6 +97,7 @@ public sealed class UsersService : IUsersService
         return true;
     }
 
+    /// <inheritdoc/>
     public async Task UnlockAsync(Guid userId, CancellationToken cancellationToken)
     {
         FinanceTrackerUser user = await FindAsync(userId);
@@ -99,10 +107,20 @@ public sealed class UsersService : IUsersService
         _logger.LogUserUnlocked(_currentUser.UserId, user.Id);
     }
 
+    /// <summary>
+    /// The user with <paramref name="userId"/>.
+    /// </summary>
+    /// <param name="userId">The user's id.</param>
+    /// <exception cref="NotFoundException">There's no such user.</exception>
     private async Task<FinanceTrackerUser> FindAsync(Guid userId) =>
         await _userManager.FindByIdAsync(userId.ToString())
         ?? throw new NotFoundException($"There's no user {userId}");
 
+    /// <summary>
+    /// Throws when Identity refused the change.
+    /// </summary>
+    /// <param name="result">What Identity said.</param>
+    /// <exception cref="AccountUpdateFailedException">It refused.</exception>
     private static void ThrowIfFailed(IdentityResult result)
     {
         if (!result.Succeeded)

@@ -9,8 +9,14 @@
 
 @code {
 
+    /// <summary>
+    /// The page's heading.
+    /// </summary>
     [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
 
+    /// <summary>
+    /// A line under the heading, null for none.
+    /// </summary>
     [Parameter] public string? Subtitle { get; set; }
 
 }

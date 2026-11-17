@@ -73,6 +73,7 @@ public static class OpenBankingExtensions
     /// <see cref="TrueLayerThrottlingOptions.MaxCallsPerSecond"/> start each second. Calls over either limit queue in
     /// order rather than being refused. A limit of 0 is no limit.
     /// </summary>
+    /// <param name="options">The limits.</param>
     /// <returns>Null when neither limit is set, the calls aren't throttled.</returns>
     /// <exception cref="ArgumentOutOfRangeException">Either limit is negative.</exception>
     public static RateLimiter? CreateDataRateLimiter(TrueLayerThrottlingOptions options)
@@ -123,6 +124,7 @@ public static class OpenBankingExtensions
     /// How long to wait before retrying a refused (429) TrueLayer request: 15 seconds, then 30, then 45. Null for any
     /// other failure, which keeps the standard delay.
     /// </summary>
+    /// <param name="statusCode">The failed request's status, null when it got no answer.</param>
     /// <param name="attemptNumber">The retry about to happen, from 0.</param>
     public static TimeSpan? TooManyRequestsDelay(HttpStatusCode? statusCode, int attemptNumber)
     {
@@ -134,6 +136,10 @@ public static class OpenBankingExtensions
         return TooManyRequestsBackOffStep * (attemptNumber + 1);
     }
 
+    /// <summary>
+    /// TrueLayer's settings, from the <c>OPEN_BANKING_TRUELAYER_*</c> environment variables.
+    /// </summary>
+    /// <param name="configuration">The app's settings.</param>
     private static TrueLayerOpenBankingConfiguration ReadTrueLayerConfiguration(IConfiguration configuration) => new()
     {
         BaseAuthUrl = configuration.GetValue<Uri>(FinTrackEnvironment.TrueLayerBaseAuthUrl)!,
@@ -148,6 +154,8 @@ public static class OpenBankingExtensions
     /// Registers a TrueLayer client with its own standard resilience handler in place of the service defaults' one. It
     /// waits <see cref="TooManyRequestsDelay"/> before retrying a 429, rather than the few seconds it waits by default.
     /// </summary>
+    /// <param name="services">The app's services.</param>
+    /// <param name="clientName">The client's name.</param>
     /// <remarks>
     /// The defaults' handler can't be tuned per client it's registered for every client at once, so its options and
     /// pipeline are named <c>-standard</c> whichever client uses it. A handler added on the named client goes by
@@ -175,6 +183,8 @@ public static class OpenBankingExtensions
     /// Makes every request on the client wait for <paramref name="rateLimiter"/>. The standard handler limits before it
     /// starts the total request timeout, so time spent queuing doesn't count against it.
     /// </summary>
+    /// <param name="client">The client's resilience handler.</param>
+    /// <param name="rateLimiter">The limiter its requests wait for.</param>
     private static void ThrottleClient(IHttpStandardResiliencePipelineBuilder client, RateLimiter rateLimiter) =>
         client.Configure((options, services) =>
         {
@@ -187,6 +197,9 @@ public static class OpenBankingExtensions
     /// Waits for <paramref name="rateLimiter"/>, recording how long the call queued, see
     /// <see cref="FinTrackMetrics.TrueLayerThrottled"/>.
     /// </summary>
+    /// <param name="rateLimiter">The limiter to wait for.</param>
+    /// <param name="metrics">Records how long it waited.</param>
+    /// <param name="cancellationToken">Stops the wait.</param>
     private static async ValueTask<RateLimitLease> AcquireAsync(RateLimiter rateLimiter, FinTrackMetrics metrics,
         CancellationToken cancellationToken)
     {

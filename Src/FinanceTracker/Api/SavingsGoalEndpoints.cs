@@ -6,6 +6,9 @@ using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace FinanceTracker.Api;
 
+/// <summary>
+/// Maps the savings goal API.
+/// </summary>
 public static class SavingsGoalEndpoints
 {
     extension(RouteGroupBuilder api)

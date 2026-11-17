@@ -5,6 +5,9 @@ using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace FinanceTracker.Api;
 
+/// <summary>
+/// Maps the net worth API.
+/// </summary>
 public static class NetWorthEndpoints
 {
     extension(RouteGroupBuilder api)

@@ -3,6 +3,9 @@ using FinanceTracker.Contracts.Services;
 
 namespace FinanceTracker.Api;
 
+/// <summary>
+/// Maps the account API.
+/// </summary>
 public static class AccountEndpoints
 {
     extension(RouteGroupBuilder api)

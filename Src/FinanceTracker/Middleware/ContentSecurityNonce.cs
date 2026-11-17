@@ -9,5 +9,8 @@ namespace FinanceTracker.Middleware;
 /// </summary>
 public sealed class ContentSecurityNonce
 {
+    /// <summary>
+    /// The nonce, 32 hex characters.
+    /// </summary>
     public string Value { get; } = Convert.ToHexString(RandomNumberGenerator.GetBytes(16));
 }

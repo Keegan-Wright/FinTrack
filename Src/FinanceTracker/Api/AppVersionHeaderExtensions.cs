@@ -3,6 +3,9 @@ using FinanceTracker.Contracts.Api;
 
 namespace FinanceTracker.Api;
 
+/// <summary>
+/// Tells the front end which build the server serves.
+/// </summary>
 public static class AppVersionHeaderExtensions
 {
     extension(WebApplication app)

@@ -18,6 +18,10 @@ internal static class ProfileChanges
         return new ProfileChange { Errors = result.Errors.Select(Describe).ToList() };
     }
 
+    /// <summary>
+    /// What to tell the user about <paramref name="error"/>.
+    /// </summary>
+    /// <param name="error">What Identity said.</param>
     private static string Describe(IdentityError error)
     {
         if (error.Code == nameof(IdentityErrorDescriber.PasswordMismatch))

@@ -5,6 +5,9 @@ using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace FinanceTracker.Api;
 
+/// <summary>
+/// Maps the pay period API.
+/// </summary>
 public static class PayPeriodEndpoints
 {
     extension(RouteGroupBuilder api)

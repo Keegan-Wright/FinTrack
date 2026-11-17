@@ -5,6 +5,9 @@ using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace FinanceTracker.Api;
 
+/// <summary>
+/// Maps the transaction API.
+/// </summary>
 public static class TransactionEndpoints
 {
     extension(RouteGroupBuilder api)

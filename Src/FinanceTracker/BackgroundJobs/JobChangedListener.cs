@@ -11,19 +11,24 @@ public sealed class JobChangedListener : IJobListener
 {
     private readonly ISyncNotifier _syncNotifier;
 
+    /// <param name="syncNotifier">Tells browsers about syncs and jobs.</param>
     public JobChangedListener(ISyncNotifier syncNotifier) => _syncNotifier = syncNotifier;
 
+    /// <inheritdoc/>
     public string Name => nameof(JobChangedListener);
 
+    /// <inheritdoc/>
     public async ValueTask JobToBeExecuted(IJobExecutionContext context, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(context);
         await _syncNotifier.JobChangedAsync(context.JobDetail.Key.Name);
     }
 
+    /// <inheritdoc/>
     public ValueTask JobExecutionVetoed(IJobExecutionContext context, CancellationToken cancellationToken) =>
         ValueTask.CompletedTask;
 
+    /// <inheritdoc/>
     public async ValueTask JobWasExecuted(IJobExecutionContext context, JobExecutionException? jobException,
         CancellationToken cancellationToken)
     {
@@ -31,6 +36,7 @@ public sealed class JobChangedListener : IJobListener
         await _syncNotifier.JobChangedAsync(context.JobDetail.Key.Name);
     }
 
+    /// <inheritdoc/>
     public ValueTask JobProgressChanged(IJobExecutionContext context, FireInstanceProgress progress,
         CancellationToken cancellationToken) => ValueTask.CompletedTask;
 }

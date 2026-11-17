@@ -14,6 +14,9 @@ using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 
 namespace FinanceTracker.Extensions;
 
+/// <summary>
+/// Sets up signing in, with Identity's cookies and, when it's configured, single sign-on.
+/// </summary>
 public static class AuthenticationExtensions
 {
     /// <summary>
@@ -158,6 +161,11 @@ public static class AuthenticationExtensions
             !string.IsNullOrEmpty(configuration[FinTrackEnvironment.OidcClientSecret]);
     }
 
+    /// <summary>
+    /// Sets up single sign-on with the provider in the <c>OIDC_*</c> settings.
+    /// </summary>
+    /// <param name="options">The handler's options.</param>
+    /// <param name="configuration">The app's settings.</param>
     private static void ConfigureOidc(OpenIdConnectOptions options, IConfiguration configuration)
     {
         options.Authority = configuration[FinTrackEnvironment.OidcAuthority];
@@ -200,6 +208,8 @@ public static class AuthenticationExtensions
     /// read, the user lands on the sign in page saying single sign on failed, as when it fails at the provider, rather
     /// than on the error page.
     /// </summary>
+    /// <param name="context">The request.</param>
+    /// <param name="returnUrl">Where to go once signed in.</param>
     public static async Task<IResult> ChallengeOidcAsync(HttpContext context, string? returnUrl)
     {
         AuthenticationProperties properties = new()
@@ -221,8 +231,12 @@ public static class AuthenticationExtensions
         }
     }
 
-    // Refused by the provider (OpenIdConnectProtocolException), its settings unreadable (InvalidOperationException
-    // from the configuration manager) or it can't be reached (HttpRequestException)
+    /// <summary>
+    /// Whether the provider failed the challenge. It refused (<see cref="OpenIdConnectProtocolException"/>), its
+    /// settings couldn't be read (<see cref="InvalidOperationException"/> from the configuration manager) or it
+    /// couldn't be reached (<see cref="HttpRequestException"/>).
+    /// </summary>
+    /// <param name="exception">What the challenge threw.</param>
     private static bool IsProviderFailure(Exception exception) =>
         exception is OpenIdConnectProtocolException or InvalidOperationException or HttpRequestException;
 
@@ -230,6 +244,8 @@ public static class AuthenticationExtensions
     /// <paramref name="returnUrl"/> when it's on this site, as a path, otherwise the home page. The login page is
     /// given absolute urls, see <c>RedirectToLogin</c>.
     /// </summary>
+    /// <param name="request">The request, whose site the url has to be on.</param>
+    /// <param name="returnUrl">Where to go once signed in.</param>
     private static string LocalPath(HttpRequest request, string? returnUrl)
     {
         Uri site = new($"{request.Scheme}://{request.Host}{request.PathBase}/");

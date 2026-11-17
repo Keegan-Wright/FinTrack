@@ -5,6 +5,9 @@ using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace FinanceTracker.Api;
 
+/// <summary>
+/// Maps the sharing API.
+/// </summary>
 public static class SharingEndpoints
 {
     extension(RouteGroupBuilder api)
@@ -83,6 +86,10 @@ public static class SharingEndpoints
         }
     }
 
+    /// <summary>
+    /// 204 when it was found, 404 when not.
+    /// </summary>
+    /// <param name="found">Whether it was found.</param>
     private static Results<NoContent, NotFound> NoContentIfFound(bool found)
     {
         if (found)

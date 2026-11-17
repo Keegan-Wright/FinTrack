@@ -5,6 +5,9 @@ using FinanceTracker.Infrastructure.Notifications.Webhooks;
 
 namespace FinanceTracker.Extensions;
 
+/// <summary>
+/// Sets up how notifications are sent.
+/// </summary>
 public static class NotificationExtensions
 {
     extension(WebApplicationBuilder builder)
@@ -97,6 +100,12 @@ public static class NotificationExtensions
         };
 
         // Unset or empty, as Docker Compose passes an unset variable, means no links
+        /// <summary>
+        /// The app's public address from <see cref="FinTrackEnvironment.PublicUrl"/>, ending in <c>/</c>. Null when it
+        /// isn't set.
+        /// </summary>
+        /// <param name="value">The setting's value.</param>
+        /// <exception cref="InvalidOperationException">It isn't an address.</exception>
         private static Uri? PublicUrlFrom(string? value)
         {
             if (string.IsNullOrWhiteSpace(value))

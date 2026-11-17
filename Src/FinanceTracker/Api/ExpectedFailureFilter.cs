@@ -10,6 +10,7 @@ namespace FinanceTracker.Api;
 /// </summary>
 public sealed class ExpectedFailureFilter : IEndpointFilter
 {
+    /// <inheritdoc/>
     public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
     {
         try

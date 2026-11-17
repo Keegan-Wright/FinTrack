@@ -73,6 +73,10 @@ internal sealed class RegistrationProgram
                         {
                             {{modifiers}} class Program
                             {
+                                /// <summary>
+                                /// Registers the classes marked for this method and project.
+                                /// </summary>
+                                /// <param name="services">The app's services.</param>
                                 public static void {{methodName}}(IServiceCollection services)
                                 {
                                     {{registrations}}

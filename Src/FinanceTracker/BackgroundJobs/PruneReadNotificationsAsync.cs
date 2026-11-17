@@ -17,6 +17,8 @@ public class PruneReadNotificationsAsync : IJob
     private readonly IDbContextFactory<FinanceTrackerContext> _dbContextFactory;
     private readonly TimeProvider _timeProvider;
 
+    /// <param name="dbContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="timeProvider">The clock.</param>
     public PruneReadNotificationsAsync(IDbContextFactory<FinanceTrackerContext> dbContextFactory,
         TimeProvider timeProvider)
     {
@@ -24,9 +26,14 @@ public class PruneReadNotificationsAsync : IJob
         _timeProvider = timeProvider;
     }
 
+    /// <inheritdoc/>
     public async ValueTask Execute(IJobExecutionContext context, CancellationToken cancellationToken) =>
         await PruneAsync(cancellationToken);
 
+    /// <summary>
+    /// Deletes notifications read longer ago than they're kept, and those never shown in the app once as old.
+    /// </summary>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task PruneAsync(CancellationToken cancellationToken)
     {
         using Activity? activity = FinTrackActivitySources.App.StartActivity(nameof(PruneReadNotificationsAsync));

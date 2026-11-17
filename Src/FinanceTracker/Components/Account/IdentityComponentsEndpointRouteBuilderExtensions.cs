@@ -11,11 +11,17 @@ using Microsoft.Extensions.Primitives;
 
 namespace FinanceTracker.Components.Account;
 
+/// <summary>
+/// The endpoints the account pages post to.
+/// </summary>
 internal static class IdentityComponentsEndpointRouteBuilderExtensions
 {
     extension(IEndpointRouteBuilder endpoints)
     {
         // These endpoints are required by the Identity Razor components defined in the /Components/Account/Pages directory of this project.
+        /// <summary>
+        /// Maps the account endpoints the Identity pages need, under <c>/Account</c>.
+        /// </summary>
         public IEndpointConventionBuilder MapAdditionalIdentityEndpoints()
         {
             ArgumentNullException.ThrowIfNull(endpoints);

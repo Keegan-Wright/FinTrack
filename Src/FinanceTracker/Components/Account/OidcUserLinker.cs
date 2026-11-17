@@ -15,17 +15,38 @@ namespace FinanceTracker.Components.Account;
 /// </remarks>
 public sealed class OidcUserLinker
 {
+    /// <summary>
+    /// The claim with the user's id at the provider.
+    /// </summary>
     public const string Subject = "sub";
+    /// <summary>
+    /// The claim with the user's email.
+    /// </summary>
     public const string Email = "email";
+    /// <summary>
+    /// The claim saying whether the provider has verified the email.
+    /// </summary>
     public const string EmailVerified = "email_verified";
+    /// <summary>
+    /// The claim with the user's first name.
+    /// </summary>
     public const string GivenName = "given_name";
+    /// <summary>
+    /// The claim with the user's last name.
+    /// </summary>
     public const string FamilyName = "family_name";
+    /// <summary>
+    /// The claim with the username the user goes by.
+    /// </summary>
     public const string PreferredUsername = "preferred_username";
 
     private readonly AdminProvisioner _adminProvisioner;
     private readonly ILogger<OidcUserLinker> _logger;
     private readonly UserManager<FinanceTrackerUser> _userManager;
 
+    /// <param name="userManager">Finds and changes users.</param>
+    /// <param name="adminProvisioner">Makes the first user an admin.</param>
+    /// <param name="logger">Its logger.</param>
     public OidcUserLinker(UserManager<FinanceTrackerUser> userManager, AdminProvisioner adminProvisioner,
         ILogger<OidcUserLinker> logger)
     {
@@ -67,6 +88,13 @@ public sealed class OidcUserLinker
         return user is null ? await CreateAsync(external, subject, email) : await LinkAsync(user, subject);
     }
 
+    /// <summary>
+    /// Links <paramref name="user"/>, found by their verified email, to <paramref name="subject"/>. Refused when
+    /// they're already linked to another.
+    /// </summary>
+    /// <param name="user">The user with the email.</param>
+    /// <param name="subject">Their id at the provider.</param>
+    /// <returns>The user, null when refused.</returns>
     private async Task<FinanceTrackerUser?> LinkAsync(FinanceTrackerUser user, string subject)
     {
         // Already linked to another identity at the provider, which happens to share the email
@@ -88,6 +116,13 @@ public sealed class OidcUserLinker
         return user;
     }
 
+    /// <summary>
+    /// Adds a user from the provider's claims, with their email confirmed.
+    /// </summary>
+    /// <param name="external">The provider's claims.</param>
+    /// <param name="subject">Their id at the provider.</param>
+    /// <param name="email">Their verified email.</param>
+    /// <returns>The user, null when Identity refused them.</returns>
     private async Task<FinanceTrackerUser?> CreateAsync(ClaimsPrincipal external, string subject, string email)
     {
         string firstName = external.FindFirstValue(GivenName) ?? string.Empty;
@@ -117,6 +152,8 @@ public sealed class OidcUserLinker
     /// Confirms an already linked user's email when the provider says it checked that same email, e.g. for users
     /// linked before emails were confirmed. A failure only leaves it unconfirmed, sign in carries on.
     /// </summary>
+    /// <param name="user">The linked user.</param>
+    /// <param name="external">The provider's claims.</param>
     private async Task ConfirmIfVerifiedAsync(FinanceTrackerUser user, ClaimsPrincipal external)
     {
         string? email = external.FindFirstValue(Email);
@@ -130,6 +167,10 @@ public sealed class OidcUserLinker
         Succeeded(await _userManager.UpdateAsync(user));
     }
 
+    /// <summary>
+    /// Whether Identity took the change. Logs why when it didn't.
+    /// </summary>
+    /// <param name="result">What Identity said.</param>
     private bool Succeeded(IdentityResult result)
     {
         if (!result.Succeeded)
@@ -140,5 +181,9 @@ public sealed class OidcUserLinker
         return result.Succeeded;
     }
 
+    /// <summary>
+    /// Whether a claim's value is <c>true</c>.
+    /// </summary>
+    /// <param name="value">The claim's value.</param>
     private static bool IsTrue(string? value) => bool.TryParse(value, out bool parsed) && parsed;
 }

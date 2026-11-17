@@ -12,6 +12,8 @@ public sealed class AccountUrls : IAccountUrls
     private readonly PublicAddress _publicAddress;
     private readonly IHttpContextAccessor _httpContextAccessor;
 
+    /// <param name="publicAddress">The app's address as people reach it.</param>
+    /// <param name="httpContextAccessor">Gives the current request.</param>
     public AccountUrls(PublicAddress publicAddress, IHttpContextAccessor httpContextAccessor)
     {
         _publicAddress = publicAddress;
@@ -22,6 +24,10 @@ public sealed class AccountUrls : IAccountUrls
     public Uri Create(string path, IDictionary<string, string?> query) =>
         new(QueryHelpers.AddQueryString(new Uri(AppAddress(), path).AbsoluteUri, query));
 
+    /// <summary>
+    /// The app's public address, or the current request's when that isn't set.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">Neither is known.</exception>
     private Uri AppAddress()
     {
         if (_publicAddress.Url is { } url)

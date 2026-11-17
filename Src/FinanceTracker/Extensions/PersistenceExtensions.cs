@@ -5,6 +5,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.Extensions;
 
+/// <summary>
+/// Sets up the database.
+/// </summary>
 public static class PersistenceExtensions
 {
     extension(WebApplicationBuilder builder)

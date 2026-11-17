@@ -9,8 +9,15 @@ using MudBlazor.Services;
 
 namespace FinanceTracker;
 
+/// <summary>
+/// The web app. Serves the pages, the API and the sync hub, and runs the background jobs.
+/// </summary>
 public partial class Program
 {
+    /// <summary>
+    /// Builds and runs the app.
+    /// </summary>
+    /// <param name="args">The command line arguments.</param>
     public static async Task Main(string[] args)
     {
         WebApplicationBuilder builder = WebApplication.CreateBuilder(args);

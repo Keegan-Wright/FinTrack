@@ -13,12 +13,15 @@ public class SyncNotifier : ISyncNotifier
     private readonly IHubContext<SyncHub> _hubContext;
     private readonly ILogger<SyncNotifier> _logger;
 
+    /// <param name="hubContext">Sends to the users' and admins' connections.</param>
+    /// <param name="logger">Logs a message that failed.</param>
     public SyncNotifier(IHubContext<SyncHub> hubContext, ILogger<SyncNotifier> logger)
     {
         _hubContext = hubContext;
         _logger = logger;
     }
 
+    /// <inheritdoc/>
     public async Task NotifyStartedAsync(Guid userId)
     {
         try
@@ -32,6 +35,7 @@ public class SyncNotifier : ISyncNotifier
         }
     }
 
+    /// <inheritdoc/>
     public async Task NotifyAsync(Guid userId)
     {
         try
@@ -45,6 +49,7 @@ public class SyncNotifier : ISyncNotifier
         }
     }
 
+    /// <inheritdoc/>
     public async Task JobChangedAsync(string function)
     {
         try

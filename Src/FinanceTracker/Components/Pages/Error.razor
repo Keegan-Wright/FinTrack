@@ -28,6 +28,9 @@
 </div>
 
 @code {
+    /// <summary>
+    /// The request, for its id and the path that failed.
+    /// </summary>
     [CascadingParameter] private HttpContext? HttpContext { get; set; }
 
     private string? RequestId { get; set; }
@@ -48,6 +51,7 @@
     // Home is the main way on when there's nothing to try again
     private string? HomeAsWell => _retryPath is null ? null : Home;
 
+    /// <inheritdoc/>
     protected override void OnInitialized()
     {
         base.OnInitialized();

@@ -3,6 +3,9 @@ using Npgsql;
 
 namespace FinanceTracker.Extensions;
 
+/// <summary>
+/// Reads the database connection string.
+/// </summary>
 public static class DatabaseConnectionExtensions
 {
     extension(IConfiguration configuration)

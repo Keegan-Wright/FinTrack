@@ -5,6 +5,9 @@ using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace FinanceTracker.Api;
 
+/// <summary>
+/// Maps the dashboard API.
+/// </summary>
 public static class DashboardEndpoints
 {
     extension(RouteGroupBuilder api)

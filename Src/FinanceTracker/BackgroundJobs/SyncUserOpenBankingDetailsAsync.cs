@@ -11,6 +11,12 @@ namespace FinanceTracker.BackgroundJobs;
 /// </summary>
 public class SyncUserOpenBankingDetailsAsync : OpenBankingSyncJob, IJob
 {
+    /// <param name="serviceScopeFactory">Makes the scopes its services run in.</param>
+    /// <param name="dbContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="syncNotifier">Tells browsers about syncs and jobs.</param>
+    /// <param name="timeProvider">The clock.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="metrics">Records its metrics.</param>
     public SyncUserOpenBankingDetailsAsync(IServiceScopeFactory serviceScopeFactory,
         IDbContextFactory<FinanceTrackerContext> dbContextFactory, ISyncNotifier syncNotifier,
         TimeProvider timeProvider, ILogger<OpenBankingSyncJob> logger, FinTrackMetrics metrics)
@@ -18,6 +24,8 @@ public class SyncUserOpenBankingDetailsAsync : OpenBankingSyncJob, IJob
     {
     }
 
+    /// <param name="context">The run, whose data says which user.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <exception cref="InvalidOperationException">The run doesn't say which user, see
     /// <see cref="JobNames.UserIdKey"/>.</exception>
     public async ValueTask Execute(IJobExecutionContext context, CancellationToken cancellationToken)

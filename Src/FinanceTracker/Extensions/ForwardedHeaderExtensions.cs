@@ -4,6 +4,9 @@ using IPNetwork = System.Net.IPNetwork;
 
 namespace FinanceTracker.Extensions;
 
+/// <summary>
+/// Reads the forwarded headers from trusted reverse proxies.
+/// </summary>
 public static class ForwardedHeaderExtensions
 {
     extension(WebApplicationBuilder builder)
@@ -32,6 +35,8 @@ public static class ForwardedHeaderExtensions
     /// <summary>
     /// Reads forwarded headers from <paramref name="proxies"/> and no one else, or none at all when there are none.
     /// </summary>
+    /// <param name="options">The forwarded headers options.</param>
+    /// <param name="proxies">The trusted proxies.</param>
     private static void TrustOnly(ForwardedHeadersOptions options, IReadOnlyList<IPNetwork> proxies)
     {
         options.KnownIPNetworks.Clear();

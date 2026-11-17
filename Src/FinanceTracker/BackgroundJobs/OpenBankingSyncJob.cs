@@ -32,6 +32,12 @@ public abstract class OpenBankingSyncJob
     private readonly ILogger<OpenBankingSyncJob> _logger;
     private readonly FinTrackMetrics _metrics;
 
+    /// <param name="serviceScopeFactory">Makes the scopes its services run in.</param>
+    /// <param name="dbContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="syncNotifier">Tells browsers about syncs and jobs.</param>
+    /// <param name="timeProvider">The clock.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="metrics">Records its metrics.</param>
     protected OpenBankingSyncJob(IServiceScopeFactory serviceScopeFactory,
         IDbContextFactory<FinanceTrackerContext> dbContextFactory, ISyncNotifier syncNotifier,
         TimeProvider timeProvider, ILogger<OpenBankingSyncJob> logger, FinTrackMetrics metrics)
@@ -49,6 +55,8 @@ public abstract class OpenBankingSyncJob
     /// snapshots, applies their rules and matches transfers once, so net worth, rules and pairs cover all their banks.
     /// A connection that fails to sync, or an owner whose snapshot, rules or matching fail, doesn't stop the rest.
     /// </summary>
+    /// <param name="connections">Which connections to sync.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <returns>The owners of the synced connections.</returns>
     protected async Task<IReadOnlySet<Guid>> SyncConnectionsAsync(Expression<Func<BankConnection, bool>> connections,
         CancellationToken cancellationToken)
@@ -164,6 +172,8 @@ public abstract class OpenBankingSyncJob
     /// Every connection's state and the oldest sync as metrics, now this run has changed them. A failure is recorded
     /// on <paramref name="activity"/>, the sync itself has done its work.
     /// </summary>
+    /// <param name="activity">The job's span, where a failure is recorded.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task RecordConnectionHealthAsync(Activity? activity, CancellationToken cancellationToken)
     {
         try
@@ -183,6 +193,10 @@ public abstract class OpenBankingSyncJob
     /// <see cref="ISyncHealth"/>. A failure to say so is recorded on <paramref name="activity"/>, the other
     /// connections still sync.
     /// </summary>
+    /// <param name="connectionId">The connection that failed.</param>
+    /// <param name="userId">Who owns it.</param>
+    /// <param name="activity">The job's span, where a failure is recorded.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task RecordFailedAsync(Guid connectionId, Guid userId, Activity? activity,
         CancellationToken cancellationToken)
     {
@@ -201,6 +215,8 @@ public abstract class OpenBankingSyncJob
     /// <summary>
     /// The people linked with any of <paramref name="owners"/> who aren't owners themselves.
     /// </summary>
+    /// <param name="owners">The owners of the synced connections.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<List<Guid>> LinkedWithAsync(HashSet<Guid> owners, CancellationToken cancellationToken)
     {
         List<Guid> ownerIds = owners.ToList();
@@ -221,6 +237,8 @@ public abstract class OpenBankingSyncJob
     /// Runs every <see cref="ISyncNotices"/> as <paramref name="userId"/>, each in its own span. One failing is
     /// recorded on its span and the rest still run.
     /// </summary>
+    /// <param name="userId">The owner.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task NotifyOwnerAsync(Guid userId, CancellationToken cancellationToken)
     {
         using Activity? notifyActivity = FinTrackActivitySources.App.StartUserActivity("Send sync notices", userId);
@@ -249,7 +267,10 @@ public abstract class OpenBankingSyncJob
     /// <paramref name="userId"/>, as these services work for the current user. A failure is recorded on the step's
     /// span rather than thrown, so it doesn't stop the other steps or owners.
     /// </summary>
+    /// <typeparam name="TService">The service to run, resolved as the owner.</typeparam>
+    /// <param name="userId">The owner it runs as.</param>
     /// <param name="step">The step's span name, e.g. <c>Apply rules</c>.</param>
+    /// <param name="run">What to run.</param>
     private async Task RunAsOwnerAsync<TService>(Guid userId, string step, Func<TService, Task> run)
         where TService : notnull
     {
@@ -265,6 +286,10 @@ public abstract class OpenBankingSyncJob
         }
     }
 
+    /// <summary>
+    /// Tells each user's open browsers their sync has finished.
+    /// </summary>
+    /// <param name="userIds">The users whose connections synced.</param>
     protected async Task NotifyAsync(IEnumerable<Guid> userIds)
     {
         foreach (Guid userId in userIds)
