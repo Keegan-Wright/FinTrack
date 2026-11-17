@@ -33,10 +33,16 @@
     /// </summary>
     [Parameter] public EventCallback OnRetry { get; set; }
 
+    /// <summary>
+    /// Why the page didn't load, a newer build when there is one.
+    /// </summary>
     private string Subtitle => AppUpdate.Available
         ? "This page needs the latest FinTrack"
         : "This page couldn't load";
 
+    /// <summary>
+    /// Reloads the page from the server.
+    /// </summary>
     private void Reload() => NavigationManager.Refresh(forceReload: true);
 
 }

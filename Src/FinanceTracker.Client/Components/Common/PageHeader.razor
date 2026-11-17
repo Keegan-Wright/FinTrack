@@ -27,8 +27,14 @@
 
 @code {
 
+    /// <summary>
+    /// The page's title.
+    /// </summary>
     [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
 
+    /// <summary>
+    /// A line under the title, null for none.
+    /// </summary>
     [Parameter] public string? Subtitle { get; set; }
 
     /// <summary>

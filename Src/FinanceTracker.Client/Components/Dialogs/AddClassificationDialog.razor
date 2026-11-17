@@ -30,8 +30,12 @@
     private MudForm _form = null!;
     private AddClassifications _model = new() { Tag = string.Empty };
 
+    /// <inheritdoc/>
     protected override void OnInitialized() => _model.Tag = Tag ?? string.Empty;
 
+    /// <summary>
+    /// Validates the form and gives what the dialog closes with, null to keep it open.
+    /// </summary>
     private async Task<AddClassifications?> BuildResponseModel()
     {
         await _form.ValidateAsync();

@@ -37,13 +37,25 @@
     /// </summary>
     private const int MaxAxisLabels = 10;
 
+    /// <summary>
+    /// The most date labels on a phone's axis.
+    /// </summary>
     private const int MaxPhoneAxisLabels = 4;
 
+    /// <summary>
+    /// The chart's height in pixels.
+    /// </summary>
     private const int ChartHeight = 300;
 
+    /// <summary>
+    /// Whether the dark theme is on.
+    /// </summary>
     [CascadingParameter(Name = "IsDarkMode")]
     public bool IsDarkMode { get; set; }
 
+    /// <summary>
+    /// The range's transactions.
+    /// </summary>
     [Parameter, EditorRequired] public IReadOnlyList<Transaction> Transactions { get; set; } = [];
 
     /// <summary>
@@ -68,6 +80,7 @@
     private bool? _optionsDarkMode;
     private bool _drawn;
 
+    /// <inheritdoc/>
     protected override void OnParametersSet()
     {
         // The parent re-renders while loading, only rebuild when it hands over a new set of transactions
@@ -87,6 +100,9 @@
         }
     }
 
+    /// <summary>
+    /// The chart's options, bars of money in and out.
+    /// </summary>
     private ApexChartOptions<CashflowPoint> CreateOptions()
     {
         var options = ChartDefaults.Create<CashflowPoint>(IsDarkMode);

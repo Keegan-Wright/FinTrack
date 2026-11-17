@@ -42,8 +42,15 @@
 
 @code {
 
+    /// <summary>
+    /// The user's accounts, each with its latest transactions.
+    /// </summary>
     [Parameter, EditorRequired] public IReadOnlyList<AccountAndTransactions> Accounts { get; set; } = [];
 
+    /// <summary>
+    /// The account's type and its latest transaction, e.g. <c>Transaction · -£12.50 Tesco, 3 Nov</c>.
+    /// </summary>
+    /// <param name="account">The account.</param>
     private static string GetActivityLine(AccountAndTransactions account)
     {
         var type = DisplayText.ToTitle(account.AccountType);

@@ -44,8 +44,14 @@
     /// </summary>
     [Parameter] public DateOnly From { get; set; }
 
+    /// <summary>
+    /// When the range starts, e.g. <c>Since 1 Nov 2026</c>.
+    /// </summary>
     private string Caption => $"Since {From.ToString("d MMM yyyy", CultureInfo.CurrentCulture)}";
 
+    /// <summary>
+    /// The change's colour class, null without two points to compare.
+    /// </summary>
     private string? ChangeClass
     {
         get
@@ -63,6 +69,7 @@
     private IReadOnlyList<BalancePoint> _points = [];
 
     // Built once per history, so the chart only redraws when it changes
+    /// <inheritdoc/>
     protected override void OnParametersSet()
     {
         if (History is null || ReferenceEquals(History, _pointsFrom))

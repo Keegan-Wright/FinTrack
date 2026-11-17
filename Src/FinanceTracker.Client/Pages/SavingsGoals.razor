@@ -63,6 +63,9 @@
     public List<Classification>? Tags { get; set; }
 
     // Theirs, with the names of someone else's goals' tags, which are that person's
+    /// <summary>
+    /// The tags the goals name, by id.
+    /// </summary>
     private IReadOnlyDictionary<Guid, string> TagNames
     {
         get
@@ -78,8 +81,12 @@
         }
     }
 
+    /// <summary>
+    /// e.g. <c>2 goals</c>.
+    /// </summary>
     private string SectionTitle => Goals?.Count == 1 ? "1 goal" : $"{Goals?.Count ?? 0} goals";
 
+    /// <inheritdoc/>
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
@@ -103,6 +110,9 @@
         Accounts = await SavingsGoalsService.GetSavingsAccountsAsync(_cts.Token).ToListAsync(_cts.Token);
     }
 
+    /// <summary>
+    /// Adds a goal from the dialog.
+    /// </summary>
     private async Task AddAsync()
     {
         SaveSavingsGoal? goal = await ShowDialogAsync(null);
@@ -114,6 +124,10 @@
         await SaveAsync($"{goal.Name} added", () => SavingsGoalsService.AddSavingsGoalAsync(goal, _cts.Token));
     }
 
+    /// <summary>
+    /// Changes a goal in the dialog.
+    /// </summary>
+    /// <param name="existing">The goal.</param>
     private async Task EditAsync(SavingsGoal existing)
     {
         SaveSavingsGoal? goal = await ShowDialogAsync(existing);
@@ -126,6 +140,10 @@
             () => SavingsGoalsService.UpdateSavingsGoalAsync(existing.Id, goal, _cts.Token));
     }
 
+    /// <summary>
+    /// Deletes a goal once the user confirms.
+    /// </summary>
+    /// <param name="goal">The goal.</param>
     private async Task DeleteAsync(SavingsGoal goal)
     {
         bool? confirmed = await DialogService.ShowMessageBoxAsync($"Delete {goal.Name}?",
@@ -192,6 +210,10 @@
     }
 
 
+    /// <summary>
+    /// Shows what a goal had saved over time.
+    /// </summary>
+    /// <param name="goal">The goal.</param>
     private async Task ShowHistoryAsync(SavingsGoal goal)
     {
         DialogParameters<SavingsGoalHistoryDialog> parameters = new() { { x => x.Goal, goal } };

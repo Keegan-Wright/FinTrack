@@ -24,6 +24,9 @@
 
 @code {
 
+    /// <summary>
+    /// The debt.
+    /// </summary>
     [Parameter] [EditorRequired] public required Debt Debt { get; set; }
 
     private decimal _monthlyPayment;
@@ -31,8 +34,12 @@
     private string? _error;
     private bool _busy;
 
+    /// <summary>
+    /// The current culture's currency symbol, shown on amount fields.
+    /// </summary>
     private static string CurrencySymbol => CultureInfo.CurrentCulture.NumberFormat.CurrencySymbol;
 
+    /// <inheritdoc/>
     protected override void OnInitialized() => _monthlyPayment = SuggestedPayment(Debt.MonthlyPayment);
 
     /// <summary>
@@ -41,6 +48,9 @@
     internal static decimal SuggestedPayment(decimal monthlyPayment) =>
         Math.Floor(monthlyPayment / 50) * 50 + 50;
 
+    /// <summary>
+    /// Forecasts paying the amount entered each month.
+    /// </summary>
     private async Task ForecastAsync()
     {
         _error = null;

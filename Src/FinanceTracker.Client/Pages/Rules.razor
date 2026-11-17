@@ -88,25 +88,47 @@
     [PersistentState]
     public List<Debt>? DebtList { get; set; }
 
+    /// <summary>
+    /// The user's own rules.
+    /// </summary>
     private List<Rule> OwnRules => (RuleList ?? []).Where(static x => x.SharedBy is null).ToList();
 
+    /// <summary>
+    /// The rules others share with the user.
+    /// </summary>
     private List<Rule> SharedRules => (RuleList ?? []).Where(static x => x.SharedBy is not null).ToList();
 
     // Each with the names shared rules carry, for what's another person's
+    /// <summary>
+    /// The accounts the rules name, by id.
+    /// </summary>
     private IReadOnlyDictionary<Guid, string> AccountNames =>
         WithSharedNames((Accounts ?? []).ToDictionary(static x => x.AccountId, static x => x.AccountName));
 
+    /// <summary>
+    /// The tags the rules name, by id.
+    /// </summary>
     private IReadOnlyDictionary<Guid, string> TagNames =>
         WithSharedNames((Tags ?? []).ToDictionary(static x => x.ClassificationId, static x => x.Tag ?? string.Empty));
 
+    /// <summary>
+    /// The bills the rules name, by id.
+    /// </summary>
     private IReadOnlyDictionary<Guid, string> BillNames =>
         WithSharedNames((BillList ?? []).ToDictionary(static x => x.Id, static x => x.Name));
 
+    /// <summary>
+    /// The debts the rules name, by id.
+    /// </summary>
     private IReadOnlyDictionary<Guid, string> DebtNames =>
         WithSharedNames((DebtList ?? []).ToDictionary(static x => x.Id, static x => x.Name));
 
+    /// <summary>
+    /// e.g. <c>3 rules</c>.
+    /// </summary>
     private string SectionTitle => OwnRules.Count == 1 ? "1 rule" : $"{OwnRules.Count} rules";
 
+    /// <inheritdoc/>
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
@@ -171,6 +193,10 @@
         }
     }
 
+    /// <summary>
+    /// Deletes a rule once the user confirms.
+    /// </summary>
+    /// <param name="rule">The rule.</param>
     internal async Task DeleteAsync(Rule rule)
     {
         bool? confirmed = await DialogService.ShowMessageBoxAsync($"Delete {rule.Name}?",
@@ -197,6 +223,10 @@
         }
     }
 
+    /// <summary>
+    /// Switches a rule on or off.
+    /// </summary>
+    /// <param name="rule">The rule.</param>
     internal async Task ToggleAsync(Rule rule)
     {
         bool turningOn = !rule.IsEnabled;

@@ -75,6 +75,9 @@
 
 @code {
 
+    /// <summary>
+    /// The household member.
+    /// </summary>
     [Parameter] [EditorRequired] public required HouseholdMember Member { get; set; }
 
     private MudForm _accountForm = null!;
@@ -83,9 +86,13 @@
     private string _newPayeeName = string.Empty;
     private readonly LinkedAccount _newAccount = new() { SortCode = string.Empty, Number = string.Empty };
 
+    /// <summary>
+    /// Whether anything's typed for an account.
+    /// </summary>
     private bool HasAccountInput =>
         !string.IsNullOrWhiteSpace(_newAccount.SortCode) || !string.IsNullOrWhiteSpace(_newAccount.Number);
 
+    /// <inheritdoc/>
     protected override void OnInitialized()
     {
         _payeeNames = Member.PayeeNames.ToList();
@@ -105,8 +112,17 @@
             : $"{account.SortCode} {account.Number}";
     }
 
+    /// <summary>
+    /// The digits in <paramref name="value"/>.
+    /// </summary>
+    /// <param name="value">The text.</param>
     private static string Digits(string value) => string.Concat(value.Where(char.IsAsciiDigit));
 
+    /// <summary>
+    /// Runs <paramref name="add"/> when Enter is pressed.
+    /// </summary>
+    /// <param name="args">The key pressed.</param>
+    /// <param name="add">What adds the entry.</param>
     private static async Task OnEnter(KeyboardEventArgs args, Func<Task> add)
     {
         if (args.Key == "Enter")
@@ -115,6 +131,9 @@
         }
     }
 
+    /// <summary>
+    /// Adds the name typed, unless it's there already in any case.
+    /// </summary>
     private Task AddPayeeName()
     {
         string payeeName = _newPayeeName.Trim();
@@ -148,6 +167,9 @@
         return true;
     }
 
+    /// <summary>
+    /// Adds the account typed, once it's valid.
+    /// </summary>
     private Task AddAccountAsync() => TryAddAccountAsync();
 
     /// <summary>

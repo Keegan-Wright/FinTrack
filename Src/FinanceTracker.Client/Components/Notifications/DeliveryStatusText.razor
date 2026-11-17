@@ -7,6 +7,9 @@
 
 @code {
 
+    /// <summary>
+    /// How the last send went.
+    /// </summary>
     [Parameter, EditorRequired]
     public required DeliveryStatus Status { get; set; }
 
@@ -16,8 +19,14 @@
     [Parameter, EditorRequired]
     public required string What { get; set; }
 
+    /// <summary>
+    /// The error colour when it failed.
+    /// </summary>
     private string ColourClass => Status.Sent ? "mud-text-secondary" : "mud-error-text";
 
+    /// <summary>
+    /// When it was sent, or why it failed.
+    /// </summary>
     private string Text
     {
         get

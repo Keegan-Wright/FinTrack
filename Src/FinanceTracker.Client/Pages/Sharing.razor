@@ -113,6 +113,9 @@
     private string? _who;
     private string? _inviteError;
 
+    /// <summary>
+    /// The invites waiting for the user to answer.
+    /// </summary>
     private List<UserLink> WaitingForYou =>
         (Links ?? []).Where(static x => x.State == LinkState.InvitedYou).ToList();
 
@@ -125,6 +128,9 @@
         .ThenBy(static x => x.Name)
         .ToList();
 
+    /// <summary>
+    /// How many people the user is linked with.
+    /// </summary>
     private string PeopleCaption
     {
         get
@@ -210,6 +216,10 @@
         return string.Empty;
     }
 
+    /// <summary>
+    /// e.g. <c>2 accounts</c>.
+    /// </summary>
+    /// <param name="count">How many.</param>
     private static string AccountsText(int count)
     {
         if (count == 1)
@@ -245,22 +255,39 @@
     };
 
     // Filled once linked, outlined while an invite waits
+    /// <summary>
+    /// Filled once linked, outlined while invited.
+    /// </summary>
+    /// <param name="link">The link.</param>
     private static Variant AvatarVariant(UserLink link) =>
         link.State == LinkState.Linked ? Variant.Filled : Variant.Outlined;
 
+    /// <summary>
+    /// The other person's initials.
+    /// </summary>
+    /// <param name="link">The link.</param>
     private static string Initials(UserLink link) =>
         string.Concat(link.Name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(static x => x[0]))
             .ToUpperInvariant();
 
+    /// <inheritdoc/>
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
         Links = await LoadOnceAsync(Links, "Loading who you share with", LoadLinksAsync);
     }
 
+    /// <summary>
+    /// Loads the user's links.
+    /// </summary>
+    /// <param name="cancellationToken">Stops it once the user leaves.</param>
     private Task<List<UserLink>> LoadLinksAsync(CancellationToken cancellationToken) =>
         SharingService.GetLinksAsync(cancellationToken).ToListAsync(cancellationToken).AsTask();
 
+    /// <summary>
+    /// Invites when Enter is pressed.
+    /// </summary>
+    /// <param name="e">The key.</param>
     private async Task OnInviteKeyUp(KeyboardEventArgs e)
     {
         if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(_who))
@@ -269,6 +296,9 @@
         }
     }
 
+    /// <summary>
+    /// Invites who the user typed, by username or email.
+    /// </summary>
     internal async Task InviteAsync()
     {
         string who = (_who ?? string.Empty).Trim();
@@ -297,18 +327,30 @@
         }
     }
 
+    /// <summary>
+    /// Accepts an invite.
+    /// </summary>
+    /// <param name="link">The link.</param>
     internal async Task AcceptAsync(UserLink link)
     {
         await AnswerAsync(link, SharingService.AcceptAsync, $"Linked with {link.Name}",
             "Couldn't accept, try again");
     }
 
+    /// <summary>
+    /// Declines an invite.
+    /// </summary>
+    /// <param name="link">The link.</param>
     internal async Task DeclineAsync(UserLink link)
     {
         await AnswerAsync(link, SharingService.DeclineAsync, $"Declined {link.Name}'s invite",
             "Couldn't decline, try again");
     }
 
+    /// <summary>
+    /// Withdraws an invite or ends a link once the user confirms.
+    /// </summary>
+    /// <param name="link">The link.</param>
     internal async Task EndAsync(UserLink link)
     {
         bool? confirmed = await DialogService.ShowMessageBoxAsync(ConfirmTitle(link), ConfirmMessage(link),
@@ -321,6 +363,10 @@
         await AnswerAsync(link, SharingService.EndAsync, EndedText(link), "Couldn't do that, try again");
     }
 
+    /// <summary>
+    /// The confirm box's title, withdrawing or ending.
+    /// </summary>
+    /// <param name="link">The link.</param>
     private static string ConfirmTitle(UserLink link)
     {
         if (link.State == LinkState.Invited)
@@ -331,6 +377,10 @@
         return $"End your link with {link.Name}?";
     }
 
+    /// <summary>
+    /// What withdrawing or ending does.
+    /// </summary>
+    /// <param name="link">The link.</param>
     private static string ConfirmMessage(UserLink link)
     {
         if (link.State == LinkState.Invited)
@@ -341,6 +391,10 @@
         return "Anything you share stops being shared, both ways. You can invite each other again later.";
     }
 
+    /// <summary>
+    /// What's said once it's withdrawn or ended.
+    /// </summary>
+    /// <param name="link">The link.</param>
     private static string EndedText(UserLink link)
     {
         if (link.State == LinkState.Invited)

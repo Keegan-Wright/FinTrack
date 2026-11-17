@@ -39,6 +39,9 @@
     private bool _sending;
     private bool _sent;
 
+    /// <summary>
+    /// Sends the confirmation link.
+    /// </summary>
     internal async Task SendAsync()
     {
         _sending = true;
@@ -62,6 +65,7 @@
         }
     }
 
+    /// <inheritdoc/>
     public void Dispose()
     {
         _cts.Cancel();

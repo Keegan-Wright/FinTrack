@@ -23,12 +23,24 @@ else
 
 @code {
 
+    /// <summary>
+    /// The chart's height in pixels.
+    /// </summary>
     private const int ChartHeight = 260;
 
+    /// <summary>
+    /// The most date labels on the axis.
+    /// </summary>
     private const int MaxAxisLabels = 8;
 
+    /// <summary>
+    /// The most date labels on a phone's axis.
+    /// </summary>
     private const int MaxPhoneAxisLabels = 4;
 
+    /// <summary>
+    /// Whether the dark theme is on.
+    /// </summary>
     [CascadingParameter(Name = "IsDarkMode")]
     public bool IsDarkMode { get; set; }
 
@@ -42,6 +54,7 @@ else
     private bool? _optionsDarkMode;
     private bool _drawn;
 
+    /// <inheritdoc/>
     protected override void OnParametersSet()
     {
         if (ReferenceEquals(_builtFrom, History) && _optionsDarkMode == IsDarkMode)
@@ -60,6 +73,9 @@ else
     /// </summary>
     private static string Label(DebtBalancePoint point) => point.On.ToString("d MMM yy", CultureInfo.CurrentCulture);
 
+    /// <summary>
+    /// The chart's options, one line of what's owed.
+    /// </summary>
     private ApexChartOptions<DebtBalancePoint> CreateOptions()
     {
         var options = ChartDefaults.Create<DebtBalancePoint>(IsDarkMode);

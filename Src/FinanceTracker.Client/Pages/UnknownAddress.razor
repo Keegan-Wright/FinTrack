@@ -13,6 +13,7 @@
     /// </summary>
     [Parameter] public string? Path { get; set; }
 
+    /// <inheritdoc/>
     protected override void OnInitialized() => NavigationManager.NotFound();
 
 }

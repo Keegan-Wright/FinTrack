@@ -17,11 +17,15 @@
 
 @code {
 
+    /// <summary>
+    /// The shared UI state, told when the view changes.
+    /// </summary>
     [CascadingParameter] private ApplicationState? ApplicationState { get; set; }
 
     private SharingView? _view;
     private bool _saving;
 
+    /// <inheritdoc/>
     protected override async Task OnInitializedAsync()
     {
         try
@@ -35,6 +39,10 @@
         }
     }
 
+    /// <summary>
+    /// Saves the user's choice and tells the money views.
+    /// </summary>
+    /// <param name="includeShared">Whether accounts shared with them show, Everyone.</param>
     internal async Task ChangeAsync(bool includeShared)
     {
         _saving = true;

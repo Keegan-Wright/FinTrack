@@ -39,14 +39,26 @@
     /// </summary>
     [Parameter] public decimal? TrendOut { get; set; }
 
+    /// <summary>
+    /// Money in less money out over the range.
+    /// </summary>
     [Parameter] public decimal Net { get; set; }
 
+    /// <summary>
+    /// How many transactions are in the range.
+    /// </summary>
     [Parameter] public int TransactionCount { get; set; }
 
+    /// <summary>
+    /// e.g. <c>12 transactions in range</c>.
+    /// </summary>
     private string TransactionCountText => TransactionCount == 1
         ? "1 transaction in range"
         : $"{TransactionCount:n0} transactions in range";
 
+    /// <summary>
+    /// The total of the user's account balances.
+    /// </summary>
     [Parameter] public decimal TotalBalance { get; set; }
 
     /// <summary>

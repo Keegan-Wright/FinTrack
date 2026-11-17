@@ -75,6 +75,9 @@
 
 @code {
 
+    /// <summary>
+    /// The user's notification settings.
+    /// </summary>
     [Parameter, EditorRequired]
     public required NotificationSettings Settings { get; set; }
 
@@ -92,10 +95,17 @@
     private bool _showSecret;
     private bool _busy;
 
+    /// <summary>
+    /// Whether they have a webhook.
+    /// </summary>
     private bool HasWebhook => Settings.WebhookUrl is not null;
 
+    /// <summary>
+    /// Whether the address typed differs from the saved one.
+    /// </summary>
     private bool Changed => !string.Equals(_model.Url.Trim(), Settings.WebhookUrl ?? "", StringComparison.Ordinal);
 
+    /// <inheritdoc/>
     protected override void OnParametersSet()
     {
         // The field follows the saved address when it changes, leaving what the user is typing otherwise
@@ -106,6 +116,9 @@
         }
     }
 
+    /// <summary>
+    /// Saves the address once the form is valid.
+    /// </summary>
     internal async Task SaveAsync()
     {
         _refusal = null;
@@ -129,6 +142,9 @@
         });
     }
 
+    /// <summary>
+    /// Removes the webhook once the user confirms.
+    /// </summary>
     internal async Task RemoveAsync()
     {
         bool? confirmed = await DialogService.ShowMessageBoxAsync("Remove the webhook?",
@@ -146,6 +162,9 @@
         });
     }
 
+    /// <summary>
+    /// Makes a new secret once the user confirms.
+    /// </summary>
     internal async Task ReplaceSecretAsync()
     {
         bool? confirmed = await DialogService.ShowMessageBoxAsync("Make a new secret?",
@@ -167,6 +186,9 @@
         });
     }
 
+    /// <summary>
+    /// Posts a test notification.
+    /// </summary>
     internal async Task SendTestAsync()
     {
         await RunAsync("Couldn't send the test post, try again", async () =>
@@ -189,6 +211,10 @@
         });
     }
 
+    /// <summary>
+    /// Takes the settings the server sent back and tells the page.
+    /// </summary>
+    /// <param name="settings">The settings now.</param>
     private async Task ChangeSettingsAsync(NotificationSettings settings)
     {
         Settings = settings;
@@ -215,6 +241,7 @@
         }
     }
 
+    /// <inheritdoc/>
     public void Dispose()
     {
         _cts.Cancel();

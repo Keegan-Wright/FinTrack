@@ -176,6 +176,9 @@
 
 @code {
 
+    /// <summary>
+    /// The rule being edited, changed in place.
+    /// </summary>
     [Parameter] [EditorRequired] public required SaveRule Model { get; set; }
 
     /// <summary>
@@ -222,10 +225,18 @@
         return _form.IsValid && result.IsValid;
     }
 
+    /// <summary>
+    /// The validation errors for one field.
+    /// </summary>
+    /// <param name="propertyName">The field's property name.</param>
     private IEnumerable<string> ErrorsFor(string propertyName) => _ruleErrors
         .Where(x => x.PropertyName == propertyName)
         .Select(static x => x.ErrorMessage);
 
+    /// <summary>
+    /// The error when no tag is chosen.
+    /// </summary>
+    /// <param name="tagId">The tag, null for none.</param>
     private static string? TagError(Guid? tagId) => tagId is null ? "Choose a tag" : null;
 
     /// <summary>
@@ -233,6 +244,10 @@
     /// </summary>
     private string? TagName(Guid? tagId) => tagId is { } id ? TagNames.GetValueOrDefault(id) : null;
 
+    /// <summary>
+    /// The error when no bill is chosen.
+    /// </summary>
+    /// <param name="billId">The bill, null for none.</param>
     private static string? BillError(Guid? billId) => billId is null ? "Choose a bill" : null;
 
     /// <summary>
@@ -240,6 +255,10 @@
     /// </summary>
     private string? BillName(Guid? billId) => billId is { } id ? BillNames.GetValueOrDefault(id) : null;
 
+    /// <summary>
+    /// The error when no debt is chosen.
+    /// </summary>
+    /// <param name="debtId">The debt, null for none.</param>
     private static string? DebtError(Guid? debtId) => debtId is null ? "Choose a debt" : null;
 
     /// <summary>
@@ -247,13 +266,28 @@
     /// </summary>
     private string? DebtName(Guid? debtId) => debtId is { } id ? DebtNames.GetValueOrDefault(id) : null;
 
+    /// <summary>
+    /// The error when no bank classification is entered.
+    /// </summary>
+    /// <param name="classification">The classification entered.</param>
     private static string? BankClassificationError(string? classification) =>
         string.IsNullOrWhiteSpace(classification) ? "Enter the bank classification to hide" : null;
 
+    /// <summary>
+    /// Adds a condition on the description.
+    /// </summary>
     private void AddCondition() => Model.Conditions.Add(RuleDrafts.NewCondition(RuleField.Description));
 
+    /// <summary>
+    /// Adds an action that adds a tag.
+    /// </summary>
     private void AddAction() => Model.Actions.Add(new RuleAction { Type = RuleActionType.AddTag });
 
+    /// <summary>
+    /// Sets what an action does, dropping what only another type uses.
+    /// </summary>
+    /// <param name="action">The action.</param>
+    /// <param name="type">What it does now.</param>
     private static void OnActionTypeChanged(RuleAction action, RuleActionType type)
     {
         action.Type = type;

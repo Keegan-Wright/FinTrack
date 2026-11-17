@@ -116,6 +116,9 @@
     private IEnumerable<UserLink> LinkablePeople => (People ?? [])
         .Where(x => !(Members ?? []).Exists(m => m.LinkedUsername == x.Username));
 
+    /// <summary>
+    /// How many people and their income.
+    /// </summary>
     private string Subtitle
     {
         get
@@ -129,6 +132,10 @@
         }
     }
 
+    /// <summary>
+    /// e.g. <c>2 people</c>.
+    /// </summary>
+    /// <param name="count">How many.</param>
     private static string PeopleText(int count) => count == 1 ? "1 person" : $"{count} people";
 
     /// <summary>
@@ -171,9 +178,14 @@
             : $"Income · payments recognised by {string.Join(" and ", parts)}";
     }
 
+    /// <summary>
+    /// The member's initials.
+    /// </summary>
+    /// <param name="member">The member.</param>
     private static string Initials(HouseholdMember member) =>
         $"{member.FirstName.FirstOrDefault()}{member.LastName.FirstOrDefault()}".ToUpperInvariant();
 
+    /// <inheritdoc/>
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
@@ -213,6 +225,9 @@
         }
     }
 
+    /// <summary>
+    /// Adds a member from the dialog.
+    /// </summary>
     private async Task AddHouseholdMember()
     {
         var dialogRef = await DialogService.ShowAsync<AddHouseholdMemberDialog>();
@@ -243,6 +258,10 @@
         }
     }
 
+    /// <summary>
+    /// Changes a member in the dialog.
+    /// </summary>
+    /// <param name="member">The member.</param>
     internal async Task EditAsync(HouseholdMember member)
     {
         DialogParameters<AddHouseholdMemberDialog> parameters = new() { { x => x.Member, member } };
@@ -283,6 +302,10 @@
         }
     }
 
+    /// <summary>
+    /// Deletes a member once the user confirms.
+    /// </summary>
+    /// <param name="member">The member.</param>
     internal async Task DeleteAsync(HouseholdMember member)
     {
         bool? confirmed = await DialogService.ShowMessageBoxAsync($"Delete {member.FirstName} {member.LastName}?",
@@ -311,6 +334,10 @@
         }
     }
 
+    /// <summary>
+    /// Edits how money to or from a member is recognised.
+    /// </summary>
+    /// <param name="member">The member.</param>
     private async Task RecognisePayments(HouseholdMember member)
     {
         var dialogParameters = new DialogParameters<RecogniseHouseholdMemberDialog> { { x => x.Member, member } };

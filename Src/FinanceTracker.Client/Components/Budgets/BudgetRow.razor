@@ -60,6 +60,9 @@
 
 @code {
 
+    /// <summary>
+    /// How the budget is doing this month.
+    /// </summary>
     [Parameter] [EditorRequired] public required BudgetStatus Status { get; set; }
 
     /// <summary>
@@ -72,10 +75,19 @@
     /// </summary>
     [Parameter] public bool Editable { get; set; }
 
+    /// <summary>
+    /// Called when the user asks to edit it.
+    /// </summary>
     [Parameter] public EventCallback OnEdit { get; set; }
 
+    /// <summary>
+    /// Called when the user asks to delete it.
+    /// </summary>
     [Parameter] public EventCallback OnDelete { get; set; }
 
+    /// <summary>
+    /// Red when overspent.
+    /// </summary>
     private Color RemainingColor => Status.Remaining < 0 ? Color.Error : Color.Default;
 
     /// <summary>

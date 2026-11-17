@@ -164,6 +164,9 @@ else
 
 @code {
 
+    /// <summary>
+    /// The link, from the address.
+    /// </summary>
     [Parameter] public Guid LinkId { get; set; }
 
     /// <summary>
@@ -178,8 +181,14 @@ else
     private bool _loaded;
     private bool _busy;
 
+    /// <summary>
+    /// The page's title, who it's with.
+    /// </summary>
     private string Title => Shares is null ? "Sharing" : $"Sharing with {Shares.Name}";
 
+    /// <summary>
+    /// The line under the title.
+    /// </summary>
     private string? Subtitle
     {
         get
@@ -194,12 +203,21 @@ else
         }
     }
 
+    /// <summary>
+    /// The other person's first name.
+    /// </summary>
     private string FirstName => Shares?.Name.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "them";
 
+    /// <summary>
+    /// The user's accounts to choose from, by bank.
+    /// </summary>
     private List<ShareChoiceItem> AccountItems => Shares!.YourAccounts
         .Select(static x => new ShareChoiceItem(x.AccountId, x.Name, x.BankName))
         .ToList();
 
+    /// <summary>
+    /// The joint accounts tab's label, with how many could be merged.
+    /// </summary>
     private string JointTabText
     {
         get
@@ -214,6 +232,7 @@ else
         }
     }
 
+    /// <inheritdoc/>
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
@@ -226,6 +245,9 @@ else
         Reset();
     }
 
+    /// <summary>
+    /// Loads what's shared.
+    /// </summary>
     private async Task LoadAsync()
     {
         SetLoadingState(true, "Loading what you share");
@@ -262,6 +284,10 @@ else
         }
     }
 
+    /// <summary>
+    /// What's chosen to share of one kind, by id.
+    /// </summary>
+    /// <param name="kind">The kind.</param>
     private Dictionary<Guid, ShareMode> ChosenOf(SharedItemKind kind)
     {
         if (!_items.TryGetValue(kind, out Dictionary<Guid, ShareMode>? chosen))
@@ -273,12 +299,22 @@ else
         return chosen;
     }
 
+    /// <summary>
+    /// The user's things of one kind to choose from.
+    /// </summary>
+    /// <param name="kind">The kind.</param>
     private List<ShareChoiceItem> ItemsOf(SharedItemKind kind) => Shares!.YourItems
         .Where(x => x.Kind == kind)
         .Select(static x => new ShareChoiceItem(x.ItemId, x.Name, FollowsAccount: x.FollowsAccount,
             FollowsMode: x.Mode ?? ShareMode.ReadOnly))
         .ToList();
 
+    /// <summary>
+    /// The list to choose one kind of thing from.
+    /// </summary>
+    /// <param name="kind">The kind.</param>
+    /// <param name="what">What they are, plural.</param>
+    /// <param name="none">What's said when there are none.</param>
     private RenderFragment ItemList(SharedItemKind kind, string what, string none) => __builder =>
     {
         <ShareChoiceList Items="@ItemsOf(kind)" Chosen="@ChosenOf(kind)" Person="@Shares!.Name" What="@what"
@@ -298,6 +334,11 @@ else
         return $"{name} · {shared}/{all}";
     }
 
+    /// <summary>
+    /// A tab's label, with how many are shared.
+    /// </summary>
+    /// <param name="name">The tab's name.</param>
+    /// <param name="kind">The kind it lists.</param>
     private string ItemsTabText(string name, SharedItemKind kind)
     {
         List<ShareableItem> items = Shares!.YourItems.Where(x => x.Kind == kind).ToList();
@@ -334,6 +375,9 @@ else
         }
     }
 
+    /// <summary>
+    /// Whether anything's changed since it loaded.
+    /// </summary>
     private bool HasChanges => ChangeCount > 0;
 
     /// <summary>
@@ -345,8 +389,14 @@ else
         return changed + now.Keys.Count(x => !before.ContainsKey(x));
     }
 
+    /// <summary>
+    /// Puts back what's shared now.
+    /// </summary>
     private void Discard() => Reset();
 
+    /// <summary>
+    /// Saves what's chosen.
+    /// </summary>
     internal async Task SaveAsync()
     {
         LinkShares before = Shares!;
@@ -397,6 +447,10 @@ else
         }
     }
 
+    /// <summary>
+    /// Merges joint accounts, so each is counted once.
+    /// </summary>
+    /// <param name="suggestions">The accounts to merge.</param>
     private async Task MergeAsync(IReadOnlyList<JointAccountSuggestion> suggestions) =>
         await ChangeJointAsync(() => SharingService.MergeJointAccountsAsync(LinkId, new MergeJointAccounts
         {
@@ -408,6 +462,10 @@ else
                 .ToList()
         }, _cts.Token), SharingText.MergeDoneText(suggestions));
 
+    /// <summary>
+    /// Splits a merged joint account again.
+    /// </summary>
+    /// <param name="joint">The merged account.</param>
     private async Task SplitAsync(MergedJointAccount joint) =>
         await ChangeJointAsync(() => SharingService.SplitJointAccountAsync(LinkId, joint.JointAccountId, _cts.Token),
             $"Split {joint.Name}, you each see your own copy again");
@@ -434,6 +492,9 @@ else
         }
     }
 
+    /// <summary>
+    /// Ends the link once the user confirms.
+    /// </summary>
     internal async Task EndAsync()
     {
         string name = Shares!.Name;

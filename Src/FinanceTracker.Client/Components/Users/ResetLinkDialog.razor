@@ -29,14 +29,26 @@
 
 @code {
 
+    /// <summary>
+    /// The dialog it's shown in.
+    /// </summary>
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
 
+    /// <summary>
+    /// Whose link it is.
+    /// </summary>
     [Parameter, EditorRequired]
     public required string Username { get; set; }
 
+    /// <summary>
+    /// The link.
+    /// </summary>
     [Parameter, EditorRequired]
     public required ResetLink Link { get; set; }
 
+    /// <summary>
+    /// When the link stops working, where the user is.
+    /// </summary>
     private string ExpiresText =>
         TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(Link.ExpiresAt, DateTimeKind.Utc),
                 TimeProvider.LocalTimeZone)
@@ -59,6 +71,9 @@
         }
     }
 
+    /// <summary>
+    /// Closes the dialog.
+    /// </summary>
     private void Close() => MudDialog.Close();
 
 }

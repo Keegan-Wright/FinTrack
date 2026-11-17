@@ -44,6 +44,9 @@
 
 @code {
 
+    /// <summary>
+    /// The transaction's transfer, null when nothing's decided.
+    /// </summary>
     [Parameter] public TransactionTransfer? Transfer { get; set; }
 
     /// <summary>
@@ -56,6 +59,9 @@
     /// </summary>
     [Parameter] public EventCallback<TransferAction> OnAction { get; set; }
 
+    /// <summary>
+    /// Blue for a transfer, amber to review.
+    /// </summary>
     private Color ChipColor => Transfer?.State switch
     {
         TransferState.Transfer => Color.Info,

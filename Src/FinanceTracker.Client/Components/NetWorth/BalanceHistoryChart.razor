@@ -24,10 +24,19 @@ else
 
 @code {
 
+    /// <summary>
+    /// The most date labels on the axis.
+    /// </summary>
     private const int MaxAxisLabels = 8;
 
+    /// <summary>
+    /// The most date labels on a phone's axis.
+    /// </summary>
     private const int MaxPhoneAxisLabels = 4;
 
+    /// <summary>
+    /// Whether the dark theme is on.
+    /// </summary>
     [CascadingParameter(Name = "IsDarkMode")]
     public bool IsDarkMode { get; set; }
 
@@ -46,6 +55,9 @@ else
     /// </summary>
     [Parameter] public MoneyFlow Flow { get; set; } = MoneyFlow.Neutral;
 
+    /// <summary>
+    /// The chart's height in pixels.
+    /// </summary>
     [Parameter] public int Height { get; set; } = 280;
 
     /// <summary>
@@ -53,6 +65,9 @@ else
     /// </summary>
     [Parameter] public bool Compact { get; set; }
 
+    /// <summary>
+    /// What's said when there's too little history to draw.
+    /// </summary>
     [Parameter] public string EmptyText { get; set; } = "Not enough history yet, it builds up with each sync.";
 
     private ApexChartOptions<HistoryChartPoint> _options = new();
@@ -61,6 +76,7 @@ else
     private bool? _optionsDarkMode;
     private bool _drawn;
 
+    /// <inheritdoc/>
     protected override void OnParametersSet()
     {
         if (ReferenceEquals(_builtFrom, Points) && _optionsDarkMode == IsDarkMode)
@@ -75,6 +91,9 @@ else
         _drawn = false;
     }
 
+    /// <summary>
+    /// The chart's options, one colour for synced and worked out days.
+    /// </summary>
     private ApexChartOptions<HistoryChartPoint> CreateOptions()
     {
         var options = ChartDefaults.Create<HistoryChartPoint>(IsDarkMode);

@@ -128,6 +128,9 @@ else
     private RulePreview? _preview;
     private bool _previewing;
 
+    /// <summary>
+    /// The page's title, a new rule or the rule's name.
+    /// </summary>
     private string Title
     {
         get
@@ -146,6 +149,9 @@ else
         }
     }
 
+    /// <summary>
+    /// The line under the title.
+    /// </summary>
     private string Subtitle
     {
         get
@@ -165,6 +171,9 @@ else
     }
 
     // Someone else's rule names what it uses, and offers only their tags shared with the user
+    /// <summary>
+    /// The accounts a condition can name, by id.
+    /// </summary>
     private IReadOnlyDictionary<Guid, string> AccountNames
     {
         get
@@ -184,6 +193,9 @@ else
         }
     }
 
+    /// <summary>
+    /// The tags an action can add, by id.
+    /// </summary>
     private IReadOnlyDictionary<Guid, string> TagNames
     {
         get
@@ -197,6 +209,9 @@ else
         }
     }
 
+    /// <summary>
+    /// The bills an action can pay, by id.
+    /// </summary>
     private IReadOnlyDictionary<Guid, string> BillNames
     {
         get
@@ -210,6 +225,9 @@ else
         }
     }
 
+    /// <summary>
+    /// The debts an action can pay off, by id.
+    /// </summary>
     private IReadOnlyDictionary<Guid, string> DebtNames
     {
         get
@@ -224,6 +242,7 @@ else
     }
 
 
+    /// <inheritdoc/>
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
@@ -320,6 +339,9 @@ else
         }
     }
 
+    /// <summary>
+    /// Saves the rule once it's valid.
+    /// </summary>
     internal async Task SaveAsync()
     {
         bool valid = await ValidateAsync();
@@ -338,6 +360,9 @@ else
         NavigationManager.NavigateTo("Rules");
     }
 
+    /// <summary>
+    /// Previews the rule once it's valid.
+    /// </summary>
     internal async Task PreviewAsync()
     {
         bool valid = await ValidateAsync();
@@ -408,6 +433,10 @@ else
         }
     }
 
+    /// <summary>
+    /// Validates the form.
+    /// </summary>
+    /// <returns>Whether it's valid.</returns>
     private async Task<bool> ValidateAsync()
     {
         if (Draft is null || _form is null)
@@ -450,6 +479,9 @@ else
         }
     }
 
+    /// <summary>
+    /// What applying it would change, from the preview when there is one.
+    /// </summary>
     private string ApplyWarning()
     {
         if (_preview is null)
@@ -462,6 +494,11 @@ else
             : $"When you last previewed it, {_preview.Changed:n0} transactions would change.";
     }
 
+    /// <summary>
+    /// e.g. <c>Groceries saved and applied, 3 transactions changed</c>.
+    /// </summary>
+    /// <param name="name">The rule's name.</param>
+    /// <param name="changed">How many transactions changed.</param>
     internal static string AppliedText(string name, int changed) => changed switch
     {
         0 => $"{name} saved, none of your transactions needed changing",
@@ -469,6 +506,9 @@ else
         _ => $"{name} saved and applied, {changed:n0} transactions changed"
     };
 
+    /// <summary>
+    /// Deletes the rule once the user confirms.
+    /// </summary>
     internal async Task DeleteAsync()
     {
         if (Id is not { } id || Draft is null)

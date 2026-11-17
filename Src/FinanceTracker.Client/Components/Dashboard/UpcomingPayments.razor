@@ -51,10 +51,20 @@
 
 @code {
 
+    /// <summary>
+    /// The payments due soon or just gone.
+    /// </summary>
     [Parameter, EditorRequired] public IReadOnlyList<UpcomingPayment> Payments { get; set; } = [];
 
+    /// <summary>
+    /// Today where the user is.
+    /// </summary>
     private DateOnly Today => DateOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime);
 
+    /// <summary>
+    /// The day's month, e.g. <c>Nov</c>.
+    /// </summary>
+    /// <param name="day">The day.</param>
     private static string MonthOf(DateOnly day) => day.ToString("MMM", CultureInfo.CurrentCulture);
 
     /// <summary>
@@ -87,6 +97,10 @@
         };
     }
 
+    /// <summary>
+    /// The colour a payment's state is shown in.
+    /// </summary>
+    /// <param name="payment">The payment.</param>
     private Color StatusColor(UpcomingPayment payment)
     {
         if (payment.State is BillState.Paid or BillState.Changed)

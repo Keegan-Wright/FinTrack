@@ -47,6 +47,9 @@ else
 
 @code {
 
+    /// <summary>
+    /// Transactions shown at first, and added each time more are asked for.
+    /// </summary>
     internal const int PageSize = 50;
 
     private int _shown = PageSize;
@@ -71,6 +74,9 @@ else
         return transaction.Pending ? $"{where} · Pending" : where;
     }
 
+    /// <summary>
+    /// Shows another page of transactions.
+    /// </summary>
     private void ShowMore() => _shown += PageSize;
 
 }

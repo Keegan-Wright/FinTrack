@@ -29,6 +29,9 @@
 
 @code {
 
+    /// <summary>
+    /// The transaction.
+    /// </summary>
     [Parameter] [EditorRequired] public required Transaction Transaction { get; set; }
 
     /// <summary>
@@ -41,8 +44,13 @@
     /// </summary>
     private Guid _debtId;
 
+    /// <inheritdoc/>
     protected override void OnInitialized() => _debtId = Transaction.Debt?.DebtId ?? Guid.Empty;
 
+    /// <summary>
+    /// A debt's name as the picker shows it, <c>No debt</c> for none.
+    /// </summary>
+    /// <param name="debtId">The debt, <see cref="Guid.Empty"/> for none.</param>
     private string DebtName(Guid debtId)
     {
         if (debtId == Guid.Empty)
@@ -59,6 +67,9 @@
         return DebtText.PickerLabel(debt);
     }
 
+    /// <summary>
+    /// Validates the form and gives what the dialog closes with, null to keep it open.
+    /// </summary>
     private Task<PayDebt?> BuildResponseModel()
     {
         Guid? debtId = null;

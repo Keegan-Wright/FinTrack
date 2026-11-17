@@ -139,6 +139,9 @@
     [PersistentState]
     public TransactionFilterOptions? FilterOptions { get; set; }
 
+    /// <summary>
+    /// The filter options, none until loaded.
+    /// </summary>
     private TransactionFilterOptions Filters => FilterOptions ?? TransactionFilterOptions.None;
 
     private ReportBreakdown _breakdown;
@@ -150,6 +153,9 @@
     private bool _exporting;
     private CancellationTokenSource? _loadCts;
 
+    /// <summary>
+    /// What's said while the report loads.
+    /// </summary>
     private string LoadingMessage => _breakdown switch
     {
         ReportBreakdown.ByAccount => "Tallying up each account…",
@@ -157,6 +163,7 @@
         _ => "Crunching the numbers…"
     };
 
+    /// <inheritdoc/>
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
@@ -178,10 +185,15 @@
         await LoadAsync(quiet: true);
     }
 
+    /// <summary>
+    /// Loads the filter options.
+    /// </summary>
+    /// <param name="cancellationToken">Stops it once the user leaves.</param>
     private Task<TransactionFilterOptions> LoadFilterOptionsAsync(CancellationToken cancellationToken) =>
         TransactionFilterOptions.LoadAsync(TransactionsService, BillsService, DebtsService, SavingsGoalsService,
             cancellationToken);
 
+    /// <inheritdoc/>
     protected override async Task OnParametersSetAsync()
     {
         _breakdown = BreakdownSlug?.ToLowerInvariant() switch
@@ -195,6 +207,10 @@
             await LoadAsync();
     }
 
+    /// <summary>
+    /// Goes to the report broken down another way.
+    /// </summary>
+    /// <param name="breakdown">How to break it down.</param>
     private void OnBreakdownChanged(ReportBreakdown breakdown)
     {
         var slug = breakdown switch
@@ -206,6 +222,10 @@
         NavigationManager.NavigateTo(slug);
     }
 
+    /// <summary>
+    /// Reloads the report with the filters chosen.
+    /// </summary>
+    /// <param name="filters">The filters.</param>
     private async Task ApplyFiltersAsync(ActiveTransactionFilters filters)
     {
         _filters = filters;
@@ -274,6 +294,9 @@
         return _subjects.FirstOrDefault(static x => x.TotalTransactions > 0);
     }
 
+    /// <summary>
+    /// Whether any account or tag has transactions.
+    /// </summary>
     private bool HasTransactions => _subjects.Any(static x => x.TotalTransactions > 0);
 
     /// <summary>
@@ -296,6 +319,11 @@
         }
     }
 
+    /// <summary>
+    /// Opens an account or tag with Enter or Space.
+    /// </summary>
+    /// <param name="e">The key.</param>
+    /// <param name="subject">The account or tag.</param>
     private void OnSubjectKeyUp(KeyboardEventArgs e, ReportNode subject)
     {
         if (e.Key is "Enter" or " ")

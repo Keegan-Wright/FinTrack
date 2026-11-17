@@ -83,8 +83,14 @@
 
 @code {
 
+    /// <summary>
+    /// The goal picker's value for none.
+    /// </summary>
     private const string NoGoal = "none";
 
+    /// <summary>
+    /// The goal picker's value for a new goal.
+    /// </summary>
     private const string NewGoal = "new";
 
     /// <summary>
@@ -113,10 +119,17 @@
     private string _goal = NoGoal;
     private List<ValidationFailure> _errors = [];
 
+    /// <summary>
+    /// The current culture's currency symbol, shown on amount fields.
+    /// </summary>
     private static string CurrencySymbol => CultureInfo.CurrentCulture.NumberFormat.CurrencySymbol;
 
+    /// <summary>
+    /// Whether the event is every year.
+    /// </summary>
     private bool IsYearly => _model.Recurrence == EventRecurrence.Yearly;
 
+    /// <inheritdoc/>
     protected override void OnInitialized()
     {
         if (Event is null)
@@ -139,6 +152,10 @@
         _goal = Event.SavingsGoalId?.ToString() ?? NoGoal;
     }
 
+    /// <summary>
+    /// Sets whether it's every year. Only a yearly event moves its goal on.
+    /// </summary>
+    /// <param name="yearly">Whether it's every year.</param>
     private void OnYearlyChanged(bool yearly)
     {
         _model.Recurrence = yearly ? EventRecurrence.Yearly : EventRecurrence.None;
@@ -148,6 +165,10 @@
         }
     }
 
+    /// <summary>
+    /// Sets the goal. Without one there's nothing to move on.
+    /// </summary>
+    /// <param name="goal">A goal's id, <see cref="NoGoal"/> or <see cref="NewGoal"/>.</param>
     private void OnGoalChanged(string goal)
     {
         _goal = goal;
@@ -157,6 +178,10 @@
         }
     }
 
+    /// <summary>
+    /// A goal's name as the picker shows it.
+    /// </summary>
+    /// <param name="goal">A goal's id, <see cref="NoGoal"/> or <see cref="NewGoal"/>.</param>
     private string GoalName(string goal)
     {
         if (goal == NoGoal)
@@ -179,6 +204,10 @@
         return Event?.SavingsGoalName ?? string.Empty;
     }
 
+    /// <summary>
+    /// The validation errors for one field.
+    /// </summary>
+    /// <param name="propertyName">The field's property name.</param>
     private IEnumerable<string> ErrorsFor(string propertyName) => _errors
         .Where(x => x.PropertyName == propertyName)
         .Select(static x => x.ErrorMessage);

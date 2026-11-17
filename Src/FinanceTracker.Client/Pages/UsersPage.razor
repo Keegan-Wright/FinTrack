@@ -104,6 +104,7 @@
 
     private bool _busy;
 
+    /// <inheritdoc/>
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
@@ -111,6 +112,10 @@
             UsersService.GetUsersAsync(cancellationToken).ToListAsync(cancellationToken).AsTask());
     }
 
+    /// <summary>
+    /// The user's email and whether it's confirmed.
+    /// </summary>
+    /// <param name="user">The user.</param>
     private static string EmailText(UserSummary user)
     {
         if (user.Email is null)
@@ -126,6 +131,10 @@
         return $"{user.Email} · Not confirmed";
     }
 
+    /// <summary>
+    /// How the user signs in.
+    /// </summary>
+    /// <param name="user">The user.</param>
     private static string SignInText(UserSummary user)
     {
         if (user.HasPassword && user.UsesIdentityProvider)
@@ -141,6 +150,10 @@
         return "Signs in through the identity provider, which looks after their password";
     }
 
+    /// <summary>
+    /// Makes a password reset link and shows it.
+    /// </summary>
+    /// <param name="user">The user.</param>
     internal async Task MakeResetLinkAsync(UserSummary user)
     {
         _busy = true;
@@ -171,6 +184,10 @@
         }
     }
 
+    /// <summary>
+    /// Locks a user once the admin confirms.
+    /// </summary>
+    /// <param name="user">The user.</param>
     internal async Task LockAsync(UserSummary user)
     {
         bool? confirmed = await DialogService.ShowMessageBoxAsync($"Lock {user.Username}?",
@@ -191,10 +208,19 @@
             }, $"Couldn't lock {user.Username}, try again");
     }
 
+    /// <summary>
+    /// Unlocks a user.
+    /// </summary>
+    /// <param name="user">The user.</param>
     internal Task UnlockAsync(UserSummary user) =>
         ChangeAsync(() => UsersService.UnlockAsync(user.Id, _cts.Token), $"Couldn't unlock {user.Username}, try again");
 
     // Makes a change to a user, then reloads them all so the rows show it
+    /// <summary>
+    /// Makes a change and reloads the users, saying when it fails.
+    /// </summary>
+    /// <param name="change">The change.</param>
+    /// <param name="failed">What's said when it fails.</param>
     private async Task ChangeAsync(Func<Task> change, string failed)
     {
         _busy = true;

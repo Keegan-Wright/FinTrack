@@ -61,6 +61,9 @@
 
 @code {
 
+    /// <summary>
+    /// The drop zone the rules are dragged within.
+    /// </summary>
     private const string ZoneIdentifier = "rules";
 
     /// <summary>
@@ -98,10 +101,20 @@
     /// </summary>
     [Parameter] public EventCallback<Rule> OnToggle { get; set; }
 
+    /// <summary>
+    /// Called with a rule the user asks to delete.
+    /// </summary>
     [Parameter] public EventCallback<Rule> OnDelete { get; set; }
 
+    /// <summary>
+    /// The rules' order, so the list redraws when it changes.
+    /// </summary>
     private string OrderKey => string.Join(',', Rules.Select(static x => x.Id));
 
+    /// <summary>
+    /// Where a rule is in the list, -1 when it isn't.
+    /// </summary>
+    /// <param name="rule">The rule.</param>
     private int IndexOf(Rule rule)
     {
         for (int index = 0; index < Rules.Count; index++)
@@ -115,9 +128,18 @@
         return -1;
     }
 
+    /// <summary>
+    /// Moves a dragged rule to where it was dropped.
+    /// </summary>
+    /// <param name="drop">Where it was dropped.</param>
     internal Task OnDroppedAsync(MudItemDropInfo<Rule> drop) =>
         drop.Item is null ? Task.CompletedTask : MoveAsync(drop.Item, drop.IndexInZone);
 
+    /// <summary>
+    /// Moves a rule to <paramref name="toIndex"/> and saves the order.
+    /// </summary>
+    /// <param name="rule">The rule.</param>
+    /// <param name="toIndex">Where it goes.</param>
     private async Task MoveAsync(Rule rule, int toIndex)
     {
         int fromIndex = IndexOf(rule);

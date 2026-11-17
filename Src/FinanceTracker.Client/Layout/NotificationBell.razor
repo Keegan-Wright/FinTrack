@@ -17,10 +17,20 @@
     /// </summary>
     [Parameter] public int Unread { get; set; }
 
+    /// <summary>
+    /// The bell's label, saying how many are unread.
+    /// </summary>
     internal string Label => LabelFor(Unread);
 
+    /// <summary>
+    /// A ringing bell while any are unread.
+    /// </summary>
     private string Icon => Unread > 0 ? Icons.Material.Outlined.NotificationsActive : Icons.Material.Outlined.Notifications;
 
+    /// <summary>
+    /// e.g. <c>Notifications, 3 unread</c>.
+    /// </summary>
+    /// <param name="unread">How many are unread.</param>
     internal static string LabelFor(int unread)
     {
         if (unread == 0)

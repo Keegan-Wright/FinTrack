@@ -44,8 +44,12 @@
     private MudForm _form = null!;
     private AddHouseholdMember _model = new() { FirstName = string.Empty, LastName = string.Empty, YearlyIncome = 0 };
 
+    /// <summary>
+    /// The dialog's title, adding or editing.
+    /// </summary>
     private string Title => Member is null ? "Add a person" : $"Edit {Member.FirstName}";
 
+    /// <inheritdoc/>
     protected override void OnInitialized()
     {
         if (Member is null)
@@ -58,8 +62,14 @@
         _model.YearlyIncome = Member.YearlyIncome ?? 0;
     }
 
+    /// <summary>
+    /// The current culture's currency symbol, shown on amount fields.
+    /// </summary>
     private static string CurrencySymbol => CultureInfo.CurrentCulture.NumberFormat.CurrencySymbol;
 
+    /// <summary>
+    /// Validates the form and gives what the dialog closes with, null to keep it open.
+    /// </summary>
     private async Task<AddHouseholdMember?> BuildResponseModel()
     {
         await _form.ValidateAsync();

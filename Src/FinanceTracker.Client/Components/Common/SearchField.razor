@@ -7,10 +7,19 @@
 
 @code {
 
+    /// <summary>
+    /// What's typed.
+    /// </summary>
     [Parameter] public string Value { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Called with the text as the user types.
+    /// </summary>
     [Parameter] public EventCallback<string> ValueChanged { get; set; }
 
+    /// <summary>
+    /// What the box says while empty.
+    /// </summary>
     [Parameter] public string Placeholder { get; set; } = "Search";
 
 }

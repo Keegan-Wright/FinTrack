@@ -51,6 +51,9 @@ else
     [PersistentState]
     public ProfileDetails? Profile { get; set; }
 
+    /// <summary>
+    /// The line under the title, how the user signs in.
+    /// </summary>
     private string Subtitle
     {
         get
@@ -64,6 +67,7 @@ else
         }
     }
 
+    /// <inheritdoc/>
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();

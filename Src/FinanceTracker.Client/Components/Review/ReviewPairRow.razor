@@ -33,6 +33,9 @@
 
 @code {
 
+    /// <summary>
+    /// The transaction and its suggested other half.
+    /// </summary>
     [Parameter] [EditorRequired] public required ReviewPair Pair { get; set; }
 
     /// <summary>
@@ -46,6 +49,10 @@
     internal static string AccountAndDate(Transaction transaction) =>
         $"{transaction.AccountName} · {transaction.TransactionTime.ToLocalTime().ToString("d MMM yyyy", CultureInfo.CurrentCulture)}";
 
+    /// <summary>
+    /// One half of the pair.
+    /// </summary>
+    /// <param name="transaction">The half.</param>
     private static RenderFragment Half(Transaction transaction) =>
         @<div class="ft-review__half">
             <div class="ft-review__text">

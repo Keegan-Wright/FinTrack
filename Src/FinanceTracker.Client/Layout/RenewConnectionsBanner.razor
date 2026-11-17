@@ -19,6 +19,9 @@
     /// </summary>
     [Parameter] public int Count { get; set; }
 
+    /// <summary>
+    /// How many connections need renewing.
+    /// </summary>
     private string Message => Count == 1
         ? "A bank connection needs renewing to keep syncing."
         : $"{Count} bank connections need renewing to keep syncing.";

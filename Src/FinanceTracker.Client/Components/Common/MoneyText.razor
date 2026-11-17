@@ -4,8 +4,14 @@
 
 @code {
 
+    /// <summary>
+    /// The amount.
+    /// </summary>
     [Parameter, EditorRequired] public decimal Value { get; set; }
 
+    /// <summary>
+    /// The text style, body text by default.
+    /// </summary>
     [Parameter] public Typo Typo { get; set; } = Typo.body2;
 
     /// <summary>
@@ -13,12 +19,24 @@
     /// </summary>
     [Parameter] public bool Signed { get; set; }
 
+    /// <summary>
+    /// A colour that overrides the sign's, null for none.
+    /// </summary>
     [Parameter] public Color? Color { get; set; }
 
+    /// <summary>
+    /// Whether it sits within a line of text.
+    /// </summary>
     [Parameter] public bool Inline { get; set; }
 
+    /// <summary>
+    /// More classes for the text.
+    /// </summary>
     [Parameter] public string? Class { get; set; }
 
+    /// <summary>
+    /// The colour given, or the default.
+    /// </summary>
     private Color ResolvedColor => Color ?? MudBlazor.Color.Default;
 
     /// <summary>
@@ -37,6 +55,9 @@
         }
     }
 
+    /// <summary>
+    /// The text's classes, the sign's colour and any given.
+    /// </summary>
     private string CssClass
     {
         get

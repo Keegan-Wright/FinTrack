@@ -57,12 +57,14 @@
     [PersistentState]
     public List<AutomationJobSummary>? Jobs { get; set; }
 
+    /// <inheritdoc/>
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
         Jobs = await LoadOnceAsync(Jobs, "Loading jobs", LoadJobsAsync);
     }
 
+    /// <inheritdoc/>
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         await base.OnAfterRenderAsync(firstRender);
@@ -77,6 +79,9 @@
     }
 
     // Without the hub the page still catches up on running jobs, just not on ones that start elsewhere
+    /// <summary>
+    /// Listens for jobs starting and finishing, to refresh as they do.
+    /// </summary>
     private async Task SubscribeToJobsAsync()
     {
         try
@@ -95,13 +100,23 @@
         }
     }
 
+    /// <summary>
+    /// Loads the jobs.
+    /// </summary>
+    /// <param name="cancellationToken">Stops it once the user leaves.</param>
     private Task<List<AutomationJobSummary>> LoadJobsAsync(CancellationToken cancellationToken) =>
         AutomationService.GetJobSummariesAsync(cancellationToken).ToListAsync(cancellationToken).AsTask();
 
+    /// <summary>
+    /// Whether any job is running or waiting to retry.
+    /// </summary>
     private bool AnyRunning => Jobs?.Any(static x => x.LastRun?.Status is AutomationRunStatus.Running
         or AutomationRunStatus.Retrying) == true;
 
     // A running job is checked on until it's done, so a missed message doesn't leave it reading as running
+    /// <summary>
+    /// Refreshes on a timer while a job runs, until the user leaves.
+    /// </summary>
     private async Task CheckWhileRunningAsync()
     {
         using PeriodicTimer timer = new(RunningCheckInterval, TimeProvider);
@@ -153,6 +168,11 @@
         StateHasChanged();
     }
 
+    /// <summary>
+    /// Shows or hides a job's runs.
+    /// </summary>
+    /// <param name="function">The job.</param>
+    /// <param name="show">Whether to show them.</param>
     private void SetShowRuns(string function, bool show)
     {
         if (show)
@@ -165,6 +185,10 @@
         }
     }
 
+    /// <summary>
+    /// Runs a job now once the user confirms.
+    /// </summary>
+    /// <param name="job">The job.</param>
     private async Task RunNowAsync(AutomationJobSummary job)
     {
         string name = AutomationText.JobName(job.Function);
@@ -193,6 +217,10 @@
         await RefreshAsync();
     }
 
+    /// <summary>
+    /// Edits a job's schedule in the dialog.
+    /// </summary>
+    /// <param name="job">The job's schedule.</param>
     private async Task EditCronItem(AutomationCron job)
     {
         var dialogParameters = new DialogParameters<ModifyCronDialog>

@@ -87,10 +87,14 @@
     /// </summary>
     [Parameter] public int Refresh { get; set; }
 
+    /// <summary>
+    /// How many pages of runs there are.
+    /// </summary>
     private int PageCount => _page is null ? 0 : (_page.Total + PageSize - 1) / PageSize;
 
     private int _loadedFor;
 
+    /// <inheritdoc/>
     protected override Task OnInitializedAsync()
     {
         _loadedFor = Refresh;
@@ -98,6 +102,7 @@
     }
 
     // The same page again, with any open errors kept open
+    /// <inheritdoc/>
     protected override async Task OnParametersSetAsync()
     {
         if (Refresh == _loadedFor || _page is null)
@@ -109,6 +114,10 @@
         await LoadAsync(_pageIndex, refreshing: true);
     }
 
+    /// <summary>
+    /// Loads a page of runs.
+    /// </summary>
+    /// <param name="page">The page, from 1.</param>
     private Task GoToAsync(int page) => LoadAsync(page - 1);
 
     /// <param name="pageIndex">The page, from 0.</param>
@@ -148,6 +157,10 @@
         StateHasChanged();
     }
 
+    /// <summary>
+    /// Opens or closes a run's details.
+    /// </summary>
+    /// <param name="runId">The run.</param>
     private void Toggle(string runId)
     {
         if (!_open.Remove(runId))
@@ -157,6 +170,7 @@
     }
 
     // Cancelled, not disposed, see PageComponent.Dispose: a page of runs still loading reads the token once it resumes
+    /// <inheritdoc/>
     public void Dispose() => _cts.Cancel();
 
 }
