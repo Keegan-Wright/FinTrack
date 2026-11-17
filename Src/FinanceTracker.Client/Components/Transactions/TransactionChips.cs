@@ -12,6 +12,7 @@ namespace FinanceTracker.Client.Components.Transactions;
 /// </summary>
 public static class TransactionChips
 {
+    /// <param name="transaction">The transaction.</param>
     /// <param name="linksOnly">Only the bill, subscription, debt, goals and split, for the compact phone list.</param>
     public static IReadOnlyList<TransactionChip> For(Transaction transaction, bool linksOnly = false)
     {
@@ -51,6 +52,7 @@ public static class TransactionChips
     /// <summary>
     /// Null when it pays no bill, or the user said it pays none.
     /// </summary>
+    /// <param name="bill">The bill.</param>
     private static TransactionChip? Bill(TransactionBill? bill)
     {
         if (bill?.BillName is not { } name)
@@ -75,6 +77,7 @@ public static class TransactionChips
     /// <summary>
     /// Null when it pays off no debt, or the user said it pays none.
     /// </summary>
+    /// <param name="debt">The debt.</param>
     private static TransactionChip? Debt(TransactionDebt? debt)
     {
         if (debt?.DebtName is not { } name || debt.DebtId is not { } debtId)
@@ -90,10 +93,19 @@ public static class TransactionChips
             $"Pays off {name}, {reason}");
     }
 
+    /// <summary>
+    /// The chip for a savings goal the transaction counts towards.
+    /// </summary>
+    /// <param name="goal">The goal.</param>
     private static TransactionChip Goal(TransactionSavingsGoal goal) =>
         new(goal.Name, TransactionChipKind.Link, Icons.Material.Outlined.Savings, "SavingsGoals",
             $"Counts towards {goal.Name}");
 
+    /// <summary>
+    /// The chip for one of the user's tags, saying which rule added it.
+    /// </summary>
+    /// <param name="transaction">The transaction.</param>
+    /// <param name="tag">The tag.</param>
     private static TransactionChip Tag(Transaction transaction, string tag)
     {
         if (RuleText.TaggedBy(transaction, tag) is { } ruleName)
@@ -108,6 +120,7 @@ public static class TransactionChips
     /// <summary>
     /// <c>Chosen by you</c> as <c>chosen by you</c> to follow a comma, leaving a rule's name as it is.
     /// </summary>
+    /// <param name="text">The text.</param>
     private static string LowerFirst(string text)
     {
         if (text.Length == 0)

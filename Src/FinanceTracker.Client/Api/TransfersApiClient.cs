@@ -15,12 +15,15 @@ public sealed class TransfersApiClient : ITransfersService
 {
     private readonly HttpClient _http;
 
+    /// <param name="httpClientFactory">Makes the API's client.</param>
     public TransfersApiClient(IHttpClientFactory httpClientFactory) =>
         _http = httpClientFactory.CreateClient(ApiClientRegistration.HttpClientName);
 
+    /// <inheritdoc/>
     public IAsyncEnumerable<Transaction> GetTransfersToReviewAsync(CancellationToken cancellationToken) =>
         _http.GetStreamAsync<Transaction>($"{ApiRoutes.Transfers}/review", cancellationToken);
 
+    /// <inheritdoc/>
     public async Task<int> GetReviewCountAsync(CancellationToken cancellationToken)
     {
         using HttpResponseMessage response =
@@ -29,15 +32,24 @@ public sealed class TransfersApiClient : ITransfersService
         return await response.ReadRequiredJsonAsync<int>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public Task<IReadOnlyList<Transaction>> MarkAsTransferAsync(Guid id, CancellationToken cancellationToken) =>
         DecideAsync(HttpMethod.Post, $"{ApiRoutes.Transfers}/{id}/transfer", cancellationToken);
 
+    /// <inheritdoc/>
     public Task<IReadOnlyList<Transaction>> MarkNotATransferAsync(Guid id, CancellationToken cancellationToken) =>
         DecideAsync(HttpMethod.Post, $"{ApiRoutes.Transfers}/{id}/not-a-transfer", cancellationToken);
 
+    /// <inheritdoc/>
     public Task<IReadOnlyList<Transaction>> ResetTransferAsync(Guid id, CancellationToken cancellationToken) =>
         DecideAsync(HttpMethod.Delete, $"{ApiRoutes.Transfers}/{id}/decision", cancellationToken);
 
+    /// <summary>
+    /// Sends a transfer decision and reads back the transactions it changed.
+    /// </summary>
+    /// <param name="method">The request's method.</param>
+    /// <param name="path">The API path.</param>
+    /// <param name="cancellationToken">Stops the call.</param>
     private async Task<IReadOnlyList<Transaction>> DecideAsync(HttpMethod method, string path,
         CancellationToken cancellationToken)
     {

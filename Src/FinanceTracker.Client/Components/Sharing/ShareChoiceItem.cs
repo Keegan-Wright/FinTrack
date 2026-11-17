@@ -18,5 +18,8 @@ public sealed record ShareChoiceItem(
     string? FollowsAccount = null,
     ShareMode FollowsMode = ShareMode.ReadOnly)
 {
+    /// <summary>
+    /// Whether it can be chosen on its own, rather than with an account.
+    /// </summary>
     public bool CanChoose => FollowsAccount is null;
 }

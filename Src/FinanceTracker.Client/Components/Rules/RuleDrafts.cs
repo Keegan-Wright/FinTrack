@@ -16,6 +16,10 @@ public static class RuleDrafts
         Actions = [new RuleAction { Type = RuleActionType.AddTag }]
     };
 
+    /// <summary>
+    /// A copy of <paramref name="rule"/> to edit.
+    /// </summary>
+    /// <param name="rule">The rule.</param>
     public static SaveRule From(Rule rule) => new()
     {
         Name = rule.Name,
@@ -36,6 +40,8 @@ public static class RuleDrafts
     /// <summary>
     /// <paramref name="rule"/> on or off with everything else as it is, for the switch on the list.
     /// </summary>
+    /// <param name="rule">The rule.</param>
+    /// <param name="isEnabled">Whether it runs.</param>
     public static SaveRule WithEnabled(Rule rule, bool isEnabled)
     {
         SaveRule draft = From(rule);
@@ -46,6 +52,7 @@ public static class RuleDrafts
     /// <summary>
     /// A blank condition on <paramref name="field"/> with its usual operator, money out for a type.
     /// </summary>
+    /// <param name="field">The field.</param>
     public static RuleCondition NewCondition(RuleField field) => new()
     {
         Field = field,
@@ -53,6 +60,10 @@ public static class RuleDrafts
         Value = field == RuleField.Type ? "Debit" : string.Empty
     };
 
+    /// <summary>
+    /// A copy of <paramref name="condition"/>.
+    /// </summary>
+    /// <param name="condition">The condition.</param>
     private static RuleCondition Copy(RuleCondition condition) => new()
     {
         Field = condition.Field,

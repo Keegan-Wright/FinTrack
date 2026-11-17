@@ -17,9 +17,11 @@ public sealed class BudgetsApiClient : IBudgetsService
 {
     private readonly HttpClient _http;
 
+    /// <param name="httpClientFactory">Makes the API's client.</param>
     public BudgetsApiClient(IHttpClientFactory httpClientFactory) =>
         _http = httpClientFactory.CreateClient(ApiClientRegistration.HttpClientName);
 
+    /// <inheritdoc/>
     public async Task<BudgetMonthOverview> GetMonthAsync(int year, int month, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response =
@@ -28,9 +30,11 @@ public sealed class BudgetsApiClient : IBudgetsService
         return await response.ReadRequiredJsonAsync<BudgetMonthOverview>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public IAsyncEnumerable<Budget> GetBudgetsAsync(CancellationToken cancellationToken) =>
         _http.GetStreamAsync<Budget>(ApiRoutes.Budgets, cancellationToken);
 
+    /// <inheritdoc/>
     public async Task<Budget> GetBudgetAsync(Guid id, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.GetAsync($"{ApiRoutes.Budgets}/{id}", cancellationToken);
@@ -38,6 +42,7 @@ public sealed class BudgetsApiClient : IBudgetsService
         return await response.ReadRequiredJsonAsync<Budget>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<Budget> AddBudgetAsync(SaveBudget budget, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.PostAsJsonAsync(ApiRoutes.Budgets, budget, cancellationToken);
@@ -45,6 +50,7 @@ public sealed class BudgetsApiClient : IBudgetsService
         return await response.ReadRequiredJsonAsync<Budget>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<Budget> UpdateBudgetAsync(Guid id, SaveBudget budget, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response =
@@ -53,6 +59,7 @@ public sealed class BudgetsApiClient : IBudgetsService
         return await response.ReadRequiredJsonAsync<Budget>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task DeleteBudgetAsync(Guid id, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.DeleteAsync($"{ApiRoutes.Budgets}/{id}", cancellationToken);

@@ -18,9 +18,11 @@ public sealed class ExportsApiClient : IExportsService
 {
     private readonly HttpClient _http;
 
+    /// <param name="httpClientFactory">Makes the API's client.</param>
     public ExportsApiClient(IHttpClientFactory httpClientFactory) =>
         _http = httpClientFactory.CreateClient(ApiClientRegistration.HttpClientName);
 
+    /// <inheritdoc/>
     public async Task WriteTransactionsCsvAsync(FilterTransactions filter, Stream destination,
         CancellationToken cancellationToken)
     {
@@ -32,6 +34,7 @@ public sealed class ExportsApiClient : IExportsService
         await response.Content.CopyToAsync(destination, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task WriteBackupAsync(Stream destination, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(destination);
@@ -42,6 +45,7 @@ public sealed class ExportsApiClient : IExportsService
         await response.Content.CopyToAsync(destination, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<List<PayPeriod>> GetStatementPeriodsAsync(CancellationToken cancellationToken)
     {
         using HttpResponseMessage response =
@@ -50,6 +54,7 @@ public sealed class ExportsApiClient : IExportsService
         return await response.ReadRequiredJsonAsync<List<PayPeriod>>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task WriteStatementAsync(int year, int month, Stream destination,
         CancellationToken cancellationToken)
     {
@@ -61,6 +66,7 @@ public sealed class ExportsApiClient : IExportsService
         await response.Content.CopyToAsync(destination, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task WriteReportAsync(ExportReport report, Stream destination, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(destination);

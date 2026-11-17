@@ -16,9 +16,11 @@ public sealed class ClientErrorsApiClient : IClientErrorsService
 {
     private readonly HttpClient _http;
 
+    /// <param name="httpClientFactory">Makes the API's client.</param>
     public ClientErrorsApiClient(IHttpClientFactory httpClientFactory) =>
         _http = httpClientFactory.CreateClient(ApiClientRegistration.HttpClientName);
 
+    /// <inheritdoc/>
     public async Task ReportAsync(ClientError error, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response =

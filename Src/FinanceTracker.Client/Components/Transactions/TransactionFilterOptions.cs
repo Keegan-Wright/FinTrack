@@ -15,15 +15,54 @@ public sealed class TransactionFilterOptions
     /// </summary>
     public static TransactionFilterOptions None { get; } = new();
 
+    /// <summary>
+    /// The accounts to filter by.
+    /// </summary>
     public List<TransactionAccountFilter> Accounts { get; init; } = [];
+
+    /// <summary>
+    /// The bank's categories to filter by.
+    /// </summary>
     public List<TransactionCategoryFilter> Categories { get; init; } = [];
+
+    /// <summary>
+    /// The banks to filter by.
+    /// </summary>
     public List<TransactionProviderFilter> Providers { get; init; } = [];
+
+    /// <summary>
+    /// Money in or out.
+    /// </summary>
     public List<TransactionTypeFilter> Types { get; init; } = [];
+
+    /// <summary>
+    /// The user's tags to filter by.
+    /// </summary>
     public List<TransactionTagFilter> Tags { get; init; } = [];
+
+    /// <summary>
+    /// The bills to filter by.
+    /// </summary>
     public List<TransactionLinkFilter> Bills { get; init; } = [];
+
+    /// <summary>
+    /// The debts to filter by.
+    /// </summary>
     public List<TransactionLinkFilter> Debts { get; init; } = [];
+
+    /// <summary>
+    /// The savings goals to filter by.
+    /// </summary>
     public List<TransactionLinkFilter> SavingsGoals { get; init; } = [];
 
+    /// <summary>
+    /// Loads every option from the services.
+    /// </summary>
+    /// <param name="transactionsService">Gives the accounts, categories, banks, types and tags.</param>
+    /// <param name="billsService">Gives the bills.</param>
+    /// <param name="debtsService">Gives the debts.</param>
+    /// <param name="savingsGoalsService">Gives the savings goals.</param>
+    /// <param name="cancellationToken">Stops the loading.</param>
     public static async Task<TransactionFilterOptions> LoadAsync(ITransactionsService transactionsService,
         IBillsService billsService, IDebtsService debtsService, ISavingsGoalsService savingsGoalsService,
         CancellationToken cancellationToken) => new()

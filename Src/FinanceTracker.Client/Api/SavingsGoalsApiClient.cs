@@ -19,12 +19,15 @@ public sealed class SavingsGoalsApiClient : ISavingsGoalsService
 {
     private readonly HttpClient _http;
 
+    /// <param name="httpClientFactory">Makes the API's client.</param>
     public SavingsGoalsApiClient(IHttpClientFactory httpClientFactory) =>
         _http = httpClientFactory.CreateClient(ApiClientRegistration.HttpClientName);
 
+    /// <inheritdoc/>
     public IAsyncEnumerable<SavingsGoal> GetSavingsGoalsAsync(CancellationToken cancellationToken) =>
         _http.GetStreamAsync<SavingsGoal>(ApiRoutes.SavingsGoals, cancellationToken);
 
+    /// <inheritdoc/>
     public async Task<SavingsGoal> GetSavingsGoalAsync(Guid id, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response =
@@ -33,9 +36,11 @@ public sealed class SavingsGoalsApiClient : ISavingsGoalsService
         return await response.ReadRequiredJsonAsync<SavingsGoal>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public IAsyncEnumerable<SavingsGoalAccount> GetSavingsAccountsAsync(CancellationToken cancellationToken) =>
         _http.GetStreamAsync<SavingsGoalAccount>($"{ApiRoutes.SavingsGoals}/accounts", cancellationToken);
 
+    /// <inheritdoc/>
     public async Task<List<BalancePoint>> GetSavingsGoalHistoryAsync(Guid id, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response =
@@ -44,6 +49,7 @@ public sealed class SavingsGoalsApiClient : ISavingsGoalsService
         return await response.ReadRequiredJsonAsync<List<BalancePoint>>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<SavingsGoal> AddSavingsGoalAsync(SaveSavingsGoal goal, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response =
@@ -52,6 +58,7 @@ public sealed class SavingsGoalsApiClient : ISavingsGoalsService
         return await response.ReadRequiredJsonAsync<SavingsGoal>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<SavingsGoal> UpdateSavingsGoalAsync(Guid id, SaveSavingsGoal goal,
         CancellationToken cancellationToken)
     {
@@ -61,6 +68,7 @@ public sealed class SavingsGoalsApiClient : ISavingsGoalsService
         return await response.ReadRequiredJsonAsync<SavingsGoal>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public Task<bool> DeleteSavingsGoalAsync(Guid id, CancellationToken cancellationToken) =>
         _http.DeleteIfFoundAsync($"{ApiRoutes.SavingsGoals}/{id}", cancellationToken);
 }

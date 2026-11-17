@@ -13,8 +13,10 @@ public sealed class SignedOutHandler : DelegatingHandler
 {
     private readonly NavigationManager _navigation;
 
+    /// <param name="navigation">Sends the user to sign in.</param>
     public SignedOutHandler(NavigationManager navigation) => _navigation = navigation;
 
+    /// <inheritdoc/>
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,
         CancellationToken cancellationToken)
     {

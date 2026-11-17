@@ -4,6 +4,9 @@ using Microsoft.AspNetCore.SignalR.Client;
 
 namespace FinanceTracker.Client.Api;
 
+/// <summary>
+/// Registers the client the API clients call the server with.
+/// </summary>
 public static class ApiClientRegistration
 {
     /// <summary>

@@ -11,6 +11,9 @@ public sealed class AppUpdate
 {
     private readonly string _running;
 
+    /// <summary>
+    /// Compares against the build running in this tab.
+    /// </summary>
     public AppUpdate() : this(AppVersion.Full)
     {
     }
@@ -31,6 +34,7 @@ public sealed class AppUpdate
     /// <summary>
     /// The build the server says it runs, <see langword="null"/> when an answer didn't say.
     /// </summary>
+    /// <param name="version">The build the server says it runs, null when it doesn't say.</param>
     public void ServerRuns(string? version)
     {
         if (Available || string.IsNullOrEmpty(version) || string.Equals(version, _running, StringComparison.Ordinal))

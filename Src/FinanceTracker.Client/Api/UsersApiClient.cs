@@ -16,12 +16,15 @@ public sealed class UsersApiClient : IUsersService
 {
     private readonly HttpClient _http;
 
+    /// <param name="httpClientFactory">Makes the API's client.</param>
     public UsersApiClient(IHttpClientFactory httpClientFactory) =>
         _http = httpClientFactory.CreateClient(ApiClientRegistration.HttpClientName);
 
+    /// <inheritdoc/>
     public IAsyncEnumerable<UserSummary> GetUsersAsync(CancellationToken cancellationToken) =>
         _http.GetStreamAsync<UserSummary>(ApiRoutes.Users, cancellationToken);
 
+    /// <inheritdoc/>
     public async Task<ResetLink?> CreateResetLinkAsync(Guid userId, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response =
@@ -36,6 +39,7 @@ public sealed class UsersApiClient : IUsersService
         return await response.ReadRequiredJsonAsync<ResetLink>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<bool> LockAsync(Guid userId, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response =
@@ -50,6 +54,7 @@ public sealed class UsersApiClient : IUsersService
         return true;
     }
 
+    /// <inheritdoc/>
     public async Task UnlockAsync(Guid userId, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response =
@@ -58,6 +63,12 @@ public sealed class UsersApiClient : IUsersService
         response.EnsureSuccessStatusCode();
     }
 
+    /// <summary>
+    /// Throws on a 404, as the interface documents.
+    /// </summary>
+    /// <param name="response">The API's answer.</param>
+    /// <param name="userId">The user asked for.</param>
+    /// <exception cref="InvalidOperationException">There's no such user.</exception>
     private static void ThrowIfMissing(HttpResponseMessage response, Guid userId)
     {
         if (response.StatusCode == HttpStatusCode.NotFound)

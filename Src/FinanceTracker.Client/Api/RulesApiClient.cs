@@ -17,12 +17,15 @@ public sealed class RulesApiClient : IRulesService
 {
     private readonly HttpClient _http;
 
+    /// <param name="httpClientFactory">Makes the API's client.</param>
     public RulesApiClient(IHttpClientFactory httpClientFactory) =>
         _http = httpClientFactory.CreateClient(ApiClientRegistration.HttpClientName);
 
+    /// <inheritdoc/>
     public IAsyncEnumerable<Rule> GetRulesAsync(CancellationToken cancellationToken) =>
         _http.GetStreamAsync<Rule>(ApiRoutes.Rules, cancellationToken);
 
+    /// <inheritdoc/>
     public async Task<Rule> GetRuleAsync(Guid id, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.GetAsync($"{ApiRoutes.Rules}/{id}", cancellationToken);
@@ -30,6 +33,7 @@ public sealed class RulesApiClient : IRulesService
         return await response.ReadRequiredJsonAsync<Rule>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<Rule> AddRuleAsync(SaveRule rule, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.PostAsJsonAsync(ApiRoutes.Rules, rule, cancellationToken);
@@ -37,6 +41,7 @@ public sealed class RulesApiClient : IRulesService
         return await response.ReadRequiredJsonAsync<Rule>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<Rule> UpdateRuleAsync(Guid id, SaveRule rule, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response =
@@ -45,6 +50,7 @@ public sealed class RulesApiClient : IRulesService
         return await response.ReadRequiredJsonAsync<Rule>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task ReorderRulesAsync(ReorderRules order, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response =
@@ -52,6 +58,7 @@ public sealed class RulesApiClient : IRulesService
         await response.EnsureFoundAsync(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<RulePreview> PreviewRuleAsync(Guid? id, SaveRule rule, CancellationToken cancellationToken)
     {
         string path = id is { } ruleId ? $"{ApiRoutes.Rules}/{ruleId}/preview" : $"{ApiRoutes.Rules}/preview";
@@ -60,6 +67,7 @@ public sealed class RulesApiClient : IRulesService
         return await response.ReadRequiredJsonAsync<RulePreview>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<int> ApplyRuleToExistingAsync(Guid id, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response =
@@ -68,6 +76,7 @@ public sealed class RulesApiClient : IRulesService
         return await response.ReadRequiredJsonAsync<int>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<SaveRule> GetDraftFromTransactionAsync(Guid transactionId,
         CancellationToken cancellationToken)
     {
@@ -77,6 +86,7 @@ public sealed class RulesApiClient : IRulesService
         return await response.ReadRequiredJsonAsync<SaveRule>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task DeleteRuleAsync(Guid id, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.DeleteAsync($"{ApiRoutes.Rules}/{id}", cancellationToken);

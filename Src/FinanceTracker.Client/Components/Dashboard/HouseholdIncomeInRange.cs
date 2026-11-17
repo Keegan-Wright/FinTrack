@@ -11,13 +11,22 @@ namespace FinanceTracker.Client.Components.Dashboard;
 /// </remarks>
 public sealed record HouseholdIncomeInRange(decimal Amount, string Period)
 {
+    /// <summary>
+    /// Months in a year.
+    /// </summary>
     private const int MonthsInAYear = 12;
+    /// <summary>
+    /// The days the last days preset covers.
+    /// </summary>
     private const int LastDays = 30;
 
     /// <summary>
     /// The share of <paramref name="yearlyIncome"/> for <paramref name="preset"/>, the range running to
     /// <paramref name="today"/>.
     /// </summary>
+    /// <param name="yearlyIncome">The household's yearly income.</param>
+    /// <param name="preset">The range chosen.</param>
+    /// <param name="today">Today where the user is.</param>
     /// <returns><see langword="null"/> when the household has no income given.</returns>
     public static HouseholdIncomeInRange? For(decimal yearlyIncome, DashboardRangePreset preset, DateOnly today)
     {
@@ -43,7 +52,12 @@ public sealed record HouseholdIncomeInRange(decimal Amount, string Period)
     /// <summary>
     /// What <paramref name="yearlyIncome"/> is a month.
     /// </summary>
+    /// <param name="yearlyIncome">The household's yearly income.</param>
     public static decimal Monthly(decimal yearlyIncome) => yearlyIncome / MonthsInAYear;
 
+    /// <summary>
+    /// The days in <paramref name="year"/>.
+    /// </summary>
+    /// <param name="year">The year.</param>
     private static int DaysIn(int year) => DateTime.IsLeapYear(year) ? 366 : 365;
 }

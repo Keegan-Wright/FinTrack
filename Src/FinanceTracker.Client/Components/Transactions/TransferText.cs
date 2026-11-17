@@ -9,6 +9,10 @@ namespace FinanceTracker.Client.Components.Transactions;
 /// </summary>
 public static class TransferText
 {
+    /// <summary>
+    /// The chip's label, e.g. <c>Transfer · Savings</c>.
+    /// </summary>
+    /// <param name="transfer">The transfer.</param>
     public static string Label(TransactionTransfer transfer) => transfer.State switch
     {
         TransferState.Transfer when Partner(transfer, withDate: false) is { } partner => $"Transfer · {partner}",
@@ -20,6 +24,7 @@ public static class TransferText
     /// <summary>
     /// The other half's description and date, e.g. <c>Rainy Day · 4 Oct 2026</c>. Null when there's no other half.
     /// </summary>
+    /// <param name="transfer">The transfer.</param>
     public static string? OtherHalf(TransactionTransfer transfer) => transfer.PartnerDescription switch
     {
         null => null,
@@ -35,6 +40,7 @@ public static class TransferText
     /// <c>Refund</c>, <c>Income</c> or <c>Spending</c>. Money in the bank calls a purchase is a refund, as budgets
     /// treat it.
     /// </summary>
+    /// <param name="transaction">The transaction.</param>
     public static string CountsAs(Transaction transaction)
     {
         if (transaction.Transfer?.State == TransferState.Transfer)
@@ -55,6 +61,10 @@ public static class TransferText
         return IsRefund(transaction) ? "Refund" : "Income";
     }
 
+    /// <summary>
+    /// Whether the bank calls it a purchase, which money in is when it's a refund.
+    /// </summary>
+    /// <param name="transaction">The transaction.</param>
     private static bool IsRefund(Transaction transaction) =>
         string.Equals(transaction.TransactionCategory, "PURCHASE", StringComparison.OrdinalIgnoreCase);
 
@@ -62,6 +72,8 @@ public static class TransferText
     /// Who or where the money moved to or from, e.g. <c>Rainy Day, 4 Oct</c>, <c>John Doe</c>, or
     /// <c>Jane Doe's Joint</c> for an account someone shares. Null when nothing is known.
     /// </summary>
+    /// <param name="transfer">The transfer.</param>
+    /// <param name="withDate">Whether to say when.</param>
     public static string? Partner(TransactionTransfer transfer, bool withDate = true)
     {
         if (transfer.PartnerHouseholdMemberName is { } member)
@@ -84,6 +96,7 @@ public static class TransferText
     /// The other half's account, named as whose it is when it's another person's, or just whose when they don't
     /// share it, e.g. <c>Jane Doe</c>.
     /// </summary>
+    /// <param name="transfer">The transfer.</param>
     private static string? PartnerAccount(TransactionTransfer transfer)
     {
         if (transfer.PartnerOwnerName is not { } owner)
@@ -102,6 +115,7 @@ public static class TransferText
     /// <summary>
     /// What stands in for the other half on the review page when it isn't waiting for review too.
     /// </summary>
+    /// <param name="transfer">The transfer.</param>
     public static string MissingHalf(TransactionTransfer transfer)
     {
         if (OtherHalf(transfer) is { } otherHalf)
@@ -122,6 +136,7 @@ public static class TransferText
     /// <summary>
     /// Why it was decided, a sentence.
     /// </summary>
+    /// <param name="transfer">The transfer.</param>
     /// <param name="sharedBy">Who shares the account it's on, when it isn't the user's own, so it reads as theirs.
     /// </param>
     public static string Reason(TransactionTransfer transfer, string? sharedBy = null)
@@ -173,6 +188,8 @@ public static class TransferText
     /// Why it was decided, on a transaction of <paramref name="owner"/>'s they share with the user. Their accounts
     /// and rules, not the user's. Either of them may have answered by hand, so that doesn't say who.
     /// </summary>
+    /// <param name="transfer">The transfer.</param>
+    /// <param name="owner">Whose account it is.</param>
     private static string SharedReason(TransactionTransfer transfer, string owner)
     {
         if (transfer.DecidedBy == TransferDecidedBy.User)
@@ -211,6 +228,8 @@ public static class TransferText
     /// <summary>
     /// Why FinTrack paired it with an account of <paramref name="owner"/>'s, someone the user shares with.
     /// </summary>
+    /// <param name="transfer">The transfer.</param>
+    /// <param name="owner">Whose account it is.</param>
     private static string LinkedReason(TransactionTransfer transfer, string owner)
     {
         if (transfer.Reason == TransferMatchReason.OwnAccountReference)
@@ -230,6 +249,7 @@ public static class TransferText
     /// <summary>
     /// The decisions that would change something, in the order they're offered.
     /// </summary>
+    /// <param name="transfer">The transfer.</param>
     public static IEnumerable<TransferAction> Actions(TransactionTransfer? transfer)
     {
         if (transfer?.State != TransferState.Transfer)
@@ -248,6 +268,10 @@ public static class TransferText
         }
     }
 
+    /// <summary>
+    /// What an action's button says.
+    /// </summary>
+    /// <param name="action">The action.</param>
     public static string ActionLabel(TransferAction action) => action switch
     {
         TransferAction.MarkAsTransfer => "It's a transfer",
@@ -258,6 +282,7 @@ public static class TransferText
     /// <summary>
     /// The action's icon.
     /// </summary>
+    /// <param name="action">The action.</param>
     public static string ActionIcon(TransferAction action) => action switch
     {
         TransferAction.MarkAsTransfer => Icons.Material.Outlined.SwapHoriz,

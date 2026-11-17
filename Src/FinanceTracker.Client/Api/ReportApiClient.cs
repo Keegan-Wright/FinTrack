@@ -18,19 +18,23 @@ public sealed class ReportApiClient : IReportService
 {
     private readonly HttpClient _http;
 
+    /// <param name="httpClientFactory">Makes the API's client.</param>
     public ReportApiClient(IHttpClientFactory httpClientFactory) =>
         _http = httpClientFactory.CreateClient(ApiClientRegistration.HttpClientName);
 
+    /// <inheritdoc/>
     public IAsyncEnumerable<SpentInTimePeriodReport> GetSpentInTimePeriodReportAsync(FilterTransactions request,
         CancellationToken cancellationToken) =>
         _http.PostStreamAsync<FilterTransactions, SpentInTimePeriodReport>(
             $"{ApiRoutes.Reports}/spent-in-time-period", request, cancellationToken);
 
+    /// <inheritdoc/>
     public IAsyncEnumerable<SpentInCategoryReport> GetCategoryBreakdownReportAsync(FilterTransactions request,
         CancellationToken cancellationToken) =>
         _http.PostStreamAsync<FilterTransactions, SpentInCategoryReport>($"{ApiRoutes.Reports}/category-breakdown",
             request, cancellationToken);
 
+    /// <inheritdoc/>
     public IAsyncEnumerable<SpentInAccountReport> GetAccountBreakdownReportAsync(FilterTransactions request,
         CancellationToken cancellationToken) =>
         _http.PostStreamAsync<FilterTransactions, SpentInAccountReport>($"{ApiRoutes.Reports}/account-breakdown",

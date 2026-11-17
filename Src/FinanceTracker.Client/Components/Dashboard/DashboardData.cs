@@ -19,6 +19,9 @@ public sealed class DashboardData
     /// </summary>
     public static DashboardData Empty { get; } = new();
 
+    /// <summary>
+    /// The range chosen.
+    /// </summary>
     public DashboardRangePreset Preset { get; init; } = DashboardRangePreset.ThisMonth;
 
     /// <summary>
@@ -36,6 +39,9 @@ public sealed class DashboardData
     /// </summary>
     public DateTime ToDate { get; init; }
 
+    /// <summary>
+    /// Money in and out over the range, null until loaded.
+    /// </summary>
     public SpentInTimePeriod? Spent { get; init; }
 
     /// <summary>
@@ -46,6 +52,9 @@ public sealed class DashboardData
     /// <inheritdoc cref="TrendIn"/>
     public decimal? TrendOut { get; init; }
 
+    /// <summary>
+    /// The total of the user's account balances.
+    /// </summary>
     public decimal TotalBalance { get; init; }
 
     /// <summary>
@@ -63,10 +72,19 @@ public sealed class DashboardData
     /// </summary>
     public string? ChartNote { get; init; }
 
+    /// <summary>
+    /// The payments due soon.
+    /// </summary>
     public List<UpcomingPayment> UpcomingPayments { get; init; } = [];
 
+    /// <summary>
+    /// The user's accounts, each with its latest transactions.
+    /// </summary>
     public List<AccountAndTransactions> Accounts { get; init; } = [];
 
+    /// <summary>
+    /// The user's savings goals.
+    /// </summary>
     public List<SavingsGoal> SavingsGoals { get; init; } = [];
 
     /// <summary>
@@ -79,6 +97,9 @@ public sealed class DashboardData
     /// </summary>
     public NetWorthHistory? NetWorth { get; init; }
 
+    /// <summary>
+    /// Money in less money out over the range.
+    /// </summary>
     [JsonIgnore]
     public decimal Net => (Spent?.TotalIn ?? 0) + (Spent?.TotalOut ?? 0);
 }

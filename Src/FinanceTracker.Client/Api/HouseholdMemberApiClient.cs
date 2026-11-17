@@ -18,12 +18,15 @@ public sealed class HouseholdMemberApiClient : IHouseholdMemberService
 {
     private readonly HttpClient _http;
 
+    /// <param name="httpClientFactory">Makes the API's client.</param>
     public HouseholdMemberApiClient(IHttpClientFactory httpClientFactory) =>
         _http = httpClientFactory.CreateClient(ApiClientRegistration.HttpClientName);
 
+    /// <inheritdoc/>
     public IAsyncEnumerable<HouseholdMember> GetHouseholdMembersAsync(CancellationToken cancellationToken) =>
         _http.GetStreamAsync<HouseholdMember>(ApiRoutes.HouseholdMembers, cancellationToken);
 
+    /// <inheritdoc/>
     public async Task<HouseholdMember> AddHouseholdMemberAsync(AddHouseholdMember categoryToAdd,
         CancellationToken cancellationToken)
     {
@@ -34,6 +37,7 @@ public sealed class HouseholdMemberApiClient : IHouseholdMemberService
         return await response.ReadRequiredJsonAsync<HouseholdMember>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<HouseholdMember> UpdateHouseholdMemberAsync(Guid id, UpdateHouseholdMember request,
         CancellationToken cancellationToken)
     {
@@ -44,6 +48,7 @@ public sealed class HouseholdMemberApiClient : IHouseholdMemberService
         return await response.ReadRequiredJsonAsync<HouseholdMember>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<HouseholdMemberRecognitionSaved> UpdateRecognitionAsync(Guid id,
         UpdateHouseholdMemberRecognition request, CancellationToken cancellationToken)
     {
@@ -53,6 +58,7 @@ public sealed class HouseholdMemberApiClient : IHouseholdMemberService
         return await response.ReadRequiredJsonAsync<HouseholdMemberRecognitionSaved>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<HouseholdMember> LinkHouseholdMemberAsync(Guid id, LinkHouseholdMember request,
         CancellationToken cancellationToken)
     {
@@ -63,6 +69,7 @@ public sealed class HouseholdMemberApiClient : IHouseholdMemberService
         return await response.ReadRequiredJsonAsync<HouseholdMember>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public Task<bool> DeleteHouseholdMemberAsync(Guid id, CancellationToken cancellationToken) =>
         _http.DeleteIfFoundAsync($"{ApiRoutes.HouseholdMembers}/{id}", cancellationToken);
 }

@@ -22,12 +22,15 @@ public sealed class DebtsApiClient : IDebtsService
 {
     private readonly HttpClient _http;
 
+    /// <param name="httpClientFactory">Makes the API's client.</param>
     public DebtsApiClient(IHttpClientFactory httpClientFactory) =>
         _http = httpClientFactory.CreateClient(ApiClientRegistration.HttpClientName);
 
+    /// <inheritdoc/>
     public IAsyncEnumerable<Debt> GetDebtsAsync(CancellationToken cancellationToken) =>
         _http.GetStreamAsync<Debt>(ApiRoutes.Debts, cancellationToken);
 
+    /// <inheritdoc/>
     public async Task<DebtDetail> GetDebtAsync(Guid id, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.GetAsync($"{ApiRoutes.Debts}/{id}", cancellationToken);
@@ -35,6 +38,7 @@ public sealed class DebtsApiClient : IDebtsService
         return await response.ReadRequiredJsonAsync<DebtDetail>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<Debt> AddDebtAsync(SaveDebt debt, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.PostAsJsonAsync(ApiRoutes.Debts, debt, cancellationToken);
@@ -42,6 +46,7 @@ public sealed class DebtsApiClient : IDebtsService
         return await response.ReadRequiredJsonAsync<Debt>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<Debt> UpdateDebtAsync(Guid id, SaveDebt debt, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response =
@@ -50,12 +55,14 @@ public sealed class DebtsApiClient : IDebtsService
         return await response.ReadRequiredJsonAsync<Debt>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task DeleteDebtAsync(Guid id, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.DeleteAsync($"{ApiRoutes.Debts}/{id}", cancellationToken);
         await response.EnsureFoundAsync(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<DebtForecast> ForecastAsync(Guid id, decimal monthlyPayment,
         CancellationToken cancellationToken)
     {
@@ -72,6 +79,7 @@ public sealed class DebtsApiClient : IDebtsService
         return await response.ReadRequiredJsonAsync<DebtForecast>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<Transaction> PayDebtAsync(Guid transactionId, PayDebt payment,
         CancellationToken cancellationToken)
     {

@@ -16,20 +16,27 @@ namespace FinanceTracker.Client.Api;
 [Scoped<ICalendarService>]
 public sealed class CalendarApiClient : ICalendarService
 {
+    /// <summary>
+    /// The calendar's events.
+    /// </summary>
     private const string Events = $"{ApiRoutes.Calendar}/events";
 
     private readonly HttpClient _http;
 
+    /// <param name="httpClientFactory">Makes the API's client.</param>
     public CalendarApiClient(IHttpClientFactory httpClientFactory) =>
         _http = httpClientFactory.CreateClient(ApiClientRegistration.HttpClientName);
 
+    /// <inheritdoc/>
     public IAsyncEnumerable<CalendarItems> GetMonthItemsAsync(int month, int year,
         CancellationToken cancellationToken) =>
         _http.GetStreamAsync<CalendarItems>($"{ApiRoutes.Calendar}/{year}/{month}", cancellationToken);
 
+    /// <inheritdoc/>
     public IAsyncEnumerable<CalendarEvent> GetEventsAsync(CancellationToken cancellationToken) =>
         _http.GetStreamAsync<CalendarEvent>(Events, cancellationToken);
 
+    /// <inheritdoc/>
     public async Task<CalendarEvent> AddEventAsync(SaveCalendarEvent calendarEvent,
         CancellationToken cancellationToken)
     {
@@ -38,6 +45,7 @@ public sealed class CalendarApiClient : ICalendarService
         return await response.ReadRequiredJsonAsync<CalendarEvent>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<CalendarEvent> UpdateEventAsync(Guid id, SaveCalendarEvent calendarEvent,
         CancellationToken cancellationToken)
     {
@@ -47,6 +55,7 @@ public sealed class CalendarApiClient : ICalendarService
         return await response.ReadRequiredJsonAsync<CalendarEvent>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task DeleteEventAsync(Guid id, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.DeleteAsync($"{Events}/{id}", cancellationToken);

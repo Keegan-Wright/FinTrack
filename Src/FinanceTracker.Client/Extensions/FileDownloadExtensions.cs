@@ -2,6 +2,9 @@ using Microsoft.JSInterop;
 
 namespace FinanceTracker.Client.Extensions;
 
+/// <summary>
+/// Saves files in the browser.
+/// </summary>
 public static class FileDownloadExtensions
 {
     /// <summary>
@@ -15,6 +18,10 @@ public static class FileDownloadExtensions
         /// Saves <paramref name="content"/> in the browser as <paramref name="fileName"/>, as if it had been
         /// downloaded.
         /// </summary>
+        /// <param name="fileName">The file's name.</param>
+        /// <param name="contentType">The file's media type.</param>
+        /// <param name="content">The file's bytes.</param>
+        /// <param name="cancellationToken">Stops the call.</param>
         public async Task SaveFileAsync(string fileName, string contentType, Stream content,
             CancellationToken cancellationToken)
         {

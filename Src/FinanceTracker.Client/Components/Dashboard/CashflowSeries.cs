@@ -18,12 +18,17 @@ public static class CashflowSeries
     /// Whether the range from <paramref name="from"/> to <paramref name="to"/> (local days, both included) is charted
     /// per month.
     /// </summary>
+    /// <param name="from">The range's start.</param>
+    /// <param name="to">The range's end.</param>
     public static bool IsByMonth(DateTime from, DateTime to) => Days(from, to) > MaxDailyBars;
 
     /// <summary>
     /// A point for every day or month of the range, empty ones included, from the transactions inside it (by local
     /// day). Empty when there are no transactions.
     /// </summary>
+    /// <param name="transactions">The range's transactions.</param>
+    /// <param name="from">The range's start.</param>
+    /// <param name="to">The range's end.</param>
     public static List<CashflowPoint> Build(IReadOnlyCollection<Transaction> transactions, DateTime from, DateTime to)
     {
         DateTime start = from.Date;
@@ -72,5 +77,10 @@ public static class CashflowSeries
         return points;
     }
 
+    /// <summary>
+    /// The days from <paramref name="from"/> to <paramref name="to"/>, both included.
+    /// </summary>
+    /// <param name="from">The first day.</param>
+    /// <param name="to">The last day.</param>
     private static int Days(DateTime from, DateTime to) => (to.Date - from.Date).Days + 1;
 }

@@ -17,9 +17,11 @@ public sealed class PayPeriodsApiClient : IPayPeriodsService
 {
     private readonly HttpClient _http;
 
+    /// <param name="httpClientFactory">Makes the API's client.</param>
     public PayPeriodsApiClient(IHttpClientFactory httpClientFactory) =>
         _http = httpClientFactory.CreateClient(ApiClientRegistration.HttpClientName);
 
+    /// <inheritdoc/>
     public async Task<YourPay> GetYourPayAsync(CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.GetAsync(ApiRoutes.PayPeriods, cancellationToken);
@@ -27,9 +29,11 @@ public sealed class PayPeriodsApiClient : IPayPeriodsService
         return await response.ReadRequiredJsonAsync<YourPay>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public IAsyncEnumerable<Income> GetIncomesAsync(CancellationToken cancellationToken) =>
         _http.GetStreamAsync<Income>($"{ApiRoutes.PayPeriods}/incomes", cancellationToken);
 
+    /// <inheritdoc/>
     public async Task<YourPay> ChooseAsync(ChooseIncome income, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response =
@@ -38,10 +42,17 @@ public sealed class PayPeriodsApiClient : IPayPeriodsService
         return await response.ReadRequiredJsonAsync<YourPay>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public Task<YourPay> TurnOffAsync(CancellationToken cancellationToken) => PutAsync("off", cancellationToken);
 
+    /// <inheritdoc/>
     public Task<YourPay> TurnOnAsync(CancellationToken cancellationToken) => PutAsync("on", cancellationToken);
 
+    /// <summary>
+    /// Puts to <paramref name="path"/> and reads back the user's pay.
+    /// </summary>
+    /// <param name="path">The path under the pay periods route.</param>
+    /// <param name="cancellationToken">Stops the call.</param>
     private async Task<YourPay> PutAsync(string path, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response =

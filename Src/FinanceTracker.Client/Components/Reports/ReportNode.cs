@@ -23,6 +23,9 @@ public sealed class ReportNode
     /// </summary>
     public string? Dates { get; init; }
 
+    /// <summary>
+    /// How many transactions it has.
+    /// </summary>
     public int TotalTransactions { get; init; }
 
     /// <summary>
@@ -35,6 +38,9 @@ public sealed class ReportNode
     /// </summary>
     public decimal TotalOut { get; init; }
 
+    /// <summary>
+    /// Money in less money out.
+    /// </summary>
     public decimal Net => TotalIn + TotalOut;
 
     /// <summary>
@@ -75,12 +81,16 @@ public sealed class ReportNode
     /// </summary>
     public bool IncludesTransfers { get; init; }
 
+    /// <summary>
+    /// Whether there's anything within it to open, its periods or its day's transactions.
+    /// </summary>
     public bool CanDrillInto => TotalTransactions > 0 && (Children.Count > 0 || Date is not null);
 
     /// <summary>
     /// Whether this is the same report or period as <paramref name="other"/>, e.g. from a refreshed report. the same
     /// account and title.
     /// </summary>
+    /// <param name="other">The node to compare with.</param>
     public bool IsSameAs(ReportNode other)
     {
         ArgumentNullException.ThrowIfNull(other);
@@ -90,5 +100,6 @@ public sealed class ReportNode
     /// <summary>
     /// The child that's the same period as <paramref name="period"/>, null when this has none.
     /// </summary>
+    /// <param name="period">The period.</param>
     public ReportNode? ChildLike(ReportNode period) => Children.FirstOrDefault(x => x.IsSameAs(period));
 }

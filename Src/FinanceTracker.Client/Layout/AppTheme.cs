@@ -9,6 +9,9 @@ namespace FinanceTracker.Client.Layout;
 /// </summary>
 public static class AppTheme
 {
+    /// <summary>
+    /// The theme MudBlazor draws the app with.
+    /// </summary>
     public static MudTheme Theme { get; } = new()
     {
         PaletteLight =

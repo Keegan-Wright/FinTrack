@@ -25,11 +25,15 @@ public sealed class ClientErrorReporter
     // Set while a report is being sent, so anything logged by sending it isn't reported in turn
     private static readonly AsyncLocal<bool> Reporting = new();
 
+    /// <param name="serviceProvider">Gives the API client, resolved when a report is sent.</param>
     public ClientErrorReporter(IServiceProvider serviceProvider) => _serviceProvider = serviceProvider;
 
     /// <summary>
     /// Sends the error unless it's been sent already, the limit's reached, or it was logged by sending a report.
     /// </summary>
+    /// <param name="category">The logger's category.</param>
+    /// <param name="message">What was logged.</param>
+    /// <param name="exception">The exception, null for none.</param>
     public void Report(string category, string message, Exception? exception)
     {
         if (Reporting.Value)
@@ -60,6 +64,10 @@ public sealed class ClientErrorReporter
         }
     }
 
+    /// <summary>
+    /// Sends the error to the server. A failure is dropped, as logging it would report it again.
+    /// </summary>
+    /// <param name="error">The error.</param>
     private async Task SendAsync(ClientError error)
     {
         Reporting.Value = true;
@@ -75,6 +83,12 @@ public sealed class ClientErrorReporter
         }
     }
 
+    /// <summary>
+    /// The error as it's sent, each part cut to its limit.
+    /// </summary>
+    /// <param name="category">The logger's category.</param>
+    /// <param name="message">What was logged.</param>
+    /// <param name="exception">The exception, null for none.</param>
     private ClientError Build(string category, string message, Exception? exception) => new()
     {
         Message = Cut(exception?.Message ?? message, ClientError.MaxMessageLength),
@@ -85,6 +99,9 @@ public sealed class ClientErrorReporter
     };
 
     // Relative to the app and without the query, which can carry ids and searches
+    /// <summary>
+    /// The page's path, without its query.
+    /// </summary>
     private string CurrentPage()
     {
         NavigationManager navigation = _serviceProvider.GetRequiredService<NavigationManager>();
@@ -99,9 +116,18 @@ public sealed class ClientErrorReporter
     }
 
     // The same error on the same page is sent once
+    /// <summary>
+    /// What makes two errors the same one, so it's sent once.
+    /// </summary>
+    /// <param name="error">The error.</param>
     private static string SameErrorKey(ClientError error) =>
         $"{error.Page}|{error.Category}|{error.ExceptionType}|{error.Message}";
 
+    /// <summary>
+    /// <paramref name="value"/> cut to <paramref name="length"/>.
+    /// </summary>
+    /// <param name="value">The text.</param>
+    /// <param name="length">The most it may be.</param>
     private static string Cut(string value, int length)
     {
         if (value.Length <= length)

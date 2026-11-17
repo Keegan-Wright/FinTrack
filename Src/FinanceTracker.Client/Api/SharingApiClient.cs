@@ -17,27 +17,35 @@ public sealed class SharingApiClient : ISharingService
 {
     private readonly HttpClient _http;
 
+    /// <param name="httpClientFactory">Makes the API's client.</param>
     public SharingApiClient(IHttpClientFactory httpClientFactory) =>
         _http = httpClientFactory.CreateClient(ApiClientRegistration.HttpClientName);
 
+    /// <inheritdoc/>
     public IAsyncEnumerable<UserLink> GetLinksAsync(CancellationToken cancellationToken) =>
         _http.GetStreamAsync<UserLink>(ApiRoutes.SharingLinks, cancellationToken);
 
+    /// <inheritdoc/>
     public IAsyncEnumerable<UserLink> GetPeopleAsync(CancellationToken cancellationToken) =>
         _http.GetStreamAsync<UserLink>(ApiRoutes.SharingPeople, cancellationToken);
 
+    /// <inheritdoc/>
     public Task<InviteOutcome> InviteAsync(InviteToShare request, CancellationToken cancellationToken) =>
         _http.PostReadAsync<InviteToShare, InviteOutcome>(ApiRoutes.SharingLinks, request, cancellationToken);
 
+    /// <inheritdoc/>
     public Task<bool> AcceptAsync(Guid id, CancellationToken cancellationToken) =>
         PostIfFoundAsync($"{ApiRoutes.SharingLinks}/{id}/accept", cancellationToken);
 
+    /// <inheritdoc/>
     public Task<bool> DeclineAsync(Guid id, CancellationToken cancellationToken) =>
         PostIfFoundAsync($"{ApiRoutes.SharingLinks}/{id}/decline", cancellationToken);
 
+    /// <inheritdoc/>
     public Task<bool> EndAsync(Guid id, CancellationToken cancellationToken) =>
         _http.DeleteIfFoundAsync($"{ApiRoutes.SharingLinks}/{id}", cancellationToken);
 
+    /// <inheritdoc/>
     public async Task<LinkShares?> GetSharesAsync(Guid linkId, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response =
@@ -51,6 +59,7 @@ public sealed class SharingApiClient : ISharingService
         return await response.ReadRequiredJsonAsync<LinkShares>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<LinkShares> ChangeAccountSharesAsync(Guid linkId, ChangeAccountShares request,
         CancellationToken cancellationToken)
     {
@@ -60,6 +69,7 @@ public sealed class SharingApiClient : ISharingService
         return await response.ReadRequiredJsonAsync<LinkShares>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<LinkShares> ChangeItemSharesAsync(Guid linkId, ChangeItemShares request,
         CancellationToken cancellationToken)
     {
@@ -69,6 +79,7 @@ public sealed class SharingApiClient : ISharingService
         return await response.ReadRequiredJsonAsync<LinkShares>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<LinkShares> MergeJointAccountsAsync(Guid linkId, MergeJointAccounts request,
         CancellationToken cancellationToken)
     {
@@ -78,6 +89,7 @@ public sealed class SharingApiClient : ISharingService
         return await response.ReadRequiredJsonAsync<LinkShares>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<LinkShares> SplitJointAccountAsync(Guid linkId, Guid jointAccountId,
         CancellationToken cancellationToken)
     {
@@ -87,6 +99,7 @@ public sealed class SharingApiClient : ISharingService
         return await response.ReadRequiredJsonAsync<LinkShares>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<SharingView> GetViewAsync(CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.GetAsync(ApiRoutes.SharingView, cancellationToken);
@@ -94,6 +107,7 @@ public sealed class SharingApiClient : ISharingService
         return await response.ReadRequiredJsonAsync<SharingView>(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<SharingView> ChangeViewAsync(ChangeSharingView request, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response =
@@ -102,6 +116,12 @@ public sealed class SharingApiClient : ISharingService
         return await response.ReadRequiredJsonAsync<SharingView>(cancellationToken);
     }
 
+    /// <summary>
+    /// Posts to <paramref name="path"/>.
+    /// </summary>
+    /// <param name="path">The API path.</param>
+    /// <param name="cancellationToken">Stops the call.</param>
+    /// <returns>False on a 404.</returns>
     private async Task<bool> PostIfFoundAsync(string path, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.PostAsync(path, null, cancellationToken);

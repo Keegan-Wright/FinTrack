@@ -12,6 +12,7 @@ public static class CalendarText
     /// What's saved for an event, e.g. <c>£40.00 of £100.00 saved in Birthday</c>, or what to save without a goal.
     /// Null when there's nothing to save.
     /// </summary>
+    /// <param name="calendarEvent">The event.</param>
     public static string? Saving(CalendarEventItem calendarEvent)
     {
         if (calendarEvent.SavingsGoalName is { } goalName && calendarEvent.Saved is { } saved)
@@ -35,11 +36,13 @@ public static class CalendarText
     /// <summary>
     /// e.g. <c>Every year</c> or <c>Event</c>.
     /// </summary>
+    /// <param name="calendarEvent">The event.</param>
     public static string Kind(CalendarEventItem calendarEvent) => calendarEvent.IsYearly ? "Every year" : "Event";
 
     /// <summary>
     /// What a debt's date is, e.g. <c>Forecast to be paid off</c> or <c>Your goal to pay it off, behind</c>.
     /// </summary>
+    /// <param name="debt">The debt.</param>
     public static string DebtDate(CalendarDebtItem debt)
     {
         if (debt.Kind == CalendarDebtDate.PaidOff)
@@ -58,5 +61,6 @@ public static class CalendarText
     /// <summary>
     /// e.g. <c>2 events</c>, for screen readers.
     /// </summary>
+    /// <param name="count">How many events.</param>
     public static string EventsLabel(int count) => count == 1 ? "1 event" : $"{count} events";
 }

@@ -11,7 +11,9 @@ public static class TransactionChoices
     /// <summary>
     /// Those of <paramref name="items"/> that can go on <paramref name="transaction"/>.
     /// </summary>
+    /// <param name="items">The choices.</param>
     /// <param name="sharedBy">Whose each is, null for the user's own, as the lists say it.</param>
+    /// <param name="transaction">The transaction.</param>
     public static List<T> For<T>(IEnumerable<T> items, Func<T, string?> sharedBy, Transaction transaction)
     {
         ArgumentNullException.ThrowIfNull(items);

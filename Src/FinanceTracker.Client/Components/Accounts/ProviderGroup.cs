@@ -6,5 +6,6 @@ namespace FinanceTracker.Client.Components.Accounts;
 /// One bank's accounts on the accounts page, see <see cref="ProviderAccounts"/>.
 /// </summary>
 /// <param name="Name">The bank's name.</param>
+/// <param name="Logo">The bank's logo.</param>
 /// <param name="Accounts">In the order shown.</param>
 public sealed record ProviderGroup(string Name, byte[] Logo, IReadOnlyList<AccountAndTransactions> Accounts);

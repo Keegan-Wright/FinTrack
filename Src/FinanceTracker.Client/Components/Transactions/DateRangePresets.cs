@@ -10,6 +10,7 @@ public static class DateRangePresets
     /// <summary>
     /// This month, last month, the last 3 months and this year, each ending today (last month ends on its last day).
     /// </summary>
+    /// <param name="today">Today where the user is.</param>
     public static IReadOnlyList<(string Label, DateRange Range)> For(DateTime today)
     {
         DateTime day = today.Date;
