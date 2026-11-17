@@ -7,6 +7,8 @@
     <IsTestProject>false</IsTestProject>
     <IsTestingPlatformApplication>false</IsTestingPlatformApplication>
     <OutputType>Library</OutputType>
+    <!-- Only the scenario builder enforced doc comments, see .editorconfig -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
   <ItemGroup>
