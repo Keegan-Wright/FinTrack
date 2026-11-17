@@ -12,15 +12,21 @@ public sealed class RequestTimeProvider : TimeProvider
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
 
+    /// <param name="httpContextAccessor">Gives the request, whose cookie moves the clock.</param>
     public RequestTimeProvider(IHttpContextAccessor httpContextAccessor)
     {
         _httpContextAccessor = httpContextAccessor;
     }
 
+    /// <inheritdoc/>
     public override DateTimeOffset GetUtcNow() => System.GetUtcNow() + Offset();
 
+    /// <inheritdoc/>
     public override TimeZoneInfo LocalTimeZone => System.LocalTimeZone;
 
+    /// <summary>
+    /// How far the request's test clock cookie moves the clock, in seconds. Nothing without one.
+    /// </summary>
     private TimeSpan Offset()
     {
         string? cookie = _httpContextAccessor.HttpContext?.Request.Cookies[TestClock.Cookie];

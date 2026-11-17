@@ -2,6 +2,9 @@ using FinanceTracker.Contracts.Api;
 
 namespace FinanceTracker.Api;
 
+/// <summary>
+/// Maps the whole JSON API.
+/// </summary>
 public static class ApiEndpoints
 {
     extension(IEndpointRouteBuilder endpoints)

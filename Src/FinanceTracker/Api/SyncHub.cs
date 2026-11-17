@@ -19,6 +19,9 @@ public sealed class SyncHub : Hub
     /// </summary>
     public const string AdminsGroup = "admins";
 
+    /// <summary>
+    /// Adds an admin's connection to <see cref="AdminsGroup"/>.
+    /// </summary>
     public override async Task OnConnectedAsync()
     {
         if (Context.User?.IsInRole(FinTrackRoles.Admin) == true)

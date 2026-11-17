@@ -6,6 +6,9 @@ using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace FinanceTracker.Api;
 
+/// <summary>
+/// Maps the automation API.
+/// </summary>
 public static class AutomationEndpoints
 {
     extension(RouteGroupBuilder api)

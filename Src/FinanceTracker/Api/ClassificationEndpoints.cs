@@ -5,6 +5,9 @@ using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace FinanceTracker.Api;
 
+/// <summary>
+/// Maps the tag API.
+/// </summary>
 public static class ClassificationEndpoints
 {
     extension(RouteGroupBuilder api)

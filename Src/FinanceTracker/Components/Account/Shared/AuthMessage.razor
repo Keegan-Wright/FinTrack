@@ -22,12 +22,24 @@
 
 @code {
 
+    /// <summary>
+    /// The icon above the title.
+    /// </summary>
     [Parameter, EditorRequired] public string Icon { get; set; } = string.Empty;
 
+    /// <summary>
+    /// The icon's colour. Error makes it an alert.
+    /// </summary>
     [Parameter] public Color IconColor { get; set; } = Color.Primary;
 
+    /// <summary>
+    /// What happened.
+    /// </summary>
     [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
 
+    /// <summary>
+    /// More about it, under the title.
+    /// </summary>
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
     /// <summary>
@@ -35,6 +47,9 @@
     /// </summary>
     [Parameter] public string? ActionHref { get; set; } = "Account/Login";
 
+    /// <summary>
+    /// What the main button says.
+    /// </summary>
     [Parameter] public string ActionText { get; set; } = "Back to sign in";
 
     /// <summary>
@@ -42,6 +57,9 @@
     /// </summary>
     [Parameter] public string? SecondaryHref { get; set; }
 
+    /// <summary>
+    /// What the second button says.
+    /// </summary>
     [Parameter] public string SecondaryText { get; set; } = string.Empty;
 
 }

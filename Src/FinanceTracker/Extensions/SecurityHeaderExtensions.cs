@@ -2,6 +2,9 @@ using FinanceTracker.Middleware;
 
 namespace FinanceTracker.Extensions;
 
+/// <summary>
+/// Sets up the browser security headers.
+/// </summary>
 public static class SecurityHeaderExtensions
 {
     extension(IServiceCollection services)

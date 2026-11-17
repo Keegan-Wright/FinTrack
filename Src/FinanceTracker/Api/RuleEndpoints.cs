@@ -5,6 +5,9 @@ using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace FinanceTracker.Api;
 
+/// <summary>
+/// Maps the rule API.
+/// </summary>
 public static class RuleEndpoints
 {
     extension(RouteGroupBuilder api)

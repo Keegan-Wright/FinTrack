@@ -6,6 +6,9 @@ using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace FinanceTracker.Api;
 
+/// <summary>
+/// Maps the users API.
+/// </summary>
 public static class UsersEndpoints
 {
     extension(RouteGroupBuilder api)

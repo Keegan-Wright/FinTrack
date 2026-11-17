@@ -1,5 +1,8 @@
 namespace FinanceTracker.Api;
 
+/// <summary>
+/// Filters the endpoints share.
+/// </summary>
 public static class EndpointConventionExtensions
 {
     extension(RouteHandlerBuilder builder)

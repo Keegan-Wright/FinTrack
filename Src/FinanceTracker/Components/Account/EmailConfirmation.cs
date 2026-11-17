@@ -22,6 +22,10 @@ public sealed class EmailConfirmation : IEmailConfirmation
     private readonly IMailSender _mailSender;
     private readonly IAccountUrls _accountUrls;
 
+    /// <param name="userManager">Finds and changes users.</param>
+    /// <param name="emailSender">Sends Identity's account emails.</param>
+    /// <param name="mailSender">Sends the emails.</param>
+    /// <param name="accountUrls">Builds the links in the emails.</param>
     public EmailConfirmation(UserManager<FinanceTrackerUser> userManager,
         IEmailSender<FinanceTrackerUser> emailSender, IMailSender mailSender, IAccountUrls accountUrls)
     {

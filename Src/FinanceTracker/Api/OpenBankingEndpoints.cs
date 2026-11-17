@@ -5,6 +5,9 @@ using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace FinanceTracker.Api;
 
+/// <summary>
+/// Maps the open banking API.
+/// </summary>
 public static class OpenBankingEndpoints
 {
     extension(RouteGroupBuilder api)

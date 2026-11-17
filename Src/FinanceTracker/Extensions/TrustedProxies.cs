@@ -13,6 +13,7 @@ public static class TrustedProxies
     /// Each address or network in <paramref name="value"/> as a network, a single address being a network of one.
     /// None when it's empty.
     /// </summary>
+    /// <param name="value">The setting, entries separated by commas.</param>
     /// <exception cref="FormatException">An entry isn't an address or a network, which would otherwise be dropped
     /// without a word, leaving the proxy untrusted.</exception>
     public static IReadOnlyList<IPNetwork> Parse(string? value)
@@ -32,6 +33,11 @@ public static class TrustedProxies
         return networks;
     }
 
+    /// <summary>
+    /// One proxy, a network such as <c>172.18.0.0/16</c> or a single address.
+    /// </summary>
+    /// <param name="entry">The entry as written.</param>
+    /// <exception cref="FormatException">It's neither.</exception>
     private static IPNetwork ParseEntry(string entry)
     {
         if (IPNetwork.TryParse(entry, out IPNetwork network))

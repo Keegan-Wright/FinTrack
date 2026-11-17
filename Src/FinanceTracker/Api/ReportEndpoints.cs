@@ -4,6 +4,9 @@ using FinanceTracker.Contracts.Transactions;
 
 namespace FinanceTracker.Api;
 
+/// <summary>
+/// Maps the report API.
+/// </summary>
 public static class ReportEndpoints
 {
     extension(RouteGroupBuilder api)

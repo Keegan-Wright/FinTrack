@@ -10,6 +10,12 @@ namespace FinanceTracker.BackgroundJobs;
 /// </summary>
 public class SyncAllOpenBankingDetailsAsync : OpenBankingSyncJob, IJob
 {
+    /// <param name="serviceScopeFactory">Makes the scopes its services run in.</param>
+    /// <param name="dbContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="syncNotifier">Tells browsers about syncs and jobs.</param>
+    /// <param name="timeProvider">The clock.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="metrics">Records its metrics.</param>
     public SyncAllOpenBankingDetailsAsync(IServiceScopeFactory serviceScopeFactory,
         IDbContextFactory<FinanceTrackerContext> dbContextFactory, ISyncNotifier syncNotifier,
         TimeProvider timeProvider, ILogger<OpenBankingSyncJob> logger, FinTrackMetrics metrics)
@@ -17,6 +23,7 @@ public class SyncAllOpenBankingDetailsAsync : OpenBankingSyncJob, IJob
     {
     }
 
+    /// <inheritdoc/>
     public async ValueTask Execute(IJobExecutionContext context, CancellationToken cancellationToken)
     {
         IReadOnlySet<Guid> syncedUsers = await SyncConnectionsAsync(static _ => true, cancellationToken);

@@ -30,16 +30,29 @@ else
 
 @code {
 
+    /// <summary>
+    /// The request, which refreshes the sign in once the email changes.
+    /// </summary>
     [CascadingParameter] private HttpContext HttpContext { get; set; } = null!;
 
+    /// <summary>
+    /// The user changing their email, from the link.
+    /// </summary>
     [SupplyParameterFromQuery] private string? UserId { get; set; }
 
+    /// <summary>
+    /// The new email, from the link.
+    /// </summary>
     [SupplyParameterFromQuery] private string? Email { get; set; }
 
+    /// <summary>
+    /// The change code, from the link.
+    /// </summary>
     [SupplyParameterFromQuery] private string? Code { get; set; }
 
     private bool _changed;
 
+    /// <inheritdoc/>
     protected override async Task OnInitializedAsync()
     {
         string? code = Decode(Code);
@@ -65,6 +78,10 @@ else
     }
 
     // The token from the link, null when there isn't one or it was cut short or changed on the way
+    /// <summary>
+    /// The code from the link, decoded. Null when it's missing or isn't valid.
+    /// </summary>
+    /// <param name="code">The code as the link carries it.</param>
     private static string? Decode(string? code)
     {
         if (code is null)

@@ -12,6 +12,7 @@ public interface IEmailConfirmation
     /// <summary>
     /// Sends the link, unless there's nothing to confirm or no way to send it.
     /// </summary>
+    /// <param name="user">The user to confirm.</param>
     /// <returns>Whether it was sent, not when it's confirmed already, there's no email, or no mail server.</returns>
     /// <exception cref="Exception">Sending failed, see <see cref="IMailSender.SendAsync"/>.</exception>
     Task<bool> SendAsync(FinanceTrackerUser user);

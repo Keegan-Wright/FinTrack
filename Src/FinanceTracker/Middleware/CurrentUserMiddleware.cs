@@ -13,12 +13,19 @@ public sealed class CurrentUserMiddleware
     private readonly RequestDelegate _next;
     private readonly ILogger<CurrentUserMiddleware> _logger;
 
+    /// <param name="next">The rest of the pipeline.</param>
+    /// <param name="logger">Starts the user's log scope.</param>
     public CurrentUserMiddleware(RequestDelegate next, ILogger<CurrentUserMiddleware> logger)
     {
         _next = next;
         _logger = logger;
     }
 
+    /// <summary>
+    /// Sets the current user and runs the rest of the request in their span and log scope.
+    /// </summary>
+    /// <param name="context">The request.</param>
+    /// <param name="currentUser">The request's current user, set here.</param>
     public async Task InvokeAsync(HttpContext context, CurrentUser currentUser)
     {
         currentUser.Set(context.User);

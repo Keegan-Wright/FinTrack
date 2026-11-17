@@ -5,6 +5,9 @@ using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace FinanceTracker.Api;
 
+/// <summary>
+/// Maps the budget API.
+/// </summary>
 public static class BudgetEndpoints
 {
     extension(RouteGroupBuilder api)

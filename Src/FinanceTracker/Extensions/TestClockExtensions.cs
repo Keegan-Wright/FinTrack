@@ -3,6 +3,9 @@ using FinanceTracker.Testing;
 
 namespace FinanceTracker.Extensions;
 
+/// <summary>
+/// Sets up the app's clock.
+/// </summary>
 public static class TestClockExtensions
 {
     extension(WebApplicationBuilder builder)

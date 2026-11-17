@@ -6,6 +6,9 @@ using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace FinanceTracker.Api;
 
+/// <summary>
+/// Maps the debt API.
+/// </summary>
 public static class DebtEndpoints
 {
     extension(RouteGroupBuilder api)

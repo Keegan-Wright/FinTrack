@@ -8,6 +8,9 @@ namespace FinanceTracker.BackgroundJobs;
 /// </summary>
 public static class ScheduledJobs
 {
+    /// <summary>
+    /// Every scheduled job.
+    /// </summary>
     public static IReadOnlyList<ScheduledJob> All { get; } =
     [
         new(JobNames.SyncAll, "Performs background syncing of your banking data", "0 0 */4 * * ?", 1, [10, 20, 30]),

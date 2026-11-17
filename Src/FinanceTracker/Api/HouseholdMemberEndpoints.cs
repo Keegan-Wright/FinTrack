@@ -6,6 +6,9 @@ using HouseholdMember = FinanceTracker.Contracts.HouseholdMember.HouseholdMember
 
 namespace FinanceTracker.Api;
 
+/// <summary>
+/// Maps the household member API.
+/// </summary>
 public static class HouseholdMemberEndpoints
 {
     extension(RouteGroupBuilder api)

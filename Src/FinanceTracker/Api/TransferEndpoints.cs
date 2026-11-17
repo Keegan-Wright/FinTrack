@@ -5,6 +5,9 @@ using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace FinanceTracker.Api;
 
+/// <summary>
+/// Maps the transfer API.
+/// </summary>
 public static class TransferEndpoints
 {
     extension(RouteGroupBuilder api)

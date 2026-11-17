@@ -25,6 +25,10 @@ public sealed class EmailChange : IEmailChange
     private readonly IAccountEmails _accountEmails;
     private readonly IAccountUrls _accountUrls;
 
+    /// <param name="userManager">Finds and changes users.</param>
+    /// <param name="mailSender">Sends the emails.</param>
+    /// <param name="accountEmails">Writes the account emails.</param>
+    /// <param name="accountUrls">Builds the links in the emails.</param>
     public EmailChange(UserManager<FinanceTrackerUser> userManager, IMailSender mailSender,
         IAccountEmails accountEmails, IAccountUrls accountUrls)
     {
@@ -67,5 +71,9 @@ public sealed class EmailChange : IEmailChange
         return new ProfileChange { LinkSent = true };
     }
 
+    /// <summary>
+    /// A change that didn't happen, and why.
+    /// </summary>
+    /// <param name="error">Why, for the user.</param>
     private static ProfileChange Failed(string error) => new() { Errors = [error] };
 }

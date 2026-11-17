@@ -3,6 +3,9 @@ using FinanceTracker.AppHost.ServiceDefaults;
 
 namespace FinanceTracker.Extensions;
 
+/// <summary>
+/// Sets the culture dates and money are shown in.
+/// </summary>
 public static class CultureExtensions
 {
     extension(WebApplicationBuilder builder)

@@ -5,6 +5,9 @@ using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace FinanceTracker.Api;
 
+/// <summary>
+/// Maps the profile API.
+/// </summary>
 public static class ProfileEndpoints
 {
     extension(RouteGroupBuilder api)
@@ -47,6 +50,10 @@ public static class ProfileEndpoints
         }
     }
 
+    /// <summary>
+    /// 200 with the change, or 409 when there's none, as when the account changed underneath it.
+    /// </summary>
+    /// <param name="change">What the service did, null when it couldn't.</param>
     private static Results<Ok<ProfileChange>, Conflict> OkOrConflict(ProfileChange? change)
     {
         if (change is null)

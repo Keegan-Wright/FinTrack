@@ -12,6 +12,7 @@ public static class ErrorRetry
     /// The failed request's path and query, <see langword="null"/> when the error page was visited itself or the
     /// request was sending something, e.g. a form, which going to its address wouldn't send again.
     /// </summary>
+    /// <param name="context">The error page's request.</param>
     public static string? PathFor(HttpContext context)
     {
         ArgumentNullException.ThrowIfNull(context);

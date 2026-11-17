@@ -18,6 +18,10 @@ public sealed class PasswordReset : IPasswordReset
     private readonly TimeProvider _timeProvider;
     private readonly TimeSpan _lifespan;
 
+    /// <param name="userManager">Finds and changes users.</param>
+    /// <param name="accountUrls">Builds the links in the emails.</param>
+    /// <param name="timeProvider">The clock.</param>
+    /// <param name="tokenOptions">Identity's token settings, how long a reset link lasts.</param>
     public PasswordReset(UserManager<FinanceTrackerUser> userManager, IAccountUrls accountUrls,
         TimeProvider timeProvider, IOptions<DataProtectionTokenProviderOptions> tokenOptions)
     {

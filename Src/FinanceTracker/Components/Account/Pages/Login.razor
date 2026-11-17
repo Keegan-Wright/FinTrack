@@ -78,10 +78,19 @@
 @code {
     private string? _errorMessage;
 
+    /// <summary>
+    /// The request, which the sign in happens on.
+    /// </summary>
     [CascadingParameter] private HttpContext HttpContext { get; set; } = default!;
 
+    /// <summary>
+    /// The posted form.
+    /// </summary>
     [SupplyParameterFromForm] private LoginRequest LoginRequest { get; set; } = default!;
 
+    /// <summary>
+    /// Where to go once signed in.
+    /// </summary>
     [SupplyParameterFromQuery] private string? ReturnUrl { get; set; }
 
     /// <summary>
@@ -90,6 +99,7 @@
     [SupplyParameterFromQuery(Name = "sso")]
     private string? Sso { get; set; }
 
+    /// <inheritdoc/>
     protected override void OnInitialized()
     {
         // Form posts bind the property before initialisation, so only create a model when nothing was posted
@@ -101,6 +111,9 @@
         }
     }
 
+    /// <summary>
+    /// Signs in with the posted username and password. Failures count towards locking the account.
+    /// </summary>
     public async Task LoginUser()
     {
         // Failures count towards account lockout (lockoutOnFailure: true)

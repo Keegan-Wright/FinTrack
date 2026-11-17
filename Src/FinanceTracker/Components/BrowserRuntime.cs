@@ -20,6 +20,10 @@ internal static class BrowserRuntime
         timeZone = IanaTimeZoneId(TimeZoneInfo.Local)
     });
 
+    /// <summary>
+    /// The zone's IANA id, which the browser's runtime knows. UTC when a Windows id has none.
+    /// </summary>
+    /// <param name="timeZone">The zone.</param>
     private static string IanaTimeZoneId(TimeZoneInfo timeZone)
     {
         if (timeZone.HasIanaId)

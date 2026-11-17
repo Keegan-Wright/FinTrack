@@ -19,6 +19,9 @@ public sealed class AdminProvisioner
     private readonly RoleManager<FinanceTrackerRole> _roleManager;
     private readonly UserManager<FinanceTrackerUser> _userManager;
 
+    /// <param name="userManager">Finds and changes users.</param>
+    /// <param name="roleManager">Finds and adds roles.</param>
+    /// <param name="logger">Its logger.</param>
     public AdminProvisioner(UserManager<FinanceTrackerUser> userManager, RoleManager<FinanceTrackerRole> roleManager,
         ILogger<AdminProvisioner> logger)
     {
@@ -31,6 +34,7 @@ public sealed class AdminProvisioner
     /// Makes <paramref name="user"/> the admin when they're the only user, i.e. the first to register. Call right
     /// after creating a user.
     /// </summary>
+    /// <param name="user">The user just created.</param>
     public async Task GrantIfFirstUserAsync(FinanceTrackerUser user)
     {
         if (await _userManager.Users.CountAsync() != 1)
@@ -67,6 +71,10 @@ public sealed class AdminProvisioner
         }
     }
 
+    /// <summary>
+    /// Makes <paramref name="user"/> an admin, adding the role first when it doesn't exist.
+    /// </summary>
+    /// <param name="user">The user.</param>
     private async Task GrantAsync(FinanceTrackerUser user)
     {
         await EnsureRoleAsync();
@@ -80,6 +88,9 @@ public sealed class AdminProvisioner
         _logger.LogAdminGranted(user.Id);
     }
 
+    /// <summary>
+    /// Adds the admin role when it doesn't exist.
+    /// </summary>
     private async Task EnsureRoleAsync()
     {
         if (!await _roleManager.RoleExistsAsync(FinTrackRoles.Admin))
@@ -88,6 +99,11 @@ public sealed class AdminProvisioner
         }
     }
 
+    /// <summary>
+    /// Throws when Identity refused the change.
+    /// </summary>
+    /// <param name="result">What Identity said.</param>
+    /// <exception cref="InvalidOperationException">It refused.</exception>
     private static void ThrowIfFailed(IdentityResult result)
     {
         if (!result.Succeeded)

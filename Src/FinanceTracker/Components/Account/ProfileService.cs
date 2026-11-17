@@ -20,6 +20,13 @@ public sealed class ProfileService : IProfileService
     private readonly IEmailChange _emailChange;
     private readonly ILogger<ProfileService> _logger;
 
+    /// <param name="userManager">Finds and changes users.</param>
+    /// <param name="signInManager">Refreshes the user's sign in after a change.</param>
+    /// <param name="currentUser">The signed in user.</param>
+    /// <param name="mailSender">Sends the emails.</param>
+    /// <param name="emailConfirmation">Sends the confirmation email.</param>
+    /// <param name="emailChange">Starts an email change.</param>
+    /// <param name="logger">Its logger.</param>
     public ProfileService(UserManager<FinanceTrackerUser> userManager,
         SignInManager<FinanceTrackerUser> signInManager, ICurrentUser currentUser, IMailSender mailSender,
         IEmailConfirmation emailConfirmation, IEmailChange emailChange, ILogger<ProfileService> logger)
@@ -33,6 +40,7 @@ public sealed class ProfileService : IProfileService
         _logger = logger;
     }
 
+    /// <inheritdoc/>
     public async Task<ProfileDetails> GetProfileAsync(CancellationToken cancellationToken)
     {
         FinanceTrackerUser user = await UserAsync();
@@ -48,9 +56,11 @@ public sealed class ProfileService : IProfileService
         };
     }
 
+    /// <inheritdoc/>
     public async Task<bool> SendEmailConfirmationAsync(CancellationToken cancellationToken) =>
         await _emailConfirmation.SendAsync(await UserAsync());
 
+    /// <inheritdoc/>
     public async Task<ProfileChange?> ChangePasswordAsync(ChangePassword change, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(change);
@@ -72,6 +82,7 @@ public sealed class ProfileService : IProfileService
         return ProfileChanges.From(result);
     }
 
+    /// <inheritdoc/>
     public async Task<ProfileChange?> ChangeEmailAsync(ChangeEmail change, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(change);
@@ -91,6 +102,10 @@ public sealed class ProfileService : IProfileService
         return result;
     }
 
+    /// <summary>
+    /// The signed in user.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">They no longer exist.</exception>
     private async Task<FinanceTrackerUser> UserAsync() =>
         await _userManager.FindByIdAsync(_currentUser.UserId.ToString())
         ?? throw new InvalidOperationException("The signed in user no longer exists");

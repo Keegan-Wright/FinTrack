@@ -12,6 +12,8 @@ public interface IEmailChange
     /// <summary>
     /// Changes <paramref name="user"/>'s email to <paramref name="newEmail"/>, or sends the link that does.
     /// </summary>
+    /// <param name="user">The user changing their email.</param>
+    /// <param name="newEmail">The email they want.</param>
     /// <exception cref="Exception">Sending the link failed, see <see cref="IMailSender.SendAsync"/>.</exception>
     Task<ProfileChange> RequestAsync(FinanceTrackerUser user, string newEmail);
 }

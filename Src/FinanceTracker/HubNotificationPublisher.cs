@@ -13,12 +13,15 @@ public sealed class HubNotificationPublisher : INotificationPublisher
     private readonly IHubContext<SyncHub> _hubContext;
     private readonly ILogger<HubNotificationPublisher> _logger;
 
+    /// <param name="hubContext">Sends to the user's connections.</param>
+    /// <param name="logger">Logs a push that failed.</param>
     public HubNotificationPublisher(IHubContext<SyncHub> hubContext, ILogger<HubNotificationPublisher> logger)
     {
         _hubContext = hubContext;
         _logger = logger;
     }
 
+    /// <inheritdoc/>
     public async Task NotificationAddedAsync(Guid userId)
     {
         try

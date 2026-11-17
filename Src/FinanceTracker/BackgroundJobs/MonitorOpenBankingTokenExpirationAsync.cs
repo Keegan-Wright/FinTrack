@@ -22,6 +22,11 @@ public class MonitorOpenBankingTokenExpirationAsync : IJob
     private readonly ILogger<MonitorOpenBankingTokenExpirationAsync> _logger;
     private readonly FinTrackMetrics _metrics;
 
+    /// <param name="dbContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="serviceScopeFactory">Makes the scopes its services run in.</param>
+    /// <param name="timeProvider">The clock.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="metrics">Records its metrics.</param>
     public MonitorOpenBankingTokenExpirationAsync(IDbContextFactory<FinanceTrackerContext> dbContextFactory,
         IServiceScopeFactory serviceScopeFactory, TimeProvider timeProvider,
         ILogger<MonitorOpenBankingTokenExpirationAsync> logger, FinTrackMetrics metrics)
@@ -33,6 +38,7 @@ public class MonitorOpenBankingTokenExpirationAsync : IJob
         _timeProvider = timeProvider;
     }
 
+    /// <inheritdoc/>
     public async ValueTask Execute(IJobExecutionContext context, CancellationToken cancellationToken)
     {
         using Activity? performingMonitoringActivity =
@@ -50,6 +56,11 @@ public class MonitorOpenBankingTokenExpirationAsync : IJob
         performingMonitoringActivity?.AddEvent(new ActivityEvent("Monitor OpenBanking Token Expiration completed"));
     }
 
+    /// <summary>
+    /// Revokes the active token of each connection whose consent has ended.
+    /// </summary>
+    /// <param name="activity">The job's span, noting each connection.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task RevokeLapsedConnectionsAsync(Activity? activity, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
@@ -74,6 +85,8 @@ public class MonitorOpenBankingTokenExpirationAsync : IJob
     /// Raises each owner's consent notices as that owner. One owner failing doesn't stop the rest, it's recorded on
     /// <paramref name="activity"/>.
     /// </summary>
+    /// <param name="activity">The job's span, where a failure is recorded.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task NotifyOwnersAsync(Activity? activity, CancellationToken cancellationToken)
     {
         List<Guid> owners;

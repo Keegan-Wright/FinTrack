@@ -26,12 +26,19 @@ else
 
 @code {
 
+    /// <summary>
+    /// The user confirming, from the link.
+    /// </summary>
     [SupplyParameterFromQuery] private string? UserId { get; set; }
 
+    /// <summary>
+    /// The confirmation code, from the link.
+    /// </summary>
     [SupplyParameterFromQuery] private string? Code { get; set; }
 
     private bool _confirmed;
 
+    /// <inheritdoc/>
     protected override async Task OnInitializedAsync()
     {
         string? code = Decode(Code);
@@ -45,6 +52,10 @@ else
     }
 
     // The token from the link, null when there isn't one or it was cut short or changed on the way
+    /// <summary>
+    /// The code from the link, decoded. Null when it's missing or isn't valid.
+    /// </summary>
+    /// <param name="code">The code as the link carries it.</param>
     private static string? Decode(string? code)
     {
         if (code is null)

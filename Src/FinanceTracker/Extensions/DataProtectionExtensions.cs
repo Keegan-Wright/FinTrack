@@ -3,6 +3,9 @@ using Microsoft.AspNetCore.DataProtection;
 
 namespace FinanceTracker.Extensions;
 
+/// <summary>
+/// Sets up where ASP.NET Data Protection keeps its keys.
+/// </summary>
 public static class DataProtectionExtensions
 {
     extension(WebApplicationBuilder builder)

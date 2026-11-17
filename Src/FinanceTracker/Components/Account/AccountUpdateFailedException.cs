@@ -7,6 +7,7 @@ namespace FinanceTracker.Components.Account;
 /// </summary>
 public sealed class AccountUpdateFailedException : Exception
 {
+    /// <param name="result">What Identity said went wrong.</param>
     public AccountUpdateFailedException(IdentityResult result)
         : base($"Updating the account failed: {string.Join(", ", result.Errors.Select(static x => x.Description))}")
     {
