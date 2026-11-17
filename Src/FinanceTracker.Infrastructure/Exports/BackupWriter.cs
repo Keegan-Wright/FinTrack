@@ -34,6 +34,19 @@ public sealed class BackupWriter : IBackupWriter
     private readonly INetWorthService _netWorthService;
     private readonly TimeProvider _timeProvider;
 
+    /// <param name="accountService">Gives the accounts.</param>
+    /// <param name="transactionsService">Gives the transactions.</param>
+    /// <param name="billsService">Gives the bills.</param>
+    /// <param name="budgetsService">Gives the budgets.</param>
+    /// <param name="debtsService">Gives the debts.</param>
+    /// <param name="savingsGoalsService">Gives the savings goals.</param>
+    /// <param name="rulesService">Gives the rules.</param>
+    /// <param name="classificationService">Gives the tags.</param>
+    /// <param name="calendarService">Gives the calendar.</param>
+    /// <param name="householdMemberService">Gives the household members.</param>
+    /// <param name="payPeriodsService">Gives the user's pay.</param>
+    /// <param name="netWorthService">Gives net worth.</param>
+    /// <param name="timeProvider">The clock.</param>
     public BackupWriter(IAccountService accountService, ITransactionsService transactionsService,
         IBillsService billsService, IBudgetsService budgetsService, IDebtsService debtsService,
         ISavingsGoalsService savingsGoalsService, IRulesService rulesService,
@@ -56,6 +69,7 @@ public sealed class BackupWriter : IBackupWriter
         _timeProvider = timeProvider;
     }
 
+    /// <inheritdoc/>
     public async Task WriteAsync(Stream destination, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(destination);

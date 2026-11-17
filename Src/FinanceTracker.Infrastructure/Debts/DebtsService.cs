@@ -29,6 +29,11 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
     private readonly TimeProvider _timeProvider;
     private readonly IAccountScope _accountScope;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="timeProvider">The clock.</param>
+    /// <param name="accountScope">Which accounts the user can see and change.</param>
     public DebtsService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<DebtsService> logger,
         TimeProvider timeProvider, IAccountScope accountScope) : base(currentUser, financeTrackerContextFactory, logger)
@@ -37,6 +42,7 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
         _accountScope = accountScope;
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<Debt> GetDebtsAsync([EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -55,6 +61,7 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
         }
     }
 
+    /// <inheritdoc/>
     public async Task<DebtDetail> GetDebtAsync(Guid id, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -90,6 +97,7 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
         };
     }
 
+    /// <inheritdoc/>
     public async Task<Debt> AddDebtAsync(SaveDebt debt, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -109,6 +117,7 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
         return await ToContractAsync(context, new VisibleItem<DomainDebt>(added, null, true), cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<Debt> UpdateDebtAsync(Guid id, SaveDebt debt, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -154,6 +163,7 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
         NameCheck.EnsureFree(existing.Select(static x => (x.Id, x.Name)), name, exceptId, NameTakenException.Debt);
     }
 
+    /// <inheritdoc/>
     public async Task DeleteDebtAsync(Guid id, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -188,6 +198,7 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
         Logger.LogDeletedDebt(UserId, id, payments.Count, rulesChanged);
     }
 
+    /// <inheritdoc/>
     public async Task<DebtForecast> ForecastAsync(Guid id, decimal monthlyPayment,
         CancellationToken cancellationToken)
     {
@@ -205,6 +216,7 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
             monthlyPayment, _timeProvider.Today));
     }
 
+    /// <inheritdoc/>
     public async Task<Transaction> PayDebtAsync(Guid transactionId, PayDebt payment,
         CancellationToken cancellationToken)
     {

@@ -10,10 +10,13 @@ public sealed class WebhookAddressRefusedException : Exception
     {
     }
 
+    /// <param name="message">What went wrong.</param>
     public WebhookAddressRefusedException(string message) : base(message)
     {
     }
 
+    /// <param name="message">What went wrong.</param>
+    /// <param name="innerException">What caused it.</param>
     public WebhookAddressRefusedException(string message, Exception innerException) : base(message, innerException)
     {
     }

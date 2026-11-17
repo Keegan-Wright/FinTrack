@@ -14,8 +14,10 @@ public sealed class QuartzOpenBankingSyncScheduler : IOpenBankingSyncScheduler
 {
     private readonly ISchedulerFactory _schedulerFactory;
 
+    /// <param name="schedulerFactory">Gives Quartz's scheduler.</param>
     public QuartzOpenBankingSyncScheduler(ISchedulerFactory schedulerFactory) => _schedulerFactory = schedulerFactory;
 
+    /// <inheritdoc/>
     public async Task ScheduleUserSyncAsync(Guid userId, CancellationToken cancellationToken)
     {
         IScheduler scheduler = await _schedulerFactory.GetScheduler(cancellationToken);

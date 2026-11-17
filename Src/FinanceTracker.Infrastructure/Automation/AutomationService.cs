@@ -28,6 +28,13 @@ public class AutomationService : ServiceBase<AutomationService>, IAutomationServ
     private readonly IOpenBankingSyncScheduler _openBankingSyncScheduler;
     private readonly TimeProvider _timeProvider;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="schedulerFactory">Gives Quartz's scheduler.</param>
+    /// <param name="executionHistoryStore">Keeps the jobs' run history.</param>
+    /// <param name="openBankingSyncScheduler">Queues syncs.</param>
+    /// <param name="timeProvider">The clock.</param>
     public AutomationService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<AutomationService> logger,
         ISchedulerFactory schedulerFactory, IExecutionHistoryStore executionHistoryStore,
@@ -40,6 +47,7 @@ public class AutomationService : ServiceBase<AutomationService>, IAutomationServ
         _timeProvider = timeProvider;
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<AutomationCron> GetJobsAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -50,6 +58,7 @@ public class AutomationService : ServiceBase<AutomationService>, IAutomationServ
         }
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<AutomationJobSummary> GetJobSummariesAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -73,6 +82,7 @@ public class AutomationService : ServiceBase<AutomationService>, IAutomationServ
         }
     }
 
+    /// <inheritdoc/>
     public async Task<AutomationRunPage> GetRunsAsync(string function, int page, int pageSize,
         CancellationToken cancellationToken)
     {
@@ -109,6 +119,7 @@ public class AutomationService : ServiceBase<AutomationService>, IAutomationServ
         return new AutomationRunPage(runs, total);
     }
 
+    /// <inheritdoc/>
     public async Task<bool> UpdateJobSettingsAsync(UpdateCronJob request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -142,6 +153,7 @@ public class AutomationService : ServiceBase<AutomationService>, IAutomationServ
         return true;
     }
 
+    /// <inheritdoc/>
     public async Task RunNowAsync(string function, CancellationToken cancellationToken)
     {
         IScheduler scheduler = await _schedulerFactory.GetScheduler(cancellationToken);
@@ -160,6 +172,7 @@ public class AutomationService : ServiceBase<AutomationService>, IAutomationServ
         Logger.LogJobRunNow(UserId, function);
     }
 
+    /// <inheritdoc/>
     public async Task<DateTime?> GetLastSyncTimeAsync(CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -295,6 +308,7 @@ public class AutomationService : ServiceBase<AutomationService>, IAutomationServ
     }
 
     // The user comes from the scope, never the page, so nobody can queue a sync of someone else's connections
+    /// <inheritdoc/>
     public Task RequestSyncAsync(CancellationToken cancellationToken) =>
         _openBankingSyncScheduler.ScheduleUserSyncAsync(UserId, cancellationToken);
 }

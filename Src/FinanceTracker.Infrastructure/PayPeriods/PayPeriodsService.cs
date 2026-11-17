@@ -18,6 +18,10 @@ public class PayPeriodsService : ServiceBase<PayPeriodsService>, IPayPeriodsServ
 {
     private readonly TimeProvider _timeProvider;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="timeProvider">The clock.</param>
     public PayPeriodsService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<PayPeriodsService> logger,
         TimeProvider timeProvider) : base(currentUser, financeTrackerContextFactory, logger)
@@ -25,6 +29,7 @@ public class PayPeriodsService : ServiceBase<PayPeriodsService>, IPayPeriodsServ
         _timeProvider = timeProvider;
     }
 
+    /// <inheritdoc/>
     public async Task<YourPay> GetYourPayAsync(CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -35,6 +40,7 @@ public class PayPeriodsService : ServiceBase<PayPeriodsService>, IPayPeriodsServ
         return await ToYourPayAsync(context, schedule, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<Income> GetIncomesAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -53,6 +59,7 @@ public class PayPeriodsService : ServiceBase<PayPeriodsService>, IPayPeriodsServ
         }
     }
 
+    /// <inheritdoc/>
     public async Task<YourPay> ChooseAsync(ChooseIncome income, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(income);
@@ -79,6 +86,7 @@ public class PayPeriodsService : ServiceBase<PayPeriodsService>, IPayPeriodsServ
         return await ToYourPayAsync(context, schedule, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<YourPay> TurnOffAsync(CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -95,6 +103,7 @@ public class PayPeriodsService : ServiceBase<PayPeriodsService>, IPayPeriodsServ
         return await ToYourPayAsync(context, schedule, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<YourPay> TurnOnAsync(CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =

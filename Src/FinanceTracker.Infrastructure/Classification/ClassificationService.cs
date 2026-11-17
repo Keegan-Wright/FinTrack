@@ -23,6 +23,11 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
     private readonly IAccountScope _accountScope;
     private readonly TimeProvider _timeProvider;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="accountScope">Which accounts the user can see and change.</param>
+    /// <param name="timeProvider">The clock.</param>
     public ClassificationService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<ClassificationService> logger,
         IAccountScope accountScope, TimeProvider timeProvider) : base(currentUser, financeTrackerContextFactory, logger)
@@ -31,6 +36,7 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
         _timeProvider = timeProvider;
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<Contracts.Classifications.Classification> GetAllCustomClassificationsAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -62,6 +68,7 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
         }
     }
 
+    /// <inheritdoc/>
     public async Task<GetClassification> GetClassificationAsync(Guid id, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -74,6 +81,7 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
         return new GetClassification { Tag = classification.Tag, ClassificationId = classification.Id };
     }
 
+    /// <inheritdoc/>
     public async Task<Contracts.Classifications.Classification> AddCustomClassificationAsync(
         AddClassifications classification,
         CancellationToken cancellationToken)
@@ -94,6 +102,7 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
             { Tag = newClassification.Tag, ClassificationId = newClassification.Id };
     }
 
+    /// <inheritdoc/>
     public async Task<Contracts.Classifications.Classification> RenameCustomClassificationAsync(Guid id,
         RenameClassification request, CancellationToken cancellationToken)
     {
@@ -117,6 +126,7 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
             { Tag = classification.Tag, ClassificationId = classification.Id };
     }
 
+    /// <inheritdoc/>
     public async Task AddCustomClassificationsToTransactionAsync(
         AddCustomClassificationsToTransaction model,
         CancellationToken cancellationToken)
@@ -150,6 +160,7 @@ public class ClassificationService : ServiceBase<ClassificationService>, IClassi
         Logger.LogChanged(UserId, "tagged", "transaction", model.TransactionId);
     }
 
+    /// <inheritdoc/>
     public async Task RemoveCustomClassificationAsync(Guid id, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =

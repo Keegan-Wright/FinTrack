@@ -18,6 +18,12 @@ public sealed class ReportDocumentBuilder : IReportDocumentBuilder
     private readonly ISavingsGoalsService _savingsGoalsService;
     private readonly TimeProvider _timeProvider;
 
+    /// <param name="reportService">Gives the reports.</param>
+    /// <param name="transactionsService">Gives the transactions.</param>
+    /// <param name="billsService">Gives the bills.</param>
+    /// <param name="debtsService">Gives the debts.</param>
+    /// <param name="savingsGoalsService">Gives the savings goals.</param>
+    /// <param name="timeProvider">The clock.</param>
     public ReportDocumentBuilder(IReportService reportService, ITransactionsService transactionsService,
         IBillsService billsService, IDebtsService debtsService, ISavingsGoalsService savingsGoalsService,
         TimeProvider timeProvider)
@@ -30,6 +36,7 @@ public sealed class ReportDocumentBuilder : IReportDocumentBuilder
         _timeProvider = timeProvider;
     }
 
+    /// <inheritdoc/>
     public async Task<ReportContent> BuildAsync(ExportReport report, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(report);

@@ -20,12 +20,15 @@ public sealed class NotificationEmails : INotificationEmails
     private readonly IEmailRenderer _emailRenderer;
     private readonly PublicAddress _publicAddress;
 
+    /// <param name="emailRenderer">Renders the emails.</param>
+    /// <param name="publicAddress">The app's address as people reach it.</param>
     public NotificationEmails(IEmailRenderer emailRenderer, PublicAddress publicAddress)
     {
         _emailRenderer = emailRenderer;
         _publicAddress = publicAddress;
     }
 
+    /// <inheritdoc/>
     public async Task<MailMessage> ForAsync(Notification notification, string to)
     {
         ArgumentNullException.ThrowIfNull(notification);
@@ -50,6 +53,7 @@ public sealed class NotificationEmails : INotificationEmails
         return new MailMessage(to, notification.Title, text, html) { Images = [EmailBrand.Logo] };
     }
 
+    /// <inheritdoc/>
     public async Task<MailMessage> TestAsync(string to)
     {
         Uri? settings = _publicAddress.LinkTo(SettingsPath);

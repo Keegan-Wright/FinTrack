@@ -14,6 +14,11 @@ public sealed class SyncHealth : ServiceBase<SyncHealth>, ISyncHealth
     private readonly TimeProvider _timeProvider;
     private readonly INotifier _notifier;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="timeProvider">The clock.</param>
+    /// <param name="notifier">Raises notifications.</param>
     public SyncHealth(ICurrentUser currentUser, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
         ILogger<SyncHealth> logger, TimeProvider timeProvider, INotifier notifier)
         : base(currentUser, financeTrackerContextFactory, logger)
@@ -22,6 +27,7 @@ public sealed class SyncHealth : ServiceBase<SyncHealth>, ISyncHealth
         _notifier = notifier;
     }
 
+    /// <inheritdoc/>
     public async Task RecordSucceededAsync(Guid connectionId, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -39,6 +45,7 @@ public sealed class SyncHealth : ServiceBase<SyncHealth>, ISyncHealth
         Logger.LogConnectionSyncRecovered(connection.Id, UserId, failingSince);
     }
 
+    /// <inheritdoc/>
     public async Task RecordFailedAsync(Guid connectionId, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =

@@ -29,6 +29,11 @@ public sealed class ConsentNotices : ServiceBase<ConsentNotices>, IConsentNotice
     private readonly TimeProvider _timeProvider;
     private readonly INotifier _notifier;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="timeProvider">The clock.</param>
+    /// <param name="notifier">Raises notifications.</param>
     public ConsentNotices(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<ConsentNotices> logger,
         TimeProvider timeProvider, INotifier notifier)
@@ -38,6 +43,7 @@ public sealed class ConsentNotices : ServiceBase<ConsentNotices>, IConsentNotice
         _notifier = notifier;
     }
 
+    /// <inheritdoc/>
     public async Task NotifyAsync(CancellationToken cancellationToken)
     {
         DateTime now = _timeProvider.UtcNow;

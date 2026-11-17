@@ -11,6 +11,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Infrastructure.OpenBanking.Balances;
 
+/// <inheritdoc cref="IBalanceSnapshotService"/>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<IBalanceSnapshotService>]
 public class BalanceSnapshotService : ServiceBase<BalanceSnapshotService>, IBalanceSnapshotService
@@ -18,6 +19,11 @@ public class BalanceSnapshotService : ServiceBase<BalanceSnapshotService>, IBala
     private readonly TimeProvider _timeProvider;
     private readonly FinTrackMetrics _metrics;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="timeProvider">The clock.</param>
+    /// <param name="metrics">Records its metrics.</param>
     public BalanceSnapshotService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<BalanceSnapshotService> logger,
         TimeProvider timeProvider, FinTrackMetrics metrics) : base(currentUser, financeTrackerContextFactory, logger)
@@ -26,6 +32,7 @@ public class BalanceSnapshotService : ServiceBase<BalanceSnapshotService>, IBala
         _metrics = metrics;
     }
 
+    /// <inheritdoc/>
     public async Task<NetWorthSnapshot?> SnapshotAsync(DateOnly day, DateTime balancesSyncedFrom,
         CancellationToken cancellationToken)
     {
@@ -99,6 +106,7 @@ public class BalanceSnapshotService : ServiceBase<BalanceSnapshotService>, IBala
         return netWorth;
     }
 
+    /// <inheritdoc/>
     public async Task<int> BackfillAsync(CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -154,6 +162,10 @@ public class BalanceSnapshotService : ServiceBase<BalanceSnapshotService>, IBala
     /// Totals each of <paramref name="days"/>' net worth again from all its balances, adding the days that had none.
     /// Tracked changes, saved by the caller.
     /// </summary>
+    /// <param name="context">The context to save through.</param>
+    /// <param name="derived">The snapshots worked out from transactions.</param>
+    /// <param name="days">The days to total again.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task RetotalAsync(FinanceTrackerContext context, List<BalanceSnapshot> derived,
         HashSet<DateOnly> days, CancellationToken cancellationToken)
     {
@@ -193,10 +205,18 @@ public class BalanceSnapshotService : ServiceBase<BalanceSnapshotService>, IBala
     /// What the debts not linked to an account owed on <paramref name="day"/>. Linked ones are in their account's
     /// balance already.
     /// </summary>
+    /// <param name="context">The context to read through.</param>
+    /// <param name="day">The day.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<decimal> DebtsOwedAsync(FinanceTrackerContext context, DateOnly day,
         CancellationToken cancellationToken) =>
         (await LoadDebtsAsync(context, cancellationToken)).On(day);
 
+    /// <summary>
+    /// Loads the user's debts not linked to an account and the payments on them.
+    /// </summary>
+    /// <param name="context">The context to read through.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<DebtsOwed> LoadDebtsAsync(FinanceTrackerContext context, CancellationToken cancellationToken)
     {
         List<Debt> debts = await context.Debts.OwnedBy(UserId).AsNoTracking()

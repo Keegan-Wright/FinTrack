@@ -15,12 +15,16 @@ namespace FinanceTracker.Infrastructure.Diagnostics;
 [Scoped<IClientErrorsService>]
 public sealed class ClientErrorsService : ServiceBase<ClientErrorsService>, IClientErrorsService
 {
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
     public ClientErrorsService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<ClientErrorsService> logger)
         : base(currentUser, financeTrackerContextFactory, logger)
     {
     }
 
+    /// <inheritdoc/>
     public Task ReportAsync(ClientError error, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(error);

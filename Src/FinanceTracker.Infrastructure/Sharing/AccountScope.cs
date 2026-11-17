@@ -11,8 +11,10 @@ public sealed class AccountScope : IAccountScope
 {
     private readonly ICurrentUser _currentUser;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
     public AccountScope(ICurrentUser currentUser) => _currentUser = currentUser;
 
+    /// <inheritdoc/>
     public async Task<AccountsInView> ResolveAsync(FinanceTrackerContext context, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(context);
@@ -25,12 +27,14 @@ public sealed class AccountScope : IAccountScope
         return await ResolveAsync(context, userId, onlyChangeable: false, justMine, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public Task<AccountsInView> ResolveAllAsync(FinanceTrackerContext context, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(context);
         return ResolveAsync(context, _currentUser.UserId, onlyChangeable: false, justMine: false, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public Task<AccountsInView> ResolveChangeableAsync(FinanceTrackerContext context,
         CancellationToken cancellationToken)
     {

@@ -21,6 +21,11 @@ public class NetWorthService : ServiceBase<NetWorthService>, INetWorthService
     private readonly TimeProvider _timeProvider;
     private readonly IAccountScope _accountScope;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="timeProvider">The clock.</param>
+    /// <param name="accountScope">Which accounts the user can see and change.</param>
     public NetWorthService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<NetWorthService> logger,
         TimeProvider timeProvider, IAccountScope accountScope) : base(currentUser, financeTrackerContextFactory, logger)
@@ -29,6 +34,7 @@ public class NetWorthService : ServiceBase<NetWorthService>, INetWorthService
         _accountScope = accountScope;
     }
 
+    /// <inheritdoc/>
     public async Task<NetWorthHistory> GetNetWorthAsync(DateOnly? from, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -143,6 +149,7 @@ public class NetWorthService : ServiceBase<NetWorthService>, INetWorthService
         return combined;
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<AccountBalanceHistory> GetBalanceHistoriesAsync(DateOnly? from,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {

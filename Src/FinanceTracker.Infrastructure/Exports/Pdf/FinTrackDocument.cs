@@ -11,6 +11,7 @@ namespace FinanceTracker.Infrastructure.Exports.Pdf;
 /// </summary>
 public abstract class FinTrackDocument : IDocument
 {
+    /// <param name="madeOn">The day it's made, shown in the footer.</param>
     protected FinTrackDocument(DateOnly madeOn)
     {
         QuestPdfSetup.EnsureConfigured();

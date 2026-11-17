@@ -34,12 +34,15 @@ public sealed class WebhookSender : IWebhookSender
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly TimeProvider _timeProvider;
 
+    /// <param name="httpClientFactory">Makes the API's client.</param>
+    /// <param name="timeProvider">The clock.</param>
     public WebhookSender(IHttpClientFactory httpClientFactory, TimeProvider timeProvider)
     {
         _httpClientFactory = httpClientFactory;
         _timeProvider = timeProvider;
     }
 
+    /// <inheritdoc/>
     public async Task SendAsync(string url, string secret, WebhookPayload payload,
         CancellationToken cancellationToken)
     {

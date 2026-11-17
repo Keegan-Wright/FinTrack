@@ -56,6 +56,9 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
 #pragma warning restore CS8618
 
     [ActivatorUtilitiesConstructor]
+    /// <param name="options">EF Core's options.</param>
+    /// <param name="columnEncryptionService">Encrypts and decrypts columns.</param>
+    /// <param name="timeProvider">The clock.</param>
     public FinanceTrackerContext(DbContextOptions<FinanceTrackerContext> options,
         IColumnEncryptionService columnEncryptionService, TimeProvider timeProvider) : base(options)
     {

@@ -32,6 +32,12 @@ public sealed class BudgetNotices : ServiceBase<BudgetNotices>, ISyncNotices
     private readonly IBudgetsService _budgetsService;
     private readonly INotifier _notifier;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="timeProvider">The clock.</param>
+    /// <param name="budgetsService">Gives the budgets.</param>
+    /// <param name="notifier">Raises notifications.</param>
     public BudgetNotices(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<BudgetNotices> logger,
         TimeProvider timeProvider, IBudgetsService budgetsService, INotifier notifier)
@@ -42,6 +48,7 @@ public sealed class BudgetNotices : ServiceBase<BudgetNotices>, ISyncNotices
         _notifier = notifier;
     }
 
+    /// <inheritdoc/>
     public async Task NotifyAsync(CancellationToken cancellationToken)
     {
         BudgetMonth month;

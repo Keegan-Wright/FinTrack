@@ -23,6 +23,12 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
     private readonly IAccountScope _accountScope;
     private readonly TimeProvider _timeProvider;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="ruleApplicationService">Applies the rules.</param>
+    /// <param name="accountScope">Which accounts the user can see and change.</param>
+    /// <param name="timeProvider">The clock.</param>
     public RulesService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<RulesService> logger,
         IRuleApplicationService ruleApplicationService, IAccountScope accountScope, TimeProvider timeProvider)
@@ -33,6 +39,7 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
         _timeProvider = timeProvider;
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<Rule> GetRulesAsync([EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -64,6 +71,7 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
         }
     }
 
+    /// <inheritdoc/>
     public async Task<Rule> GetRuleAsync(Guid id, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -82,6 +90,7 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
         return await SharedRules.ToContractAsync(context, UserId, seen, shared, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<Rule> AddRuleAsync(SaveRule rule, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -108,6 +117,7 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
         return RuleMapper.ToContract(newRule);
     }
 
+    /// <inheritdoc/>
     public async Task<Rule> UpdateRuleAsync(Guid id, SaveRule rule, CancellationToken cancellationToken)
     {
         DomainRule updated;
@@ -154,6 +164,7 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
         return await SharedRules.ToContractAsync(context, UserId, visible, saved, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task ReorderRulesAsync(ReorderRules order, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -176,6 +187,7 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
         Logger.LogChangedTheir(UserId, "reordered", "rules");
     }
 
+    /// <inheritdoc/>
     public async Task<RulePreview> PreviewRuleAsync(Guid? id, SaveRule rule, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -214,9 +226,11 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
             _timeProvider.UtcNow);
     }
 
+    /// <inheritdoc/>
     public Task<int> ApplyRuleToExistingAsync(Guid id, CancellationToken cancellationToken) =>
         _ruleApplicationService.ApplyToExistingAsync(id, cancellationToken);
 
+    /// <inheritdoc/>
     public async Task<SaveRule> GetDraftFromTransactionAsync(Guid transactionId,
         CancellationToken cancellationToken)
     {
@@ -235,6 +249,7 @@ public class RulesService : ServiceBase<RulesService>, IRulesService
         return RuleMapper.DraftFrom(transaction, tagIds.ToHashSet());
     }
 
+    /// <inheritdoc/>
     public async Task DeleteRuleAsync(Guid id, CancellationToken cancellationToken)
     {
         await using (FinanceTrackerContext context =

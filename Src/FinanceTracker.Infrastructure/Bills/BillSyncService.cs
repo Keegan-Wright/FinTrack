@@ -26,6 +26,11 @@ public class BillSyncService : ServiceBase<BillSyncService>, IBillSyncService
     private readonly TimeProvider _timeProvider;
     private readonly FinTrackMetrics _metrics;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="timeProvider">The clock.</param>
+    /// <param name="metrics">Records its metrics.</param>
     public BillSyncService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<BillSyncService> logger,
         TimeProvider timeProvider, FinTrackMetrics metrics) : base(currentUser, financeTrackerContextFactory, logger)
@@ -34,6 +39,7 @@ public class BillSyncService : ServiceBase<BillSyncService>, IBillSyncService
         _metrics = metrics;
     }
 
+    /// <inheritdoc/>
     public async Task<BillSyncSummary> SyncAsync(CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -89,9 +95,11 @@ public class BillSyncService : ServiceBase<BillSyncService>, IBillSyncService
         return summary;
     }
 
+    /// <inheritdoc/>
     public Task<int> MatchFromAsync(DateOnly from, CancellationToken cancellationToken) =>
         MatchFromForAsync(UserId, from, cancellationToken);
 
+    /// <inheritdoc/>
     public async Task<int> MatchFromForAsync(Guid ownerId, DateOnly from, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =

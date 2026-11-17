@@ -18,12 +18,15 @@ public sealed class AccountEmails : IAccountEmails
     private readonly IEmailRenderer _emailRenderer;
     private readonly PublicAddress _publicAddress;
 
+    /// <param name="emailRenderer">Renders the emails.</param>
+    /// <param name="publicAddress">The app's address as people reach it.</param>
     public AccountEmails(IEmailRenderer emailRenderer, PublicAddress publicAddress)
     {
         _emailRenderer = emailRenderer;
         _publicAddress = publicAddress;
     }
 
+    /// <inheritdoc/>
     public Task<MailMessage> ConfirmEmailAsync(string to, Uri link) =>
         CreateAsync(to, link, new AccountEmail(
             ConfirmEmailSubject,
@@ -34,6 +37,7 @@ public sealed class AccountEmails : IAccountEmails
             "You're getting this because a FinTrack account was made with this email. If that wasn't you, you can " +
             "ignore it."));
 
+    /// <inheritdoc/>
     public Task<MailMessage> ResetPasswordAsync(string to, Uri link) =>
         CreateAsync(to, link, new AccountEmail(
             ResetPasswordSubject,
@@ -43,6 +47,7 @@ public sealed class AccountEmails : IAccountEmails
             "You're getting this because someone asked to reset your FinTrack password. If that wasn't you, you can " +
             "ignore it and your password stays the same."));
 
+    /// <inheritdoc/>
     public Task<MailMessage> ChangeEmailAsync(string to, Uri link) =>
         CreateAsync(to, link, new AccountEmail(
             ChangeEmailSubject,

@@ -22,6 +22,11 @@ public sealed class SharingChoices : ServiceBase<SharingService>, ISharingChoice
     private readonly TimeProvider _timeProvider;
     private readonly ISharingEffects _sharingEffects;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="timeProvider">The clock.</param>
+    /// <param name="sharingEffects">Takes off what stops being shared.</param>
     public SharingChoices(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<SharingService> logger,
         TimeProvider timeProvider, ISharingEffects sharingEffects)
@@ -31,6 +36,7 @@ public sealed class SharingChoices : ServiceBase<SharingService>, ISharingChoice
         _sharingEffects = sharingEffects;
     }
 
+    /// <inheritdoc/>
     public async Task<LinkShares?> GetSharesAsync(Guid linkId, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -45,6 +51,7 @@ public sealed class SharingChoices : ServiceBase<SharingService>, ISharingChoice
         return await LinkSharesAsync(context, link, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<LinkShares> ChangeAccountSharesAsync(Guid linkId, ChangeAccountShares request,
         CancellationToken cancellationToken)
     {
@@ -118,6 +125,7 @@ public sealed class SharingChoices : ServiceBase<SharingService>, ISharingChoice
         return await LinkSharesAsync(context, link, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<LinkShares> ChangeItemSharesAsync(Guid linkId, ChangeItemShares request,
         CancellationToken cancellationToken)
     {
@@ -139,6 +147,7 @@ public sealed class SharingChoices : ServiceBase<SharingService>, ISharingChoice
         return await LinkSharesAsync(context, link, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<LinkShares> LinkSharesAsync(FinanceTrackerContext context, DomainLink link,
         CancellationToken cancellationToken)
     {

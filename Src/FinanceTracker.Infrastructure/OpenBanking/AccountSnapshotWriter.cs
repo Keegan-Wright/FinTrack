@@ -10,17 +10,20 @@ using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Infrastructure.OpenBanking;
 
+/// <inheritdoc cref="IAccountSnapshotWriter"/>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Scoped<IAccountSnapshotWriter>]
 public sealed class AccountSnapshotWriter : IAccountSnapshotWriter
 {
     private readonly ILogger<AccountSnapshotWriter> _logger;
 
+    /// <param name="logger">Its logger.</param>
     public AccountSnapshotWriter(ILogger<AccountSnapshotWriter> logger)
     {
         _logger = logger;
     }
 
+    /// <inheritdoc/>
     public async Task ApplyAsync(FinanceTrackerContext context, BankAccount account, AccountSnapshot snapshot,
         DateTime syncedAt, ConnectionSyncTally tally, CancellationToken cancellationToken)
     {
@@ -101,6 +104,8 @@ public sealed class AccountSnapshotWriter : IAccountSnapshotWriter
     /// <summary>
     /// The balance in our terms, a card's being what's owed as a negative amount.
     /// </summary>
+    /// <param name="account">The account or card.</param>
+    /// <param name="balance">The balance as TrueLayer sends it.</param>
     private static AccountBalance ToBalance(BankAccount account, ExternalOpenBankingAccountBalance balance)
     {
         if (account.Kind == BankAccountKind.Card)
@@ -114,6 +119,10 @@ public sealed class AccountSnapshotWriter : IAccountSnapshotWriter
     /// <summary>
     /// The transaction in our terms, a card's signed by its type.
     /// </summary>
+    /// <param name="account">The account or card.</param>
+    /// <param name="transaction">The transaction as TrueLayer sends it.</param>
+    /// <param name="isPending">Whether it's pending.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static Task<TransactionDetails> ToDetailsAsync(BankAccount account,
         ExternalOpenBankingAccountTransaction transaction, bool isPending, CancellationToken cancellationToken)
     {
@@ -129,6 +138,10 @@ public sealed class AccountSnapshotWriter : IAccountSnapshotWriter
     /// Removes pending transactions the provider no longer reports. A bank can settle a pending transaction under a
     /// different id, which would otherwise leave the pending copy counted alongside the booked one.
     /// </summary>
+    /// <param name="context">The context to save through.</param>
+    /// <param name="account">The account or card.</param>
+    /// <param name="reportedExternalIds">The pending transactions the bank still reports.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <returns>How many were removed.</returns>
     private async Task<int> RemoveStalePendingTransactionsAsync(FinanceTrackerContext context, BankAccount account,
         IReadOnlyCollection<string> reportedExternalIds, CancellationToken cancellationToken)

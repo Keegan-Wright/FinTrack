@@ -26,6 +26,7 @@ public class ColumnEncryptionService : IColumnEncryptionService
     private readonly Dictionary<int, byte[]> _encryptionKeys;
     private readonly byte[] _blindIndexKey;
 
+    /// <param name="encryptionConfiguration">The keyring.</param>
     public ColumnEncryptionService(EncryptionConfiguration encryptionConfiguration)
     {
         ArgumentNullException.ThrowIfNull(encryptionConfiguration);
@@ -55,10 +56,13 @@ public class ColumnEncryptionService : IColumnEncryptionService
         KeyringFingerprint = ComputeFingerprint(encryptionConfiguration);
     }
 
+    /// <inheritdoc/>
     public int CurrentKeyId { get; }
 
+    /// <inheritdoc/>
     public string KeyringFingerprint { get; }
 
+    /// <inheritdoc/>
     public string Encrypt<T>(T value)
     {
         string? plainText = ToPlainText(value);
@@ -83,6 +87,7 @@ public class ColumnEncryptionService : IColumnEncryptionService
             $"{CurrentKeyId}{KeyIdSeparator}{Convert.ToBase64String(payload)}");
     }
 
+    /// <inheritdoc/>
     public T? Decrypt<T>(string cipherText)
     {
         if (string.IsNullOrEmpty(cipherText))
@@ -134,6 +139,7 @@ public class ColumnEncryptionService : IColumnEncryptionService
         return FromPlainText<T>(Encoding.UTF8.GetString(plainBytes));
     }
 
+    /// <inheritdoc/>
     public string ComputeBlindIndex(string value)
     {
         ArgumentNullException.ThrowIfNull(value);

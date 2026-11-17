@@ -14,6 +14,11 @@ public sealed class JointAccountGapService : ServiceBase<JointAccountGapService>
     private readonly TimeProvider _timeProvider;
     private readonly ITransferMatchingService _transferMatchingService;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="timeProvider">The clock.</param>
+    /// <param name="transferMatchingService">Matches transfers.</param>
     public JointAccountGapService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<JointAccountGapService> logger,
         TimeProvider timeProvider, ITransferMatchingService transferMatchingService)
@@ -23,6 +28,7 @@ public sealed class JointAccountGapService : ServiceBase<JointAccountGapService>
         _transferMatchingService = transferMatchingService;
     }
 
+    /// <inheritdoc/>
     public async Task RefreshAsync(CancellationToken cancellationToken)
     {
         List<Guid> changed = [];

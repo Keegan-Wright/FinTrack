@@ -31,6 +31,13 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
     private readonly IDebtsService _debtsService;
     private readonly IAccountScope _accountScope;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="timeProvider">The clock.</param>
+    /// <param name="savingsGoalsService">Gives the savings goals.</param>
+    /// <param name="debtsService">Gives the debts.</param>
+    /// <param name="accountScope">Which accounts the user can see and change.</param>
     public CalendarService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<CalendarService> logger,
         TimeProvider timeProvider, ISavingsGoalsService savingsGoalsService, IDebtsService debtsService,
@@ -43,6 +50,7 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
         _debtsService = debtsService;
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<CalendarItems> GetMonthItemsAsync(int month, int year,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -116,6 +124,7 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
         }
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<CalendarEvent> GetEventsAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -142,6 +151,7 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
         }
     }
 
+    /// <inheritdoc/>
     public async Task<CalendarEvent> AddEventAsync(SaveCalendarEvent calendarEvent,
         CancellationToken cancellationToken)
     {
@@ -158,6 +168,7 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
         return CalendarEventMapper.ToContract(added, goal?.Name, _timeProvider.Today);
     }
 
+    /// <inheritdoc/>
     public async Task<CalendarEvent> UpdateEventAsync(Guid id, SaveCalendarEvent calendarEvent,
         CancellationToken cancellationToken)
     {
@@ -194,6 +205,7 @@ public class CalendarService : ServiceBase<CalendarService>, ICalendarService
             visible.CanChange);
     }
 
+    /// <inheritdoc/>
     public async Task DeleteEventAsync(Guid id, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =

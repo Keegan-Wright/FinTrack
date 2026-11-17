@@ -17,6 +17,12 @@ public sealed class SharingJointAccounts : ServiceBase<SharingService>, ISharing
     private readonly ISharingEffects _sharingEffects;
     private readonly ISharingChoices _sharingChoices;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="timeProvider">The clock.</param>
+    /// <param name="sharingEffects">Takes off what stops being shared.</param>
+    /// <param name="sharingChoices">Gives what the user may share.</param>
     public SharingJointAccounts(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<SharingService> logger,
         TimeProvider timeProvider, ISharingEffects sharingEffects, ISharingChoices sharingChoices)
@@ -27,6 +33,7 @@ public sealed class SharingJointAccounts : ServiceBase<SharingService>, ISharing
         _sharingChoices = sharingChoices;
     }
 
+    /// <inheritdoc/>
     public async Task<LinkShares> MergeAsync(Guid linkId, MergeJointAccounts request,
         CancellationToken cancellationToken)
     {
@@ -62,6 +69,7 @@ public sealed class SharingJointAccounts : ServiceBase<SharingService>, ISharing
         return await _sharingChoices.LinkSharesAsync(context, link, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<LinkShares> SplitAsync(Guid linkId, Guid jointAccountId, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -94,6 +102,7 @@ public sealed class SharingJointAccounts : ServiceBase<SharingService>, ISharing
         return await _sharingChoices.LinkSharesAsync(context, link, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<bool> SplitAllAsync(FinanceTrackerContext context, DomainLink link,
         CancellationToken cancellationToken)
     {

@@ -34,6 +34,12 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
     private readonly TimeProvider _timeProvider;
     private readonly IAccountScope _accountScope;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="billSyncService">Syncs the bills.</param>
+    /// <param name="timeProvider">The clock.</param>
+    /// <param name="accountScope">Which accounts the user can see and change.</param>
     public BillsService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<BillsService> logger,
         IBillSyncService billSyncService, TimeProvider timeProvider, IAccountScope accountScope)
@@ -44,6 +50,7 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
         _accountScope = accountScope;
     }
 
+    /// <inheritdoc/>
     public async Task<BillMonthOverview> GetMonthAsync(int year, int month, CancellationToken cancellationToken)
     {
         BudgetMonth target = new(year, month);
@@ -105,6 +112,7 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
         };
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<Bill> GetBillsAsync([EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -127,6 +135,7 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
         }
     }
 
+    /// <inheritdoc/>
     public async Task<Bill> GetBillAsync(Guid id, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -136,6 +145,7 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
         return await ToContractAsync(context, bill, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<Bill> AddBillAsync(SaveBill bill, CancellationToken cancellationToken)
     {
         Guid id;
@@ -159,6 +169,7 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
         return await GetBillAsync(id, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<Bill> UpdateBillAsync(Guid id, SaveBill bill, CancellationToken cancellationToken)
     {
         await using (FinanceTrackerContext context =
@@ -196,12 +207,15 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
         return await GetBillAsync(id, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public Task<Bill> EndBillAsync(Guid id, CancellationToken cancellationToken) =>
         ChangeBillAsync(id, bill => bill.EndByUser(_timeProvider.Today), cancellationToken);
 
+    /// <inheritdoc/>
     public Task<Bill> ReopenBillAsync(Guid id, CancellationToken cancellationToken) =>
         ChangeBillAsync(id, static bill => bill.ReopenByUser(), cancellationToken);
 
+    /// <inheritdoc/>
     public async Task DeleteBillAsync(Guid id, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -236,6 +250,7 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
         Logger.LogChanged(UserId, "deleted", "bill", id);
     }
 
+    /// <inheritdoc/>
     public async Task<Transaction> PayBillAsync(Guid transactionId, PayBill payment,
         CancellationToken cancellationToken)
     {
@@ -275,6 +290,7 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
         return mapper.ToContract(transaction);
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<BillSuggestion> GetSuggestionsAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -303,6 +319,7 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
         }
     }
 
+    /// <inheritdoc/>
     public async Task<int> GetSuggestionCountAsync(CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -312,6 +329,7 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
             cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<Bill> ConfirmSuggestionAsync(Guid id, CancellationToken cancellationToken)
     {
         DomainBill bill;
@@ -374,6 +392,7 @@ public class BillsService : ServiceBase<BillsService>, IBillsService
         throw new AlreadyABillException(covering.Name);
     }
 
+    /// <inheritdoc/>
     public async Task DismissSuggestionAsync(Guid id, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =

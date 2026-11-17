@@ -11,6 +11,9 @@ namespace FinanceTracker.Infrastructure.OpenBanking.TrueLayer;
 internal static class TrueLayerMappings
 {
     // TrueLayer's own category for transfers, whichever bank the transaction came from
+    /// <summary>
+    /// TrueLayer's category for a transfer.
+    /// </summary>
     private const string TransferCategory = "TRANSFER";
 
     extension(ExternalOpenBankingAccountStandingOrder standingOrder)
@@ -73,6 +76,8 @@ internal static class TrueLayerMappings
         /// A card transaction as ours. TrueLayer doesn't say how card amounts are signed, so the sign comes from the
         /// type a debit (spending) is money out, a credit (a repayment or refund) money in, as on an account.
         /// </summary>
+        /// <param name="isPending">Whether it's pending.</param>
+        /// <param name="cancellationToken">Stops the work.</param>
         public async Task<TransactionDetails> ToCardDetailsAsync(bool isPending, CancellationToken cancellationToken)
         {
             TransactionDetails details = await transaction.ToDetailsAsync(isPending, cancellationToken);
@@ -125,6 +130,10 @@ internal static class TrueLayerMappings
     }
 
     // Banks leave out the fields they don't fill, which deserialise as empty
+    /// <summary>
+    /// The value, or null when it's blank.
+    /// </summary>
+    /// <param name="value">The value.</param>
     private static string? NullIfBlank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value;
 
     extension(ExternalOpenBankingProvider provider)
@@ -132,6 +141,7 @@ internal static class TrueLayerMappings
         /// <summary>
         /// The bank as pages see it, so TrueLayer's payload stays on the server.
         /// </summary>
+        /// <param name="cancellationToken">Stops the work.</param>
         public async Task<OpenBankingProvider> ToContractAsync(CancellationToken cancellationToken) => new()
         {
             ProviderId = provider.ProviderId,
@@ -145,6 +155,7 @@ internal static class TrueLayerMappings
     /// <summary>
     /// TrueLayer reports <c>DEBIT</c> / <c>CREDIT</c>
     /// </summary>
+    /// <param name="transaction">The transaction as TrueLayer sends it.</param>
     private static TransactionType ParseTransactionType(ExternalOpenBankingAccountTransaction transaction) =>
         Enum.TryParse(transaction.TransactionType, true, out TransactionType type)
             ? type
@@ -154,6 +165,9 @@ internal static class TrueLayerMappings
 
     extension(DateTime value)
     {
+        /// <summary>
+        /// The time in UTC. One without a kind is taken as UTC already.
+        /// </summary>
         internal DateTime ToUtc() => value.Kind switch
         {
             DateTimeKind.Utc => value,

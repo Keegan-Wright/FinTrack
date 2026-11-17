@@ -25,6 +25,10 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
 {
     private readonly TimeProvider _timeProvider;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="timeProvider">The clock.</param>
     public BudgetsService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<BudgetsService> logger,
         TimeProvider timeProvider) : base(currentUser, financeTrackerContextFactory, logger)
@@ -44,6 +48,7 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
         return BudgetCalculator.MonthOf(today, calendar);
     }
 
+    /// <inheritdoc/>
     public async Task<BudgetMonthOverview> GetMonthAsync(int year, int month, CancellationToken cancellationToken)
     {
         BudgetMonth target = new(year, month);
@@ -89,6 +94,7 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
         };
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<Budget> GetBudgetsAsync([EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -106,6 +112,7 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
         }
     }
 
+    /// <inheritdoc/>
     public async Task<Budget> GetBudgetAsync(Guid id, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -118,6 +125,7 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
             sharing[id]);
     }
 
+    /// <inheritdoc/>
     public async Task<Budget> AddBudgetAsync(SaveBudget budget, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -137,6 +145,7 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
         return BudgetMapper.ToContract(newBudget, currentMonth);
     }
 
+    /// <inheritdoc/>
     public async Task<Budget> UpdateBudgetAsync(Guid id, SaveBudget budget, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -162,6 +171,7 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
         return BudgetMapper.ToContract(updated, currentMonth, sharing[id]);
     }
 
+    /// <inheritdoc/>
     public async Task DeleteBudgetAsync(Guid id, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =

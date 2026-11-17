@@ -28,6 +28,15 @@ public sealed class NotificationsService : ServiceBase<NotificationsService>, IN
     private readonly WebhookSettings _webhookSettings;
     private readonly PublicAddress _publicAddress;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="timeProvider">The clock.</param>
+    /// <param name="mailSender">Sends the emails.</param>
+    /// <param name="notificationEmails">Writes the notification emails.</param>
+    /// <param name="webhookSender">Posts to webhooks.</param>
+    /// <param name="webhookSettings">The webhooks' settings.</param>
+    /// <param name="publicAddress">The app's address as people reach it.</param>
     public NotificationsService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<NotificationsService> logger,
         TimeProvider timeProvider, IMailSender mailSender, INotificationEmails notificationEmails,
@@ -42,6 +51,7 @@ public sealed class NotificationsService : ServiceBase<NotificationsService>, IN
         _publicAddress = publicAddress;
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<Notification> GetNotificationsAsync(int take,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -59,6 +69,7 @@ public sealed class NotificationsService : ServiceBase<NotificationsService>, IN
         }
     }
 
+    /// <inheritdoc/>
     public async Task<int> GetUnreadCountAsync(CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -67,6 +78,7 @@ public sealed class NotificationsService : ServiceBase<NotificationsService>, IN
             cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<bool> MarkReadAsync(Guid id, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -84,6 +96,7 @@ public sealed class NotificationsService : ServiceBase<NotificationsService>, IN
         return true;
     }
 
+    /// <inheritdoc/>
     public async Task MarkAllReadAsync(CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -101,6 +114,7 @@ public sealed class NotificationsService : ServiceBase<NotificationsService>, IN
         await context.SaveChangesAsync(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<NotificationSettings> GetSettingsAsync(CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -111,6 +125,7 @@ public sealed class NotificationsService : ServiceBase<NotificationsService>, IN
         return await ToContractAsync(context, settings, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<NotificationSettings> ChangeSettingsAsync(ChangeNotificationSettings settings,
         CancellationToken cancellationToken)
     {
@@ -127,6 +142,7 @@ public sealed class NotificationsService : ServiceBase<NotificationsService>, IN
         return await ToContractAsync(context, stored, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<NotificationSettings> ChangeAlertsAsync(ChangeAlertSettings alerts,
         CancellationToken cancellationToken)
     {
@@ -145,6 +161,7 @@ public sealed class NotificationsService : ServiceBase<NotificationsService>, IN
         return await ToContractAsync(context, stored, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<NotificationSettings?> SendTestEmailAsync(CancellationToken cancellationToken)
     {
         if (!_mailSender.IsAvailable)
@@ -178,6 +195,7 @@ public sealed class NotificationsService : ServiceBase<NotificationsService>, IN
         return await ToContractAsync(context, stored, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<WebhookChange> SetWebhookAsync(SetWebhook webhook, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(webhook);
@@ -198,6 +216,7 @@ public sealed class NotificationsService : ServiceBase<NotificationsService>, IN
         return new WebhookChange { Settings = await ToContractAsync(context, stored, cancellationToken) };
     }
 
+    /// <inheritdoc/>
     public async Task<NotificationSettings> RemoveWebhookAsync(CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -215,6 +234,7 @@ public sealed class NotificationsService : ServiceBase<NotificationsService>, IN
         return await ToContractAsync(context, stored, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<NotificationSettings?> ReplaceWebhookSecretAsync(CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -231,6 +251,7 @@ public sealed class NotificationsService : ServiceBase<NotificationsService>, IN
         return await ToContractAsync(context, stored, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<NotificationSettings?> SendTestWebhookAsync(CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =

@@ -14,6 +14,10 @@ public sealed class StatementPeriods : ServiceBase<StatementPeriods>, IStatement
 {
     private readonly TimeProvider _timeProvider;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="timeProvider">The clock.</param>
     public StatementPeriods(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<StatementPeriods> logger,
         TimeProvider timeProvider) : base(currentUser, financeTrackerContextFactory, logger)
@@ -21,6 +25,7 @@ public sealed class StatementPeriods : ServiceBase<StatementPeriods>, IStatement
         _timeProvider = timeProvider;
     }
 
+    /// <inheritdoc/>
     public async Task<List<Contracts.PayPeriods.PayPeriod>> GetAsync(CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =

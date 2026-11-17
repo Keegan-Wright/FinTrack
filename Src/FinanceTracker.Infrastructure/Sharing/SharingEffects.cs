@@ -25,6 +25,10 @@ public sealed class SharingEffects : ServiceBase<SharingService>, ISharingEffect
 
     private readonly IServiceScopeFactory _serviceScopeFactory;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="serviceScopeFactory">Makes the scopes its services run in.</param>
     public SharingEffects(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<SharingService> logger,
         IServiceScopeFactory serviceScopeFactory)
@@ -33,6 +37,7 @@ public sealed class SharingEffects : ServiceBase<SharingService>, ISharingEffect
         _serviceScopeFactory = serviceScopeFactory;
     }
 
+    /// <inheritdoc/>
     public async Task NotifyAsync(Guid userId, NotificationKind kind, string key, string title, string message,
         CancellationToken cancellationToken)
     {
@@ -41,6 +46,7 @@ public sealed class SharingEffects : ServiceBase<SharingService>, ISharingEffect
             .NotifyAsync(kind, key, title, message, SharingPath, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task NotifyOtherAsync(FinanceTrackerContext context, DomainLink link, string key,
         Func<string, string> title, string message, CancellationToken cancellationToken,
         NotificationKind kind = NotificationKind.JointAccount)
@@ -51,6 +57,7 @@ public sealed class SharingEffects : ServiceBase<SharingService>, ISharingEffect
             cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task RerunRulesAsync(List<(Guid OwnerId, Guid AccountId)> accounts,
         CancellationToken cancellationToken)
     {
@@ -62,6 +69,7 @@ public sealed class SharingEffects : ServiceBase<SharingService>, ISharingEffect
         }
     }
 
+    /// <inheritdoc/>
     public async Task RematchTransfersAsync(FinanceTrackerContext context, DomainLink link,
         CancellationToken cancellationToken)
     {

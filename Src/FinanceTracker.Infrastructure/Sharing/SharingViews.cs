@@ -11,12 +11,16 @@ namespace FinanceTracker.Infrastructure.Sharing;
 [Scoped<ISharingViews>]
 public sealed class SharingViews : ServiceBase<SharingService>, ISharingViews
 {
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
     public SharingViews(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<SharingService> logger)
         : base(currentUser, financeTrackerContextFactory, logger)
     {
     }
 
+    /// <inheritdoc/>
     public async Task<SharingView> GetViewAsync(CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -24,6 +28,7 @@ public sealed class SharingViews : ServiceBase<SharingService>, ISharingViews
         return await ViewAsync(context, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<SharingView> ChangeViewAsync(ChangeSharingView request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);

@@ -19,14 +19,18 @@ public sealed class SmtpMailSender : IMailSender
     private readonly MailSettings _settings;
     private readonly FinTrackMetrics _metrics;
 
+    /// <param name="settings">The mail server's settings.</param>
+    /// <param name="metrics">Records its metrics.</param>
     public SmtpMailSender(MailSettings settings, FinTrackMetrics metrics)
     {
         _settings = settings;
         _metrics = metrics;
     }
 
+    /// <inheritdoc/>
     public bool IsAvailable => _settings.IsConfigured;
 
+    /// <inheritdoc/>
     public async Task SendAsync(MailMessage message, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(message);

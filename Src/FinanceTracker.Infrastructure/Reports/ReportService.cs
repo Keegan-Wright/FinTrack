@@ -25,6 +25,11 @@ public class ReportService : ServiceBase<ReportService>, IReportService
 
     private readonly IAccountScope _accountScope;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="timeProvider">The clock.</param>
+    /// <param name="accountScope">Which accounts the user can see and change.</param>
     public ReportService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
         ILogger<ReportService> logger, TimeProvider timeProvider, IAccountScope accountScope)
@@ -34,6 +39,7 @@ public class ReportService : ServiceBase<ReportService>, IReportService
         _accountScope = accountScope;
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<SpentInTimePeriodReport> GetSpentInTimePeriodReportAsync(
         FilterTransactions request, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -101,6 +107,7 @@ public class ReportService : ServiceBase<ReportService>, IReportService
         yield return rsp;
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<SpentInCategoryReport> GetCategoryBreakdownReportAsync(
         FilterTransactions request, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -173,6 +180,7 @@ public class ReportService : ServiceBase<ReportService>, IReportService
         }
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<SpentInAccountReport> GetAccountBreakdownReportAsync(
         FilterTransactions request, [EnumeratorCancellation] CancellationToken cancellationToken)
     {

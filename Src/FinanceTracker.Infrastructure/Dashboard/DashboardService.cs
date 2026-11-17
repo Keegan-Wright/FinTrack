@@ -37,6 +37,11 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
     private readonly TimeProvider _timeProvider;
     private readonly IAccountScope _accountScope;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="timeProvider">The clock.</param>
+    /// <param name="accountScope">Which accounts the user can see and change.</param>
     public DashboardService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
         ILogger<DashboardService> logger, TimeProvider timeProvider, IAccountScope accountScope)
@@ -46,6 +51,7 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
         _accountScope = accountScope;
     }
 
+    /// <inheritdoc/>
     public async Task<SpentInTimePeriod> GetSpentInTimePeriod(DateTime fromDate, DateTime toDate,
         CancellationToken cancellationToken)
     {
@@ -83,6 +89,7 @@ public class DashboardService : ServiceBase<DashboardService>, IDashboardService
         };
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<UpcomingPayment> GetUpcomingPaymentsAsync(int numberToFetch,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {

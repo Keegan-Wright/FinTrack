@@ -15,6 +15,7 @@ public sealed class CurrentUser : ICurrentUser
     /// </summary>
     public Guid? UserIdIfSet => _userId;
 
+    /// <inheritdoc/>
     public Guid UserId => _userId ?? throw new InvalidOperationException(
         "No user is set for this scope. Services need a signed in user, or a scope created for a user.");
 

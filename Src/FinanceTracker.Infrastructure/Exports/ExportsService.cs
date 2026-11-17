@@ -28,6 +28,14 @@ public sealed class ExportsService : IExportsService
     private readonly ICurrentUser _currentUser;
     private readonly ILogger<ExportsService> _logger;
 
+    /// <param name="transactionsService">Gives the transactions.</param>
+    /// <param name="backupWriter">Writes the backup.</param>
+    /// <param name="statementBuilder">Builds the statement.</param>
+    /// <param name="statementPeriods">Works out the statement's months.</param>
+    /// <param name="reportDocumentBuilder">Builds the report's PDF.</param>
+    /// <param name="timeProvider">The clock.</param>
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="logger">Its logger.</param>
     public ExportsService(ITransactionsService transactionsService, IBackupWriter backupWriter,
         IStatementBuilder statementBuilder, IStatementPeriods statementPeriods,
         IReportDocumentBuilder reportDocumentBuilder, TimeProvider timeProvider, ICurrentUser currentUser,
@@ -43,6 +51,7 @@ public sealed class ExportsService : IExportsService
         _timeProvider = timeProvider;
     }
 
+    /// <inheritdoc/>
     public async Task WriteTransactionsCsvAsync(FilterTransactions filter, Stream destination,
         CancellationToken cancellationToken)
     {
@@ -54,15 +63,18 @@ public sealed class ExportsService : IExportsService
         _logger.LogExported(_currentUser.UserId, "transactions as CSV");
     }
 
+    /// <inheritdoc/>
     public async Task WriteBackupAsync(Stream destination, CancellationToken cancellationToken)
     {
         await _backupWriter.WriteAsync(destination, cancellationToken);
         _logger.LogExported(_currentUser.UserId, "a backup");
     }
 
+    /// <inheritdoc/>
     public Task<List<PayPeriod>> GetStatementPeriodsAsync(CancellationToken cancellationToken) =>
         _statementPeriods.GetAsync(cancellationToken);
 
+    /// <inheritdoc/>
     public async Task WriteStatementAsync(int year, int month, Stream destination,
         CancellationToken cancellationToken)
     {
@@ -76,6 +88,7 @@ public sealed class ExportsService : IExportsService
         _logger.LogExported(_currentUser.UserId, "a statement");
     }
 
+    /// <inheritdoc/>
     public async Task WriteReportAsync(ExportReport report, Stream destination, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(destination);

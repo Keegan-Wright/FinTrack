@@ -16,6 +16,10 @@ internal static class CrossLinkTransfers
     /// those a person confirmed, as the pair isn't theirs to see any more. Matching then decides about them again.
     /// Added to the context, saved by the caller.
     /// </summary>
+    /// <param name="context">The context to save through.</param>
+    /// <param name="first">One of the two people.</param>
+    /// <param name="second">The other.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     public static async Task ClearUnpairableAsync(FinanceTrackerContext context, Guid first, Guid second,
         CancellationToken cancellationToken)
     {
@@ -45,6 +49,9 @@ internal static class CrossLinkTransfers
     /// <summary>
     /// Whether <paramref name="transaction"/>'s other half is on another person's account it can no longer pair with.
     /// </summary>
+    /// <param name="transaction">The transaction.</param>
+    /// <param name="accounts">The accounts involved, by id.</param>
+    /// <param name="group">Which accounts can pair now.</param>
     private static bool IsUnpairable(BankTransaction transaction, Dictionary<Guid, BankAccount> accounts,
         TransferGroup group)
     {

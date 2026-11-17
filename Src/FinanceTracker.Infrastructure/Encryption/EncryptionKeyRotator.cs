@@ -22,6 +22,8 @@ public sealed class EncryptionKeyRotator
     private readonly IDbContextFactory<FinanceTrackerContext> _dbContextFactory;
     private readonly ILogger<EncryptionKeyRotator> _logger;
 
+    /// <param name="dbContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
     public EncryptionKeyRotator(IDbContextFactory<FinanceTrackerContext> dbContextFactory,
         ILogger<EncryptionKeyRotator> logger)
     {

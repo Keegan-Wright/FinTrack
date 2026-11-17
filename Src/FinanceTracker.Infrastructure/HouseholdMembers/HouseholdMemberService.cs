@@ -22,6 +22,10 @@ public class HouseholdMemberService : ServiceBase<HouseholdMemberService>, IHous
 {
     private readonly ITransferMatchingService _transferMatchingService;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="transferMatchingService">Matches transfers.</param>
     public HouseholdMemberService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<HouseholdMemberService> logger,
         ITransferMatchingService transferMatchingService) : base(currentUser, financeTrackerContextFactory, logger)
@@ -29,6 +33,7 @@ public class HouseholdMemberService : ServiceBase<HouseholdMemberService>, IHous
         _transferMatchingService = transferMatchingService;
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<HouseholdMember> GetHouseholdMembersAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -44,6 +49,7 @@ public class HouseholdMemberService : ServiceBase<HouseholdMemberService>, IHous
         }
     }
 
+    /// <inheritdoc/>
     public async Task<HouseholdMember> AddHouseholdMemberAsync(AddHouseholdMember categoryToAdd,
         CancellationToken cancellationToken)
     {
@@ -62,6 +68,7 @@ public class HouseholdMemberService : ServiceBase<HouseholdMemberService>, IHous
         return ToContract(householdMember, await UsernamesAsync(context, [householdMember], cancellationToken));
     }
 
+    /// <inheritdoc/>
     public async Task<HouseholdMember> UpdateHouseholdMemberAsync(Guid id, UpdateHouseholdMember request,
         CancellationToken cancellationToken)
     {
@@ -82,6 +89,7 @@ public class HouseholdMemberService : ServiceBase<HouseholdMemberService>, IHous
         return ToContract(householdMember, await UsernamesAsync(context, [householdMember], cancellationToken));
     }
 
+    /// <inheritdoc/>
     public async Task<HouseholdMemberRecognitionSaved> UpdateRecognitionAsync(Guid id,
         UpdateHouseholdMemberRecognition request, CancellationToken cancellationToken)
     {
@@ -113,6 +121,7 @@ public class HouseholdMemberService : ServiceBase<HouseholdMemberService>, IHous
         };
     }
 
+    /// <inheritdoc/>
     public async Task<bool> DeleteHouseholdMemberAsync(Guid id, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -148,6 +157,7 @@ public class HouseholdMemberService : ServiceBase<HouseholdMemberService>, IHous
 
     private static string FullName(string firstName, string lastName) => $"{firstName.Trim()} {lastName.Trim()}";
 
+    /// <inheritdoc/>
     public async Task<HouseholdMember> LinkHouseholdMemberAsync(Guid id, LinkHouseholdMember request,
         CancellationToken cancellationToken)
     {

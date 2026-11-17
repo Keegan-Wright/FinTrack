@@ -24,6 +24,14 @@ public sealed class StatementBuilder : IStatementBuilder
     private readonly IDebtsService _debtsService;
     private readonly TimeProvider _timeProvider;
 
+    /// <param name="budgetsService">Gives the budgets.</param>
+    /// <param name="billsService">Gives the bills.</param>
+    /// <param name="dashboardService">Gives the dashboard.</param>
+    /// <param name="reportService">Gives the reports.</param>
+    /// <param name="transactionsService">Gives the transactions.</param>
+    /// <param name="savingsGoalsService">Gives the savings goals.</param>
+    /// <param name="debtsService">Gives the debts.</param>
+    /// <param name="timeProvider">The clock.</param>
     public StatementBuilder(IBudgetsService budgetsService, IBillsService billsService,
         IDashboardService dashboardService, IReportService reportService, ITransactionsService transactionsService,
         ISavingsGoalsService savingsGoalsService, IDebtsService debtsService, TimeProvider timeProvider)
@@ -38,6 +46,7 @@ public sealed class StatementBuilder : IStatementBuilder
         _timeProvider = timeProvider;
     }
 
+    /// <inheritdoc/>
     public async Task<Statement> BuildAsync(int year, int month, CancellationToken cancellationToken)
     {
         // The budgets page's period for the month, from pay to pay once the user's pay is picked up

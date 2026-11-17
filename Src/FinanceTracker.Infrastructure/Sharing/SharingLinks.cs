@@ -21,6 +21,12 @@ public sealed class SharingLinks : ServiceBase<SharingService>, ISharingLinks
     private readonly ISharingEffects _sharingEffects;
     private readonly ISharingJointAccounts _sharingJointAccounts;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="timeProvider">The clock.</param>
+    /// <param name="sharingEffects">Takes off what stops being shared.</param>
+    /// <param name="sharingJointAccounts">Merges and splits joint accounts.</param>
     public SharingLinks(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<SharingService> logger,
         TimeProvider timeProvider, ISharingEffects sharingEffects, ISharingJointAccounts sharingJointAccounts)
@@ -31,6 +37,7 @@ public sealed class SharingLinks : ServiceBase<SharingService>, ISharingLinks
         _sharingJointAccounts = sharingJointAccounts;
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<ContractLink> GetLinksAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -85,6 +92,7 @@ public sealed class SharingLinks : ServiceBase<SharingService>, ISharingLinks
         }
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<ContractLink> GetPeopleAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -109,6 +117,7 @@ public sealed class SharingLinks : ServiceBase<SharingService>, ISharingLinks
         }
     }
 
+    /// <inheritdoc/>
     public async Task<InviteOutcome> InviteAsync(InviteToShare request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -173,6 +182,7 @@ public sealed class SharingLinks : ServiceBase<SharingService>, ISharingLinks
         return InviteOutcome.Sent(ToContract(link, invitee));
     }
 
+    /// <inheritdoc/>
     public async Task<bool> AcceptAsync(Guid id, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -196,6 +206,7 @@ public sealed class SharingLinks : ServiceBase<SharingService>, ISharingLinks
         return true;
     }
 
+    /// <inheritdoc/>
     public async Task<bool> DeclineAsync(Guid id, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -217,6 +228,7 @@ public sealed class SharingLinks : ServiceBase<SharingService>, ISharingLinks
         return true;
     }
 
+    /// <inheritdoc/>
     public async Task<bool> EndAsync(Guid id, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =

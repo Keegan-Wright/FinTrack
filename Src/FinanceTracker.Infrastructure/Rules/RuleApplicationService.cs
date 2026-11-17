@@ -21,6 +21,13 @@ public class RuleApplicationService : ServiceBase<RuleApplicationService>, IRule
     private readonly TimeProvider _timeProvider;
     private readonly FinTrackMetrics _metrics;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="transferMatchingService">Matches transfers.</param>
+    /// <param name="accountScope">Which accounts the user can see and change.</param>
+    /// <param name="timeProvider">The clock.</param>
+    /// <param name="metrics">Records its metrics.</param>
     public RuleApplicationService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<RuleApplicationService> logger,
         ITransferMatchingService transferMatchingService, IAccountScope accountScope, TimeProvider timeProvider,
@@ -33,6 +40,7 @@ public class RuleApplicationService : ServiceBase<RuleApplicationService>, IRule
         _timeProvider = timeProvider;
     }
 
+    /// <inheritdoc/>
     public async Task<int> ApplyChangesAsync(DateTime firstRunFrom, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -68,6 +76,7 @@ public class RuleApplicationService : ServiceBase<RuleApplicationService>, IRule
         return run.Changed;
     }
 
+    /// <inheritdoc/>
     public async Task<int> ReapplyAsync(Guid ruleId, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -110,6 +119,7 @@ public class RuleApplicationService : ServiceBase<RuleApplicationService>, IRule
         return run.Changed;
     }
 
+    /// <inheritdoc/>
     public async Task<int> ApplyToExistingAsync(Guid ruleId, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -132,6 +142,7 @@ public class RuleApplicationService : ServiceBase<RuleApplicationService>, IRule
         return changed;
     }
 
+    /// <inheritdoc/>
     public async Task<int> ReapplyToAccountsAsync(IReadOnlyCollection<Guid> accountIds,
         CancellationToken cancellationToken)
     {

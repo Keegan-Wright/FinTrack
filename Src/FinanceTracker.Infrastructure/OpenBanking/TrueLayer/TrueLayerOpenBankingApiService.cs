@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FinanceTracker.Infrastructure.OpenBanking.TrueLayer;
 
+/// <inheritdoc cref="IOpenBankingApiService"/>
 [InjectionCategory(InjectionCategoryType.External, ServiceDestinationType.Server)]
 [Scoped<IOpenBankingApiService>]
 public class TrueLayerOpenBankingApiService : IOpenBankingApiService
@@ -32,6 +33,10 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<TrueLayerOpenBankingApiService> _logger;
 
+    /// <param name="trueLayerOpenBankingConfiguration">TrueLayer's settings.</param>
+    /// <param name="httpClientFactory">Makes the API's client.</param>
+    /// <param name="timeProvider">The clock.</param>
+    /// <param name="logger">Its logger.</param>
     public TrueLayerOpenBankingApiService(TrueLayerOpenBankingConfiguration trueLayerOpenBankingConfiguration,
         IHttpClientFactory httpClientFactory, TimeProvider timeProvider, ILogger<TrueLayerOpenBankingApiService> logger)
     {
@@ -42,6 +47,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
     }
 
 
+    /// <inheritdoc/>
     public async Task<ExternalOpenBankingAccessResponse> ExchangeCodeForAccessTokenAsync(string vendorAccessCode,
         CancellationToken cancellationToken)
     {
@@ -70,6 +76,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
                ?? throw new InvalidOperationException("The provider returned no tokens for the access code.");
     }
 
+    /// <inheritdoc/>
     public async Task<ExternalOpenBankingAccessResponse> GetAccessTokenByRefreshTokenAsync(string refreshToken,
         CancellationToken cancellationToken)
     {
@@ -95,6 +102,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
                ?? throw new InvalidOperationException("The provider returned no tokens for the access code.");
     }
 
+    /// <inheritdoc/>
     public async Task<string> GetReauthenticationUrlAsync(string refreshToken, CancellationToken cancellationToken)
     {
         using HttpClient httpClient = await BuildStandardHttpClient();
@@ -119,6 +127,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         return responseBody.Result;
     }
 
+    /// <inheritdoc/>
     public async Task<ExternalOpenBankingListAllAccountsResponse> GetAllAccountsAsync(string authToken,
         CancellationToken cancellationToken)
     {
@@ -136,21 +145,25 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         return responseBody!;
     }
 
+    /// <inheritdoc/>
     public Task<ExternalOpenBankingGetAccountBalanceResponse> GetAccountBalanceAsync(string accountId,
         string authToken, CancellationToken cancellationToken) =>
         GetBalanceAsync($"v1/accounts/{accountId}", "account balance", authToken, cancellationToken);
 
+    /// <inheritdoc/>
     public Task<ExternalOpenBankingAccountTransactionsResponse> GetAccountTransactionsAsync(string accountId,
         string authToken, DateTime? transactionsStartingDate, CancellationToken cancellationToken) =>
         GetTransactionsAsync($"v1/accounts/{accountId}/transactions", "transactions", authToken,
             transactionsStartingDate, cancellationToken);
 
+    /// <inheritdoc/>
     public Task<ExternalOpenBankingAccountTransactionsResponse> GetAccountPendingTransactionsAsync(
         string accountId, string authToken, DateTime? transactionsStartingDate,
         CancellationToken cancellationToken) =>
         GetTransactionsAsync($"v1/accounts/{accountId}/transactions/pending", "pending transactions", authToken,
             transactionsStartingDate, cancellationToken);
 
+    /// <inheritdoc/>
     public async Task<ExternalOpenBankingListAllCardsResponse> GetAllCardsAsync(string authToken,
         CancellationToken cancellationToken)
     {
@@ -168,15 +181,18 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         return responseBody!;
     }
 
+    /// <inheritdoc/>
     public Task<ExternalOpenBankingGetAccountBalanceResponse> GetCardBalanceAsync(string cardId, string authToken,
         CancellationToken cancellationToken) =>
         GetBalanceAsync($"v1/cards/{cardId}", "card balance", authToken, cancellationToken);
 
+    /// <inheritdoc/>
     public Task<ExternalOpenBankingAccountTransactionsResponse> GetCardTransactionsAsync(string cardId,
         string authToken, DateTime? transactionsStartingDate, CancellationToken cancellationToken) =>
         GetTransactionsAsync($"v1/cards/{cardId}/transactions", "card transactions", authToken,
             transactionsStartingDate, cancellationToken);
 
+    /// <inheritdoc/>
     public Task<ExternalOpenBankingAccountTransactionsResponse> GetCardPendingTransactionsAsync(string cardId,
         string authToken, DateTime? transactionsStartingDate, CancellationToken cancellationToken) =>
         GetTransactionsAsync($"v1/cards/{cardId}/transactions/pending", "card pending transactions", authToken,
@@ -185,6 +201,10 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
     /// <summary>
     /// An account's or card's balance, from <paramref name="resource"/>, e.g. <c>v1/cards/{id}</c>.
     /// </summary>
+    /// <param name="resource">The account's or card's path.</param>
+    /// <param name="requested">What's asked for, for the log.</param>
+    /// <param name="authToken">The connection's access token.</param>
+    /// <param name="cancellationToken">Stops the call.</param>
     private async Task<ExternalOpenBankingGetAccountBalanceResponse> GetBalanceAsync(string resource,
         string requested, string authToken, CancellationToken cancellationToken)
     {
@@ -204,6 +224,11 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
     /// Booked or pending transactions at <paramref name="path"/>, from <paramref name="transactionsStartingDate"/> to
     /// today when given, otherwise everything the provider has.
     /// </summary>
+    /// <param name="path">The transactions' path.</param>
+    /// <param name="requested">What's asked for, for the log.</param>
+    /// <param name="authToken">The connection's access token.</param>
+    /// <param name="transactionsStartingDate">The earliest to get, null for everything.</param>
+    /// <param name="cancellationToken">Stops the call.</param>
     private async Task<ExternalOpenBankingAccountTransactionsResponse> GetTransactionsAsync(string path,
         string requested, string authToken, DateTime? transactionsStartingDate, CancellationToken cancellationToken)
     {
@@ -229,6 +254,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         return responseBody!;
     }
 
+    /// <inheritdoc/>
     public async Task<ExternalOpenBankingAccountStandingOrdersResponse> GetAccountStandingOrdersAsync(string accountId,
         string authToken, CancellationToken cancellationToken)
     {
@@ -247,6 +273,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         return responseBody!;
     }
 
+    /// <inheritdoc/>
     public async Task<ExternalOpenBankingAccountDirectDebitsResponse> GetAccountDirectDebitsAsync(string accountId,
         string authToken, CancellationToken cancellationToken)
     {
@@ -264,6 +291,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         return responseBody!;
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<ExternalOpenBankingProvider> GetAvailableProvidersAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -286,6 +314,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         }
     }
 
+    /// <inheritdoc/>
     public string BuildAuthUrl(IEnumerable<string> providerIds, IEnumerable<string> scopes)
     {
         StringBuilder sb = new();
@@ -308,6 +337,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         return sb.ToString();
     }
 
+    /// <inheritdoc/>
     public async Task<ExternalOpenBankingAccountConnectionResponse> GetProviderInformation(string accessToken,
         CancellationToken cancellationToken)
     {
@@ -325,6 +355,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         return responseBody!;
     }
 
+    /// <inheritdoc/>
     public async Task<byte[]> GetProviderLogoAsync(string logoUri, CancellationToken cancellationToken)
     {
         // Logos are public assets on their own host, no base address or auth headers
@@ -333,12 +364,25 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
         return await httpClient.GetByteArrayAsync(logoUri, cancellationToken);
     }
 
+    /// <summary>
+    /// A client for TrueLayer's auth API.
+    /// </summary>
     private Task<HttpClient> BuildStandardHttpClient() =>
         BuildHttpClient(StandardHttpClientName, _trueLayerOpenBankingConfiguration.BaseAuthUrl, null);
 
+    /// <summary>
+    /// A client for TrueLayer's data API, signed in with <paramref name="authToken"/>.
+    /// </summary>
+    /// <param name="authToken">The connection's access token.</param>
     private Task<HttpClient> BuildDataHttpClient(string authToken) =>
         BuildHttpClient(DataHttpClientName, _trueLayerOpenBankingConfiguration.BaseDataUrl, authToken);
 
+    /// <summary>
+    /// A named client for <paramref name="baseUrl"/>, with the user's address header TrueLayer asks for.
+    /// </summary>
+    /// <param name="clientName">The factory's client.</param>
+    /// <param name="baseUrl">The API's address.</param>
+    /// <param name="authHeader">The access token, null for none.</param>
     private async Task<HttpClient> BuildHttpClient(string clientName, Uri baseUrl, string? authHeader)
     {
         HttpClient httpClient = _httpClientFactory.CreateClient(clientName);
@@ -359,6 +403,8 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
     /// <summary>
     /// Whether TrueLayer accepted the request. A refusal is logged with TrueLayer's trace id.
     /// </summary>
+    /// <param name="response">The provider's answer.</param>
+    /// <param name="requested">What was asked for, for the log.</param>
     private bool Succeeded(HttpResponseMessage response, string requested)
     {
         if (response.IsSuccessStatusCode)
@@ -378,6 +424,8 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
     /// Throws when TrueLayer refused the request, after logging it. The message carries the status and TrueLayer's
     /// trace id.
     /// </summary>
+    /// <param name="response">The provider's answer.</param>
+    /// <param name="requested">What was asked for, for the log.</param>
     private void EnsureSuccess(HttpResponseMessage response, string requested)
     {
         if (Succeeded(response, requested))
@@ -390,6 +438,10 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
             null, response.StatusCode);
     }
 
+    /// <summary>
+    /// TrueLayer's trace id on the answer, for the log, <c>none</c> without one.
+    /// </summary>
+    /// <param name="response">The provider's answer.</param>
     private static string TraceId(HttpResponseMessage response)
     {
         if (response.Headers.TryGetValues("tl-trace-id", out IEnumerable<string>? traceIds))

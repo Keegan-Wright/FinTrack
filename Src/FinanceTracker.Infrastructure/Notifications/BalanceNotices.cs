@@ -28,6 +28,11 @@ public sealed class BalanceNotices : ServiceBase<BalanceNotices>, ISyncNotices
     private readonly TimeProvider _timeProvider;
     private readonly INotifier _notifier;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="timeProvider">The clock.</param>
+    /// <param name="notifier">Raises notifications.</param>
     public BalanceNotices(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<BalanceNotices> logger,
         TimeProvider timeProvider, INotifier notifier)
@@ -37,6 +42,7 @@ public sealed class BalanceNotices : ServiceBase<BalanceNotices>, ISyncNotices
         _notifier = notifier;
     }
 
+    /// <inheritdoc/>
     public async Task NotifyAsync(CancellationToken cancellationToken)
     {
         List<(BankAccount Account, decimal Available, LowBalanceAlert Alert)> wentLow = [];

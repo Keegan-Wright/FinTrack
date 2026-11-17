@@ -13,6 +13,10 @@ public class PaySyncService : ServiceBase<PaySyncService>, IPaySyncService
 {
     private readonly TimeProvider _timeProvider;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="timeProvider">The clock.</param>
     public PaySyncService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<PaySyncService> logger,
         TimeProvider timeProvider) : base(currentUser, financeTrackerContextFactory, logger)
@@ -20,6 +24,7 @@ public class PaySyncService : ServiceBase<PaySyncService>, IPaySyncService
         _timeProvider = timeProvider;
     }
 
+    /// <inheritdoc/>
     public async Task<bool> SyncAsync(CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =

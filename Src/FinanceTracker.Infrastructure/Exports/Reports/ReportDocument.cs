@@ -20,12 +20,14 @@ public sealed class ReportDocument : FinTrackDocument
 
     private readonly ReportContent _report;
 
+    /// <param name="report">The report to print.</param>
     public ReportDocument(ReportContent report)
         : base(report.MadeOn)
     {
         _report = report;
     }
 
+    /// <inheritdoc/>
     protected override string Title => _report.Breakdown switch
     {
         ReportBreakdown.ByAccount => "Report by account",
@@ -33,6 +35,7 @@ public sealed class ReportDocument : FinTrackDocument
         _ => "Report over time"
     };
 
+    /// <inheritdoc/>
     protected override string Covers
     {
         get
@@ -56,9 +59,11 @@ public sealed class ReportDocument : FinTrackDocument
         }
     }
 
+    /// <inheritdoc/>
     protected override string CoversDetail =>
         _report.Filters.Count == 0 ? "All your transactions" : "The transactions you filtered";
 
+    /// <inheritdoc/>
     protected override void ComposeContent(IContainer container)
     {
         container.Column(column =>

@@ -27,6 +27,10 @@ public class SavingsGoalsService : ServiceBase<SavingsGoalsService>, ISavingsGoa
 {
     private readonly TimeProvider _timeProvider;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="timeProvider">The clock.</param>
     public SavingsGoalsService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<SavingsGoalsService> logger,
         TimeProvider timeProvider) : base(currentUser, financeTrackerContextFactory, logger)
@@ -34,6 +38,7 @@ public class SavingsGoalsService : ServiceBase<SavingsGoalsService>, ISavingsGoa
         _timeProvider = timeProvider;
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<SavingsGoal> GetSavingsGoalsAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -50,6 +55,7 @@ public class SavingsGoalsService : ServiceBase<SavingsGoalsService>, ISavingsGoa
         }
     }
 
+    /// <inheritdoc/>
     public async Task<SavingsGoal> GetSavingsGoalAsync(Guid id, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -58,6 +64,7 @@ public class SavingsGoalsService : ServiceBase<SavingsGoalsService>, ISavingsGoa
         return (await ToContractsAsync(context, [goal], cancellationToken)).Single();
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<SavingsGoalAccount> GetSavingsAccountsAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -83,6 +90,7 @@ public class SavingsGoalsService : ServiceBase<SavingsGoalsService>, ISavingsGoa
         }
     }
 
+    /// <inheritdoc/>
     public async Task<List<BalancePoint>> GetSavingsGoalHistoryAsync(Guid id, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -114,6 +122,7 @@ public class SavingsGoalsService : ServiceBase<SavingsGoalsService>, ISavingsGoa
             .ToList();
     }
 
+    /// <inheritdoc/>
     public async Task<SavingsGoal> AddSavingsGoalAsync(SaveSavingsGoal goal, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -134,6 +143,7 @@ public class SavingsGoalsService : ServiceBase<SavingsGoalsService>, ISavingsGoa
             cancellationToken)).Single();
     }
 
+    /// <inheritdoc/>
     public async Task<SavingsGoal> UpdateSavingsGoalAsync(Guid id, SaveSavingsGoal goal,
         CancellationToken cancellationToken)
     {
@@ -172,6 +182,7 @@ public class SavingsGoalsService : ServiceBase<SavingsGoalsService>, ISavingsGoa
         return (await ToContractsAsync(context, [visible with { Item = updated }], cancellationToken)).Single();
     }
 
+    /// <inheritdoc/>
     public async Task<bool> DeleteSavingsGoalAsync(Guid id, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =

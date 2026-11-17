@@ -22,6 +22,16 @@ public sealed class Notifier : ServiceBase<Notifier>, INotifier
     private readonly TimeProvider _timeProvider;
     private readonly FinTrackMetrics _metrics;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="notificationPublisher">Pushes notifications to browsers.</param>
+    /// <param name="mailSender">Sends the emails.</param>
+    /// <param name="notificationEmails">Writes the notification emails.</param>
+    /// <param name="webhookSender">Posts to webhooks.</param>
+    /// <param name="publicAddress">The app's address as people reach it.</param>
+    /// <param name="timeProvider">The clock.</param>
+    /// <param name="metrics">Records its metrics.</param>
     public Notifier(ICurrentUser currentUser, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
         ILogger<Notifier> logger, INotificationPublisher notificationPublisher, IMailSender mailSender,
         INotificationEmails notificationEmails, IWebhookSender webhookSender, PublicAddress publicAddress,
@@ -37,6 +47,7 @@ public sealed class Notifier : ServiceBase<Notifier>, INotifier
         _timeProvider = timeProvider;
     }
 
+    /// <inheritdoc/>
     public async Task<bool> NotifyAsync(NotificationKind kind, string key, string title, string message,
         string? link, CancellationToken cancellationToken)
     {

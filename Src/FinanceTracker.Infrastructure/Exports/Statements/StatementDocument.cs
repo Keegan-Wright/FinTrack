@@ -21,6 +21,8 @@ public sealed class StatementDocument : FinTrackDocument
     private readonly Statement _statement;
     private readonly TimeZoneInfo _timeZone;
 
+    /// <param name="statement">The statement to print.</param>
+    /// <param name="timeZone">Where the user is, for the transactions' times.</param>
     public StatementDocument(Statement statement, TimeZoneInfo timeZone)
         : base(statement.MadeOn)
     {
@@ -28,13 +30,17 @@ public sealed class StatementDocument : FinTrackDocument
         _timeZone = timeZone;
     }
 
+    /// <inheritdoc/>
     protected override string Title => $"Statement for {_statement.Month.ToString("MMMM yyyy", Culture)}";
 
+    /// <inheritdoc/>
     protected override string Covers => DateRange(_statement.Start, _statement.End);
 
+    /// <inheritdoc/>
     protected override string CoversDetail =>
         _statement.FromPayDay ? "Pay day to pay day, all accounts" : "Calendar month, all accounts";
 
+    /// <inheritdoc/>
     protected override void ComposeContent(IContainer container)
     {
         container.Column(column =>

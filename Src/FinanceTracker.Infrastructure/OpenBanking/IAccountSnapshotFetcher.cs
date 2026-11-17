@@ -14,9 +14,15 @@ public interface IAccountSnapshotFetcher
     /// The account's balance, standing orders, direct debits and transactions, as far as
     /// <paramref name="syncFlags"/> asks.
     /// </summary>
+    /// <param name="connection">The account's connection.</param>
+    /// <param name="account">The account.</param>
+    /// <param name="authToken">The connection's access token.</param>
+    /// <param name="syncFlags">What to fetch.</param>
     /// <param name="enhancedAuthenticationWindowFlags">What to fetch of standing orders and direct debits, which
     /// banks only release shortly after the user authenticated.</param>
     /// <param name="transactionsFrom">Where booked transactions are fetched from, null for all of them.</param>
+    /// <param name="tally">Counts what the sync does.</param>
+    /// <param name="cancellationToken">Stops the fetches.</param>
     Task<AccountSnapshot> FetchAccountAsync(BankConnection connection, BankAccount account, string authToken,
         SyncTypes syncFlags, SyncTypes enhancedAuthenticationWindowFlags, DateTime? transactionsFrom,
         ConnectionSyncTally tally, CancellationToken cancellationToken);
@@ -25,7 +31,13 @@ public interface IAccountSnapshotFetcher
     /// The card's balance and transactions, as far as <paramref name="syncFlags"/> asks. Cards have no standing
     /// orders or direct debits.
     /// </summary>
+    /// <param name="connection">The card's connection.</param>
+    /// <param name="card">The card.</param>
+    /// <param name="authToken">The connection's access token.</param>
+    /// <param name="syncFlags">What to fetch.</param>
     /// <param name="transactionsFrom">Where booked transactions are fetched from, null for all of them.</param>
+    /// <param name="tally">Counts what the sync does.</param>
+    /// <param name="cancellationToken">Stops the fetches.</param>
     Task<AccountSnapshot> FetchCardAsync(BankConnection connection, BankAccount card, string authToken,
         SyncTypes syncFlags, DateTime? transactionsFrom, ConnectionSyncTally tally,
         CancellationToken cancellationToken);

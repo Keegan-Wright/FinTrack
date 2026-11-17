@@ -19,6 +19,10 @@ public class AccountService : ServiceBase<AccountService>, IAccountService
 {
     private readonly IAccountScope _accountScope;
 
+    /// <param name="currentUser">The signed in user, or who the work runs as.</param>
+    /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
+    /// <param name="logger">Its logger.</param>
+    /// <param name="accountScope">Which accounts the user can see and change.</param>
     public AccountService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
         ILogger<AccountService> logger, IAccountScope accountScope) : base(currentUser, financeTrackerContextFactory,
@@ -27,6 +31,7 @@ public class AccountService : ServiceBase<AccountService>, IAccountService
         _accountScope = accountScope;
     }
 
+    /// <inheritdoc/>
     public async IAsyncEnumerable<AccountAndTransactions> GetAccountsAndMostRecentTransactionsAsync(
         int transactionsToReturn,
         [EnumeratorCancellation] CancellationToken cancellationToken)
