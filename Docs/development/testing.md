@@ -28,6 +28,22 @@ dotnet test --project Test/FinanceTracker.Tests.Integration -- --treenode-filter
 
 A failed UI test saves a Playwright trace, which you can open at [trace.playwright.dev](https://trace.playwright.dev).
 
+## Coverage
+
+```sh
+Scripts/coverage.sh              # unit and integration tests
+Scripts/coverage.sh --unit-only  # quicker, no Docker needed
+```
+
+This runs the tests with [dotnet-coverage](https://learn.microsoft.com/dotnet/core/additional-tools/dotnet-coverage)
+and writes an HTML report to `TestResults/Coverage/report`. The integration tests count the app's code as well, as the
+app Aspire starts picks up the coverage profiler from the test run. `Test/CodeCoverage.xml` keeps it to FinTrack's own
+code, leaving out the tests, the AppHost, migrations and generated code. Code in the browser isn't measured, only the
+Client's unit tests and its server-side rendering count.
+
+Every pull request gets the same numbers as a comment, updated on each push, and in the build's summary. They're for
+information, a drop doesn't fail the build.
+
 ## Writing tests
 
 - Arrange, act and assert, each marked with a comment.
