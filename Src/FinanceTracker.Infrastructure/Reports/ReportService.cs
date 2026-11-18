@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Runtime.CompilerServices;
 using FinanceTracker.Contracts.Reports.Account;
 using FinanceTracker.Contracts.Reports.Category;
@@ -79,7 +78,7 @@ public class ReportService : ServiceBase<ReportService>, IReportService
             {
                 SpentInTimePeriodReportMonthlyBreakdown monthGrp = new()
                 {
-                    Month = DateTimeFormatInfo.CurrentInfo.GetMonthName(month.Month),
+                    MonthNumber = month.Month,
                     Start = month.Period.Start,
                     End = month.Period.End,
                     TotalIn = TotalIn(month.Amounts),
@@ -151,7 +150,7 @@ public class ReportService : ServiceBase<ReportService>, IReportService
                 {
                     SpentInCategoryReportMonthlyBreakdown monthGrp = new()
                     {
-                        Month = DateTimeFormatInfo.CurrentInfo.GetMonthName(month.Month),
+                        MonthNumber = month.Month,
                         Start = month.Period.Start,
                         End = month.Period.End,
                         TotalIn = TotalIn(month.Amounts),
@@ -229,7 +228,7 @@ public class ReportService : ServiceBase<ReportService>, IReportService
                 {
                     SpentInAccountReportMonthlyBreakdown monthGrp = new()
                     {
-                        Month = DateTimeFormatInfo.CurrentInfo.GetMonthName(month.Month),
+                        MonthNumber = month.Month,
                         Start = month.Period.Start,
                         End = month.Period.End,
                         TotalIn = TotalIn(month.Amounts),

@@ -33,7 +33,7 @@ public class ReportTreeTests
                     [
                         new SpentInTimePeriodReportMonthlyBreakdown
                         {
-                            Month = "February",
+                            MonthNumber = 2,
                             Start = new DateOnly(2026, 2, 1),
                             End = new DateOnly(2026, 2, 28),
                             TotalIn = 100m,
@@ -96,7 +96,7 @@ public class ReportTreeTests
                     [
                         new SpentInTimePeriodReportMonthlyBreakdown
                         {
-                            Month = "February",
+                            MonthNumber = 2,
                             Start = new DateOnly(2026, 1, 30),
                             End = new DateOnly(2026, 2, 26),
                             TotalIn = 100m,
@@ -126,6 +126,50 @@ public class ReportTreeTests
             await Assert.That(february.Days).IsEqualTo(28);
             await Assert.That(february.Children[0].Date).IsEqualTo(new DateTime(2026, 1, 30));
             await Assert.That(february.Children[1].TotalIn).IsEqualTo(100m);
+        }
+    }
+
+    [Test]
+    public async Task From_ReadInAnotherCultureThanTheServers_PutsTheMonthInItsPlace()
+    {
+        // Arrange the browser in French, which used to miss the server's English month name and fall to January
+        using CultureScope culture = new("fr-FR");
+        SpentInTimePeriodReport report = new()
+        {
+            TotalIn = 100m,
+            TotalTransactions = 1,
+            YearlyBreakdown =
+            [
+                new SpentInTimePeriodReportYearlyBreakdown
+                {
+                    Year = 2026,
+                    TotalIn = 100m,
+                    TotalTransactions = 1,
+                    MonthlyBreakdown =
+                    [
+                        new SpentInTimePeriodReportMonthlyBreakdown
+                        {
+                            MonthNumber = 2,
+                            Start = new DateOnly(2026, 2, 1),
+                            End = new DateOnly(2026, 2, 28),
+                            TotalIn = 100m,
+                            TotalTransactions = 1
+                        }
+                    ]
+                }
+            ]
+        };
+
+        // Act
+        ReportNode root = ReportTree.From(report, new FilterTransactions());
+
+        // Assert
+        ReportNode year = root.Children.Single();
+        using (Assert.Multiple())
+        {
+            await Assert.That(year.Children[0].TotalIn).IsEqualTo(0m);
+            await Assert.That(year.Children[1].TotalIn).IsEqualTo(100m);
+            await Assert.That(year.Children[1].Title).IsEqualTo("février 2026");
         }
     }
 

@@ -32,6 +32,33 @@ public class ReportDocumentBuilderTests : UnitTestBase
     }
 
     [Test]
+    public async Task BuildAsync_InACultureWithOtherMonthNames_PutsEachMonthInItsPlace()
+    {
+        // Arrange in German, so placing the month can't lean on its English name
+        using CultureScope culture = new("de-DE");
+        _reportService.GetSpentInTimePeriodReportAsync(Arg.Any<FilterTransactions>(), Arg.Any<CancellationToken>())
+            .Returns(new[]
+            {
+                new SpentInTimePeriodReport
+                {
+                    TotalIn = 100m, TotalTransactions = 1,
+                    YearlyBreakdown = [Year(2026, Month(3, new DateOnly(2026, 3, 1), new DateOnly(2026, 3, 31), 100m))]
+                }
+            }.ToAsyncEnumerable());
+
+        // Act
+        ReportContent report = await BuildAsync(ReportBreakdown.OverTime);
+
+        // Assert
+        ReportRow year = report.Subjects.Single().Periods.Single();
+        using (Assert.Multiple())
+        {
+            await Assert.That(year.Periods[2].TotalIn).IsEqualTo(100m);
+            await Assert.That(year.Periods[0].TotalIn).IsEqualTo(0m);
+        }
+    }
+
+    [Test]
     public async Task BuildAsync_OverTime_HasEveryYearOldestFirstWithAllTwelveMonths()
     {
         // Arrange: in the app's culture, the month's short name differing between ICU versions, e.g. Sep or Sept
@@ -45,8 +72,8 @@ public class ReportDocumentBuilderTests : UnitTestBase
                     TotalIn = 300m, TotalOut = -120m, TotalTransactions = 3,
                     YearlyBreakdown =
                     [
-                        Year(2026, Month("October", new DateOnly(2026, 9, 30), new DateOnly(2026, 10, 29), 200m)),
-                        Year(2025, Month("December", new DateOnly(2025, 12, 1), new DateOnly(2025, 12, 31), 100m))
+                        Year(2026, Month(10, new DateOnly(2026, 9, 30), new DateOnly(2026, 10, 29), 200m)),
+                        Year(2025, Month(12, new DateOnly(2025, 12, 1), new DateOnly(2025, 12, 31), 100m))
                     ]
                 }
             }.ToAsyncEnumerable());
@@ -171,10 +198,10 @@ public class ReportDocumentBuilderTests : UnitTestBase
         MonthlyBreakdown = [month]
     };
 
-    private static SpentInTimePeriodReportMonthlyBreakdown Month(string name, DateOnly start, DateOnly end,
+    private static SpentInTimePeriodReportMonthlyBreakdown Month(int number, DateOnly start, DateOnly end,
         decimal moneyIn) => new()
     {
-        Month = name, Start = start, End = end, TotalIn = moneyIn, TotalTransactions = 1
+        MonthNumber = number, Start = start, End = end, TotalIn = moneyIn, TotalTransactions = 1
     };
 
     /// <summary>
