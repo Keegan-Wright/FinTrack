@@ -230,7 +230,7 @@ public class BudgetsServiceTests : InfrastructureTestBase
     };
 
     private DomainBudget DomainGroceries(Guid userId, BudgetMonth from) =>
-        new(userId, "Groceries", [Scenario.ClassificationMappings["shopping"]], 400m, from,
+        new(userId, "Groceries", [Scenario.ClassificationMappings["shopping"]], [], 400m, from,
             DomainRolloverMode.CarryUnderspend);
 
     private static DomainBudget Named(Guid userId, string name)

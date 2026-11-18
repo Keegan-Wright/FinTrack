@@ -138,7 +138,7 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
 
         BudgetMonth currentMonth = await CurrentMonthAsync(context, cancellationToken);
 
-        DomainBudget newBudget = new(UserId, budget.Name, budget.TagIds, budget.MonthlyLimit, currentMonth,
+        DomainBudget newBudget = new(UserId, budget.Name, budget.TagIds, [], budget.MonthlyLimit, currentMonth,
             BudgetMapper.ToDomain(budget.RolloverMode));
 
         context.Budgets.Add(newBudget);
@@ -162,7 +162,7 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
         // From this month on, the months before keep the limit they had
         BudgetMonth currentMonth = await CurrentMonthAsync(context, cancellationToken);
         updated.Rename(budget.Name);
-        updated.ReplaceTags(budget.TagIds, choices);
+        updated.ReplaceCoverage(budget.TagIds, choices, updated.AccountIds, updated.AccountIds.ToHashSet());
         updated.ChangeRolloverMode(BudgetMapper.ToDomain(budget.RolloverMode));
         updated.ChangeLimit(budget.MonthlyLimit, currentMonth);
 
@@ -366,8 +366,8 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
     }
 
     /// <summary>
-    /// The tags the user may give <paramref name="visible"/>: their own for their own budget, or its owner's tags
-    /// shared with them for someone else's, see <see cref="DomainBudget.ReplaceTags"/>.
+    /// The tags the user may give <paramref name="visible"/>. Their own for their own budget, or its owner's tags
+    /// shared with them for someone else's, see <see cref="DomainBudget.ReplaceCoverage"/>.
     /// </summary>
     /// <param name="context">The context to work through.</param>
     /// <param name="visible">The budget, as the user sees it.</param>

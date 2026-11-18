@@ -109,7 +109,7 @@ public static class SeededUser
                 DateOnly.FromDateTime(now.AddDays(-4).AddMonths(-2)), DateOnly.FromDateTime(now.AddDays(-4)),
                 phonePayments))
             .Do(s => s.BudgetScenario.WithBudget(Budget, username, userId => new Budget(userId, Budget,
-                [scenario.ClassificationMappings[Tag]], 300m, BudgetMonth.Of(today), RolloverMode.None)))
+                [scenario.ClassificationMappings[Tag]], [], 300m, BudgetMonth.Of(today), RolloverMode.None)))
             // First due today, so it's in this month whatever the day, and already paid
             .Do(s => s.BillScenario.WithBill(Bill, username, Current, (userId, accountId) => new Bill(userId,
                 accountId, Bill, "Gym", BillFrequency.Monthly, 30m, today, BillSource.Manual)))

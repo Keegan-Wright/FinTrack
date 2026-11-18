@@ -8,6 +8,8 @@ public class BudgetTests
 {
     private static readonly Guid UserId = Guid.NewGuid();
     private static readonly Guid Shopping = Guid.NewGuid();
+    private static readonly Guid Joint = Guid.NewGuid();
+    private static readonly Guid Main = Guid.NewGuid();
     private static readonly BudgetMonth January = new(2026, 1);
     private static readonly BudgetMonth February = new(2026, 2);
     private static readonly BudgetMonth March = new(2026, 3);
@@ -90,9 +92,9 @@ public class BudgetTests
     }
 
     [Test]
-    public void New_NoTags_Throws() =>
+    public void New_NoTagsOrAccounts_Throws() =>
         Assert.Throws<ArgumentException>(() =>
-            _ = new Budget(UserId, "Groceries", [], 400m, January, RolloverMode.None));
+            _ = new Budget(UserId, "Groceries", [], [], 400m, January, RolloverMode.None));
 
     [Test]
     public void ChangeLimit_Negative_Throws() =>
@@ -103,31 +105,170 @@ public class BudgetTests
         Assert.Throws<ArgumentOutOfRangeException>(() => Groceries(400m).ChangeRolloverMode((RolloverMode)9));
 
     private static Budget Groceries(decimal limit) =>
-        new(UserId, "Groceries", [Shopping], limit, January, RolloverMode.None);
+        new(UserId, "Groceries", [Shopping], [], limit, January, RolloverMode.None);
 
     [Test]
-    public async Task ReplaceTags_FromItsChoices_CoversThem()
+    public async Task ReplaceCoverage_FromItsChoices_CoversThem()
     {
         Guid groceries = Guid.NewGuid();
         Guid household = Guid.NewGuid();
-        Budget budget = new(UserId, "Food", [groceries], 400m, January, RolloverMode.None);
+        Budget budget = new(UserId, "Food", [groceries], [], 400m, January, RolloverMode.None);
 
-        budget.ReplaceTags([household, groceries], new HashSet<Guid> { groceries, household });
+        budget.ReplaceCoverage([household, groceries], new HashSet<Guid> { groceries, household }, [],
+            new HashSet<Guid>());
 
         await Assert.That(budget.TagIds).IsEquivalentTo([household, groceries]);
     }
 
     [Test]
-    public async Task ReplaceTags_OneNotAChoice_IsRefusedAndKeepsItsTags()
+    public async Task ReplaceCoverage_ATagNotAChoice_IsRefusedAndKeepsItsTags()
     {
         Guid groceries = Guid.NewGuid();
-        Budget budget = new(UserId, "Food", [groceries], 400m, January, RolloverMode.None);
+        Budget budget = new(UserId, "Food", [groceries], [], 400m, January, RolloverMode.None);
 
         using (Assert.Multiple())
         {
-            await Assert.That(() => budget.ReplaceTags([Guid.NewGuid()], new HashSet<Guid> { groceries }))
+            await Assert.That(() => budget.ReplaceCoverage([Guid.NewGuid()], new HashSet<Guid> { groceries }, [],
+                    new HashSet<Guid>()))
                 .Throws<DomainRuleException>();
             await Assert.That(budget.TagIds).IsEquivalentTo([groceries]);
         }
     }
+
+    [Test]
+    public async Task New_AccountsWithoutTags_CoversTheAccounts()
+    {
+        // Act
+        Budget budget = new(UserId, "Joint account", [], [Joint], 1500m, January, RolloverMode.None);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(budget.AccountIds).IsEquivalentTo([Joint]);
+            await Assert.That(budget.TagIds).IsEmpty();
+            await Assert.That(budget.CoversNothing).IsFalse();
+        }
+    }
+
+    [Test]
+    public async Task RemoveAccount_ItsLastWithNoTags_KeepsTheBudgetCoveringNothing()
+    {
+        // Arrange
+        Budget budget = new(UserId, "Joint account", [], [Joint], 1500m, January, RolloverMode.None);
+
+        // Act
+        bool removed = budget.RemoveAccount(Joint);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(removed).IsTrue();
+            await Assert.That(budget.CoversNothing).IsTrue();
+        }
+    }
+
+    [Test]
+    public async Task RemoveAccount_ItsLastWithTags_StillCoversTheTags()
+    {
+        // Arrange
+        Budget budget = new(UserId, "Joint groceries", [Shopping], [Joint], 400m, January, RolloverMode.None);
+
+        // Act
+        budget.RemoveAccount(Joint);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(budget.AccountIds).IsEmpty();
+            await Assert.That(budget.CoversNothing).IsFalse();
+        }
+    }
+
+    [Test]
+    public async Task MoveAccount_AMergedCopy_CoversTheAccountItWasMergedInto()
+    {
+        // Arrange
+        Guid theirCopy = Guid.NewGuid();
+        Budget budget = new(UserId, "Joint account", [], [theirCopy, Main], 1500m, January, RolloverMode.None);
+
+        // Act
+        bool moved = budget.MoveAccount(theirCopy, Joint);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(moved).IsTrue();
+            await Assert.That(budget.AccountIds).IsEquivalentTo([Main, Joint]);
+        }
+    }
+
+    [Test]
+    public async Task MoveAccount_IntoAnAccountItAlreadyCovers_ListsItOnce()
+    {
+        // Arrange
+        Guid theirCopy = Guid.NewGuid();
+        Budget budget = new(UserId, "Joint account", [], [theirCopy, Joint], 1500m, January, RolloverMode.None);
+
+        // Act
+        budget.MoveAccount(theirCopy, Joint);
+
+        // Assert
+        await Assert.That(budget.AccountIds).IsEquivalentTo([Joint]);
+    }
+
+    [Test]
+    public async Task MoveAccount_OneItDoesntCover_ChangesNothing()
+    {
+        // Arrange
+        Budget budget = new(UserId, "Joint account", [], [Joint], 1500m, January, RolloverMode.None);
+
+        // Act
+        bool moved = budget.MoveAccount(Guid.NewGuid(), Main);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(moved).IsFalse();
+            await Assert.That(budget.AccountIds).IsEquivalentTo([Joint]);
+        }
+    }
+
+    [Test]
+    public async Task ReplaceCoverage_FromTagsToAnAccount_CoversTheAccountOnly()
+    {
+        // Arrange
+        Budget budget = Groceries(400m);
+
+        // Act
+        budget.ReplaceCoverage([], new HashSet<Guid> { Shopping }, [Joint], new HashSet<Guid> { Joint });
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(budget.TagIds).IsEmpty();
+            await Assert.That(budget.AccountIds).IsEquivalentTo([Joint]);
+        }
+    }
+
+    [Test]
+    public async Task ReplaceCoverage_AnAccountNotAChoice_IsRefusedAndKeepsWhatItCovers()
+    {
+        // Arrange
+        Budget budget = Groceries(400m);
+
+        // Act & Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(() => budget.ReplaceCoverage([Shopping], new HashSet<Guid> { Shopping }, [Joint],
+                    new HashSet<Guid> { Main }))
+                .Throws<DomainRuleException>();
+            await Assert.That(budget.TagIds).IsEquivalentTo([Shopping]);
+            await Assert.That(budget.AccountIds).IsEmpty();
+        }
+    }
+
+    [Test]
+    public void ReplaceCoverage_NoTagsOrAccounts_Throws() =>
+        Assert.Throws<ArgumentException>(() =>
+            Groceries(400m).ReplaceCoverage([], new HashSet<Guid>(), [], new HashSet<Guid>()));
 }

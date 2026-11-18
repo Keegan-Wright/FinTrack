@@ -18,7 +18,7 @@ public class BudgetPersistenceTests : InfrastructureTestBase
     {
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser(Username));
-        Budget budget = new(Scenario.UserMappings[Username], "Groceries", [TagId], 400m, January,
+        Budget budget = new(Scenario.UserMappings[Username], "Groceries", [TagId], [], 400m, January,
             RolloverMode.CarryUnderspend);
         budget.ChangeLimit(450.50m, March);
         await SaveAsync(budget);
@@ -44,7 +44,7 @@ public class BudgetPersistenceTests : InfrastructureTestBase
     {
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser(Username));
-        await SaveAsync(new Budget(Scenario.UserMappings[Username], "Secret Budget", [TagId], 412.34m, March,
+        await SaveAsync(new Budget(Scenario.UserMappings[Username], "Secret Budget", [TagId], [], 412.34m, March,
             RolloverMode.None));
 
         // Act
@@ -70,7 +70,7 @@ public class BudgetPersistenceTests : InfrastructureTestBase
     {
         // Arrange
         await Scenario.Do(s => s.UserScenario.WithUser(Username));
-        await SaveAsync(new Budget(Scenario.UserMappings[Username], "Groceries", [TagId], 400m, January,
+        await SaveAsync(new Budget(Scenario.UserMappings[Username], "Groceries", [TagId], [], 400m, January,
             RolloverMode.None));
 
         // Act
@@ -79,7 +79,7 @@ public class BudgetPersistenceTests : InfrastructureTestBase
             Budget tracked = await context.Budgets.SingleAsync(CancellationToken);
             tracked.ChangeLimit(500m, March);
             Guid another = Guid.CreateVersion7();
-            tracked.ReplaceTags([TagId, another], new HashSet<Guid> { TagId, another });
+            tracked.ReplaceCoverage([TagId, another], new HashSet<Guid> { TagId, another }, [], new HashSet<Guid>());
             await context.SaveChangesAsync(CancellationToken);
         }
 
