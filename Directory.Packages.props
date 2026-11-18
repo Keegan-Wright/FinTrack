@@ -68,7 +68,7 @@
     <PackageVersion Include="Blazilla" Version="2.4.3"/>
     <PackageVersion Include="Blazor-ApexCharts" Version="7.1.0"/>
     <PackageVersion Include="FluentValidation" Version="12.2.0"/>
-    <PackageVersion Include="MudBlazor" Version="9.12.0"/>
+    <PackageVersion Include="MudBlazor" Version="9.14.0"/>
     <PackageVersion Include="Extensions.MudBlazor.StaticInput" Version="4.1.0"/>
 
     <PackageVersion Include="Bogus" Version="35.6.5"/>

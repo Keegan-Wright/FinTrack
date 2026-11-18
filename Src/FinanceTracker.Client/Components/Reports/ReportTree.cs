@@ -21,7 +21,7 @@ public static class ReportTree
     /// <param name="request">The filters it was asked for with.</param>
     public static ReportNode From(SpentInTimePeriodReport report, FilterTransactions request) =>
         Root("All accounts", report, request, report.YearlyBreakdown.Select(static y => Year(y.Year, y,
-            y.MonthlyBreakdown.Select(m => Month(y.Year, m.Month, m.Start, m.End, m,
+            y.MonthlyBreakdown.Select(m => Month(y.Year, m.MonthNumber, m.Start, m.End, m,
                 m.DailyBreakdown.Select(static d => (d.Date, (IReport)d)))))));
 
     /// <summary>
@@ -32,7 +32,7 @@ public static class ReportTree
     public static ReportNode From(SpentInAccountReport report, FilterTransactions request) =>
         Root(report.AccountName, report, Narrow(request, accountIds: [report.AccountId]),
             report.YearlyBreakdown.Select(static y => Year(y.Year, y,
-                y.MonthlyBreakdown.Select(m => Month(y.Year, m.Month, m.Start, m.End, m,
+                y.MonthlyBreakdown.Select(m => Month(y.Year, m.MonthNumber, m.Start, m.End, m,
                     m.DailyBreakdown.Select(static d => (d.Date, (IReport)d)))))), report.AccountId);
 
     /// <summary>
@@ -57,7 +57,7 @@ public static class ReportTree
     public static ReportNode From(SpentInCategoryReport report, FilterTransactions request) =>
         Root(report.Category, report, Narrow(request, tags: [report.Category]),
             report.YearlyBreakdown.Select(static y => Year(y.Year, y,
-                y.MonthlyBreakdown.Select(m => Month(y.Year, m.Month, m.Start, m.End, m,
+                y.MonthlyBreakdown.Select(m => Month(y.Year, m.MonthNumber, m.Start, m.End, m,
                     m.DailyBreakdown.Select(static d => (d.Date, (IReport)d)))))));
 
     /// <summary>
@@ -180,16 +180,15 @@ public static class ReportTree
     }
 
     /// <param name="year">The year.</param>
-    /// <param name="monthName">The month's name.</param>
+    /// <param name="month">The month of the year, 1 to 12.</param>
     /// <param name="start">The first day of the period the month covers, from pay to pay or the calendar month.
     /// </param>
     /// <param name="end">Its last day, inclusive.</param>
     /// <param name="totals">The month's totals.</param>
     /// <param name="days">The month's days and their totals.</param>
-    private static (int Month, ReportNode Node) Month(int year, string monthName, DateOnly start, DateOnly end,
+    private static (int Month, ReportNode Node) Month(int year, int month, DateOnly start, DateOnly end,
         IReport totals, IEnumerable<(DateOnly Date, IReport Totals)> days)
     {
-        int month = MonthNumber(monthName);
         Dictionary<DateOnly, IReport> byDay = [];
         foreach ((DateOnly date, IReport dayTotals) in days)
         {
@@ -276,16 +275,4 @@ public static class ReportTree
         Days = 1,
         Date = date
     };
-
-    // The server names months in its culture
-    /// <summary>
-    /// The month a name is, in the current culture, January when it's none.
-    /// </summary>
-    /// <param name="monthName">The month's name.</param>
-    private static int MonthNumber(string monthName)
-    {
-        int index = Array.FindIndex(CultureInfo.CurrentCulture.DateTimeFormat.MonthNames,
-            x => string.Equals(x, monthName, StringComparison.OrdinalIgnoreCase));
-        return index >= 0 ? index + 1 : 1;
-    }
 }

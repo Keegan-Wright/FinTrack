@@ -15,15 +15,15 @@ internal static class ReportRows
 {
     public static ReportRow From(SpentInTimePeriodReport report) =>
         Subject("All accounts", report, report.YearlyBreakdown.Select(static year => Year(year.Year, year,
-            year.MonthlyBreakdown.Select(month => Month(year.Year, month.Month, month.Start, month.End, month)))));
+            year.MonthlyBreakdown.Select(month => Month(year.Year, month.MonthNumber, month.Start, month.End, month)))));
 
     public static ReportRow From(SpentInAccountReport report) =>
         Subject(report.AccountName, report, report.YearlyBreakdown.Select(static year => Year(year.Year, year,
-            year.MonthlyBreakdown.Select(month => Month(year.Year, month.Month, month.Start, month.End, month)))));
+            year.MonthlyBreakdown.Select(month => Month(year.Year, month.MonthNumber, month.Start, month.End, month)))));
 
     public static ReportRow From(SpentInCategoryReport report) =>
         Subject(report.Category, report, report.YearlyBreakdown.Select(static year => Year(year.Year, year,
-            year.MonthlyBreakdown.Select(month => Month(year.Year, month.Month, month.Start, month.End, month)))));
+            year.MonthlyBreakdown.Select(month => Month(year.Year, month.MonthNumber, month.Start, month.End, month)))));
 
     /// <summary>
     /// The line for everything, an account or a tag.
@@ -70,15 +70,13 @@ internal static class ReportRows
     }
 
     /// <param name="year">The year.</param>
-    /// <param name="monthName">The month the period is named after, in the server's culture, as the report service
-    /// names it.</param>
+    /// <param name="number">The month of the year the period is named after, 1 to 12.</param>
     /// <param name="start">The period's first day, from pay day or the 1st.</param>
     /// <param name="end">Its last day, inclusive.</param>
     /// <param name="totals">The period's totals.</param>
-    private static (int Number, ReportRow Row) Month(int year, string monthName, DateOnly start, DateOnly end,
+    private static (int Number, ReportRow Row) Month(int year, int number, DateOnly start, DateOnly end,
         IReport totals)
     {
-        int number = DateTime.ParseExact(monthName, "MMMM", CultureInfo.CurrentCulture).Month;
         DateOnly named = new(year, number, 1);
         return (number, new ReportRow
         {

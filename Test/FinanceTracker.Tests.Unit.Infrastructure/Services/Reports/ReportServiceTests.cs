@@ -1,4 +1,3 @@
-using System.Globalization;
 using FinanceTracker.Contracts.Reports;
 using FinanceTracker.Contracts.Reports.Account;
 using FinanceTracker.Contracts.Reports.Category;
@@ -145,7 +144,7 @@ public class ReportServiceTests : InfrastructureTestBase
         // Assert
         SpentInTimePeriodReportYearlyBreakdown year2025 = report.YearlyBreakdown.Single(x => x.Year == 2025);
         SpentInTimePeriodReportMonthlyBreakdown
-            january = year2025.MonthlyBreakdown.Single(x => x.Month == MonthName(1));
+            january = year2025.MonthlyBreakdown.Single(x => x.MonthNumber == 1);
         SpentInTimePeriodReportDailyBreakdown january15 = january.DailyBreakdown.Single(x => x.Day == 15);
 
         using (Assert.Multiple())
@@ -529,11 +528,11 @@ public class ReportServiceTests : InfrastructureTestBase
 
         // Assert
         IList<SpentInTimePeriodReportMonthlyBreakdown> months = report.YearlyBreakdown.Single().MonthlyBreakdown;
-        SpentInTimePeriodReportMonthlyBreakdown february = months.Single(x => x.Month == MonthName(2));
+        SpentInTimePeriodReportMonthlyBreakdown february = months.Single(x => x.MonthNumber == 2);
         using (Assert.Multiple())
         {
             await Assert.That(months.Count).IsEqualTo(12);
-            await Assert.That(months.Single(x => x.Month == MonthName(1)).TotalOut).IsEqualTo(-10m);
+            await Assert.That(months.Single(x => x.MonthNumber == 1).TotalOut).IsEqualTo(-10m);
             await Assert.That(february.Start).IsEqualTo(new DateOnly(2026, 1, 30));
             await Assert.That(february.End).IsEqualTo(new DateOnly(2026, 2, 26));
             await Assert.That(february.TotalOut).IsEqualTo(-50m);
@@ -561,7 +560,7 @@ public class ReportServiceTests : InfrastructureTestBase
             .MonthlyBreakdown).Single();
         using (Assert.Multiple())
         {
-            await Assert.That(august.Month).IsEqualTo(MonthName(8));
+            await Assert.That(august.MonthNumber).IsEqualTo(8);
             await Assert.That(august.DailyBreakdown.Single().Date).IsEqualTo(new DateOnly(2025, 8, 1));
         }
     }
@@ -591,8 +590,6 @@ public class ReportServiceTests : InfrastructureTestBase
     /// </summary>
     private static List<T> WithTransactions<T>(IEnumerable<T> months) where T : SharedReport =>
         months.Where(static x => x.TotalTransactions > 0).ToList();
-
-    private static string MonthName(int month) => DateTimeFormatInfo.CurrentInfo.GetMonthName(month);
 
     private async Task HideAsync(string transactionName, string classification)
     {
