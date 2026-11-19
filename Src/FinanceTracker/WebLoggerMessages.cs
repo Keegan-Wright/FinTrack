@@ -77,6 +77,19 @@ public static partial class WebLoggerMessages
     [LoggerMessage(LogLevel.Information, "Admin {adminId} unlocked user {userId}")]
     public static partial void LogUserUnlocked(this ILogger logger, Guid adminId, Guid userId);
 
+    [LoggerMessage(LogLevel.Information,
+        "User {userId} is in the identity provider's admins group, made them an admin")]
+    public static partial void LogAdminFromGroupGranted(this ILogger logger, Guid userId);
+
+    [LoggerMessage(LogLevel.Information,
+        "User {userId} is no longer in the identity provider's admins group, took their admin role")]
+    public static partial void LogAdminFromGroupRemoved(this ILogger logger, Guid userId);
+
+    [LoggerMessage(LogLevel.Warning,
+        "Nobody is an admin. Add someone to the identity provider's admins group, or on a new install " +
+        "register with a password first")]
+    public static partial void LogNoAdminLeft(this ILogger logger);
+
     [LoggerMessage(LogLevel.Information, "Admin {adminId} made user {userId} an admin")]
     public static partial void LogAdminRoleGranted(this ILogger logger, Guid adminId, Guid userId);
 

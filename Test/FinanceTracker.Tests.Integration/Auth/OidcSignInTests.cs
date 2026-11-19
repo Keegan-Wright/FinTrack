@@ -1,3 +1,4 @@
+using FinanceTracker.Contracts.Auth;
 using FinanceTracker.Domain.Identity;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Tests.Integration.Http;
@@ -125,6 +126,63 @@ public class OidcSignInTests : IntegrationTestBase
         }
     }
 
+    [Test]
+    public async Task SignIn_InTheAdminsGroup_AsksForGroupsAndMakesThemAnAdmin()
+    {
+        // Arrange
+        using FinTrackClient client = CreateClient();
+        FakeOidcUser person = NewPerson(emailVerified: true) with { Groups = ["family", "admins"] };
+
+        // Act
+        Dictionary<string, StringValues> authorize = await ChallengeAsync(client);
+        await FinishSignInAsync(client, authorize, person);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(authorize["scope"].ToString().Split(' ')).Contains("groups");
+            await Assert.That(await IsAdminAsync(person.Email)).IsTrue();
+        }
+    }
+
+    [Test]
+    public async Task SignIn_NoLongerInTheAdminsGroup_TakesTheirAdminRole()
+    {
+        // Arrange, an admin through the group at their first sign in
+        FakeOidcUser person = NewPerson(emailVerified: true) with { Groups = ["admins"] };
+        using (FinTrackClient first = CreateClient())
+        {
+            await SignInAtProviderAsync(first, person);
+        }
+
+        bool adminBefore = await IsAdminAsync(person.Email);
+        using FinTrackClient client = CreateClient();
+
+        // Act
+        await SignInAtProviderAsync(client, person with { Groups = ["family"] });
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(adminBefore).IsTrue();
+            await Assert.That(await IsAdminAsync(person.Email)).IsFalse();
+        }
+    }
+
+    [Test]
+    public async Task SignIn_SomeoneElseNotInTheAdminsGroup_LeavesAPasswordAdminBe()
+    {
+        // Arrange
+        SignedInUser admin = await RegisterAdminAsync();
+        using FinTrackClient client = CreateClient();
+
+        // Act
+        await SignInAtProviderAsync(client, NewPerson(emailVerified: true) with { Groups = ["family"] });
+
+        // Assert
+        await Assert.That(await IsAdminAsync($"{admin.Username}@fintrack.test")).IsTrue();
+    }
+
     private static FakeOidcUser NewPerson(bool emailVerified)
     {
         string username = UniqueName("sso");
@@ -136,10 +194,17 @@ public class OidcSignInTests : IntegrationTestBase
     /// which posts back to the app, then follows the app on to finish signing in.
     /// </summary>
     /// <returns>Where the app sends them once it's done, <see cref="ReturnUrl"/> or the sign in page.</returns>
-    private async Task<HttpResponseMessage> SignInAtProviderAsync(FinTrackClient client, FakeOidcUser person)
-    {
-        Dictionary<string, StringValues> authorize = await ChallengeAsync(client);
+    private async Task<HttpResponseMessage> SignInAtProviderAsync(FinTrackClient client, FakeOidcUser person) =>
+        await FinishSignInAsync(client, await ChallengeAsync(client), person);
 
+    /// <summary>
+    /// The rest of <see cref="SignInAtProviderAsync"/> once the app has sent them to the provider.
+    /// </summary>
+    /// <param name="authorize">The provider authorisation request's parameters, from <see cref="ChallengeAsync"/>.
+    /// </param>
+    private async Task<HttpResponseMessage> FinishSignInAsync(FinTrackClient client,
+        Dictionary<string, StringValues> authorize, FakeOidcUser person)
+    {
         string code = Guid.NewGuid().ToString("N");
         App.Oidc.Approve(code, authorize["nonce"].ToString(), person);
 
@@ -190,6 +255,17 @@ public class OidcSignInTests : IntegrationTestBase
     {
         await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
         return await context.Users.AsNoTracking().SingleAsync(x => x.Email == email, CancellationToken);
+    }
+
+    private async Task<bool> IsAdminAsync(string email)
+    {
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        Guid userId = await context.Users.Where(x => x.Email == email).Select(static x => x.Id)
+            .SingleAsync(CancellationToken);
+        return await context.UserRoles
+            .Where(x => x.UserId == userId)
+            .Join(context.Roles, static x => x.RoleId, static x => x.Id, static (_, role) => role.Name)
+            .AnyAsync(static x => x == FinTrackRoles.Admin, CancellationToken);
     }
 
     private async Task<int> UsersWithEmailCountAsync(string email)

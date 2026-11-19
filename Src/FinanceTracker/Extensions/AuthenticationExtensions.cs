@@ -145,6 +145,9 @@ public static class AuthenticationExtensions
                     return TypedResults.Redirect($"/{Lockout.PathFor(user)}");
                 }
 
+                // The provider's admins group decides, before the cookie's roles are read
+                await linker.MatchAdminRoleAsync(user, external.Principal);
+
                 // Builds the cookie the same way as a password sign in, roles and the first name included
                 await signInManager.SignInAsync(user, isPersistent: false);
                 return TypedResults.Redirect(LocalPath(context.Request, returnUrl));
@@ -210,10 +213,16 @@ public static class AuthenticationExtensions
         options.Scope.Add("profile");
         options.Scope.Add("email");
 
+        // The provider's groups, the admins group deciding who's an admin, see OidcUserLinker.MatchAdminRoleAsync
+        options.Scope.Add(OidcUserLinker.Groups);
+
         options.GetClaimsFromUserInfoEndpoint = true;
         options.MapInboundClaims = false;
         options.ClaimActions.MapUniqueJsonKey(OidcUserLinker.EmailVerified, OidcUserLinker.EmailVerified);
         options.ClaimActions.MapUniqueJsonKey(OidcUserLinker.PreferredUsername, OidcUserLinker.PreferredUsername);
+
+        // User info's groups array becomes one claim per group
+        options.ClaimActions.MapJsonKey(OidcUserLinker.Groups, OidcUserLinker.Groups);
 
         options.Events = new OpenIdConnectEvents
         {

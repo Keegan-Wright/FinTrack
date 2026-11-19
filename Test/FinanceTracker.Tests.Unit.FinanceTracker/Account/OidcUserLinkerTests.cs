@@ -33,7 +33,6 @@ public class OidcUserLinkerTests : InfrastructureTestBase
         services.AddIdentityCore<FinanceTrackerUser>(options => options.User.RequireUniqueEmail = true)
             .AddRoles<FinanceTrackerRole>()
             .AddEntityFrameworkStores<FinanceTrackerContext>();
-        services.AddScoped<AdminProvisioner>();
         services.AddScoped<OidcUserLinker>();
 
         _services = services.BuildServiceProvider();
@@ -48,7 +47,7 @@ public class OidcUserLinkerTests : InfrastructureTestBase
     }
 
     [Test]
-    public async Task FindOrCreateAsync_ForANewSubjectCreatesTheUser()
+    public async Task FindOrCreateAsync_ForANewSubjectCreatesTheUserWithoutTheFirstUserRule()
     {
         // Act
         FinanceTrackerUser? user = await Subject.FindOrCreateAsync(Principal());
@@ -65,7 +64,9 @@ public class OidcUserLinkerTests : InfrastructureTestBase
             await Assert.That(user.LastName).IsEqualTo("Doe");
             await Assert.That(user.EmailConfirmed).IsTrue();
             await Assert.That(claims.Any(x => x is { Type: CustomClaims.FirstName, Value: "Jane" })).IsTrue();
-            await Assert.That(await UserManager.IsInRoleAsync(user, FinTrackRoles.Admin)).IsTrue();
+
+            // The first user, but the provider's admins group decides, see MatchAdminRoleAsync
+            await Assert.That(await UserManager.IsInRoleAsync(user, FinTrackRoles.Admin)).IsFalse();
         }
     }
 
@@ -218,7 +219,61 @@ public class OidcUserLinkerTests : InfrastructureTestBase
         await Assert.That(user).IsNull();
     }
 
-    private static ClaimsPrincipal Principal(string? subject = OidcSubject, string? emailVerified = "true")
+    [Test]
+    public async Task MatchAdminRoleAsync_InTheAdminsGroup_MakesThemAnAdmin()
+    {
+        // Arrange
+        FinanceTrackerUser user = (await Subject.FindOrCreateAsync(Principal()))!;
+        await AddAdminRoleAsync();
+
+        // Act
+        await Subject.MatchAdminRoleAsync(user, Principal(groups: ["family", OidcUserLinker.AdminsGroup]));
+
+        // Assert
+        await Assert.That(await UserManager.IsInRoleAsync(user, FinTrackRoles.Admin)).IsTrue();
+    }
+
+    [Test]
+    public async Task MatchAdminRoleAsync_NoLongerInTheAdminsGroup_TakesTheirRole()
+    {
+        // Arrange
+        FinanceTrackerUser user = (await Subject.FindOrCreateAsync(Principal()))!;
+        await AddAdminRoleAsync();
+        await UserManager.AddToRoleAsync(user, FinTrackRoles.Admin);
+
+        // Act
+        await Subject.MatchAdminRoleAsync(user, Principal(groups: ["family"]));
+
+        // Assert
+        await Assert.That(await UserManager.IsInRoleAsync(user, FinTrackRoles.Admin)).IsFalse();
+    }
+
+    [Test]
+    public async Task MatchAdminRoleAsync_NotInTheAdminsGroupAndNotAnAdmin_LeavesThemBe()
+    {
+        // Arrange
+        FinanceTrackerUser user = (await Subject.FindOrCreateAsync(Principal()))!;
+        await AddAdminRoleAsync();
+
+        // Act
+        await Subject.MatchAdminRoleAsync(user, Principal());
+
+        // Assert
+        await Assert.That(await UserManager.IsInRoleAsync(user, FinTrackRoles.Admin)).IsFalse();
+    }
+
+    /// <summary>
+    /// Adds the admin role, as starting the app does.
+    /// </summary>
+    private async Task AddAdminRoleAsync()
+    {
+        RoleManager<FinanceTrackerRole> roles =
+            _scope.ServiceProvider.GetRequiredService<RoleManager<FinanceTrackerRole>>();
+        await roles.CreateAsync(new FinanceTrackerRole { Name = FinTrackRoles.Admin });
+    }
+
+    private static ClaimsPrincipal Principal(string? subject = OidcSubject, string? emailVerified = "true",
+        string[]? groups = null)
     {
         List<Claim> claims =
         [
@@ -235,6 +290,11 @@ public class OidcUserLinkerTests : InfrastructureTestBase
         if (emailVerified is not null)
         {
             claims.Add(new Claim(OidcUserLinker.EmailVerified, emailVerified));
+        }
+
+        foreach (string group in groups ?? [])
+        {
+            claims.Add(new Claim(OidcUserLinker.Groups, group));
         }
 
         return new ClaimsPrincipal(new ClaimsIdentity(claims, "oidc"));
