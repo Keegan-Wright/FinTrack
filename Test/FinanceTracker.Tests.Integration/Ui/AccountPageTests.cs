@@ -1,3 +1,4 @@
+using FinanceTracker.Contracts.Auth;
 using FinanceTracker.Tests.Integration.Http;
 using Microsoft.Playwright;
 
@@ -118,6 +119,7 @@ public class AccountPageTests : UiTestBase
         SignedInUser user = await RegisterUserAsync();
         IPage page = await OpenAsync(ScreenSize.Phone);
         await page.GotoAsync($"/Account/ResetPassword?userId={user.UserId}&code=cGxhY2Vob2xkZXI");
+        await Assertions.Expect(page.GetByText(PasswordRules.Hint)).ToBeVisibleAsync();
 
         // Act
         await page.GetByLabel("New password", new PageGetByLabelOptions { Exact = true })

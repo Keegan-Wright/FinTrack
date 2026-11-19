@@ -1,5 +1,6 @@
 using Bunit;
 using FinanceTracker.Client.Components.Profile;
+using FinanceTracker.Contracts.Auth;
 using FinanceTracker.Contracts.Profile;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Validation;
@@ -21,6 +22,16 @@ public class ChangePasswordSectionTests : ComponentTestBase
     }
 
     [Test]
+    public async Task Render_NewPassword_ShowsTheRuleUpFront()
+    {
+        // Act
+        IRenderedComponent<ChangePasswordSection> cut = Render<ChangePasswordSection>();
+
+        // Assert
+        await Assert.That(cut.Markup).Contains(PasswordRules.Hint);
+    }
+
+    [Test]
     public async Task Change_Filled_ChangesItAndClearsTheFields()
     {
         // Arrange
@@ -30,7 +41,7 @@ public class ChangePasswordSectionTests : ComponentTestBase
         IRenderedComponent<ChangePasswordSection> cut = Render<ChangePasswordSection>();
 
         // Act
-        await FillAsync(cut, "old-password", "new-password", "new-password");
+        await FillAsync(cut, "old-password", "new-placeholder-password", "new-placeholder-password");
         await ChangeButton(cut).ClickAsync(new());
 
         // Assert
@@ -38,7 +49,7 @@ public class ChangePasswordSectionTests : ComponentTestBase
         using (Assert.Multiple())
         {
             await _profileService.Received(1).ChangePasswordAsync(
-                Arg.Is<ChangePassword>(x => x.CurrentPassword == "old-password" && x.NewPassword == "new-password"),
+                Arg.Is<ChangePassword>(x => x.CurrentPassword == "old-password" && x.NewPassword == "new-placeholder-password"),
                 Arg.Any<CancellationToken>());
             await Assert.That(cut.FindAll("input").Select(static x => x.GetAttribute("value") ?? string.Empty))
                 .All().Satisfy(static x => x.IsEmpty());
@@ -54,7 +65,7 @@ public class ChangePasswordSectionTests : ComponentTestBase
         IRenderedComponent<ChangePasswordSection> cut = Render<ChangePasswordSection>();
 
         // Act
-        await FillAsync(cut, "wrong", "new-password", "new-password");
+        await FillAsync(cut, "wrong", "new-placeholder-password", "new-placeholder-password");
         await ChangeButton(cut).ClickAsync(new());
 
         // Assert
@@ -69,7 +80,7 @@ public class ChangePasswordSectionTests : ComponentTestBase
         IRenderedComponent<ChangePasswordSection> cut = Render<ChangePasswordSection>();
 
         // Act
-        await FillAsync(cut, "old-password", "new-password", "new-pasword");
+        await FillAsync(cut, "old-password", "new-placeholder-password", "new-placeholder-pasword");
         await ChangeButton(cut).ClickAsync(new());
 
         // Assert

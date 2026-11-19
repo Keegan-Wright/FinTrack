@@ -2,6 +2,11 @@
 
 Admins see two extra pages, **Users** and **Automation**. This covers the Users page.
 
+## Passwords
+
+Passwords need at least 15 characters, and any characters will do. A few words together is easier to remember than
+a short jumble. Passwords made before this rule keep working until they're next changed.
+
 ## Reset links
 
 If someone has forgotten their password and can't get a reset email, make them a reset link and send it yourself. It

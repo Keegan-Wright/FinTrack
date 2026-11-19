@@ -52,6 +52,7 @@
                             UserAttributes="@(new Dictionary<string, object?> { { "autocomplete", "email" }, { "aria-required", "true" } })"/>
         <MudStaticTextField For="@(() => RegisterRequest.Password)" @bind-Value="RegisterRequest.Password"
                             Label="Password" InputType="InputType.Password" Variant="Variant.Outlined"
+                            HelperText="@PasswordRules.Hint"
                             Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Outlined.Visibility"
                             AdornmentToggledIcon="@Icons.Material.Outlined.VisibilityOff"
                             AdornmentClickFunction="ftTogglePassword" AdornmentAriaLabel="Show password"
