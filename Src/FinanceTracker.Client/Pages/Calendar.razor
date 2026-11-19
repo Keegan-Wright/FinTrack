@@ -420,7 +420,7 @@
     /// </summary>
     private async Task ReloadAsync()
     {
-        SetLoadingState(true, "Flipping the calendar…");
+        SetLoadingState(true, "Flipping the calendar");
         try
         {
             Days = await LoadMonthAsync(_cts.Token);
@@ -556,7 +556,7 @@
         DateTime selected = _selectedDate;
         try
         {
-            SetLoadingState(true, "Saving…");
+            SetLoadingState(true, "Saving");
             await change();
             Days = await LoadMonthAsync(_cts.Token);
             Snackbar.Add(done, Severity.Success);

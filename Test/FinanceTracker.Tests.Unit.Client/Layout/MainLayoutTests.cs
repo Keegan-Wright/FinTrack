@@ -103,7 +103,7 @@ public class MainLayoutTests : ComponentTestBase
         await cut.InvokeAsync(() => _applicationState.Syncing = true);
 
         // Assert
-        await Assert.That(cut.Find(".ft-sync-status").TextContent).Contains("Syncing your accounts…");
+        await Assert.That(cut.Find(".ft-sync-status").TextContent).Contains("Syncing your accounts");
     }
 
     [Test]
@@ -121,7 +121,7 @@ public class MainLayoutTests : ComponentTestBase
         {
             await _automationService.Received(1).RequestSyncAsync(Arg.Any<CancellationToken>());
             await Assert.That(_applicationState.Syncing).IsTrue();
-            await Assert.That(cut.Find(".ft-sync-status").TextContent).Contains("Syncing your accounts…");
+            await Assert.That(cut.Find(".ft-sync-status").TextContent).Contains("Syncing your accounts");
         }
     }
 

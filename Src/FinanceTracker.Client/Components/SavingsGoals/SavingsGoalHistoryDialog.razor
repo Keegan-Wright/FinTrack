@@ -7,7 +7,7 @@
 <MudDialog>
     <TitleContent>@Goal.Name over time</TitleContent>
     <DialogContent>
-        <LoadingFrame Loading="@(_history is null && !_failed)" Message="Looking back…" MinHeight="280">
+        <LoadingFrame Loading="@(_history is null && !_failed)" Message="Looking back" MinHeight="280">
             @if (_failed)
             {
                 <MudText Typo="Typo.body2" Color="Color.Error">Couldn't load its history, try again.</MudText>

@@ -238,8 +238,15 @@ public class PageComponent : ComponentBase, IDisposable
     /// <param name="message">What's loading, null for the default.</param>
     internal void SetLoadingState(bool loading, string? message = null)
     {
-        ApplicationState.Loading = loading;
-        ApplicationState.LoadingMessage = message;
+        if (loading)
+        {
+            ApplicationState.ShowLoading(message);
+        }
+        else
+        {
+            ApplicationState.HideLoading();
+        }
+
         StateHasChanged();
     }
 }

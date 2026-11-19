@@ -183,7 +183,7 @@
     /// <param name="user">The user.</param>
     internal async Task MakeResetLinkAsync(UserSummary user)
     {
-        SetLoadingState(true, "Making a reset link…");
+        SetLoadingState(true, "Making a reset link");
         try
         {
             ResetLink? link = await UsersService.CreateResetLinkAsync(user.Id, _cts.Token);
@@ -291,7 +291,7 @@
     /// <param name="you">The admin looking.</param>
     private async Task RemoveOwnAdminAsync(UserSummary you)
     {
-        SetLoadingState(true, "Saving…");
+        SetLoadingState(true, "Saving");
         try
         {
             AdminChange change = await UsersService.RemoveAdminAsync(you.Id, _cts.Token);
@@ -347,7 +347,7 @@
     /// <param name="failed">What's said when it fails.</param>
     private async Task ChangeAsync(Func<Task> change, string failed)
     {
-        SetLoadingState(true, "Saving…");
+        SetLoadingState(true, "Saving");
         try
         {
             await change();

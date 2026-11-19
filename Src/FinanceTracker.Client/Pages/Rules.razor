@@ -208,7 +208,7 @@
 
         try
         {
-            SetLoadingState(true, $"Deleting {rule.Name}…");
+            SetLoadingState(true, $"Deleting {rule.Name}");
             await RulesService.DeleteRuleAsync(rule.Id, _cts.Token);
             RuleList!.RemoveAll(x => x.Id == rule.Id);
             Snackbar.Add($"{rule.Name} deleted", Severity.Success);
@@ -233,7 +233,7 @@
 
         try
         {
-            SetLoadingState(true, turningOn ? $"Turning {rule.Name} on…" : $"Turning {rule.Name} off…");
+            SetLoadingState(true, turningOn ? $"Turning {rule.Name} on" : $"Turning {rule.Name} off");
             Rule saved = await RulesService.UpdateRuleAsync(rule.Id, RuleDrafts.WithEnabled(rule, turningOn),
                 _cts.Token);
             RuleList![RuleList.FindIndex(x => x.Id == rule.Id)] = saved;

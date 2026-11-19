@@ -202,7 +202,7 @@
     {
         try
         {
-            SetLoadingState(true, $"Updating {member.FirstName}…");
+            SetLoadingState(true, $"Updating {member.FirstName}");
             HouseholdMember saved = await HouseholdMemberService.LinkHouseholdMemberAsync(member.Id,
                 new LinkHouseholdMember { LinkId = person?.Id }, _cts.Token);
             Members![Members.IndexOf(member)] = saved;
@@ -238,7 +238,7 @@
 
         try
         {
-            SetLoadingState(true, "Making room at the table…");
+            SetLoadingState(true, "Making room at the table");
             var householdMember = await HouseholdMemberService.AddHouseholdMemberAsync(
                 (AddHouseholdMember)dialogActionResult.Data!, _cts.Token);
             (Members ??= []).Add(householdMember);
@@ -282,7 +282,7 @@
 
         try
         {
-            SetLoadingState(true, $"Updating {member.FirstName}…");
+            SetLoadingState(true, $"Updating {member.FirstName}");
             HouseholdMember saved = await HouseholdMemberService.UpdateHouseholdMemberAsync(member.Id, update,
                 _cts.Token);
             Members![Members.IndexOf(member)] = saved;
@@ -319,7 +319,7 @@
 
         try
         {
-            SetLoadingState(true, $"Removing {member.FirstName}…");
+            SetLoadingState(true, $"Removing {member.FirstName}");
             await HouseholdMemberService.DeleteHouseholdMemberAsync(member.Id, _cts.Token);
             Members!.Remove(member);
             Snackbar.Add($"{member.FirstName} deleted", Severity.Success);
@@ -349,7 +349,7 @@
 
         try
         {
-            SetLoadingState(true, $"Looking for {member.FirstName}'s payments…");
+            SetLoadingState(true, $"Looking for {member.FirstName}'s payments");
             HouseholdMemberRecognitionSaved saved = await HouseholdMemberService.UpdateRecognitionAsync(member.Id,
                 (UpdateHouseholdMemberRecognition)dialogActionResult.Data!, _cts.Token);
 

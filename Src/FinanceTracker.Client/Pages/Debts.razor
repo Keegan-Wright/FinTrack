@@ -231,7 +231,7 @@
     {
         try
         {
-            SetLoadingState(true, "Saving…");
+            SetLoadingState(true, "Saving");
             await change();
             DebtList = await DebtsService.GetDebtsAsync(_cts.Token).ToListAsync(_cts.Token);
             Snackbar.Add(done, Severity.Success);

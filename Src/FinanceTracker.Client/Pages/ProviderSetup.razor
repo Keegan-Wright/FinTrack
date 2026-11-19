@@ -173,7 +173,7 @@
     /// <param name="connection">The connection.</param>
     private async Task StartRenewalAsync(BankConnectionSummary connection)
     {
-        SetLoadingState(true, $"Asking {connection.Name} for a renewal link…");
+        SetLoadingState(true, $"Asking {connection.Name} for a renewal link");
         try
         {
             _renewalUrl = await OpenBankingService.GetRenewalUrlAsync(connection.ConnectionId, _cts.Token);
@@ -295,7 +295,7 @@
 
     async Task AddProviderAsync()
     {
-        SetLoadingState(true, "Shaking hands with your bank…");
+        SetLoadingState(true, "Shaking hands with your bank");
 
         var requestModel = new AddVendor
         {
