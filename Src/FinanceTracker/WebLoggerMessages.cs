@@ -104,6 +104,12 @@ public static partial class WebLoggerMessages
         "codes")]
     public static partial void LogTwoFactorTurnedOffByAdmin(this ILogger logger, Guid adminId, Guid userId);
 
+    [LoggerMessage(LogLevel.Information, "User {userId} made personal access token {tokenId}")]
+    public static partial void LogTokenCreated(this ILogger logger, Guid userId, Guid tokenId);
+
+    [LoggerMessage(LogLevel.Information, "User {userId} revoked personal access token {tokenId}")]
+    public static partial void LogTokenRevoked(this ILogger logger, Guid userId, Guid tokenId);
+
     [LoggerMessage(LogLevel.Warning, "A personal access token {lookupId} was refused, {reason}")]
     public static partial void LogTokenRefused(this ILogger logger, string lookupId, string reason);
 

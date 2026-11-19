@@ -1,0 +1,221 @@
+@page "/ApiTokens"
+@* The user's personal access tokens (ITokensService), which scripts and Home Assistant read their data with. Making
+   one asks for their password and shows it once. Revoking one stops it straight away. *@
+@using System.Globalization
+@using FinanceTracker.Client.Components.Tokens
+@using FinanceTracker.Contracts.Tokens
+@using Microsoft.AspNetCore.Authorization
+@inherits PageComponent
+
+@attribute [Authorize]
+@inject ITokensService TokensService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>FinTrack - API tokens</PageTitle>
+<PageHeader Title="API tokens" Subtitle="Let scripts and Home Assistant read your data"/>
+
+<Section>
+    <div class="ft-stack">
+        <MudText Typo="Typo.body2">
+            A token lets a script or Home Assistant read your accounts, transactions, budgets and the like, without
+            signing in. It can never change anything, and it can't see your profile or settings.
+        </MudText>
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+            Treat one like a password. You're emailed when one is made or revoked.
+        </MudText>
+
+        @if (List is { Allowed: false })
+        {
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                Tokens are for accounts that sign in with a password here. Yours signs in through the identity
+                provider.
+            </MudText>
+        }
+        else if (List is not null)
+        {
+            @if (List.Tokens.Count == 0)
+            {
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">You haven't made any tokens.</MudText>
+            }
+            else
+            {
+                <div class="ft-list">
+                    @foreach (TokenSummary token in List.Tokens)
+                    {
+                        <div class="ft-list__row ft-tokens__row">
+                            <MudIcon Icon="@Icons.Material.Outlined.Key" aria-hidden="true"/>
+                            <div class="ft-list__main">
+                                <div class="ft-tokens__name">
+                                    <MudText Typo="Typo.body2" Class="ft-tokens__title">@token.Name</MudText>
+                                    @if (token.Expired)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">Expired
+                                        </MudChip>
+                                    }
+                                    else if (token.ExpiresAt is null)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                                                 Color="Color.Warning">Never expires
+                                        </MudChip>
+                                    }
+                                </div>
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">@DetailsText(token)</MudText>
+                            </div>
+                            <MudButton Variant="Variant.Text" Color="Color.Warning" Size="Size.Small"
+                                       StartIcon="@Icons.Material.Outlined.Block"
+                                       aria-label="@($"Revoke {token.Name}")"
+                                       OnClick="@(() => RevokeAsync(token))">Revoke
+                            </MudButton>
+                        </div>
+                    }
+                </div>
+            }
+
+            <div>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Add"
+                           OnClick="@CreateAsync">New token
+                </MudButton>
+            </div>
+        }
+    </div>
+</Section>
+
+@code {
+
+    /// <summary>
+    /// The tokens, loaded once, see <see cref="PageComponent.LoadOnceAsync{T}"/>.
+    /// </summary>
+    [PersistentState]
+    public TokenList? List { get; set; }
+
+    /// <inheritdoc/>
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        List = await LoadOnceAsync(List, "Loading your tokens", LoadAsync);
+    }
+
+    /// <summary>
+    /// When the token was made, when it expires, and when it was last used.
+    /// </summary>
+    /// <param name="token">The token.</param>
+    private static string DetailsText(TokenSummary token)
+    {
+        List<string> parts = [$"Made {Day(token.CreatedAt)}"];
+        if (token.ExpiresAt is { } expires)
+        {
+            string verb = token.Expired ? "Expired" : "Expires";
+            parts.Add($"{verb} {Day(expires)}");
+        }
+
+        parts.Add(token.LastUsedAt is { } used ? $"Last used {Day(used)}" : "Never used");
+        return string.Join(" · ", parts);
+    }
+
+    /// <summary>
+    /// <paramref name="utc"/>'s day where the user is.
+    /// </summary>
+    /// <param name="utc">A time in UTC.</param>
+    private static string Day(DateTime utc) =>
+        DateTime.SpecifyKind(utc, DateTimeKind.Utc).ToLocalTime().ToString("d MMM yyyy", CultureInfo.CurrentCulture);
+
+    /// <summary>
+    /// Asks what the token is for, how long it lasts and the password, then makes it and shows it once.
+    /// </summary>
+    internal async Task CreateAsync()
+    {
+        IDialogReference dialog = await DialogService.ShowAsync<NewTokenDialog>("New API token");
+        DialogResult? result = await dialog.Result;
+        if (result is null || result.Canceled)
+        {
+            return;
+        }
+
+        CreatedToken? created = null;
+        SetLoadingState(true, "Making your token");
+        try
+        {
+            created = await TokensService.CreateAsync((CreateToken)result.Data!, _cts.Token);
+            List = await LoadAsync(_cts.Token);
+        }
+        catch (Exception) when (!_cts.IsCancellationRequested)
+        {
+            Snackbar.Add("Couldn't make the token, try again", Severity.Error);
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+
+        await ShowCreatedAsync(created);
+    }
+
+    /// <summary>
+    /// Shows a token just made, or says why it wasn't.
+    /// </summary>
+    /// <param name="created">How making it went, null when it failed or the account has no password.</param>
+    private async Task ShowCreatedAsync(CreatedToken? created)
+    {
+        if (created is null)
+        {
+            return;
+        }
+
+        if (!created.Succeeded)
+        {
+            Snackbar.Add(created.Errors[0], Severity.Error);
+            return;
+        }
+
+        DialogParameters<TokenCreatedDialog> parameters = new() { { x => x.Token, created.Token! } };
+        DialogOptions options = new() { BackdropClick = false };
+        await DialogService.ShowAsync<TokenCreatedDialog>("Your new token", parameters, options);
+    }
+
+    /// <summary>
+    /// Revokes a token once the user confirms.
+    /// </summary>
+    /// <param name="token">The token.</param>
+    internal async Task RevokeAsync(TokenSummary token)
+    {
+        bool? confirmed = await DialogService.ShowMessageBoxAsync($"Revoke {token.Name}?",
+            "It stops working straight away. Anything using it will need a new one.",
+            yesText: "Revoke", cancelText: "Cancel");
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        SetLoadingState(true, "Revoking the token");
+        try
+        {
+            await TokensService.RevokeAsync(token.Id, _cts.Token);
+            List = await LoadAsync(_cts.Token);
+            Snackbar.Add("Token revoked", Severity.Success);
+        }
+        catch (Exception) when (!_cts.IsCancellationRequested)
+        {
+            Snackbar.Add("Couldn't revoke the token, try again", Severity.Error);
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
+    /// <summary>
+    /// The user's tokens, and whether they can have any.
+    /// </summary>
+    private async Task<TokenList> LoadAsync(CancellationToken cancellationToken)
+    {
+        IReadOnlyList<TokenSummary>? tokens = await TokensService.GetTokensAsync(cancellationToken);
+        if (tokens is null)
+        {
+            return new TokenList { Allowed = false };
+        }
+
+        return new TokenList { Allowed = true, Tokens = [.. tokens] };
+    }
+
+}

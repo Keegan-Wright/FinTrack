@@ -49,4 +49,18 @@ public interface ISecurityEmails
     /// </summary>
     /// <param name="user">The user.</param>
     Task PasskeysRemovedByAdminAsync(FinanceTrackerUser user);
+
+    /// <summary>
+    /// A personal access token called <paramref name="name"/> was made for <paramref name="user"/>.
+    /// </summary>
+    /// <param name="user">The user.</param>
+    /// <param name="name">The token's name.</param>
+    Task TokenCreatedAsync(FinanceTrackerUser user, string name);
+
+    /// <summary>
+    /// <paramref name="user"/>'s personal access token called <paramref name="name"/> was revoked.
+    /// </summary>
+    /// <param name="user">The user.</param>
+    /// <param name="name">The token's name.</param>
+    Task TokenRevokedAsync(FinanceTrackerUser user, string name);
 }

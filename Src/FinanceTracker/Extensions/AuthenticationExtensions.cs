@@ -307,6 +307,7 @@ public static class AuthenticationExtensions
             services.AddScoped<IEmailChange, EmailChange>();
             services.AddScoped<IProfileService, ProfileService>();
             services.AddScoped<IPasskeyService, PasskeyService>();
+            services.AddScoped<ITokensService, TokensService>();
             services.AddScoped<IPasswordReset, PasswordReset>();
             services.AddScoped<IUsersService, UsersService>();
             services.AddScoped<ISecurityEmails, SecurityEmails>();

@@ -107,6 +107,11 @@ public static class ApiRoutes
     public const string Passkeys = "api/profile/passkeys";
 
     /// <summary>
+    /// <see cref="Services.ITokensService"/>, which a token can't reach.
+    /// </summary>
+    public const string Tokens = "api/tokens";
+
+    /// <summary>
     /// <see cref="Services.IClientErrorsService"/>.
     /// </summary>
     public const string ClientErrors = "api/client-errors";

@@ -167,4 +167,34 @@ public class AccountEmailsTests
         // Assert
         await Assert.That(email.Html).DoesNotContain("<b>Laptop</b>");
     }
+
+    [Test]
+    public async Task TokenCreated_NamesItLinksToTheTokensAndSaysItOnlyReads()
+    {
+        // Act
+        MailMessage email = await TestEmails.Account(PublicUrl).TokenCreatedAsync("sam@example.test", "Home Assistant");
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(email.Subject).IsEqualTo(AccountEmails.TokenCreatedSubject);
+            await Assert.That(email.Text).Contains("\"Home Assistant\" was made");
+            await Assert.That(email.Text).Contains("read your data, but not change it");
+            await Assert.That(email.Text).Contains("https://fintrack.example.test/money/ApiTokens");
+        }
+    }
+
+    [Test]
+    public async Task TokenRevoked_NamesIt()
+    {
+        // Act
+        MailMessage email = await TestEmails.Account(PublicUrl).TokenRevokedAsync("sam@example.test", "Home Assistant");
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(email.Subject).IsEqualTo(AccountEmails.TokenRevokedSubject);
+            await Assert.That(email.Text).Contains("\"Home Assistant\" was revoked");
+        }
+    }
 }

@@ -46,6 +46,7 @@ public static class ApiEndpoints
                 .MapReportEndpoints()
                 .MapRuleEndpoints()
                 .MapSavingsGoalEndpoints()
+                .MapTokenEndpoints()
                 .MapSharingEndpoints()
                 .MapNetWorthEndpoints()
                 .MapTransactionEndpoints()

@@ -67,4 +67,18 @@ public interface IAccountEmails
     /// </summary>
     /// <param name="to">Who it's sent to.</param>
     Task<MailMessage> PasskeysRemovedByAdminAsync(string to);
+
+    /// <summary>
+    /// Tells the user a personal access token was made for their account.
+    /// </summary>
+    /// <param name="to">Who it's sent to.</param>
+    /// <param name="name">The token's name.</param>
+    Task<MailMessage> TokenCreatedAsync(string to, string name);
+
+    /// <summary>
+    /// Tells the user one of their personal access tokens was revoked.
+    /// </summary>
+    /// <param name="to">Who it's sent to.</param>
+    /// <param name="name">The token's name.</param>
+    Task<MailMessage> TokenRevokedAsync(string to, string name);
 }
