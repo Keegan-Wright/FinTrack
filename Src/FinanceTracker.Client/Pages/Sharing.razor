@@ -305,7 +305,7 @@
         _inviteError = null;
         try
         {
-            SetLoadingState(true, $"Inviting {who}…");
+            SetLoadingState(true, $"Inviting {who}");
             InviteOutcome outcome = await SharingService.InviteAsync(new InviteToShare { Who = who }, _cts.Token);
             if (outcome.Refusal is { } refusal)
             {
@@ -413,7 +413,7 @@
     {
         try
         {
-            SetLoadingState(true, $"Updating your link with {link.Name}…");
+            SetLoadingState(true, $"Updating your link with {link.Name}");
             bool found = await action(link.Id, _cts.Token);
             Links = await LoadLinksAsync(_cts.Token);
             if (found)

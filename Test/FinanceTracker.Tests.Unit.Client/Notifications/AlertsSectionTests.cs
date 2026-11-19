@@ -1,3 +1,4 @@
+using FinanceTracker.Client;
 using Bunit;
 using FinanceTracker.Client.Components.Notifications;
 using FinanceTracker.Contracts.Notifications;
@@ -141,7 +142,7 @@ public class AlertsSectionTests : ComponentTestBase
     }
 
     private IRenderedComponent<AlertsSection> RenderSection(NotificationSettings settings) =>
-        Render<AlertsSection>(p => p
+        Render<AlertsSection>(p => p.AddCascadingValue(new ApplicationState())
             .Add(x => x.Settings, settings)
             .Add(x => x.SettingsChanged, changed => _changed = changed));
 

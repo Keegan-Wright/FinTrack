@@ -416,7 +416,7 @@ else
 
         try
         {
-            SetLoadingState(true, "Applying it to your transactions…");
+            SetLoadingState(true, "Applying it to your transactions");
             int changed = await RulesService.ApplyRuleToExistingAsync(saved.Id, _cts.Token);
             Snackbar.Add(AppliedText(saved.Name, changed), Severity.Success);
             NavigationManager.NavigateTo("Rules");
@@ -455,7 +455,7 @@ else
     {
         try
         {
-            SetLoadingState(true, "Saving the rule…");
+            SetLoadingState(true, "Saving the rule");
             if (Id is { } id)
             {
                 return await RulesService.UpdateRuleAsync(id, Draft!, _cts.Token);
@@ -525,7 +525,7 @@ else
 
         try
         {
-            SetLoadingState(true, "Deleting the rule…");
+            SetLoadingState(true, "Deleting the rule");
             await RulesService.DeleteRuleAsync(id, _cts.Token);
             Snackbar.Add($"{Draft.Name} deleted", Severity.Success);
             NavigationManager.NavigateTo("Rules");

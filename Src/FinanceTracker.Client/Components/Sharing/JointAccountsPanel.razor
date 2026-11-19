@@ -21,7 +21,7 @@
                 @if (Shares.JointSuggestions.Count > 1)
                 {
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
-                               Disabled="@(Disabled || Busy)"
+                               Disabled="@Disabled"
                                OnClick="@(() => OnMerge.InvokeAsync(Shares.JointSuggestions))">Merge all
                     </MudButton>
                 }
@@ -37,7 +37,7 @@
                             </MudText>
                         </div>
                         <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
-                                   Disabled="@(Disabled || Busy)"
+                                   Disabled="@Disabled"
                                    OnClick="@(() => OnMerge.InvokeAsync([suggestion]))">Merge
                         </MudButton>
                     </div>
@@ -61,7 +61,7 @@
                             </MudText>
                         </div>
                         <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
-                                   Disabled="@(Disabled || Busy)"
+                                   Disabled="@Disabled"
                                    OnClick="@(() => OnSplit.InvokeAsync(joint))">Split
                         </MudButton>
                     </div>
@@ -90,10 +90,6 @@
     /// </summary>
     [Parameter] public bool Disabled { get; set; }
 
-    /// <summary>
-    /// Whether a merge or split is under way.
-    /// </summary>
-    [Parameter] public bool Busy { get; set; }
 
     /// <summary>
     /// Suggestions to merge, one or all of them.

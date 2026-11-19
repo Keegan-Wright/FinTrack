@@ -8,7 +8,7 @@
 @if (_view is { HasSharedAccounts: true } view)
 {
     <MudToggleGroup T="bool" Value="@view.IncludesShared" ValueChanged="@ChangeAsync" Size="Size.Small"
-                    Color="Color.Primary" Outlined="true" Disabled="@_saving"
+                    Color="Color.Primary" Outlined="true"
                     aria-label="Show accounts shared with you">
         <MudToggleItem Value="true" Text="Everyone"/>
         <MudToggleItem Value="false" Text="Just mine"/>
@@ -23,7 +23,6 @@
     [CascadingParameter] private ApplicationState? ApplicationState { get; set; }
 
     private SharingView? _view;
-    private bool _saving;
 
     /// <inheritdoc/>
     protected override async Task OnInitializedAsync()
@@ -45,7 +44,7 @@
     /// <param name="includeShared">Whether accounts shared with them show, Everyone.</param>
     internal async Task ChangeAsync(bool includeShared)
     {
-        _saving = true;
+        ApplicationState?.ShowLoading("Changing what's shown");
         try
         {
             _view = await SharingService.ChangeViewAsync(new ChangeSharingView { IncludeShared = includeShared },
@@ -61,7 +60,7 @@
         }
         finally
         {
-            _saving = false;
+            ApplicationState?.HideLoading();
         }
     }
 

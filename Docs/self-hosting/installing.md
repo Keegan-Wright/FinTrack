@@ -26,7 +26,8 @@ FinTrack waits for the database's health check to pass before starting, then set
 ## Your account
 
 Open FinTrack and register. The first person to register becomes the admin, who can manage other users from the Users
-page.
+page. With single sign-on, admins come from your provider's `admins` group instead, see
+[Single sign-on](single-sign-on.md#admins).
 
 Anyone who can reach FinTrack can register. To leave sign in to your identity provider instead, see
 [Single sign-on](single-sign-on.md).

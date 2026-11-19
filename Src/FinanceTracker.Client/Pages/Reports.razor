@@ -38,7 +38,7 @@
     <FileActions>
         <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.PictureAsPdf"
                    Disabled="@(_loading || _exporting || !HasTransactions)" OnClick="@ExportAsync">
-            @(_exporting ? "Exporting…" : "Export PDF")
+            @(_exporting ? "Exporting" : "Export PDF")
         </MudButton>
     </FileActions>
     <ChildContent>
@@ -158,9 +158,9 @@
     /// </summary>
     private string LoadingMessage => _breakdown switch
     {
-        ReportBreakdown.ByAccount => "Tallying up each account…",
-        ReportBreakdown.ByTag => "Sorting your spending into its tags…",
-        _ => "Crunching the numbers…"
+        ReportBreakdown.ByAccount => "Tallying up each account",
+        ReportBreakdown.ByTag => "Sorting your spending into its tags",
+        _ => "Crunching the numbers"
     };
 
     /// <inheritdoc/>

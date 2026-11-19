@@ -279,7 +279,7 @@
     {
         try
         {
-            SetLoadingState(true, "Saving…");
+            SetLoadingState(true, "Saving");
             Pay = await change();
             DateOnly month = CurrentMonth;
             Overview = await BudgetsService.GetMonthAsync(month.Year, month.Month, _cts.Token);
@@ -389,7 +389,7 @@
     {
         try
         {
-            SetLoadingState(true, "Saving…");
+            SetLoadingState(true, "Saving");
             await change();
             DateOnly month = Month;
             Overview = await BudgetsService.GetMonthAsync(month.Year, month.Month, _cts.Token);

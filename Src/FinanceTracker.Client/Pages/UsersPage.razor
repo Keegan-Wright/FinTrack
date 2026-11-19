@@ -1,6 +1,7 @@
 @page "/Users"
 @* Everyone who can sign in (IUsersService), for admins: how each signs in and whether their email is confirmed, a
-   one-time reset link for one who's forgotten their password and can't be emailed one, and locking one out. *@
+   one-time reset link for one who's forgotten their password and can't be emailed one, locking one out, and who else
+   is an admin. *@
 @using FinanceTracker.Client.Components.Users
 @using FinanceTracker.Contracts.Auth
 @using FinanceTracker.Contracts.Users
@@ -11,6 +12,7 @@
 @inject IUsersService UsersService
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
+@inject NavigationManager Navigation
 
 <PageTitle>FinTrack - Users</PageTitle>
 <PageHeader Title="Users" Subtitle="Everyone who can sign in to this FinTrack"/>
@@ -23,6 +25,10 @@
         </MudText>
         <MudText Typo="Typo.body2" Class="mud-text-secondary">
             Locking someone signs them out and stops them signing in until you unlock them.
+        </MudText>
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+            Admins see this page and Automation. Admins can't be locked, remove their admin access first. Someone who
+            signs in through the identity provider is an admin when they're in its admins group.
         </MudText>
 
         @if (Items is null or { Count: 0 })
@@ -42,7 +48,7 @@
                                 @if (user.IsAdmin)
                                 {
                                     <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
-                                             Color="Color.Primary">Admin
+                                             Color="Color.Primary">@AdminText(user)
                                     </MudChip>
                                 }
                                 @if (user.IsYou)
@@ -65,7 +71,7 @@
                             @if (user.HasPassword)
                             {
                                 <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
-                                           StartIcon="@Icons.Material.Outlined.Key" Disabled="@_busy"
+                                           StartIcon="@Icons.Material.Outlined.Key"
                                            aria-label="@($"Make a reset link for {user.Username}")"
                                            OnClick="@(() => MakeResetLinkAsync(user))">Reset link
                                 </MudButton>
@@ -73,17 +79,34 @@
                             @if (user.IsLocked)
                             {
                                 <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
-                                           StartIcon="@Icons.Material.Outlined.LockOpen" Disabled="@_busy"
+                                           StartIcon="@Icons.Material.Outlined.LockOpen"
                                            aria-label="@($"Unlock {user.Username}")"
                                            OnClick="@(() => UnlockAsync(user))">Unlock
                                 </MudButton>
                             }
-                            else if (!user.IsYou)
+                            else if (!user.IsAdmin)
                             {
                                 <MudButton Variant="Variant.Text" Color="Color.Warning" Size="Size.Small"
-                                           StartIcon="@Icons.Material.Outlined.Lock" Disabled="@_busy"
+                                           StartIcon="@Icons.Material.Outlined.Lock"
                                            aria-label="@($"Lock {user.Username}")"
                                            OnClick="@(() => LockAsync(user))">Lock
+                                </MudButton>
+                            }
+                            @* The identity provider's admins group decides for those who sign in through it *@
+                            @if (!user.UsesIdentityProvider && user.IsAdmin)
+                            {
+                                <MudButton Variant="Variant.Text" Color="Color.Warning" Size="Size.Small"
+                                           StartIcon="@Icons.Material.Outlined.RemoveModerator"
+                                           aria-label="@($"Remove admin access for {user.Name}")"
+                                           OnClick="@(() => RemoveAdminAsync(user))">Remove admin access
+                                </MudButton>
+                            }
+                            else if (!user.UsesIdentityProvider && !user.IsLocked)
+                            {
+                                <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                                           StartIcon="@Icons.Material.Outlined.AddModerator"
+                                           aria-label="@($"Add admin access for {user.Name}")"
+                                           OnClick="@(() => GrantAdminAsync(user))">Add admin access
                                 </MudButton>
                             }
                         </div>
@@ -101,8 +124,6 @@
     /// </summary>
     [PersistentState]
     public List<UserSummary>? Items { get; set; }
-
-    private bool _busy;
 
     /// <inheritdoc/>
     protected override async Task OnInitializedAsync()
@@ -132,6 +153,12 @@
     }
 
     /// <summary>
+    /// The admin chip's text, saying when the identity provider's group gives the role.
+    /// </summary>
+    /// <param name="user">An admin.</param>
+    private static string AdminText(UserSummary user) => user.UsesIdentityProvider ? "Admin from SSO group" : "Admin";
+
+    /// <summary>
     /// How the user signs in.
     /// </summary>
     /// <param name="user">The user.</param>
@@ -156,7 +183,7 @@
     /// <param name="user">The user.</param>
     internal async Task MakeResetLinkAsync(UserSummary user)
     {
-        _busy = true;
+        SetLoadingState(true, "Making a reset link");
         try
         {
             ResetLink? link = await UsersService.CreateResetLinkAsync(user.Id, _cts.Token);
@@ -180,7 +207,7 @@
         }
         finally
         {
-            _busy = false;
+            SetLoadingState(false);
         }
     }
 
@@ -203,9 +230,106 @@
             {
                 if (!await UsersService.LockAsync(user.Id, _cts.Token))
                 {
-                    Snackbar.Add("You can't lock yourself out", Severity.Warning);
+                    Snackbar.Add($"{user.Name} is an admin, remove their admin access first", Severity.Warning);
                 }
             }, $"Couldn't lock {user.Username}, try again");
+    }
+
+    /// <summary>
+    /// Makes a user an admin once the admin confirms.
+    /// </summary>
+    /// <param name="user">The user.</param>
+    internal async Task GrantAdminAsync(UserSummary user)
+    {
+        bool? confirmed = await DialogService.ShowMessageBoxAsync($"Add admin access for {user.Name}?",
+            "Within a minute they can see everyone who signs in, lock them, make reset links and run Automation.",
+            yesText: "Add admin access", cancelText: "Cancel");
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        await ChangeAsync(async () => NotifyIfRefused(user, await UsersService.GrantAdminAsync(user.Id, _cts.Token)),
+            $"Couldn't add admin access for {user.Name}, try again");
+    }
+
+    /// <summary>
+    /// Takes a user's admin role once the admin confirms. Taking their own leaves this page for the dashboard.
+    /// </summary>
+    /// <param name="user">The user.</param>
+    internal async Task RemoveAdminAsync(UserSummary user)
+    {
+        string title = $"Remove admin access for {user.Name}?";
+        string message = "Within a minute they lose this page and Automation.";
+        string yes = "Remove admin access";
+        if (user.IsYou)
+        {
+            title = "Remove your admin access?";
+            message = "You'll lose access to this page and Automation straight away.";
+            yes = "Remove my access";
+        }
+
+        bool? confirmed = await DialogService.ShowMessageBoxAsync(title, message, yesText: yes, cancelText: "Cancel");
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        if (user.IsYou)
+        {
+            await RemoveOwnAdminAsync(user);
+            return;
+        }
+
+        await ChangeAsync(async () => NotifyIfRefused(user, await UsersService.RemoveAdminAsync(user.Id, _cts.Token)),
+            $"Couldn't remove admin access for {user.Name}, try again");
+    }
+
+    /// <summary>
+    /// Takes the admin's own role, then leaves for the dashboard, a fresh load so the menu drops the admin pages.
+    /// </summary>
+    /// <param name="you">The admin looking.</param>
+    private async Task RemoveOwnAdminAsync(UserSummary you)
+    {
+        SetLoadingState(true, "Saving");
+        try
+        {
+            AdminChange change = await UsersService.RemoveAdminAsync(you.Id, _cts.Token);
+            if (change == AdminChange.Changed)
+            {
+                Navigation.NavigateTo("/", forceLoad: true);
+                return;
+            }
+
+            NotifyIfRefused(you, change);
+        }
+        catch (Exception) when (!_cts.IsCancellationRequested)
+        {
+            Snackbar.Add("Couldn't remove your admin access, try again", Severity.Error);
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
+    /// <summary>
+    /// Says why giving or taking the admin role was refused, nothing when it wasn't.
+    /// </summary>
+    /// <param name="user">The user.</param>
+    /// <param name="change">How it went.</param>
+    private void NotifyIfRefused(UserSummary user, AdminChange change)
+    {
+        if (change == AdminChange.FromIdentityProvider)
+        {
+            Snackbar.Add($"{user.Name} signs in through the identity provider, its admins group decides",
+                Severity.Warning);
+        }
+
+        if (change == AdminChange.LastAdmin)
+        {
+            Snackbar.Add("You're the only admin, make someone else an admin first", Severity.Warning);
+        }
     }
 
     /// <summary>
@@ -223,7 +347,7 @@
     /// <param name="failed">What's said when it fails.</param>
     private async Task ChangeAsync(Func<Task> change, string failed)
     {
-        _busy = true;
+        SetLoadingState(true, "Saving");
         try
         {
             await change();
@@ -235,7 +359,7 @@
         }
         finally
         {
-            _busy = false;
+            SetLoadingState(false);
         }
     }
 

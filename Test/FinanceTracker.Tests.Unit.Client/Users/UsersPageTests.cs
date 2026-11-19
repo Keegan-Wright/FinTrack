@@ -1,4 +1,5 @@
 using Bunit;
+using Bunit.TestDoubles;
 using FinanceTracker.Client;
 using FinanceTracker.Client.Pages;
 using FinanceTracker.Contracts.Services;
@@ -13,20 +14,39 @@ public class UsersPageTests : ComponentTestBase
 {
     private static readonly UserSummary Local = new()
     {
-        Id = Guid.NewGuid(), Username = "sam", Email = "sam@example.test", EmailConfirmed = true,
+        Id = Guid.NewGuid(), Username = "sam", Name = "Sam Taylor", Email = "sam@example.test", EmailConfirmed = true,
         HasPassword = true, UsesIdentityProvider = false, IsAdmin = true, IsLocked = false, IsYou = true
     };
 
     private static readonly UserSummary Provider = new()
     {
-        Id = Guid.NewGuid(), Username = "alex", Email = "alex@example.test", EmailConfirmed = false,
+        Id = Guid.NewGuid(), Username = "alex", Name = "Alex Smith",
+        Email = "alex@example.test", EmailConfirmed = false,
         HasPassword = false, UsesIdentityProvider = true, IsAdmin = false, IsLocked = false, IsYou = false
     };
 
     private static readonly UserSummary LockedProvider = new()
     {
-        Id = Provider.Id, Username = "alex", Email = "alex@example.test", EmailConfirmed = false,
+        Id = Provider.Id, Username = "alex", Name = "Alex Smith", Email = "alex@example.test", EmailConfirmed = false,
         HasPassword = false, UsesIdentityProvider = true, IsAdmin = false, IsLocked = true, IsYou = false
+    };
+
+    private static readonly UserSummary Jo = new()
+    {
+        Id = Guid.NewGuid(), Username = "jo", Name = "Jo Brown", Email = "jo@example.test", EmailConfirmed = true,
+        HasPassword = true, UsesIdentityProvider = false, IsAdmin = false, IsLocked = false, IsYou = false
+    };
+
+    private static readonly UserSummary JoAsAdmin = new()
+    {
+        Id = Jo.Id, Username = "jo", Name = "Jo Brown", Email = "jo@example.test", EmailConfirmed = true,
+        HasPassword = true, UsesIdentityProvider = false, IsAdmin = true, IsLocked = false, IsYou = false
+    };
+
+    private static readonly UserSummary ProviderAdmin = new()
+    {
+        Id = Guid.NewGuid(), Username = "kit", Name = "Kit Green", Email = "kit@example.test", EmailConfirmed = true,
+        HasPassword = false, UsesIdentityProvider = true, IsAdmin = true, IsLocked = false, IsYou = false
     };
 
     private readonly IUsersService _usersService = Substitute.For<IUsersService>();
@@ -42,7 +62,7 @@ public class UsersPageTests : ComponentTestBase
     }
 
     [Test]
-    public async Task Render_SaysHowEachSignsInWithAResetLinkOnlyForAPasswordAndNoLockForYou()
+    public async Task Render_SaysHowEachSignsInWithAResetLinkOnlyForAPasswordAndNoLockForAnAdmin()
     {
         // Act
         IRenderedComponent<UsersPage> cut = RenderPage();
@@ -57,7 +77,7 @@ public class UsersPageTests : ComponentTestBase
             await Assert.That(local.TextContent).Contains("Signs in with a password");
             await Assert.That(local.TextContent).Contains("Admin");
             await Assert.That(local.TextContent).Contains("You");
-            await Assert.That(ButtonTexts(local)).IsEquivalentTo(["Reset link"]);
+            await Assert.That(ButtonTexts(local)).IsEquivalentTo(["Reset link", "Remove admin access"]);
             await Assert.That(provider.TextContent).Contains("alex@example.test · Not confirmed");
             await Assert.That(provider.TextContent).Contains("Signs in through the identity provider");
             await Assert.That(ButtonTexts(provider)).IsEquivalentTo(["Lock"]);
@@ -154,6 +174,69 @@ public class UsersPageTests : ComponentTestBase
             await _usersService.Received(1).UnlockAsync(Provider.Id, Arg.Any<CancellationToken>());
             await Assert.That(ButtonTexts(Row(cut, "alex"))).IsEquivalentTo(["Lock"]);
         }
+    }
+
+    [Test]
+    public async Task Render_AdminsAndWhoTheGroupDecidesFor_HaveNoLockOrAdminButtons()
+    {
+        // Arrange
+        _usersService.GetUsersAsync(Arg.Any<CancellationToken>())
+            .Returns(new[] { Jo, ProviderAdmin, Local }.ToAsyncEnumerable());
+
+        // Act
+        IRenderedComponent<UsersPage> cut = RenderPage();
+
+        // Assert
+        cut.WaitForState(() => cut.FindAll(".ft-users__row").Count == 3);
+        using (Assert.Multiple())
+        {
+            await Assert.That(ButtonTexts(Row(cut, "jo"))).IsEquivalentTo(["Reset link", "Lock", "Add admin access"]);
+            await Assert.That(ButtonTexts(Row(cut, "kit"))).IsEmpty();
+            await Assert.That(Row(cut, "kit").TextContent).Contains("Admin from SSO group");
+        }
+    }
+
+    [Test]
+    public async Task MakeAdmin_Confirmed_MakesThemAnAdmin()
+    {
+        // Arrange
+        _usersService.GetUsersAsync(Arg.Any<CancellationToken>()).Returns(
+            new[] { Jo, Local }.ToAsyncEnumerable(), new[] { JoAsAdmin, Local }.ToAsyncEnumerable());
+        _usersService.GrantAdminAsync(Jo.Id, Arg.Any<CancellationToken>()).Returns(AdminChange.Changed);
+        IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
+        IRenderedComponent<UsersPage> cut = RenderPage();
+        cut.WaitForState(() => cut.FindAll(".ft-users__row").Count == 2);
+
+        // Act
+        Task granting = RowButton(cut, "jo", "Add admin access").ClickAsync(new());
+        await RowMenu.ConfirmAsync(dialogs, "Add admin access");
+        await granting.WaitAsync(TestTimeouts.Wait);
+
+        // Assert
+        cut.WaitForState(() => ButtonTexts(Row(cut, "jo")).Contains("Remove admin access"));
+        await _usersService.Received(1).GrantAdminAsync(Jo.Id, Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task RemoveAdmin_TheirOwnAsTheLastAdmin_SaysToMakeSomeoneElseFirst()
+    {
+        // Arrange
+        _usersService.RemoveAdminAsync(Local.Id, Arg.Any<CancellationToken>()).Returns(AdminChange.LastAdmin);
+        IRenderedComponent<MudSnackbarProvider> snackbars = Render<MudSnackbarProvider>();
+        IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
+        IRenderedComponent<UsersPage> cut = RenderPage();
+        cut.WaitForState(() => cut.FindAll(".ft-users__row").Count == 2);
+
+        // Act
+        Task removing = RowButton(cut, "sam", "Remove admin access").ClickAsync(new());
+        await RowMenu.ConfirmAsync(dialogs, "Remove my access");
+        await removing.WaitAsync(TestTimeouts.Wait);
+
+        // Assert
+        snackbars.WaitForState(() =>
+            snackbars.Markup.Contains("You're the only admin, make someone else an admin first",
+                StringComparison.Ordinal));
+        await Assert.That(Services.GetRequiredService<BunitNavigationManager>().History).IsEmpty();
     }
 
     private IRenderedComponent<UsersPage> RenderPage() =>

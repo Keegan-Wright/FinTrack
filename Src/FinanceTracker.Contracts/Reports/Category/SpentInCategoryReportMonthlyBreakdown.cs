@@ -8,10 +8,10 @@ namespace FinanceTracker.Contracts.Reports.Category;
 public class SpentInCategoryReportMonthlyBreakdown : SharedReport
 {
     /// <summary>
-    /// The month's name in the server's culture, e.g. <c>January</c>.
+    /// The month of the year the period is named after, 1 to 12.
     /// </summary>
-    [Description("Month name, in the server's culture, for which the spending breakdown is provided")]
-    public required string Month { get; init; }
+    [Description("The month of the year the period is named after, 1 to 12")]
+    public required int MonthNumber { get; init; }
 
     /// <summary>
     /// The period's first day: the pay day when the user's months run from pay to pay, otherwise the month's first

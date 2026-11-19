@@ -39,7 +39,7 @@
                         <MudButton Variant="Variant.Filled" Color="Color.Primary"
                                    StartIcon="@Icons.Material.Outlined.PictureAsPdf"
                                    Disabled="@_downloadingStatement" OnClick="@DownloadStatementAsync">
-                            @(_downloadingStatement ? "Preparing your statement…" : "Download statement")
+                            @(_downloadingStatement ? "Preparing your statement" : "Download statement")
                         </MudButton>
                     </div>
                 }
@@ -73,7 +73,7 @@
                     <MudButton Variant="Variant.Filled" Color="Color.Primary"
                                StartIcon="@Icons.Material.Outlined.Download" Disabled="@_downloadingBackup"
                                OnClick="@DownloadBackupAsync">
-                        @(_downloadingBackup ? "Preparing your backup…" : "Download backup")
+                        @(_downloadingBackup ? "Preparing your backup" : "Download backup")
                     </MudButton>
                 </div>
             </div>

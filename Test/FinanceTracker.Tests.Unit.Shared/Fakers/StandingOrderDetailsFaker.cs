@@ -21,7 +21,7 @@ public sealed class StandingOrderDetailsFaker : Faker<StandingOrderDetails>
                 amount,
                 firstPayment,
                 amount,
-                f.Date.Future(2, DateTime.UtcNow),
+                default,
                 amount,
                 DateTime.UtcNow);
         });

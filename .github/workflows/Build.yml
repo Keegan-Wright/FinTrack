@@ -55,11 +55,25 @@ jobs:
       - name: Restore workloads
         run: dotnet workload restore
 
+      - name: Restore tools
+        run: dotnet tool restore
+
+      # Each project connects to one coverage collector, which writes a single file when it shuts down
       - name: Unit Tests
         run: |
+          dotnet dotnet-coverage collect --session-id unit --server-mode --background \
+            --settings Test/CodeCoverage.xml --output-format cobertura --output coverage/unit.cobertura.xml
           for project in Client Domain FinanceTracker Infrastructure; do
-            dotnet test --project Test/FinanceTracker.Tests.Unit.$project -c Release || exit 1
+            dotnet dotnet-coverage connect --nologo unit \
+              dotnet test --project Test/FinanceTracker.Tests.Unit.$project -c Release || exit 1
           done
+          dotnet dotnet-coverage shutdown unit
+
+      - name: Upload Coverage
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: Coverage-Unit
+          path: coverage/unit.cobertura.xml
 
       - name: Upload HTML Test Report
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -121,10 +135,26 @@ jobs:
         if: matrix.browser
         run: pwsh Test/FinanceTracker.Tests.Integration/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
 
+      - name: Restore tools
+        run: dotnet tool restore
+
+      # The app Aspire starts inherits the coverage profiler from the test run, so its code counts too
       - name: Integration Tests
-        run: >-
-          dotnet test --project Test/FinanceTracker.Tests.Integration -c Release --no-build
-          -- --treenode-filter "${{ matrix.filter }}"
+        run: |
+          dotnet dotnet-coverage collect --session-id integration --server-mode --background \
+            --settings Test/CodeCoverage.xml --output-format cobertura --output coverage/integration.cobertura.xml
+
+          dotnet dotnet-coverage connect --nologo integration \
+            dotnet test --project Test/FinanceTracker.Tests.Integration -c Release --no-build \
+            -- --treenode-filter "${{ matrix.filter }}" || exit 1
+
+          dotnet dotnet-coverage shutdown integration
+
+      - name: Upload Coverage
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: Coverage-${{ matrix.suite }}
+          path: coverage/integration.cobertura.xml
 
       - name: Upload HTML Test Report
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -208,6 +238,71 @@ jobs:
           name: TestReport-Published image
           path: '**/*-report.html'
 
+
+  coverage:
+    name: Coverage
+    needs: [ unit-tests, integration-tests ]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+
+    # Only this job comments on the pull request
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install .NET Core
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore tools
+        run: dotnet tool restore
+
+      # Each into its own folder, named after the artifact
+      - name: Download Coverage
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: Coverage-*
+          path: coverage
+
+      # ReportGenerator merges the files line by line. SummaryGithub.md for the run's summary. Summary.md's table,
+      # one row per assembly, and Summary.txt's totals for the comment
+      - name: Coverage Report
+        run: >-
+          dotnet reportgenerator -reports:"coverage/**/*.cobertura.xml" -targetdir:coverage/report
+          -reporttypes:"Html;MarkdownSummaryGithub;MarkdownSummary;TextSummary"
+
+      - name: Add to the run's summary
+        run: cat coverage/report/SummaryGithub.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Coverage Report
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: CoverageReport
+          path: coverage/report
+
+      # One comment per pull request, updated on each push. Summary.md's heading and badges go, the badges' images
+      # come from shields.io. Dependabot's pull requests get a read-only token, the run's summary still has the numbers
+      - name: Comment on the pull request
+        if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          {
+            echo "## Coverage"
+            echo
+            grep -E "^  (Line|Branch) coverage:" coverage/report/Summary.txt | sed 's/^  /- /'
+            sed '1,/img\.shields\.io/d' coverage/report/Summary.md
+            echo
+            echo "Every class is in the [run's summary]($RUN_URL), the HTML report is its CoverageReport artifact."
+          } > coverage/comment.md
+          gh pr comment ${{ github.event.pull_request.number }} --repo "${{ github.repository }}" \
+            --edit-last --create-if-none --body-file coverage/comment.md
 
   all-checks:
     name: All checks passed

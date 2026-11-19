@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Configuration>
+  <CodeCoverage>
+    <ModulePaths>
+      <Include>
+        <ModulePath>.*[\\/]FinanceTracker(\.[^\\/]+)?\.dll$</ModulePath>
+      </Include>
+      <Exclude>
+        <ModulePath>.*[\\/]FinanceTracker\.Tests\.[^\\/]+\.dll$</ModulePath>
+        <ModulePath>.*[\\/]FinanceTracker\.AppHost\.dll$</ModulePath>
+        <ModulePath>.*[\\/]FinanceTracker\.Infrastructure\.Migrations\.dll$</ModulePath>
+        <ModulePath>.*[\\/]FinanceTracker\.Generated\.[^\\/]+\.dll$</ModulePath>
+      </Exclude>
+    </ModulePaths>
+    <Sources>
+      <Exclude>
+        <Source>.*\.g\.cs$</Source>
+      </Exclude>
+    </Sources>
+    <Attributes>
+      <Exclude>
+        <Attribute>^System\.CodeDom\.Compiler\.GeneratedCodeAttribute$</Attribute>
+        <Attribute>^System\.Diagnostics\.CodeAnalysis\.ExcludeFromCodeCoverageAttribute$</Attribute>
+      </Exclude>
+    </Attributes>
+    <IncludeTestAssembly>false</IncludeTestAssembly>
+  </CodeCoverage>
+</Configuration>

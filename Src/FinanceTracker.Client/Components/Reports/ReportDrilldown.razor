@@ -40,7 +40,7 @@
         <ChildContent>
             @if (Current.Date is not null)
             {
-                <LoadingFrame Loading="@(_dayTransactions is null)" Message="Digging out the receipts…" MinHeight="160"
+                <LoadingFrame Loading="@(_dayTransactions is null)" Message="Digging out the receipts" MinHeight="160"
                               Cover="false">
                     @if (_dayTransactions is { Count: 0 })
                     {
@@ -85,7 +85,7 @@
             }
             else
             {
-                <LoadingFrame Loading="@(!_drawn)" Message="Lining up the bars…" MinHeight="@ChartHeight">
+                <LoadingFrame Loading="@(!_drawn)" Message="Lining up the bars" MinHeight="@ChartHeight">
                     @* Keyed on the options, rebuilt for each period and dark mode toggle, so the chart redraws *@
                     <ApexChart @key="_options" TItem="ReportNode" Options="@_options" Height="@ChartHeight"
                                OnRendered="@(() => _drawn = true)" OnDataPointSelection="@OnBarSelected">

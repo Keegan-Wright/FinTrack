@@ -6,6 +6,8 @@ using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Testing;
 
 namespace FinanceTracker.Tests.Unit.FinanceTracker.Account;
 
@@ -19,11 +21,13 @@ public class AdminProvisionerTests : InfrastructureTestBase
 
     private AdminProvisioner Subject => _scope.ServiceProvider.GetRequiredService<AdminProvisioner>();
 
+    private FakeLogCollector Logs => _services.GetFakeLogCollector();
+
     [Before(Test)]
     public void SetupIdentity()
     {
         ServiceCollection services = new();
-        services.AddLogging();
+        services.AddFakeLogging();
         services.AddScoped(_ => DbContextFactory.CreateDbContext());
         services.AddIdentityCore<FinanceTrackerUser>()
             .AddRoles<FinanceTrackerRole>()
@@ -94,8 +98,28 @@ public class AdminProvisionerTests : InfrastructureTestBase
         // Act
         await Subject.EnsureAdminAsync();
 
+        // Assert, nobody can manage users, so it says how to get an admin
+        using (Assert.Multiple())
+        {
+            await Assert.That(await UserManager.GetUsersInRoleAsync(FinTrackRoles.Admin)).IsEmpty();
+            await Assert.That(Logs.GetSnapshot().Select(static x => x.Level)).Contains(LogLevel.Warning);
+        }
+    }
+
+    [Test]
+    public async Task EnsureAdminAsync_OnAnEmptyInstall_AddsTheRoleWithoutAWarning()
+    {
+        // Act, the first person to register becomes the admin, nothing's wrong yet
+        await Subject.EnsureAdminAsync();
+
         // Assert
-        await Assert.That(await UserManager.GetUsersInRoleAsync(FinTrackRoles.Admin)).IsEmpty();
+        RoleManager<FinanceTrackerRole> roles =
+            _scope.ServiceProvider.GetRequiredService<RoleManager<FinanceTrackerRole>>();
+        using (Assert.Multiple())
+        {
+            await Assert.That(await roles.RoleExistsAsync(FinTrackRoles.Admin)).IsTrue();
+            await Assert.That(Logs.GetSnapshot().Select(static x => x.Level)).DoesNotContain(LogLevel.Warning);
+        }
     }
 
     [Test]

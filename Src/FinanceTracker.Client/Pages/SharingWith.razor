@@ -141,7 +141,7 @@ else
             @if (Shares.JointSuggestions.Count > 0 || Shares.JointAccounts.Count > 0)
             {
                 <MudTabPanel Text="@JointTabText">
-                    <JointAccountsPanel Shares="@Shares" Disabled="@HasChanges" Busy="@_busy" OnMerge="@MergeAsync"
+                    <JointAccountsPanel Shares="@Shares" Disabled="@HasChanges" OnMerge="@MergeAsync"
                                         OnSplit="@SplitAsync"/>
                 </MudTabPanel>
             }
@@ -179,7 +179,6 @@ else
     private readonly Dictionary<SharedItemKind, Dictionary<Guid, ShareMode>> _items = [];
 
     private bool _loaded;
-    private bool _busy;
 
     /// <summary>
     /// The page's title, who it's with.
@@ -408,7 +407,7 @@ else
 
         try
         {
-            SetLoadingState(true, $"Saving what you share with {before.Name}…");
+            SetLoadingState(true, $"Saving what you share with {before.Name}");
             LinkShares saved = before;
             if (accountsChanged)
             {
@@ -475,7 +474,7 @@ else
     /// </summary>
     private async Task ChangeJointAsync(Func<Task<LinkShares>> change, string done)
     {
-        _busy = true;
+        SetLoadingState(true, "Saving");
         try
         {
             Shares = await change();
@@ -488,7 +487,7 @@ else
         }
         finally
         {
-            _busy = false;
+            SetLoadingState(false);
         }
     }
 
@@ -508,7 +507,7 @@ else
 
         try
         {
-            SetLoadingState(true, $"Ending your link with {name}…");
+            SetLoadingState(true, $"Ending your link with {name}");
             await SharingService.EndAsync(LinkId, _cts.Token);
 
             // Nothing left to save, so leaving doesn't ask

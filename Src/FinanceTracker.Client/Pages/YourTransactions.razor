@@ -38,7 +38,7 @@
     <FileActions>
         <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Download"
                    Disabled="@(_loading || _exporting)" OnClick="@ExportAsync">
-            @(_exporting ? "Exporting…" : "Export CSV")
+            @(_exporting ? "Exporting" : "Export CSV")
         </MudButton>
     </FileActions>
     <ChildContent>
@@ -54,7 +54,7 @@
     </ChildContent>
 </PageHeader>
 
-<LoadingFrame Loading="@_loading" Message="Fetching every last penny…" MinHeight="320" Cover="false">
+<LoadingFrame Loading="@_loading" Message="Fetching every last penny" MinHeight="320" Cover="false">
     @if (!_loading)
     {
         @* A grid stacks every column into a tall card on a phone, so phones get a compact list instead *@
@@ -483,7 +483,7 @@
 
         try
         {
-            SetLoadingState(true, "Saving…");
+            SetLoadingState(true, "Saving");
             Transaction updated = await BillsService.PayBillAsync(transaction.TransactionId, (PayBill)result.Data!,
                 _cts.Token);
 
@@ -528,7 +528,7 @@
 
         try
         {
-            SetLoadingState(true, "Saving…");
+            SetLoadingState(true, "Saving");
             Transaction updated = await DebtsService.PayDebtAsync(transaction.TransactionId, (PayDebt)result.Data!,
                 _cts.Token);
 
@@ -574,7 +574,7 @@
 
         try
         {
-            SetLoadingState(true, "Saving…");
+            SetLoadingState(true, "Saving");
             SplitTransaction request = (SplitTransaction)result.Data!;
             Replace(await TransactionsService.SplitAsync(transaction.TransactionId, request, _cts.Token));
             Snackbar.Add($"Split into {request.Parts.Count} parts", Severity.Success);
@@ -608,7 +608,7 @@
 
         try
         {
-            SetLoadingState(true, "Saving…");
+            SetLoadingState(true, "Saving");
             Replace(await TransactionsService.UnsplitAsync(transaction.TransactionId, _cts.Token));
             Snackbar.Add("Split removed", Severity.Success);
         }

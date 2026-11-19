@@ -282,20 +282,12 @@ public abstract class UiTestBase : IntegrationTestBase
     /// minimum color contrast ratio thresholds at .mud-chip (&lt;span class="mud-chip"&gt;…)</c>. Empty when it
     /// finds nothing.
     /// </summary>
-    /// <remarks>
-    /// Leaves out the rows per page select of MudBlazor's data grid pager, which has no accessible name and no way
-    /// to give it one (MudBlazor 9.12). Kept as it is by choice until MudBlazor fixes it.
-    /// </remarks>
     protected static async Task<List<string>> AccessibilityProblemsAsync(IPage page)
     {
         // A colour mid-transition, e.g. a button just enabled, is neither colour it's going between
         await page.WaitForFunctionAsync(SettledScript);
 
-        AxeRunContext everythingBut = new()
-        {
-            Exclude = [new AxeSelector(".mud-table-pagination-select")]
-        };
-        AxeResult result = await page.RunAxe(everythingBut, new AxeRunOptions
+        AxeResult result = await page.RunAxe(new AxeRunOptions
         {
             RunOnly = new RunOnlyOptions { Type = "tag", Values = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"] }
         });

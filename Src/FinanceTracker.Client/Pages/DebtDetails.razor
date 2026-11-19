@@ -255,7 +255,7 @@ else
         var debt = (SaveDebt)result.Data!;
         try
         {
-            SetLoadingState(true, "Saving…");
+            SetLoadingState(true, "Saving");
             await DebtsService.UpdateDebtAsync(existing.Id, debt, _cts.Token);
             Detail = await DebtsService.GetDebtAsync(existing.Id, _cts.Token);
             Snackbar.Add($"{debt.Name} saved", Severity.Success);
@@ -294,7 +294,7 @@ else
 
         try
         {
-            SetLoadingState(true, "Deleting…");
+            SetLoadingState(true, "Deleting");
             await DebtsService.DeleteDebtAsync(debt.Id, _cts.Token);
             Snackbar.Add($"{debt.Name} deleted", Severity.Success);
             NavigationManager.NavigateTo("Debts");
