@@ -7,9 +7,10 @@ using FinanceTracker.Generated.Enums;
 namespace FinanceTracker.Infrastructure.Encryption;
 
 /// <summary>
-/// AES-256-GCM column encryption over a keyring. Stored values are <c>{keyId}:{base64(nonce | ciphertext | tag)}</c>:
-/// a random nonce per value means equal values don't look equal when stored at rest. Tag means tampered values fail to
-/// decrypt.
+/// AES-256-GCM column encryption over a keyring, with keys derived from each keyring key by HKDF-SHA256. Stored values
+/// are <c>{keyId}:{base64(nonce | ciphertext | tag)}</c>. A random nonce per value means equal values don't look equal
+/// when stored at rest. Tag means tampered values fail to decrypt. Blind indexes are HMAC-SHA256 with their own
+/// derived key.
 /// </summary>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Singleton<IColumnEncryptionService>]
@@ -28,7 +29,7 @@ public class ColumnEncryptionService : IColumnEncryptionService
     /// </summary>
     private const char KeyIdSeparator = ':';
 
-    // Separate keys per purpose, derived from each keyring key
+    // Separate keys per purpose, derived from each keyring key with HKDF-SHA256
     private static readonly byte[] EncryptionKeyInfo = "FinTrack column encryption v1"u8.ToArray();
     private static readonly byte[] BlindIndexKeyInfo = "FinTrack blind index v1"u8.ToArray();
 
@@ -156,7 +157,8 @@ public class ColumnEncryptionService : IColumnEncryptionService
     }
 
     /// <summary>
-    /// A key for one use derived from a keyring key, so encryption and blind indexes never share a key.
+    /// A key for one use derived from a keyring key with HKDF-SHA256, so encryption and blind indexes never share a
+    /// key. No salt, as RFC 5869 allows when the keyring key is already uniformly random.
     /// </summary>
     /// <param name="keyringKey">The keyring key.</param>
     /// <param name="info">What the key is for.</param>

@@ -5,7 +5,8 @@ FinTrack encrypts most of what it stores, such as amounts, descriptions, names, 
 - Values are encrypted with AES-256-GCM, with a random nonce per value.
 - Encrypted values that need searching, such as a transaction's id at the bank, also get a blind index, an
   HMAC-SHA256 of the value.
-- The encryption and blind index keys are derived from your key with HKDF, so they're never the same.
+- The encryption and blind index keys are derived from your key with HKDF-SHA256, so they're never the same and
+  your key itself is never used directly.
 
 The keys live in your `.env` file, not the database.
 
