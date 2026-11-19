@@ -104,6 +104,9 @@ public static partial class WebLoggerMessages
         "codes")]
     public static partial void LogTwoFactorTurnedOffByAdmin(this ILogger logger, Guid adminId, Guid userId);
 
+    [LoggerMessage(LogLevel.Warning, "A personal access token {lookupId} was refused, {reason}")]
+    public static partial void LogTokenRefused(this ILogger logger, string lookupId, string reason);
+
     [LoggerMessage(LogLevel.Information, "User {userId} added a passkey")]
     public static partial void LogPasskeyAdded(this ILogger logger, Guid userId);
 

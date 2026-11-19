@@ -2,6 +2,7 @@ using FinanceTracker.Contracts.Api;
 using FinanceTracker.Contracts.NetWorth;
 using FinanceTracker.Contracts.SavingsGoals;
 using FinanceTracker.Contracts.Services;
+using FinanceTracker.Tokens;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace FinanceTracker.Api;
@@ -19,7 +20,8 @@ public static class SavingsGoalEndpoints
         /// </summary>
         public RouteGroupBuilder MapSavingsGoalEndpoints()
         {
-            RouteGroupBuilder goals = api.MapGroup(ApiRoutes.SavingsGoals);
+            RouteGroupBuilder goals = api.MapGroup(ApiRoutes.SavingsGoals)
+                .ReadableWithToken();
 
             goals.MapGet(string.Empty, (ISavingsGoalsService service, CancellationToken cancellationToken) =>
                 service.GetSavingsGoalsAsync(cancellationToken));

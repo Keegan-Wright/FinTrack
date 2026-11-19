@@ -1,6 +1,7 @@
 using FinanceTracker.Contracts.Api;
 using FinanceTracker.Contracts.Dashboard;
 using FinanceTracker.Contracts.Services;
+using FinanceTracker.Tokens;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace FinanceTracker.Api;
@@ -17,7 +18,8 @@ public static class DashboardEndpoints
         /// </summary>
         public RouteGroupBuilder MapDashboardEndpoints()
         {
-            RouteGroupBuilder dashboard = api.MapGroup(ApiRoutes.Dashboard);
+            RouteGroupBuilder dashboard = api.MapGroup(ApiRoutes.Dashboard)
+                .ReadableWithToken();
 
             // GET spent?from=...&to=..., round trip ("O") formatted times
             dashboard.MapGet("spent", async Task<Ok<SpentInTimePeriod>> (DateTime from, DateTime to,

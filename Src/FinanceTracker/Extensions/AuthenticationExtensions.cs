@@ -6,6 +6,7 @@ using FinanceTracker.Domain.Identity;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Middleware;
 using FinanceTracker.Telemetry;
+using FinanceTracker.Tokens;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -41,12 +42,11 @@ public static class AuthenticationExtensions
             builder.Services.AddScoped<IdentityRedirectManager>();
 
             AuthenticationBuilder authBuilder = builder.Services.AddAuthentication(options =>
-            {
-                options.DefaultScheme = IdentityConstants.ApplicationScheme;
-                options.DefaultSignInScheme = IdentityConstants.ExternalScheme;
-            });
+                options.DefaultSignInScheme = IdentityConstants.ExternalScheme);
 
+            // API requests with a personal access token sign in with it, everything else with the cookie
             authBuilder.AddIdentityCookies();
+            authBuilder.AddPersonalAccessTokens();
 
             // How long a cookie is trusted before it's checked against the account, so a locked user or one whose
             // password changed is signed out within a minute rather than Identity's default half hour

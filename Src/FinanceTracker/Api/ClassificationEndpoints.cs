@@ -1,6 +1,7 @@
 using FinanceTracker.Contracts.Api;
 using FinanceTracker.Contracts.Classifications;
 using FinanceTracker.Contracts.Services;
+using FinanceTracker.Tokens;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace FinanceTracker.Api;
@@ -18,7 +19,8 @@ public static class ClassificationEndpoints
         /// </summary>
         public RouteGroupBuilder MapClassificationEndpoints()
         {
-            RouteGroupBuilder classifications = api.MapGroup(ApiRoutes.Classifications);
+            RouteGroupBuilder classifications = api.MapGroup(ApiRoutes.Classifications)
+                .ReadableWithToken();
 
             classifications.MapGet(string.Empty, (IClassificationService service,
                     CancellationToken cancellationToken) =>

@@ -1,6 +1,7 @@
 using FinanceTracker.Contracts.Api;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Transactions;
+using FinanceTracker.Tokens;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace FinanceTracker.Api;
@@ -19,12 +20,14 @@ public static class TransactionEndpoints
         /// </summary>
         public RouteGroupBuilder MapTransactionEndpoints()
         {
-            RouteGroupBuilder transactions = api.MapGroup(ApiRoutes.Transactions);
+            RouteGroupBuilder transactions = api.MapGroup(ApiRoutes.Transactions)
+                .ReadableWithToken();
 
             // POST, the filters are the same body the reports take
             transactions.MapPost("search", (FilterTransactions request, ITransactionsService service,
                     CancellationToken cancellationToken) =>
-                service.GetAllTransactionsAsync(request, cancellationToken));
+                service.GetAllTransactionsAsync(request, cancellationToken))
+                .ReadsOnly();
 
             transactions.MapPost("{id:guid}/bank-classifications/hide", async Task<Ok<Transaction>> (Guid id,
                         ChangeBankClassification request, ITransactionsService service,
