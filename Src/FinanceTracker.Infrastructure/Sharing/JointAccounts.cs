@@ -1,3 +1,4 @@
+using FinanceTracker.Domain.Budgeting;
 using FinanceTracker.Domain.Common;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Transactions;
@@ -251,10 +252,30 @@ internal static class JointAccounts
 
         await CopyAnnotationsAsync(context, link, hidden.Id, shown.Id, withSplits: false, now, cancellationToken);
         await ClearTransfersAsync(context, hidden.Id, cancellationToken);
+        await MoveBudgetsAsync(context, hidden.Id, shown.Id, cancellationToken);
 
         JointAccount joint = new(userId, link.Id, shown.Id, hidden.Id, now);
         context.JointAccounts.Add(joint);
         return joint;
+    }
+
+    /// <summary>
+    /// Has budgets covering the copy being hidden cover the shown copy, whoever's they are, as the hidden copy's
+    /// transactions no longer count. Splitting the account again leaves them on the shown copy.
+    /// </summary>
+    /// <param name="context">The context to work through.</param>
+    /// <param name="hiddenId">The copy being hidden.</param>
+    /// <param name="shownId">The copy shown.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
+    private static async Task MoveBudgetsAsync(FinanceTrackerContext context, Guid hiddenId, Guid shownId,
+        CancellationToken cancellationToken)
+    {
+        foreach (Budget budget in await context.Budgets
+                     .Where(x => x.AccountIds.Contains(hiddenId))
+                     .ToListAsync(cancellationToken))
+        {
+            budget.MoveAccount(hiddenId, shownId);
+        }
     }
 
     /// <summary>

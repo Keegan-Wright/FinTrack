@@ -77,7 +77,7 @@
         @if (RuleText.IsText(Condition.Field))
         {
             <MudCheckBox T="bool" @bind-Value="Condition.IgnoreCase" Dense="true" Size="Size.Small"
-                         Label="Any case"/>
+                         Color="Color.Primary" Label="Any case"/>
         }
         <MudIconButton Icon="@Icons.Material.Outlined.Close" Size="Size.Small" Disabled="@(!CanRemove)"
                        aria-label="Remove condition" OnClick="@OnRemove"/>

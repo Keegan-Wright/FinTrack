@@ -24,6 +24,11 @@ public interface IBudgetsService
     IAsyncEnumerable<Budget> GetBudgetsAsync(CancellationToken cancellationToken);
 
     /// <summary>
+    /// The accounts the user can give their own budgets, theirs and those shared with them, cards included, by name.
+    /// </summary>
+    IAsyncEnumerable<BudgetAccount> GetAccountsAsync(CancellationToken cancellationToken);
+
+    /// <summary>
     /// One of the user's budgets.
     /// </summary>
     /// <exception cref="NotFoundException">The user has no budget with <paramref name="id"/>.</exception>

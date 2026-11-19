@@ -3,6 +3,7 @@ using FinanceTracker.Contracts.Budgets;
 using FinanceTracker.Contracts.Classifications;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Transactions;
+using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Tests.Integration.Http;
 using FinanceTracker.Tests.Unit.Shared.Fakers;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
@@ -114,6 +115,47 @@ public class BudgetApiTests : IntegrationTestBase
             await Assert.That(month.Unbudgeted).IsEqualTo(40m);
         }
     }
+
+    [Test]
+    public async Task AccountBudget_CountsAllSpendingOnItsAccountOnly()
+    {
+        // Arrange, £30 spent on a joint account and £20 on the main one
+        SignedInUser user = await RegisterUserAsync();
+        ApiSession api = ApiFor(user);
+        IBudgetsService service = api.Get<IBudgetsService>();
+        DateTime now = DateTime.Now;
+        await Scenario.Do(s => s.BankConnectionScenario.WithConnection("bank", user.Username))
+            .Do(s => s.BankAccountScenario.WithAccount("main", "bank"))
+            .Do(s => s.BankAccountScenario.WithAccount("joint", "bank"))
+            .Do(s => s.TransactionScenario.WithTransaction("joint-shop", "joint", Purchase(-30m)))
+            .Do(s => s.TransactionScenario.WithTransaction("main-shop", "main", Purchase(-20m)));
+        Guid joint = Scenario.AccountMappings["joint"];
+
+        // Act
+        List<BudgetAccount> accounts = await service.GetAccountsAsync(CancellationToken)
+            .ToListAsync(CancellationToken);
+        Budget budget = await service.AddBudgetAsync(new SaveBudget
+        {
+            Name = "Joint account", AccountIds = [joint], MonthlyLimit = 1500m
+        }, CancellationToken);
+        BudgetMonthOverview month = await service.GetMonthAsync(now.Year, now.Month, CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(accounts.Select(static x => x.AccountId))
+                .IsEquivalentTo([joint, Scenario.AccountMappings["main"]]);
+            await Assert.That(budget.AccountNames.Keys).IsEquivalentTo([joint]);
+            await Assert.That(month.Budgets.Single().Spent).IsEqualTo(30m);
+            await Assert.That(month.Unbudgeted).IsEqualTo(20m);
+        }
+    }
+
+    private static TransactionDetails Purchase(decimal amount) => new TransactionDetailsFaker().Generate() with
+    {
+        Amount = amount, Category = "PURCHASE", OccurredAt = DateTime.UtcNow, IsPending = false,
+        LabelledAsTransfer = false
+    };
 
     private static SaveBudget Groceries(Classification tag, decimal limit) => new()
     {

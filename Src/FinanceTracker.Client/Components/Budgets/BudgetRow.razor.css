@@ -20,6 +20,10 @@
     white-space: nowrap;
 }
 
+/* What it covers can be a long list of tags and accounts, so it wraps rather than widening the row */
+.ft-budget ::deep .ft-budget__covers {
+    overflow-wrap: anywhere;
+}
 
 /* The pace marker sits over the bar, a thin line where a steady pace would be by today */
 .ft-budget__bar {

@@ -51,4 +51,53 @@ public class SaveBudgetValidatorTests : UnitTestBase
         await Assert.That(result.Errors.Select(static x => x.PropertyName))
             .IsEquivalentTo([nameof(SaveBudget.RolloverMode)]);
     }
+
+    [Test]
+    public async Task ValidateAsync_AnAccountWithoutTags_IsValid()
+    {
+        // Act
+        ValidationResult result = await _subject.ValidateAsync(new SaveBudget
+        {
+            Name = "Joint account",
+            AccountIds = [Guid.CreateVersion7()],
+            MonthlyLimit = 1500m
+        }, CancellationToken);
+
+        // Assert
+        await Assert.That(result.IsValid).IsTrue();
+    }
+
+    [Test]
+    public async Task ValidateAsync_NoTagsOrAccounts_SaysToChooseOne()
+    {
+        // Act
+        ValidationResult result = await _subject.ValidateAsync(new SaveBudget
+        {
+            Name = "Groceries",
+            MonthlyLimit = 400m
+        }, CancellationToken);
+
+        // Assert
+        await Assert.That(result.Errors.Select(static x => x.ErrorMessage))
+            .IsEquivalentTo(["Choose at least one tag or account"]);
+    }
+
+    [Test]
+    public async Task ValidateAsync_AnAccountTwice_IsInvalid()
+    {
+        // Arrange
+        Guid account = Guid.CreateVersion7();
+
+        // Act
+        ValidationResult result = await _subject.ValidateAsync(new SaveBudget
+        {
+            Name = "Joint account",
+            AccountIds = [account, account],
+            MonthlyLimit = 1500m
+        }, CancellationToken);
+
+        // Assert
+        await Assert.That(result.Errors.Select(static x => x.ErrorMessage))
+            .IsEquivalentTo(["Each account can only be chosen once"]);
+    }
 }

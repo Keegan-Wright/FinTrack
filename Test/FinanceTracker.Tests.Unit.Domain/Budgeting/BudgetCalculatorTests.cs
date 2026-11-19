@@ -13,6 +13,7 @@ public class BudgetCalculatorTests
 {
     private static readonly Guid UserId = Guid.NewGuid();
     private static readonly BankAccount Account = new(UserId, Guid.NewGuid(), "acc-1", "TRANSACTION", "Main", "GBP");
+    private static readonly BankAccount Joint = new(UserId, Guid.NewGuid(), "acc-2", "TRANSACTION", "Joint", "GBP");
     private static readonly Guid Shopping = Guid.NewGuid();
     private static readonly Guid Gaming = Guid.NewGuid();
     private static readonly BudgetMonth January = new(2026, 1);
@@ -215,7 +216,7 @@ public class BudgetCalculatorTests
     {
         // Arrange
         Budget shopping = Budget(RolloverMode.None);
-        Budget gaming = new(UserId, "Gaming", [Gaming], 50m, March, RolloverMode.None);
+        Budget gaming = new(UserId, "Gaming", [Gaming], [], 50m, March, RolloverMode.None);
         BankTransaction[] transactions = [Tagged(-20m, new DateTime(2026, 3, 4), Shopping, Gaming)];
 
         // Act & Assert
@@ -276,7 +277,7 @@ public class BudgetCalculatorTests
         // Arrange
         CustomClassification groceries = new(UserId, "Groceries");
         CustomClassification household = new(UserId, "Household");
-        Budget budget = new(UserId, "Groceries", [groceries.Id], 100m, March, RolloverMode.None);
+        Budget budget = new(UserId, "Groceries", [groceries.Id], [], 100m, March, RolloverMode.None);
         BankTransaction shop = Split(new DateTime(2026, 3, 2), (-60m, groceries), (-30m, household), (-10m, null));
 
         // Act
@@ -292,8 +293,8 @@ public class BudgetCalculatorTests
         // Arrange, £20 of shopping and £50 on themselves in one payment
         CustomClassification shopping = new(UserId, "Shopping");
         CustomClassification personal = new(UserId, "Personal");
-        Budget shoppingBudget = new(UserId, "Shopping", [shopping.Id], 100m, March, RolloverMode.None);
-        Budget personalBudget = new(UserId, "Personal", [personal.Id], 100m, March, RolloverMode.None);
+        Budget shoppingBudget = new(UserId, "Shopping", [shopping.Id], [], 100m, March, RolloverMode.None);
+        Budget personalBudget = new(UserId, "Personal", [personal.Id], [], 100m, March, RolloverMode.None);
         BankTransaction payment = Split(new DateTime(2026, 3, 2), (-20m, shopping), (-50m, personal));
 
         // Act
@@ -317,7 +318,7 @@ public class BudgetCalculatorTests
         // Arrange
         CustomClassification groceries = new(UserId, "Groceries");
         CustomClassification household = new(UserId, "Household");
-        Budget budget = new(UserId, "Groceries", [groceries.Id], 100m, March, RolloverMode.None);
+        Budget budget = new(UserId, "Groceries", [groceries.Id], [], 100m, March, RolloverMode.None);
         BankTransaction shop = Split(new DateTime(2026, 3, 2), (-60m, groceries), (-30m, household), (-10m, null));
 
         // Act
@@ -328,10 +329,247 @@ public class BudgetCalculatorTests
         await Assert.That(unbudgeted).IsEqualTo(40m);
     }
 
+    [Test]
+    public async Task ForMonth_AnAccountWithoutTags_CountsAllSpendingOnItAndNothingElse()
+    {
+        // Arrange
+        Budget budget = new(UserId, "Joint account", [], [Joint.Id], 1500m, March, RolloverMode.None);
+        BankTransaction[] transactions =
+        [
+            OnJoint(-30m, new DateTime(2026, 3, 2)),
+            OnJoint(-20m, new DateTime(2026, 3, 3), Shopping),
+            Tagged(-50m, new DateTime(2026, 3, 4), Shopping)
+        ];
+
+        // Act
+        BudgetMonthResult result = Calculate(budget, transactions, March);
+
+        // Assert
+        await Assert.That(result.Spent).IsEqualTo(50m);
+    }
+
+    [Test]
+    public async Task ForMonth_AnAccountWithoutTags_RefundsCountButOtherMoneyInDoesnt()
+    {
+        // Arrange, salary paid into the joint account mustn't cancel what was spent from it
+        Budget budget = new(UserId, "Joint account", [], [Joint.Id], 1500m, March, RolloverMode.None);
+        BankTransaction[] transactions =
+        [
+            OnJoint(-100m, new DateTime(2026, 3, 2)),
+            OnJoint(20m, new DateTime(2026, 3, 5)),
+            Income(1500m, new DateTime(2026, 3, 25), Joint)
+        ];
+
+        // Act
+        BudgetMonthResult result = Calculate(budget, transactions, March);
+
+        // Assert
+        await Assert.That(result.Spent).IsEqualTo(80m);
+    }
+
+    [Test]
+    public async Task ForMonth_TagsAndAnAccount_CountsTaggedSpendingOnTheAccountOnly()
+    {
+        // Arrange
+        Budget budget = new(UserId, "Joint shopping", [Shopping], [Joint.Id], 400m, March, RolloverMode.None);
+        BankTransaction[] transactions =
+        [
+            OnJoint(-30m, new DateTime(2026, 3, 2), Shopping),
+            OnJoint(-10m, new DateTime(2026, 3, 3)),
+            Tagged(-40m, new DateTime(2026, 3, 4), Shopping)
+        ];
+
+        // Act
+        BudgetMonthResult result = Calculate(budget, transactions, March);
+
+        // Assert
+        await Assert.That(result.Spent).IsEqualTo(30m);
+    }
+
+    [Test]
+    public async Task ForMonth_TagsAndAnAccount_CountsASplitsTaggedPartsOnTheAccountOnly()
+    {
+        // Arrange
+        CustomClassification groceries = new(UserId, "Groceries");
+        CustomClassification household = new(UserId, "Household");
+        Budget budget = new(UserId, "Joint groceries", [groceries.Id], [Joint.Id], 100m, March, RolloverMode.None);
+        BankTransaction onJoint = Split(Joint, new DateTime(2026, 3, 2), (-60m, groceries), (-30m, household));
+        BankTransaction onMain = Split(new DateTime(2026, 3, 3), (-25m, groceries), (-5m, household));
+
+        // Act
+        BudgetMonthResult result = Calculate(budget, [onJoint, onMain], March);
+
+        // Assert
+        await Assert.That(result.Spent).IsEqualTo(60m);
+    }
+
+    [Test]
+    public async Task ForMonth_AnAccountWithoutTags_CountsPendingAndLeavesOutTransfers()
+    {
+        // Arrange
+        Budget budget = new(UserId, "Joint account", [], [Joint.Id], 1500m, March, RolloverMode.None);
+        BankTransaction pending = Import(Joint, -12m, new DateTime(2026, 3, 14), true, "PURCHASE", []);
+        BankTransaction transfer = OnJoint(-500m, new DateTime(2026, 3, 3));
+        transfer.DecideTransfer(TransferInfo.FromRule(TransferDecision.Transfer, Guid.NewGuid(), DateTime.UtcNow));
+
+        // Act
+        BudgetMonthResult result = Calculate(budget, [OnJoint(-30m, new DateTime(2026, 3, 2)), pending, transfer],
+            March);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(result.Spent).IsEqualTo(42m);
+            await Assert.That(result.Pending).IsEqualTo(12m);
+        }
+    }
+
+    [Test]
+    public async Task ForMonth_ABudgetCoveringNothing_CountsNothing()
+    {
+        // Arrange, its only account gone and no tags, which mustn't mean everything
+        Budget budget = new(UserId, "Joint account", [], [Joint.Id], 1500m, March, RolloverMode.None);
+        budget.RemoveAccount(Joint.Id);
+
+        // Act
+        BudgetMonthResult result = Calculate(budget, [Tagged(-30m, new DateTime(2026, 3, 2))], March);
+
+        // Assert
+        await Assert.That(result.Spent).IsEqualTo(0m);
+    }
+
+    [Test]
+    public async Task ForMonth_AHiddenCopyFillingAGap_CountsAsTheShownJointAccount()
+    {
+        // Arrange, the joint account merged with the main account's copy hidden, which fills a gap in it
+        Budget budget = new(UserId, "Joint account", [], [Joint.Id], 1500m, March, RolloverMode.None);
+        BankTransaction filling = Tagged(-40m, new DateTime(2026, 3, 4));
+        Dictionary<Guid, Guid> shownCopies = new() { [Account.Id] = Joint.Id };
+
+        // Act
+        BudgetMonthResult? withCopies = BudgetCalculator.ForMonth(budget,
+            [OnJoint(-30m, new DateTime(2026, 3, 2)), filling], March, TimeZoneInfo.Utc, MidMarch,
+            PayCalendar.CalendarMonths, shownCopies);
+
+        // Assert
+        await Assert.That(withCopies!.Spent).IsEqualTo(70m);
+    }
+
+    [Test]
+    public async Task ForMonth_CountingTransfersOut_CountsMoneyMovedToOtherAccountsOnly()
+    {
+        // Arrange, the joint account pays the main account's bills by moving money to it, and moves some into savings
+        // it also covers
+        BankAccount savings = new(UserId, Guid.NewGuid(), "acc-3", "SAVINGS", "Savings", "GBP");
+        Budget budget = new(UserId, "Joint account", [], [Joint.Id, savings.Id], 1500m, March, RolloverMode.None);
+        budget.CountTransfersOut(true);
+        BankTransaction toMain = MovedTo(Account, -200m, new DateTime(2026, 3, 2));
+        BankTransaction toSavings = MovedTo(savings, -300m, new DateTime(2026, 3, 3));
+        BankTransaction toHousehold = OnJoint(-50m, new DateTime(2026, 3, 4));
+        toHousehold.DecideTransfer(TransferInfo.WithHouseholdMember(Guid.NewGuid(), DateTime.UtcNow));
+
+        // Act
+        BudgetMonthResult result = Calculate(budget, [toMain, toSavings, toHousehold], March);
+
+        // Assert
+        await Assert.That(result.Spent).IsEqualTo(250m);
+    }
+
+    [Test]
+    public async Task ForMonth_NotCountingTransfersOut_LeavesThemOut()
+    {
+        // Arrange
+        Budget budget = new(UserId, "Joint account", [], [Joint.Id], 1500m, March, RolloverMode.None);
+
+        // Act
+        BudgetMonthResult result = Calculate(budget, [MovedTo(Account, -200m, new DateTime(2026, 3, 2))], March);
+
+        // Assert
+        await Assert.That(result.Spent).IsEqualTo(0m);
+    }
+
+    [Test]
+    public async Task ForMonth_CountingTransfersOut_LeavesOutMoneyMovedIn()
+    {
+        // Arrange
+        Budget budget = new(UserId, "Joint account", [], [Joint.Id], 1500m, March, RolloverMode.None);
+        budget.CountTransfersOut(true);
+        BankTransaction movedIn = OnJoint(500m, new DateTime(2026, 3, 2));
+        movedIn.DecideTransfer(TransferInfo.Matched(TransferReason.MirrorPair, null, Account.Id, DateTime.UtcNow));
+
+        // Act
+        BudgetMonthResult result = Calculate(budget, [OnJoint(-30m, new DateTime(2026, 3, 3)), movedIn], March);
+
+        // Assert
+        await Assert.That(result.Spent).IsEqualTo(30m);
+    }
+
+    [Test]
+    public async Task Unbudgeted_AnAccountWithoutTags_CoversEverythingOnIt()
+    {
+        // Arrange
+        Budget budget = new(UserId, "Joint account", [], [Joint.Id], 1500m, March, RolloverMode.None);
+        BankTransaction[] transactions =
+            [OnJoint(-30m, new DateTime(2026, 3, 2)), Tagged(-25m, new DateTime(2026, 3, 3))];
+
+        // Act
+        decimal unbudgeted = BudgetCalculator.Unbudgeted([budget], transactions, March, TimeZoneInfo.Utc,
+            PayCalendar.CalendarMonths);
+
+        // Assert
+        await Assert.That(unbudgeted).IsEqualTo(25m);
+    }
+
+    [Test]
+    public async Task Unbudgeted_TagsOnAnAccount_CoverTheTagsOnThatAccountOnly()
+    {
+        // Arrange
+        Budget budget = new(UserId, "Joint shopping", [Shopping], [Joint.Id], 400m, March, RolloverMode.None);
+        BankTransaction[] transactions =
+            [OnJoint(-30m, new DateTime(2026, 3, 2), Shopping), Tagged(-40m, new DateTime(2026, 3, 3), Shopping)];
+
+        // Act
+        decimal unbudgeted = BudgetCalculator.Unbudgeted([budget], transactions, March, TimeZoneInfo.Utc,
+            PayCalendar.CalendarMonths);
+
+        // Assert
+        await Assert.That(unbudgeted).IsEqualTo(40m);
+    }
+
+    [Test]
+    public async Task Unbudgeted_ABudgetCoveringNothing_CoversNothing()
+    {
+        // Arrange
+        Budget budget = new(UserId, "Joint account", [], [Joint.Id], 1500m, March, RolloverMode.None);
+        budget.RemoveAccount(Joint.Id);
+
+        // Act
+        decimal unbudgeted = BudgetCalculator.Unbudgeted([budget], [Tagged(-30m, new DateTime(2026, 3, 2))], March,
+            TimeZoneInfo.Utc, PayCalendar.CalendarMonths);
+
+        // Assert
+        await Assert.That(unbudgeted).IsEqualTo(30m);
+    }
+
+    /// <summary>
+    /// Money moved from the joint account to <paramref name="to"/>, matched as a transfer.
+    /// </summary>
+    private static BankTransaction MovedTo(BankAccount to, decimal amount, DateTime occurredAt)
+    {
+        BankTransaction transaction = Import(Joint, amount, occurredAt, false, "TRANSFER", []);
+        transaction.DecideTransfer(TransferInfo.Matched(TransferReason.MirrorPair, null, to.Id, DateTime.UtcNow));
+        return transaction;
+    }
+
     private static BankTransaction Split(DateTime occurredAt,
+        params (decimal Amount, CustomClassification? Tag)[] parts) =>
+        Split(Account, occurredAt, parts);
+
+    private static BankTransaction Split(BankAccount account, DateTime occurredAt,
         params (decimal Amount, CustomClassification? Tag)[] parts)
     {
-        BankTransaction transaction = Tagged(parts.Sum(static x => x.Amount), occurredAt);
+        BankTransaction transaction = Import(account, parts.Sum(static x => x.Amount), occurredAt, false, "PURCHASE",
+            []);
         transaction.Split(parts.Select(static x => new TransactionSplit(x.Amount, x.Tag?.Id, null)).ToList(),
             parts.Select(static x => x.Tag).OfType<CustomClassification>().ToList(), transaction.UserId);
 
@@ -344,27 +582,33 @@ public class BudgetCalculatorTests
             PayCalendar.CalendarMonths)!;
 
     private static Budget Budget(RolloverMode mode, BudgetMonth? from = null) =>
-        new(UserId, "Shopping", [Shopping], 100m, from ?? March, mode);
+        new(UserId, "Shopping", [Shopping], [], 100m, from ?? March, mode);
 
     /// <summary>
     /// A card purchase, or a refund of one when <paramref name="amount"/> is money in.
     /// </summary>
     private static BankTransaction Tagged(decimal amount, DateTime occurredAt, params Guid[] tagIds) =>
-        Import(amount, occurredAt, false, "PURCHASE", tagIds);
+        Import(Account, amount, occurredAt, false, "PURCHASE", tagIds);
+
+    /// <summary>
+    /// A card purchase on the joint account, or a refund of one when <paramref name="amount"/> is money in.
+    /// </summary>
+    private static BankTransaction OnJoint(decimal amount, DateTime occurredAt, params Guid[] tagIds) =>
+        Import(Joint, amount, occurredAt, false, "PURCHASE", tagIds);
 
     private static BankTransaction Pending(decimal amount, DateTime occurredAt, params Guid[] tagIds) =>
-        Import(amount, occurredAt, true, "PURCHASE", tagIds);
+        Import(Account, amount, occurredAt, true, "PURCHASE", tagIds);
 
     /// <summary>
     /// Money in the bank doesn't call a purchase, e.g. salary.
     /// </summary>
-    private static BankTransaction Income(decimal amount, DateTime occurredAt) =>
-        Import(amount, occurredAt, false, "CREDIT", []);
+    private static BankTransaction Income(decimal amount, DateTime occurredAt, BankAccount? account = null) =>
+        Import(account ?? Account, amount, occurredAt, false, "CREDIT", []);
 
-    private static BankTransaction Import(decimal amount, DateTime occurredAt, bool pending, string category,
-        Guid[] tagIds)
+    private static BankTransaction Import(BankAccount account, decimal amount, DateTime occurredAt, bool pending,
+        string category, Guid[] tagIds)
     {
-        BankTransaction transaction = BankTransaction.Import(Account, new TransactionDetails(
+        BankTransaction transaction = BankTransaction.Import(account, new TransactionDetails(
             Guid.NewGuid().ToString(), "PURCHASE", amount < 0 ? TransactionType.Debit : TransactionType.Credit,
             category, amount, "GBP", DateTime.SpecifyKind(occurredAt, DateTimeKind.Utc), pending, [],
             TransactionMetadata.None, false));

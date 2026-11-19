@@ -29,7 +29,11 @@ internal static class BudgetMapper
             CanChange = sharing?.CanChange ?? true,
             IsHousehold = sharing?.IsHousehold ?? false,
             TagNames = sharing?.TagNames ?? [],
-            TagChoices = sharing?.TagChoices ?? []
+            TagChoices = sharing?.TagChoices ?? [],
+            AccountIds = budget.AccountIds.ToList(),
+            CountsTransfersOut = budget.CountsTransfersOut,
+            AccountNames = sharing?.AccountNames ?? [],
+            AccountChoices = sharing?.AccountChoices ?? []
         };
 
     public static BudgetStatus ToContract(DomainBudget budget, BudgetMonthResult result,

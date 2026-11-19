@@ -60,7 +60,53 @@ public class BudgetRowTests : ComponentTestBase
         IRenderedComponent<BudgetRow> cut = Render<BudgetRow>(p => p.Add(x => x.Status, status));
 
         // Assert
-        await Assert.That(cut.Markup).Contains("Its tags were deleted, edit it to choose one");
+        await Assert.That(cut.Markup).Contains("Its tags were deleted, edit it to choose a tag or account");
+    }
+
+    [Test]
+    public async Task Render_WithItsBudget_SaysWhatItCovers()
+    {
+        // Arrange
+        Guid groceries = Guid.NewGuid();
+        Guid joint = Guid.NewGuid();
+        Budget budget = new()
+        {
+            Id = Guid.NewGuid(), Name = "Groceries", TagIds = [groceries], AccountIds = [joint],
+            AccountNames = new Dictionary<Guid, string> { [joint] = "Joint" }
+        };
+
+        // Act
+        IRenderedComponent<BudgetRow> cut = Render<BudgetRow>(p => p
+            .Add(x => x.Status, Status(spent: 0m, expected: 0m))
+            .Add(x => x.Budget, budget)
+            .Add(x => x.TagNames, new Dictionary<Guid, string> { [groceries] = "Groceries" }));
+
+        // Assert
+        await Assert.That(cut.Find(".ft-budget__covers").TextContent).IsEqualTo("Groceries on Joint");
+    }
+
+    [Test]
+    public async Task Render_AnAccountGone_SaysToChooseAnother()
+    {
+        // Arrange
+        Guid joint = Guid.NewGuid();
+        Budget budget = new()
+        {
+            Id = Guid.NewGuid(), Name = "Joint account", AccountIds = [joint, Guid.NewGuid()],
+            AccountNames = new Dictionary<Guid, string> { [joint] = "Joint" }
+        };
+
+        // Act
+        IRenderedComponent<BudgetRow> cut = Render<BudgetRow>(p => p
+            .Add(x => x.Status, Status(spent: 0m, expected: 0m))
+            .Add(x => x.Budget, budget));
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(cut.Find(".ft-budget__covers").TextContent).IsEqualTo("All spending on Joint");
+            await Assert.That(cut.Markup).Contains("An account it covers was removed or isn't shared any more");
+        }
     }
 
     [Test]

@@ -20,9 +20,13 @@ public static class BudgetCalculator
     /// <param name="timeZone">Where the user is, so a transaction falls in the month it was where they are.</param>
     /// <param name="today">Today where the user is, for the pace.</param>
     /// <param name="calendar">The user's periods, which month each transaction counts in.</param>
+    /// <param name="shownCopies">The hidden copies of merged joint accounts in the transactions, by hidden copy, each
+    /// with its shown copy. A hidden copy's transactions there fill gaps in the shown one, so count as its. None when
+    /// there are none.</param>
     /// <returns>Null before the budget's first month.</returns>
     public static BudgetMonthResult? ForMonth(Budget budget, IEnumerable<BankTransaction> transactions,
-        BudgetMonth month, TimeZoneInfo timeZone, DateOnly today, PayCalendar calendar)
+        BudgetMonth month, TimeZoneInfo timeZone, DateOnly today, PayCalendar calendar,
+        IReadOnlyDictionary<Guid, Guid>? shownCopies = null)
     {
         ArgumentNullException.ThrowIfNull(budget);
         ArgumentNullException.ThrowIfNull(transactions);
@@ -34,8 +38,11 @@ public static class BudgetCalculator
             return null;
         }
 
+        IReadOnlyDictionary<Guid, Guid> shownAs = shownCopies ?? new Dictionary<Guid, Guid>();
+        Func<BankTransaction, decimal> amountOf = x => budget.AmountOf(x, CountsOn(x, shownAs));
+
         Dictionary<BudgetMonth, List<BankTransaction>> byMonth = transactions
-            .Where(budget.Covers)
+            .Where(x => budget.Covers(x, CountsOn(x, shownAs)))
             .GroupBy(x => MonthOf(x.OccurredAt.LocalDayIn(timeZone), calendar))
             .Where(x => x.Key >= budget.FirstMonth && x.Key <= month)
             .ToDictionary(static x => x.Key, static x => x.ToList());
@@ -43,22 +50,24 @@ public static class BudgetCalculator
         decimal carriedIn = 0;
         for (BudgetMonth current = budget.FirstMonth; current < month; current = current.Next)
         {
-            decimal remaining = budget.LimitFor(current)!.Value + carriedIn - Spent(budget, byMonth, current);
+            decimal remaining = budget.LimitFor(current)!.Value + carriedIn - Spent(amountOf, byMonth, current);
             carriedIn = CarryOver(budget.RolloverMode, remaining);
         }
 
         decimal limit = budget.LimitFor(month)!.Value;
         List<BankTransaction> inMonth = byMonth.GetValueOrDefault(month, []);
 
-        return new BudgetMonthResult(month, limit, carriedIn, Spent(budget, byMonth, month),
-            -inMonth.Where(static x => x.IsPending).Sum(x => x.AmountUnder(budget.TagIds)),
+        return new BudgetMonthResult(month, limit, carriedIn, Spent(amountOf, byMonth, month),
+            -inMonth.Where(static x => x.IsPending).Sum(amountOf),
             ExpectedByNow(limit + carriedIn, month, today, calendar));
     }
 
     /// <summary>
     /// Money out in <paramref name="month"/> that none of <paramref name="budgets"/> cover, so nothing goes unseen,
-    /// less refunds. Of a split transaction, the parts none of them cover. Untagged money in could be income or a refund, so only what the bank calls a purchase counts as
-    /// a refund, card refunds come back that way while salary and transfers don't. Never below nothing.
+    /// less refunds. A transaction is covered when a budget covers its account and has no tags, otherwise by the tags
+    /// of the budgets that cover its account, only the parts carrying them when it's split. Untagged money in could be
+    /// income or a refund, so only what the bank calls a purchase counts, see <see cref="BankTransaction.IsRefund"/>.
+    /// Never below nothing.
     /// </summary>
     /// <param name="budgets">The user's budgets.</param>
     /// <param name="transactions">The user's transactions, at least those in the month.</param>
@@ -73,43 +82,59 @@ public static class BudgetCalculator
         ArgumentNullException.ThrowIfNull(timeZone);
         ArgumentNullException.ThrowIfNull(calendar);
 
-        HashSet<Guid> budgetedTags = budgets
-            .Where(x => month >= x.FirstMonth)
-            .SelectMany(static x => x.TagIds)
-            .ToHashSet();
+        List<Budget> running = budgets
+            .Where(x => month >= x.FirstMonth && !x.CoversNothing)
+            .ToList();
 
         decimal net = transactions
-            .Where(x => x.CountsAsIncomeOrSpending && (x.Amount < 0 || IsRefund(x)))
+            .Where(static x => x.CountsAsIncomeOrSpending && (x.Amount < 0 || x.IsRefund))
             .Where(x => MonthOf(x.OccurredAt.LocalDayIn(timeZone), calendar) == month)
-            .Sum(x => x.Amount - x.AmountUnder(budgetedTags));
+            .Sum(x => x.Amount - Budgeted(running, x));
 
         return Math.Max(0, -net);
     }
 
     /// <summary>
-    /// The bank's category for a card purchase, money in under it is a refund.
+    /// How much of <paramref name="transaction"/> any of <paramref name="budgets"/> cover: all of it when one covers
+    /// its account without tags, otherwise what's under the tags of those covering its account.
     /// </summary>
-    private const string PurchaseCategory = "PURCHASE";
-
-    /// <summary>
-    /// Whether it's money back on a purchase. The bank calls card refunds a purchase too.
-    /// </summary>
+    /// <param name="budgets">The budgets running in its month.</param>
     /// <param name="transaction">The transaction to check.</param>
-    private static bool IsRefund(BankTransaction transaction) =>
-        transaction.Amount > 0 &&
-        string.Equals(transaction.Category, PurchaseCategory, StringComparison.OrdinalIgnoreCase);
+    private static decimal Budgeted(List<Budget> budgets, BankTransaction transaction)
+    {
+        List<Budget> onItsAccount = budgets
+            .Where(x => x.AccountIds.Count == 0 || x.AccountIds.Contains(transaction.AccountId))
+            .ToList();
+
+        if (onItsAccount.Exists(static x => x.TagIds.Count == 0))
+        {
+            return transaction.Amount;
+        }
+
+        HashSet<Guid> tags = onItsAccount.SelectMany(static x => x.TagIds).ToHashSet();
+        return transaction.AmountUnder(tags);
+    }
 
     /// <summary>
-    /// Money out less refunds, so a purchase refunded in full leaves the budget as it was. Of a split transaction, only
-    /// the parts with the budget's tags. Never below nothing: money in can cancel spending but not add to what the
-    /// budget allows, e.g. income that happens to carry the tag.
+    /// Money out less refunds, so a purchase refunded in full leaves the budget as it was. What counts of each
+    /// transaction is <see cref="Budget.AmountOf(BankTransaction, Guid)"/>. Never below nothing. Money in can cancel spending but not add to
+    /// what the budget allows, e.g. income that happens to carry the tag.
     /// </summary>
-    /// <param name="budget">The budget to work out.</param>
+    /// <param name="amountOf">How much of a transaction counts towards the budget.</param>
     /// <param name="byMonth">The user's transactions grouped by the month they count in.</param>
     /// <param name="month">The month to work out.</param>
-    private static decimal Spent(Budget budget, Dictionary<BudgetMonth, List<BankTransaction>> byMonth,
-        BudgetMonth month) =>
-        Math.Max(0, -byMonth.GetValueOrDefault(month, []).Sum(x => x.AmountUnder(budget.TagIds)));
+    private static decimal Spent(Func<BankTransaction, decimal> amountOf,
+        Dictionary<BudgetMonth, List<BankTransaction>> byMonth, BudgetMonth month) =>
+        Math.Max(0, -byMonth.GetValueOrDefault(month, []).Sum(amountOf));
+
+    /// <summary>
+    /// The account <paramref name="transaction"/> counts as being on: the shown copy for a merged joint account's
+    /// hidden copy, otherwise its own.
+    /// </summary>
+    /// <param name="transaction">The transaction.</param>
+    /// <param name="shownCopies">Each hidden copy's shown copy, by hidden copy.</param>
+    private static Guid CountsOn(BankTransaction transaction, IReadOnlyDictionary<Guid, Guid> shownCopies) =>
+        shownCopies.GetValueOrDefault(transaction.AccountId, transaction.AccountId);
 
     /// <summary>
     /// What of a month's <paramref name="remaining"/> carries into the next.
@@ -137,7 +162,7 @@ public static class BudgetCalculator
     }
 
     /// <summary>
-    /// A straight line through the period: by day 15 of 30, half of <paramref name="available"/>.
+    /// A straight line through the period, by day 15 of 30, half of <paramref name="available"/>.
     /// </summary>
     /// <param name="available">What the budget allows for the period.</param>
     /// <param name="month">The month to work out.</param>

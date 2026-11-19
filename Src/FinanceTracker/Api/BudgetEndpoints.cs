@@ -28,6 +28,9 @@ public static class BudgetEndpoints
             budgets.MapGet(string.Empty, (IBudgetsService service, CancellationToken cancellationToken) =>
                 service.GetBudgetsAsync(cancellationToken));
 
+            budgets.MapGet("accounts", (IBudgetsService service, CancellationToken cancellationToken) =>
+                service.GetAccountsAsync(cancellationToken));
+
             budgets.MapGet("{id:guid}", async Task<Ok<Budget>> (Guid id, IBudgetsService service,
                     CancellationToken cancellationToken) =>
                 TypedResults.Ok(await service.GetBudgetAsync(id, cancellationToken)));

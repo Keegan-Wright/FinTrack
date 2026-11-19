@@ -1,6 +1,6 @@
-@* One budget in one month what's spent of what's available, a bar with where a steady pace would be, and what's
-   left. Pace only shows for the current month, and past months can't be edited. A shared one says it's a household
-   budget, and whose. *@
+@* One budget in one month. What it covers, what's spent of what's available, a bar with where a steady pace would
+   be, and what's left. Pace only shows for the current month, and past months can't be edited. A shared one says it's
+   a household budget, and whose. *@
 @using FinanceTracker.Contracts.Budgets
 
 <div class="ft-budget">
@@ -21,6 +21,10 @@
             </MudMenu>
         }
     </div>
+    @if (Budget is not null && BudgetText.Covers(Budget, TagNames) is { } covers)
+    {
+        <MudText Typo="Typo.caption" Class="mud-text-secondary ft-budget__covers">@covers</MudText>
+    }
     @if (BudgetText.SharedText(Status) is { } shared)
     {
         <MudText Typo="Typo.caption" Class="mud-text-secondary">@shared</MudText>
@@ -39,6 +43,10 @@
     @if (BudgetText.Problem(Status) is { } problem)
     {
         <MudText Typo="Typo.caption" Color="Color.Warning">@problem</MudText>
+    }
+    else if (Budget is not null && BudgetText.AccountsProblem(Budget) is { } accountsProblem)
+    {
+        <MudText Typo="Typo.caption" Color="Color.Warning">@accountsProblem</MudText>
     }
 
     <div class="ft-budget__details">
@@ -64,6 +72,16 @@
     /// How the budget is doing this month.
     /// </summary>
     [Parameter] [EditorRequired] public required BudgetStatus Status { get; set; }
+
+    /// <summary>
+    /// The budget itself, for what it covers. Null leaves that out.
+    /// </summary>
+    [Parameter] public Budget? Budget { get; set; }
+
+    /// <summary>
+    /// The user's tags by id, to name what their own budget covers.
+    /// </summary>
+    [Parameter] public IReadOnlyDictionary<Guid, string> TagNames { get; set; } = new Dictionary<Guid, string>();
 
     /// <summary>
     /// Whether to show where a steady pace would be, the current month only.

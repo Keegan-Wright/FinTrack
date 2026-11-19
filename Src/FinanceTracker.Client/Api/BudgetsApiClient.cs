@@ -35,6 +35,10 @@ public sealed class BudgetsApiClient : IBudgetsService
         _http.GetStreamAsync<Budget>(ApiRoutes.Budgets, cancellationToken);
 
     /// <inheritdoc/>
+    public IAsyncEnumerable<BudgetAccount> GetAccountsAsync(CancellationToken cancellationToken) =>
+        _http.GetStreamAsync<BudgetAccount>($"{ApiRoutes.Budgets}/accounts", cancellationToken);
+
+    /// <inheritdoc/>
     public async Task<Budget> GetBudgetAsync(Guid id, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.GetAsync($"{ApiRoutes.Budgets}/{id}", cancellationToken);

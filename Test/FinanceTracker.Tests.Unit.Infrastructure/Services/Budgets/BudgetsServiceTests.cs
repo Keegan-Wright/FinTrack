@@ -1,7 +1,9 @@
 using FinanceTracker.Contracts.Budgets;
 using FinanceTracker.Domain.Budgeting;
 using FinanceTracker.Domain.OpenBanking.Transactions;
+using FinanceTracker.Domain.OpenBanking.Transfers;
 using FinanceTracker.Infrastructure.Budgets;
+using FinanceTracker.Infrastructure;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Fakers;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
@@ -214,6 +216,158 @@ public class BudgetsServiceTests : InfrastructureTestBase
             .Throws<InvalidOperationException>();
     }
 
+    [Test]
+    public async Task AddBudgetAsync_AnAccountWithoutTags_CoversItAndNamesIt()
+    {
+        // Arrange
+        await SeedAsync(Username);
+
+        // Act
+        Budget added = await BuildSubject(Username).AddBudgetAsync(MainAccount(1500m), CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(added.TagIds).IsEmpty();
+            await Assert.That(added.AccountIds).IsEquivalentTo([Scenario.AccountMappings["main"]]);
+            await Assert.That(added.AccountNames.Keys).IsEquivalentTo([Scenario.AccountMappings["main"]]);
+        }
+    }
+
+    [Test]
+    public async Task AddBudgetAsync_AnAccountTheyDontSee_Throws()
+    {
+        // Arrange
+        await SeedAsync(Username);
+        await SeedAsync(OtherUsername, "theirs");
+        SaveBudget budget = MainAccount(1500m);
+        budget.AccountIds = [Scenario.AccountMappings[$"{OtherUsername}-main"]];
+
+        // Act & Assert
+        await Assert.That(async () => await BuildSubject(Username).AddBudgetAsync(budget, CancellationToken))
+            .Throws<InvalidOperationException>();
+    }
+
+    [Test]
+    public async Task UpdateBudgetAsync_FromTagsToAnAccount_CoversTheAccountOnly()
+    {
+        // Arrange
+        await SeedAsync(Username)
+            .Do(s => s.BudgetScenario.WithBudget("groceries", Username, userId => DomainGroceries(userId, January)));
+
+        // Act
+        Budget updated = await BuildSubject(Username).UpdateBudgetAsync(Scenario.BudgetMappings["groceries"],
+            MainAccount(1500m), CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(updated.TagIds).IsEmpty();
+            await Assert.That(updated.AccountIds).IsEquivalentTo([Scenario.AccountMappings["main"]]);
+        }
+    }
+
+    [Test]
+    public async Task GetMonthAsync_AnAccountBudget_CountsItsSpendingAndNothingIsLeftUnbudgeted()
+    {
+        // Arrange, untagged spending and a salary on the account
+        await SeedAsync(Username)
+            .Do(s => s.BudgetScenario.WithBudget("main", Username, userId =>
+                new DomainBudget(userId, "Main account", [], [Scenario.AccountMappings["main"]], 1500m, March,
+                    DomainRolloverMode.None)))
+            .Do(s => s.TransactionScenario.WithTransaction("cafe", "main",
+                Spend(-4.5m, new DateTime(2026, 3, 6, 12, 0, 0))))
+            .Do(s => s.TransactionScenario.WithTransaction("shop", "main",
+                Spend(-30m, new DateTime(2026, 3, 5, 12, 0, 0))))
+            .Do(s => s.TransactionScenario.WithTransaction("pay", "main",
+                Spend(2000m, new DateTime(2026, 3, 1, 12, 0, 0))));
+
+        // Act
+        BudgetMonthOverview overview = await BuildSubject(Username).GetMonthAsync(2026, 3, CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(overview.Budgets.Single().Spent).IsEqualTo(34.5m);
+            await Assert.That(overview.Unbudgeted).IsEqualTo(0m);
+        }
+    }
+
+    [Test]
+    public async Task AddBudgetAsync_CountingTransfersOut_SavesItAndCountsMoneyMovedOut()
+    {
+        // Arrange, £200 moved from the main account to another of theirs, matched as a transfer
+        await SeedAsync(Username)
+            .Do(s => s.BankAccountScenario.WithAccount("spending", $"{Username}-bank"))
+            .Do(s => s.TransactionScenario.WithTransaction("move", "main",
+                Spend(-200m, new DateTime(2026, 3, 5, 12, 0, 0))));
+        await using (FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken))
+        {
+            Guid moveId = Scenario.TransactionMappings["move"];
+            BankTransaction move = await context.BankTransactions.SingleAsync(x => x.Id == moveId, CancellationToken);
+            move.DecideTransfer(TransferInfo.Matched(TransferReason.OwnAccountReference, null,
+                Scenario.AccountMappings["spending"], Now));
+            await context.SaveChangesAsync(CancellationToken);
+        }
+
+        SaveBudget budget = MainAccount(1500m);
+        budget.CountsTransfersOut = true;
+        BudgetsService subject = BuildSubject(Username);
+
+        // Act
+        Budget added = await subject.AddBudgetAsync(budget, CancellationToken);
+        BudgetMonthOverview overview = await subject.GetMonthAsync(2026, 3, CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(added.CountsTransfersOut).IsTrue();
+            await Assert.That(overview.Budgets.Single().Spent).IsEqualTo(200m);
+            await Assert.That(overview.Unbudgeted).IsEqualTo(0m);
+        }
+    }
+
+    [Test]
+    public async Task AddBudgetAsync_CountingTransfersOutWithoutAccounts_LeavesItOff()
+    {
+        // Arrange
+        await SeedAsync(Username);
+        SaveBudget budget = Groceries(400m);
+        budget.CountsTransfersOut = true;
+
+        // Act
+        Budget added = await BuildSubject(Username).AddBudgetAsync(budget, CancellationToken);
+
+        // Assert
+        await Assert.That(added.CountsTransfersOut).IsFalse();
+    }
+
+    [Test]
+    public async Task GetBudgetsAsync_AnAccountRemoved_HasNoNameForIt()
+    {
+        // Arrange
+        await SeedAsync(Username)
+            .Do(s => s.BankAccountScenario.WithAccount("old", $"{Username}-bank"))
+            .Do(s => s.BudgetScenario.WithBudget("both", Username, userId =>
+                new DomainBudget(userId, "Both", [], [Scenario.AccountMappings["main"], Scenario.AccountMappings["old"]],
+                    1500m, March, DomainRolloverMode.None)));
+        await using (FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken))
+        {
+            Guid oldId = Scenario.AccountMappings["old"];
+            await context.BankAccounts.Where(x => x.Id == oldId).ExecuteDeleteAsync(CancellationToken);
+        }
+
+        // Act
+        Budget budget = await BuildSubject(Username).GetBudgetsAsync(CancellationToken).SingleAsync(CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(budget.AccountIds.Count).IsEqualTo(2);
+            await Assert.That(budget.AccountNames.Keys).IsEquivalentTo([Scenario.AccountMappings["main"]]);
+        }
+    }
+
     private Task<TestingScenario> SeedAsync(string username, string tagName = "shopping") =>
         Scenario.Do(s => s.UserScenario.WithUser(username))
             .Do(s => s.BankConnectionScenario.WithConnection($"{username}-bank", username))
@@ -229,8 +383,16 @@ public class BudgetsServiceTests : InfrastructureTestBase
         RolloverMode = RolloverMode.CarryUnderspend
     };
 
+    private SaveBudget MainAccount(decimal limit) => new()
+    {
+        Name = "Main account",
+        AccountIds = [Scenario.AccountMappings["main"]],
+        MonthlyLimit = limit,
+        RolloverMode = RolloverMode.None
+    };
+
     private DomainBudget DomainGroceries(Guid userId, BudgetMonth from) =>
-        new(userId, "Groceries", [Scenario.ClassificationMappings["shopping"]], 400m, from,
+        new(userId, "Groceries", [Scenario.ClassificationMappings["shopping"]], [], 400m, from,
             DomainRolloverMode.CarryUnderspend);
 
     private static DomainBudget Named(Guid userId, string name)

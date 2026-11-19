@@ -14,6 +14,11 @@ namespace FinanceTracker.Domain.OpenBanking.Transactions;
 /// </summary>
 public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
 {
+    /// <summary>
+    /// The bank's category for a card purchase, see <see cref="IsRefund"/>.
+    /// </summary>
+    private const string PurchaseCategory = "PURCHASE";
+
     private readonly List<string> _providerClassifications = [];
     private readonly List<Guid> _customClassificationIds = [];
     private readonly List<RuleTag> _ruleTags = [];
@@ -134,6 +139,13 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
     /// be a transfer.
     /// </summary>
     public bool CountsAsIncomeOrSpending => Transfer?.Decision is not TransferDecision.Transfer;
+
+    /// <summary>
+    /// Whether it's money back on a purchase. Banks send card refunds under the purchase category, while salary and
+    /// transfers come in under others.
+    /// </summary>
+    public bool IsRefund =>
+        Amount > 0 && string.Equals(Category, PurchaseCategory, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Tags supplied by the provider, all of them. Rules look at these, the user sees

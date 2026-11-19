@@ -16,6 +16,68 @@ public class BudgetTextTests
         })).IsEqualTo(expected);
 
     [Test]
+    [Arguments(true, false, "Groceries")]
+    [Arguments(false, true, "All spending on Joint")]
+    [Arguments(true, true, "Groceries on Joint")]
+    [Arguments(false, false, null)]
+    public async Task Covers_NamesItsTagsAndAccounts(bool withTag, bool withAccount, string? expected)
+    {
+        // Arrange
+        Guid groceries = Guid.NewGuid();
+        Guid joint = Guid.NewGuid();
+        Budget budget = new()
+        {
+            Id = Guid.NewGuid(),
+            Name = "Budget",
+            TagIds = withTag ? [groceries] : [],
+            AccountIds = withAccount ? [joint] : [],
+            AccountNames = new Dictionary<Guid, string> { [joint] = "Joint" }
+        };
+
+        // Act
+        string? covers = BudgetText.Covers(budget, new Dictionary<Guid, string> { [groceries] = "Groceries" });
+
+        // Assert
+        await Assert.That(covers).IsEqualTo(expected);
+    }
+
+    [Test]
+    public async Task Covers_AnAccountCountingMoneyMovedOut_SaysSo()
+    {
+        // Arrange
+        Guid joint = Guid.NewGuid();
+        Budget budget = new()
+        {
+            Id = Guid.NewGuid(), Name = "Joint account", AccountIds = [joint], CountsTransfersOut = true,
+            AccountNames = new Dictionary<Guid, string> { [joint] = "Joint" }
+        };
+
+        // Act
+        string? covers = BudgetText.Covers(budget, new Dictionary<Guid, string>());
+
+        // Assert
+        await Assert.That(covers).IsEqualTo("All spending and money moved out of Joint");
+    }
+
+    [Test]
+    public async Task Covers_SomeoneElsesBudget_UsesItsOwnTagNames()
+    {
+        // Arrange
+        Guid theirs = Guid.NewGuid();
+        Budget budget = new()
+        {
+            Id = Guid.NewGuid(), Name = "Food", SharedBy = "Sam Taylor", TagIds = [theirs],
+            TagNames = new Dictionary<Guid, string> { [theirs] = "Food shop" }
+        };
+
+        // Act
+        string? covers = BudgetText.Covers(budget, new Dictionary<Guid, string>());
+
+        // Assert
+        await Assert.That(covers).IsEqualTo("Food shop");
+    }
+
+    [Test]
     [Arguments(120, 400, "£120.00 of £400.00", "£280.00 left")]
     [Arguments(430, 400, "£430.00 of £400.00", "£30.00 over")]
     public async Task SpentAndRemaining_SayWhereItStands(int spent, int available, string spentOf, string remaining)

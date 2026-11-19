@@ -1,5 +1,5 @@
 @page "/Budgets"
-@* Monthly limits on what the user's tags cover, month by month (IBudgetsService). A month runs from pay to pay once
+@* Monthly limits on what the user's tags, accounts or both cover, month by month (IBudgetsService). A month runs from pay to pay once
    the user's pay is picked up (IPayPeriodsService), otherwise it's the calendar month. The current month shows the
    pace and can be changed, earlier months are as they were. *@
 @using FinanceTracker.Client.Components.Budgets
@@ -54,6 +54,7 @@
                     @foreach (BudgetStatus status in Overview.Budgets)
                     {
                         <BudgetRow @key="status.BudgetId" Status="@status" ShowPace="@Overview.IsCurrent"
+                                   Budget="@BudgetList?.Find(x => x.Id == status.BudgetId)" TagNames="@TagNames"
                                    Editable="@Overview.IsCurrent" OnEdit="@(() => EditAsync(status.BudgetId))"
                                    OnDelete="@(() => DeleteAsync(status))"/>
                     }
@@ -77,8 +78,7 @@
                 <MudText Typo="Typo.caption" Class="mud-text-secondary">
                     Tag it with a
                     <MudLink Href="Rules" Typo="Typo.caption">rule</MudLink>
-                    and add the tag to a budget
-                    to track it.
+                    and add the tag to a budget, or budget the account it's on, to track it.
                 </MudText>
             }
         </Section>
@@ -104,6 +104,12 @@
     /// </summary>
     [PersistentState]
     public List<Classification>? Tags { get; set; }
+
+    /// <summary>
+    /// The accounts the user sees, for the budget dialog.
+    /// </summary>
+    [PersistentState]
+    public List<BudgetAccount>? Accounts { get; set; }
 
     /// <summary>
     /// The user's pay, which their months run between.
@@ -147,6 +153,12 @@
         (Tags ?? []).ToDictionary(static x => x.ClassificationId, static x => x.Tag ?? string.Empty);
 
     /// <summary>
+    /// The accounts the user sees by id.
+    /// </summary>
+    private IReadOnlyDictionary<Guid, string> AccountNames =>
+        (Accounts ?? []).ToDictionary(static x => x.AccountId, static x => x.Name);
+
+    /// <summary>
     /// What's said when the month has no budgets.
     /// </summary>
     private string EmptyText => BudgetList is null or { Count: 0 }
@@ -168,6 +180,8 @@
             ClassificationService.GetAllCustomClassificationsAsync(cancellationToken)
                 .Where(static x => x.SharedBy is null)
                 .ToListAsync(cancellationToken).AsTask());
+        Accounts = await LoadOnceAsync(Accounts, "Loading your budgets", cancellationToken =>
+            BudgetsService.GetAccountsAsync(cancellationToken).ToListAsync(cancellationToken).AsTask());
     }
 
     /// <summary>
@@ -341,17 +355,20 @@
     /// <returns>What the user entered, null when they cancelled.</returns>
     private async Task<SaveBudget?> ShowDialogAsync(Budget? budget)
     {
-        // Someone else's covers their tags, those shared with the user
+        // Someone else's covers their tags and accounts, those shared with the user
         IReadOnlyDictionary<Guid, string> tagNames = TagNames;
+        IReadOnlyDictionary<Guid, string> accountNames = AccountNames;
         if (budget?.SharedBy is not null)
         {
             tagNames = budget.TagChoices;
+            accountNames = budget.AccountChoices;
         }
 
         DialogParameters<BudgetDialog> parameters = new()
         {
             { x => x.Budget, budget },
-            { x => x.TagNames, tagNames }
+            { x => x.TagNames, tagNames },
+            { x => x.AccountNames, accountNames }
         };
 
         IDialogReference dialog = await DialogService.ShowAsync<BudgetDialog>(null, parameters);
@@ -381,7 +398,7 @@
         }
         catch (InvalidOperationException)
         {
-            Snackbar.Add("A tag in this budget isn't yours any more, choose another", Severity.Error);
+            Snackbar.Add("A tag or account in this budget can't be used any more, choose another", Severity.Error);
         }
         catch (Exception)
         {

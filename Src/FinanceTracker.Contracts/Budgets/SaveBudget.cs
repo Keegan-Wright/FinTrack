@@ -14,10 +14,24 @@ public class SaveBudget
     public string Name { get; set; } = string.Empty;
 
     /// <summary>
-    /// The user's tags it covers, at least one.
+    /// The user's tags it covers, none for all spending on its <see cref="AccountIds"/>. It needs at least one tag or
+    /// account.
     /// </summary>
-    [Description("The tags the budget covers, at least one")]
+    [Description("The tags the budget covers, none for all spending on its accounts")]
     public List<Guid> TagIds { get; set; } = [];
+
+    /// <summary>
+    /// The accounts it covers, none for every account. Any the user sees, theirs or shared with them, cards included.
+    /// </summary>
+    [Description("The accounts the budget covers, none for every account")]
+    public List<Guid> AccountIds { get; set; } = [];
+
+    /// <summary>
+    /// Whether money moved out of its accounts to others counts as spent, for an account the user pays from by moving
+    /// money elsewhere first. Moves between its own accounts never count. Only with <see cref="AccountIds"/>.
+    /// </summary>
+    [Description("Whether money moved out of the budget's accounts to others counts as spent, only with accounts")]
+    public bool CountsTransfersOut { get; set; }
 
     /// <summary>
     /// How much can be spent each month, from the current month on.

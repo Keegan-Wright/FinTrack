@@ -20,6 +20,7 @@ internal sealed class BudgetConfiguration : AggregateRootConfiguration<Budget>
 
         // Ids, like a transaction's own tag ids, read with the budget and never queried on their own
         builder.PrimitiveCollection(x => x.TagIds).HasField("_tagIds");
+        builder.PrimitiveCollection(x => x.AccountIds).HasField("_accountIds");
 
         builder.OwnsMany(x => x.Limits, limits =>
         {

@@ -31,7 +31,7 @@ goes and plan what's coming.
   it.
 - **Bills and subscriptions.** Standing orders and direct debits become bills, and repeat payments are suggested as
   subscriptions.
-- **Budgets.** Monthly limits on your tags, with rollover, and following your pay day if you like.
+- **Budgets.** Monthly limits on your tags, your accounts or both, e.g. a joint account as a whole, with rollover, and following your pay day if you like.
 - **Savings goals and debts.** Track goals against an account or tags, and see when debts will be paid off.
 - **Net worth.** Daily balance history for every account, back-filled from your transactions.
 - **Reports and exports.** Spending reports, PDF statements and a full backup of your data.

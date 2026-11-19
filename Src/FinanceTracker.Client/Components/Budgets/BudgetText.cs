@@ -5,7 +5,7 @@ using FinanceTracker.Contracts.Budgets;
 namespace FinanceTracker.Client.Components.Budgets;
 
 /// <summary>
-/// How budgets read on screen what's spent and left, the pace, and what carries over.
+/// How budgets read on screen what they cover, what's spent and left, the pace, and what carries over.
 /// </summary>
 public static class BudgetText
 {
@@ -71,8 +71,61 @@ public static class BudgetText
     /// </summary>
     /// <param name="status">The budget's status.</param>
     public static string? Problem(BudgetStatus status) => status.CoversNothing
-        ? "Its tags were deleted, edit it to choose one so it tracks spending again"
+        ? "Its tags were deleted, edit it to choose a tag or account so it tracks spending again"
         : null;
+
+    /// <summary>
+    /// What <paramref name="budget"/> covers, e.g. <c>Groceries, Household</c>, <c>All spending on Joint</c>,
+    /// <c>All spending and money moved out of Joint</c> or <c>Groceries on Joint</c>. Null when none of its tags or
+    /// accounts are left to name.
+    /// </summary>
+    /// <param name="budget">The budget.</param>
+    /// <param name="ownTagNames">The user's tags by id, for their own budget. Someone else's names its own.</param>
+    public static string? Covers(Budget budget, IReadOnlyDictionary<Guid, string> ownTagNames)
+    {
+        IReadOnlyDictionary<Guid, string> tagNames = ownTagNames;
+        if (budget.SharedBy is not null)
+        {
+            tagNames = budget.TagNames;
+        }
+
+        string tags = Names(budget.TagIds, tagNames);
+        string accounts = Names(budget.AccountIds, budget.AccountNames);
+
+        if (accounts.Length == 0)
+        {
+            return tags.Length == 0 ? null : tags;
+        }
+
+        if (tags.Length == 0 && budget.CountsTransfersOut)
+        {
+            return $"All spending and money moved out of {accounts}";
+        }
+
+        if (tags.Length == 0)
+        {
+            return $"All spending on {accounts}";
+        }
+
+        return $"{tags} on {accounts}";
+    }
+
+    /// <summary>
+    /// Says one of <paramref name="budget"/>'s accounts has gone, null when none has.
+    /// </summary>
+    /// <param name="budget">The budget.</param>
+    public static string? AccountsProblem(Budget budget) =>
+        budget.AccountIds.Exists(x => !budget.AccountNames.ContainsKey(x))
+            ? "An account it covers was removed or isn't shared any more, edit it to choose another"
+            : null;
+
+    /// <summary>
+    /// The names of <paramref name="ids"/> found in <paramref name="names"/>, in order, e.g. <c>Joint, Current</c>.
+    /// </summary>
+    /// <param name="ids">The ids.</param>
+    /// <param name="names">The names by id.</param>
+    private static string Names(IEnumerable<Guid> ids, IReadOnlyDictionary<Guid, string> names) =>
+        string.Join(", ", ids.Where(names.ContainsKey).Select(x => names[x]));
 
     /// <summary>
     /// For screen readers, e.g. <c>Groceries, £120.00 of £400.00 spent</c>.

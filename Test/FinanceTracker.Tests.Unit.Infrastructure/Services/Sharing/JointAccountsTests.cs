@@ -2,6 +2,7 @@ using FinanceTracker.Contracts.Account;
 using FinanceTracker.Contracts.NetWorth;
 using FinanceTracker.Contracts.Sharing;
 using FinanceTracker.Contracts.Transactions;
+using FinanceTracker.Domain.Budgeting;
 using FinanceTracker.Domain.Classifications;
 using FinanceTracker.Domain.NetWorth;
 using FinanceTracker.Domain.OpenBanking.Accounts;
@@ -10,6 +11,7 @@ using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Account;
+using FinanceTracker.Infrastructure.Budgets;
 using FinanceTracker.Infrastructure.NetWorth;
 using FinanceTracker.Infrastructure.Notifications;
 using FinanceTracker.Infrastructure.Rules;
@@ -21,6 +23,7 @@ using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using BudgetMonthOverview = FinanceTracker.Contracts.Budgets.BudgetMonthOverview;
 using NotificationKind = FinanceTracker.Domain.Notifications.NotificationKind;
 using Transaction = FinanceTracker.Contracts.Transactions.Transaction;
 
@@ -158,6 +161,29 @@ public class JointAccountsTests : InfrastructureTestBase
             await Assert.That(asSam.CustomTags).IsEquivalentTo(["Food"]);
             await Assert.That(_raised.Select(static x => (x.UserId, x.Kind)))
                 .Contains((Scenario.UserMappings[Sam], NotificationKind.JointAccount));
+        }
+    }
+
+    [Test]
+    public async Task Merging_MovesABudgetOnTheHiddenCopyToTheShownOne()
+    {
+        // Arrange, Alex budgets their copy, which merging hides behind Sam's
+        BudgetMonth month = BudgetMonth.Of(DateOnly.FromDateTime(Spent));
+        await Scenario.Do(s => s.BudgetScenario.WithBudget("joint", Alex, userId =>
+            new Budget(userId, "Joint", [], [Account("alex-joint")], 1500m, month, RolloverMode.None)));
+        await ShareSamsJointAsync();
+
+        // Act
+        await MergeAsync();
+
+        // Assert
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        Budget budget = await context.Budgets.AsNoTracking().SingleAsync(CancellationToken);
+        BudgetMonthOverview overview = await Budgets(Alex).GetMonthAsync(month.Year, month.Month, CancellationToken);
+        using (Assert.Multiple())
+        {
+            await Assert.That(budget.AccountIds).IsEquivalentTo([Account("sam-joint")]);
+            await Assert.That(overview.Budgets.Single().Spent).IsEqualTo(40m);
         }
     }
 
@@ -573,6 +599,9 @@ public class JointAccountsTests : InfrastructureTestBase
                 TimeProvider.System, Scope(username))
             .GetAllTransactionsAsync(new FilterTransactions(), CancellationToken)
             .ToListAsync(CancellationToken).AsTask();
+
+    private BudgetsService Budgets(string username) =>
+        new(CurrentUserFor(username), DbContextFactory, NullLogger<BudgetsService>.Instance, TimeProvider.System);
 
     private SharingService Sharing(string username) =>
         SharingTestServices.Build(CurrentUserFor(username), DbContextFactory,

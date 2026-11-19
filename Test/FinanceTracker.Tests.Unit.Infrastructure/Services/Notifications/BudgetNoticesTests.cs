@@ -32,7 +32,7 @@ public class BudgetNoticesTests : InfrastructureTestBase
             .Do(s => s.BankAccountScenario.WithAccount(Account, "bank"))
             .Do(s => s.ClassificationScenario.WithClassification("groceries", Username, "Groceries"))
             .Do(s => s.BudgetScenario.WithBudget("groceries", Username, userId =>
-                new Budget(userId, "Groceries", [Scenario.ClassificationMappings["groceries"]], 100m,
+                new Budget(userId, "Groceries", [Scenario.ClassificationMappings["groceries"]], [], 100m,
                     new BudgetMonth(2026, 11), RolloverMode.None)));
 
     [Test]

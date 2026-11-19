@@ -473,6 +473,6 @@ public class ClassificationServiceTests : InfrastructureTestBase
             tagNames.Select(x => new RuleAction(RuleActionType.AddTag, Scenario.ClassificationMappings[x])));
 
     private Budget TagBudget(Guid userId, params string[] tagNames) =>
-        new(userId, "Budget", tagNames.Select(x => Scenario.ClassificationMappings[x]), 100m,
+        new(userId, "Budget", tagNames.Select(x => Scenario.ClassificationMappings[x]), [], 100m,
             new BudgetMonth(2026, 1), RolloverMode.None);
 }
