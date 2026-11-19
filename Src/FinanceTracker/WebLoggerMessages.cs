@@ -31,9 +31,6 @@ public static partial class WebLoggerMessages
     [LoggerMessage(LogLevel.Information, "Granted the admin role to user {userId}")]
     public static partial void LogAdminGranted(this ILogger logger, Guid userId);
 
-    [LoggerMessage(LogLevel.Warning,
-        "Nobody is an admin and there are several users, grant the admin role in the database")]
-    public static partial void LogNoAdminAmongSeveralUsers(this ILogger logger);
 
     [LoggerMessage(LogLevel.Warning, "OIDC sign in rejected, {reason}")]
     public static partial void LogOidcSignInRejected(this ILogger logger, string reason);
@@ -86,8 +83,8 @@ public static partial class WebLoggerMessages
     public static partial void LogAdminFromGroupRemoved(this ILogger logger, Guid userId);
 
     [LoggerMessage(LogLevel.Warning,
-        "Nobody is an admin. Add someone to the identity provider's admins group, or on a new install " +
-        "register with a password first")]
+        "Nobody is an admin. Someone in the identity provider's admins group becomes one when they next sign in, " +
+        "without single sign-on grant the role in the database")]
     public static partial void LogNoAdminLeft(this ILogger logger);
 
     [LoggerMessage(LogLevel.Information, "Admin {adminId} made user {userId} an admin")]

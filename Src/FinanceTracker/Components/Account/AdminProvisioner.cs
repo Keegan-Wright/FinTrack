@@ -6,8 +6,9 @@ using Microsoft.EntityFrameworkCore;
 namespace FinanceTracker.Components.Account;
 
 /// <summary>
-/// The first user to register becomes the <see cref="FinTrackRoles.Admin"/>. A stopgap until user management lets
-/// admins grant the role themselves.
+/// Makes the first admin on an fresh database. The first user to register with a password becomes the
+/// <see cref="FinTrackRoles.Admin"/>. After that admins give the role on the Users page, and the identity provider's
+/// admins group decides for those who sign in through it.
 /// </summary>
 /// <remarks>
 /// A user's role claims are read at sign in, so granting before the new user's first sign in puts the role in their
@@ -46,8 +47,8 @@ public sealed class AdminProvisioner
     }
 
     /// <summary>
-    /// Run at startup for installs whose users registered before the admin role existed: with nobody holding the
-    /// role and a single user, that user is the first to have registered, so they become the admin.
+    /// Run at startup. Adds the admin role when it doesn't exist. With nobody holding it and a single user, that user
+    /// becomes the admin. With several users and no admin, warns how to get one, as nobody can manage users.
     /// </summary>
     public async Task EnsureAdminAsync()
     {
@@ -59,15 +60,16 @@ public sealed class AdminProvisioner
         }
 
         List<FinanceTrackerUser> users = await _userManager.Users.Take(2).ToListAsync();
-        switch (users.Count)
+        if (users.Count == 1)
         {
-            case 1:
-                await GrantAsync(users[0]);
-                break;
-            case > 1:
-                // Users carry no registration time, so there's no telling which of them was first
-                _logger.LogNoAdminAmongSeveralUsers();
-                break;
+            await GrantAsync(users[0]);
+            return;
+        }
+
+        // An empty install gets its admin when the first person registers, nothing's wrong yet
+        if (users.Count > 1)
+        {
+            _logger.LogNoAdminLeft();
         }
     }
 
