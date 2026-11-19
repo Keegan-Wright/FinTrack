@@ -4,8 +4,10 @@ using FinanceTracker.Domain.Identity;
 using FinanceTracker.Extensions;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Account.Authenticator;
+using FinanceTracker.Telemetry;
 using FinanceTracker.Tests.Unit.Shared;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Diagnostics.Metrics.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
@@ -13,6 +15,7 @@ namespace FinanceTracker.Tests.Unit.FinanceTracker.Extensions;
 
 public class IdentitySecurityExtensionsTests : InfrastructureTestBase
 {
+    private readonly TestMetrics _metrics = new();
     private ServiceProvider _services = null!;
     private AsyncServiceScope _scope;
 
@@ -26,6 +29,7 @@ public class IdentitySecurityExtensionsTests : InfrastructureTestBase
         services.AddLogging();
         services.AddDataProtection();
         services.AddSingleton(TimeProvider.System);
+        services.AddSingleton(_metrics.Metrics);
         services.AddScoped(_ => DbContextFactory.CreateDbContext());
         services.AddIdentityCore<FinanceTrackerUser>()
             .AddEntityFrameworkStores<FinanceTrackerContext>()
@@ -40,6 +44,7 @@ public class IdentitySecurityExtensionsTests : InfrastructureTestBase
     {
         await _scope.DisposeAsync();
         await _services.DisposeAsync();
+        _metrics.Dispose();
     }
 
     [Test]
@@ -67,7 +72,7 @@ public class IdentitySecurityExtensionsTests : InfrastructureTestBase
         IPasswordHasher<FinanceTrackerUser> hasher =
             _services.GetRequiredService<IPasswordHasher<FinanceTrackerUser>>();
 
-        // Act, Identity's v3 format: a marker byte, then the PRF, iterations and salt length big-endian
+        // Act, Identity's v3 format. A marker byte, then the PRF, iterations and salt length big-endian
         byte[] hash = Convert.FromBase64String(hasher.HashPassword(User("hash"), "Placeholder-Password"));
 
         // Assert
@@ -89,6 +94,30 @@ public class IdentitySecurityExtensionsTests : InfrastructureTestBase
 
         // Assert
         await Assert.That(Base32.Decode(key).Length).IsEqualTo(AuthenticatorSettings.KeyBytes);
+    }
+
+    [Test]
+    public async Task AuthenticatorCode_UsedTwice_IsTakenOnceThenRefusedAndCounted()
+    {
+        // Arrange
+        using MetricCollector<long> reused = _metrics.Collect<long>(FinTrackMetrics.AuthenticatorCodesReusedName);
+        FinanceTrackerUser user = User("codes");
+        await UserManager.CreateAsync(user, "correct horse battery staple");
+        await UserManager.ResetAuthenticatorKeyAsync(user);
+        string key = (await UserManager.GetAuthenticatorKeyAsync(user))!;
+        string code = Totp.Code(Base32.Decode(key), Totp.StepAt(DateTimeOffset.UtcNow));
+
+        // Act
+        bool first = await UserManager.VerifyTwoFactorTokenAsync(user, TokenOptions.DefaultAuthenticatorProvider, code);
+        bool again = await UserManager.VerifyTwoFactorTokenAsync(user, TokenOptions.DefaultAuthenticatorProvider, code);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(first).IsTrue();
+            await Assert.That(again).IsFalse();
+            await Assert.That(reused.GetMeasurementSnapshot().EvaluateAsCounter()).IsEqualTo(1);
+        }
     }
 
     [Test]

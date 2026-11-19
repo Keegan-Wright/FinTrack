@@ -4,7 +4,8 @@ namespace FinanceTracker.Contracts.Services;
 
 /// <summary>
 /// Everyone who can sign in, for admins who they are, how they sign in, a reset link for one who's forgotten
-/// their password when FinTrack can't email them one, locking one out, and who else is an admin.
+/// their password when FinTrack can't email them one, turning off two-factor sign in for one who's lost their phone,
+/// locking one out, and who else is an admin.
 /// </summary>
 public interface IUsersService
 {
@@ -19,6 +20,16 @@ public interface IUsersService
     /// <returns>The link, null when they have no password here to reset, signing in through the identity provider.</returns>
     /// <exception cref="NotFoundException">There's no such user.</exception>
     Task<ResetLink?> CreateResetLinkAsync(Guid userId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Turns off two-factor sign in for <paramref name="userId"/>, who's lost their phone and their recovery codes.
+    /// Their authenticator key and recovery codes are replaced, so neither works again, and they're signed out
+    /// everywhere. They're emailed to say so.
+    /// </summary>
+    /// <returns>Whether it was turned off, not for the admin asking, who turns off their own from their profile with
+    /// their password.</returns>
+    /// <exception cref="NotFoundException">There's no such user.</exception>
+    Task<bool> TurnOffTwoFactorAsync(Guid userId, CancellationToken cancellationToken);
 
     /// <summary>
     /// Locks <paramref name="userId"/> out until they're unlocked. They're signed out wherever they're signed in,

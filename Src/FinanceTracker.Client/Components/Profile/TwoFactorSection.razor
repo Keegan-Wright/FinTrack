@@ -53,6 +53,10 @@
                 {
                     <MudText Typo="Typo.subtitle2" HtmlTag="h3">1. Add FinTrack to your authenticator app</MudText>
                     <MudText Typo="Typo.body2" Class="mud-text-secondary">Scan this QR code with the app.</MudText>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        FinTrack uses SHA-256 codes, which not every app supports. If the code isn't accepted, try
+                        another app, such as Microsoft Authenticator, Google Authenticator or Bitwarden.
+                    </MudText>
                     <div class="ft-two-factor__qr" role="img" aria-label="QR code to scan with your authenticator app">
                         @((MarkupString)_setup.QrCodeSvg)
                     </div>

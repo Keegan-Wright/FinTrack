@@ -3,6 +3,7 @@ using FinanceTracker.Contracts.Auth;
 using FinanceTracker.Contracts.Users;
 using FinanceTracker.Domain.Identity;
 using FinanceTracker.Infrastructure;
+using FinanceTracker.Infrastructure.Account.Email;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.AspNetCore.Identity;
@@ -13,13 +14,15 @@ using NSubstitute;
 namespace FinanceTracker.Tests.Unit.FinanceTracker.Account;
 
 /// <summary>
-/// An admin, Alex, giving and taking the admin role and locking people, over Identity's stores.
+/// An admin, Alex, giving and taking the admin role, locking people and turning off their two-factor sign in, over
+/// Identity's stores.
 /// </summary>
 public class UsersServiceTests : InfrastructureTestBase
 {
     private const string Alex = "alex";
     private const string Sam = "sam";
 
+    private readonly ISecurityEmails _securityEmails = Substitute.For<ISecurityEmails>();
     private ServiceProvider _services = null!;
     private AsyncServiceScope _scope;
 
@@ -195,13 +198,94 @@ public class UsersServiceTests : InfrastructureTestBase
         }
     }
 
+    [Test]
+    public async Task TurnOffTwoFactorAsync_SomeoneWithItOn_ReplacesTheirKeyAndCodesSignsThemOutAndEmailsThem()
+    {
+        // Arrange, Sam has two-factor on with a key and recovery codes
+        FinanceTrackerUser sam = (await UserManager.FindByIdAsync(Id(Sam).ToString()))!;
+        await UserManager.ResetAuthenticatorKeyAsync(sam);
+        string keyBefore = (await UserManager.GetAuthenticatorKeyAsync(sam))!;
+        await UserManager.GenerateNewTwoFactorRecoveryCodesAsync(sam, 10);
+        await UserManager.SetTwoFactorEnabledAsync(sam, true);
+        string stampBefore = (await FindAsync(Sam)).SecurityStamp!;
+
+        // Act
+        bool turnedOff = await Subject().TurnOffTwoFactorAsync(Id(Sam), CancellationToken);
+
+        // Assert
+        FinanceTrackerUser after = await FindAsync(Sam);
+        using (Assert.Multiple())
+        {
+            await Assert.That(turnedOff).IsTrue();
+            await Assert.That(after.TwoFactorEnabled).IsFalse();
+            await Assert.That(after.SecurityStamp).IsNotEqualTo(stampBefore);
+            await Assert.That(await UserManager.GetAuthenticatorKeyAsync(after)).IsNotEqualTo(keyBefore);
+            await Assert.That(await UserManager.CountRecoveryCodesAsync(after)).IsEqualTo(0);
+            await _securityEmails.Received(1).TwoFactorOffAsync(Arg.Is<FinanceTrackerUser>(x => x.Id == Id(Sam)),
+                TwoFactorOffCause.TurnedOffByAdmin);
+        }
+    }
+
+    [Test]
+    public async Task TurnOffTwoFactorAsync_Yourself_IsRefusedAndChangesNothing()
+    {
+        // Arrange
+        FinanceTrackerUser alex = (await UserManager.FindByIdAsync(Id(Alex).ToString()))!;
+        await UserManager.SetTwoFactorEnabledAsync(alex, true);
+
+        // Act
+        bool turnedOff = await Subject().TurnOffTwoFactorAsync(Id(Alex), CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(turnedOff).IsFalse();
+            await Assert.That((await FindAsync(Alex)).TwoFactorEnabled).IsTrue();
+            await _securityEmails.DidNotReceiveWithAnyArgs().TwoFactorOffAsync(default!, default);
+        }
+    }
+
+    [Test]
+    public async Task TurnOffTwoFactorAsync_SomeoneWithItOff_ClearsAnyKeyWithoutEmailing()
+    {
+        // Act
+        bool turnedOff = await Subject().TurnOffTwoFactorAsync(Id(Sam), CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(turnedOff).IsTrue();
+            await Assert.That((await FindAsync(Sam)).TwoFactorEnabled).IsFalse();
+            await _securityEmails.DidNotReceiveWithAnyArgs().TwoFactorOffAsync(default!, default);
+        }
+    }
+
+    [Test]
+    public async Task GetUsersAsync_SomeoneWithTwoFactorOn_SaysSo()
+    {
+        // Arrange
+        FinanceTrackerUser sam = (await UserManager.FindByIdAsync(Id(Sam).ToString()))!;
+        await UserManager.SetTwoFactorEnabledAsync(sam, true);
+
+        // Act
+        List<UserSummary> users = await Subject().GetUsersAsync(CancellationToken).ToListAsync(CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(users.Single(x => x.Username == Sam).TwoFactorEnabled).IsTrue();
+            await Assert.That(users.Single(x => x.Username == Alex).TwoFactorEnabled).IsFalse();
+        }
+    }
+
     /// <summary>
     /// The service as Alex uses it.
     /// </summary>
     /// <param name="passwordSignIn">Whether password sign in is on.</param>
     private UsersService Subject(bool passwordSignIn = true) =>
         new(UserManager, Substitute.For<IPasswordReset>(), CurrentUserFor(Alex),
-            new SignInMethods { Password = passwordSignIn, SingleSignOn = true }, NullLogger<UsersService>.Instance);
+            new SignInMethods { Password = passwordSignIn, SingleSignOn = true }, _securityEmails,
+            NullLogger<UsersService>.Instance);
 
     private Guid Id(string username) => Scenario.UserMappings[username];
 

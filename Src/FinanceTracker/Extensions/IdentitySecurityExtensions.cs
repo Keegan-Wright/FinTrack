@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Identity;
 namespace FinanceTracker.Extensions;
 
 /// <summary>
-/// Replaces Identity's weaker defaults: password length, password hashing cost and the token providers.
+/// Replaces Identity's weaker defaults for password length, password hashing cost and the token providers.
 /// </summary>
 public static class IdentitySecurityExtensions
 {

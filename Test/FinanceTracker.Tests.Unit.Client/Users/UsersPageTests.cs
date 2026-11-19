@@ -15,38 +15,52 @@ public class UsersPageTests : ComponentTestBase
     private static readonly UserSummary Local = new()
     {
         Id = Guid.NewGuid(), Username = "sam", Name = "Sam Taylor", Email = "sam@example.test", EmailConfirmed = true,
-        HasPassword = true, UsesIdentityProvider = false, IsAdmin = true, IsLocked = false, IsYou = true
+        HasPassword = true, TwoFactorEnabled = false, UsesIdentityProvider = false, IsAdmin = true, IsLocked = false, IsYou = true
     };
 
     private static readonly UserSummary Provider = new()
     {
         Id = Guid.NewGuid(), Username = "alex", Name = "Alex Smith",
         Email = "alex@example.test", EmailConfirmed = false,
-        HasPassword = false, UsesIdentityProvider = true, IsAdmin = false, IsLocked = false, IsYou = false
+        HasPassword = false, TwoFactorEnabled = false, UsesIdentityProvider = true, IsAdmin = false, IsLocked = false, IsYou = false
     };
 
     private static readonly UserSummary LockedProvider = new()
     {
         Id = Provider.Id, Username = "alex", Name = "Alex Smith", Email = "alex@example.test", EmailConfirmed = false,
-        HasPassword = false, UsesIdentityProvider = true, IsAdmin = false, IsLocked = true, IsYou = false
+        HasPassword = false, TwoFactorEnabled = false, UsesIdentityProvider = true, IsAdmin = false, IsLocked = true, IsYou = false
     };
 
     private static readonly UserSummary Jo = new()
     {
         Id = Guid.NewGuid(), Username = "jo", Name = "Jo Brown", Email = "jo@example.test", EmailConfirmed = true,
-        HasPassword = true, UsesIdentityProvider = false, IsAdmin = false, IsLocked = false, IsYou = false
+        HasPassword = true, TwoFactorEnabled = false, UsesIdentityProvider = false, IsAdmin = false, IsLocked = false, IsYou = false
     };
 
     private static readonly UserSummary JoAsAdmin = new()
     {
         Id = Jo.Id, Username = "jo", Name = "Jo Brown", Email = "jo@example.test", EmailConfirmed = true,
-        HasPassword = true, UsesIdentityProvider = false, IsAdmin = true, IsLocked = false, IsYou = false
+        HasPassword = true, TwoFactorEnabled = false, UsesIdentityProvider = false, IsAdmin = true, IsLocked = false, IsYou = false
+    };
+
+    private static readonly UserSummary JoWithTwoFactor = new()
+    {
+        Id = Jo.Id, Username = "jo", Name = "Jo Brown", Email = "jo@example.test", EmailConfirmed = true,
+        HasPassword = true, TwoFactorEnabled = true, UsesIdentityProvider = false, IsAdmin = false, IsLocked = false,
+        IsYou = false
+    };
+
+    private static readonly UserSummary YouWithTwoFactor = new()
+    {
+        Id = Local.Id, Username = "sam", Name = "Sam Taylor", Email = "sam@example.test", EmailConfirmed = true,
+        HasPassword = true, TwoFactorEnabled = true, UsesIdentityProvider = false, IsAdmin = true, IsLocked = false,
+        IsYou = true
     };
 
     private static readonly UserSummary ProviderAdmin = new()
     {
         Id = Guid.NewGuid(), Username = "kit", Name = "Kit Green", Email = "kit@example.test", EmailConfirmed = true,
-        HasPassword = false, UsesIdentityProvider = true, IsAdmin = true, IsLocked = false, IsYou = false
+        HasPassword = false, TwoFactorEnabled = false, UsesIdentityProvider = true, IsAdmin = true, IsLocked = false, IsYou = false
     };
 
     private readonly IUsersService _usersService = Substitute.For<IUsersService>();
@@ -111,6 +125,67 @@ public class UsersPageTests : ComponentTestBase
             await Assert.That(dialogs.Markup).Contains("Send this to sam yourself.");
             await Assert.That(dialogs.Markup).Contains("It works once, until");
         }
+    }
+
+    [Test]
+    public async Task Render_TwoFactorOn_ShowsItWithATurnOffForOthersButNotYourself()
+    {
+        // Arrange
+        _usersService.GetUsersAsync(Arg.Any<CancellationToken>())
+            .Returns(new[] { JoWithTwoFactor, YouWithTwoFactor }.ToAsyncEnumerable());
+
+        // Act
+        IRenderedComponent<UsersPage> cut = RenderPage();
+
+        // Assert
+        cut.WaitForState(() => cut.FindAll(".ft-users__row").Count == 2);
+        using (Assert.Multiple())
+        {
+            await Assert.That(Row(cut, "jo").TextContent).Contains("Two-factor");
+            await Assert.That(ButtonTexts(Row(cut, "jo"))).Contains("Turn off two-factor");
+            await Assert.That(Row(cut, "sam").TextContent).Contains("Two-factor");
+            await Assert.That(ButtonTexts(Row(cut, "sam"))).DoesNotContain("Turn off two-factor");
+        }
+    }
+
+    [Test]
+    public async Task TurnOffTwoFactor_Confirmed_TurnsItOffAndShowsItOff()
+    {
+        // Arrange
+        _usersService.GetUsersAsync(Arg.Any<CancellationToken>()).Returns(
+            new[] { JoWithTwoFactor, Local }.ToAsyncEnumerable(), new[] { Jo, Local }.ToAsyncEnumerable());
+        _usersService.TurnOffTwoFactorAsync(Jo.Id, Arg.Any<CancellationToken>()).Returns(true);
+        IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
+        IRenderedComponent<UsersPage> cut = RenderPage();
+        cut.WaitForState(() => cut.FindAll(".ft-users__row").Count == 2);
+
+        // Act
+        Task turningOff = RowButton(cut, "jo", "Turn off two-factor").ClickAsync(new());
+        await RowMenu.ConfirmAsync(dialogs, "Turn off");
+        await turningOff.WaitAsync(TestTimeouts.Wait);
+
+        // Assert
+        cut.WaitForState(() => !Row(cut, "jo").TextContent.Contains("Two-factor"));
+        await _usersService.Received(1).TurnOffTwoFactorAsync(Jo.Id, Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task TurnOffTwoFactor_Cancelled_LeavesItOn()
+    {
+        // Arrange
+        _usersService.GetUsersAsync(Arg.Any<CancellationToken>())
+            .Returns(new[] { JoWithTwoFactor, Local }.ToAsyncEnumerable());
+        IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
+        IRenderedComponent<UsersPage> cut = RenderPage();
+        cut.WaitForState(() => cut.FindAll(".ft-users__row").Count == 2);
+
+        // Act
+        Task turningOff = RowButton(cut, "jo", "Turn off two-factor").ClickAsync(new());
+        await RowMenu.ConfirmAsync(dialogs, "Cancel");
+        await turningOff.WaitAsync(TestTimeouts.Wait);
+
+        // Assert
+        await _usersService.DidNotReceive().TurnOffTwoFactorAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [Test]

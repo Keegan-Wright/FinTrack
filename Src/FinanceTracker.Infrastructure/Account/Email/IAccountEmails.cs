@@ -3,7 +3,8 @@ using FinanceTracker.Infrastructure.Notifications.Email;
 namespace FinanceTracker.Infrastructure.Account.Email;
 
 /// <summary>
-/// The emails about a local account, each with a one-time link, in FinTrack's branding with a plain text version.
+/// The emails about a local account, in FinTrack's branding with a plain text version. Some carry a one-time link,
+/// others tell the user how they sign in changed.
 /// </summary>
 public interface IAccountEmails
 {
@@ -27,4 +28,23 @@ public interface IAccountEmails
     /// <param name="to">Who it's sent to.</param>
     /// <param name="link">The link.</param>
     Task<MailMessage> ChangeEmailAsync(string to, Uri link);
+
+    /// <summary>
+    /// Tells the user two-factor sign in was turned on, so they know if it wasn't them.
+    /// </summary>
+    /// <param name="to">Who it's sent to.</param>
+    Task<MailMessage> TwoFactorOnAsync(string to);
+
+    /// <summary>
+    /// Tells the user two-factor sign in was turned off, and how.
+    /// </summary>
+    /// <param name="to">Who it's sent to.</param>
+    /// <param name="cause">How it was turned off.</param>
+    Task<MailMessage> TwoFactorOffAsync(string to, TwoFactorOffCause cause);
+
+    /// <summary>
+    /// Tells the user new recovery codes were made, so the old ones no longer work.
+    /// </summary>
+    /// <param name="to">Who it's sent to.</param>
+    Task<MailMessage> RecoveryCodesMadeAsync(string to);
 }

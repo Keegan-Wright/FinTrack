@@ -12,6 +12,18 @@ a short jumble. Passwords made before this rule keep working until they're next 
 If someone has forgotten their password and can't get a reset email, make them a reset link and send it yourself. It
 works once, until it expires. They choose the new password, you never see it.
 
+## Two-factor sign in
+
+Users with two-factor sign in on show a **Two-factor** chip. For someone who's lost their phone and their recovery
+codes, **Turn off two-factor** turns it off.
+
+- Their authenticator key and recovery codes are replaced, so the old ones never work again.
+- They're signed out everywhere, and sign in next with just their password.
+- They're emailed to say an admin turned it off.
+- It's logged with who did it.
+
+You can't turn off your own here. Use **Your profile**, which asks for your password.
+
 ## Locking
 
 Locking someone signs them out within a minute and stops them signing in until you unlock them. Their banks aren't

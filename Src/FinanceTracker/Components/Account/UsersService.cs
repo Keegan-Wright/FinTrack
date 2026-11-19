@@ -5,6 +5,7 @@ using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Users;
 using FinanceTracker.Domain.Identity;
 using FinanceTracker.Infrastructure;
+using FinanceTracker.Infrastructure.Account.Email;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -19,6 +20,7 @@ public sealed class UsersService : IUsersService
     private readonly UserManager<FinanceTrackerUser> _userManager;
     private readonly IPasswordReset _passwordReset;
     private readonly ICurrentUser _currentUser;
+    private readonly ISecurityEmails _securityEmails;
     private readonly ILogger<UsersService> _logger;
     private readonly SignInMethods _signInMethods;
 
@@ -26,10 +28,13 @@ public sealed class UsersService : IUsersService
     /// <param name="passwordReset">Makes password reset links.</param>
     /// <param name="currentUser">The signed in user.</param>
     /// <param name="signInMethods">Whether passwords can be used.</param>
+    /// <param name="securityEmails">Tells a user when how they sign in changes.</param>
     /// <param name="logger">Its logger.</param>
     public UsersService(UserManager<FinanceTrackerUser> userManager, IPasswordReset passwordReset,
-        ICurrentUser currentUser, SignInMethods signInMethods, ILogger<UsersService> logger)
+        ICurrentUser currentUser, SignInMethods signInMethods, ISecurityEmails securityEmails,
+        ILogger<UsersService> logger)
     {
+        _securityEmails = securityEmails;
         _signInMethods = signInMethods;
         _userManager = userManager;
         _passwordReset = passwordReset;
@@ -59,6 +64,7 @@ public sealed class UsersService : IUsersService
                 Email = string.IsNullOrWhiteSpace(user.Email) ? null : user.Email,
                 EmailConfirmed = user.EmailConfirmed,
                 HasPassword = _signInMethods.CanUsePassword(user.PasswordHash is not null),
+                TwoFactorEnabled = user.TwoFactorEnabled,
                 UsesIdentityProvider = user.OpenIdConnectSubject is not null,
                 IsAdmin = admins.Contains(user.Id),
                 IsLocked = user.IsLockedByAdmin,
@@ -81,6 +87,38 @@ public sealed class UsersService : IUsersService
         Uri link = await _passwordReset.CreateLinkAsync(user);
         _logger.LogResetLinkCreated(_currentUser.UserId, user.Id);
         return new ResetLink { Url = link.AbsoluteUri, ExpiresAt = _passwordReset.ExpiresAt };
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> TurnOffTwoFactorAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        // Their own goes through their profile, which asks for their password
+        if (userId == _currentUser.UserId)
+        {
+            return false;
+        }
+
+        FinanceTrackerUser user = await FindAsync(userId);
+        bool wasOn = await _userManager.GetTwoFactorEnabledAsync(user);
+
+        ThrowIfFailed(await _userManager.SetTwoFactorEnabledAsync(user, false));
+
+        // No recovery codes, so a lost list can't be used, and a new key, which also changes the security stamp:
+        // they're signed out everywhere and no browser stays remembered
+        if (await _userManager.GenerateNewTwoFactorRecoveryCodesAsync(user, 0) is null)
+        {
+            throw new InvalidOperationException($"User {user.Id}'s recovery codes couldn't be cleared");
+        }
+
+        ThrowIfFailed(await _userManager.ResetAuthenticatorKeyAsync(user));
+        _logger.LogTwoFactorTurnedOffByAdmin(_currentUser.UserId, user.Id);
+
+        if (wasOn)
+        {
+            await _securityEmails.TwoFactorOffAsync(user, TwoFactorOffCause.TurnedOffByAdmin);
+        }
+
+        return true;
     }
 
     /// <inheritdoc/>

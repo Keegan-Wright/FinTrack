@@ -33,8 +33,9 @@ else if (!Profile.HasPassword)
 }
 else
 {
+    @* Sized to their text, so all three fit on a phone rather than scrolling *@
     <MudTabs Elevation="0" Rounded="true" TabPanelsClass="pt-4" Color="Color.Transparent"
-             SliderColor="Color.Primary" ActiveTabClass="mud-primary-text">
+             SliderColor="Color.Primary" ActiveTabClass="mud-primary-text" MinimumTabWidth="0">
         <MudTabPanel Text="Email">
             <ChangeEmailSection Profile="@Profile" ProfileChanged="@ReloadAsync"/>
         </MudTabPanel>

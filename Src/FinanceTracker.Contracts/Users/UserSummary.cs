@@ -38,6 +38,11 @@ public sealed class UserSummary
     public required bool HasPassword { get; init; }
 
     /// <summary>
+    /// Whether signing in with their password also asks for a code from their authenticator app.
+    /// </summary>
+    public required bool TwoFactorEnabled { get; init; }
+
+    /// <summary>
     /// Whether they can sign in through the identity provider.
     /// </summary>
     public required bool UsesIdentityProvider { get; init; }

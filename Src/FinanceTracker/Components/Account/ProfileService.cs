@@ -2,6 +2,7 @@ using FinanceTracker.Contracts.Profile;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Domain.Identity;
 using FinanceTracker.Infrastructure;
+using FinanceTracker.Infrastructure.Account.Email;
 using FinanceTracker.Infrastructure.Notifications.Email;
 using Microsoft.AspNetCore.Identity;
 
@@ -24,6 +25,7 @@ public sealed class ProfileService : IProfileService
     private readonly SignInMethods _signInMethods;
     private readonly IEmailConfirmation _emailConfirmation;
     private readonly IEmailChange _emailChange;
+    private readonly ISecurityEmails _securityEmails;
     private readonly ILogger<ProfileService> _logger;
 
     /// <param name="userManager">Finds and changes users.</param>
@@ -33,12 +35,14 @@ public sealed class ProfileService : IProfileService
     /// <param name="emailConfirmation">Sends the confirmation email.</param>
     /// <param name="emailChange">Starts an email change.</param>
     /// <param name="signInMethods">Whether passwords can be used.</param>
+    /// <param name="securityEmails">Tells the user when how they sign in changes.</param>
     /// <param name="logger">Its logger.</param>
     public ProfileService(UserManager<FinanceTrackerUser> userManager,
         SignInManager<FinanceTrackerUser> signInManager, ICurrentUser currentUser, IMailSender mailSender,
         IEmailConfirmation emailConfirmation, IEmailChange emailChange, SignInMethods signInMethods,
-        ILogger<ProfileService> logger)
+        ISecurityEmails securityEmails, ILogger<ProfileService> logger)
     {
+        _securityEmails = securityEmails;
         _signInMethods = signInMethods;
         _userManager = userManager;
         _signInManager = signInManager;
@@ -185,6 +189,7 @@ public sealed class ProfileService : IProfileService
         IEnumerable<string>? codes = await _userManager.GenerateNewTwoFactorRecoveryCodesAsync(user, RecoveryCodeCount);
         await _signInManager.RefreshSignInAsync(user);
         _logger.LogTwoFactorEnabled(user.Id);
+        await _securityEmails.TwoFactorOnAsync(user);
         return new TwoFactorChange { RecoveryCodes = codes?.ToList() ?? [] };
     }
 
@@ -211,6 +216,7 @@ public sealed class ProfileService : IProfileService
 
         IEnumerable<string>? codes = await _userManager.GenerateNewTwoFactorRecoveryCodesAsync(user, RecoveryCodeCount);
         _logger.LogRecoveryCodesMade(user.Id);
+        await _securityEmails.RecoveryCodesMadeAsync(user);
         return new TwoFactorChange { RecoveryCodes = codes?.ToList() ?? [] };
     }
 
@@ -231,10 +237,16 @@ public sealed class ProfileService : IProfileService
         }
 
         // Off until they set the new key up, the old phone's codes stop working
+        bool wasOn = await _userManager.GetTwoFactorEnabledAsync(user);
         await _userManager.SetTwoFactorEnabledAsync(user, false);
         await _userManager.ResetAuthenticatorKeyAsync(user);
         await _signInManager.RefreshSignInAsync(user);
         _logger.LogAuthenticatorReset(user.Id);
+        if (wasOn)
+        {
+            await _securityEmails.TwoFactorOffAsync(user, TwoFactorOffCause.AuthenticatorReset);
+        }
+
         return new TwoFactorChange();
     }
 
@@ -254,9 +266,15 @@ public sealed class ProfileService : IProfileService
             return refused;
         }
 
+        bool wasOn = await _userManager.GetTwoFactorEnabledAsync(user);
         await _userManager.SetTwoFactorEnabledAsync(user, false);
         await _signInManager.RefreshSignInAsync(user);
         _logger.LogTwoFactorDisabled(user.Id);
+        if (wasOn)
+        {
+            await _securityEmails.TwoFactorOffAsync(user, TwoFactorOffCause.TurnedOff);
+        }
+
         return new TwoFactorChange();
     }
 

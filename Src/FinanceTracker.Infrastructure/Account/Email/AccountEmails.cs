@@ -27,6 +27,33 @@ public sealed class AccountEmails : IAccountEmails
     /// </summary>
     public const string ChangeEmailSubject = "Confirm your new email for FinTrack";
 
+    /// <summary>
+    /// The subject of the email saying two-factor sign in was turned on.
+    /// </summary>
+    public const string TwoFactorOnSubject = "Two-factor sign in is on for your FinTrack account";
+
+    /// <summary>
+    /// The subject of the email saying two-factor sign in was turned off.
+    /// </summary>
+    public const string TwoFactorOffSubject = "Two-factor sign in is off for your FinTrack account";
+
+    /// <summary>
+    /// The subject of the email saying new recovery codes were made.
+    /// </summary>
+    public const string RecoveryCodesMadeSubject = "New recovery codes for your FinTrack account";
+
+    /// <summary>
+    /// Where security notices link to, the profile's two-factor settings.
+    /// </summary>
+    private const string ProfilePath = "YourProfile";
+
+    /// <summary>
+    /// Why a security notice came, and what to do if the change wasn't the user's.
+    /// </summary>
+    private const string SecurityReason =
+        "You're getting this because sign in changed on your FinTrack account. If that wasn't you, change your " +
+        "password straight away and tell your FinTrack admin.";
+
     private readonly IEmailRenderer _emailRenderer;
     private readonly PublicAddress _publicAddress;
 
@@ -69,16 +96,64 @@ public sealed class AccountEmails : IAccountEmails
             "You're getting this because someone asked to move a FinTrack account to this email. If that wasn't " +
             "you, you can ignore it."));
 
+    /// <inheritdoc/>
+    public Task<MailMessage> TwoFactorOnAsync(string to) =>
+        CreateAsync(to, _publicAddress.LinkTo(ProfilePath), new AccountEmail(
+            TwoFactorOnSubject,
+            "Two-factor sign in is on",
+            "Signing in with your password now also asks for a code from your authenticator app. Keep your recovery " +
+            "codes somewhere safe, they're the way in if you lose your phone.",
+            "Open your profile",
+            SecurityReason));
+
+    /// <inheritdoc/>
+    public Task<MailMessage> TwoFactorOffAsync(string to, TwoFactorOffCause cause) =>
+        CreateAsync(to, _publicAddress.LinkTo(ProfilePath), new AccountEmail(
+            TwoFactorOffSubject,
+            "Two-factor sign in is off",
+            TwoFactorOffMessage(cause),
+            "Open your profile",
+            SecurityReason));
+
+    /// <inheritdoc/>
+    public Task<MailMessage> RecoveryCodesMadeAsync(string to) =>
+        CreateAsync(to, _publicAddress.LinkTo(ProfilePath), new AccountEmail(
+            RecoveryCodesMadeSubject,
+            "New recovery codes",
+            "New recovery codes were made for your FinTrack account. The old ones no longer work.",
+            "Open your profile",
+            SecurityReason));
+
     /// <summary>
-    /// Renders an account email, with its link as the button.
+    /// What the email saying two-factor sign in is off says, by how it was turned off.
+    /// </summary>
+    /// <param name="cause">How it was turned off.</param>
+    private static string TwoFactorOffMessage(TwoFactorOffCause cause)
+    {
+        switch (cause)
+        {
+            case TwoFactorOffCause.TurnedOff:
+                return "Two-factor sign in was turned off, so signing in only asks for your password. You can turn " +
+                       "it on again from your profile.";
+            case TwoFactorOffCause.AuthenticatorReset:
+                return "Your authenticator was reset, so two-factor sign in is off and your old app's codes no " +
+                       "longer work. Set it up again from your profile.";
+            case TwoFactorOffCause.TurnedOffByAdmin:
+                return "Your FinTrack admin turned off two-factor sign in for you, so signing in only asks for your " +
+                       "password. Set it up again from your profile.";
+            default:
+                throw new ArgumentOutOfRangeException(nameof(cause), cause, null);
+        }
+    }
+
+    /// <summary>
+    /// Renders an account email, with its link as the button when there is one.
     /// </summary>
     /// <param name="to">Who it's sent to.</param>
-    /// <param name="link">The link the email is for.</param>
+    /// <param name="link">The link the email is for, null for none when it's only a notice.</param>
     /// <param name="email">What the email says.</param>
-    private async Task<MailMessage> CreateAsync(string to, Uri link, AccountEmail email)
+    private async Task<MailMessage> CreateAsync(string to, Uri? link, AccountEmail email)
     {
-        ArgumentNullException.ThrowIfNull(link);
-
         string html = await _emailRenderer.RenderAsync<AccountEmailBody>(new Dictionary<string, object?>
         {
             [nameof(AccountEmailBody.Title)] = email.Title,
@@ -90,6 +165,10 @@ public sealed class AccountEmails : IAccountEmails
         });
 
         string text = $"{email.Message}\n\n{email.ButtonText}: {link}\n\n--\n{email.Reason}\n";
+        if (link is null)
+        {
+            text = $"{email.Message}\n\n--\n{email.Reason}\n";
+        }
 
         return new MailMessage(to, email.Subject, text, html) { Images = [EmailBrand.Logo] };
     }

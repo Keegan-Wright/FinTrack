@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using FinanceTracker.Domain.Identity;
+using FinanceTracker.Telemetry;
 using Microsoft.AspNetCore.Identity;
 
 namespace FinanceTracker.Infrastructure.Account.Authenticator;
@@ -23,11 +24,14 @@ public sealed class TotpAuthenticatorTokenProvider : IUserTwoFactorTokenProvider
     private const string LastStepName = "AuthenticatorLastStep";
 
     private readonly TimeProvider _timeProvider;
+    private readonly FinTrackMetrics _metrics;
 
     /// <param name="timeProvider">The clock codes are checked against.</param>
-    public TotpAuthenticatorTokenProvider(TimeProvider timeProvider)
+    /// <param name="metrics">Counts codes refused for having been used.</param>
+    public TotpAuthenticatorTokenProvider(TimeProvider timeProvider, FinTrackMetrics metrics)
     {
         _timeProvider = timeProvider;
+        _metrics = metrics;
     }
 
     /// <summary>
@@ -61,6 +65,8 @@ public sealed class TotpAuthenticatorTokenProvider : IUserTwoFactorTokenProvider
         long? lastStep = await LastStepAsync(manager, user);
         if (lastStep is not null && matchedStep <= lastStep)
         {
+            // The right code, but used already or older than one that was. Worth knowing about
+            _metrics.AuthenticatorCodeReused();
             return false;
         }
 

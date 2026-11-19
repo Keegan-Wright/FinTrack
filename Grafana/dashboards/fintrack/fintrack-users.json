@@ -1135,7 +1135,7 @@
     {
       "type": "timeseries",
       "title": "Account changes",
-      "description": "Changes to accounts, by kind: passwords, emails, lockouts, security stamps.",
+      "description": "Changes to accounts, by kind: passwords, emails, lockouts, security stamps, and two-factor sign in turned on or off, authenticators reset and recovery codes made.",
       "datasource": {
         "type": "prometheus",
         "uid": "${prometheus}"
@@ -1210,14 +1210,163 @@
       }
     },
     {
-      "type": "row",
-      "title": "Pages",
-      "collapsed": false,
-      "panels": [],
+      "type": "timeseries",
+      "title": "Two-factor codes",
+      "description": "The second step of signing in with a password: authenticator and recovery codes, by result. A reused code was right but had been used already, so someone may have watched it typed or passed it on. Identity counts those as failures too.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${prometheus}"
+          },
+          "expr": "sum by (aspnetcore_identity_sign_in_type, aspnetcore_identity_sign_in_result) (increase(aspnetcore_identity_sign_in_authenticate_duration_seconds_count{job=\"$service\", aspnetcore_identity_sign_in_type=~\"two_factor_authenticator|two_factor_recovery_code\"}[$__interval]))",
+          "legendFormat": "{{aspnetcore_identity_sign_in_type}} {{aspnetcore_identity_sign_in_result}}",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${prometheus}"
+          },
+          "expr": "sum(increase(fintrack_authenticator_codes_reused_total{job=\"$service\"}[$__interval]))",
+          "legendFormat": "code reused",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "showPoints": "never",
+            "spanNulls": false,
+            "axisSoftMin": 0,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "insertNulls": false
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".* success"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".* failure"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".* locked_out"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "dark-red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "code reused"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "interval": "2m",
       "id": 13,
       "gridPos": {
         "x": 0,
         "y": 21,
+        "w": 24,
+        "h": 8
+      }
+    },
+    {
+      "type": "row",
+      "title": "Pages",
+      "collapsed": false,
+      "panels": [],
+      "id": 14,
+      "gridPos": {
+        "x": 0,
+        "y": 29,
         "w": 24,
         "h": 1
       }
@@ -1306,10 +1455,10 @@
           }
         }
       ],
-      "id": 14,
+      "id": 15,
       "gridPos": {
         "x": 0,
-        "y": 22,
+        "y": 30,
         "w": 12,
         "h": 10
       }
@@ -1469,10 +1618,10 @@
           }
         }
       ],
-      "id": 15,
+      "id": 16,
       "gridPos": {
         "x": 12,
-        "y": 22,
+        "y": 30,
         "w": 12,
         "h": 10
       }

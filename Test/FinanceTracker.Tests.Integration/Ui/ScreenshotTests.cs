@@ -6,8 +6,8 @@ using Microsoft.Playwright;
 namespace FinanceTracker.Tests.Integration.Ui;
 
 /// <summary>
-/// Takes the README's screenshots, of six months of made up data (<see cref="ScreenshotUser"/>). Explicit, so it only
-/// runs when asked for.
+/// Takes the README's screenshots, of six months of made up data (<see cref="ScreenshotUser"/>), and the docs' own.
+/// Explicit, so it only runs when asked for.
 /// <code>
 /// dotnet test --project Test/FinanceTracker.Tests.Integration -- --treenode-filter '/*/*/ScreenshotTests/*'
 /// </code>
@@ -74,6 +74,38 @@ public class ScreenshotTests : UiTestBase
 
         string file = Path.Combine(RepositoryRoot(), ImagesFolder, $"{name}-{screen.Name.ToLowerInvariant()}.png");
         Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+        await page.ScreenshotAsync(new PageScreenshotOptions { Path = file });
+
+        // Assert
+        await Assert.That(File.Exists(file)).IsTrue();
+    }
+
+    public static IEnumerable<ScreenSize> DesktopAndPhone()
+    {
+        yield return ScreenSize.Desktop;
+        yield return ScreenSize.Phone;
+    }
+
+    [Test]
+    [MethodDataSource(nameof(DesktopAndPhone))]
+    public async Task TwoFactorSetup_IsCaptured(ScreenSize screen)
+    {
+        // Arrange, for the two-factor docs. The key and QR code are a throwaway user's, named per screen as
+        // usernames are unique
+        string username = $"{ScreenshotUser.FirstName}.{screen.Name}".ToLowerInvariant();
+        SignedInUser user = await RegisterUserAsync(username, firstName: ScreenshotUser.FirstName);
+        IPage page = await OpenAsync(screen, user, false);
+        await GoToAsync(page, "/YourProfile");
+        await page.GetByRole(AriaRole.Tab, new PageGetByRoleOptions { Name = "Two-factor" }).ClickAsync();
+
+        // Act
+        await Button(page, "Set up two-factor sign in").ClickAsync();
+        await page.Locator(".ft-two-factor__key").WaitForAsync();
+
+        // The tab's underline slides across
+        await page.WaitForTimeoutAsync(1000);
+        string file = Path.Combine(RepositoryRoot(), ImagesFolder,
+            $"two-factor-setup-{screen.Name.ToLowerInvariant()}.png");
         await page.ScreenshotAsync(new PageScreenshotOptions { Path = file });
 
         // Assert

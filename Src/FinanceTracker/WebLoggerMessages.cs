@@ -99,6 +99,15 @@ public static partial class WebLoggerMessages
     [LoggerMessage(LogLevel.Information, "User {userId} made new recovery codes")]
     public static partial void LogRecoveryCodesMade(this ILogger logger, Guid userId);
 
+    [LoggerMessage(LogLevel.Warning,
+        "Admin {adminId} turned off two-factor sign in for user {userId}, resetting their authenticator and recovery " +
+        "codes")]
+    public static partial void LogTwoFactorTurnedOffByAdmin(this ILogger logger, Guid adminId, Guid userId);
+
+    [LoggerMessage(LogLevel.Warning,
+        "The email telling user {userId} how they sign in changed couldn't be sent, the change was still made")]
+    public static partial void LogSecurityEmailFailed(this ILogger logger, Exception exception, Guid userId);
+
     [LoggerMessage(LogLevel.Information, "Admin {adminId} made user {userId} an admin")]
     public static partial void LogAdminRoleGranted(this ILogger logger, Guid adminId, Guid userId);
 

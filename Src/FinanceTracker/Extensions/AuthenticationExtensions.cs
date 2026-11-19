@@ -295,7 +295,8 @@ public static class AuthenticationExtensions
     {
         /// <summary>
         /// What the account pages, <see cref="IProfileService"/> and <see cref="IUsersService"/> use: Identity's
-        /// emails, the links they carry, confirming an email and resetting a password.
+        /// emails, the links they carry, confirming an email, resetting a password, and the emails saying sign in
+        /// changed.
         /// </summary>
         public IServiceCollection AddFinTrackAccountServices()
         {
@@ -307,6 +308,7 @@ public static class AuthenticationExtensions
             services.AddScoped<IProfileService, ProfileService>();
             services.AddScoped<IPasswordReset, PasswordReset>();
             services.AddScoped<IUsersService, UsersService>();
+            services.AddScoped<ISecurityEmails, SecurityEmails>();
             return services;
         }
     }

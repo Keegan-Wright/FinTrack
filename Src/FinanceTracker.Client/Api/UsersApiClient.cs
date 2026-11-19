@@ -40,6 +40,21 @@ public sealed class UsersApiClient : IUsersService
     }
 
     /// <inheritdoc/>
+    public async Task<bool> TurnOffTwoFactorAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        using HttpResponseMessage response =
+            await _http.DeleteAsync($"{ApiRoutes.Users}/{userId}/two-factor", cancellationToken);
+        if (response.StatusCode == HttpStatusCode.Conflict)
+        {
+            return false;
+        }
+
+        ThrowIfMissing(response, userId);
+        response.EnsureSuccessStatusCode();
+        return true;
+    }
+
+    /// <inheritdoc/>
     public async Task<bool> LockAsync(Guid userId, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response =

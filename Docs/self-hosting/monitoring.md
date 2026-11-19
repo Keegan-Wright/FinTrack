@@ -36,6 +36,7 @@ FinTrack's own, on the `FinanceTracker` meter.
 | `fintrack.notifications.delivered` | Notifications sent by email or webhook, and whether they arrived. |
 | `fintrack.emails.sent` | Emails sent, and whether the mail server accepted them. |
 | `fintrack.sso.failures` | Failed single sign-on attempts, and why. |
+| `fintrack.authenticator.codes_reused` | Authenticator codes refused for having been used already. |
 | `fintrack.rules.transactions_changed` | Transactions changed by rules. |
 | `fintrack.transfers.decisions` | Transfers found, sent for review or cleared. |
 | `fintrack.bills.changes` | Bills added, ended or changing price. |
@@ -59,7 +60,7 @@ There are six dashboards in [Grafana/dashboards](../../Grafana/dashboards).
 - **Overview.** Health, response times and syncing at a glance.
 - **Bank sync.** Connections, syncs, TrueLayer and the scheduled jobs.
 - **Notifications and email.** What was sent, and whether it arrived.
-- **Sign-ins and pages.** Sign ins, permissions and page use.
+- **Sign-ins and pages.** Sign ins, two-factor codes, permissions and page use.
 - **Runtime and database.** The process, .NET runtime, database and outgoing calls.
 - **Logs and traces.** Search logs and find failed or slow requests.
 
