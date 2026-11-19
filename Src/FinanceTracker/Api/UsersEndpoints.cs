@@ -2,7 +2,11 @@ using FinanceTracker.Contracts.Api;
 using FinanceTracker.Contracts.Auth;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Users;
+using FinanceTracker.Domain.Identity;
+using FinanceTracker.Infrastructure;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 
 namespace FinanceTracker.Api;
 
@@ -16,7 +20,8 @@ public static class UsersEndpoints
         /// <summary>
         /// <see cref="IUsersService"/> at <see cref="ApiRoutes.Users"/>, admins only. A reset link for a user who
         /// doesn't exist answers 404, for one without a password here 409. Locking or unlocking a user who doesn't
-        /// exist answers 404, locking yourself 409.
+        /// exist answers 404, locking an admin, yourself included, 409. Giving or taking the admin role answers how it
+        /// went, see <see cref="AdminChange"/>.
         /// </summary>
         public RouteGroupBuilder MapUsersEndpoints()
         {
@@ -53,6 +58,26 @@ public static class UsersEndpoints
             {
                 await service.UnlockAsync(id, cancellationToken);
                 return TypedResults.NoContent();
+            });
+
+            users.MapPost("{id:guid}/admin", async Task<Ok<AdminChange>> (Guid id, IUsersService service,
+                    CancellationToken cancellationToken) =>
+                TypedResults.Ok(await service.GrantAdminAsync(id, cancellationToken)));
+
+            users.MapDelete("{id:guid}/admin", async Task<Ok<AdminChange>> (Guid id, IUsersService service,
+                [FromServices] ICurrentUser currentUser, [FromServices] UserManager<FinanceTrackerUser> userManager,
+                [FromServices] SignInManager<FinanceTrackerUser> signInManager, CancellationToken cancellationToken) =>
+            {
+                AdminChange change = await service.RemoveAdminAsync(id, cancellationToken);
+
+                // An admin who gave up the role has it gone from their own sign in now
+                if (change == AdminChange.Changed && id == currentUser.UserId &&
+                    await userManager.FindByIdAsync(id.ToString()) is { } you)
+                {
+                    await signInManager.RefreshSignInAsync(you);
+                }
+
+                return TypedResults.Ok(change);
             });
 
             return api;

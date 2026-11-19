@@ -76,4 +76,10 @@ public static partial class WebLoggerMessages
 
     [LoggerMessage(LogLevel.Information, "Admin {adminId} unlocked user {userId}")]
     public static partial void LogUserUnlocked(this ILogger logger, Guid adminId, Guid userId);
+
+    [LoggerMessage(LogLevel.Information, "Admin {adminId} made user {userId} an admin")]
+    public static partial void LogAdminRoleGranted(this ILogger logger, Guid adminId, Guid userId);
+
+    [LoggerMessage(LogLevel.Information, "Admin {adminId} took the admin role from user {userId}")]
+    public static partial void LogAdminRoleRemoved(this ILogger logger, Guid adminId, Guid userId);
 }

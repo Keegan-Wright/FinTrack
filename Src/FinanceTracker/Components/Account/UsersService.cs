@@ -55,6 +55,7 @@ public sealed class UsersService : IUsersService
             {
                 Id = user.Id,
                 Username = user.UserName ?? string.Empty,
+                Name = NameOf(user),
                 Email = string.IsNullOrWhiteSpace(user.Email) ? null : user.Email,
                 EmailConfirmed = user.EmailConfirmed,
                 HasPassword = _signInMethods.CanUsePassword(user.PasswordHash is not null),
@@ -85,13 +86,13 @@ public sealed class UsersService : IUsersService
     /// <inheritdoc/>
     public async Task<bool> LockAsync(Guid userId, CancellationToken cancellationToken)
     {
-        // The admin locking would lose the page to unlock themselves with, and admins are never all locked
-        if (userId == _currentUser.UserId)
+        // Admins can't lock each other, or themselves, so there's always one who can unlock. Their role goes first
+        FinanceTrackerUser user = await FindAsync(userId);
+        if (await _userManager.IsInRoleAsync(user, FinTrackRoles.Admin))
         {
             return false;
         }
 
-        FinanceTrackerUser user = await FindAsync(userId);
         user.LockByAdmin();
 
         // A new stamp saves the lock with it and signs them out, their cookie is turned away the next time it's checked
@@ -108,6 +109,69 @@ public sealed class UsersService : IUsersService
 
         ThrowIfFailed(await _userManager.UpdateAsync(user));
         _logger.LogUserUnlocked(_currentUser.UserId, user.Id);
+    }
+
+    /// <inheritdoc/>
+    public async Task<AdminChange> GrantAdminAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        FinanceTrackerUser user = await FindAsync(userId);
+
+        // The identity provider's admin group decides for those who sign in through it
+        if (user.OpenIdConnectSubject is not null)
+        {
+            return AdminChange.FromIdentityProvider;
+        }
+
+        if (await _userManager.IsInRoleAsync(user, FinTrackRoles.Admin))
+        {
+            return AdminChange.Changed;
+        }
+
+        // No new security stamp, which would sign them out. Their sign in is rebuilt with the role within a minute
+        ThrowIfFailed(await _userManager.AddToRoleAsync(user, FinTrackRoles.Admin));
+        _logger.LogAdminRoleGranted(_currentUser.UserId, user.Id);
+        return AdminChange.Changed;
+    }
+
+    /// <inheritdoc/>
+    public async Task<AdminChange> RemoveAdminAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        FinanceTrackerUser user = await FindAsync(userId);
+
+        if (user.OpenIdConnectSubject is not null)
+        {
+            return AdminChange.FromIdentityProvider;
+        }
+
+        if (!await _userManager.IsInRoleAsync(user, FinTrackRoles.Admin))
+        {
+            return AdminChange.Changed;
+        }
+
+        // With password sign in off the identity provider's admin group is the way back in, otherwise nobody could be
+        if (_signInMethods.Password && (await _userManager.GetUsersInRoleAsync(FinTrackRoles.Admin)).Count == 1)
+        {
+            return AdminChange.LastAdmin;
+        }
+
+        ThrowIfFailed(await _userManager.RemoveFromRoleAsync(user, FinTrackRoles.Admin));
+        _logger.LogAdminRoleRemoved(_currentUser.UserId, user.Id);
+        return AdminChange.Changed;
+    }
+
+    /// <summary>
+    /// <paramref name="user"/>'s first and last name, their username when they gave none.
+    /// </summary>
+    /// <param name="user">The user.</param>
+    private static string NameOf(FinanceTrackerUser user)
+    {
+        string name = $"{user.FirstName} {user.LastName}".Trim();
+        if (name.Length == 0)
+        {
+            return user.UserName ?? string.Empty;
+        }
+
+        return name;
     }
 
     /// <summary>
