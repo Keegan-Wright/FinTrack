@@ -8,7 +8,7 @@ this instead.
 
 ## Turning it on
 
-1. Open **Your profile** and the **Two-factor** tab.
+1. Open **Your profile** and the **Security** tab.
 2. Press **Set up two-factor sign in**.
 3. Scan the QR code with your authenticator app, or type in the key shown under it.
 4. Enter the code the app shows, and your password, then press **Turn on**.
@@ -26,7 +26,7 @@ lock yourself out.
 After your password, FinTrack asks for the code your app shows now. Each code works once.
 
 Tick **Remember this device for 14 days** to skip the code on that browser. **Forget this browser** on the
-Two-factor tab asks for the code again.
+Security tab asks for the code again.
 
 ## Recovery codes
 
@@ -34,7 +34,7 @@ Each recovery code signs you in once without your app, for when you don't have y
 somewhere safe, such as a password manager.
 
 To use one, choose **Use a recovery code** when asked for a code. FinTrack warns you when 3 or fewer are left.
-**Make new recovery codes** on the Two-factor tab replaces them all.
+**Make new recovery codes** on the Security tab replaces them all.
 
 ## Changes ask for your password
 

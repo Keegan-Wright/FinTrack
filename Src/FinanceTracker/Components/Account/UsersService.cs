@@ -56,6 +56,7 @@ public sealed class UsersService : IUsersService
 
         foreach (FinanceTrackerUser user in users)
         {
+            IList<UserPasskeyInfo> passkeys = await _userManager.GetPasskeysAsync(user);
             yield return new UserSummary
             {
                 Id = user.Id,
@@ -65,6 +66,7 @@ public sealed class UsersService : IUsersService
                 EmailConfirmed = user.EmailConfirmed,
                 HasPassword = _signInMethods.CanUsePassword(user.PasswordHash is not null),
                 TwoFactorEnabled = user.TwoFactorEnabled,
+                PasskeyCount = passkeys.Count,
                 UsesIdentityProvider = user.OpenIdConnectSubject is not null,
                 IsAdmin = admins.Contains(user.Id),
                 IsLocked = user.IsLockedByAdmin,
@@ -116,6 +118,31 @@ public sealed class UsersService : IUsersService
         if (wasOn)
         {
             await _securityEmails.TwoFactorOffAsync(user, TwoFactorOffCause.TurnedOffByAdmin);
+        }
+
+        return true;
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> RemovePasskeysAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        // Their own go through their profile, which asks for their password
+        if (userId == _currentUser.UserId)
+        {
+            return false;
+        }
+
+        FinanceTrackerUser user = await FindAsync(userId);
+        IList<UserPasskeyInfo> passkeys = await _userManager.GetPasskeysAsync(user);
+        foreach (UserPasskeyInfo passkey in passkeys)
+        {
+            ThrowIfFailed(await _userManager.RemovePasskeyAsync(user, passkey.CredentialId));
+        }
+
+        _logger.LogPasskeysRemovedByAdmin(_currentUser.UserId, passkeys.Count, user.Id);
+        if (passkeys.Count > 0)
+        {
+            await _securityEmails.PasskeysRemovedByAdminAsync(user);
         }
 
         return true;

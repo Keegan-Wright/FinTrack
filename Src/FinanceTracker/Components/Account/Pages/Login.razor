@@ -5,7 +5,9 @@
 @using FinanceTracker.Extensions
 @using FinanceTracker.Infrastructure.Notifications.Email
 @using FluentValidation
+@using System.Text.Json
 @using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.WebUtilities
 
 @inject SignInManager<FinanceTrackerUser> SignInManager
 @inject ILogger<Login> Logger
@@ -48,7 +50,7 @@
         <AuthFields>
             <MudStaticTextField For="@(() => LoginRequest.Username)" @bind-Value="LoginRequest.Username"
                                 Label="Username" Variant="Variant.Outlined"
-                                UserAttributes="@(new Dictionary<string, object?> { { "autocomplete", "username" }, { "aria-required", "true" } })"/>
+                                UserAttributes="@(new Dictionary<string, object?> { { "autocomplete", "username webauthn" }, { "aria-required", "true" } })"/>
 
             <MudStaticTextField For="@(() => LoginRequest.Password)" @bind-Value="LoginRequest.Password"
                                 Label="Password" InputType="InputType.Password" Variant="Variant.Outlined"
@@ -73,6 +75,18 @@
         </AuthFields>
     </EditForm>
 
+    @* Hidden by app.js where the browser can't use passkeys, which also offers them in the username field *@
+    <EditForm Model="PasskeyInput" method="post" OnSubmit="SignInWithPasskeyAsync" FormName="passkey">
+        <input type="hidden" name="PasskeyInput.CredentialJson"/>
+        <ft-passkey-sign-in options-url="Account/PasskeyRequestOptions">
+            <AuthDivider/>
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true" Size="Size.Large"
+                       ButtonType="ButtonType.Button" StartIcon="@Icons.Material.Outlined.Fingerprint">
+                Sign in with a passkey
+            </MudButton>
+        </ft-passkey-sign-in>
+    </EditForm>
+
     <AuthFooter>
         New to FinTrack?
         <MudLink
@@ -91,9 +105,14 @@
     [CascadingParameter] private HttpContext HttpContext { get; set; } = default!;
 
     /// <summary>
-    /// The posted form.
+    /// The posted username and password.
     /// </summary>
-    [SupplyParameterFromForm] private LoginRequest LoginRequest { get; set; } = default!;
+    [SupplyParameterFromForm(FormName = "login")] private LoginRequest LoginRequest { get; set; } = default!;
+
+    /// <summary>
+    /// The posted passkey.
+    /// </summary>
+    [SupplyParameterFromForm(FormName = "passkey")] private PasskeyInputModel PasskeyInput { get; set; } = default!;
 
     /// <summary>
     /// Where to go once signed in.
@@ -111,6 +130,7 @@
     {
         // Form posts bind the property before initialisation, so only create a model when nothing was posted
         LoginRequest ??= new();
+        PasskeyInput ??= new();
 
         if (Sso == "failed")
         {
@@ -149,6 +169,78 @@
         {
             _errorMessage = "Invalid login attempt.";
         }
+    }
+
+    /// <summary>
+    /// Signs in with the posted passkey. A passkey asks for a fingerprint, face or PIN, so it's two factors and
+    /// doesn't ask for an authenticator code. Locked accounts are turned away as with a password.
+    /// </summary>
+    private async Task SignInWithPasskeyAsync()
+    {
+        // The button isn't shown with password sign in off, but could still be posted
+        if (!SignInMethods.Password || string.IsNullOrEmpty(PasskeyInput.CredentialJson))
+        {
+            return;
+        }
+
+        SignInResult result;
+        try
+        {
+            result = await SignInManager.PasskeySignInAsync(PasskeyInput.CredentialJson);
+        }
+        catch (InvalidOperationException)
+        {
+            // The options it was asked with have gone, such as after a sign in in another tab
+            result = SignInResult.Failed;
+        }
+
+        if (result.Succeeded)
+        {
+            Logger.LogUserLoggedInWithPasskey();
+            RedirectManager.RedirectTo(ReturnUrl);
+        }
+        else if (result.IsLockedOut)
+        {
+            Logger.LogUserLockedOut();
+            RedirectManager.RedirectTo(Lockout.PathFor(await PasskeyUserAsync()));
+        }
+        else
+        {
+            _errorMessage = "That passkey didn't work. Try again, or sign in with your password.";
+        }
+    }
+
+    /// <summary>
+    /// Whose the posted passkey is, null when it can't be told.
+    /// </summary>
+    private async Task<FinanceTrackerUser?> PasskeyUserAsync()
+    {
+        try
+        {
+            using JsonDocument credential = JsonDocument.Parse(PasskeyInput.CredentialJson);
+            string? id = credential.RootElement.GetProperty("id").GetString();
+            if (id is null)
+            {
+                return null;
+            }
+
+            return await SignInManager.UserManager.FindByPasskeyIdAsync(WebEncoders.Base64UrlDecode(id));
+        }
+        catch (Exception exception) when (exception is JsonException or KeyNotFoundException or FormatException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// The passkey the browser gave, as WebAuthn JSON.
+    /// </summary>
+    private sealed class PasskeyInputModel
+    {
+        /// <summary>
+        /// The browser's credential.
+        /// </summary>
+        public string CredentialJson { get; set; } = string.Empty;
     }
 
 }

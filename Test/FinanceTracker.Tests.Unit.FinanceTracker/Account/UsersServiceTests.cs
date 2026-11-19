@@ -278,6 +278,87 @@ public class UsersServiceTests : InfrastructureTestBase
         }
     }
 
+    [Test]
+    public async Task RemovePasskeysAsync_SomeoneWithPasskeys_RemovesThemAllAndEmailsThem()
+    {
+        // Arrange
+        FinanceTrackerUser sam = (await UserManager.FindByIdAsync(Id(Sam).ToString()))!;
+        await UserManager.AddOrUpdatePasskeyAsync(sam, Passkey(1));
+        await UserManager.AddOrUpdatePasskeyAsync(sam, Passkey(2));
+
+        // Act
+        bool removed = await Subject().RemovePasskeysAsync(Id(Sam), CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(removed).IsTrue();
+            await Assert.That(await UserManager.GetPasskeysAsync(await FindAsync(Sam))).IsEmpty();
+            await _securityEmails.Received(1)
+                .PasskeysRemovedByAdminAsync(Arg.Is<FinanceTrackerUser>(x => x.Id == Id(Sam)));
+        }
+    }
+
+    [Test]
+    public async Task RemovePasskeysAsync_Yourself_IsRefusedAndKeepsThem()
+    {
+        // Arrange
+        FinanceTrackerUser alex = (await UserManager.FindByIdAsync(Id(Alex).ToString()))!;
+        await UserManager.AddOrUpdatePasskeyAsync(alex, Passkey(1));
+
+        // Act
+        bool removed = await Subject().RemovePasskeysAsync(Id(Alex), CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(removed).IsFalse();
+            await Assert.That(await UserManager.GetPasskeysAsync(await FindAsync(Alex))).Count().IsEqualTo(1);
+        }
+    }
+
+    [Test]
+    public async Task RemovePasskeysAsync_SomeoneWithNone_DoesNotEmail()
+    {
+        // Act
+        bool removed = await Subject().RemovePasskeysAsync(Id(Sam), CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(removed).IsTrue();
+            await _securityEmails.DidNotReceiveWithAnyArgs().PasskeysRemovedByAdminAsync(default!);
+        }
+    }
+
+    [Test]
+    public async Task GetUsersAsync_SomeoneWithPasskeys_CountsThem()
+    {
+        // Arrange
+        FinanceTrackerUser sam = (await UserManager.FindByIdAsync(Id(Sam).ToString()))!;
+        await UserManager.AddOrUpdatePasskeyAsync(sam, Passkey(1));
+        await UserManager.AddOrUpdatePasskeyAsync(sam, Passkey(2));
+
+        // Act
+        List<UserSummary> users = await Subject().GetUsersAsync(CancellationToken).ToListAsync(CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(users.Single(x => x.Username == Sam).PasskeyCount).IsEqualTo(2);
+            await Assert.That(users.Single(x => x.Username == Alex).PasskeyCount).IsEqualTo(0);
+        }
+    }
+
+    /// <summary>
+    /// A made up passkey, told apart by <paramref name="number"/>.
+    /// </summary>
+    private static UserPasskeyInfo Passkey(byte number) =>
+        new([number, 1, 2, 3], [9, 8, 7], DateTimeOffset.UnixEpoch, 0, null, true, true, true, [], [])
+        {
+            Name = $"Placeholder passkey {number}"
+        };
+
     /// <summary>
     /// The service as Alex uses it.
     /// </summary>

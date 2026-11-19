@@ -19,7 +19,7 @@ public class TwoFactorFlowTests : UiTestBase
         SignedInUser user = await RegisterUserAsync();
         IPage page = await OpenAsync(screen, user);
         await GoToAsync(page, "/YourProfile");
-        await page.GetByRole(AriaRole.Tab, new PageGetByRoleOptions { Name = "Two-factor" }).ClickAsync();
+        await page.GetByRole(AriaRole.Tab, new PageGetByRoleOptions { Name = "Security" }).ClickAsync();
 
         // Act, set it up with the key shown
         await Button(page, "Set up two-factor sign in").ClickAsync();

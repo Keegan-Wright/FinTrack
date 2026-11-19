@@ -1211,8 +1211,8 @@
     },
     {
       "type": "timeseries",
-      "title": "Two-factor codes",
-      "description": "The second step of signing in with a password: authenticator and recovery codes, by result. A reused code was right but had been used already, so someone may have watched it typed or passed it on. Identity counts those as failures too.",
+      "title": "Two-factor and passkeys",
+      "description": "Authenticator and recovery codes, the second step of signing in with a password, and passkey sign ins, by result. A reused code was right but had been used already, so someone may have watched it typed or passed it on. Identity counts those as failures too.",
       "datasource": {
         "type": "prometheus",
         "uid": "${prometheus}"
@@ -1224,7 +1224,7 @@
             "type": "prometheus",
             "uid": "${prometheus}"
           },
-          "expr": "sum by (aspnetcore_identity_sign_in_type, aspnetcore_identity_sign_in_result) (increase(aspnetcore_identity_sign_in_authenticate_duration_seconds_count{job=\"$service\", aspnetcore_identity_sign_in_type=~\"two_factor_authenticator|two_factor_recovery_code\"}[$__interval]))",
+          "expr": "sum by (aspnetcore_identity_sign_in_type, aspnetcore_identity_sign_in_result) (increase(aspnetcore_identity_sign_in_authenticate_duration_seconds_count{job=\"$service\", aspnetcore_identity_sign_in_type=~\"two_factor_authenticator|two_factor_recovery_code|passkey\"}[$__interval]))",
           "legendFormat": "{{aspnetcore_identity_sign_in_type}} {{aspnetcore_identity_sign_in_result}}",
           "range": true,
           "instant": false

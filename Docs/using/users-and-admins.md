@@ -24,6 +24,18 @@ codes, **Turn off two-factor** turns it off.
 
 You can't turn off your own here. Use **Your profile**, which asks for your password.
 
+## Passkeys
+
+Users with passkeys show how many they have. For someone who's lost the devices they're on, **Remove passkeys**
+removes them all. Make sure it's really them asking first.
+
+- None of their passkeys can sign in any more.
+- They sign in with their password, and can add new passkeys from **Your profile**.
+- They're emailed to say an admin removed them.
+- It's logged with who did it.
+
+You can't remove your own here. Use **Your profile**, which asks for your password.
+
 ## Locking
 
 Locking someone signs them out within a minute and stops them signing in until you unlock them. Their banks aren't

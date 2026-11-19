@@ -69,7 +69,7 @@ public static class AuthenticationExtensions
                 .AddRoles<FinanceTrackerRole>()
                 .AddEntityFrameworkStores<FinanceTrackerContext>()
                 .AddSignInManager()
-                .AddFinTrackSecurity();
+                .AddFinTrackSecurity(builder.Configuration.GetPublicAddress());
 
             builder.Services.AddFinTrackAccountServices();
             builder.Services.AddScoped<AdminProvisioner>();
@@ -306,6 +306,7 @@ public static class AuthenticationExtensions
             services.AddScoped<IEmailConfirmation, EmailConfirmation>();
             services.AddScoped<IEmailChange, EmailChange>();
             services.AddScoped<IProfileService, ProfileService>();
+            services.AddScoped<IPasskeyService, PasskeyService>();
             services.AddScoped<IPasswordReset, PasswordReset>();
             services.AddScoped<IUsersService, UsersService>();
             services.AddScoped<ISecurityEmails, SecurityEmails>();

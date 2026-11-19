@@ -43,7 +43,17 @@ public sealed class AccountEmails : IAccountEmails
     public const string RecoveryCodesMadeSubject = "New recovery codes for your FinTrack account";
 
     /// <summary>
-    /// Where security notices link to, the profile's two-factor settings.
+    /// The subject of the email saying a passkey was added.
+    /// </summary>
+    public const string PasskeyAddedSubject = "A passkey was added to your FinTrack account";
+
+    /// <summary>
+    /// The subject of the email saying passkeys were removed.
+    /// </summary>
+    public const string PasskeyRemovedSubject = "A passkey was removed from your FinTrack account";
+
+    /// <summary>
+    /// Where security notices link to, the profile's sign in settings.
     /// </summary>
     private const string ProfilePath = "YourProfile";
 
@@ -121,6 +131,34 @@ public sealed class AccountEmails : IAccountEmails
             RecoveryCodesMadeSubject,
             "New recovery codes",
             "New recovery codes were made for your FinTrack account. The old ones no longer work.",
+            "Open your profile",
+            SecurityReason));
+
+    /// <inheritdoc/>
+    public Task<MailMessage> PasskeyAddedAsync(string to, string name) =>
+        CreateAsync(to, _publicAddress.LinkTo(ProfilePath), new AccountEmail(
+            PasskeyAddedSubject,
+            "Passkey added",
+            $"A passkey called \"{name}\" was added to your FinTrack account. It can sign in without your password.",
+            "Open your profile",
+            SecurityReason));
+
+    /// <inheritdoc/>
+    public Task<MailMessage> PasskeyRemovedAsync(string to, string name) =>
+        CreateAsync(to, _publicAddress.LinkTo(ProfilePath), new AccountEmail(
+            PasskeyRemovedSubject,
+            "Passkey removed",
+            $"The passkey called \"{name}\" was removed from your FinTrack account, so it can't sign in any more.",
+            "Open your profile",
+            SecurityReason));
+
+    /// <inheritdoc/>
+    public Task<MailMessage> PasskeysRemovedByAdminAsync(string to) =>
+        CreateAsync(to, _publicAddress.LinkTo(ProfilePath), new AccountEmail(
+            PasskeyRemovedSubject,
+            "Passkeys removed",
+            "Your FinTrack admin removed all your passkeys, so none of them can sign in any more. Sign in with your " +
+            "password and add new ones from your profile.",
             "Open your profile",
             SecurityReason));
 

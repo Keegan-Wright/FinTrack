@@ -43,6 +43,11 @@ public sealed class UserSummary
     public required bool TwoFactorEnabled { get; init; }
 
     /// <summary>
+    /// How many passkeys they can sign in with.
+    /// </summary>
+    public required int PasskeyCount { get; init; }
+
+    /// <summary>
     /// Whether they can sign in through the identity provider.
     /// </summary>
     public required bool UsesIdentityProvider { get; init; }

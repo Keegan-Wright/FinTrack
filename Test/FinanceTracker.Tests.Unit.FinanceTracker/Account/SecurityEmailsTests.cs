@@ -21,6 +21,7 @@ public class SecurityEmailsTests
         _accountEmails.TwoFactorOnAsync("sam@example.test").Returns(Email);
         _accountEmails.TwoFactorOffAsync("sam@example.test", Arg.Any<TwoFactorOffCause>()).Returns(Email);
         _accountEmails.RecoveryCodesMadeAsync("sam@example.test").Returns(Email);
+        _accountEmails.PasskeyAddedAsync("sam@example.test", Arg.Any<string>()).Returns(Email);
     }
 
     private SecurityEmails Subject => new(_mailSender, _accountEmails, NullLogger<SecurityEmails>.Instance);
@@ -81,6 +82,20 @@ public class SecurityEmailsTests
 
         // Act & Assert
         await Assert.That(() => Subject.TwoFactorOnAsync(User(emailConfirmed: true))).ThrowsNothing();
+    }
+
+    [Test]
+    public async Task PasskeyAdded_ConfirmedEmail_SendsItWithTheName()
+    {
+        // Act
+        await Subject.PasskeyAddedAsync(User(emailConfirmed: true), "Work laptop");
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await _accountEmails.Received(1).PasskeyAddedAsync("sam@example.test", "Work laptop");
+            await _mailSender.Received(1).SendAsync(Email, Arg.Any<CancellationToken>());
+        }
     }
 
     /// <summary>

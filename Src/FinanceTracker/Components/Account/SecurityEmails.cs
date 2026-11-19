@@ -33,6 +33,18 @@ public sealed class SecurityEmails : ISecurityEmails
     public Task RecoveryCodesMadeAsync(FinanceTrackerUser user) =>
         SendAsync(user, _accountEmails.RecoveryCodesMadeAsync);
 
+    /// <inheritdoc/>
+    public Task PasskeyAddedAsync(FinanceTrackerUser user, string name) =>
+        SendAsync(user, to => _accountEmails.PasskeyAddedAsync(to, name));
+
+    /// <inheritdoc/>
+    public Task PasskeyRemovedAsync(FinanceTrackerUser user, string name) =>
+        SendAsync(user, to => _accountEmails.PasskeyRemovedAsync(to, name));
+
+    /// <inheritdoc/>
+    public Task PasskeysRemovedByAdminAsync(FinanceTrackerUser user) =>
+        SendAsync(user, _accountEmails.PasskeysRemovedByAdminAsync);
+
     /// <summary>
     /// Sends the email <paramref name="write"/> makes to <paramref name="user"/>'s confirmed email. Logs it instead
     /// when there's no mail server or it fails, the change it's about has already been made.

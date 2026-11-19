@@ -19,11 +19,13 @@ using FinanceTracker.Domain.Sharing;
 using FinanceTracker.Infrastructure.Encryption;
 using FinanceTracker.Infrastructure.Persistence;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace FinanceTracker.Infrastructure;
 
@@ -206,6 +208,12 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
     public DbSet<DataProtectionKey> DataProtectionKeys { get; private set; }
 
 
+    /// <summary>
+    /// The version of Identity's tables, the one with passkeys. Identity reads it from the app's settings, see
+    /// <see cref="IdentitySchemaOptionsExtensions.UseIdentitySchema"/> for contexts built without them.
+    /// </summary>
+    public static Version IdentitySchemaVersion { get; } = IdentitySchemaVersions.Version3;
+
     /// <inheritdoc/>
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -216,11 +224,30 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
     /// <inheritdoc/>
     protected override void OnModelCreating(ModelBuilder builder)
     {
+        ThrowIfNotIdentitySchema();
         base.OnModelCreating(builder);
 
         builder.ApplyConfigurationsFromAssembly(typeof(FinanceTrackerContext).Assembly);
 
         builder.UseEncryption(_columnEncryptionService);
+    }
+
+    /// <summary>
+    /// Stops a context building a model without passkeys, which Identity quietly does when it isn't given the schema
+    /// version.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">The context's Identity settings aren't at
+    /// <see cref="IdentitySchemaVersion"/>.</exception>
+    private void ThrowIfNotIdentitySchema()
+    {
+        Version? version = this.GetService<IDbContextOptions>().FindExtension<CoreOptionsExtension>()
+            ?.ApplicationServiceProvider?.GetService<IOptions<IdentityOptions>>()?.Value.Stores.SchemaVersion;
+        if (version != IdentitySchemaVersion)
+        {
+            throw new InvalidOperationException(
+                $"The context's Identity schema version is {version}, not {IdentitySchemaVersion}. Build its " +
+                "options with the app's services or UseIdentitySchema().");
+        }
     }
 
     /// <summary>
@@ -230,7 +257,8 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
     /// <returns>The context.</returns>
     public FinanceTrackerContext CreateDbContext(string[] args)
     {
-        var builder = new DbContextOptionsBuilder<FinanceTrackerContext>();
+        DbContextOptionsBuilder<FinanceTrackerContext> builder =
+            new DbContextOptionsBuilder<FinanceTrackerContext>().UseIdentitySchema();
         builder.UseNpgsql("DesignTimeConnectionString", npgsqlDbContextOptionsBuilder =>
         {
             npgsqlDbContextOptionsBuilder.MigrationsAssembly("FinanceTracker.Infrastructure.Migrations");

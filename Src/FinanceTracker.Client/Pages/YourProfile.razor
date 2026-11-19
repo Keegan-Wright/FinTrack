@@ -42,8 +42,12 @@ else
         <MudTabPanel Text="Password">
             <ChangePasswordSection/>
         </MudTabPanel>
-        <MudTabPanel Text="Two-factor">
-            <TwoFactorSection/>
+        @* Two-factor sign in and passkeys share a tab, as a fourth won't fit on a phone *@
+        <MudTabPanel Text="Security">
+            <div class="ft-stack">
+                <TwoFactorSection/>
+                <PasskeysSection/>
+            </div>
         </MudTabPanel>
     </MudTabs>
 }

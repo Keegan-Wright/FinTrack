@@ -2,4 +2,5 @@
 
 - [Getting started](getting-started.md). Connecting your bank, and what happens next.
 - [Two-factor sign in](two-factor.md). An authenticator app code as well as your password, and recovery codes.
-- [Users and admins](users-and-admins.md). Reset links, two-factor sign in, locking, and who's an admin.
+- [Passkeys](passkeys.md). Signing in with your fingerprint, face or PIN instead of your password.
+- [Users and admins](users-and-admins.md). Reset links, two-factor sign in, passkeys, locking, and who's an admin.

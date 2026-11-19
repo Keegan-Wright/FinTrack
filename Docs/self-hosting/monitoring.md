@@ -60,7 +60,7 @@ There are six dashboards in [Grafana/dashboards](../../Grafana/dashboards).
 - **Overview.** Health, response times and syncing at a glance.
 - **Bank sync.** Connections, syncs, TrueLayer and the scheduled jobs.
 - **Notifications and email.** What was sent, and whether it arrived.
-- **Sign-ins and pages.** Sign ins, two-factor codes, permissions and page use.
+- **Sign-ins and pages.** Sign ins, two-factor codes, passkeys, permissions and page use.
 - **Runtime and database.** The process, .NET runtime, database and outgoing calls.
 - **Logs and traces.** Search logs and find failed or slow requests.
 

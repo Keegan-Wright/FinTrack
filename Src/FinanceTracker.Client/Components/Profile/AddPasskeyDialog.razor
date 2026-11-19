@@ -1,0 +1,49 @@
+@* Asks what to call a new passkey, and the user's password, before their browser makes one. *@
+@using FinanceTracker.Client.Components.Dialogs
+@using FinanceTracker.Client.Extensions
+@using FinanceTracker.Contracts.Profile
+@using FluentValidation
+@inject IValidator<AddPasskey> PasskeyValidator
+@inject IValidator<ConfirmPassword> PasswordValidator
+
+<DialogBase TResponse="NewPasskey" Title="Add a passkey" ResponseConstructor="BuildResponseModel">
+    <Content>
+        <MudForm @ref="_form">
+            <div class="ft-add-passkey">
+                <MudText Typo="Typo.body2">
+                    Your browser or phone then asks for your fingerprint, face or PIN to make it.
+                </MudText>
+                <MudTextField T="string" @bind-Value="_passkey.Name" Label="Name" For="@(() => _passkey.Name)"
+                              HelperText="e.g. Work laptop or Phone" Immediate="true"
+                              Validation="@(PasskeyValidator.ValidateValue(_passkey, nameof(AddPasskey.Name)))"/>
+                <MudTextField T="string" @bind-Value="_password.Password" Label="Your password"
+                              InputType="InputType.Password" For="@(() => _password.Password)"
+                              HelperText="To check it's you"
+                              UserAttributes="@(new Dictionary<string, object?> { ["autocomplete"] = "current-password" })"
+                              Validation="@(PasswordValidator.ValidateValue(_password, nameof(ConfirmPassword.Password)))"/>
+            </div>
+        </MudForm>
+    </Content>
+</DialogBase>
+
+@code {
+
+    private readonly AddPasskey _passkey = new();
+    private readonly ConfirmPassword _password = new();
+    private MudForm _form = null!;
+
+    /// <summary>
+    /// The name and password once they're filled in, null to keep the dialog open.
+    /// </summary>
+    private async Task<NewPasskey?> BuildResponseModel()
+    {
+        await _form.ValidateAsync();
+        if (!_form.IsValid)
+        {
+            return null;
+        }
+
+        return new NewPasskey { Name = _passkey.Name, Password = _password.Password };
+    }
+
+}

@@ -1,0 +1,47 @@
+@* A new name for one of the user's passkeys. *@
+@using FinanceTracker.Client.Components.Dialogs
+@using FinanceTracker.Client.Extensions
+@using FinanceTracker.Contracts.Profile
+@using FluentValidation
+@inject IValidator<RenamePasskey> Validator
+
+<DialogBase TResponse="RenamePasskey" Title="Rename passkey" ResponseConstructor="BuildResponseModel">
+    <Content>
+        <MudForm @ref="_form" Model="@_model">
+            <div class="ft-rename-passkey">
+                <MudTextField T="string" @bind-Value="_model.Name" Label="Name" For="@(() => _model.Name)"
+                              HelperText="e.g. Work laptop or Phone" Immediate="true"
+                              Validation="@(Validator.ValidateValue(_model, nameof(RenamePasskey.Name)))"/>
+            </div>
+        </MudForm>
+    </Content>
+</DialogBase>
+
+@code {
+
+    /// <summary>
+    /// Its name now.
+    /// </summary>
+    [Parameter] [EditorRequired] public required string Name { get; set; }
+
+    private RenamePasskey _model = new();
+    private MudForm _form = null!;
+
+    /// <inheritdoc/>
+    protected override void OnInitialized() => _model = new RenamePasskey { Name = Name };
+
+    /// <summary>
+    /// The new name once it's filled in, null to keep the dialog open.
+    /// </summary>
+    private async Task<RenamePasskey?> BuildResponseModel()
+    {
+        await _form.ValidateAsync();
+        if (!_form.IsValid)
+        {
+            return null;
+        }
+
+        return _model;
+    }
+
+}

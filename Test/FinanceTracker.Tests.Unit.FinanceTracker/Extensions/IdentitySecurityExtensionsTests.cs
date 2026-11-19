@@ -4,6 +4,7 @@ using FinanceTracker.Domain.Identity;
 using FinanceTracker.Extensions;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Account.Authenticator;
+using FinanceTracker.Infrastructure.Notifications;
 using FinanceTracker.Telemetry;
 using FinanceTracker.Tests.Unit.Shared;
 using Microsoft.AspNetCore.Identity;
@@ -33,7 +34,7 @@ public class IdentitySecurityExtensionsTests : InfrastructureTestBase
         services.AddScoped(_ => DbContextFactory.CreateDbContext());
         services.AddIdentityCore<FinanceTrackerUser>()
             .AddEntityFrameworkStores<FinanceTrackerContext>()
-            .AddFinTrackSecurity();
+            .AddFinTrackSecurity(new PublicAddress(new Uri("https://money.example.test/")));
 
         _services = services.BuildServiceProvider();
         _scope = _services.CreateAsyncScope();
@@ -117,6 +118,23 @@ public class IdentitySecurityExtensionsTests : InfrastructureTestBase
             await Assert.That(first).IsTrue();
             await Assert.That(again).IsFalse();
             await Assert.That(reused.GetMeasurementSnapshot().EvaluateAsCounter()).IsEqualTo(1);
+        }
+    }
+
+    [Test]
+    public async Task Passkeys_BelongToThePublicHostAndAlwaysAskForAFingerprintFaceOrPin()
+    {
+        // Act
+        IdentityPasskeyOptions options = _services.GetRequiredService<IOptions<IdentityPasskeyOptions>>().Value;
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(options.ServerDomain).IsEqualTo("money.example.test");
+            await Assert.That(options.UserVerificationRequirement).IsEqualTo("required");
+            await Assert.That(options.ResidentKeyRequirement).IsEqualTo("required");
+            await Assert.That(_services.GetRequiredService<IOptions<IdentityOptions>>().Value.Stores.SchemaVersion)
+                .IsEqualTo(FinanceTrackerContext.IdentitySchemaVersion);
         }
     }
 

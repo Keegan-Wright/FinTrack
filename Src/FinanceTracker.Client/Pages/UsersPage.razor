@@ -24,8 +24,9 @@
             choose the new password, you never see it.
         </MudText>
         <MudText Typo="Typo.body2" Class="mud-text-secondary">
-            Someone who's lost their phone and their recovery codes can have two-factor sign in turned off from here.
-            Make sure it's really them asking first.
+            Someone who's lost their phone and their recovery codes can have two-factor sign in turned off from here,
+            and someone who's lost the devices their passkeys are on can have them removed. Make sure it's really them
+            asking first.
         </MudText>
         <MudText Typo="Typo.body2" Class="mud-text-secondary">
             Locking someone signs them out and stops them signing in until you unlock them.
@@ -65,6 +66,12 @@
                                              Icon="@Icons.Material.Outlined.PhonelinkLock">Two-factor
                                     </MudChip>
                                 }
+                                @if (user.PasskeyCount > 0)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                                             Icon="@Icons.Material.Outlined.Fingerprint">@PasskeysText(user)
+                                    </MudChip>
+                                }
                                 @if (user.IsLocked)
                                 {
                                     <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
@@ -93,6 +100,14 @@
                                            StartIcon="@Icons.Material.Outlined.PhonelinkErase"
                                            aria-label="@($"Turn off two-factor sign in for {user.Username}")"
                                            OnClick="@(() => TurnOffTwoFactorAsync(user))">Turn off two-factor
+                                </MudButton>
+                            }
+                            @if (user.PasskeyCount > 0 && !user.IsYou)
+                            {
+                                <MudButton Variant="Variant.Text" Color="Color.Warning" Size="Size.Small"
+                                           StartIcon="@Icons.Material.Outlined.Delete"
+                                           aria-label="@($"Remove passkeys for {user.Username}")"
+                                           OnClick="@(() => RemovePasskeysAsync(user))">Remove passkeys
                                 </MudButton>
                             }
                             @if (user.IsLocked)
@@ -254,6 +269,37 @@
                 }
             }, $"Couldn't turn off two-factor sign in for {user.Username}, try again");
     }
+
+    /// <summary>
+    /// Removes all a user's passkeys once the admin confirms.
+    /// </summary>
+    /// <param name="user">The user.</param>
+    internal async Task RemovePasskeysAsync(UserSummary user)
+    {
+        bool? confirmed = await DialogService.ShowMessageBoxAsync($"Remove the passkeys of {user.Username}?",
+            "For someone who's lost the devices they're on, so make sure it's really them asking. None of them can " +
+            "sign in any more, and they're emailed to say so.",
+            yesText: "Remove", cancelText: "Cancel");
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        await ChangeAsync(async () =>
+            {
+                if (!await UsersService.RemovePasskeysAsync(user.Id, _cts.Token))
+                {
+                    Snackbar.Add("Remove your own passkeys from Your profile", Severity.Warning);
+                }
+            }, $"Couldn't remove the passkeys of {user.Username}, try again");
+    }
+
+    /// <summary>
+    /// How many passkeys a user has, for their chip.
+    /// </summary>
+    /// <param name="user">The user.</param>
+    private static string PasskeysText(UserSummary user) =>
+        user.PasskeyCount == 1 ? "1 passkey" : $"{user.PasskeyCount} passkeys";
 
     /// <summary>
     /// Locks a user once the admin confirms.

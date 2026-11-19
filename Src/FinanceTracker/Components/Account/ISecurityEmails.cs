@@ -29,4 +29,24 @@ public interface ISecurityEmails
     /// </summary>
     /// <param name="user">The user.</param>
     Task RecoveryCodesMadeAsync(FinanceTrackerUser user);
+
+    /// <summary>
+    /// A passkey called <paramref name="name"/> was added for <paramref name="user"/>.
+    /// </summary>
+    /// <param name="user">The user.</param>
+    /// <param name="name">The passkey's name.</param>
+    Task PasskeyAddedAsync(FinanceTrackerUser user, string name);
+
+    /// <summary>
+    /// <paramref name="user"/>'s passkey called <paramref name="name"/> was removed.
+    /// </summary>
+    /// <param name="user">The user.</param>
+    /// <param name="name">The passkey's name.</param>
+    Task PasskeyRemovedAsync(FinanceTrackerUser user, string name);
+
+    /// <summary>
+    /// An admin removed all <paramref name="user"/>'s passkeys.
+    /// </summary>
+    /// <param name="user">The user.</param>
+    Task PasskeysRemovedByAdminAsync(FinanceTrackerUser user);
 }

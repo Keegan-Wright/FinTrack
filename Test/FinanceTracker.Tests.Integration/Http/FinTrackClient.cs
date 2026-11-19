@@ -71,7 +71,7 @@ public sealed partial class FinTrackClient : IDisposable
 
     /// <summary>
     /// Loads the page at <paramref name="path"/> and posts its form back with <paramref name="fields"/>, carrying
-    /// over the hidden fields the page rendered (form handler and antiforgery token).
+    /// over the hidden fields the page rendered (form handler and antiforgery token) from its first form.
     /// </summary>
     /// <param name="postPath">Where to post the form, the page itself when omitted.</param>
     public async Task<HttpResponseMessage> SubmitFormAsync(string path, IReadOnlyDictionary<string, string> fields,
@@ -79,9 +79,10 @@ public sealed partial class FinTrackClient : IDisposable
     {
         string page = await _client.GetStringAsync(path, cancellationToken);
 
+        // The first form's, where a page has more than one, e.g. sign in's password and passkey forms
         Dictionary<string, string> form = HiddenInput().Matches(page)
-            .ToDictionary(x => WebUtility.HtmlDecode(x.Groups["name"].Value),
-                x => WebUtility.HtmlDecode(x.Groups["value"].Value));
+            .GroupBy(x => WebUtility.HtmlDecode(x.Groups["name"].Value))
+            .ToDictionary(x => x.Key, x => WebUtility.HtmlDecode(x.First().Groups["value"].Value));
 
         foreach ((string name, string value) in fields)
         {

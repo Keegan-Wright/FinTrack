@@ -128,4 +128,43 @@ public class AccountEmailsTests
             await Assert.That(email.Html).DoesNotContain("If the button doesn");
         }
     }
+
+    [Test]
+    public async Task PasskeyAdded_NamesItAndSaysItSignsInWithoutAPassword()
+    {
+        // Act
+        MailMessage email = await TestEmails.Account(PublicUrl).PasskeyAddedAsync("sam@example.test", "Work laptop");
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(email.Subject).IsEqualTo(AccountEmails.PasskeyAddedSubject);
+            await Assert.That(email.Text).Contains("\"Work laptop\" was added");
+            await Assert.That(email.Text).Contains("If that wasn't you, change your password straight away");
+        }
+    }
+
+    [Test]
+    public async Task PasskeysRemovedByAdmin_SaysTheAdminDidIt()
+    {
+        // Act
+        MailMessage email = await TestEmails.Account(PublicUrl).PasskeysRemovedByAdminAsync("sam@example.test");
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(email.Subject).IsEqualTo(AccountEmails.PasskeyRemovedSubject);
+            await Assert.That(email.Text).Contains("Your FinTrack admin removed all your passkeys");
+        }
+    }
+
+    [Test]
+    public async Task PasskeyAdded_ANameWithMarkup_IsShownAsText()
+    {
+        // Act
+        MailMessage email = await TestEmails.Account(PublicUrl).PasskeyAddedAsync("sam@example.test", "<b>Laptop</b>");
+
+        // Assert
+        await Assert.That(email.Html).DoesNotContain("<b>Laptop</b>");
+    }
 }

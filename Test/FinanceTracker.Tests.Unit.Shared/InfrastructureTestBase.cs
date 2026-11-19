@@ -1,5 +1,6 @@
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Encryption;
+using FinanceTracker.Infrastructure.Persistence;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -41,6 +42,7 @@ public abstract class InfrastructureTestBase : UnitTestBase, IAsyncDisposable
         await _masterConnection.OpenAsync(CancellationToken);
 
         _options = new DbContextOptionsBuilder<FinanceTrackerContext>()
+            .UseIdentitySchema()
             .UseSqlite(connectionString)
             .ReplaceService<IModelCustomizer, SqliteModelCustomizer>()
             .Options;

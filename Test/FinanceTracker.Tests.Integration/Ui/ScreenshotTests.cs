@@ -96,7 +96,7 @@ public class ScreenshotTests : UiTestBase
         SignedInUser user = await RegisterUserAsync(username, firstName: ScreenshotUser.FirstName);
         IPage page = await OpenAsync(screen, user, false);
         await GoToAsync(page, "/YourProfile");
-        await page.GetByRole(AriaRole.Tab, new PageGetByRoleOptions { Name = "Two-factor" }).ClickAsync();
+        await page.GetByRole(AriaRole.Tab, new PageGetByRoleOptions { Name = "Security" }).ClickAsync();
 
         // Act
         await Button(page, "Set up two-factor sign in").ClickAsync();
@@ -106,6 +106,34 @@ public class ScreenshotTests : UiTestBase
         await page.WaitForTimeoutAsync(1000);
         string file = Path.Combine(RepositoryRoot(), ImagesFolder,
             $"two-factor-setup-{screen.Name.ToLowerInvariant()}.png");
+        await page.ScreenshotAsync(new PageScreenshotOptions { Path = file });
+
+        // Assert
+        await Assert.That(File.Exists(file)).IsTrue();
+    }
+
+    [Test]
+    [MethodDataSource(nameof(DesktopAndPhone))]
+    public async Task Passkeys_IsCaptured(ScreenSize screen)
+    {
+        // Arrange, for the passkeys docs, one added with Chromium's virtual authenticator
+        string username = $"{ScreenshotUser.FirstName}.passkeys.{screen.Name}".ToLowerInvariant();
+        SignedInUser user = await RegisterUserAsync(username, firstName: ScreenshotUser.FirstName);
+        IPage page = await OpenAsync(screen, user, false);
+        await VirtualAuthenticator.AddToAsync(page);
+        await GoToAsync(page, "/YourProfile");
+        await page.GetByRole(AriaRole.Tab, new PageGetByRoleOptions { Name = "Security" }).ClickAsync();
+        await Button(page, "Add a passkey").ClickAsync();
+        await Dialog(page).GetByLabel("Name").FillAsync("Work laptop");
+        await Dialog(page).GetByLabel("Your password").FillAsync(SignedInUser.DefaultPassword);
+        await Button(page, "OK").ClickAsync();
+        await Assertions.Expect(page.Locator(".ft-passkeys__row")).ToHaveCountAsync(1);
+        await page.EvaluateAsync("() => document.querySelectorAll('.mud-snackbar').forEach(x => x.remove())");
+
+        // Act, the passkeys section in view
+        await page.Locator(".ft-passkeys__row").ScrollIntoViewIfNeededAsync();
+        await page.WaitForTimeoutAsync(1000);
+        string file = Path.Combine(RepositoryRoot(), ImagesFolder, $"passkeys-{screen.Name.ToLowerInvariant()}.png");
         await page.ScreenshotAsync(new PageScreenshotOptions { Path = file });
 
         // Assert

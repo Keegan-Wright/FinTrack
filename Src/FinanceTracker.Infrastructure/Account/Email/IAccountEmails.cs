@@ -47,4 +47,24 @@ public interface IAccountEmails
     /// </summary>
     /// <param name="to">Who it's sent to.</param>
     Task<MailMessage> RecoveryCodesMadeAsync(string to);
+
+    /// <summary>
+    /// Tells the user a passkey was added to their account.
+    /// </summary>
+    /// <param name="to">Who it's sent to.</param>
+    /// <param name="name">The passkey's name.</param>
+    Task<MailMessage> PasskeyAddedAsync(string to, string name);
+
+    /// <summary>
+    /// Tells the user one of their passkeys was removed.
+    /// </summary>
+    /// <param name="to">Who it's sent to.</param>
+    /// <param name="name">The passkey's name.</param>
+    Task<MailMessage> PasskeyRemovedAsync(string to, string name);
+
+    /// <summary>
+    /// Tells the user an admin removed all their passkeys.
+    /// </summary>
+    /// <param name="to">Who it's sent to.</param>
+    Task<MailMessage> PasskeysRemovedByAdminAsync(string to);
 }

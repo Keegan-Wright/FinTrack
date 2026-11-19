@@ -19,12 +19,13 @@ public class YourProfilePageTests : ComponentTestBase
     {
         AddBunitPersistentComponentState();
         Services.AddSingleton(_profileService);
+        Services.AddSingleton(Substitute.For<IPasskeyService>());
         Services.AddScoped<IValidator<ChangeEmail>, ChangeEmailValidator>();
         Services.AddScoped<IValidator<ChangePassword>, ChangePasswordValidator>();
     }
 
     [Test]
-    public async Task Render_LocalAccount_HasEmailPasswordAndTwoFactorTabsOpenOnEmail()
+    public async Task Render_LocalAccount_HasEmailPasswordAndSecurityTabsOpenOnEmail()
     {
         // Arrange
         _profileService.GetProfileAsync(Arg.Any<CancellationToken>()).Returns(Create());
@@ -38,7 +39,7 @@ public class YourProfilePageTests : ComponentTestBase
         {
             await Assert.That(cut.Markup).Contains("Signed in as sam");
             await Assert.That(cut.FindAll(".mud-tab").Select(static x => x.TextContent.Trim()))
-                .IsEquivalentTo(["Email", "Password", "Two-factor"],
+                .IsEquivalentTo(["Email", "Password", "Security"],
                     TUnit.Assertions.Enums.CollectionOrdering.Matching);
             await Assert.That(cut.FindAll(".mud-button-root").Select(static x => x.TextContent.Trim()))
                 .Contains("Change email");

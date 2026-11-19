@@ -1,0 +1,4 @@
+/* A readable width for the one field */
+.ft-rename-passkey {
+    min-width: min(360px, 100%);
+}
