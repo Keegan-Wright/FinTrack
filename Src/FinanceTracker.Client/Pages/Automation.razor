@@ -103,7 +103,7 @@
     /// <summary>
     /// Loads the jobs.
     /// </summary>
-    /// <param name="cancellationToken">Stops it once the user leaves.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private Task<List<AutomationJobSummary>> LoadJobsAsync(CancellationToken cancellationToken) =>
         AutomationService.GetJobSummariesAsync(cancellationToken).ToListAsync(cancellationToken).AsTask();
 

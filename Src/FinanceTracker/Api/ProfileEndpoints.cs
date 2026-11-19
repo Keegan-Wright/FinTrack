@@ -14,8 +14,9 @@ public static class ProfileEndpoints
     {
         /// <summary>
         /// <see cref="IProfileService"/> at <see cref="ApiRoutes.Profile"/>. Asking for a confirmation link when
-        /// there's nothing to confirm or no mail server, or changing the password or email of an account without a
-        /// password, answers 409.
+        /// there's nothing to confirm or no mail server, or changing the password, email or two-factor sign in of an
+        /// account without a password, answers 409. So does asking for the authenticator key with two-factor sign in
+        /// on.
         /// </summary>
         public RouteGroupBuilder MapProfileEndpoints()
         {
@@ -25,42 +26,57 @@ public static class ProfileEndpoints
                     CancellationToken cancellationToken) =>
                 TypedResults.Ok(await service.GetProfileAsync(cancellationToken)));
 
-            profile.MapPost("email/confirmation", async Task<Results<NoContent, Conflict>> (IProfileService service,
+            profile.MapPost("email/confirmation", (IProfileService service, CancellationToken cancellationToken) =>
+                    service.SendEmailConfirmationAsync(cancellationToken))
+                .ConflictWhenNone();
+
+            profile.MapPut("password", (ChangePassword request, IProfileService service,
+                    CancellationToken cancellationToken) => service.ChangePasswordAsync(request, cancellationToken))
+                .Validated<ChangePassword>()
+                .ConflictWhenNone();
+
+            profile.MapPut("email", (ChangeEmail request, IProfileService service,
+                    CancellationToken cancellationToken) => service.ChangeEmailAsync(request, cancellationToken))
+                .Validated<ChangeEmail>()
+                .ConflictWhenNone();
+
+            profile.MapGet("two-factor", (IProfileService service, CancellationToken cancellationToken) =>
+                    service.GetTwoFactorAsync(cancellationToken))
+                .ConflictWhenNone();
+
+            profile.MapGet("two-factor/authenticator", (IProfileService service,
+                    CancellationToken cancellationToken) => service.GetAuthenticatorSetupAsync(cancellationToken))
+                .ConflictWhenNone();
+
+            profile.MapPost("two-factor", (EnableAuthenticator request, IProfileService service,
+                    CancellationToken cancellationToken) =>
+                service.EnableAuthenticatorAsync(request, cancellationToken))
+                .Validated<EnableAuthenticator>()
+                .ConflictWhenNone();
+
+            profile.MapPost("two-factor/recovery-codes", (ConfirmPassword request, IProfileService service,
+                    CancellationToken cancellationToken) => service.MakeRecoveryCodesAsync(request, cancellationToken))
+                .Validated<ConfirmPassword>()
+                .ConflictWhenNone();
+
+            profile.MapPost("two-factor/authenticator/reset", (ConfirmPassword request, IProfileService service,
+                    CancellationToken cancellationToken) => service.ResetAuthenticatorAsync(request, cancellationToken))
+                .Validated<ConfirmPassword>()
+                .ConflictWhenNone();
+
+            profile.MapPost("two-factor/off", (ConfirmPassword request, IProfileService service,
+                    CancellationToken cancellationToken) => service.TurnOffTwoFactorAsync(request, cancellationToken))
+                .Validated<ConfirmPassword>()
+                .ConflictWhenNone();
+
+            profile.MapDelete("two-factor/browser", async Task<NoContent> (IProfileService service,
                 CancellationToken cancellationToken) =>
             {
-                if (!await service.SendEmailConfirmationAsync(cancellationToken))
-                {
-                    return TypedResults.Conflict();
-                }
-
+                await service.ForgetBrowserAsync(cancellationToken);
                 return TypedResults.NoContent();
             });
 
-            profile.MapPut("password", async Task<Results<Ok<ProfileChange>, Conflict>> (ChangePassword request,
-                        IProfileService service, CancellationToken cancellationToken) =>
-                    OkOrConflict(await service.ChangePasswordAsync(request, cancellationToken)))
-                .Validated<ChangePassword>();
-
-            profile.MapPut("email", async Task<Results<Ok<ProfileChange>, Conflict>> (ChangeEmail request,
-                        IProfileService service, CancellationToken cancellationToken) =>
-                    OkOrConflict(await service.ChangeEmailAsync(request, cancellationToken)))
-                .Validated<ChangeEmail>();
-
             return api;
         }
-    }
-
-    /// <summary>
-    /// 200 with the change, or 409 when there's none, as when the account changed underneath it.
-    /// </summary>
-    /// <param name="change">What the service did, null when it couldn't.</param>
-    private static Results<Ok<ProfileChange>, Conflict> OkOrConflict(ProfileChange? change)
-    {
-        if (change is null)
-        {
-            return TypedResults.Conflict();
-        }
-
-        return TypedResults.Ok(change);
     }
 }

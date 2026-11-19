@@ -1,6 +1,7 @@
 @page "/YourProfile"
-@* The user's own account: their email and password (IProfileService), a tab each. One made by signing in through
-   the identity provider has no password here, its password and email are the provider's. *@
+@* The user's own account (IProfileService). Their email, password and two-factor sign in, a tab each. One made by
+   signing in through the identity provider has no password here, its password, email and two-factor are the
+   provider's. *@
 @using FinanceTracker.Client.Components.Profile
 @using FinanceTracker.Contracts.Profile
 @using Microsoft.AspNetCore.Authorization
@@ -39,6 +40,9 @@ else
         </MudTabPanel>
         <MudTabPanel Text="Password">
             <ChangePasswordSection/>
+        </MudTabPanel>
+        <MudTabPanel Text="Two-factor">
+            <TwoFactorSection/>
         </MudTabPanel>
     </MudTabs>
 }

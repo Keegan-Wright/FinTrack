@@ -121,7 +121,7 @@ public sealed class NotificationsApiClient : INotificationsService
         PostUnlessConflictAsync($"{Webhook}/test", cancellationToken);
 
     /// <param name="route">The API path.</param>
-    /// <param name="cancellationToken">Stops the call.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <returns>The settings, null when the server answers 409, there's nothing to do it to.</returns>
     private async Task<NotificationSettings?> PostUnlessConflictAsync(string route,
         CancellationToken cancellationToken)

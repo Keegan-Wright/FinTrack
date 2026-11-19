@@ -1,0 +1,43 @@
+/* The QR code at a size phones scan easily, on its own white quiet zone in either theme */
+.ft-two-factor__qr {
+    width: 200px;
+    max-width: 100%;
+    line-height: 0;
+}
+
+.ft-two-factor__qr ::deep svg {
+    width: 100%;
+    height: auto;
+}
+
+/* The key to type in, wrapping on a phone rather than widening the page */
+.ft-two-factor__key {
+    font-size: 1rem;
+    letter-spacing: 0.05em;
+    overflow-wrap: anywhere;
+}
+
+/* The recovery codes in two columns, one on a narrow phone */
+.ft-two-factor__codes {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 4px 16px;
+    max-width: 420px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.ft-two-factor__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+/* The fields at a readable width, the full width on a phone */
+.ft-profile__fields {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-width: 420px;
+}

@@ -313,7 +313,7 @@
     /// Loads a day's transactions.
     /// </summary>
     /// <param name="request">The day's filters.</param>
-    /// <param name="cancellationToken">Stops it once the user moves on.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task LoadDayAsync(FilterTransactions request, CancellationToken cancellationToken)
     {
         try

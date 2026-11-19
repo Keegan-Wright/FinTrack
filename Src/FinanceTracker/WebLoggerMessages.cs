@@ -87,6 +87,18 @@ public static partial class WebLoggerMessages
         "without single sign-on grant the role in the database")]
     public static partial void LogNoAdminLeft(this ILogger logger);
 
+    [LoggerMessage(LogLevel.Information, "User {userId} turned on two-factor sign in")]
+    public static partial void LogTwoFactorEnabled(this ILogger logger, Guid userId);
+
+    [LoggerMessage(LogLevel.Information, "User {userId} turned off two-factor sign in")]
+    public static partial void LogTwoFactorDisabled(this ILogger logger, Guid userId);
+
+    [LoggerMessage(LogLevel.Information, "User {userId} reset their authenticator key")]
+    public static partial void LogAuthenticatorReset(this ILogger logger, Guid userId);
+
+    [LoggerMessage(LogLevel.Information, "User {userId} made new recovery codes")]
+    public static partial void LogRecoveryCodesMade(this ILogger logger, Guid userId);
+
     [LoggerMessage(LogLevel.Information, "Admin {adminId} made user {userId} an admin")]
     public static partial void LogAdminRoleGranted(this ILogger logger, Guid adminId, Guid userId);
 

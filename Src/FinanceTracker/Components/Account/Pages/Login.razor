@@ -134,6 +134,11 @@
             Logger.LogUserLoggedIn();
             RedirectManager.RedirectTo(ReturnUrl);
         }
+        else if (result.RequiresTwoFactor)
+        {
+            RedirectManager.RedirectTo("Account/LoginWith2fa",
+                new Dictionary<string, object?> { ["returnUrl"] = ReturnUrl, ["rememberMe"] = LoginRequest.RememberMe });
+        }
         else if (result.IsLockedOut)
         {
             Logger.LogUserLockedOut();

@@ -129,7 +129,7 @@ public sealed class AccountSnapshotFetcher : IAccountSnapshotFetcher
     /// <param name="results">The items in its answer.</param>
     /// <param name="onError">Logs a failed fetch.</param>
     /// <param name="tally">Counts the failure.</param>
-    /// <param name="cancellationToken">Stops the fetch.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<List<T>?> FetchAsync<TResponse, T>(string name, SyncTypes syncFlags,
         SyncTypes syncType, Func<Task<TResponse>> fetch, Func<TResponse, IAsyncEnumerable<T>?> results,
         Action<Exception> onError, ConnectionSyncTally tally, CancellationToken cancellationToken)

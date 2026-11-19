@@ -18,7 +18,7 @@ public interface ICalendarService
     /// </summary>
     /// <param name="month">The month, 1 to 12.</param>
     /// <param name="year">The year.</param>
-    /// <param name="cancellationToken">Cancels the lookup.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <remarks>
     /// Dates are encrypted, so every transaction is loaded and filtered after
     /// decryption.

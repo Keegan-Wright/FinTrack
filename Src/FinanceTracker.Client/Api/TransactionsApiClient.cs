@@ -46,7 +46,7 @@ public sealed class TransactionsApiClient : ITransactionsService
     /// <param name="transactionId">The transaction.</param>
     /// <param name="change">The path for the change, e.g. <c>hide</c>.</param>
     /// <param name="request">Which classification.</param>
-    /// <param name="cancellationToken">Stops the call.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<Transaction> ChangeBankClassificationAsync(Guid transactionId, string change,
         ChangeBankClassification request, CancellationToken cancellationToken)
     {
@@ -89,7 +89,7 @@ public sealed class TransactionsApiClient : ITransactionsService
     /// The problem's detail, which says why the split can't be made.
     /// </summary>
     /// <param name="response">The API's answer.</param>
-    /// <param name="cancellationToken">Stops the call.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<string> ReasonAsync(HttpResponseMessage response, CancellationToken cancellationToken)
     {
         using JsonDocument? problem = await response.Content.ReadFromJsonAsync<JsonDocument>(cancellationToken);

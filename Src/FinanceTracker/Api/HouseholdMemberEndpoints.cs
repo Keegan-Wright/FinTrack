@@ -46,11 +46,9 @@ public static class HouseholdMemberEndpoints
                     TypedResults.Ok(await service.LinkHouseholdMemberAsync(id, request, cancellationToken)))
                 .ConflictWhenNameTaken();
 
-            members.MapDelete("{id:guid}", async Task<Results<NoContent, NotFound>> (Guid id,
-                    IHouseholdMemberService service, CancellationToken cancellationToken) =>
-                await service.DeleteHouseholdMemberAsync(id, cancellationToken)
-                    ? TypedResults.NoContent()
-                    : TypedResults.NotFound());
+            members.MapDelete("{id:guid}", (Guid id, IHouseholdMemberService service,
+                    CancellationToken cancellationToken) => service.DeleteHouseholdMemberAsync(id, cancellationToken))
+                .NotFoundWhenNone();
 
             return api;
         }

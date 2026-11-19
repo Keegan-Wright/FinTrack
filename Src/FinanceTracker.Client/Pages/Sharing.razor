@@ -280,7 +280,7 @@
     /// <summary>
     /// Loads the user's links.
     /// </summary>
-    /// <param name="cancellationToken">Stops it once the user leaves.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private Task<List<UserLink>> LoadLinksAsync(CancellationToken cancellationToken) =>
         SharingService.GetLinksAsync(cancellationToken).ToListAsync(cancellationToken).AsTask();
 

@@ -31,27 +31,13 @@ public static class UsersEndpoints
             users.MapGet("", (IUsersService service, CancellationToken cancellationToken) =>
                 service.GetUsersAsync(cancellationToken));
 
-            users.MapPost("{id:guid}/reset-link", async Task<Results<Ok<ResetLink>, Conflict>> (Guid id,
-                IUsersService service, CancellationToken cancellationToken) =>
-            {
-                if (await service.CreateResetLinkAsync(id, cancellationToken) is not { } link)
-                {
-                    return TypedResults.Conflict();
-                }
+            users.MapPost("{id:guid}/reset-link", (Guid id, IUsersService service,
+                    CancellationToken cancellationToken) => service.CreateResetLinkAsync(id, cancellationToken))
+                .ConflictWhenNone();
 
-                return TypedResults.Ok(link);
-            });
-
-            users.MapPost("{id:guid}/lock", async Task<Results<NoContent, Conflict>> (Guid id, IUsersService service,
-                CancellationToken cancellationToken) =>
-            {
-                if (!await service.LockAsync(id, cancellationToken))
-                {
-                    return TypedResults.Conflict();
-                }
-
-                return TypedResults.NoContent();
-            });
+            users.MapPost("{id:guid}/lock", (Guid id, IUsersService service,
+                    CancellationToken cancellationToken) => service.LockAsync(id, cancellationToken))
+                .ConflictWhenNone();
 
             users.MapPost("{id:guid}/unlock", async Task<NoContent> (Guid id, IUsersService service,
                 CancellationToken cancellationToken) =>

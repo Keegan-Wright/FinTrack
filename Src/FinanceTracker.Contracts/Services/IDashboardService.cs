@@ -13,7 +13,7 @@ public interface IDashboardService
     /// </summary>
     /// <param name="fromDate">The start of the period, included.</param>
     /// <param name="toDate">The end of the period, left out, so back to back periods never share a transaction.</param>
-    /// <param name="cancellationToken">Cancels the lookup.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     Task<SpentInTimePeriod> GetSpentInTimePeriod(DateTime fromDate, DateTime toDate,
         CancellationToken cancellationToken);
 
@@ -22,7 +22,7 @@ public interface IDashboardService
     /// ones show until they're paid.
     /// </summary>
     /// <param name="numberToFetch">The most payments to return.</param>
-    /// <param name="cancellationToken">Cancels the lookup.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     IAsyncEnumerable<UpcomingPayment> GetUpcomingPaymentsAsync(int numberToFetch,
         CancellationToken cancellationToken);
 }

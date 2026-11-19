@@ -49,7 +49,7 @@ public sealed class TransfersApiClient : ITransfersService
     /// </summary>
     /// <param name="method">The request's method.</param>
     /// <param name="path">The API path.</param>
-    /// <param name="cancellationToken">Stops the call.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<IReadOnlyList<Transaction>> DecideAsync(HttpMethod method, string path,
         CancellationToken cancellationToken)
     {

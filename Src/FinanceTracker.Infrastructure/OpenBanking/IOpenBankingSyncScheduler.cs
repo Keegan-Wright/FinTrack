@@ -9,6 +9,6 @@ public interface IOpenBankingSyncScheduler
     /// Queues a sync of all <paramref name="userId"/>'s connections, to run as soon as possible.
     /// </summary>
     /// <param name="userId">The user to sync.</param>
-    /// <param name="cancellationToken">Stops the call.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     Task ScheduleUserSyncAsync(Guid userId, CancellationToken cancellationToken);
 }

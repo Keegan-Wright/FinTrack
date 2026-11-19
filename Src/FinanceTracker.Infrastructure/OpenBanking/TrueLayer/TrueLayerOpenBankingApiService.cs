@@ -204,7 +204,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
     /// <param name="resource">The account's or card's path.</param>
     /// <param name="requested">What's asked for, for the log.</param>
     /// <param name="authToken">The connection's access token.</param>
-    /// <param name="cancellationToken">Stops the call.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<ExternalOpenBankingGetAccountBalanceResponse> GetBalanceAsync(string resource,
         string requested, string authToken, CancellationToken cancellationToken)
     {
@@ -228,7 +228,7 @@ public class TrueLayerOpenBankingApiService : IOpenBankingApiService
     /// <param name="requested">What's asked for, for the log.</param>
     /// <param name="authToken">The connection's access token.</param>
     /// <param name="transactionsStartingDate">The earliest to get, null for everything.</param>
-    /// <param name="cancellationToken">Stops the call.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<ExternalOpenBankingAccountTransactionsResponse> GetTransactionsAsync(string path,
         string requested, string authToken, DateTime? transactionsStartingDate, CancellationToken cancellationToken)
     {

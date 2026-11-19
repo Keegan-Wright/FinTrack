@@ -136,7 +136,7 @@ else
     /// <summary>
     /// Loads the accounts, each with its newest transactions.
     /// </summary>
-    /// <param name="cancellationToken">Stops it once the user leaves.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private Task<List<AccountAndTransactions>> LoadAccountsAsync(CancellationToken cancellationToken) =>
         AccountService.GetAccountsAndMostRecentTransactionsAsync(5, cancellationToken)
             .ToListAsync(cancellationToken).AsTask();
@@ -144,7 +144,7 @@ else
     /// <summary>
     /// Loads each account's balance history.
     /// </summary>
-    /// <param name="cancellationToken">Stops it once the user leaves.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private Task<List<AccountBalanceHistory>> LoadHistoriesAsync(CancellationToken cancellationToken) =>
         NetWorthService.GetBalanceHistoriesAsync(
                 DateOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime).AddDays(-90), cancellationToken)

@@ -24,7 +24,7 @@ public class YourProfilePageTests : ComponentTestBase
     }
 
     [Test]
-    public async Task Render_LocalAccount_HasAnEmailAndAPasswordTabOpenOnEmail()
+    public async Task Render_LocalAccount_HasEmailPasswordAndTwoFactorTabsOpenOnEmail()
     {
         // Arrange
         _profileService.GetProfileAsync(Arg.Any<CancellationToken>()).Returns(Create());
@@ -33,12 +33,13 @@ public class YourProfilePageTests : ComponentTestBase
         IRenderedComponent<YourProfile> cut = RenderPage();
 
         // Assert
-        cut.WaitForState(() => cut.FindAll(".mud-tab").Count == 2);
+        cut.WaitForState(() => cut.FindAll(".mud-tab").Count == 3);
         using (Assert.Multiple())
         {
             await Assert.That(cut.Markup).Contains("Signed in as sam");
             await Assert.That(cut.FindAll(".mud-tab").Select(static x => x.TextContent.Trim()))
-                .IsEquivalentTo(["Email", "Password"], TUnit.Assertions.Enums.CollectionOrdering.Matching);
+                .IsEquivalentTo(["Email", "Password", "Two-factor"],
+                    TUnit.Assertions.Enums.CollectionOrdering.Matching);
             await Assert.That(cut.FindAll(".mud-button-root").Select(static x => x.TextContent.Trim()))
                 .Contains("Change email");
         }

@@ -1,0 +1,426 @@
+@* The user's two-factor sign in. Setting it up with an authenticator app, recovery codes shown once, and turning it
+   off. Changes ask for their password again. *@
+@using System.Text
+@using FinanceTracker.Client.Extensions
+@using FinanceTracker.Contracts.Profile
+@using FluentValidation
+@using Microsoft.JSInterop
+@using Severity = MudBlazor.Severity
+@implements IDisposable
+@inject IProfileService ProfileService
+@inject IValidator<EnableAuthenticator> Validator
+@inject IDialogService DialogService
+@inject IJSRuntime JsRuntime
+@inject ISnackbar Snackbar
+
+<Section>
+    <LoadingFrame Loading="@(!_loaded)" Message="Loading two-factor sign in" MinHeight="120" Cover="false">
+        @if (_loaded)
+        {
+            <div class="ft-stack">
+                @if (_recoveryCodes.Count > 0)
+                {
+                    <MudText Typo="Typo.body2">
+                        Save these recovery codes somewhere safe, such as a password manager. If you can't use your
+                        app, each one signs you in once.
+                    </MudText>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">You won't see them again.</MudText>
+                    <ul class="ft-two-factor__codes" aria-label="Your recovery codes">
+                        @foreach (string recoveryCode in _recoveryCodes)
+                        {
+                            <li><code>@recoveryCode</code></li>
+                        }
+                    </ul>
+                    <div class="ft-two-factor__actions">
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Outlined.ContentCopy" OnClick="@CopyCodesAsync">Copy
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Outlined.Download" OnClick="@DownloadCodesAsync">Download
+                        </MudButton>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@DoneWithCodes">
+                            I've saved them
+                        </MudButton>
+                    </div>
+                }
+                else if (_status is null)
+                {
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        Two-factor sign in couldn't be loaded.
+                    </MudText>
+                }
+                else if (_setup is not null)
+                {
+                    <MudText Typo="Typo.subtitle2" HtmlTag="h3">1. Add FinTrack to your authenticator app</MudText>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">Scan this QR code with the app.</MudText>
+                    <div class="ft-two-factor__qr" role="img" aria-label="QR code to scan with your authenticator app">
+                        @((MarkupString)_setup.QrCodeSvg)
+                    </div>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">Or type in this key.</MudText>
+                    <code class="ft-two-factor__key">@_setup.SharedKey</code>
+
+                    <MudText Typo="Typo.subtitle2" HtmlTag="h3">2. Enter the code it shows</MudText>
+                    <MudForm @ref="_form" Model="@_enable">
+                        <div class="ft-profile__fields">
+                            <MudTextField T="string" @bind-Value="_enable.Code" Label="Code" Variant="Variant.Outlined"
+                                          Margin="Margin.Dense" For="@(() => _enable.Code)"
+                                          InputMode="InputMode.numeric"
+                                          UserAttributes="@(new Dictionary<string, object?> { ["autocomplete"] = "one-time-code" })"
+                                          Validation="@(Validator.ValidateValue(_enable, nameof(EnableAuthenticator.Code)))"/>
+                            <MudTextField T="string" @bind-Value="_enable.Password" Label="Your password"
+                                          Variant="Variant.Outlined" Margin="Margin.Dense" InputType="InputType.Password"
+                                          For="@(() => _enable.Password)"
+                                          UserAttributes="@(new Dictionary<string, object?> { ["autocomplete"] = "current-password" })"
+                                          Validation="@(Validator.ValidateValue(_enable, nameof(EnableAuthenticator.Password)))"/>
+                        </div>
+                    </MudForm>
+                    @if (_errors.Count > 0)
+                    {
+                        <div role="alert">
+                            @foreach (string error in _errors)
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Error">@error</MudText>
+                            }
+                        </div>
+                    }
+                    <div class="ft-two-factor__actions">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@EnableAsync">
+                            Turn on
+                        </MudButton>
+                        <MudButton Variant="Variant.Text" OnClick="@CancelSetup">Cancel</MudButton>
+                    </div>
+                }
+                else if (_status.Enabled)
+                {
+                    <MudText Typo="Typo.body2">
+                        Two-factor sign in is on. Signing in with your password also asks for a code from your app.
+                    </MudText>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">@CodesLeftText</MudText>
+                    <div class="ft-two-factor__actions">
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@MakeRecoveryCodesAsync">
+                            Make new recovery codes
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@ResetAuthenticatorAsync">
+                            Reset authenticator
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Warning" OnClick="@TurnOffAsync">
+                            Turn off
+                        </MudButton>
+                        @if (_status.BrowserRemembered)
+                        {
+                            <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="@ForgetBrowserAsync">
+                                Forget this browser
+                            </MudButton>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2">
+                        Two-factor sign in asks for a code from an authenticator app on your phone as well as your
+                        password. Someone who learns your password still can't get in.
+                    </MudText>
+                    <div>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@SetUpAsync">
+                            Set up two-factor sign in
+                        </MudButton>
+                    </div>
+                }
+            </div>
+        }
+    </LoadingFrame>
+</Section>
+
+@code {
+
+    /// <summary>
+    /// The shared UI state, whose loading overlay covers the page while this saves.
+    /// </summary>
+    [CascadingParameter] private ApplicationState ApplicationState { get; set; } = null!;
+
+    private readonly CancellationTokenSource _cts = new();
+    private EnableAuthenticator _enable = new();
+    private MudForm _form = null!;
+    private TwoFactorStatus? _status;
+    private AuthenticatorSetup? _setup;
+    private IReadOnlyList<string> _recoveryCodes = [];
+    private IReadOnlyList<string> _errors = [];
+    private bool _loaded;
+
+    /// <summary>
+    /// How many recovery codes are left, in words.
+    /// </summary>
+    private string CodesLeftText => _status?.RecoveryCodesLeft switch
+    {
+        0 => "No recovery codes left. Make new ones in case you lose your phone.",
+        1 => "1 recovery code left.",
+        { } left => $"{left} recovery codes left.",
+        null => string.Empty
+    };
+
+    /// <inheritdoc/>
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _status = await ProfileService.GetTwoFactorAsync(_cts.Token);
+        }
+        catch (Exception) when (!_cts.IsCancellationRequested)
+        {
+            _status = null;
+        }
+
+        _loaded = true;
+    }
+
+    /// <summary>
+    /// Gets the key to add to their app and shows it.
+    /// </summary>
+    internal Task SetUpAsync() => RunAsync("Getting your key", "Couldn't get your key, try again", async () =>
+    {
+        _errors = [];
+        _enable = new EnableAuthenticator();
+        _setup = await ProfileService.GetAuthenticatorSetupAsync(_cts.Token);
+        if (_setup is null)
+        {
+            await ReloadAsync();
+        }
+    });
+
+    /// <summary>
+    /// Turns it on once the code and password are filled in, then shows the recovery codes.
+    /// </summary>
+    internal async Task EnableAsync()
+    {
+        _errors = [];
+        await _form.ValidateAsync();
+        if (!_form.IsValid)
+        {
+            return;
+        }
+
+        await RunAsync("Turning on two-factor sign in", "Couldn't turn on two-factor sign in, try again", async () =>
+        {
+            TwoFactorChange? change = await ProfileService.EnableAuthenticatorAsync(_enable, _cts.Token);
+            if (change is not { Succeeded: true })
+            {
+                _errors = change?.Errors ?? ["Your account has no password here"];
+                return;
+            }
+
+            _setup = null;
+            _recoveryCodes = change.RecoveryCodes;
+            await ReloadAsync();
+            Snackbar.Add("Two-factor sign in is on", Severity.Success);
+        });
+    }
+
+    /// <summary>
+    /// Leaves setting it up.
+    /// </summary>
+    private void CancelSetup()
+    {
+        _setup = null;
+        _errors = [];
+    }
+
+    /// <summary>
+    /// Replaces the recovery codes and shows the new ones.
+    /// </summary>
+    internal async Task MakeRecoveryCodesAsync()
+    {
+        ConfirmPassword? password = await AskForPasswordAsync("Make new recovery codes",
+            "Your old recovery codes stop working.");
+        if (password is null)
+        {
+            return;
+        }
+
+        await RunAsync("Making new recovery codes", "Couldn't make new recovery codes, try again", async () =>
+        {
+            TwoFactorChange? change = await ProfileService.MakeRecoveryCodesAsync(password, _cts.Token);
+            if (ShowRefusal(change))
+            {
+                return;
+            }
+
+            _recoveryCodes = change!.RecoveryCodes;
+            await ReloadAsync();
+        });
+    }
+
+    /// <summary>
+    /// Turns it off with a new key, for a new phone, so it's set up again.
+    /// </summary>
+    internal async Task ResetAuthenticatorAsync()
+    {
+        ConfirmPassword? password = await AskForPasswordAsync("Reset authenticator",
+            "Two-factor sign in turns off and your app's codes stop working. Set it up again with the new key.");
+        if (password is null)
+        {
+            return;
+        }
+
+        await RunAsync("Resetting your authenticator", "Couldn't reset your authenticator, try again", async () =>
+        {
+            TwoFactorChange? change = await ProfileService.ResetAuthenticatorAsync(password, _cts.Token);
+            if (ShowRefusal(change))
+            {
+                return;
+            }
+
+            await ReloadAsync();
+            Snackbar.Add("Authenticator reset. Set it up again to turn two-factor sign in back on", Severity.Success);
+        });
+    }
+
+    /// <summary>
+    /// Turns it off.
+    /// </summary>
+    internal async Task TurnOffAsync()
+    {
+        ConfirmPassword? password = await AskForPasswordAsync("Turn off two-factor sign in",
+            "Signing in will only ask for your password.");
+        if (password is null)
+        {
+            return;
+        }
+
+        await RunAsync("Turning off two-factor sign in", "Couldn't turn off two-factor sign in, try again", async () =>
+        {
+            TwoFactorChange? change = await ProfileService.TurnOffTwoFactorAsync(password, _cts.Token);
+            if (ShowRefusal(change))
+            {
+                return;
+            }
+
+            await ReloadAsync();
+            Snackbar.Add("Two-factor sign in is off", Severity.Success);
+        });
+    }
+
+    /// <summary>
+    /// Stops remembering this browser.
+    /// </summary>
+    internal Task ForgetBrowserAsync() => RunAsync("Forgetting this browser",
+        "Couldn't forget this browser, try again", async () =>
+        {
+            await ProfileService.ForgetBrowserAsync(_cts.Token);
+            await ReloadAsync();
+            Snackbar.Add("This browser will be asked for a code next time", Severity.Success);
+        });
+
+    /// <summary>
+    /// Copies the recovery codes, which only works over HTTPS or on this computer. Otherwise they can be selected.
+    /// </summary>
+    internal async Task CopyCodesAsync()
+    {
+        try
+        {
+            await JsRuntime.InvokeVoidAsync("navigator.clipboard.writeText", string.Join('\n', _recoveryCodes));
+            Snackbar.Add("Recovery codes copied", Severity.Success);
+        }
+        catch (JSException)
+        {
+            Snackbar.Add("Couldn't copy them, select the codes and copy them instead", Severity.Warning);
+        }
+    }
+
+    /// <summary>
+    /// Saves the recovery codes as a text file.
+    /// </summary>
+    internal async Task DownloadCodesAsync()
+    {
+        string text = $"FinTrack recovery codes. Each one signs you in once.\n\n{string.Join('\n', _recoveryCodes)}\n";
+        using MemoryStream content = new(Encoding.UTF8.GetBytes(text));
+        await JsRuntime.SaveFileAsync("fintrack-recovery-codes.txt", "text/plain", content, _cts.Token);
+    }
+
+    /// <summary>
+    /// Hides the recovery codes once they're saved.
+    /// </summary>
+    private void DoneWithCodes() => _recoveryCodes = [];
+
+    /// <summary>
+    /// Asks for their password before a change.
+    /// </summary>
+    /// <param name="title">The change being made.</param>
+    /// <param name="message">What it does.</param>
+    /// <returns>The password, null when they cancelled.</returns>
+    private async Task<ConfirmPassword?> AskForPasswordAsync(string title, string message)
+    {
+        DialogParameters<ConfirmPasswordDialog> parameters = new()
+        {
+            { x => x.Title, title },
+            { x => x.Message, message }
+        };
+
+        IDialogReference dialog = await DialogService.ShowAsync<ConfirmPasswordDialog>(title, parameters);
+        DialogResult? result = await dialog.Result;
+        if (result is null || result.Canceled)
+        {
+            return null;
+        }
+
+        return (ConfirmPassword)result.Data!;
+    }
+
+    /// <summary>
+    /// Says why a change wasn't made.
+    /// </summary>
+    /// <param name="change">What the server did, null when the account has no password here.</param>
+    /// <returns>Whether it was refused.</returns>
+    private bool ShowRefusal(TwoFactorChange? change)
+    {
+        if (change is null)
+        {
+            Snackbar.Add("Your account has no password here, you sign in through your identity provider",
+                Severity.Warning);
+            return true;
+        }
+
+        if (!change.Succeeded)
+        {
+            Snackbar.Add(change.Errors[0], Severity.Error);
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Loads whether it's on and the codes left.
+    /// </summary>
+    private async Task ReloadAsync() => _status = await ProfileService.GetTwoFactorAsync(_cts.Token);
+
+    /// <summary>
+    /// Runs <paramref name="change"/> under the loading overlay, saying <paramref name="failed"/> if the server fails.
+    /// </summary>
+    /// <param name="working">What's happening, under the overlay's spinner.</param>
+    /// <param name="failed">What's said when it fails.</param>
+    /// <param name="change">The change.</param>
+    private async Task RunAsync(string working, string failed, Func<Task> change)
+    {
+        ApplicationState.ShowLoading(working);
+        try
+        {
+            await change();
+        }
+        catch (Exception) when (!_cts.IsCancellationRequested)
+        {
+            Snackbar.Add(failed, Severity.Error);
+        }
+        finally
+        {
+            ApplicationState.HideLoading();
+        }
+    }
+
+    /// <inheritdoc/>
+    public void Dispose()
+    {
+        _cts.Cancel();
+        _cts.Dispose();
+    }
+
+}

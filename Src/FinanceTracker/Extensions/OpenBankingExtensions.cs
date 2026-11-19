@@ -199,7 +199,7 @@ public static class OpenBankingExtensions
     /// </summary>
     /// <param name="rateLimiter">The limiter to wait for.</param>
     /// <param name="metrics">Records how long it waited.</param>
-    /// <param name="cancellationToken">Stops the wait.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async ValueTask<RateLimitLease> AcquireAsync(RateLimiter rateLimiter, FinTrackMetrics metrics,
         CancellationToken cancellationToken)
     {

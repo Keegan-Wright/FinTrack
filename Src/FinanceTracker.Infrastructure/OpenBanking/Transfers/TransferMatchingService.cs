@@ -130,7 +130,7 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
     /// <param name="dates">The days of the transactions that changed.</param>
     /// <param name="startedAt">When the run started loading.</param>
     /// <param name="recordCheckpoint">Whether to record the run, so the next looks only at what's new.</param>
-    /// <param name="cancellationToken">Stops the matching.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<TransferMatchSummary> MatchAroundAsync(FinanceTrackerContext context, TransferGroup group,
         List<DateTime> dates, DateTime startedAt, bool recordCheckpoint, CancellationToken cancellationToken)
     {
@@ -184,7 +184,7 @@ public class TransferMatchingService : ServiceBase<TransferMatchingService>, ITr
     /// <param name="transactions">The transactions to match.</param>
     /// <param name="startedAt">When the run started loading.</param>
     /// <param name="recordCheckpoint">Whether to record the run, so the next looks only at what's new.</param>
-    /// <param name="cancellationToken">Stops the matching.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<TransferMatchSummary> MatchAndSaveAsync(FinanceTrackerContext context, TransferGroup group,
         List<BankTransaction> transactions, DateTime startedAt, bool recordCheckpoint,
         CancellationToken cancellationToken)
