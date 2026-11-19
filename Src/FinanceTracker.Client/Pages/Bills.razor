@@ -356,7 +356,7 @@
     {
         try
         {
-            SetLoadingState(true, "Saving…");
+            SetLoadingState(true, "Saving");
             await change();
             DateOnly month = Month;
             Overview = await BillsService.GetMonthAsync(month.Year, month.Month, _cts.Token);

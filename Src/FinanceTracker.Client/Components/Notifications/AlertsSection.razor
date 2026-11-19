@@ -112,7 +112,7 @@
             </div>
 
             <div>
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(_busy || !Changed)"
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!Changed)"
                            OnClick="@SaveAsync">Save alerts
                 </MudButton>
             </div>
@@ -134,13 +134,17 @@
     [Parameter]
     public EventCallback<NotificationSettings> SettingsChanged { get; set; }
 
+    /// <summary>
+    /// The shared UI state, whose loading overlay covers the page while this saves.
+    /// </summary>
+    [CascadingParameter] private ApplicationState ApplicationState { get; set; } = null!;
+
     private readonly CancellationTokenSource _cts = new();
     private ChangeAlertSettings _model = new();
     private NotificationSettings? _shown;
     private MudForm _form = null!;
     private bool _largeOn;
     private decimal? _largeWhenOff;
-    private bool _busy;
 
     /// <summary>
     /// The current culture's currency symbol, shown on amount fields.
@@ -206,7 +210,7 @@
             return;
         }
 
-        _busy = true;
+        ApplicationState.ShowLoading("Saving");
         try
         {
             NotificationSettings settings = await NotificationsService.ChangeAlertsAsync(_model, _cts.Token);
@@ -220,7 +224,7 @@
         }
         finally
         {
-            _busy = false;
+            ApplicationState.HideLoading();
         }
     }
 

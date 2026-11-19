@@ -37,6 +37,26 @@ public sealed class ApplicationState : INotifyPropertyChanged
     }
 
     /// <summary>
+    /// Covers the page with the loading overlay. Pages call it
+    /// through <c>SetLoadingState</c>, components inside them directly.
+    /// </summary>
+    /// <param name="message">What's happening, under the spinner, null for the default.</param>
+    public void ShowLoading(string? message = null)
+    {
+        LoadingMessage = message;
+        Loading = true;
+    }
+
+    /// <summary>
+    /// Takes the loading overlay away, see <see cref="ShowLoading"/>.
+    /// </summary>
+    public void HideLoading()
+    {
+        Loading = false;
+        LoadingMessage = null;
+    }
+
+    /// <summary>
     /// The text under the loading overlay's spinner.
     /// </summary>
     public string? LoadingMessage

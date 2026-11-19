@@ -63,6 +63,26 @@ public sealed class UsersApiClient : IUsersService
         response.EnsureSuccessStatusCode();
     }
 
+    /// <inheritdoc/>
+    public async Task<AdminChange> GrantAdminAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        using HttpResponseMessage response =
+            await _http.PostAsync($"{ApiRoutes.Users}/{userId}/admin", null, cancellationToken);
+        ThrowIfMissing(response, userId);
+        response.EnsureSuccessStatusCode();
+        return await response.ReadRequiredJsonAsync<AdminChange>(cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task<AdminChange> RemoveAdminAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        using HttpResponseMessage response =
+            await _http.DeleteAsync($"{ApiRoutes.Users}/{userId}/admin", cancellationToken);
+        ThrowIfMissing(response, userId);
+        response.EnsureSuccessStatusCode();
+        return await response.ReadRequiredJsonAsync<AdminChange>(cancellationToken);
+    }
+
     /// <summary>
     /// Throws on a 404, as the interface documents.
     /// </summary>

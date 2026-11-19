@@ -39,19 +39,24 @@ public sealed class OidcUserLinker
     /// The claim with the username the user goes by.
     /// </summary>
     public const string PreferredUsername = "preferred_username";
+    /// <summary>
+    /// The claim with each group the user is in at the provider, one claim per group, and the scope that asks for
+    /// them.
+    /// </summary>
+    public const string Groups = "groups";
+    /// <summary>
+    /// The provider's group whose members are FinTrack's admins.
+    /// </summary>
+    public const string AdminsGroup = "admins";
 
-    private readonly AdminProvisioner _adminProvisioner;
     private readonly ILogger<OidcUserLinker> _logger;
     private readonly UserManager<FinanceTrackerUser> _userManager;
 
     /// <param name="userManager">Finds and changes users.</param>
-    /// <param name="adminProvisioner">Makes the first user an admin.</param>
     /// <param name="logger">Its logger.</param>
-    public OidcUserLinker(UserManager<FinanceTrackerUser> userManager, AdminProvisioner adminProvisioner,
-        ILogger<OidcUserLinker> logger)
+    public OidcUserLinker(UserManager<FinanceTrackerUser> userManager, ILogger<OidcUserLinker> logger)
     {
         _userManager = userManager;
-        _adminProvisioner = adminProvisioner;
         _logger = logger;
     }
 
@@ -142,10 +147,63 @@ public sealed class OidcUserLinker
             return null;
         }
 
+        // Not the first-user rule, the provider's admins group decides, see MatchAdminRoleAsync
         await _userManager.AddClaimAsync(user, new Claim(CustomClaims.FirstName, firstName));
-        await _adminProvisioner.GrantIfFirstUserAsync(user);
         _logger.LogOidcUserRegistered(user.Id);
         return user;
+    }
+
+    /// <summary>
+    /// Makes <paramref name="user"/> an admin when the provider has them in its <see cref="AdminsGroup"/>, and takes
+    /// the role away when it doesn't, at every sign in. The provider is the source of truth for whoever signs in
+    /// through it, even when that leaves nobody an admin, which is logged.
+    /// </summary>
+    /// <param name="user">The user signing in.</param>
+    /// <param name="external">The provider's claims.</param>
+    public async Task MatchAdminRoleAsync(FinanceTrackerUser user, ClaimsPrincipal external)
+    {
+        bool inGroup = external.FindAll(Groups).Any(static x => x.Value == AdminsGroup);
+        bool isAdmin = await _userManager.IsInRoleAsync(user, FinTrackRoles.Admin);
+
+        if (inGroup)
+        {
+            await GrantAdminAsync(user, isAdmin);
+            return;
+        }
+
+        if (!isAdmin)
+        {
+            return;
+        }
+
+        if (!Succeeded(await _userManager.RemoveFromRoleAsync(user, FinTrackRoles.Admin)))
+        {
+            return;
+        }
+
+        _logger.LogAdminFromGroupRemoved(user.Id);
+        if ((await _userManager.GetUsersInRoleAsync(FinTrackRoles.Admin)).Count == 0)
+        {
+            _logger.LogNoAdminLeft();
+        }
+    }
+
+    /// <summary>
+    /// Makes <paramref name="user"/>, in the provider's admins group, an admin unless they are already.
+    /// </summary>
+    /// <param name="user">The user signing in.</param>
+    /// <param name="isAdmin">Whether they're an admin already.</param>
+    private async Task GrantAdminAsync(FinanceTrackerUser user, bool isAdmin)
+    {
+        if (isAdmin)
+        {
+            return;
+        }
+
+        if (Succeeded(await _userManager.AddToRoleAsync(user, FinTrackRoles.Admin)))
+        {
+            _logger.LogAdminFromGroupGranted(user.Id);
+        }
     }
 
     /// <summary>

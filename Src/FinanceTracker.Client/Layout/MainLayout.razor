@@ -36,7 +36,7 @@
         <span class="ft-live-status" role="status">
             @if (_livePaused)
             {
-                <MudTooltip Text="Live updates paused, reconnecting…">
+                <MudTooltip Text="Live updates paused, reconnecting">
                     <span class="ft-live-status__paused">
                         <MudIcon Icon="@Icons.Material.Outlined.CloudOff" aria-hidden="true"/>
                         <span class="ft-live-status__text">Live updates paused</span>
@@ -82,7 +82,7 @@
             <div class="ft-sync-status">
                 <div class="ft-list__main">
                     <MudText Typo="Typo.caption" Class="mud-text-secondary d-block">
-                        @(ApplicationState.Syncing ? "Syncing your accounts…" : "Last synced")
+                        @(ApplicationState.Syncing ? "Syncing your accounts" : "Last synced")
                     </MudText>
                     @if (!ApplicationState.Syncing)
                     {

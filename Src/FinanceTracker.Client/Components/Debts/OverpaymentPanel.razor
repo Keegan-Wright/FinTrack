@@ -8,7 +8,7 @@
         <MudTextField T="decimal" @bind-Value="_monthlyPayment" Label="If I paid each month"
                       InputMode="@(InputMode.@decimal)" Adornment="Adornment.Start" AdornmentText="@CurrencySymbol"
                       Class="ft-overpayment__amount"/>
-        <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@ForecastAsync" Disabled="@_busy">
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@ForecastAsync">
             Work it out
         </MudButton>
     </div>
@@ -29,10 +29,14 @@
     /// </summary>
     [Parameter] [EditorRequired] public required Debt Debt { get; set; }
 
+    /// <summary>
+    /// The shared UI state, whose loading overlay covers the page while this saves.
+    /// </summary>
+    [CascadingParameter] private ApplicationState ApplicationState { get; set; } = null!;
+
     private decimal _monthlyPayment;
     private string? _result;
     private string? _error;
-    private bool _busy;
 
     /// <summary>
     /// The current culture's currency symbol, shown on amount fields.
@@ -60,9 +64,9 @@
             return;
         }
 
+        ApplicationState.ShowLoading("Working it out");
         try
         {
-            _busy = true;
             DebtForecast forecast = await DebtsService.ForecastAsync(Debt.Id, _monthlyPayment, CancellationToken.None);
             _result = DebtText.Compare(Debt.Forecast, forecast, _monthlyPayment);
         }
@@ -72,7 +76,7 @@
         }
         finally
         {
-            _busy = false;
+            ApplicationState.HideLoading();
         }
     }
 

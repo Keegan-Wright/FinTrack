@@ -16,6 +16,11 @@ public sealed class UserSummary
     public required string Username { get; init; }
 
     /// <summary>
+    /// Their first and last name, e.g. <c>Jane Doe</c>, their username when they gave none.
+    /// </summary>
+    public required string Name { get; init; }
+
+    /// <summary>
     /// Their email, null when they have none.
     /// </summary>
     public string? Email { get; init; }

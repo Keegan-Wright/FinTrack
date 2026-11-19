@@ -23,12 +23,11 @@
                               For="@(() => _model.Url)"
                               Validation="@(Validator.ValidateValue(_model, nameof(SetWebhook.Url)))"
                               Error="@(_refusal is not null)" ErrorText="@_refusal" Class="ft-webhook__url"/>
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(_busy || !Changed)"
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!Changed)"
                            OnClick="@SaveAsync">@(HasWebhook ? "Change" : "Save")</MudButton>
                 @if (HasWebhook)
                 {
-                    <MudButton Variant="Variant.Text" Color="Color.Error" Disabled="@_busy"
-                               OnClick="@RemoveAsync">Remove
+                    <MudButton Variant="Variant.Text" Color="Color.Error" OnClick="@RemoveAsync">Remove
                     </MudButton>
                 }
             </div>
@@ -44,8 +43,7 @@
                               AdornmentIcon="@(_showSecret ? Icons.Material.Outlined.VisibilityOff : Icons.Material.Outlined.Visibility)"
                               AdornmentAriaLabel="@(_showSecret ? "Hide the secret" : "Show the secret")"
                               OnAdornmentClick="@(() => _showSecret = !_showSecret)" Class="ft-webhook__url"/>
-                <MudButton Variant="Variant.Text" Color="Color.Primary" Disabled="@_busy"
-                           OnClick="@ReplaceSecretAsync">New secret
+                <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="@ReplaceSecretAsync">New secret
                 </MudButton>
             </div>
             <div class="ft-webhook__check">
@@ -62,7 +60,7 @@
             </div>
             <div class="ft-notification-test">
                 <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Send"
-                           Disabled="@_busy" OnClick="@SendTestAsync">Send a test post
+                           OnClick="@SendTestAsync">Send a test post
                 </MudButton>
                 @if (Settings.LastWebhook is { } last)
                 {
@@ -87,13 +85,17 @@
     [Parameter]
     public EventCallback<NotificationSettings> SettingsChanged { get; set; }
 
+    /// <summary>
+    /// The shared UI state, whose loading overlay covers the page while this saves.
+    /// </summary>
+    [CascadingParameter] private ApplicationState ApplicationState { get; set; } = null!;
+
     private readonly CancellationTokenSource _cts = new();
     private readonly SetWebhook _model = new();
     private MudForm _form = null!;
     private string? _shownUrl;
     private string? _refusal;
     private bool _showSecret;
-    private bool _busy;
 
     /// <summary>
     /// Whether they have a webhook.
@@ -128,7 +130,7 @@
             return;
         }
 
-        await RunAsync("Couldn't save the webhook, try again", async () =>
+        await RunAsync("Saving", "Couldn't save the webhook, try again", async () =>
         {
             WebhookChange change = await NotificationsService.SetWebhookAsync(_model, _cts.Token);
             if (change.Settings is null)
@@ -155,7 +157,7 @@
             return;
         }
 
-        await RunAsync("Couldn't remove the webhook, try again", async () =>
+        await RunAsync("Removing", "Couldn't remove the webhook, try again", async () =>
         {
             await ChangeSettingsAsync(await NotificationsService.RemoveWebhookAsync(_cts.Token));
             Snackbar.Add("Webhook removed", Severity.Success);
@@ -175,7 +177,7 @@
             return;
         }
 
-        await RunAsync("Couldn't make a new secret, try again", async () =>
+        await RunAsync("Making a new secret", "Couldn't make a new secret, try again", async () =>
         {
             if (await NotificationsService.ReplaceWebhookSecretAsync(_cts.Token) is { } settings)
             {
@@ -191,7 +193,7 @@
     /// </summary>
     internal async Task SendTestAsync()
     {
-        await RunAsync("Couldn't send the test post, try again", async () =>
+        await RunAsync("Sending a test post", "Couldn't send the test post, try again", async () =>
         {
             NotificationSettings? settings = await NotificationsService.SendTestWebhookAsync(_cts.Token);
             if (settings is null)
@@ -222,11 +224,14 @@
     }
 
     /// <summary>
-    /// Runs <paramref name="change"/> with the buttons off, saying <paramref name="failed"/> if the server fails.
+    /// Runs <paramref name="change"/> under the loading overlay, saying <paramref name="failed"/> if the server fails.
     /// </summary>
-    private async Task RunAsync(string failed, Func<Task> change)
+    /// <param name="working">What's happening, under the overlay's spinner.</param>
+    /// <param name="failed">What's said when it fails.</param>
+    /// <param name="change">The change.</param>
+    private async Task RunAsync(string working, string failed, Func<Task> change)
     {
-        _busy = true;
+        ApplicationState.ShowLoading(working);
         try
         {
             await change();
@@ -237,7 +242,7 @@
         }
         finally
         {
-            _busy = false;
+            ApplicationState.HideLoading();
         }
     }
 

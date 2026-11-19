@@ -131,7 +131,7 @@
 
         try
         {
-            SetLoadingState(true, "Printing a fresh label…");
+            SetLoadingState(true, "Printing a fresh label");
             var classification = await ClassificationService.AddCustomClassificationAsync(
                 (AddClassifications)dialogActionResult.Data!, _cts.Token);
             (Classifications ??= []).Add(classification);
@@ -167,7 +167,7 @@
 
         try
         {
-            SetLoadingState(true, "Relabelling…");
+            SetLoadingState(true, "Relabelling");
             RenameClassification rename = new() { Tag = ((AddClassifications)result.Data!).Tag };
             Classification renamed = await ClassificationService.RenameCustomClassificationAsync(
                 classification.ClassificationId, rename, _cts.Token);
@@ -213,7 +213,7 @@
 
         try
         {
-            SetLoadingState(true, $"Deleting {classification.Tag}…");
+            SetLoadingState(true, $"Deleting {classification.Tag}");
             await ClassificationService.RemoveCustomClassificationAsync(classification.ClassificationId, _cts.Token);
             Classifications!.Remove(classification);
             Snackbar.Add($"Tag \"{classification.Tag}\" deleted", Severity.Success);

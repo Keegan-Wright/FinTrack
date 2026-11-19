@@ -14,7 +14,7 @@
 <PageTitle>FinTrack - Review subscriptions</PageTitle>
 <PageHeader Title="Review subscriptions" Subtitle="@Subtitle"/>
 
-<LoadingFrame Loading="@_loading" Message="Gathering what needs a look…" MinHeight="320" Cover="false">
+<LoadingFrame Loading="@_loading" Message="Gathering what needs a look" MinHeight="320" Cover="false">
     @if (!_loading)
     {
         <Section Title="Might be subscriptions"
@@ -99,7 +99,7 @@
     {
         try
         {
-            SetLoadingState(true, "Saving…");
+            SetLoadingState(true, "Saving");
             if (isBill)
             {
                 Bill bill = await BillsService.ConfirmSuggestionAsync(suggestion.Id, _cts.Token);

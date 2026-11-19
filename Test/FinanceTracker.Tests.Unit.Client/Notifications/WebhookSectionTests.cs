@@ -1,3 +1,4 @@
+using FinanceTracker.Client;
 using Bunit;
 using FinanceTracker.Client.Components.Notifications;
 using FinanceTracker.Contracts.Notifications;
@@ -155,7 +156,7 @@ public class WebhookSectionTests : ComponentTestBase
     }
 
     private IRenderedComponent<WebhookSection> RenderSection(NotificationSettings settings) =>
-        Render<WebhookSection>(p => p
+        Render<WebhookSection>(p => p.AddCascadingValue(new ApplicationState())
             .Add(x => x.Settings, settings)
             .Add(x => x.SettingsChanged, changed => _changed = changed));
 

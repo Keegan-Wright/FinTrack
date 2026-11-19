@@ -12,7 +12,7 @@
     else
     {
         @* Keyed on the options, which are rebuilt for new data or a dark mode toggle, so the chart redraws with them *@
-        <LoadingFrame Loading="@(!_drawn)" Message="Following the money in and out…" MinHeight="@ChartHeight">
+        <LoadingFrame Loading="@(!_drawn)" Message="Following the money in and out" MinHeight="@ChartHeight">
             <ApexChart @key="_options" TItem="CashflowPoint" Options="@_options" Height="@ChartHeight"
                        OnRendered="@(() => _drawn = true)">
                 <ApexPointSeries TItem="CashflowPoint" Items="@_points" Name="In" SeriesType="SeriesType.Bar"
