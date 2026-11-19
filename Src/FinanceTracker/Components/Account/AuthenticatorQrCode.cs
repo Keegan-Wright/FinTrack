@@ -1,4 +1,5 @@
 using System.Text;
+using FinanceTracker.Infrastructure.Account.Authenticator;
 using QRCoder;
 
 namespace FinanceTracker.Components.Account;
@@ -9,22 +10,14 @@ namespace FinanceTracker.Components.Account;
 internal static class AuthenticatorQrCode
 {
     /// <summary>
-    /// The name authenticator apps show beside the code.
-    /// </summary>
-    private const string Issuer = "FinTrack";
-
-    /// <summary>
     /// The QR code for <paramref name="key"/>, labelled with <paramref name="username"/>.
     /// </summary>
     /// <param name="username">Who the key is for, shown in the app.</param>
     /// <param name="key">The unformatted authenticator key.</param>
     public static string Svg(string username, string key)
     {
-        string uri = $"otpauth://totp/{Uri.EscapeDataString(Issuer)}:{Uri.EscapeDataString(username)}" +
-                     $"?secret={key}&issuer={Uri.EscapeDataString(Issuer)}&digits=6";
-
         using QRCodeGenerator generator = new();
-        using QRCodeData data = generator.CreateQrCode(uri, QRCodeGenerator.ECCLevel.Q);
+        using QRCodeData data = generator.CreateQrCode(AuthenticatorUri.For(username, key), QRCodeGenerator.ECCLevel.Q);
         using SvgQRCode code = new(data);
 
         return code.GetGraphic(4, "#000000", "#ffffff", drawQuietZones: true);

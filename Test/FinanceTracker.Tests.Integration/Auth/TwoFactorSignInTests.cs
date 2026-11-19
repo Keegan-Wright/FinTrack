@@ -1,6 +1,7 @@
 using FinanceTracker.Contracts.Profile;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Infrastructure;
+using FinanceTracker.Infrastructure.Account.Authenticator;
 using FinanceTracker.Tests.Integration.Http;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,7 +9,7 @@ namespace FinanceTracker.Tests.Integration.Auth;
 
 /// <summary>
 /// Two-factor sign in with an authenticator app, turned on through the profile API and used through the sign in
-/// pages, the codes made by <see cref="Totp"/> as an app would.
+/// pages, the codes made by <see cref="AuthenticatorApp"/> as an app would.
 /// </summary>
 public class TwoFactorSignInTests : IntegrationTestBase
 {
@@ -54,7 +55,8 @@ public class TwoFactorSignInTests : IntegrationTestBase
         string plainKey = key.Replace(" ", string.Empty, StringComparison.Ordinal).ToUpperInvariant();
         using (Assert.Multiple())
         {
-            await Assert.That(stored.Count).IsEqualTo(2);
+            // The key, the recovery codes and the step of the last code used
+            await Assert.That(stored.Count).IsEqualTo(3);
             await Assert.That(stored.Exists(x => x.Contains(plainKey, StringComparison.OrdinalIgnoreCase))).IsFalse();
             await Assert.That(stored.Exists(x => x.Contains(codes[0], StringComparison.Ordinal))).IsFalse();
         }
@@ -70,10 +72,13 @@ public class TwoFactorSignInTests : IntegrationTestBase
 
         // Act
         TwoFactorChange? wrongPassword = await profile.EnableAuthenticatorAsync(
-            new EnableAuthenticator { Code = Totp.Code(setup.SharedKey), Password = "not-the-password" },
+            new EnableAuthenticator { Code = AuthenticatorApp.Code(setup.SharedKey), Password = "not-the-password" },
             CancellationToken);
         TwoFactorChange? wrongCode = await profile.EnableAuthenticatorAsync(
-            new EnableAuthenticator { Code = WrongCode(setup.SharedKey), Password = SignedInUser.DefaultPassword },
+            new EnableAuthenticator
+            {
+                Code = AuthenticatorApp.WrongCode(setup.SharedKey), Password = SignedInUser.DefaultPassword
+            },
             CancellationToken);
 
         // Assert
@@ -100,7 +105,8 @@ public class TwoFactorSignInTests : IntegrationTestBase
             await client.LoginAsync(user.Username, SignedInUser.DefaultPassword, CancellationToken);
         bool signedInAfterPassword = client.IsSignedIn;
         HttpResponseMessage code = await client.SubmitFormAsync(password.Headers.Location!.OriginalString,
-            new Dictionary<string, string> { ["Input.Code"] = Totp.Code(key) }, CancellationToken);
+            new Dictionary<string, string> { ["Input.Code"] = AuthenticatorApp.Code(key, stepsFromNow: 1) },
+            CancellationToken);
 
         // Assert
         using (Assert.Multiple())
@@ -109,6 +115,59 @@ public class TwoFactorSignInTests : IntegrationTestBase
             await Assert.That(signedInAfterPassword).IsFalse();
             await Assert.That(code.StatusCode).IsEqualTo(System.Net.HttpStatusCode.Redirect);
             await Assert.That(client.IsSignedIn).IsTrue();
+        }
+    }
+
+    [Test]
+    public async Task SignIn_WithTheCodeUsedToTurnItOn_IsRefused()
+    {
+        // Arrange, turned on with the code for now
+        SignedInUser user = await RegisterUserAsync();
+        IProfileService profile = ApiFor(user).Get<IProfileService>();
+        string key = (await profile.GetAuthenticatorSetupAsync(CancellationToken))!.SharedKey;
+        string code = AuthenticatorApp.Code(key);
+        await profile.EnableAuthenticatorAsync(
+            new EnableAuthenticator { Code = code, Password = SignedInUser.DefaultPassword }, CancellationToken);
+
+        // Act, the same code again, as someone who watched it typed would
+        bool signedIn = await SignInWithCodeAsync(user, code);
+
+        // Assert
+        await Assert.That(signedIn).IsFalse();
+    }
+
+    [Test]
+    public async Task SignIn_WithACodeOutsideTheAllowedDrift_IsRefused()
+    {
+        // Arrange
+        SignedInUser user = await RegisterUserAsync();
+        IProfileService profile = ApiFor(user).Get<IProfileService>();
+        string key = (await profile.GetAuthenticatorSetupAsync(CancellationToken))!.SharedKey;
+        await TurnOnAsync(profile, key);
+
+        // Act
+        bool signedIn = await SignInWithCodeAsync(user,
+            AuthenticatorApp.Code(key, stepsFromNow: AuthenticatorSettings.AllowedDriftSteps + 1));
+
+        // Assert
+        await Assert.That(signedIn).IsFalse();
+    }
+
+    [Test]
+    public async Task Setup_GivesA256BitKeyForSha256()
+    {
+        // Arrange
+        SignedInUser user = await RegisterUserAsync();
+
+        // Act
+        AuthenticatorSetup setup =
+            (await ApiFor(user).Get<IProfileService>().GetAuthenticatorSetupAsync(CancellationToken))!;
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(Base32.Decode(setup.SharedKey).Length).IsEqualTo(32);
+            await Assert.That(setup.QrCodeSvg).StartsWith("<svg");
         }
     }
 
@@ -149,7 +208,7 @@ public class TwoFactorSignInTests : IntegrationTestBase
         for (int attempt = 0; attempt < 5; attempt++)
         {
             last = await client.SubmitFormAsync(codePage,
-                new Dictionary<string, string> { ["Input.Code"] = WrongCode(key) }, CancellationToken);
+                new Dictionary<string, string> { ["Input.Code"] = AuthenticatorApp.WrongCode(key) }, CancellationToken);
         }
 
         // Assert
@@ -211,9 +270,23 @@ public class TwoFactorSignInTests : IntegrationTestBase
     {
         key ??= (await profile.GetAuthenticatorSetupAsync(CancellationToken))!.SharedKey;
         TwoFactorChange? change = await profile.EnableAuthenticatorAsync(
-            new EnableAuthenticator { Code = Totp.Code(key), Password = SignedInUser.DefaultPassword },
+            new EnableAuthenticator { Code = AuthenticatorApp.Code(key), Password = SignedInUser.DefaultPassword },
             CancellationToken);
         return change!.RecoveryCodes;
+    }
+
+    /// <summary>
+    /// Signs in with the password then <paramref name="code"/>.
+    /// </summary>
+    /// <returns>Whether it signed them in.</returns>
+    private async Task<bool> SignInWithCodeAsync(SignedInUser user, string code)
+    {
+        using FinTrackClient client = CreateClient();
+        HttpResponseMessage password =
+            await client.LoginAsync(user.Username, SignedInUser.DefaultPassword, CancellationToken);
+        await client.SubmitFormAsync(password.Headers.Location!.OriginalString,
+            new Dictionary<string, string> { ["Input.Code"] = code }, CancellationToken);
+        return client.IsSignedIn;
     }
 
     /// <summary>
@@ -228,9 +301,4 @@ public class TwoFactorSignInTests : IntegrationTestBase
             new Dictionary<string, string> { ["Input.RecoveryCode"] = recoveryCode }, CancellationToken);
         return client.IsSignedIn;
     }
-
-    /// <summary>
-    /// A six digit code that isn't the one for <paramref name="key"/> now.
-    /// </summary>
-    private static string WrongCode(string key) => Totp.Code(key) == "000000" ? "111111" : "000000";
 }

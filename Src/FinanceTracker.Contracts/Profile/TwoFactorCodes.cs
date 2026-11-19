@@ -6,6 +6,11 @@ namespace FinanceTracker.Contracts.Profile;
 public static class TwoFactorCodes
 {
     /// <summary>
+    /// How many digits an authenticator code has.
+    /// </summary>
+    public const int Length = 6;
+
+    /// <summary>
     /// <paramref name="code"/> without the spaces and dashes people type between the digits.
     /// </summary>
     /// <param name="code">The code as typed.</param>
@@ -14,12 +19,12 @@ public static class TwoFactorCodes
         .Replace("-", string.Empty, StringComparison.Ordinal);
 
     /// <summary>
-    /// Whether <paramref name="code"/> is six digits without its spaces and dashes.
+    /// Whether <paramref name="code"/> is <see cref="Length"/> digits without its spaces and dashes.
     /// </summary>
     /// <param name="code">The code as typed.</param>
     public static bool IsCode(string? code)
     {
         string cleaned = CleanInput(code);
-        return cleaned.Length == 6 && cleaned.All(char.IsAsciiDigit);
+        return cleaned.Length == Length && cleaned.All(char.IsAsciiDigit);
     }
 }

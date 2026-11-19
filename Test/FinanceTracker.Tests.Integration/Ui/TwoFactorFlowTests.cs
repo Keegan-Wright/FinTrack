@@ -26,7 +26,7 @@ public class TwoFactorFlowTests : UiTestBase
         string key = await page.Locator(".ft-two-factor__key").InnerTextAsync();
         List<string> setupProblems = await AccessibilityProblemsAsync(page);
         List<string> setupTooWide = await WhatScrollsSidewaysAsync(page);
-        await page.GetByLabel("Code", new PageGetByLabelOptions { Exact = true }).FillAsync(Totp.Code(key));
+        await page.GetByLabel("Code", new PageGetByLabelOptions { Exact = true }).FillAsync(AuthenticatorApp.Code(key));
         await page.GetByLabel("Your password").FillAsync(SignedInUser.DefaultPassword);
         await Button(page, "Turn on").ClickAsync();
         await Assertions.Expect(page.Locator(".ft-two-factor__codes li")).ToHaveCountAsync(10);
@@ -42,7 +42,9 @@ public class TwoFactorFlowTests : UiTestBase
         await Button(signIn, "Sign in").ClickAsync();
         await signIn.WaitForURLAsync("**/Account/LoginWith2fa**");
         List<string> codePageProblems = await AccessibilityProblemsAsync(signIn);
-        await signIn.GetByLabel("Code", new PageGetByLabelOptions { Exact = true }).FillAsync(Totp.Code(key));
+        // The next step's code, as the one used to turn it on is taken
+        await signIn.GetByLabel("Code", new PageGetByLabelOptions { Exact = true })
+            .FillAsync(AuthenticatorApp.Code(key, stepsFromNow: 1));
         await Button(signIn, "Sign in").ClickAsync();
 
         // Assert

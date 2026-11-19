@@ -4,6 +4,7 @@ using FinanceTracker.Components.Account.Pages;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Domain.Identity;
 using FinanceTracker.Infrastructure;
+using FinanceTracker.Infrastructure.Account.Authenticator;
 using FinanceTracker.Middleware;
 using FinanceTracker.Telemetry;
 using Microsoft.AspNetCore.Authentication;
@@ -68,8 +69,11 @@ public static class AuthenticationExtensions
                 })
                 .AddRoles<FinanceTrackerRole>()
                 .AddEntityFrameworkStores<FinanceTrackerContext>()
+                .AddUserManager<FinanceTrackerUserManager>()
                 .AddSignInManager()
-                .AddDefaultTokenProviders();
+                .AddDefaultTokenProviders()
+                // After the defaults, so it takes the authenticator's name and the SHA-1 provider can't be reached
+                .AddTokenProvider<TotpAuthenticatorTokenProvider>(TokenOptions.DefaultAuthenticatorProvider);
 
             builder.Services.AddFinTrackAccountServices();
             builder.Services.AddScoped<AdminProvisioner>();
