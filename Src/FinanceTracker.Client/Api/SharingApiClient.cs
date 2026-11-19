@@ -120,7 +120,7 @@ public sealed class SharingApiClient : ISharingService
     /// Posts to <paramref name="path"/>.
     /// </summary>
     /// <param name="path">The API path.</param>
-    /// <param name="cancellationToken">Stops the call.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <returns>False on a 404.</returns>
     private async Task<bool> PostIfFoundAsync(string path, CancellationToken cancellationToken)
     {

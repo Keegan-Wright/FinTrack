@@ -16,11 +16,11 @@ public class RegisterRequestValidatorTests : UnitTestBase
         var testModel = new RegisterRequest()
         {
             Username = "Username",
-            Password = "Password",
+            Password = "Placeholder-Password",
             Email = "Email@Address.com",
             FirstName = "First name",
             LastName = "Last name",
-            ConfirmPassword = "Password"
+            ConfirmPassword = "Placeholder-Password"
         };
 
         // Act
@@ -41,11 +41,11 @@ public class RegisterRequestValidatorTests : UnitTestBase
         var testModel = new RegisterRequest()
         {
             Username = string.Empty,
-            Password = "Password",
+            Password = "Placeholder-Password",
             Email = "Email@Address.com",
             FirstName = "First name",
             LastName = "Last name",
-            ConfirmPassword = "Password"
+            ConfirmPassword = "Placeholder-Password"
         };
 
         // Act
@@ -97,11 +97,11 @@ public class RegisterRequestValidatorTests : UnitTestBase
         var testModel = new RegisterRequest()
         {
             Username = "Username",
-            Password = "Password",
+            Password = "Placeholder-Password",
             Email = string.Empty,
             FirstName = "First name",
             LastName = "Last name",
-            ConfirmPassword = "Password"
+            ConfirmPassword = "Placeholder-Password"
         };
 
         // Act
@@ -126,11 +126,11 @@ public class RegisterRequestValidatorTests : UnitTestBase
         var testModel = new RegisterRequest()
         {
             Username = "Username",
-            Password = "Password",
+            Password = "Placeholder-Password",
             Email = "invalid-email",
             FirstName = "First name",
             LastName = "Last name",
-            ConfirmPassword = "Password"
+            ConfirmPassword = "Placeholder-Password"
         };
 
         // Act
@@ -154,11 +154,11 @@ public class RegisterRequestValidatorTests : UnitTestBase
         var testModel = new RegisterRequest()
         {
             Username = "Username",
-            Password = "Password",
+            Password = "Placeholder-Password",
             Email = "Email@Address.com",
             FirstName = string.Empty,
             LastName = "Last name",
-            ConfirmPassword = "Password"
+            ConfirmPassword = "Placeholder-Password"
         };
 
         // Act
@@ -182,11 +182,11 @@ public class RegisterRequestValidatorTests : UnitTestBase
         var testModel = new RegisterRequest()
         {
             Username = "Username",
-            Password = "Password",
+            Password = "Placeholder-Password",
             Email = "Email@Address.com",
             FirstName = "First name",
             LastName = string.Empty,
-            ConfirmPassword = "Password"
+            ConfirmPassword = "Placeholder-Password"
         };
 
         // Act
@@ -210,7 +210,7 @@ public class RegisterRequestValidatorTests : UnitTestBase
         var testModel = new RegisterRequest()
         {
             Username = "Username",
-            Password = "Password",
+            Password = "Placeholder-Password",
             Email = "Email@Address.com",
             FirstName = "First name",
             LastName = "Last name",
@@ -240,7 +240,7 @@ public class RegisterRequestValidatorTests : UnitTestBase
         var testModel = new RegisterRequest()
         {
             Username = "Username",
-            Password = "Password",
+            Password = "Placeholder-Password",
             Email = "Email@Address.com",
             FirstName = "First name",
             LastName = "Last name",
@@ -284,5 +284,57 @@ public class RegisterRequestValidatorTests : UnitTestBase
             await Assert.That(result.IsValid).IsFalse();
             await Assert.That(result.Errors).Count().IsEqualTo(7);
         }
+    }
+
+    [Test]
+    [Arguments(PasswordRules.MinimumLength - 1, PasswordRules.TooShort)]
+    [Arguments(PasswordRules.MaximumLength + 1, PasswordRules.TooLong)]
+    public async Task ValidateAsync_PasswordOutsideTheRules_SaysWhy(int length, string expected)
+    {
+        // Arrange
+        string password = new('a', length);
+        var testModel = new RegisterRequest()
+        {
+            Username = "Username",
+            Password = password,
+            Email = "Email@Address.com",
+            FirstName = "First name",
+            LastName = "Last name",
+            ConfirmPassword = password
+        };
+
+        // Act
+        ValidationResult result = await _subject.ValidateAsync(testModel, CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(result.IsValid).IsFalse();
+            await Assert.That(result.Errors.Single().ErrorMessage).IsEqualTo(expected);
+        }
+    }
+
+    [Test]
+    [Arguments(PasswordRules.MinimumLength)]
+    [Arguments(PasswordRules.MaximumLength)]
+    public async Task ValidateAsync_PasswordAtTheLimits_IsValid(int length)
+    {
+        // Arrange
+        string password = new('a', length);
+        var testModel = new RegisterRequest()
+        {
+            Username = "Username",
+            Password = password,
+            Email = "Email@Address.com",
+            FirstName = "First name",
+            LastName = "Last name",
+            ConfirmPassword = password
+        };
+
+        // Act
+        ValidationResult result = await _subject.ValidateAsync(testModel, CancellationToken);
+
+        // Assert
+        await Assert.That(result.IsValid).IsTrue();
     }
 }

@@ -148,7 +148,7 @@
     /// Loads everything the dashboard shows for a range.
     /// </summary>
     /// <param name="preset">The range.</param>
-    /// <param name="cancellationToken">Stops it once the user leaves.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<DashboardData> LoadDashboardAsync(DashboardRangePreset preset, CancellationToken cancellationToken)
     {
         YourPay pay = await PayPeriodsService.GetYourPayAsync(cancellationToken);
@@ -202,7 +202,7 @@
     /// </summary>
     /// <param name="fromDate">The range's start.</param>
     /// <param name="toDate">The range's end.</param>
-    /// <param name="cancellationToken">Stops it once the user leaves.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<(List<Transaction> Transactions, string? ChartNote)> LoadChartTransactionsAsync(
         DateTime fromDate, DateTime toDate, CancellationToken cancellationToken)
     {

@@ -12,14 +12,14 @@ public interface INetWorthService
     /// Net worth from <paramref name="from"/> on, how it's changed this month and year, and what makes it up today.
     /// </summary>
     /// <param name="from">The first day, null for all of it.</param>
-    /// <param name="cancellationToken">Stops the request.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     Task<NetWorthHistory> GetNetWorthAsync(DateOnly? from, CancellationToken cancellationToken);
 
     /// <summary>
     /// Each of the user's accounts' closing balances from <paramref name="from"/> on.
     /// </summary>
     /// <param name="from">The first day, null for all of it.</param>
-    /// <param name="cancellationToken">Stops the request.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     IAsyncEnumerable<AccountBalanceHistory> GetBalanceHistoriesAsync(DateOnly? from,
         CancellationToken cancellationToken);
 }

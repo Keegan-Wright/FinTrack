@@ -124,7 +124,7 @@ public sealed class BillsApiClient : IBillsService
     /// The bill a 409 for confirming a suggestion names, see <see cref="AlreadyABillException.BillNameField"/>.
     /// </summary>
     /// <param name="response">The API's answer.</param>
-    /// <param name="cancellationToken">Stops the call.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<string> CoveringBillNameAsync(HttpResponseMessage response,
         CancellationToken cancellationToken)
     {
@@ -152,7 +152,7 @@ public sealed class BillsApiClient : IBillsService
     /// Posts to <paramref name="path"/> and reads back the bill.
     /// </summary>
     /// <param name="path">The API path.</param>
-    /// <param name="cancellationToken">Stops the call.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<Bill> PostForBillAsync(string path, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.PostAsync(path, null, cancellationToken);

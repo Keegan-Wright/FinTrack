@@ -39,29 +39,21 @@ public static class SharingEndpoints
                     TypedResults.Ok(await service.InviteAsync(request, cancellationToken)))
                 .Validated<InviteToShare>();
 
-            links.MapPost("{id:guid}/accept", async Task<Results<NoContent, NotFound>> (Guid id,
-                    ISharingService service, CancellationToken cancellationToken) =>
-                NoContentIfFound(await service.AcceptAsync(id, cancellationToken)));
+            links.MapPost("{id:guid}/accept", (Guid id, ISharingService service,
+                    CancellationToken cancellationToken) => service.AcceptAsync(id, cancellationToken))
+                .NotFoundWhenNone();
 
-            links.MapPost("{id:guid}/decline", async Task<Results<NoContent, NotFound>> (Guid id,
-                    ISharingService service, CancellationToken cancellationToken) =>
-                NoContentIfFound(await service.DeclineAsync(id, cancellationToken)));
+            links.MapPost("{id:guid}/decline", (Guid id, ISharingService service,
+                    CancellationToken cancellationToken) => service.DeclineAsync(id, cancellationToken))
+                .NotFoundWhenNone();
 
-            links.MapDelete("{id:guid}", async Task<Results<NoContent, NotFound>> (Guid id,
-                    ISharingService service, CancellationToken cancellationToken) =>
-                NoContentIfFound(await service.EndAsync(id, cancellationToken)));
+            links.MapDelete("{id:guid}", (Guid id, ISharingService service,
+                    CancellationToken cancellationToken) => service.EndAsync(id, cancellationToken))
+                .NotFoundWhenNone();
 
-            links.MapGet("{id:guid}/shares", async Task<Results<Ok<LinkShares>, NotFound>> (Guid id,
-                ISharingService service, CancellationToken cancellationToken) =>
-            {
-                LinkShares? shares = await service.GetSharesAsync(id, cancellationToken);
-                if (shares is null)
-                {
-                    return TypedResults.NotFound();
-                }
-
-                return TypedResults.Ok(shares);
-            });
+            links.MapGet("{id:guid}/shares", (Guid id, ISharingService service,
+                    CancellationToken cancellationToken) => service.GetSharesAsync(id, cancellationToken))
+                .NotFoundWhenNone();
 
             links.MapPut("{id:guid}/shares/accounts", async Task<Ok<LinkShares>> (Guid id,
                         ChangeAccountShares request, ISharingService service, CancellationToken cancellationToken) =>
@@ -84,19 +76,5 @@ public static class SharingEndpoints
 
             return api;
         }
-    }
-
-    /// <summary>
-    /// 204 when it was found, 404 when not.
-    /// </summary>
-    /// <param name="found">Whether it was found.</param>
-    private static Results<NoContent, NotFound> NoContentIfFound(bool found)
-    {
-        if (found)
-        {
-            return TypedResults.NoContent();
-        }
-
-        return TypedResults.NotFound();
     }
 }

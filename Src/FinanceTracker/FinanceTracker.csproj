@@ -38,6 +38,7 @@
     </PackageReference>
     <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect"/>
     <PackageReference Include="MudBlazor"/>
+    <PackageReference Include="QRCoder"/>
     <PackageReference Include="Extensions.MudBlazor.StaticInput"/>
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL"/>
     <PackageReference Include="Quartz"/>

@@ -1,0 +1,23 @@
+.ft-list__row ::deep .ft-passkeys__name {
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+/* Rename and remove side by side, wrapping when there isn't room */
+.ft-passkeys__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 4px;
+}
+
+/* A phone puts the buttons under the name rather than squeezing it */
+@media (max-width: 599.98px) {
+    .ft-passkeys__row {
+        flex-wrap: wrap;
+    }
+
+    .ft-passkeys__row ::deep .ft-list__main {
+        flex-basis: calc(100% - 36px);
+    }
+}

@@ -1,0 +1,311 @@
+@* The user's passkeys, which sign them in with a fingerprint, face or PIN instead of their password. Adding one asks
+   for their password, then their browser makes it. Renaming and removing them, removing asking for the password. *@
+@using System.Globalization
+@using FinanceTracker.Contracts.Profile
+@using Microsoft.JSInterop
+@using Severity = MudBlazor.Severity
+@implements IDisposable
+@inject IPasskeyService PasskeyService
+@inject IDialogService DialogService
+@inject IJSRuntime JsRuntime
+@inject ISnackbar Snackbar
+
+<Section Title="Passkeys">
+    <LoadingFrame Loading="@(!Loaded)" Message="Loading your passkeys" MinHeight="120" Cover="false">
+        @if (Loaded)
+        {
+            <div class="ft-stack">
+                <MudText Typo="Typo.body2">
+                    A passkey signs you in with your fingerprint, face or PIN instead of your password. It's two
+                    factors on its own, so it doesn't ask for a code from your app.
+                </MudText>
+
+                @if (_passkeys is null)
+                {
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        Your passkeys couldn't be loaded.
+                    </MudText>
+                }
+                else
+                {
+                    @if (_passkeys.Count > 0)
+                    {
+                        <div class="ft-list">
+                            @foreach (PasskeySummary passkey in _passkeys)
+                            {
+                                <div class="ft-list__row ft-passkeys__row">
+                                    <MudIcon Icon="@Icons.Material.Outlined.Fingerprint" aria-hidden="true"/>
+                                    <div class="ft-list__main">
+                                        <MudText Typo="Typo.body2" Class="ft-passkeys__name">@passkey.Name</MudText>
+                                        <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                            @DetailsText(passkey)
+                                        </MudText>
+                                    </div>
+                                    <div class="ft-passkeys__actions">
+                                        <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                                                   StartIcon="@Icons.Material.Outlined.Edit"
+                                                   aria-label="@($"Rename {passkey.Name}")"
+                                                   OnClick="@(() => RenameAsync(passkey))">Rename
+                                        </MudButton>
+                                        <MudButton Variant="Variant.Text" Color="Color.Warning" Size="Size.Small"
+                                                   StartIcon="@Icons.Material.Outlined.Delete"
+                                                   aria-label="@($"Remove {passkey.Name}")"
+                                                   OnClick="@(() => RemoveAsync(passkey))">Remove
+                                        </MudButton>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    @if (_supported)
+                    {
+                        <div>
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Outlined.Add" OnClick="@AddAsync">
+                                Add a passkey
+                            </MudButton>
+                        </div>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                            This browser can't make passkeys. Try a recent Chrome, Edge, Firefox or Safari.
+                        </MudText>
+                    }
+                }
+            </div>
+        }
+    </LoadingFrame>
+</Section>
+
+@code {
+
+    /// <summary>
+    /// The shared UI state, whose loading overlay covers the page while this saves.
+    /// </summary>
+    [CascadingParameter] private ApplicationState ApplicationState { get; set; } = null!;
+
+    private readonly CancellationTokenSource _cts = new();
+    private IReadOnlyList<PasskeySummary>? _passkeys;
+    private bool _supported;
+    private bool _fetched;
+    private bool _supportChecked;
+
+    /// <summary>
+    /// Whether the passkeys are in and the browser's support is known.
+    /// </summary>
+    private bool Loaded => _fetched && _supportChecked;
+
+    /// <inheritdoc/>
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _passkeys = await PasskeyService.GetPasskeysAsync(_cts.Token);
+        }
+        catch (Exception) when (!_cts.IsCancellationRequested)
+        {
+            _passkeys = null;
+        }
+
+        _fetched = true;
+    }
+
+    /// <inheritdoc/>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // The browser's support is only known once it's rendered
+        if (!firstRender)
+        {
+            return;
+        }
+
+        try
+        {
+            _supported = await JsRuntime.InvokeAsync<bool>("ftPasskeysSupported", _cts.Token);
+        }
+        catch (JSException)
+        {
+            _supported = false;
+        }
+
+        _supportChecked = true;
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// When the passkey was added, and whether it syncs to their other devices.
+    /// </summary>
+    /// <param name="passkey">The passkey.</param>
+    private static string DetailsText(PasskeySummary passkey)
+    {
+        string added = $"Added {passkey.AddedAt.ToLocalTime().ToString("d MMM yyyy", CultureInfo.CurrentCulture)}";
+        if (passkey.Synced)
+        {
+            return $"{added} · Synced to your other devices";
+        }
+
+        return added;
+    }
+
+    /// <summary>
+    /// Asks for a name and their password, then has the browser make the passkey and adds it.
+    /// </summary>
+    internal async Task AddAsync()
+    {
+        IDialogReference dialog = await DialogService.ShowAsync<AddPasskeyDialog>("Add a passkey");
+        DialogResult? result = await dialog.Result;
+        if (result is null || result.Canceled)
+        {
+            return;
+        }
+
+        NewPasskey details = (NewPasskey)result.Data!;
+        await RunAsync("Adding your passkey", "Couldn't add the passkey, try again", async () =>
+        {
+            PasskeyChange? started = await PasskeyService.StartAddingAsync(
+                new ConfirmPassword { Password = details.Password }, _cts.Token);
+            if (ShowRefusal(started))
+            {
+                return;
+            }
+
+            string? credential = await JsRuntime.InvokeAsync<string?>("ftCreatePasskey", _cts.Token,
+                started!.CreationOptionsJson);
+            if (credential is null)
+            {
+                Snackbar.Add("No passkey was made", Severity.Info);
+                return;
+            }
+
+            PasskeyChange? added = await PasskeyService.AddAsync(
+                new AddPasskey { CredentialJson = credential, Name = details.Name }, _cts.Token);
+            if (ShowRefusal(added))
+            {
+                return;
+            }
+
+            await ReloadAsync();
+            Snackbar.Add("Passkey added", Severity.Success);
+        });
+    }
+
+    /// <summary>
+    /// Renames a passkey.
+    /// </summary>
+    /// <param name="passkey">The passkey.</param>
+    internal async Task RenameAsync(PasskeySummary passkey)
+    {
+        DialogParameters<RenamePasskeyDialog> parameters = new() { { x => x.Name, passkey.Name } };
+        IDialogReference dialog = await DialogService.ShowAsync<RenamePasskeyDialog>("Rename passkey", parameters);
+        DialogResult? result = await dialog.Result;
+        if (result is null || result.Canceled)
+        {
+            return;
+        }
+
+        await RunAsync("Renaming the passkey", "Couldn't rename the passkey, try again", async () =>
+        {
+            PasskeyChange? change = await PasskeyService.RenameAsync(passkey.Id, (RenamePasskey)result.Data!,
+                _cts.Token);
+            if (!ShowRefusal(change))
+            {
+                await ReloadAsync();
+            }
+        });
+    }
+
+    /// <summary>
+    /// Removes a passkey once they give their password.
+    /// </summary>
+    /// <param name="passkey">The passkey.</param>
+    internal async Task RemoveAsync(PasskeySummary passkey)
+    {
+        string title = $"Remove {passkey.Name}";
+        DialogParameters<ConfirmPasswordDialog> parameters = new()
+        {
+            { x => x.Title, title },
+            { x => x.Message, "It can't sign you in any more. Remove it from your device too." }
+        };
+
+        IDialogReference dialog = await DialogService.ShowAsync<ConfirmPasswordDialog>(title, parameters);
+        DialogResult? result = await dialog.Result;
+        if (result is null || result.Canceled)
+        {
+            return;
+        }
+
+        await RunAsync("Removing the passkey", "Couldn't remove the passkey, try again", async () =>
+        {
+            PasskeyChange? change = await PasskeyService.RemoveAsync(passkey.Id, (ConfirmPassword)result.Data!,
+                _cts.Token);
+            if (ShowRefusal(change))
+            {
+                return;
+            }
+
+            await ReloadAsync();
+            Snackbar.Add("Passkey removed", Severity.Success);
+        });
+    }
+
+    /// <summary>
+    /// Says why a change wasn't made.
+    /// </summary>
+    /// <param name="change">What the server did, null when the account has no password here.</param>
+    /// <returns>Whether it was refused.</returns>
+    private bool ShowRefusal(PasskeyChange? change)
+    {
+        if (change is null)
+        {
+            Snackbar.Add("Your account has no password here, you sign in through your identity provider",
+                Severity.Warning);
+            return true;
+        }
+
+        if (!change.Succeeded)
+        {
+            Snackbar.Add(change.Errors[0], Severity.Error);
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Loads the passkeys again.
+    /// </summary>
+    private async Task ReloadAsync() => _passkeys = await PasskeyService.GetPasskeysAsync(_cts.Token);
+
+    /// <summary>
+    /// Runs <paramref name="change"/> under the loading overlay, saying <paramref name="failed"/> if it fails.
+    /// </summary>
+    /// <param name="working">What's happening, under the overlay's spinner.</param>
+    /// <param name="failed">What's said when it fails.</param>
+    /// <param name="change">The change.</param>
+    private async Task RunAsync(string working, string failed, Func<Task> change)
+    {
+        ApplicationState.ShowLoading(working);
+        try
+        {
+            await change();
+        }
+        catch (Exception) when (!_cts.IsCancellationRequested)
+        {
+            Snackbar.Add(failed, Severity.Error);
+        }
+        finally
+        {
+            ApplicationState.HideLoading();
+        }
+    }
+
+    /// <inheritdoc/>
+    public void Dispose()
+    {
+        _cts.Cancel();
+        _cts.Dispose();
+    }
+
+}

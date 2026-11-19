@@ -52,6 +52,25 @@ public class OpenApiDocumentTests
     }
 
     [Test]
+    public async Task Document_AnswersTurnedIntoResponses_AreDescribedAsSent()
+    {
+        // Arrange
+        await using WebApplication app = await StartAppAsync();
+
+        // Act
+        OpenApiDocument document = await DocumentAsync(app);
+        IOpenApiPathItem goal = document.Paths["/api/savings-goals/{id}"];
+        IOpenApiPathItem resetLink = document.Paths["/api/users/{id}/reset-link"];
+
+        // Assert, a true or false answer is 204 or 404, a null one 409 beside the 200
+        using (Assert.Multiple())
+        {
+            await Assert.That(goal.Operations![HttpMethod.Delete].Responses!.Keys).IsEquivalentTo(["204", "404"]);
+            await Assert.That(resetLink.Operations![HttpMethod.Post].Responses!.Keys).IsEquivalentTo(["200", "409"]);
+        }
+    }
+
+    [Test]
     public async Task DocumentEndpoint_NeedsASignedInUser()
     {
         // Arrange

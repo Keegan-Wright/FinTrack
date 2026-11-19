@@ -167,7 +167,7 @@ public class TransfersService : ServiceBase<TransfersService>, ITransfersService
     /// </summary>
     /// <param name="ownerId">The owner it runs as.</param>
     /// <param name="affected">The transactions the decision changed.</param>
-    /// <param name="cancellationToken">Stops the matching.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task MatchAroundAsOwnerAsync(Guid ownerId, HashSet<Guid> affected,
         CancellationToken cancellationToken)
     {

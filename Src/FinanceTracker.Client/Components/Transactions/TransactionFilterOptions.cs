@@ -62,7 +62,7 @@ public sealed class TransactionFilterOptions
     /// <param name="billsService">Gives the bills.</param>
     /// <param name="debtsService">Gives the debts.</param>
     /// <param name="savingsGoalsService">Gives the savings goals.</param>
-    /// <param name="cancellationToken">Stops the loading.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     public static async Task<TransactionFilterOptions> LoadAsync(ITransactionsService transactionsService,
         IBillsService billsService, IDebtsService debtsService, ISavingsGoalsService savingsGoalsService,
         CancellationToken cancellationToken) => new()

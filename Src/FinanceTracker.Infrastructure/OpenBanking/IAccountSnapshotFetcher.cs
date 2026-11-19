@@ -22,7 +22,7 @@ public interface IAccountSnapshotFetcher
     /// banks only release shortly after the user authenticated.</param>
     /// <param name="transactionsFrom">Where booked transactions are fetched from, null for all of them.</param>
     /// <param name="tally">Counts what the sync does.</param>
-    /// <param name="cancellationToken">Stops the fetches.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     Task<AccountSnapshot> FetchAccountAsync(BankConnection connection, BankAccount account, string authToken,
         SyncTypes syncFlags, SyncTypes enhancedAuthenticationWindowFlags, DateTime? transactionsFrom,
         ConnectionSyncTally tally, CancellationToken cancellationToken);
@@ -37,7 +37,7 @@ public interface IAccountSnapshotFetcher
     /// <param name="syncFlags">What to fetch.</param>
     /// <param name="transactionsFrom">Where booked transactions are fetched from, null for all of them.</param>
     /// <param name="tally">Counts what the sync does.</param>
-    /// <param name="cancellationToken">Stops the fetches.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     Task<AccountSnapshot> FetchCardAsync(BankConnection connection, BankAccount card, string authToken,
         SyncTypes syncFlags, DateTime? transactionsFrom, ConnectionSyncTally tally,
         CancellationToken cancellationToken);

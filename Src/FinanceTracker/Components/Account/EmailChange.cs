@@ -39,7 +39,8 @@ public sealed class EmailChange : IEmailChange
     }
 
     /// <inheritdoc/>
-    public async Task<ProfileChange> RequestAsync(FinanceTrackerUser user, string newEmail)
+    public async Task<ProfileChange> RequestAsync(FinanceTrackerUser user, string newEmail,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(user);
         string email = newEmail.Trim();
@@ -67,7 +68,7 @@ public sealed class EmailChange : IEmailChange
             ["code"] = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code))
         });
 
-        await _mailSender.SendAsync(await _accountEmails.ChangeEmailAsync(email, link), CancellationToken.None);
+        await _mailSender.SendAsync(await _accountEmails.ChangeEmailAsync(email, link), cancellationToken);
         return new ProfileChange { LinkSent = true };
     }
 

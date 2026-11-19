@@ -14,6 +14,7 @@ public interface IEmailChange
     /// </summary>
     /// <param name="user">The user changing their email.</param>
     /// <param name="newEmail">The email they want.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <exception cref="Exception">Sending the link failed, see <see cref="IMailSender.SendAsync"/>.</exception>
-    Task<ProfileChange> RequestAsync(FinanceTrackerUser user, string newEmail);
+    Task<ProfileChange> RequestAsync(FinanceTrackerUser user, string newEmail, CancellationToken cancellationToken);
 }

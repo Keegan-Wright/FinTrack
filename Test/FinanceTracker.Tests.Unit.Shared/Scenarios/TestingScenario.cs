@@ -165,7 +165,7 @@ public sealed class TestingScenario
     public Dictionary<string, Guid> NotificationMappings { get; set; } = [];
 
     /// <param name="dbContextFactory">Makes the contexts the builders save through.</param>
-    /// <param name="cancellationToken">The test's cancellation token.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     public TestingScenario(IDbContextFactory<FinanceTrackerContext> dbContextFactory,
         CancellationToken cancellationToken)
     {

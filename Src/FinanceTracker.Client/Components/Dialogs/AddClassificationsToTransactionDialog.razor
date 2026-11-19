@@ -10,9 +10,9 @@
         <MudForm @ref="_form" Model="@_model">
             @if (Classifications.Count() > 8)
             {
-                <MudTextField @bind-Value="_searchString" Placeholder="Search tags" Immediate="true" Clearable="true"
-                              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Search"
-                              Variant="Variant.Outlined" Margin="Margin.Dense" Class="mb-2"/>
+                <div class="mb-2">
+                    <SearchField @bind-Value="_searchString" Placeholder="Search tags"/>
+                </div>
             }
             <div class="ft-list ft-list--scroll">
                 @foreach (var classification in Classifications.Where(QuickFilter).OrderBy(static x => x.Tag))

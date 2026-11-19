@@ -1,10 +1,9 @@
-using System.Reflection;
 using System.Security.Claims;
-using System.Text.Json;
 using FinanceTracker.Domain.Identity;
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Http.Extensions;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
@@ -14,11 +13,10 @@ namespace FinanceTracker.Components.Account;
 /// <summary>
 /// The endpoints the account pages post to.
 /// </summary>
-internal static class IdentityComponentsEndpointRouteBuilderExtensions
+public static class IdentityComponentsEndpointRouteBuilderExtensions
 {
     extension(IEndpointRouteBuilder endpoints)
     {
-        // These endpoints are required by the Identity Razor components defined in the /Components/Account/Pages directory of this project.
         /// <summary>
         /// Maps the account endpoints the Identity pages need, under <c>/Account</c>.
         /// </summary>
@@ -58,63 +56,29 @@ internal static class IdentityComponentsEndpointRouteBuilderExtensions
                 return TypedResults.LocalRedirect($"~/{returnUrl}");
             });
 
-            RouteGroupBuilder manageGroup = accountGroup.MapGroup("/Manage").RequireAuthorization();
-
-            manageGroup.MapPost("/LinkExternalLogin", async (
+            // The options for signing in with a passkey, asked for by the sign in page's script before the browser
+            // asks for one (app.js). Identity keeps them in a cookie for the sign in to check against
+            accountGroup.MapPost("/PasskeyRequestOptions", async Task<Results<ContentHttpResult, NotFound, BadRequest>> (
                 HttpContext context,
                 [FromServices] SignInManager<FinanceTrackerUser> signInManager,
-                [FromForm] string provider) =>
+                [FromServices] SignInMethods signInMethods,
+                [FromServices] IAntiforgery antiforgery) =>
             {
-                // Clear the existing external cookie to ensure a clean login process
-                await context.SignOutAsync(IdentityConstants.ExternalScheme);
-
-                string redirectUrl = UriHelper.BuildRelative(
-                    context.Request.PathBase,
-                    "/Account/Manage/ExternalLogins");
-
-                AuthenticationProperties properties = signInManager.ConfigureExternalAuthenticationProperties(provider,
-                    redirectUrl,
-                    signInManager.UserManager.GetUserId(context.User));
-                return TypedResults.Challenge(properties, [provider]);
-            });
-
-            ILoggerFactory loggerFactory = endpoints.ServiceProvider.GetRequiredService<ILoggerFactory>();
-            ILogger downloadLogger = loggerFactory.CreateLogger("DownloadPersonalData");
-
-            manageGroup.MapPost("/DownloadPersonalData", async (
-                HttpContext context,
-                [FromServices] UserManager<FinanceTrackerUser> userManager,
-                [FromServices] AuthenticationStateProvider authenticationStateProvider) =>
-            {
-                FinanceTrackerUser? user = await userManager.GetUserAsync(context.User);
-                if (user is null)
+                // Passkeys sign in alongside passwords, so they're off when passwords are
+                if (!signInMethods.Password)
                 {
-                    return Results.NotFound($"Unable to load user with ID '{userManager.GetUserId(context.User)}'.");
+                    return TypedResults.NotFound();
                 }
 
-                string userId = await userManager.GetUserIdAsync(user);
-                downloadLogger.LogPersonalDataRequested(userId);
-
-                // Only include personal data for download
-                Dictionary<string, string> personalData = new();
-                IEnumerable<PropertyInfo> personalDataProps = typeof(FinanceTrackerUser).GetProperties()
-                    .Where(prop => Attribute.IsDefined(prop, typeof(PersonalDataAttribute)));
-                foreach (PropertyInfo p in personalDataProps)
+                // The page's antiforgery token, so another site can't start one in the user's browser
+                if (!await antiforgery.IsRequestValidAsync(context))
                 {
-                    personalData.Add(p.Name, p.GetValue(user)?.ToString() ?? "null");
+                    return TypedResults.BadRequest();
                 }
 
-                IList<UserLoginInfo> logins = await userManager.GetLoginsAsync(user);
-                foreach (UserLoginInfo l in logins)
-                {
-                    personalData.Add($"{l.LoginProvider} external login provider key", l.ProviderKey);
-                }
-
-                personalData.Add("Authenticator Key", (await userManager.GetAuthenticatorKeyAsync(user))!);
-                byte[] fileBytes = JsonSerializer.SerializeToUtf8Bytes(personalData);
-
-                context.Response.Headers.TryAdd("Content-Disposition", "attachment; filename=PersonalData.json");
-                return TypedResults.File(fileBytes, "application/json", "PersonalData.json");
+                // No user, so the browser offers any of this site's passkeys
+                string options = await signInManager.MakePasskeyRequestOptionsAsync(null);
+                return TypedResults.Content(options, "application/json");
             });
 
             return accountGroup;

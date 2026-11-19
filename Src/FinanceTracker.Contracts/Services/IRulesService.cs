@@ -55,7 +55,7 @@ public interface IRulesService
     /// </summary>
     /// <param name="id">The rule being edited, null for a new one.</param>
     /// <param name="rule">The rule as it is on screen, saved or not.</param>
-    /// <param name="cancellationToken">Cancels the preview.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <exception cref="InvalidOperationException">The user has no rule with <paramref name="id"/>, or an action adds a
     /// tag, or a condition names an account, the user doesn't have.</exception>
     Task<RulePreview> PreviewRuleAsync(Guid? id, SaveRule rule, CancellationToken cancellationToken);

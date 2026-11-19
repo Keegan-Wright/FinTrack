@@ -11,7 +11,17 @@ shown after "as".
 | `FINTRACK_POSTGRES_PASSWORD` | Yes | The database password. |
 | `APP_CULTURE` | No | How dates and money are shown, e.g. `en-GB`. |
 | `TZ` | No | The time zone, e.g. `Europe/London`. |
-| `FINTRACK_PUBLIC_URL` | No | Your FinTrack address, e.g. `https://fintrack.example.com`, for links in emails and webhooks. |
+| `FINTRACK_PUBLIC_URL` | No | Your FinTrack address, e.g. `https://fintrack.example.com`, for links in emails and webhooks. Passkeys belong to its domain, see [Passkeys and your domain](#passkeys-and-your-domain). |
+
+### Passkeys and your domain
+
+A passkey only works on the domain it was made for, here the domain in `FINTRACK_PUBLIC_URL`, or the address people
+reach FinTrack on when it isn't set. Set it before anyone adds a passkey.
+
+> [!WARNING]
+> Changing the domain later stops every passkey working. People sign in with their password and add new ones.
+
+Passkeys need HTTPS, as browsers only make them on secure sites. `localhost` is the one exception.
 
 ## Encryption
 

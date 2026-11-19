@@ -5,6 +5,7 @@ using Aspire.Hosting.Testing;
 using FinanceTracker.AppHost.ServiceDefaults;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Encryption;
+using FinanceTracker.Infrastructure.Persistence;
 using FinanceTracker.Tests.Integration.Auth;
 using FinanceTracker.Tests.Integration.Http;
 using FinanceTracker.Tests.Integration.OpenBanking;
@@ -120,6 +121,7 @@ public sealed class FinTrackAppFixture : AspireFixture<Projects.FinanceTracker_A
         // Seeding and asserting needs few connections, leaving the rest to the app
         NpgsqlConnectionStringBuilder connection = new(connectionString) { MaxPoolSize = TestMaxPoolSize };
         DbContextOptions<FinanceTrackerContext> options = new DbContextOptionsBuilder<FinanceTrackerContext>()
+            .UseIdentitySchema()
             .UseNpgsql(connection.ConnectionString)
             .Options;
 

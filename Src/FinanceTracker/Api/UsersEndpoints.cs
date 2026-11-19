@@ -19,7 +19,8 @@ public static class UsersEndpoints
     {
         /// <summary>
         /// <see cref="IUsersService"/> at <see cref="ApiRoutes.Users"/>, admins only. A reset link for a user who
-        /// doesn't exist answers 404, for one without a password here 409. Locking or unlocking a user who doesn't
+        /// doesn't exist answers 404, for one without a password here 409. Turning off two-factor sign in or removing
+        /// passkeys answers 409 for yourself, who uses your profile. Locking or unlocking a user who doesn't
         /// exist answers 404, locking an admin, yourself included, 409. Giving or taking the admin role answers how it
         /// went, see <see cref="AdminChange"/>.
         /// </summary>
@@ -31,27 +32,21 @@ public static class UsersEndpoints
             users.MapGet("", (IUsersService service, CancellationToken cancellationToken) =>
                 service.GetUsersAsync(cancellationToken));
 
-            users.MapPost("{id:guid}/reset-link", async Task<Results<Ok<ResetLink>, Conflict>> (Guid id,
-                IUsersService service, CancellationToken cancellationToken) =>
-            {
-                if (await service.CreateResetLinkAsync(id, cancellationToken) is not { } link)
-                {
-                    return TypedResults.Conflict();
-                }
+            users.MapPost("{id:guid}/reset-link", (Guid id, IUsersService service,
+                    CancellationToken cancellationToken) => service.CreateResetLinkAsync(id, cancellationToken))
+                .ConflictWhenNone();
 
-                return TypedResults.Ok(link);
-            });
+            users.MapDelete("{id:guid}/two-factor", (Guid id, IUsersService service,
+                    CancellationToken cancellationToken) => service.TurnOffTwoFactorAsync(id, cancellationToken))
+                .ConflictWhenNone();
 
-            users.MapPost("{id:guid}/lock", async Task<Results<NoContent, Conflict>> (Guid id, IUsersService service,
-                CancellationToken cancellationToken) =>
-            {
-                if (!await service.LockAsync(id, cancellationToken))
-                {
-                    return TypedResults.Conflict();
-                }
+            users.MapDelete("{id:guid}/passkeys", (Guid id, IUsersService service,
+                    CancellationToken cancellationToken) => service.RemovePasskeysAsync(id, cancellationToken))
+                .ConflictWhenNone();
 
-                return TypedResults.NoContent();
-            });
+            users.MapPost("{id:guid}/lock", (Guid id, IUsersService service,
+                    CancellationToken cancellationToken) => service.LockAsync(id, cancellationToken))
+                .ConflictWhenNone();
 
             users.MapPost("{id:guid}/unlock", async Task<NoContent> (Guid id, IUsersService service,
                 CancellationToken cancellationToken) =>

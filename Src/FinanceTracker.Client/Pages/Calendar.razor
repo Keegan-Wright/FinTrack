@@ -583,7 +583,7 @@
     /// <summary>
     /// Loads what's on each day of the month shown.
     /// </summary>
-    /// <param name="cancellationToken">Stops it once the user leaves.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private Task<List<CalendarItems>> LoadMonthAsync(CancellationToken cancellationToken)
     {
         DateTime month = Month!.Value;

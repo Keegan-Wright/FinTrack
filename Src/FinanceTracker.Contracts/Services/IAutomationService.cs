@@ -29,14 +29,14 @@ public interface IAutomationService
     /// <param name="function">The job, see <see cref="AutomationCron.Function"/>.</param>
     /// <param name="page">The page, from 0.</param>
     /// <param name="pageSize">Runs to a page, 1 to <see cref="MaxRunsPageSize"/>.</param>
-    /// <param name="cancellationToken">Stops the read.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     Task<AutomationRunPage> GetRunsAsync(string function, int page, int pageSize, CancellationToken cancellationToken);
 
     /// <summary>
     /// Queues a run of a scheduled job straight away, on top of its schedule. It shows in the job's runs as manual.
     /// </summary>
     /// <param name="function">The job, see <see cref="AutomationCron.Function"/>.</param>
-    /// <param name="cancellationToken">Stops the request.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <exception cref="InvalidOperationException">No scheduled job has the name.</exception>
     /// <exception cref="JobAlreadyRunningException">A run of the job is going.</exception>
     Task RunNowAsync(string function, CancellationToken cancellationToken);

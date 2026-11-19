@@ -1,7 +1,7 @@
 @page "/Users"
 @* Everyone who can sign in (IUsersService), for admins: how each signs in and whether their email is confirmed, a
-   one-time reset link for one who's forgotten their password and can't be emailed one, locking one out, and who else
-   is an admin. *@
+   one-time reset link for one who's forgotten their password and can't be emailed one, turning off two-factor sign in
+   for one who's lost their phone, locking one out, and who else is an admin. *@
 @using FinanceTracker.Client.Components.Users
 @using FinanceTracker.Contracts.Auth
 @using FinanceTracker.Contracts.Users
@@ -22,6 +22,11 @@
         <MudText Typo="Typo.body2" Class="mud-text-secondary">
             Someone who's forgotten their password and can't get a reset email can be given a link from here. They
             choose the new password, you never see it.
+        </MudText>
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+            Someone who's lost their phone and their recovery codes can have two-factor sign in turned off from here,
+            and someone who's lost the devices their passkeys are on can have them removed. Make sure it's really them
+            asking first.
         </MudText>
         <MudText Typo="Typo.body2" Class="mud-text-secondary">
             Locking someone signs them out and stops them signing in until you unlock them.
@@ -55,6 +60,18 @@
                                 {
                                     <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">You</MudChip>
                                 }
+                                @if (user.TwoFactorEnabled)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                                             Icon="@Icons.Material.Outlined.PhonelinkLock">Two-factor
+                                    </MudChip>
+                                }
+                                @if (user.PasskeyCount > 0)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                                             Icon="@Icons.Material.Outlined.Fingerprint">@PasskeysText(user)
+                                    </MudChip>
+                                }
                                 @if (user.IsLocked)
                                 {
                                     <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
@@ -74,6 +91,23 @@
                                            StartIcon="@Icons.Material.Outlined.Key"
                                            aria-label="@($"Make a reset link for {user.Username}")"
                                            OnClick="@(() => MakeResetLinkAsync(user))">Reset link
+                                </MudButton>
+                            }
+                            @* Their own is turned off from their profile, with their password *@
+                            @if (user.TwoFactorEnabled && !user.IsYou)
+                            {
+                                <MudButton Variant="Variant.Text" Color="Color.Warning" Size="Size.Small"
+                                           StartIcon="@Icons.Material.Outlined.PhonelinkErase"
+                                           aria-label="@($"Turn off two-factor sign in for {user.Username}")"
+                                           OnClick="@(() => TurnOffTwoFactorAsync(user))">Turn off two-factor
+                                </MudButton>
+                            }
+                            @if (user.PasskeyCount > 0 && !user.IsYou)
+                            {
+                                <MudButton Variant="Variant.Text" Color="Color.Warning" Size="Size.Small"
+                                           StartIcon="@Icons.Material.Outlined.Delete"
+                                           aria-label="@($"Remove passkeys for {user.Username}")"
+                                           OnClick="@(() => RemovePasskeysAsync(user))">Remove passkeys
                                 </MudButton>
                             }
                             @if (user.IsLocked)
@@ -210,6 +244,62 @@
             SetLoadingState(false);
         }
     }
+
+    /// <summary>
+    /// Turns off a user's two-factor sign in once the admin confirms.
+    /// </summary>
+    /// <param name="user">The user.</param>
+    internal async Task TurnOffTwoFactorAsync(UserSummary user)
+    {
+        bool? confirmed = await DialogService.ShowMessageBoxAsync($"Turn off two-factor sign in for {user.Username}?",
+            "For someone who's lost their phone and their recovery codes, so make sure it's really them asking. " +
+            "They're signed out, can sign in with just their password, and are emailed to say so. Their old " +
+            "authenticator and recovery codes stop working.",
+            yesText: "Turn off", cancelText: "Cancel");
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        await ChangeAsync(async () =>
+            {
+                if (!await UsersService.TurnOffTwoFactorAsync(user.Id, _cts.Token))
+                {
+                    Snackbar.Add("Turn off your own two-factor sign in from Your profile", Severity.Warning);
+                }
+            }, $"Couldn't turn off two-factor sign in for {user.Username}, try again");
+    }
+
+    /// <summary>
+    /// Removes all a user's passkeys once the admin confirms.
+    /// </summary>
+    /// <param name="user">The user.</param>
+    internal async Task RemovePasskeysAsync(UserSummary user)
+    {
+        bool? confirmed = await DialogService.ShowMessageBoxAsync($"Remove the passkeys of {user.Username}?",
+            "For someone who's lost the devices they're on, so make sure it's really them asking. None of them can " +
+            "sign in any more, and they're emailed to say so.",
+            yesText: "Remove", cancelText: "Cancel");
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        await ChangeAsync(async () =>
+            {
+                if (!await UsersService.RemovePasskeysAsync(user.Id, _cts.Token))
+                {
+                    Snackbar.Add("Remove your own passkeys from Your profile", Severity.Warning);
+                }
+            }, $"Couldn't remove the passkeys of {user.Username}, try again");
+    }
+
+    /// <summary>
+    /// How many passkeys a user has, for their chip.
+    /// </summary>
+    /// <param name="user">The user.</param>
+    private static string PasskeysText(UserSummary user) =>
+        user.PasskeyCount == 1 ? "1 passkey" : $"{user.PasskeyCount} passkeys";
 
     /// <summary>
     /// Locks a user once the admin confirms.

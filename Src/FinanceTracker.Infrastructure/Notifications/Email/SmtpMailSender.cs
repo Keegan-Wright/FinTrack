@@ -56,7 +56,7 @@ public sealed class SmtpMailSender : IMailSender
     /// </summary>
     /// <param name="host">The mail server.</param>
     /// <param name="message">The email.</param>
-    /// <param name="cancellationToken">Stops the send.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task SendThroughAsync(string host, MailMessage message, CancellationToken cancellationToken)
     {
         using MimeMessage mime = ToMime(message);

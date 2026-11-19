@@ -276,7 +276,7 @@
     /// <summary>
     /// Loads the filter options.
     /// </summary>
-    /// <param name="cancellationToken">Stops it once the user leaves.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private Task<TransactionFilterOptions> LoadFilterOptionsAsync(CancellationToken cancellationToken) =>
         TransactionFilterOptions.LoadAsync(TransactionsService, BillsService, DebtsService, SavingsGoalsService,
             cancellationToken);

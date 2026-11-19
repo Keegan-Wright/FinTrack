@@ -11,14 +11,14 @@ public interface ITransferMatchingService
     /// Matches across all of the current user's transactions and saves the decisions. For changes that can affect
     /// any transaction, e.g. how a household member is recognised.
     /// </summary>
-    /// <param name="cancellationToken">Stops the matching.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     Task<TransferMatchSummary> MatchAsync(CancellationToken cancellationToken);
 
     /// <summary>
     /// Matches around the transactions created or updated since the last run, e.g. after a sync. Everything on the
     /// first run.
     /// </summary>
-    /// <param name="cancellationToken">Stops the matching.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <returns>Null when nothing has changed, so there was nothing to match.</returns>
     Task<TransferMatchSummary?> MatchChangesAsync(CancellationToken cancellationToken);
 
@@ -27,7 +27,7 @@ public interface ITransferMatchingService
     /// affect update straight away. Leaves when the last run was alone, so it doesn't stand in for matching a sync.
     /// </summary>
     /// <param name="transactionIds">The transactions that changed.</param>
-    /// <param name="cancellationToken">Stops the matching.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     Task<TransferMatchSummary> MatchAroundAsync(IReadOnlyCollection<Guid> transactionIds,
         CancellationToken cancellationToken);
 }

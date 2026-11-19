@@ -1,6 +1,7 @@
 @page "/YourProfile"
-@* The user's own account: their email and password (IProfileService), a tab each. One made by signing in through
-   the identity provider has no password here, its password and email are the provider's. *@
+@* The user's own account (IProfileService). Their email, password and two-factor sign in, a tab each. One made by
+   signing in through the identity provider has no password here, its password, email and two-factor are the
+   provider's. *@
 @using FinanceTracker.Client.Components.Profile
 @using FinanceTracker.Contracts.Profile
 @using Microsoft.AspNetCore.Authorization
@@ -32,13 +33,21 @@ else if (!Profile.HasPassword)
 }
 else
 {
+    @* Sized to their text, so all three fit on a phone rather than scrolling *@
     <MudTabs Elevation="0" Rounded="true" TabPanelsClass="pt-4" Color="Color.Transparent"
-             SliderColor="Color.Primary" ActiveTabClass="mud-primary-text">
+             SliderColor="Color.Primary" ActiveTabClass="mud-primary-text" MinimumTabWidth="0">
         <MudTabPanel Text="Email">
             <ChangeEmailSection Profile="@Profile" ProfileChanged="@ReloadAsync"/>
         </MudTabPanel>
         <MudTabPanel Text="Password">
             <ChangePasswordSection/>
+        </MudTabPanel>
+        @* Two-factor sign in and passkeys share a tab, as a fourth won't fit on a phone *@
+        <MudTabPanel Text="Security">
+            <div class="ft-stack">
+                <TwoFactorSection/>
+                <PasskeysSection/>
+            </div>
         </MudTabPanel>
     </MudTabs>
 }

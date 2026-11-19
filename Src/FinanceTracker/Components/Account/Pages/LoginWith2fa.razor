@@ -1,0 +1,121 @@
+@page "/Account/LoginWith2fa"
+@* The second step of a password sign in with two-factor sign in on, a code from the user's authenticator app *@
+@using System.ComponentModel.DataAnnotations
+@using FinanceTracker.Contracts.Profile
+@using FinanceTracker.Domain.Identity
+@using Microsoft.AspNetCore.Identity
+
+@inject SignInManager<FinanceTrackerUser> SignInManager
+@inject IdentityRedirectManager RedirectManager
+@inject NavigationManager NavigationManager
+@inject SignInMethods SignInMethods
+@inject ILogger<LoginWith2fa> Logger
+
+<PageTitle>FinTrack - Two-factor sign in</PageTitle>
+
+<AuthHeading Title="Two-factor sign in" Subtitle="Enter the code from your authenticator app"/>
+
+@if (_errorMessage is not null)
+{
+    <MudAlert Severity="MudBlazor.Severity.Error" Variant="Variant.Text" Dense="true"
+              Class="mb-4">@_errorMessage</MudAlert>
+}
+
+<EditForm Model="Input" FormName="login-with-2fa" OnValidSubmit="OnValidSubmitAsync" method="post">
+    <DataAnnotationsValidator/>
+    <AuthFields>
+        <MudStaticTextField @bind-Value="Input.Code" For="@(() => Input.Code)" Label="Code" Variant="Variant.Outlined"
+                            InputMode="InputMode.numeric"
+                            UserAttributes="@(new Dictionary<string, object?> { { "autocomplete", "one-time-code" }, { "aria-required", "true" } })"/>
+
+        <MudStaticCheckBox For="@(() => Input.RememberMachine)" @bind-Value="Input.RememberMachine"
+                           Color="Color.Primary">Remember this device for 14 days
+        </MudStaticCheckBox>
+
+        <MudStaticButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Size="Size.Large"
+                         FormAction="FormAction.Submit">Sign in
+        </MudStaticButton>
+    </AuthFields>
+</EditForm>
+
+<AuthFooter>
+    Can't use your app?
+    <MudLink
+        Href="@(NavigationManager.GetUriWithQueryParameters("Account/LoginWithRecoveryCode", new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))">
+        Use a recovery code
+    </MudLink>
+</AuthFooter>
+
+@code {
+    private string? _errorMessage;
+    private FinanceTrackerUser? _user;
+
+    /// <summary>
+    /// The posted form.
+    /// </summary>
+    [SupplyParameterFromForm] private InputModel Input { get; set; } = default!;
+
+    /// <summary>
+    /// Where to go once signed in.
+    /// </summary>
+    [SupplyParameterFromQuery] private string? ReturnUrl { get; set; }
+
+    /// <summary>
+    /// Whether they asked to stay signed in on the first step.
+    /// </summary>
+    [SupplyParameterFromQuery] private bool RememberMe { get; set; }
+
+    /// <inheritdoc/>
+    protected override async Task OnInitializedAsync()
+    {
+        // Form posts bind the property before initialisation, so only create a model when nothing was posted
+        Input ??= new();
+
+        // Without the first step, or once it's run out, they start again
+        _user = await SignInManager.GetTwoFactorAuthenticationUserAsync();
+        if (!SignInMethods.Password || _user is null)
+        {
+            RedirectManager.RedirectTo("Account/Login");
+        }
+    }
+
+    /// <summary>
+    /// Signs in with the code. Wrong codes count towards locking the account, as wrong passwords do.
+    /// </summary>
+    private async Task OnValidSubmitAsync()
+    {
+        SignInResult result = await SignInManager.TwoFactorAuthenticatorSignInAsync(
+            TwoFactorCodes.CleanInput(Input.Code), RememberMe, Input.RememberMachine);
+        if (result.Succeeded)
+        {
+            Logger.LogUserLoggedIn();
+            RedirectManager.RedirectTo(ReturnUrl);
+        }
+        else if (result.IsLockedOut)
+        {
+            Logger.LogUserLockedOut();
+            RedirectManager.RedirectTo(Lockout.PathFor(_user));
+        }
+        else
+        {
+            _errorMessage = "That code isn't right.";
+        }
+    }
+
+    /// <summary>
+    /// The code and whether to remember the device.
+    /// </summary>
+    private sealed class InputModel
+    {
+        /// <summary>
+        /// The code the app shows.
+        /// </summary>
+        [Required(ErrorMessage = "Enter the code from your app")]
+        public string Code { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Whether to skip the code on this device for 14 days.
+        /// </summary>
+        public bool RememberMachine { get; set; }
+    }
+}

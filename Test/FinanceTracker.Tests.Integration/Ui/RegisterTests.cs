@@ -1,3 +1,4 @@
+using FinanceTracker.Contracts.Auth;
 using Microsoft.Playwright;
 
 namespace FinanceTracker.Tests.Integration.Ui;
@@ -49,6 +50,28 @@ public class RegisterTests : UiTestBase
         {
             await Assert.That(new Uri(page.Url).AbsolutePath).IsEqualTo("/Account/Register");
             await Assert.That(await AccessibilityProblemsAsync(page)).IsEmpty();
+        }
+    }
+
+    [Test]
+    public async Task Register_ShortPassword_SaysTheRuleBeforeAndAfter()
+    {
+        // Arrange
+        IPage page = await OpenAsync(ScreenSize.Phone);
+        await page.GotoAsync("/Account/Register");
+        bool hintShown = await page.GetByText(PasswordRules.Hint).IsVisibleAsync();
+        string tooShort = new('a', PasswordRules.MinimumLength - 1);
+
+        // Act
+        await FillInAsync(page, UniqueName(), tooShort, tooShort);
+        await Button(page, "Create account").ClickAsync();
+
+        // Assert
+        await Assertions.Expect(page.GetByText(PasswordRules.TooShort)).ToBeVisibleAsync();
+        using (Assert.Multiple())
+        {
+            await Assert.That(hintShown).IsTrue();
+            await Assert.That(new Uri(page.Url).AbsolutePath).IsEqualTo("/Account/Register");
         }
     }
 

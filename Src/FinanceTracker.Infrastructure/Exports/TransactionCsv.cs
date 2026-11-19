@@ -27,7 +27,7 @@ public static class TransactionCsv
     /// <param name="transactions">The transactions, as they arrive.</param>
     /// <param name="destination">Where the CSV is written.</param>
     /// <param name="timeZone">Where the user is, for each transaction's day.</param>
-    /// <param name="cancellationToken">Stops the export.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     public static async Task WriteAsync(IAsyncEnumerable<Transaction> transactions, Stream destination,
         TimeZoneInfo timeZone, CancellationToken cancellationToken)
     {

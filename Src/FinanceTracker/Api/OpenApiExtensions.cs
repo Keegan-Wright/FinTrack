@@ -24,8 +24,12 @@ public static class OpenApiExtensions
         public IServiceCollection AddFinTrackOpenApi()
         {
             // A literal name, so the source generator adds the doc comments
-            services.AddOpenApi("v1", static options => options.ShouldInclude = static description =>
-                description.RelativePath?.StartsWith("api/", StringComparison.Ordinal) == true);
+            services.AddOpenApi("v1", static options =>
+            {
+                options.ShouldInclude = static description =>
+                    description.RelativePath?.StartsWith("api/", StringComparison.Ordinal) == true;
+                options.AddOperationTransformer<NoneAnswerOperationTransformer>();
+            });
             return services;
         }
     }

@@ -32,7 +32,7 @@ public static class WebhookHttp
     /// </summary>
     /// <param name="context">What to connect to.</param>
     /// <param name="settings">Whether private addresses are allowed.</param>
-    /// <param name="cancellationToken">Stops the connection.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <exception cref="WebhookAddressRefusedException">None of its addresses are allowed.</exception>
     private static async ValueTask<Stream> ConnectAsync(SocketsHttpConnectionContext context,
         WebhookSettings settings, CancellationToken cancellationToken)

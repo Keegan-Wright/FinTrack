@@ -14,7 +14,7 @@ public interface ITransactionsService
     /// The user's transactions matching <paramref name="filterTransactions"/>, newest first.
     /// </summary>
     /// <param name="filterTransactions">The filters, empty ones match everything.</param>
-    /// <param name="cancellationToken">Cancels the lookup.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     IAsyncEnumerable<Transaction> GetAllTransactionsAsync(FilterTransactions filterTransactions,
         CancellationToken cancellationToken);
 

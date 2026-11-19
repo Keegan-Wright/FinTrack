@@ -75,7 +75,7 @@ public sealed class HubSyncNotifications : ISyncNotifications, IDisposable
     /// it's back.
     /// </summary>
     /// <param name="subscription">The subscription, disposed when the caller gives up.</param>
-    /// <param name="cancellationToken">Stops waiting.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<IDisposable> StartedAsync(IDisposable subscription, CancellationToken cancellationToken)
     {
         try
@@ -99,7 +99,7 @@ public sealed class HubSyncNotifications : ISyncNotifications, IDisposable
     /// <summary>
     /// Starts the hub unless it's already started, one subscriber at a time.
     /// </summary>
-    /// <param name="cancellationToken">Stops waiting.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task EnsureStartedAsync(CancellationToken cancellationToken)
     {
         // Subscribers can arrive together, only one of them may start the connection
@@ -153,7 +153,7 @@ public sealed class HubSyncNotifications : ISyncNotifications, IDisposable
     /// <summary>
     /// Keeps trying to start the hub, waiting longer each time, until it starts.
     /// </summary>
-    /// <param name="cancellationToken">Stops trying.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task TryToStartUntilItDoesAsync(CancellationToken cancellationToken)
     {
         try
@@ -177,7 +177,7 @@ public sealed class HubSyncNotifications : ISyncNotifications, IDisposable
     /// <summary>
     /// Tries once to start the hub.
     /// </summary>
-    /// <param name="cancellationToken">Stops trying.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     /// <returns>Whether it started.</returns>
     private async Task<bool> TryToStartAsync(CancellationToken cancellationToken)
     {

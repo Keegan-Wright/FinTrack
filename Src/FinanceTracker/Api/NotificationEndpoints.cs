@@ -34,16 +34,9 @@ public static class NotificationEndpoints
                     CancellationToken cancellationToken) =>
                 TypedResults.Ok(await service.GetUnreadCountAsync(cancellationToken)));
 
-            notifications.MapPost("{id:guid}/read", async Task<Results<NoContent, NotFound>> (Guid id,
-                INotificationsService service, CancellationToken cancellationToken) =>
-            {
-                if (!await service.MarkReadAsync(id, cancellationToken))
-                {
-                    return TypedResults.NotFound();
-                }
-
-                return TypedResults.NoContent();
-            });
+            notifications.MapPost("{id:guid}/read", (Guid id, INotificationsService service,
+                    CancellationToken cancellationToken) => service.MarkReadAsync(id, cancellationToken))
+                .NotFoundWhenNone();
 
             notifications.MapPost("read", async Task<NoContent> (INotificationsService service,
                 CancellationToken cancellationToken) =>
@@ -67,16 +60,9 @@ public static class NotificationEndpoints
                     TypedResults.Ok(await service.ChangeAlertsAsync(request, cancellationToken)))
                 .Validated<ChangeAlertSettings>();
 
-            notifications.MapPost("settings/test-email", async Task<Results<Ok<NotificationSettings>, Conflict>> (
-                INotificationsService service, CancellationToken cancellationToken) =>
-            {
-                if (await service.SendTestEmailAsync(cancellationToken) is not { } settings)
-                {
-                    return TypedResults.Conflict();
-                }
-
-                return TypedResults.Ok(settings);
-            });
+            notifications.MapPost("settings/test-email", (INotificationsService service,
+                    CancellationToken cancellationToken) => service.SendTestEmailAsync(cancellationToken))
+                .ConflictWhenNone();
 
             // Setting answers 200 with the refusal when this FinTrack won't post there, see WebhookChange
             notifications.MapPut("settings/webhook", async Task<Ok<WebhookChange>> (SetWebhook request,
@@ -88,27 +74,13 @@ public static class NotificationEndpoints
                     INotificationsService service, CancellationToken cancellationToken) =>
                 TypedResults.Ok(await service.RemoveWebhookAsync(cancellationToken)));
 
-            notifications.MapPost("settings/webhook/secret", async Task<Results<Ok<NotificationSettings>, Conflict>> (
-                INotificationsService service, CancellationToken cancellationToken) =>
-            {
-                if (await service.ReplaceWebhookSecretAsync(cancellationToken) is not { } settings)
-                {
-                    return TypedResults.Conflict();
-                }
+            notifications.MapPost("settings/webhook/secret", (INotificationsService service,
+                    CancellationToken cancellationToken) => service.ReplaceWebhookSecretAsync(cancellationToken))
+                .ConflictWhenNone();
 
-                return TypedResults.Ok(settings);
-            });
-
-            notifications.MapPost("settings/webhook/test", async Task<Results<Ok<NotificationSettings>, Conflict>> (
-                INotificationsService service, CancellationToken cancellationToken) =>
-            {
-                if (await service.SendTestWebhookAsync(cancellationToken) is not { } settings)
-                {
-                    return TypedResults.Conflict();
-                }
-
-                return TypedResults.Ok(settings);
-            });
+            notifications.MapPost("settings/webhook/test", (INotificationsService service,
+                    CancellationToken cancellationToken) => service.SendTestWebhookAsync(cancellationToken))
+                .ConflictWhenNone();
 
             return api;
         }

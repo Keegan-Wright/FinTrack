@@ -54,6 +54,10 @@ public sealed class FinTrackMetrics
     /// </summary>
     public const string SingleSignOnFailuresName = "fintrack.sso.failures";
     /// <summary>
+    /// The metric's name. Authenticator codes refused for having been used already.
+    /// </summary>
+    public const string AuthenticatorCodesReusedName = "fintrack.authenticator.codes_reused";
+    /// <summary>
     /// The metric's name. Transactions the user's rules changed.
     /// </summary>
     public const string RulesChangedName = "fintrack.rules.transactions_changed";
@@ -154,6 +158,7 @@ public sealed class FinTrackMetrics
     private readonly Gauge<long> _connections;
     private readonly Histogram<double> _trueLayerThrottleWait;
     private readonly Counter<long> _singleSignOnFailures;
+    private readonly Counter<long> _authenticatorCodesReused;
     private readonly Counter<long> _rulesChanged;
     private readonly Counter<long> _transferDecisions;
     private readonly Counter<long> _billChanges;
@@ -199,6 +204,9 @@ public sealed class FinTrackMetrics
         _singleSignOnFailures = meter.CreateCounter<long>(SingleSignOnFailuresName, "{sign_in}",
             "Single sign-on attempts that didn't sign anyone in, by why. Identity's own metrics only see the sign "
             + "ins that work");
+        _authenticatorCodesReused = meter.CreateCounter<long>(AuthenticatorCodesReusedName, "{code}",
+            "Authenticator codes refused for having been used already, or being older than one that was. Someone may "
+            + "have watched it typed or passed it on. Identity's own metrics count them as failures");
         _rulesChanged = meter.CreateCounter<long>(RulesChangedName, "{transaction}",
             "Transactions the user's rules changed, categorising, hiding or marking them");
         _transferDecisions = meter.CreateCounter<long>(TransferDecisionsName, "{transaction}",
@@ -299,6 +307,11 @@ public sealed class FinTrackMetrics
     public void SingleSignOnFailed(SingleSignOnFailure reason) =>
         _singleSignOnFailures.Add(1,
             new KeyValuePair<string, object?>(TelemetryTags.SingleSignOnFailureReason, ReasonTag(reason)));
+
+    /// <summary>
+    /// An authenticator code that was right but had been used already, or was older than one that was, so was refused.
+    /// </summary>
+    public void AuthenticatorCodeReused() => _authenticatorCodesReused.Add(1);
 
     /// <summary>
     /// What one run of a user's rules changed.

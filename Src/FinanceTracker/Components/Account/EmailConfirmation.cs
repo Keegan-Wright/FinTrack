@@ -1,5 +1,6 @@
 using System.Text;
 using FinanceTracker.Domain.Identity;
+using FinanceTracker.Infrastructure.Account.Email;
 using FinanceTracker.Infrastructure.Notifications.Email;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
@@ -18,25 +19,25 @@ public sealed class EmailConfirmation : IEmailConfirmation
     public const string PagePath = "Account/ConfirmEmail";
 
     private readonly UserManager<FinanceTrackerUser> _userManager;
-    private readonly IEmailSender<FinanceTrackerUser> _emailSender;
+    private readonly IAccountEmails _accountEmails;
     private readonly IMailSender _mailSender;
     private readonly IAccountUrls _accountUrls;
 
     /// <param name="userManager">Finds and changes users.</param>
-    /// <param name="emailSender">Sends Identity's account emails.</param>
+    /// <param name="accountEmails">Writes the email.</param>
     /// <param name="mailSender">Sends the emails.</param>
     /// <param name="accountUrls">Builds the links in the emails.</param>
-    public EmailConfirmation(UserManager<FinanceTrackerUser> userManager,
-        IEmailSender<FinanceTrackerUser> emailSender, IMailSender mailSender, IAccountUrls accountUrls)
+    public EmailConfirmation(UserManager<FinanceTrackerUser> userManager, IAccountEmails accountEmails,
+        IMailSender mailSender, IAccountUrls accountUrls)
     {
         _userManager = userManager;
-        _emailSender = emailSender;
+        _accountEmails = accountEmails;
         _mailSender = mailSender;
         _accountUrls = accountUrls;
     }
 
     /// <inheritdoc/>
-    public async Task<bool> SendAsync(FinanceTrackerUser user)
+    public async Task<bool> SendAsync(FinanceTrackerUser user, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(user);
         if (!_mailSender.IsAvailable || string.IsNullOrWhiteSpace(user.Email)
@@ -52,7 +53,8 @@ public sealed class EmailConfirmation : IEmailConfirmation
             ["code"] = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code))
         });
 
-        await _emailSender.SendConfirmationLinkAsync(user, user.Email, link.AbsoluteUri);
+        // Straight to the mail server rather than through Identity's email sender, which can't be cancelled
+        await _mailSender.SendAsync(await _accountEmails.ConfirmEmailAsync(user.Email, link), cancellationToken);
         return true;
     }
 }

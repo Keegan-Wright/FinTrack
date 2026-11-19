@@ -242,7 +242,7 @@ public sealed class OpenBankingSyncService : ServiceBase<OpenBankingSyncService>
     /// <param name="syncFlags">What to fetch.</param>
     /// <param name="now">The time now, in UTC.</param>
     /// <param name="tally">Counts what the sync does.</param>
-    /// <param name="cancellationToken">Stops the sync.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task SyncCardsAsync(FinanceTrackerContext context, BankConnection connection,
         Dictionary<string, BankAccount> accounts, Dictionary<Guid, DateTime> lastTransactionSync, string authToken,
         SyncTypes syncFlags, DateTime now, ConnectionSyncTally tally, CancellationToken cancellationToken)

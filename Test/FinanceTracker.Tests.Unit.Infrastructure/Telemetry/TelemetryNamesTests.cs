@@ -64,6 +64,7 @@ public class TelemetryNamesTests
     [Arguments(FinTrackMetrics.OldestSyncAgeName, "fintrack.sync.oldest_age")]
     [Arguments(FinTrackMetrics.TrueLayerThrottleWaitName, "fintrack.truelayer.throttle.wait")]
     [Arguments(FinTrackMetrics.SingleSignOnFailuresName, "fintrack.sso.failures")]
+    [Arguments(FinTrackMetrics.AuthenticatorCodesReusedName, "fintrack.authenticator.codes_reused")]
     [Arguments(FinTrackMetrics.RulesChangedName, "fintrack.rules.transactions_changed")]
     [Arguments(FinTrackMetrics.TransferDecisionsName, "fintrack.transfers.decisions")]
     [Arguments(FinTrackMetrics.BillChangesName, "fintrack.bills.changes")]
@@ -95,7 +96,7 @@ public class TelemetryNamesTests
         using (Assert.Multiple())
         {
             await Assert.That(tags).IsEqualTo(41);
-            await Assert.That(instruments).IsEqualTo(16);
+            await Assert.That(instruments).IsEqualTo(17);
         }
     }
 }

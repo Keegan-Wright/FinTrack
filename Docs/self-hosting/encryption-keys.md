@@ -5,13 +5,22 @@ FinTrack encrypts most of what it stores, such as amounts, descriptions, names, 
 - Values are encrypted with AES-256-GCM, with a random nonce per value.
 - Encrypted values that need searching, such as a transaction's id at the bank, also get a blind index, an
   HMAC-SHA256 of the value.
-- The encryption and blind index keys are derived from your key with HKDF, so they're never the same.
+- The encryption and blind index keys are derived from your key with HKDF-SHA256, so they're never the same and
+  your key itself is never used directly.
 
 The keys live in your `.env` file, not the database.
 
 > [!WARNING]
 > Back up your keys somewhere away from the server, such as a password manager. Without them your data can't be read,
 > even from a database backup.
+
+## Passwords and sign in
+
+- Passwords are never stored, only a PBKDF2-HMAC-SHA512 hash with 210,000 rounds. A hash made with fewer rounds is
+  remade the next time its owner signs in.
+- Sign-in cookies, and the links in confirmation and reset emails, are protected by ASP.NET Data Protection with
+  AES-256-GCM. Its keys are kept in the database, encrypted with your `FINTRACK_ENCRYPTION_KEYS` key like the rest
+  of your data, and rotating your key re-encrypts them too.
 
 ## Making a key
 

@@ -1,0 +1,125 @@
+@page "/Account/LoginWithRecoveryCode"
+@* The second step of a password sign in with two-factor sign in on, for someone without their authenticator app.
+   Each recovery code works once, so it warns when few are left. *@
+@using System.ComponentModel.DataAnnotations
+@using FinanceTracker.Domain.Identity
+@using Microsoft.AspNetCore.Identity
+
+@inject SignInManager<FinanceTrackerUser> SignInManager
+@inject IdentityRedirectManager RedirectManager
+@inject SignInMethods SignInMethods
+@inject ILogger<LoginWithRecoveryCode> Logger
+
+<PageTitle>FinTrack - Sign in with a recovery code</PageTitle>
+
+@if (_codesLeft is { } left)
+{
+    <AuthMessage Icon="@Icons.Material.Outlined.Warning" IconColor="Color.Warning" Title="Recovery codes running out">
+        You have @left recovery @(left == 1 ? "code" : "codes") left. Make new ones under Your profile, or reset your
+        authenticator if you've lost your phone.
+        <div class="mt-4">
+            <MudLink Href="@(ReturnUrl ?? "")">Carry on</MudLink>
+        </div>
+    </AuthMessage>
+}
+else
+{
+    <AuthHeading Title="Sign in with a recovery code" Subtitle="Each code works once"/>
+
+    @if (_errorMessage is not null)
+    {
+        <MudAlert Severity="MudBlazor.Severity.Error" Variant="Variant.Text" Dense="true"
+                  Class="mb-4">@_errorMessage</MudAlert>
+    }
+
+    <EditForm Model="Input" FormName="login-with-recovery-code" OnValidSubmit="OnValidSubmitAsync" method="post">
+        <DataAnnotationsValidator/>
+        <AuthFields>
+            <MudStaticTextField @bind-Value="Input.RecoveryCode" For="@(() => Input.RecoveryCode)"
+                                Label="Recovery code" Variant="Variant.Outlined"
+                                UserAttributes="@(new Dictionary<string, object?> { { "autocomplete", "off" }, { "aria-required", "true" } })"/>
+
+            <MudStaticButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Size="Size.Large"
+                             FormAction="FormAction.Submit">Sign in
+            </MudStaticButton>
+        </AuthFields>
+    </EditForm>
+}
+
+@code {
+    /// <summary>
+    /// How few codes left gets a warning.
+    /// </summary>
+    private const int FewCodesLeft = 3;
+
+    private string? _errorMessage;
+    private int? _codesLeft;
+    private FinanceTrackerUser? _user;
+
+    /// <summary>
+    /// The posted form.
+    /// </summary>
+    [SupplyParameterFromForm] private InputModel Input { get; set; } = default!;
+
+    /// <summary>
+    /// Where to go once signed in.
+    /// </summary>
+    [SupplyParameterFromQuery] private string? ReturnUrl { get; set; }
+
+    /// <inheritdoc/>
+    protected override async Task OnInitializedAsync()
+    {
+        // Form posts bind the property before initialisation, so only create a model when nothing was posted
+        Input ??= new();
+
+        // Without the first step, or once it's run out, they start again
+        _user = await SignInManager.GetTwoFactorAuthenticationUserAsync();
+        if (!SignInMethods.Password || _user is null)
+        {
+            RedirectManager.RedirectTo("Account/Login");
+        }
+    }
+
+    /// <summary>
+    /// Signs in with the code, which then stops working. Wrong codes count towards locking the account.
+    /// </summary>
+    private async Task OnValidSubmitAsync()
+    {
+        string code = Input.RecoveryCode.Replace(" ", string.Empty, StringComparison.Ordinal);
+        SignInResult result = await SignInManager.TwoFactorRecoveryCodeSignInAsync(code);
+        if (result.IsLockedOut)
+        {
+            Logger.LogUserLockedOut();
+            RedirectManager.RedirectTo(Lockout.PathFor(_user));
+            return;
+        }
+
+        if (!result.Succeeded)
+        {
+            _errorMessage = "That recovery code isn't right, or has been used.";
+            return;
+        }
+
+        Logger.LogUserLoggedIn();
+        int left = await SignInManager.UserManager.CountRecoveryCodesAsync(_user!);
+        if (left > FewCodesLeft)
+        {
+            RedirectManager.RedirectTo(ReturnUrl);
+            return;
+        }
+
+        _codesLeft = left;
+    }
+
+    /// <summary>
+    /// The recovery code.
+    /// </summary>
+    private sealed class InputModel
+    {
+        /// <summary>
+        /// One of the codes they were given when they turned two-factor sign in on.
+        /// </summary>
+        [Required(ErrorMessage = "Enter a recovery code")]
+        public string RecoveryCode { get; set; } = string.Empty;
+    }
+}

@@ -69,7 +69,7 @@ public static class AuthenticationExtensions
                 .AddRoles<FinanceTrackerRole>()
                 .AddEntityFrameworkStores<FinanceTrackerContext>()
                 .AddSignInManager()
-                .AddDefaultTokenProviders();
+                .AddFinTrackSecurity(builder.Configuration.GetPublicAddress());
 
             builder.Services.AddFinTrackAccountServices();
             builder.Services.AddScoped<AdminProvisioner>();
@@ -295,7 +295,8 @@ public static class AuthenticationExtensions
     {
         /// <summary>
         /// What the account pages, <see cref="IProfileService"/> and <see cref="IUsersService"/> use: Identity's
-        /// emails, the links they carry, confirming an email and resetting a password.
+        /// emails, the links they carry, confirming an email, resetting a password, and the emails saying sign in
+        /// changed.
         /// </summary>
         public IServiceCollection AddFinTrackAccountServices()
         {
@@ -305,8 +306,10 @@ public static class AuthenticationExtensions
             services.AddScoped<IEmailConfirmation, EmailConfirmation>();
             services.AddScoped<IEmailChange, EmailChange>();
             services.AddScoped<IProfileService, ProfileService>();
+            services.AddScoped<IPasskeyService, PasskeyService>();
             services.AddScoped<IPasswordReset, PasswordReset>();
             services.AddScoped<IUsersService, UsersService>();
+            services.AddScoped<ISecurityEmails, SecurityEmails>();
             return services;
         }
     }

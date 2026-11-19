@@ -47,11 +47,9 @@ public static class SavingsGoalEndpoints
                 .Validated<SaveSavingsGoal>()
                 .ConflictWhenNameTaken();
 
-            goals.MapDelete("{id:guid}", async Task<Results<NoContent, NotFound>> (Guid id,
-                    ISavingsGoalsService service, CancellationToken cancellationToken) =>
-                await service.DeleteSavingsGoalAsync(id, cancellationToken)
-                    ? TypedResults.NoContent()
-                    : TypedResults.NotFound());
+            goals.MapDelete("{id:guid}", (Guid id, ISavingsGoalsService service,
+                    CancellationToken cancellationToken) => service.DeleteSavingsGoalAsync(id, cancellationToken))
+                .NotFoundWhenNone();
 
             return api;
         }

@@ -52,7 +52,7 @@ public sealed class PayPeriodsApiClient : IPayPeriodsService
     /// Puts to <paramref name="path"/> and reads back the user's pay.
     /// </summary>
     /// <param name="path">The path under the pay periods route.</param>
-    /// <param name="cancellationToken">Stops the call.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
     private async Task<YourPay> PutAsync(string path, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response =
