@@ -31,6 +31,7 @@ internal static class BudgetMapper
             TagNames = sharing?.TagNames ?? [],
             TagChoices = sharing?.TagChoices ?? [],
             AccountIds = budget.AccountIds.ToList(),
+            CountsTransfersOut = budget.CountsTransfersOut,
             AccountNames = sharing?.AccountNames ?? [],
             AccountChoices = sharing?.AccountChoices ?? []
         };

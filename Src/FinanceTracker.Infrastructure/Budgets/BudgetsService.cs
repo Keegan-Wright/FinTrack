@@ -163,6 +163,7 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
 
         DomainBudget newBudget = new(UserId, budget.Name, budget.TagIds, budget.AccountIds, budget.MonthlyLimit,
             currentMonth, BudgetMapper.ToDomain(budget.RolloverMode));
+        newBudget.CountTransfersOut(budget.CountsTransfersOut && budget.AccountIds.Count > 0);
 
         context.Budgets.Add(newBudget);
         await context.SaveChangesAsync(cancellationToken);
@@ -188,6 +189,7 @@ public class BudgetsService : ServiceBase<BudgetsService>, IBudgetsService
         BudgetMonth currentMonth = await CurrentMonthAsync(context, cancellationToken);
         updated.Rename(budget.Name);
         updated.ReplaceCoverage(budget.TagIds, choices, budget.AccountIds, accountChoices);
+        updated.CountTransfersOut(budget.CountsTransfersOut && budget.AccountIds.Count > 0);
         updated.ChangeRolloverMode(BudgetMapper.ToDomain(budget.RolloverMode));
         updated.ChangeLimit(budget.MonthlyLimit, currentMonth);
 

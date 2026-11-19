@@ -14,6 +14,8 @@ public class BudgetDialogTests : ComponentTestBase
 {
     private static readonly Guid Shopping = Guid.NewGuid();
     private static readonly Dictionary<Guid, string> TagNames = new() { [Shopping] = "Shopping" };
+    private static readonly Guid Joint = Guid.NewGuid();
+    private static readonly Dictionary<Guid, string> AccountNames = new() { [Joint] = "Joint" };
 
     private IRenderedComponent<MudDialogProvider> _dialogs = null!;
     private IRenderedComponent<MudPopoverProvider> _popovers = null!;
@@ -27,7 +29,7 @@ public class BudgetDialogTests : ComponentTestBase
         // Arrange
         await OpenAsync(null);
         Field("Name").Input("Groceries");
-        await ChooseAsync("Tags it covers", "Shopping");
+        await ChooseAsync("Tags", "Shopping");
         Field("Monthly limit").Input("400");
 
         // Act
@@ -46,7 +48,7 @@ public class BudgetDialogTests : ComponentTestBase
     }
 
     [Test]
-    public async Task Save_NoTag_StaysOpenAndSaysSo()
+    public async Task Save_NoTagOrAccount_StaysOpenAndSaysSo()
     {
         // Arrange
         await OpenAsync(null);
@@ -58,7 +60,7 @@ public class BudgetDialogTests : ComponentTestBase
         // Assert
         using (Assert.Multiple())
         {
-            await Assert.That(_dialogs.Markup).Contains("Choose at least one tag");
+            await Assert.That(_dialogs.Markup).Contains("Choose at least one tag or account");
             await Assert.That(_dialog.Result.IsCompleted).IsFalse();
         }
     }
@@ -110,6 +112,72 @@ public class BudgetDialogTests : ComponentTestBase
         await Assert.That(((SaveBudget)result!.Data!).TagIds).IsEquivalentTo([Shopping]);
     }
 
+    [Test]
+    public async Task Save_AnAccountWithoutTags_ReturnsTheBudget()
+    {
+        // Arrange
+        await OpenAsync(null);
+        Field("Name").Input("Joint account");
+        await ChooseAsync("Accounts", "Joint");
+        Field("Monthly limit").Input("1500");
+
+        // Act
+        Button("OK").Click();
+        DialogResult? result = await _dialog.Result.WaitAsync(TestTimeouts.Wait);
+
+        // Assert
+        SaveBudget saved = (SaveBudget)result!.Data!;
+        using (Assert.Multiple())
+        {
+            await Assert.That(saved.TagIds).IsEmpty();
+            await Assert.That(saved.AccountIds).IsEquivalentTo([Joint]);
+        }
+    }
+
+    [Test]
+    public async Task Save_AnAccountCountingMoneyMovedOut_ReturnsIt()
+    {
+        // Arrange, the option only shows once an account is chosen
+        await OpenAsync(null);
+        Field("Name").Input("Joint account");
+        bool shownBefore = _dialogs.Markup.Contains("Count money moved out to other accounts");
+        await ChooseAsync("Accounts", "Joint");
+        Field("Monthly limit").Input("1500");
+        await _dialogs.InvokeAsync(() => _dialogs.Find(".ft-budget-form__transfers input[type=checkbox]").Change(true));
+
+        // Act
+        Button("OK").Click();
+        DialogResult? result = await _dialog.Result.WaitAsync(TestTimeouts.Wait);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(shownBefore).IsFalse();
+            await Assert.That(((SaveBudget)result!.Data!).CountsTransfersOut).IsTrue();
+        }
+    }
+
+    [Test]
+    public async Task Edit_WithAnAccountSinceRemoved_LeavesItOutSoItSaves()
+    {
+        // Arrange
+        await OpenAsync(new Budget
+        {
+            Id = Guid.NewGuid(),
+            Name = "Joint account",
+            AccountIds = [Joint, Guid.NewGuid()],
+            MonthlyLimit = 1500m,
+            RolloverMode = RolloverMode.None
+        });
+
+        // Act, a dialog that didn't close would leave the result waiting
+        Button("OK").Click();
+        DialogResult? result = await _dialog.Result.WaitAsync(TestTimeouts.Wait);
+
+        // Assert
+        await Assert.That(((SaveBudget)result!.Data!).AccountIds).IsEquivalentTo([Joint]);
+    }
+
     private async Task OpenAsync(Budget? budget)
     {
         _popovers = Render<MudPopoverProvider>();
@@ -118,7 +186,8 @@ public class BudgetDialogTests : ComponentTestBase
         DialogParameters<BudgetDialog> parameters = new()
         {
             { x => x.Budget, budget },
-            { x => x.TagNames, TagNames }
+            { x => x.TagNames, TagNames },
+            { x => x.AccountNames, AccountNames }
         };
 
         _dialog = await _dialogs.InvokeAsync(() => dialogService.ShowAsync<BudgetDialog>(null, parameters));

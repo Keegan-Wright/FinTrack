@@ -456,6 +456,55 @@ public class BudgetCalculatorTests
     }
 
     [Test]
+    public async Task ForMonth_CountingTransfersOut_CountsMoneyMovedToOtherAccountsOnly()
+    {
+        // Arrange, the joint account pays the main account's bills by moving money to it, and moves some into savings
+        // it also covers
+        BankAccount savings = new(UserId, Guid.NewGuid(), "acc-3", "SAVINGS", "Savings", "GBP");
+        Budget budget = new(UserId, "Joint account", [], [Joint.Id, savings.Id], 1500m, March, RolloverMode.None);
+        budget.CountTransfersOut(true);
+        BankTransaction toMain = MovedTo(Account, -200m, new DateTime(2026, 3, 2));
+        BankTransaction toSavings = MovedTo(savings, -300m, new DateTime(2026, 3, 3));
+        BankTransaction toHousehold = OnJoint(-50m, new DateTime(2026, 3, 4));
+        toHousehold.DecideTransfer(TransferInfo.WithHouseholdMember(Guid.NewGuid(), DateTime.UtcNow));
+
+        // Act
+        BudgetMonthResult result = Calculate(budget, [toMain, toSavings, toHousehold], March);
+
+        // Assert
+        await Assert.That(result.Spent).IsEqualTo(250m);
+    }
+
+    [Test]
+    public async Task ForMonth_NotCountingTransfersOut_LeavesThemOut()
+    {
+        // Arrange
+        Budget budget = new(UserId, "Joint account", [], [Joint.Id], 1500m, March, RolloverMode.None);
+
+        // Act
+        BudgetMonthResult result = Calculate(budget, [MovedTo(Account, -200m, new DateTime(2026, 3, 2))], March);
+
+        // Assert
+        await Assert.That(result.Spent).IsEqualTo(0m);
+    }
+
+    [Test]
+    public async Task ForMonth_CountingTransfersOut_LeavesOutMoneyMovedIn()
+    {
+        // Arrange
+        Budget budget = new(UserId, "Joint account", [], [Joint.Id], 1500m, March, RolloverMode.None);
+        budget.CountTransfersOut(true);
+        BankTransaction movedIn = OnJoint(500m, new DateTime(2026, 3, 2));
+        movedIn.DecideTransfer(TransferInfo.Matched(TransferReason.MirrorPair, null, Account.Id, DateTime.UtcNow));
+
+        // Act
+        BudgetMonthResult result = Calculate(budget, [OnJoint(-30m, new DateTime(2026, 3, 3)), movedIn], March);
+
+        // Assert
+        await Assert.That(result.Spent).IsEqualTo(30m);
+    }
+
+    [Test]
     public async Task Unbudgeted_AnAccountWithoutTags_CoversEverythingOnIt()
     {
         // Arrange
@@ -500,6 +549,16 @@ public class BudgetCalculatorTests
 
         // Assert
         await Assert.That(unbudgeted).IsEqualTo(30m);
+    }
+
+    /// <summary>
+    /// Money moved from the joint account to <paramref name="to"/>, matched as a transfer.
+    /// </summary>
+    private static BankTransaction MovedTo(BankAccount to, decimal amount, DateTime occurredAt)
+    {
+        BankTransaction transaction = Import(Joint, amount, occurredAt, false, "TRANSFER", []);
+        transaction.DecideTransfer(TransferInfo.Matched(TransferReason.MirrorPair, null, to.Id, DateTime.UtcNow));
+        return transaction;
     }
 
     private static BankTransaction Split(DateTime occurredAt,

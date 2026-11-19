@@ -1,5 +1,5 @@
-@* A new budget, or an existing one to change its name, the tags it covers, its monthly limit and what carries
-   over. A changed limit applies from this month on. *@
+@* A new budget, or an existing one to change its name, the tags and accounts it covers, its monthly limit and what
+   carries over. A changed limit applies from this month on. *@
 @using System.Globalization
 @using FinanceTracker.Client.Components.Dialogs
 @using FinanceTracker.Client.Extensions
@@ -16,16 +16,52 @@
                           Validation="@(Validator.ValidateValue(_model, nameof(SaveBudget.Name)))"
                           HelperText="e.g. Groceries" Immediate="true"/>
 
-            <MudSelect T="Guid" Label="Tags it covers" MultiSelection="true" @bind-SelectedValues="_tagIds"
-                       MultiSelectionTextFunc="@TagsText" HelperText="Spending with any of these counts">
+            <div class="ft-budget-form__covers">
+                <MudText Typo="Typo.subtitle2">What it covers</MudText>
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                    Tags alone count that spending on any account.
+                </MudText>
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                    Accounts alone count all spending on them, like a joint account.
+                </MudText>
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                    Both count that spending on those accounts only.
+                </MudText>
+            </div>
+
+            <MudSelect T="Guid" Label="Tags" MultiSelection="true" @bind-SelectedValues="_tagIds"
+                       MultiSelectionTextFunc="@(selected => NamesText(selected, TagNames))"
+                       HelperText="Spending with any of these counts">
                 @foreach ((Guid tagId, string tagName) in TagNames.OrderBy(static x => x.Value))
                 {
                     <MudSelectItem T="Guid" Value="@tagId">@tagName</MudSelectItem>
                 }
             </MudSelect>
-            @if (_tagsError is not null)
+
+            <MudSelect T="Guid" Label="Accounts" MultiSelection="true" @bind-SelectedValues="_accountIds"
+                       MultiSelectionTextFunc="@(selected => NamesText(selected, AccountNames))"
+                       HelperText="Only spending on these counts, none for every account">
+                @foreach ((Guid accountId, string accountName) in AccountNames.OrderBy(static x => x.Value))
+                {
+                    <MudSelectItem T="Guid" Value="@accountId">@accountName</MudSelectItem>
+                }
+            </MudSelect>
+            @if (_coversError is not null)
             {
-                <MudText Typo="Typo.caption" Color="Color.Error">@_tagsError</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Error">@_coversError</MudText>
+            }
+            @if (_accountIds.Count > 0)
+            {
+                <div class="ft-budget-form__transfers">
+                    <MudCheckBox T="bool" @bind-Value="_model.CountsTransfersOut" Color="Color.Primary"
+                                 Label="Count money moved out to other accounts" Dense="true"/>
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                        For an account you can't pay from, so you move money elsewhere first.
+                    </MudText>
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                        Moves between the accounts above never count.
+                    </MudText>
+                </div>
             }
             @if (TagNames.Count == 0)
             {
@@ -69,10 +105,16 @@
     /// </summary>
     [Parameter] [EditorRequired] public required IReadOnlyDictionary<Guid, string> TagNames { get; set; }
 
+    /// <summary>
+    /// The accounts it can cover by id, any the user sees.
+    /// </summary>
+    [Parameter] [EditorRequired] public required IReadOnlyDictionary<Guid, string> AccountNames { get; set; }
+
     private MudForm _form = null!;
     private SaveBudget _model = new();
     private IReadOnlyCollection<Guid> _tagIds = [];
-    private string? _tagsError;
+    private IReadOnlyCollection<Guid> _accountIds = [];
+    private string? _coversError;
 
     /// <summary>
     /// The current culture's currency symbol, shown on amount fields.
@@ -94,29 +136,35 @@
             return;
         }
 
-        // A tag deleted before budgets let go of them would otherwise be sent back and refused
+        // A tag deleted before budgets let go of them, or an account that's gone, would otherwise be sent back and
+        // refused
         List<Guid> tagIds = Budget.TagIds.Where(TagNames.ContainsKey).ToList();
+        List<Guid> accountIds = Budget.AccountIds.Where(AccountNames.ContainsKey).ToList();
 
         _model = new SaveBudget
         {
             Name = Budget.Name,
             TagIds = tagIds,
+            AccountIds = accountIds,
+            CountsTransfersOut = Budget.CountsTransfersOut,
             MonthlyLimit = Budget.MonthlyLimit,
             RolloverMode = Budget.RolloverMode
         };
         _tagIds = tagIds;
+        _accountIds = accountIds;
     }
 
     /// <summary>
-    /// The chosen tags' names, for the picker's text.
+    /// The chosen tags or accounts names, for a picker's text.
     /// </summary>
-    /// <param name="selected">The chosen tags' ids.</param>
-    private string TagsText(IReadOnlyList<string> selected)
+    /// <param name="selected">The chosen ids.</param>
+    /// <param name="choices">The names by id.</param>
+    private static string NamesText(IReadOnlyList<string> selected, IReadOnlyDictionary<Guid, string> choices)
     {
         List<string> names = [];
         foreach (string value in selected)
         {
-            if (Guid.TryParse(value, out Guid id) && TagNames.TryGetValue(id, out string? name))
+            if (Guid.TryParse(value, out Guid id) && choices.TryGetValue(id, out string? name))
             {
                 names.Add(name);
             }
@@ -131,11 +179,19 @@
     private async Task<SaveBudget?> BuildResponseModel()
     {
         _model.TagIds = _tagIds.ToList();
+        _model.AccountIds = _accountIds.ToList();
+
+        // Only an account budget counts what's moved out, the box is hidden without one
+        if (_model.AccountIds.Count == 0)
+        {
+            _model.CountsTransfersOut = false;
+        }
 
         await _form.ValidateAsync();
         ValidationResult result = await Validator.ValidateAsync(_model);
-        _tagsError = result.Errors
-            .FirstOrDefault(static x => x.PropertyName == nameof(SaveBudget.TagIds))?.ErrorMessage;
+        _coversError = result.Errors
+            .FirstOrDefault(static x => x.PropertyName is nameof(SaveBudget.TagIds) or nameof(SaveBudget.AccountIds))
+            ?.ErrorMessage;
 
         if (!_form.IsValid || !result.IsValid)
         {

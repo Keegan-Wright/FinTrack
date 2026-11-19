@@ -1,10 +1,8 @@
 /* Shared primitives used across many components. */
 
-/* Scrollbars follow the theme. The scrollbar's room is always kept, so the page doesn't change width as content
-   loads in and the scrollbar comes and goes. A chart resized while it draws in can be left half drawn */
+/* Scrollbars follow the theme */
 html {
     scrollbar-color: var(--mud-palette-lines-inputs) transparent;
-    scrollbar-gutter: stable;
 }
 
 .h-100 {

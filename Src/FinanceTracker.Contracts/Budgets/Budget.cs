@@ -33,6 +33,12 @@ public class Budget
     public List<Guid> AccountIds { get; init; } = [];
 
     /// <summary>
+    /// Whether money moved out of its accounts to others counts as spent. Moves between its own accounts never count.
+    /// </summary>
+    [Description("Whether money moved out of the budget's accounts to others counts as spent")]
+    public bool CountsTransfersOut { get; init; }
+
+    /// <summary>
     /// The names of its accounts, by id. One missing has been removed, or is no longer shared with its owner.
     /// </summary>
     [Description("Names of the budget's accounts, by id, missing for one that's been removed")]

@@ -52,7 +52,7 @@ public class BudgetsCardTests : ComponentTestBase
         using (Assert.Multiple())
         {
             await Assert.That(cut.Instance.Nearest[0].Name).IsEqualTo("Untagged");
-            await Assert.That(cut.Markup).Contains("1 budget needs a tag to track spending");
+            await Assert.That(cut.Markup).Contains("1 budget needs a tag or account to track spending");
             await Assert.That(cut.Markup).Contains("Its tags were deleted");
         }
     }

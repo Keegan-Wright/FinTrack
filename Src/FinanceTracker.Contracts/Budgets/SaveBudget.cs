@@ -27,6 +27,13 @@ public class SaveBudget
     public List<Guid> AccountIds { get; set; } = [];
 
     /// <summary>
+    /// Whether money moved out of its accounts to others counts as spent, for an account the user pays from by moving
+    /// money elsewhere first. Moves between its own accounts never count. Only with <see cref="AccountIds"/>.
+    /// </summary>
+    [Description("Whether money moved out of the budget's accounts to others counts as spent, only with accounts")]
+    public bool CountsTransfersOut { get; set; }
+
+    /// <summary>
     /// How much can be spent each month, from the current month on.
     /// </summary>
     [Description("How much can be spent each month, from the current month on")]

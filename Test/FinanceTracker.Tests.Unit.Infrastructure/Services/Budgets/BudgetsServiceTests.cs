@@ -1,6 +1,7 @@
 using FinanceTracker.Contracts.Budgets;
 using FinanceTracker.Domain.Budgeting;
 using FinanceTracker.Domain.OpenBanking.Transactions;
+using FinanceTracker.Domain.OpenBanking.Transfers;
 using FinanceTracker.Infrastructure.Budgets;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Tests.Unit.Shared;
@@ -290,6 +291,55 @@ public class BudgetsServiceTests : InfrastructureTestBase
             await Assert.That(overview.Budgets.Single().Spent).IsEqualTo(34.5m);
             await Assert.That(overview.Unbudgeted).IsEqualTo(0m);
         }
+    }
+
+    [Test]
+    public async Task AddBudgetAsync_CountingTransfersOut_SavesItAndCountsMoneyMovedOut()
+    {
+        // Arrange, £200 moved from the main account to another of theirs, matched as a transfer
+        await SeedAsync(Username)
+            .Do(s => s.BankAccountScenario.WithAccount("spending", $"{Username}-bank"))
+            .Do(s => s.TransactionScenario.WithTransaction("move", "main",
+                Spend(-200m, new DateTime(2026, 3, 5, 12, 0, 0))));
+        await using (FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken))
+        {
+            Guid moveId = Scenario.TransactionMappings["move"];
+            BankTransaction move = await context.BankTransactions.SingleAsync(x => x.Id == moveId, CancellationToken);
+            move.DecideTransfer(TransferInfo.Matched(TransferReason.OwnAccountReference, null,
+                Scenario.AccountMappings["spending"], Now));
+            await context.SaveChangesAsync(CancellationToken);
+        }
+
+        SaveBudget budget = MainAccount(1500m);
+        budget.CountsTransfersOut = true;
+        BudgetsService subject = BuildSubject(Username);
+
+        // Act
+        Budget added = await subject.AddBudgetAsync(budget, CancellationToken);
+        BudgetMonthOverview overview = await subject.GetMonthAsync(2026, 3, CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(added.CountsTransfersOut).IsTrue();
+            await Assert.That(overview.Budgets.Single().Spent).IsEqualTo(200m);
+            await Assert.That(overview.Unbudgeted).IsEqualTo(0m);
+        }
+    }
+
+    [Test]
+    public async Task AddBudgetAsync_CountingTransfersOutWithoutAccounts_LeavesItOff()
+    {
+        // Arrange
+        await SeedAsync(Username);
+        SaveBudget budget = Groceries(400m);
+        budget.CountsTransfersOut = true;
+
+        // Act
+        Budget added = await BuildSubject(Username).AddBudgetAsync(budget, CancellationToken);
+
+        // Assert
+        await Assert.That(added.CountsTransfersOut).IsFalse();
     }
 
     [Test]

@@ -35,6 +35,8 @@ public class BudgetsPageTests : ComponentTestBase
         Services.AddSingleton<TimeProvider>(new FixedTimeProvider(Now));
 
         _budgetsService.GetBudgetsAsync(Arg.Any<CancellationToken>()).Returns(AsyncEnumerable.Empty<Budget>());
+        _budgetsService.GetAccountsAsync(Arg.Any<CancellationToken>())
+            .Returns(AsyncEnumerable.Empty<BudgetAccount>());
         _budgetsService.GetMonthAsync(2026, 3, Arg.Any<CancellationToken>()).Returns(Overview(3, current: true));
         _budgetsService.GetMonthAsync(2026, 2, Arg.Any<CancellationToken>()).Returns(Overview(2, current: false));
     }

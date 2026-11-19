@@ -60,6 +60,12 @@ public sealed class Budget : AggregateRoot
     public IReadOnlyCollection<Guid> AccountIds => _accountIds.AsReadOnly();
 
     /// <summary>
+    /// Whether money moved out of its accounts to others counts as spent, for an account the user can't pay from, so
+    /// moves money elsewhere first. Moves between its own accounts never count. Only with <see cref="AccountIds"/>.
+    /// </summary>
+    public bool CountsTransfersOut { get; private set; }
+
+    /// <summary>
     /// Its limits oldest first, each applying from its month until the next.
     /// </summary>
     public IReadOnlyList<BudgetLimit> Limits => _limits.AsReadOnly();
@@ -185,6 +191,12 @@ public sealed class Budget : AggregateRoot
     }
 
     /// <summary>
+    /// Counts money moved out of its accounts to others as spent, or stops, see <see cref="CountsTransfersOut"/>.
+    /// </summary>
+    /// <param name="counts">Whether to count it.</param>
+    public void CountTransfersOut(bool counts) => CountsTransfersOut = counts;
+
+    /// <summary>
     /// Changes what happens to what's left or overspent at the end of a month.
     /// </summary>
     /// <param name="rolloverMode">The new mode.</param>
@@ -233,8 +245,8 @@ public sealed class Budget : AggregateRoot
 
     /// <summary>
     /// Whether <paramref name="transaction"/> counts towards it: on one of its accounts, or any when it has none, and
-    /// carrying one of its tags, or any spending when it has none. Transfers never count, see
-    /// <see cref="BankTransaction.CountsAsIncomeOrSpending"/>.
+    /// carrying one of its tags, or any spending when it has none. Transfers don't count, see
+    /// <see cref="BankTransaction.CountsAsIncomeOrSpending"/>, unless it <see cref="CountsTransfersOut"/>.
     /// </summary>
     /// <param name="transaction">The transaction to check.</param>
     public bool Covers(BankTransaction transaction)
@@ -254,12 +266,17 @@ public sealed class Budget : AggregateRoot
     {
         ArgumentNullException.ThrowIfNull(transaction);
 
-        if (CoversNothing || !transaction.CountsAsIncomeOrSpending)
+        if (CoversNothing)
         {
             return false;
         }
 
         if (_accountIds.Count > 0 && !_accountIds.Contains(countsOnAccountId))
+        {
+            return false;
+        }
+
+        if (!transaction.CountsAsIncomeOrSpending && !IsTransferOutItCounts(transaction))
         {
             return false;
         }
@@ -270,6 +287,28 @@ public sealed class Budget : AggregateRoot
         }
 
         return transaction.CustomClassificationIds.Any(_tagIds.Contains);
+    }
+
+    /// <summary>
+    /// Whether <paramref name="transaction"/>, a transfer, is money moved out to an account it doesn't cover, and it
+    /// <see cref="CountsTransfersOut"/>.
+    /// </summary>
+    /// <param name="transaction">A transfer on one of its accounts.</param>
+    private bool IsTransferOutItCounts(BankTransaction transaction)
+    {
+        if (!CountsTransfersOut || _accountIds.Count == 0 || transaction.Amount >= 0)
+        {
+            return false;
+        }
+
+        // Moved to a household member, or marked by a rule, with no account to say where it went
+        Guid? partnerAccountId = transaction.Transfer?.PartnerAccountId;
+        if (partnerAccountId is null)
+        {
+            return true;
+        }
+
+        return !_accountIds.Contains(partnerAccountId.Value);
     }
 
     /// <summary>
