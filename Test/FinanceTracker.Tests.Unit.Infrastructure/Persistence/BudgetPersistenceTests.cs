@@ -96,6 +96,31 @@ public class BudgetPersistenceTests : InfrastructureTestBase
         }
     }
 
+    [Test]
+    public async Task Budget_Accounts_AreSavedAndMoved()
+    {
+        // Arrange
+        Guid joint = Guid.CreateVersion7();
+        Guid merged = Guid.CreateVersion7();
+        await Scenario.Do(s => s.UserScenario.WithUser(Username));
+        await SaveAsync(new Budget(Scenario.UserMappings[Username], "Joint", [], [joint, merged], 1500m, January,
+            RolloverMode.None));
+
+        // Act
+        await using (FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken))
+        {
+            Budget tracked = await context.Budgets.SingleAsync(CancellationToken);
+            tracked.RemoveAccount(merged);
+            await context.SaveChangesAsync(CancellationToken);
+        }
+
+        // Assert
+        await using FinanceTrackerContext verificationContext =
+            await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        Budget loaded = await verificationContext.Budgets.SingleAsync(CancellationToken);
+        await Assert.That(loaded.AccountIds).IsEquivalentTo([joint]);
+    }
+
     private async Task SaveAsync(Budget budget)
     {
         await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);

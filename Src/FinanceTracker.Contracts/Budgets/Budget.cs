@@ -3,7 +3,7 @@ using System.ComponentModel;
 namespace FinanceTracker.Contracts.Budgets;
 
 /// <summary>
-/// One of the user's budgets, a monthly limit on what their tags cover.
+/// One of the user's budgets, a monthly limit on what its tags, accounts or both cover.
 /// </summary>
 public class Budget
 {
@@ -20,10 +20,23 @@ public class Budget
     public required string Name { get; init; }
 
     /// <summary>
-    /// The user's tags it covers, a transaction with any of them counts towards it.
+    /// The user's tags it covers, a transaction with any of them counts towards it. None for all spending on its
+    /// <see cref="AccountIds"/>.
     /// </summary>
-    [Description("The tags the budget covers")]
+    [Description("The tags the budget covers, none for all spending on its accounts")]
     public List<Guid> TagIds { get; init; } = [];
+
+    /// <summary>
+    /// The accounts it covers, only transactions on them count. None for every account.
+    /// </summary>
+    [Description("The accounts the budget covers, none for every account")]
+    public List<Guid> AccountIds { get; init; } = [];
+
+    /// <summary>
+    /// The names of its accounts, by id. One missing has been removed, or is no longer shared with its owner.
+    /// </summary>
+    [Description("Names of the budget's accounts, by id, missing for one that's been removed")]
+    public Dictionary<Guid, string> AccountNames { get; init; } = [];
 
     /// <summary>
     /// What it carries from one month into the next.
@@ -74,4 +87,11 @@ public class Budget
     /// </summary>
     [Description("The tags a shared budget the user can edit can cover, by id")]
     public Dictionary<Guid, string> TagChoices { get; init; } = [];
+
+    /// <summary>
+    /// For one someone else shares with changes allowed, the accounts it can cover, those both its owner and the user
+    /// see, and those it already covers, by id.
+    /// </summary>
+    [Description("The accounts a shared budget the user can edit can cover, by id")]
+    public Dictionary<Guid, string> AccountChoices { get; init; } = [];
 }

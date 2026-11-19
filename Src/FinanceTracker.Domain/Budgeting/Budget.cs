@@ -240,8 +240,26 @@ public sealed class Budget : AggregateRoot
     public bool Covers(BankTransaction transaction)
     {
         ArgumentNullException.ThrowIfNull(transaction);
+        return Covers(transaction, transaction.AccountId);
+    }
 
-        if (CoversNothing || !transaction.CountsAsIncomeOrSpending || !IsOnItsAccounts(transaction))
+    /// <summary>
+    /// <see cref="Covers(BankTransaction)"/>, with <paramref name="transaction"/> counting as on
+    /// <paramref name="countsOnAccountId"/>. A merged joint account's shown copy, when it's on the hidden copy and fills
+    /// a gap in the shown one, see <see cref="Sharing.JointAccount"/>.
+    /// </summary>
+    /// <param name="transaction">The transaction to check.</param>
+    /// <param name="countsOnAccountId">The account it counts as being on.</param>
+    public bool Covers(BankTransaction transaction, Guid countsOnAccountId)
+    {
+        ArgumentNullException.ThrowIfNull(transaction);
+
+        if (CoversNothing || !transaction.CountsAsIncomeOrSpending)
+        {
+            return false;
+        }
+
+        if (_accountIds.Count > 0 && !_accountIds.Contains(countsOnAccountId))
         {
             return false;
         }
@@ -259,12 +277,24 @@ public sealed class Budget : AggregateRoot
     /// carrying them when it's split, see <see cref="BankTransaction.AmountUnder"/>. Without, all of it, but money in
     /// only when it's a refund, so salary paid into a joint account doesn't cancel what was spent from it.
     /// </summary>
-    /// <param name="transaction">A transaction it <see cref="Covers"/>.</param>
+    /// <param name="transaction">The transaction to check.</param>
     public decimal AmountOf(BankTransaction transaction)
     {
         ArgumentNullException.ThrowIfNull(transaction);
+        return AmountOf(transaction, transaction.AccountId);
+    }
 
-        if (!Covers(transaction))
+    /// <summary>
+    /// <see cref="AmountOf(BankTransaction)"/>, with <paramref name="transaction"/> counting as on
+    /// <paramref name="countsOnAccountId"/>, see <see cref="Covers(BankTransaction, Guid)"/>.
+    /// </summary>
+    /// <param name="transaction">The transaction to check.</param>
+    /// <param name="countsOnAccountId">The account it counts as being on.</param>
+    public decimal AmountOf(BankTransaction transaction, Guid countsOnAccountId)
+    {
+        ArgumentNullException.ThrowIfNull(transaction);
+
+        if (!Covers(transaction, countsOnAccountId))
         {
             return 0;
         }
@@ -281,11 +311,4 @@ public sealed class Budget : AggregateRoot
 
         return 0;
     }
-
-    /// <summary>
-    /// Whether <paramref name="transaction"/> is on one of its accounts, always when it has none.
-    /// </summary>
-    /// <param name="transaction">The transaction to check.</param>
-    private bool IsOnItsAccounts(BankTransaction transaction) =>
-        _accountIds.Count == 0 || _accountIds.Contains(transaction.AccountId);
 }

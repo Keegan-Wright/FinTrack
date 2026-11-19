@@ -238,6 +238,68 @@ public class PlanningSharingTests : InfrastructureTestBase
             partner.Id, new LinkHouseholdMember { LinkId = Guid.NewGuid() }, CancellationToken));
     }
 
+    [Test]
+    public async Task SamsOwnBudget_OnAlexsJointSharedWithThem_CountsAlexsSpendingThere()
+    {
+        // Arrange
+        Budget budget = await Budgets(Sam).AddBudgetAsync(new SaveBudget
+        {
+            Name = "Joint", AccountIds = [Account("alex-joint")], MonthlyLimit = 1500m
+        }, CancellationToken);
+
+        // Act
+        BudgetStatus status = (await ThisMonthAsync(Sam)).Budgets.Single();
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That((status.Spent, status.IsHousehold)).IsEqualTo((25m, false));
+            await Assert.That(budget.AccountNames[Account("alex-joint")]).IsEqualTo("Joint · Alex Smith's");
+        }
+    }
+
+    [Test]
+    public async Task ASharedBudget_ChangesAllowed_AlexChoosesOnlyAccountsTheyBothSee()
+    {
+        // Arrange, an account only Alex sees, and Sam's budget on an account only Sam sees
+        await Scenario.Do(s => s.BankAccountScenario.WithAccount("alex-private", "alex-bank", Named("Private")));
+        Budget budget = await Budgets(Sam).AddBudgetAsync(new SaveBudget
+        {
+            Name = "Current", AccountIds = [Account("sam-current")], MonthlyLimit = 900m
+        }, CancellationToken);
+        await ShareAsync(SharedItemKind.Budget, budget.Id, ShareMode.AllowChanges);
+
+        // Act
+        Budget asAlex = await Budgets(Alex).GetBudgetAsync(budget.Id, CancellationToken);
+        Budget saved = await Budgets(Alex).UpdateBudgetAsync(budget.Id, new SaveBudget
+        {
+            Name = "Current", AccountIds = [Account("sam-current"), Account("alex-joint")], MonthlyLimit = 900m
+        }, CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(asAlex.AccountChoices.Keys).IsEquivalentTo(
+                [Account("alex-joint"), Account("sam-pot"), Account("sam-current")]);
+            await Assert.That(saved.AccountIds).IsEquivalentTo([Account("sam-current"), Account("alex-joint")]);
+            await Assert.ThrowsAsync<InvalidOperationException>(() => Budgets(Alex).UpdateBudgetAsync(budget.Id,
+                new SaveBudget { Name = "Current", AccountIds = [Account("alex-private")], MonthlyLimit = 900m },
+                CancellationToken));
+        }
+    }
+
+    [Test]
+    public async Task GetAccountsAsync_SamsOwnAndThoseSharedWithThem_ByName()
+    {
+        // Act
+        List<BudgetAccount> accounts = await Budgets(Sam).GetAccountsAsync(CancellationToken)
+            .ToListAsync(CancellationToken);
+
+        // Assert
+        await Assert.That(accounts.Select(static x => x.Name)).IsEquivalentTo(
+            ["Current", "Holiday pot", "Joint · Alex Smith's"], TUnit.Assertions.Enums.CollectionOrdering.Matching);
+    }
+
     private Task<LinkShares> ShareAsync(SharedItemKind kind, Guid id, ShareMode mode) =>
         Sharing(Sam).ChangeItemSharesAsync(_linkId, new ChangeItemShares
         {

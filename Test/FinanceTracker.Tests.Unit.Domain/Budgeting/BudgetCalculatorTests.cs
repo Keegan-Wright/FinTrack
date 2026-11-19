@@ -439,6 +439,23 @@ public class BudgetCalculatorTests
     }
 
     [Test]
+    public async Task ForMonth_AHiddenCopyFillingAGap_CountsAsTheShownJointAccount()
+    {
+        // Arrange, the joint account merged with the main account's copy hidden, which fills a gap in it
+        Budget budget = new(UserId, "Joint account", [], [Joint.Id], 1500m, March, RolloverMode.None);
+        BankTransaction filling = Tagged(-40m, new DateTime(2026, 3, 4));
+        Dictionary<Guid, Guid> shownCopies = new() { [Account.Id] = Joint.Id };
+
+        // Act
+        BudgetMonthResult? withCopies = BudgetCalculator.ForMonth(budget,
+            [OnJoint(-30m, new DateTime(2026, 3, 2)), filling], March, TimeZoneInfo.Utc, MidMarch,
+            PayCalendar.CalendarMonths, shownCopies);
+
+        // Assert
+        await Assert.That(withCopies!.Spent).IsEqualTo(70m);
+    }
+
+    [Test]
     public async Task Unbudgeted_AnAccountWithoutTags_CoversEverythingOnIt()
     {
         // Arrange
