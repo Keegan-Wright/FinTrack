@@ -1,3 +1,4 @@
+using System.Text.Json;
 using FinanceTracker.Contracts.Profile;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Infrastructure;
@@ -76,7 +77,7 @@ public class PasskeyFlowTests : UiTestBase
     }
 
     [Test]
-    public async Task Added_IsStoredWithItsNameAndKeyEncrypted()
+    public async Task Added_IsStoredWithItsNameKeyAndRecordEncrypted()
     {
         // Arrange
         SignedInUser user = await RegisterUserAsync();
@@ -94,7 +95,17 @@ public class PasskeyFlowTests : UiTestBase
                 SELECT "Data"::text AS "Value" FROM "AspNetUserPasskeys" WHERE "UserId" = {user.UserId}
                 """)
             .SingleAsync(CancellationToken);
-        await Assert.That(stored).DoesNotContain(PasskeyName);
+        using JsonDocument data = JsonDocument.Parse(stored);
+        string[] encrypted = ["Name", "PublicKey", "AttestationObject", "ClientDataJson"];
+        using (Assert.Multiple())
+        {
+            await Assert.That(stored).DoesNotContain(PasskeyName);
+            foreach (string field in encrypted)
+            {
+                // Stored as {keyId}:{ciphertext}, as every encrypted column is
+                await Assert.That(data.RootElement.GetProperty(field).GetString()).StartsWith("1:");
+            }
+        }
     }
 
     [Test]
