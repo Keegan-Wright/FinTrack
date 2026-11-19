@@ -8,12 +8,15 @@ page then has a single sign on button alongside email and password.
 Create a client for FinTrack at your provider:
 
 - **Redirect URI** `https://fintrack.example.com/signin-oidc`, using your address.
-- **Scopes** `openid`, `profile` and `email`.
+- **Scopes** `openid`, `profile`, `email` and `groups`.
 - **Flow** authorization code, with PKCE (`S256`).
 - **Client authentication** `client_secret_post`.
 
 Then set `OIDC_AUTHORITY`, `OIDC_CLIENT_ID` and `OIDC_CLIENT_SECRET`. Single sign-on turns on once all three are set.
 The provider needs to be on HTTPS.
+
+FinTrack always asks for the `groups` scope. Authelia refuses the sign in if the client doesn't allow it, so add it
+when upgrading an existing setup.
 
 ## Authelia example
 
@@ -31,7 +34,7 @@ identity_providers:
         pkce_challenge_method: S256
         redirect_uris:
           - 'https://fintrack.example.com/signin-oidc'
-        scopes: [openid, profile, email]
+        scopes: [openid, profile, email, groups]
         response_types: [code]
         grant_types: [authorization_code]
         token_endpoint_auth_method: client_secret_post
@@ -55,7 +58,17 @@ FinTrack won't start with both turned off.
 The first time someone signs in this way, FinTrack links them to the user with the same email, or creates a new user.
 Their email has to be verified by the provider.
 
+## Admins
+
+People in your provider's `admins` group are FinTrack admins.
+
+FinTrack checks the group each time someone signs in this way. Adding or removing someone at the provider takes effect
+at their next sign in, not straight away.
+
+This also applies to someone linked by email who has a password. Their admin access can't be changed from the Users
+page.
+
 ## Troubleshooting
 
 If it fails you're sent back to the sign in page, and the logs say why. It's usually the redirect URI, the client
-authentication method, or an unverified email.
+authentication method, the `groups` scope missing from the client, or an unverified email.
