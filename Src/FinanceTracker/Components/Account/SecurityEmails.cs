@@ -55,6 +55,7 @@ public sealed class SecurityEmails : ISecurityEmails
 
         try
         {
+            // Not the request's token. The change is saved, so the user is told even if they've gone
             await _mailSender.SendAsync(await write(user.Email), CancellationToken.None);
         }
         catch (Exception exception)

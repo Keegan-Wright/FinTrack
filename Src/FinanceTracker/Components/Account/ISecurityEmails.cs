@@ -5,7 +5,9 @@ namespace FinanceTracker.Components.Account;
 
 /// <summary>
 /// Emails the user when how they sign in changes, so a change they didn't make doesn't go unnoticed. Only to a
-/// confirmed email, and never failing the change. One that can't be sent is logged.
+/// confirmed email, and never failing the change. One that can't be sent is logged. There's no cancellation token on
+/// purpose. The change is already saved when it's sent, so it goes even if the request that made it is cancelled.
+/// The mail server's timeout stops it hanging.
 /// </summary>
 public interface ISecurityEmails
 {

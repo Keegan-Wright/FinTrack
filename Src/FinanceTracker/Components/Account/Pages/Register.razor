@@ -102,6 +102,11 @@
     [SupplyParameterFromQuery] private string? ReturnUrl { get; set; }
 
     /// <summary>
+    /// The request, whose <see cref="HttpContext.RequestAborted"/> stops the confirmation email.
+    /// </summary>
+    [CascadingParameter] private HttpContext HttpContext { get; set; } = null!;
+
+    /// <summary>
     /// Creates the user from the posted form, the first one becoming the admin.
     /// </summary>
     /// <param name="editContext">The form's edit context.</param>
@@ -136,15 +141,15 @@
 
     /// <summary>
     /// Emails the link that confirms their email when there's a mail server. A failure only leaves it unconfirmed,
-    /// the app's banner sends another.
+    /// the app's banner sends another. Stops when the request does.
     /// </summary>
     private async Task SendConfirmationAsync(FinanceTrackerUser user)
     {
         try
         {
-            await EmailConfirmation.SendAsync(user);
+            await EmailConfirmation.SendAsync(user, HttpContext.RequestAborted);
         }
-        catch (Exception exception)
+        catch (Exception exception) when (!HttpContext.RequestAborted.IsCancellationRequested)
         {
             Logger.LogConfirmationEmailFailed(exception, user.Id);
         }

@@ -71,7 +71,7 @@ public sealed class ProfileService : IProfileService
 
     /// <inheritdoc/>
     public async Task<bool> SendEmailConfirmationAsync(CancellationToken cancellationToken) =>
-        await _emailConfirmation.SendAsync(await UserAsync());
+        await _emailConfirmation.SendAsync(await UserAsync(), cancellationToken);
 
     /// <inheritdoc/>
     public async Task<ProfileChange?> ChangePasswordAsync(ChangePassword change, CancellationToken cancellationToken)
@@ -105,7 +105,7 @@ public sealed class ProfileService : IProfileService
             return null;
         }
 
-        ProfileChange result = await _emailChange.RequestAsync(user, change.NewEmail);
+        ProfileChange result = await _emailChange.RequestAsync(user, change.NewEmail, cancellationToken);
         if (result is { Succeeded: true, LinkSent: false })
         {
             // Changed straight away, which signs out everywhere else as a password change does
