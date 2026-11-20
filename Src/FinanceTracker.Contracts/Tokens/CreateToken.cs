@@ -16,7 +16,8 @@ public sealed class CreateToken
     public TokenExpiry Expiry { get; set; } = TokenExpiry.NinetyDays;
 
     /// <summary>
-    /// The user's password, as a token reads their data without two-factor sign in or a passkey.
+    /// The user's password, as a token reads their data without two-factor sign in or a passkey. Empty for someone
+    /// who confirms through the identity provider instead.
     /// </summary>
     public string Password { get; set; } = string.Empty;
 }

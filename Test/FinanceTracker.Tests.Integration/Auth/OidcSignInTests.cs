@@ -202,54 +202,24 @@ public class OidcSignInTests : IntegrationTestBase
     /// </summary>
     /// <param name="authorize">The provider authorisation request's parameters, from <see cref="ChallengeAsync"/>.
     /// </param>
-    private async Task<HttpResponseMessage> FinishSignInAsync(FinTrackClient client,
-        Dictionary<string, StringValues> authorize, FakeOidcUser person)
-    {
-        string code = Guid.NewGuid().ToString("N");
-        App.Oidc.Approve(code, authorize["nonce"].ToString(), person);
-
-        HttpResponseMessage returned = await PostToHandlerAsync(client, authorize, new Dictionary<string, string>
-        {
-            ["code"] = code,
-            ["state"] = authorize["state"].ToString()
-        });
-
-        // A failure the handler catches goes straight to the sign in page, success goes on to finish signing in
-        string next = returned.Headers.Location?.ToString() ?? string.Empty;
-        if (!next.StartsWith("/auth/oidc/complete", StringComparison.Ordinal))
-        {
-            return returned;
-        }
-
-        return await client.GetAsync(next, CancellationToken);
-    }
+    private Task<HttpResponseMessage> FinishSignInAsync(FinTrackClient client,
+        Dictionary<string, StringValues> authorize, FakeOidcUser person) =>
+        SingleSignOnSteps.FinishAsync(client, App.Oidc, authorize, person, CancellationToken);
 
     /// <summary>
     /// The sign in page's single sign on link, which sends them to the provider with what it must send back.
     /// </summary>
     /// <returns>The provider authorisation request's parameters, such as its state and nonce.</returns>
-    private async Task<Dictionary<string, StringValues>> ChallengeAsync(FinTrackClient client)
-    {
-        HttpResponseMessage challenge =
-            await client.GetAsync($"/auth/oidc?returnUrl={Uri.EscapeDataString(ReturnUrl)}", CancellationToken);
-
-        Uri provider = challenge.Headers.Location
-                       ?? throw new InvalidOperationException($"/auth/oidc answered {challenge.StatusCode}");
-        return QueryHelpers.ParseQuery(provider.Query);
-    }
+    private Task<Dictionary<string, StringValues>> ChallengeAsync(FinTrackClient client) =>
+        SingleSignOnSteps.ChallengeAsync(client, $"/auth/oidc?returnUrl={Uri.EscapeDataString(ReturnUrl)}",
+            CancellationToken);
 
     /// <summary>
     /// The provider sending them back to the app's OIDC handler, as a form post.
     /// </summary>
-    private async Task<HttpResponseMessage> PostToHandlerAsync(FinTrackClient client,
-        Dictionary<string, StringValues> authorize, Dictionary<string, string> answer)
-    {
-        using HttpRequestMessage request = new(HttpMethod.Post, authorize["redirect_uri"].ToString())
-        {
-            Content = new FormUrlEncodedContent(answer)
-        };
-        return await client.SendAsync(request, HttpCompletionOption.ResponseContentRead, CancellationToken);
-    }
+    private Task<HttpResponseMessage> PostToHandlerAsync(FinTrackClient client,
+        Dictionary<string, StringValues> authorize, Dictionary<string, string> answer) =>
+        SingleSignOnSteps.PostToHandlerAsync(client, authorize, answer, CancellationToken);
 
     private async Task<FinanceTrackerUser> UserWithEmailAsync(string email)
     {

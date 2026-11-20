@@ -153,6 +153,7 @@ public static class AuthenticationExtensions
                 return TypedResults.Redirect(LocalPath(context.Request, returnUrl));
             });
 
+            app.MapSingleSignOnConfirmation();
             return app;
         }
     }
@@ -274,7 +275,7 @@ public static class AuthenticationExtensions
     /// couldn't be reached (<see cref="HttpRequestException"/>).
     /// </summary>
     /// <param name="exception">What the challenge threw.</param>
-    private static bool IsProviderFailure(Exception exception) =>
+    internal static bool IsProviderFailure(Exception exception) =>
         exception is OpenIdConnectProtocolException or InvalidOperationException or HttpRequestException;
 
     /// <summary>
@@ -283,7 +284,7 @@ public static class AuthenticationExtensions
     /// </summary>
     /// <param name="request">The request, whose site the url has to be on.</param>
     /// <param name="returnUrl">Where to go once signed in.</param>
-    private static string LocalPath(HttpRequest request, string? returnUrl)
+    internal static string LocalPath(HttpRequest request, string? returnUrl)
     {
         Uri site = new($"{request.Scheme}://{request.Host}{request.PathBase}/");
         return Uri.TryCreate(site, returnUrl, out Uri? target) && target.Authority == site.Authority
@@ -308,6 +309,7 @@ public static class AuthenticationExtensions
             services.AddScoped<IProfileService, ProfileService>();
             services.AddScoped<IPasskeyService, PasskeyService>();
             services.AddScoped<ITokensService, TokensService>();
+            services.AddScoped<ISingleSignOnConfirmation, SingleSignOnConfirmation>();
             services.AddScoped<IPasswordReset, PasswordReset>();
             services.AddScoped<IUsersService, UsersService>();
             services.AddScoped<ISecurityEmails, SecurityEmails>();

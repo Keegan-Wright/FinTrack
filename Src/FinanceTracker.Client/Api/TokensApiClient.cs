@@ -9,7 +9,7 @@ using FinanceTracker.Generated.Enums;
 namespace FinanceTracker.Client.Api;
 
 /// <summary>
-/// <see cref="ITokensService"/> over the API. A 409 answers null, the account has no password.
+/// <see cref="ITokensService"/> over the API. Making a token answers null on a 409, the account can't have tokens.
 /// </summary>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Client)]
 [Scoped<ITokensService>]
@@ -22,16 +22,11 @@ public sealed class TokensApiClient : ITokensService
         _http = httpClientFactory.CreateClient(ApiClientRegistration.HttpClientName);
 
     /// <inheritdoc/>
-    public async Task<IReadOnlyList<TokenSummary>?> GetTokensAsync(CancellationToken cancellationToken)
+    public async Task<TokensOverview> GetTokensAsync(CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.GetAsync(ApiRoutes.Tokens, cancellationToken);
-        if (response.StatusCode == HttpStatusCode.Conflict)
-        {
-            return null;
-        }
-
         response.EnsureSuccessStatusCode();
-        return await response.ReadRequiredJsonAsync<List<TokenSummary>>(cancellationToken);
+        return await response.ReadRequiredJsonAsync<TokensOverview>(cancellationToken);
     }
 
     /// <inheritdoc/>

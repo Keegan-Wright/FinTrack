@@ -22,14 +22,14 @@ public class CreateTokenValidatorTests : UnitTestBase
     }
 
     [Test]
-    public async Task ValidateAsync_NothingFilledIn_SaysWhatsMissing()
+    public async Task ValidateAsync_NoName_SaysToGiveItOne()
     {
         // Act
         ValidationResult result = await _subject.ValidateAsync(new CreateToken(), CancellationToken);
 
         // Assert
-        await Assert.That(result.Errors.Select(static x => x.ErrorMessage))
-            .IsEquivalentTo(["Give it a name", "Enter your password"]);
+        // The password isn't checked here, as only a password user gives one
+        await Assert.That(result.Errors.Select(static x => x.ErrorMessage)).IsEquivalentTo(["Give it a name"]);
     }
 
     [Test]

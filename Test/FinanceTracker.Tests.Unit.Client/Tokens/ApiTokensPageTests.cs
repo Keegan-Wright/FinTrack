@@ -6,6 +6,7 @@ using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Tokens;
 using FinanceTracker.Contracts.Validation;
 using FluentValidation;
+using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
 using NSubstitute;
@@ -42,7 +43,7 @@ public class ApiTokensPageTests : ComponentTestBase
     public async Task Render_WithTokens_MarksOnesThatNeverExpireOrHaveExpired()
     {
         // Arrange
-        _tokensService.GetTokensAsync(Arg.Any<CancellationToken>()).Returns([HomeAssistant, OldScript]);
+        _tokensService.GetTokensAsync(Arg.Any<CancellationToken>()).Returns(Overview(HomeAssistant, OldScript));
 
         // Act
         IRenderedComponent<ApiTokensPage> cut = RenderPage();
@@ -59,16 +60,17 @@ public class ApiTokensPageTests : ComponentTestBase
     }
 
     [Test]
-    public async Task Render_NoPasswordHere_SaysTokensArentForThem()
+    public async Task Render_CantHaveTokens_SaysTokensArentForThem()
     {
         // Arrange
-        _tokensService.GetTokensAsync(Arg.Any<CancellationToken>()).Returns((IReadOnlyList<TokenSummary>?)null);
+        _tokensService.GetTokensAsync(Arg.Any<CancellationToken>())
+            .Returns(new TokensOverview { Confirmation = null, Confirmed = false });
 
         // Act
         IRenderedComponent<ApiTokensPage> cut = RenderPage();
 
         // Assert
-        cut.WaitForState(() => cut.Markup.Contains("Tokens are for accounts that sign in with a password",
+        cut.WaitForState(() => cut.Markup.Contains("Tokens are for accounts that sign in with a password or",
             StringComparison.Ordinal));
         await Assert.That(cut.FindAll("button").Select(static x => x.TextContent.Trim())).DoesNotContain("New token");
     }
@@ -77,8 +79,7 @@ public class ApiTokensPageTests : ComponentTestBase
     public async Task New_WithANameAndPassword_MakesItAndShowsItOnce()
     {
         // Arrange
-        _tokensService.GetTokensAsync(Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<TokenSummary>(), [HomeAssistant]);
+        _tokensService.GetTokensAsync(Arg.Any<CancellationToken>()).Returns(Overview(), Overview(HomeAssistant));
         _tokensService.CreateAsync(Arg.Any<CreateToken>(), Arg.Any<CancellationToken>())
             .Returns(new CreatedToken { Token = "ftk_0123456789abcdef_placeholder" });
         IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
@@ -110,7 +111,7 @@ public class ApiTokensPageTests : ComponentTestBase
     public async Task New_WrongPassword_SaysWhyWithoutShowingAToken()
     {
         // Arrange
-        _tokensService.GetTokensAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<TokenSummary>());
+        _tokensService.GetTokensAsync(Arg.Any<CancellationToken>()).Returns(Overview());
         _tokensService.CreateAsync(Arg.Any<CreateToken>(), Arg.Any<CancellationToken>())
             .Returns(new CreatedToken { Errors = ["Your password isn't right"] });
         IRenderedComponent<MudSnackbarProvider> snackbars = Render<MudSnackbarProvider>();
@@ -133,11 +134,51 @@ public class ApiTokensPageTests : ComponentTestBase
     }
 
     [Test]
-    public async Task Revoke_Confirmed_RevokesIt()
+    public async Task New_SingleSignOnUserNotYetConfirmed_GoesToConfirmAtTheProvider()
     {
         // Arrange
         _tokensService.GetTokensAsync(Arg.Any<CancellationToken>())
-            .Returns([HomeAssistant], Array.Empty<TokenSummary>());
+            .Returns(new TokensOverview { Confirmation = TokenConfirmation.SingleSignOn, Confirmed = false });
+        NavigationManager navigation = Services.GetRequiredService<NavigationManager>();
+        IRenderedComponent<ApiTokensPage> cut = RenderPage();
+        cut.WaitForState(() => cut.Markup.Contains("sign in there again", StringComparison.Ordinal));
+
+        // Act
+        await Button(cut, "New token").ClickAsync(new());
+
+        // Assert
+        await Assert.That(navigation.Uri).EndsWith("auth/oidc/confirm?returnUrl=%2FApiTokens%3Fnew%3Dtrue");
+    }
+
+    [Test]
+    public async Task Back_FromConfirmingAtTheProvider_CarriesOnWithoutAskingForAPassword()
+    {
+        // Arrange
+        _tokensService.GetTokensAsync(Arg.Any<CancellationToken>())
+            .Returns(new TokensOverview { Confirmation = TokenConfirmation.SingleSignOn, Confirmed = true });
+        NavigationManager navigation = Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo("ApiTokens?new=true");
+        IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
+
+        // Act
+        RenderPage();
+
+        // Assert, and the address is left as it is, as MudBlazor closes dialogs on the first navigation after a page
+        // load, so clearing it would close this one in the browser
+        dialogs.WaitForState(() => dialogs.FindAll(".mud-dialog").Count == 1);
+        using (Assert.Multiple())
+        {
+            await Assert.That(dialogs.Markup).Contains("New API token");
+            await Assert.That(dialogs.FindAll(".mud-dialog input[type='password']")).IsEmpty();
+            await Assert.That(navigation.Uri).EndsWith("ApiTokens?new=true");
+        }
+    }
+
+    [Test]
+    public async Task Revoke_Confirmed_RevokesIt()
+    {
+        // Arrange
+        _tokensService.GetTokensAsync(Arg.Any<CancellationToken>()).Returns(Overview(HomeAssistant), Overview());
         _tokensService.RevokeAsync(HomeAssistant.Id, Arg.Any<CancellationToken>()).Returns(true);
         IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
         IRenderedComponent<ApiTokensPage> cut = RenderPage();
@@ -152,6 +193,12 @@ public class ApiTokensPageTests : ComponentTestBase
         cut.WaitForState(() => cut.FindAll(".ft-tokens__row").Count == 0);
         await _tokensService.Received(1).RevokeAsync(HomeAssistant.Id, Arg.Any<CancellationToken>());
     }
+
+    /// <summary>
+    /// A password user's tokens.
+    /// </summary>
+    private static TokensOverview Overview(params TokenSummary[] tokens) =>
+        new() { Confirmation = TokenConfirmation.Password, Confirmed = false, Tokens = tokens };
 
     private IRenderedComponent<ApiTokensPage> RenderPage() =>
         Render<ApiTokensPage>(p => p.AddCascadingValue(new ApplicationState()));

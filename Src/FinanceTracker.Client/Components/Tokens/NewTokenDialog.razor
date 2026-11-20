@@ -1,5 +1,5 @@
-@* A new read only token. What it's for, how long it lasts, and the user's password. Choosing never says the user
-   looks after it. *@
+@* A new read only token. What it's for, how long it lasts, and the user's password unless they've confirmed through
+   single sign-on. Choosing never says the user looks after it. *@
 @using FinanceTracker.Client.Components.Dialogs
 @using FinanceTracker.Client.Extensions
 @using FinanceTracker.Contracts.Tokens
@@ -23,17 +23,24 @@
                     <MudSelectItem T="TokenExpiry" Value="@TokenExpiry.OneYear">In a year</MudSelectItem>
                     <MudSelectItem T="TokenExpiry" Value="@TokenExpiry.Never">Never</MudSelectItem>
                 </MudSelect>
-                <MudTextField T="string" @bind-Value="_model.Password" Label="Your password"
-                              InputType="InputType.Password" For="@(() => _model.Password)"
-                              HelperText="To check it's you"
-                              UserAttributes="@(new Dictionary<string, object?> { ["autocomplete"] = "current-password" })"
-                              Validation="@(Validator.ValidateValue(_model, nameof(CreateToken.Password)))"/>
+                @if (AskForPassword)
+                {
+                    <MudTextField T="string" @bind-Value="_model.Password" Label="Your password"
+                                  InputType="InputType.Password" For="@(() => _model.Password)"
+                                  HelperText="To check it's you" Required="true" RequiredError="Enter your password"
+                                  UserAttributes="@(new Dictionary<string, object?> { ["autocomplete"] = "current-password" })"/>
+                }
             </div>
         </MudForm>
     </Content>
 </DialogBase>
 
 @code {
+
+    /// <summary>
+    /// Whether to ask for the password, not for someone who's just confirmed through single sign-on.
+    /// </summary>
+    [Parameter] public bool AskForPassword { get; set; } = true;
 
     private readonly CreateToken _model = new();
     private MudForm _form = null!;

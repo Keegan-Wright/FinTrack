@@ -20,6 +20,7 @@ public sealed class TokensService : ITokensService
     private readonly ICurrentUser _currentUser;
     private readonly SignInMethods _signInMethods;
     private readonly ISecurityEmails _securityEmails;
+    private readonly ISingleSignOnConfirmation _singleSignOnConfirmation;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<TokensService> _logger;
 
@@ -28,12 +29,15 @@ public sealed class TokensService : ITokensService
     /// <param name="currentUser">The signed in user.</param>
     /// <param name="signInMethods">Whether passwords can be used.</param>
     /// <param name="securityEmails">Tells the user when their tokens change.</param>
+    /// <param name="singleSignOnConfirmation">Whether a single sign-on user has just confirmed it's them.</param>
     /// <param name="timeProvider">The clock expiry is worked out from.</param>
     /// <param name="logger">Its logger.</param>
     public TokensService(IDbContextFactory<FinanceTrackerContext> contextFactory,
         UserManager<FinanceTrackerUser> userManager, ICurrentUser currentUser, SignInMethods signInMethods,
-        ISecurityEmails securityEmails, TimeProvider timeProvider, ILogger<TokensService> logger)
+        ISecurityEmails securityEmails, ISingleSignOnConfirmation singleSignOnConfirmation, TimeProvider timeProvider,
+        ILogger<TokensService> logger)
     {
+        _singleSignOnConfirmation = singleSignOnConfirmation;
         _contextFactory = contextFactory;
         _userManager = userManager;
         _currentUser = currentUser;
@@ -44,13 +48,10 @@ public sealed class TokensService : ITokensService
     }
 
     /// <inheritdoc/>
-    public async Task<IReadOnlyList<TokenSummary>?> GetTokensAsync(CancellationToken cancellationToken)
+    public async Task<TokensOverview> GetTokensAsync(CancellationToken cancellationToken)
     {
         FinanceTrackerUser user = await UserAsync();
-        if (!await CanHaveTokensAsync(user))
-        {
-            return null;
-        }
+        TokenConfirmation? confirmation = await ConfirmationForAsync(user);
 
         DateTime now = _timeProvider.GetUtcNow().UtcDateTime;
         await using FinanceTrackerContext context = await _contextFactory.CreateDbContextAsync(cancellationToken);
@@ -59,7 +60,7 @@ public sealed class TokensService : ITokensService
             .OrderByDescending(static x => x.Created)
             .ToListAsync(cancellationToken);
 
-        return tokens.Select(x => new TokenSummary
+        List<TokenSummary> summaries = tokens.Select(x => new TokenSummary
             {
                 Id = x.Id,
                 Name = x.Name,
@@ -69,6 +70,10 @@ public sealed class TokensService : ITokensService
                 Expired = !x.IsActive(now)
             })
             .ToList();
+
+        bool confirmed = confirmation == TokenConfirmation.SingleSignOn &&
+                         await _singleSignOnConfirmation.IsConfirmedAsync(user);
+        return new TokensOverview { Confirmation = confirmation, Confirmed = confirmed, Tokens = summaries };
     }
 
     /// <inheritdoc/>
@@ -76,14 +81,16 @@ public sealed class TokensService : ITokensService
     {
         ArgumentNullException.ThrowIfNull(request);
         FinanceTrackerUser user = await UserAsync();
-        if (!await CanHaveTokensAsync(user))
+        TokenConfirmation? confirmation = await ConfirmationForAsync(user);
+        if (confirmation is null)
         {
             return null;
         }
 
-        if (!await _userManager.CheckPasswordAsync(user, request.Password))
+        string? refusal = await RefusalAsync(user, confirmation.Value, request.Password);
+        if (refusal is not null)
         {
-            return new CreatedToken { Errors = ["Your password isn't right"] };
+            return new CreatedToken { Errors = [refusal] };
         }
 
         DateTime now = _timeProvider.GetUtcNow().UtcDateTime;
@@ -152,10 +159,56 @@ public sealed class TokensService : ITokensService
         ?? throw new InvalidOperationException("The signed in user no longer exists");
 
     /// <summary>
-    /// Whether <paramref name="user"/> can have tokens. Only with a password they can use, see
-    /// <see cref="SignInMethods.CanUsePassword"/>, as making one asks for it.
+    /// How <paramref name="user"/> confirms it's them, with their password when they can use one, see
+    /// <see cref="SignInMethods.CanUsePassword"/>, otherwise through the identity provider when they sign in there.
+    /// Null when they can't do either, so can't have tokens.
     /// </summary>
     /// <param name="user">The user.</param>
-    private async Task<bool> CanHaveTokensAsync(FinanceTrackerUser user) =>
-        _signInMethods.CanUsePassword(await _userManager.HasPasswordAsync(user));
+    private async Task<TokenConfirmation?> ConfirmationForAsync(FinanceTrackerUser user)
+    {
+        if (_signInMethods.CanUsePassword(await _userManager.HasPasswordAsync(user)))
+        {
+            return TokenConfirmation.Password;
+        }
+
+        if (_signInMethods.SingleSignOn && user.OpenIdConnectSubject is not null)
+        {
+            return TokenConfirmation.SingleSignOn;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Why <paramref name="user"/> hasn't confirmed it's them, null when they have. A single sign-on confirmation is
+    /// used up here, so it makes one token.
+    /// </summary>
+    /// <param name="user">The user.</param>
+    /// <param name="confirmation">How they confirm.</param>
+    /// <param name="password">The password they gave, for a password user.</param>
+    private async Task<string?> RefusalAsync(FinanceTrackerUser user, TokenConfirmation confirmation,
+        string password)
+    {
+        if (confirmation == TokenConfirmation.SingleSignOn)
+        {
+            if (await _singleSignOnConfirmation.UseAsync(user))
+            {
+                return null;
+            }
+
+            return "Confirm it's you with single sign-on first, it lasts 5 minutes";
+        }
+
+        if (string.IsNullOrEmpty(password))
+        {
+            return "Enter your password";
+        }
+
+        if (!await _userManager.CheckPasswordAsync(user, password))
+        {
+            return "Your password isn't right";
+        }
+
+        return null;
+    }
 }

@@ -1,6 +1,7 @@
 using FinanceTracker.Contracts.Api;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Tokens;
+using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace FinanceTracker.Api;
 
@@ -12,16 +13,16 @@ public static class TokenEndpoints
     extension(RouteGroupBuilder api)
     {
         /// <summary>
-        /// <see cref="ITokensService"/> at <see cref="ApiRoutes.Tokens"/>, never open to a token itself. Listing or
-        /// making tokens for an account without a password answers 409, revoking one the user hasn't 404.
+        /// <see cref="ITokensService"/> at <see cref="ApiRoutes.Tokens"/>, never open to a token itself. Making a token
+        /// for someone who can't have them answers 409, revoking one the user hasn't 404.
         /// </summary>
         public RouteGroupBuilder MapTokenEndpoints()
         {
             RouteGroupBuilder tokens = api.MapGroup(ApiRoutes.Tokens);
 
-            tokens.MapGet(string.Empty, (ITokensService service, CancellationToken cancellationToken) =>
-                    service.GetTokensAsync(cancellationToken))
-                .ConflictWhenNone();
+            tokens.MapGet(string.Empty, async Task<Ok<TokensOverview>> (ITokensService service,
+                    CancellationToken cancellationToken) =>
+                TypedResults.Ok(await service.GetTokensAsync(cancellationToken)));
 
             tokens.MapPost(string.Empty, (CreateToken request, ITokensService service,
                     CancellationToken cancellationToken) => service.CreateAsync(request, cancellationToken))

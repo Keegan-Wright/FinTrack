@@ -104,6 +104,12 @@ public static partial class WebLoggerMessages
         "codes")]
     public static partial void LogTwoFactorTurnedOffByAdmin(this ILogger logger, Guid adminId, Guid userId);
 
+    [LoggerMessage(LogLevel.Information, "User {userId} confirmed it's them through single sign-on")]
+    public static partial void LogSingleSignOnConfirmed(this ILogger logger, Guid userId);
+
+    [LoggerMessage(LogLevel.Warning, "Single sign-on didn't confirm user {userId}, {reason}")]
+    public static partial void LogSingleSignOnNotConfirmed(this ILogger logger, Guid userId, string reason);
+
     [LoggerMessage(LogLevel.Information, "User {userId} made personal access token {tokenId}")]
     public static partial void LogTokenCreated(this ILogger logger, Guid userId, Guid tokenId);
 

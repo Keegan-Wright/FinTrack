@@ -29,15 +29,16 @@ public class TokensApiTests : IntegrationTestBase
 
         // Assert
         HttpResponseMessage read = await ReadWithAsync(created!.Token!);
-        IReadOnlyList<TokenSummary>? listed = await tokens.GetTokensAsync(CancellationToken);
+        TokensOverview listed = await tokens.GetTokensAsync(CancellationToken);
         IReadOnlyList<CaughtMail> mail =
             await App.Mail.WaitForAsync(EmailOf(user), AccountEmails.TokenCreatedSubject, CancellationToken);
         using (Assert.Multiple())
         {
             await Assert.That(created.Token).StartsWith("ftk_");
             await Assert.That(read.StatusCode).IsEqualTo(HttpStatusCode.OK);
-            await Assert.That(listed!.Single().Name).IsEqualTo(TokenName);
-            await Assert.That(listed!.Single().ExpiresAt).IsNotNull();
+            await Assert.That(listed.Confirmation).IsEqualTo(TokenConfirmation.Password);
+            await Assert.That(listed.Tokens.Single().Name).IsEqualTo(TokenName);
+            await Assert.That(listed.Tokens.Single().ExpiresAt).IsNotNull();
             await Assert.That(mail.Single().Text).Contains(TokenName);
         }
     }
@@ -57,7 +58,7 @@ public class TokensApiTests : IntegrationTestBase
         {
             await Assert.That(created!.Errors).IsEquivalentTo(["Your password isn't right"]);
             await Assert.That(created.Token).IsNull();
-            await Assert.That(await tokens.GetTokensAsync(CancellationToken)).IsEmpty();
+            await Assert.That((await tokens.GetTokensAsync(CancellationToken)).Tokens).IsEmpty();
         }
     }
 
@@ -74,7 +75,7 @@ public class TokensApiTests : IntegrationTestBase
         await tokens.CreateAsync(request, CancellationToken);
 
         // Assert
-        await Assert.That((await tokens.GetTokensAsync(CancellationToken))!.Single().ExpiresAt).IsNull();
+        await Assert.That((await tokens.GetTokensAsync(CancellationToken)).Tokens.Single().ExpiresAt).IsNull();
     }
 
     [Test]
@@ -84,7 +85,7 @@ public class TokensApiTests : IntegrationTestBase
         SignedInUser user = await RegisterUserAsync();
         ITokensService tokens = ApiFor(user).Get<ITokensService>();
         CreatedToken? created = await tokens.CreateAsync(Create(SignedInUser.DefaultPassword), CancellationToken);
-        Guid id = (await tokens.GetTokensAsync(CancellationToken))!.Single().Id;
+        Guid id = (await tokens.GetTokensAsync(CancellationToken)).Tokens.Single().Id;
 
         // Act
         bool revoked = await tokens.RevokeAsync(id, CancellationToken);
@@ -97,7 +98,7 @@ public class TokensApiTests : IntegrationTestBase
         {
             await Assert.That(revoked).IsTrue();
             await Assert.That(read.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
-            await Assert.That(await tokens.GetTokensAsync(CancellationToken)).IsEmpty();
+            await Assert.That((await tokens.GetTokensAsync(CancellationToken)).Tokens).IsEmpty();
             await Assert.That(mail.Single().Text).Contains(TokenName);
         }
     }
@@ -110,7 +111,7 @@ public class TokensApiTests : IntegrationTestBase
         SignedInUser other = await RegisterUserAsync();
         CreatedToken? created = await ApiFor(owner).Get<ITokensService>()
             .CreateAsync(Create(SignedInUser.DefaultPassword), CancellationToken);
-        Guid id = (await ApiFor(owner).Get<ITokensService>().GetTokensAsync(CancellationToken))!.Single().Id;
+        Guid id = (await ApiFor(owner).Get<ITokensService>().GetTokensAsync(CancellationToken)).Tokens.Single().Id;
 
         // Act
         bool revoked = await ApiFor(other).Get<ITokensService>().RevokeAsync(id, CancellationToken);
@@ -124,9 +125,9 @@ public class TokensApiTests : IntegrationTestBase
     }
 
     [Test]
-    public async Task Tokens_ForAnAccountWithoutAPassword_AreNotOffered()
+    public async Task Tokens_ForAnAccountWithNeitherAPasswordNorSingleSignOn_AreNotOffered()
     {
-        // Arrange, as one made by signing in through the identity provider
+        // Arrange, a password taken away and never linked to the identity provider, so it can't sign in
         SignedInUser user = await RegisterUserAsync();
         await using (FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken))
         {
@@ -136,13 +137,13 @@ public class TokensApiTests : IntegrationTestBase
 
         // Act
         ITokensService tokens = ApiFor(user).Get<ITokensService>();
-        IReadOnlyList<TokenSummary>? listed = await tokens.GetTokensAsync(CancellationToken);
+        TokensOverview listed = await tokens.GetTokensAsync(CancellationToken);
         CreatedToken? created = await tokens.CreateAsync(Create(SignedInUser.DefaultPassword), CancellationToken);
 
         // Assert
         using (Assert.Multiple())
         {
-            await Assert.That(listed).IsNull();
+            await Assert.That(listed.Confirmation).IsNull();
             await Assert.That(created).IsNull();
         }
     }
