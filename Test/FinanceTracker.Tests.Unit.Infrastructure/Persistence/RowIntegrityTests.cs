@@ -303,6 +303,32 @@ public class RowIntegrityTests : InfrastructureTestBase
     }
 
     [Test]
+    public async Task Rotate_UserTokenWrittenBeforeTags_IsTagged()
+    {
+        // Arrange, an authenticator key saved before tags, in a table whose key is three columns
+        await using (FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken))
+        {
+            context.UserTokens.Add(new IdentityUserToken<Guid>
+            {
+                UserId = Scenario.UserMappings[Username], LoginProvider = "[AspNetUserStore]",
+                Name = "AuthenticatorKey", Value = "PLACEHOLDERKEY"
+            });
+            await context.SaveChangesAsync(CancellationToken);
+        }
+
+        await SqlAsync("""UPDATE "AspNetUserTokens" SET "IntegrityTag" = NULL""");
+
+        // Act
+        await new EncryptionKeyRotator(DbContextFactory, NullLogger<EncryptionKeyRotator>.Instance)
+            .RotateAsync(CancellationToken);
+
+        // Assert
+        await using FinanceTrackerContext assertContext = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        List<string?> tags = await TagsAsync(assertContext, "AspNetUserTokens");
+        await Assert.That(tags.All(static x => x?.StartsWith("1:", StringComparison.Ordinal) == true)).IsTrue();
+    }
+
+    [Test]
     public async Task Tag_FromAnotherKeyring_IsRefused()
     {
         // Arrange, the same content tagged with a key FinTrack doesn't have
