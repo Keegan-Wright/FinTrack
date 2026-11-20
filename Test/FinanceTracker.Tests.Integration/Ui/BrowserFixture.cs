@@ -26,7 +26,10 @@ public sealed class BrowserFixture : IAsyncInitializer, IAsyncDisposable
         _playwright = await Playwright.CreateAsync();
         Browser = await _playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
         {
-            Headless = Environment.GetEnvironmentVariable("FINTRACK_UI_HEADED") is null
+            Headless = Environment.GetEnvironmentVariable("FINTRACK_UI_HEADED") is null,
+            // The app's development certificate isn't trusted on CI. The pages ignore that through the context's
+            // IgnoreHTTPSErrors, but Chromium still refuses to fetch a service worker's script over it
+            Args = ["--ignore-certificate-errors"]
         });
 
         // Playwright's 5 seconds for an expectation is short with several browsers loading from the one app at once
