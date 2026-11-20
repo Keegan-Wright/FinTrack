@@ -45,6 +45,18 @@ public sealed class SecurityEmails : ISecurityEmails
     public Task PasskeysRemovedByAdminAsync(FinanceTrackerUser user) =>
         SendAsync(user, _accountEmails.PasskeysRemovedByAdminAsync);
 
+    /// <inheritdoc/>
+    public Task TokenCreatedAsync(FinanceTrackerUser user, string name) =>
+        SendAsync(user, to => _accountEmails.TokenCreatedAsync(to, name));
+
+    /// <inheritdoc/>
+    public Task TokenRevokedAsync(FinanceTrackerUser user, string name) =>
+        SendAsync(user, to => _accountEmails.TokenRevokedAsync(to, name));
+
+    /// <inheritdoc/>
+    public Task TokensRevokedByAdminAsync(FinanceTrackerUser user) =>
+        SendAsync(user, _accountEmails.TokensRevokedByAdminAsync);
+
     /// <summary>
     /// Sends the email <paramref name="write"/> makes to <paramref name="user"/>'s confirmed email. Logs it instead
     /// when there's no mail server or it fails, the change it's about has already been made.

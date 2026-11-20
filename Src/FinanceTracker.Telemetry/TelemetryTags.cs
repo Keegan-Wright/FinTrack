@@ -211,4 +211,9 @@ public static class TelemetryTags
     /// How a bill changed, added, ended or price changed, on metrics.
     /// </summary>
     public const string BillChange = "fintrack.bill.change";
+
+    /// <summary>
+    /// How a request with a personal access token went, see <see cref="TokenAuthenticationResult"/>, on metrics.
+    /// </summary>
+    public const string TokenResult = "fintrack.token.result";
 }

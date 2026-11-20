@@ -1,0 +1,69 @@
+@* A new read only token. What it's for, how long it lasts, and the user's password unless they've confirmed through
+   single sign-on. Choosing never says the user looks after it. *@
+@using FinanceTracker.Client.Components.Dialogs
+@using FinanceTracker.Client.Extensions
+@using FinanceTracker.Contracts.Tokens
+@using FluentValidation
+@inject IValidator<CreateToken> Validator
+
+<DialogBase TResponse="CreateToken" Title="New API token" ResponseConstructor="BuildResponseModel">
+    <Content>
+        <MudForm @ref="_form" Model="@_model">
+            <div class="ft-new-token">
+                <MudText Typo="Typo.body2">
+                    It can read your data, but never change it. You'll see it once, so have somewhere ready to keep it.
+                </MudText>
+                <MudTextField T="string" @bind-Value="_model.Name" Label="Name" For="@(() => _model.Name)"
+                              HelperText="e.g. Spending script" Immediate="true"
+                              Validation="@(Validator.ValidateValue(_model, nameof(CreateToken.Name)))"/>
+                <MudSelect T="TokenExpiry" @bind-Value="_model.Expiry" Label="Expires"
+                           For="@(() => _model.Expiry)" HelperText="@ExpiryHelperText">
+                    <MudSelectItem T="TokenExpiry" Value="@TokenExpiry.ThirtyDays">In 30 days</MudSelectItem>
+                    <MudSelectItem T="TokenExpiry" Value="@TokenExpiry.NinetyDays">In 90 days</MudSelectItem>
+                    <MudSelectItem T="TokenExpiry" Value="@TokenExpiry.OneYear">In a year</MudSelectItem>
+                    <MudSelectItem T="TokenExpiry" Value="@TokenExpiry.Never">Never</MudSelectItem>
+                </MudSelect>
+                @if (AskForPassword)
+                {
+                    <MudTextField T="string" @bind-Value="_model.Password" Label="Your password"
+                                  InputType="InputType.Password" For="@(() => _model.Password)"
+                                  HelperText="To check it's you" Required="true" RequiredError="Enter your password"
+                                  UserAttributes="@(new Dictionary<string, object?> { ["autocomplete"] = "current-password" })"/>
+                }
+            </div>
+        </MudForm>
+    </Content>
+</DialogBase>
+
+@code {
+
+    /// <summary>
+    /// Whether to ask for the password, not for someone who's just confirmed through single sign-on.
+    /// </summary>
+    [Parameter] public bool AskForPassword { get; set; } = true;
+
+    private readonly CreateToken _model = new();
+    private MudForm _form = null!;
+
+    /// <summary>
+    /// The line under the expiry, a warning for one that never expires.
+    /// </summary>
+    private string ExpiryHelperText => _model.Expiry == TokenExpiry.Never
+        ? "It works until you revoke it, so revoke and replace it yourself if it leaks"
+        : "It stops working then, make a new one to carry on";
+
+    /// <summary>
+    /// The new token's details once they're filled in, null to keep the dialog open.
+    /// </summary>
+    private async Task<CreateToken?> BuildResponseModel()
+    {
+        await _form.ValidateAsync();
+        if (!_form.IsValid)
+        {
+            return null;
+        }
+
+        return _model;
+    }
+
+}

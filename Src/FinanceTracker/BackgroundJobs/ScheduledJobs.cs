@@ -23,6 +23,9 @@ public static class ScheduledJobs
             1, [10, 20, 30]),
 
         new(JobNames.PruneNotifications, "Deletes notifications you read more than 90 days ago", "0 30 2 * * ?",
-            1, [10, 20, 30])
+            1, [10, 20, 30]),
+
+        new(JobNames.NotifyTokens, "Tells you when your API tokens expire within a week, or have expired",
+            "0 0 7 * * ?", 1, [10, 20, 30])
     ];
 }

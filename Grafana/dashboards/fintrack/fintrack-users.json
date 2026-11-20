@@ -211,7 +211,7 @@
     {
       "type": "stat",
       "title": "Failed sign-ins",
-      "description": "Sign-ins that didn't go through over the time range: a wrong password, a locked account, or single sign-on that failed at the provider or found no account. A wrong password at the provider itself only shows in the provider's own logs.",
+      "description": "Sign-ins that didn't go through over the time range: a wrong password, a locked account, single sign-on that failed at the provider or found no account, or an API token refused. A wrong password at the provider itself only shows in the provider's own logs.",
       "datasource": {
         "type": "prometheus",
         "uid": "${prometheus}"
@@ -223,7 +223,7 @@
             "type": "prometheus",
             "uid": "${prometheus}"
           },
-          "expr": "(sum(increase(aspnetcore_identity_sign_in_authenticate_duration_seconds_count{job=\"$service\", aspnetcore_identity_sign_in_result!=\"success\"}[$__range])) or vector(0)) + (sum(increase(aspnetcore_identity_sign_in_sign_ins_total{job=\"$service\", error_type!=\"\"}[$__range])) or vector(0)) + (sum(increase(fintrack_sso_failures_total{job=\"$service\"}[$__range])) or vector(0))",
+          "expr": "(sum(increase(aspnetcore_identity_sign_in_authenticate_duration_seconds_count{job=\"$service\", aspnetcore_identity_sign_in_result!=\"success\"}[$__range])) or vector(0)) + (sum(increase(aspnetcore_identity_sign_in_sign_ins_total{job=\"$service\", error_type!=\"\"}[$__range])) or vector(0)) + (sum(increase(fintrack_sso_failures_total{job=\"$service\"}[$__range])) or vector(0)) + (sum(increase(fintrack_tokens_authentications_total{job=\"$service\", fintrack_token_result!=\"succeeded\"}[$__range])) or vector(0))",
           "legendFormat": "__auto",
           "range": false,
           "instant": true
@@ -1354,7 +1354,175 @@
       "gridPos": {
         "x": 0,
         "y": 21,
-        "w": 24,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "API tokens",
+      "description": "Requests with an API token, by how they went: succeeded, malformed, unknown (a guess or typo), inactive (expired or revoked), locked (its user is), or rate_limited (its address had too many refused lately, so it wasn't looked at).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${prometheus}"
+          },
+          "expr": "sum by (fintrack_token_result) (increase(fintrack_tokens_authentications_total{job=\"$service\"}[$__interval]))",
+          "legendFormat": "{{fintrack_token_result}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "showPoints": "never",
+            "spanNulls": false,
+            "axisSoftMin": 0,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "insertNulls": false
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "succeeded"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "malformed"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "unknown"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "inactive"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "purple"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "locked"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "dark-red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "rate_limited"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "interval": "2m",
+      "id": 14,
+      "gridPos": {
+        "x": 12,
+        "y": 21,
+        "w": 12,
         "h": 8
       }
     },
@@ -1363,7 +1531,7 @@
       "title": "Pages",
       "collapsed": false,
       "panels": [],
-      "id": 14,
+      "id": 15,
       "gridPos": {
         "x": 0,
         "y": 29,
@@ -1455,7 +1623,7 @@
           }
         }
       ],
-      "id": 15,
+      "id": 16,
       "gridPos": {
         "x": 0,
         "y": 30,
@@ -1618,7 +1786,7 @@
           }
         }
       ],
-      "id": 16,
+      "id": 17,
       "gridPos": {
         "x": 12,
         "y": 30,

@@ -7,6 +7,7 @@ using FinanceTracker.Infrastructure.Account.Email;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -350,6 +351,83 @@ public class UsersServiceTests : InfrastructureTestBase
         }
     }
 
+    [Test]
+    public async Task RevokeTokensAsync_SomeoneWithTokens_RevokesThemAllAndEmailsThem()
+    {
+        // Arrange
+        await AddTokenAsync(Sam);
+        await AddTokenAsync(Sam);
+
+        // Act
+        bool revoked = await Subject().RevokeTokensAsync(Id(Sam), CancellationToken);
+
+        // Assert
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        List<PersonalAccessToken> tokens = await context.PersonalAccessTokens.ToListAsync(CancellationToken);
+        using (Assert.Multiple())
+        {
+            await Assert.That(revoked).IsTrue();
+            await Assert.That(tokens.TrueForAll(static x => x.RevokedAt != null)).IsTrue();
+            await _securityEmails.Received(1)
+                .TokensRevokedByAdminAsync(Arg.Is<FinanceTrackerUser>(x => x.Id == Id(Sam)));
+        }
+    }
+
+    [Test]
+    public async Task RevokeTokensAsync_Yourself_IsRefusedAndKeepsThem()
+    {
+        // Arrange
+        await AddTokenAsync(Alex);
+
+        // Act
+        bool revoked = await Subject().RevokeTokensAsync(Id(Alex), CancellationToken);
+
+        // Assert
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        using (Assert.Multiple())
+        {
+            await Assert.That(revoked).IsFalse();
+            PersonalAccessToken kept = await context.PersonalAccessTokens.SingleAsync(CancellationToken);
+            await Assert.That(kept.RevokedAt).IsNull();
+        }
+    }
+
+    [Test]
+    public async Task GetUsersAsync_SomeoneWithTokens_CountsOnlyTheOnesThatWork()
+    {
+        // Arrange, one working, one expired, one revoked
+        await AddTokenAsync(Sam);
+        await AddTokenAsync(Sam, DateTime.UtcNow.AddDays(-1));
+        await AddTokenAsync(Sam, revoked: true);
+
+        // Act
+        List<UserSummary> users = await Subject().GetUsersAsync(CancellationToken).ToListAsync(CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(users.Single(x => x.Username == Sam).TokenCount).IsEqualTo(1);
+            await Assert.That(users.Single(x => x.Username == Alex).TokenCount).IsEqualTo(0);
+        }
+    }
+
+    /// <summary>
+    /// A made up API token for <paramref name="username"/>.
+    /// </summary>
+    private async Task AddTokenAsync(string username, DateTime? expiresAt = null, bool revoked = false)
+    {
+        PersonalAccessToken token = new(Id(username), "Placeholder script", Guid.NewGuid().ToString("N")[..16],
+            [1, 2, 3], expiresAt);
+        if (revoked)
+        {
+            token.Revoke(DateTime.UtcNow);
+        }
+
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        context.PersonalAccessTokens.Add(token);
+        await context.SaveChangesAsync(CancellationToken);
+    }
+
     /// <summary>
     /// A made up passkey, told apart by <paramref name="number"/>.
     /// </summary>
@@ -365,8 +443,8 @@ public class UsersServiceTests : InfrastructureTestBase
     /// <param name="passwordSignIn">Whether password sign in is on.</param>
     private UsersService Subject(bool passwordSignIn = true) =>
         new(UserManager, Substitute.For<IPasswordReset>(), CurrentUserFor(Alex),
-            new SignInMethods { Password = passwordSignIn, SingleSignOn = true }, _securityEmails,
-            NullLogger<UsersService>.Instance);
+            new SignInMethods { Password = passwordSignIn, SingleSignOn = true }, _securityEmails, DbContextFactory,
+            TimeProvider.System, NullLogger<UsersService>.Instance);
 
     private Guid Id(string username) => Scenario.UserMappings[username];
 

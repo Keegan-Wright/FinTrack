@@ -1,5 +1,6 @@
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Sharing;
+using FinanceTracker.Contracts.Tokens;
 using FinanceTracker.Tests.Integration.Http;
 using FinanceTracker.Tests.Unit.Shared;
 using Microsoft.Playwright;
@@ -169,6 +170,35 @@ public class ScreenshotTests : UiTestBase
         await page.Locator(".ft-passkeys__row").ScrollIntoViewIfNeededAsync();
         await page.WaitForTimeoutAsync(1000);
         string file = Path.Combine(RepositoryRoot(), ImagesFolder, $"passkeys-{screen.Name.ToLowerInvariant()}.png");
+        await page.ScreenshotAsync(new PageScreenshotOptions { Path = file });
+
+        // Assert
+        await Assert.That(File.Exists(file)).IsTrue();
+    }
+
+    [Test]
+    [MethodDataSource(nameof(DesktopAndPhone))]
+    public async Task ApiTokens_IsCaptured(ScreenSize screen)
+    {
+        // Arrange, for the API tokens docs, one token that expires and one that never does
+        string username = $"{ScreenshotUser.FirstName}.tokens.{screen.Name}".ToLowerInvariant();
+        SignedInUser user = await RegisterUserAsync(username, firstName: ScreenshotUser.FirstName);
+        ITokensService tokens = ApiFor(user).Get<ITokensService>();
+        await tokens.CreateAsync(new CreateToken
+        {
+            Name = "Balance dashboard", Expiry = TokenExpiry.OneYear, Password = SignedInUser.DefaultPassword
+        }, CancellationToken);
+        await tokens.CreateAsync(new CreateToken
+        {
+            Name = "Spending script", Expiry = TokenExpiry.Never, Password = SignedInUser.DefaultPassword
+        }, CancellationToken);
+        IPage page = await OpenAsync(screen, user, false);
+
+        // Act
+        await GoToAsync(page, "/ApiTokens");
+        await Assertions.Expect(page.Locator(".ft-tokens__row")).ToHaveCountAsync(2);
+        await page.WaitForTimeoutAsync(500);
+        string file = Path.Combine(RepositoryRoot(), ImagesFolder, $"api-tokens-{screen.Name.ToLowerInvariant()}.png");
         await page.ScreenshotAsync(new PageScreenshotOptions { Path = file });
 
         // Assert

@@ -1,0 +1,5 @@
+/* The token wraps rather than widening the dialog on a phone */
+::deep .ft-token-created textarea {
+    font-family: monospace;
+    overflow-wrap: anywhere;
+}

@@ -1,6 +1,7 @@
 using FinanceTracker.Contracts.Api;
 using FinanceTracker.Contracts.Budgets;
 using FinanceTracker.Contracts.Services;
+using FinanceTracker.Tokens;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace FinanceTracker.Api;
@@ -18,7 +19,8 @@ public static class BudgetEndpoints
         /// </summary>
         public RouteGroupBuilder MapBudgetEndpoints()
         {
-            RouteGroupBuilder budgets = api.MapGroup(ApiRoutes.Budgets);
+            RouteGroupBuilder budgets = api.MapGroup(ApiRoutes.Budgets)
+                .ReadableWithToken();
 
             budgets.MapGet("month/{year:int:range(1,9998)}/{month:int:range(1,12)}",
                 async Task<Ok<BudgetMonthOverview>> (int year, int month, IBudgetsService service,

@@ -111,6 +111,12 @@ public static class FinTrackEnvironment
     public const string InvitesPerHour = "RATE_LIMIT_INVITES_PER_HOUR";
 
     /// <summary>
+    /// How many API tokens may be refused from one address an hour before tokens from it aren't looked at, 30 when
+    /// not set.
+    /// </summary>
+    public const string TokenFailuresPerHour = "RATE_LIMIT_TOKEN_FAILURES_PER_HOUR";
+
+    /// <summary>
     /// The reverse proxies in front of the app, addresses or networks comma separated, e.g. <c>172.18.0.0/16</c>.
     /// Their forwarded headers give the client's address and whether it came over HTTPS. Not set, none are read.
     /// </summary>

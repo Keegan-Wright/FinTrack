@@ -71,6 +71,7 @@ services:
       PASSWORD_SIGN_IN: "${PASSWORD_SIGN_IN:-true}"
       RATE_LIMIT_SIGN_INS_PER_MINUTE: "${RATE_LIMIT_SIGN_INS_PER_MINUTE:-10}"
       RATE_LIMIT_INVITES_PER_HOUR: "${RATE_LIMIT_INVITES_PER_HOUR:-20}"
+      RATE_LIMIT_TOKEN_FAILURES_PER_HOUR: "${RATE_LIMIT_TOKEN_FAILURES_PER_HOUR:-30}"
       # The reverse proxy's network, whose forwarded headers give each visitor's address and HTTPS. Empty when the
       # app isn't behind a proxy, see .env.example
       TRUSTED_PROXIES: "${TRUSTED_PROXIES:-}"

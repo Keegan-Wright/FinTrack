@@ -36,10 +36,21 @@ removes them all. Make sure it's really them asking first.
 
 You can't remove your own here. Use **Your profile**, which asks for your password.
 
+## API tokens
+
+Users with API tokens that still work show how many they have. **Revoke tokens** revokes them all, for example if one
+has leaked.
+
+- They stop working straight away.
+- The user is emailed to say an admin revoked them, and can make new ones.
+- It's logged with who did it.
+
+You can't see anyone's tokens or make tokens for them. To revoke your own, use **API tokens**.
+
 ## Locking
 
-Locking someone signs them out within a minute and stops them signing in until you unlock them. Their banks aren't
-synced and they get no notifications meanwhile.
+Locking someone signs them out within a minute and stops them signing in until you unlock them. Their API tokens stop
+working straight away too. Their banks aren't synced and they get no notifications meanwhile.
 
 Admins can't be locked. Remove their admin access first.
 

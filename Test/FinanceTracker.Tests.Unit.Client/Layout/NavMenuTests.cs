@@ -33,7 +33,7 @@ public class NavMenuTests : ComponentTestBase
             await Assert.That(LinksUnder(cut, "Manage"))
                 .IsEquivalentTo([
                         "ProviderSetup", NavMenu.NotificationsPath, NavMenu.NotificationSettingsPath,
-                        "HouseholdMembers", "Sharing", "Classifications", "Rules", "YourData"
+                        "HouseholdMembers", "Sharing", "Classifications", "Rules", "YourData", "ApiTokens"
                     ],
                     TUnit.Assertions.Enums.CollectionOrdering.Matching);
         }

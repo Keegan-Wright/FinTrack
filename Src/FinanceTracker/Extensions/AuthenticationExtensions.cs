@@ -6,6 +6,7 @@ using FinanceTracker.Domain.Identity;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Middleware;
 using FinanceTracker.Telemetry;
+using FinanceTracker.Tokens;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -41,12 +42,12 @@ public static class AuthenticationExtensions
             builder.Services.AddScoped<IdentityRedirectManager>();
 
             AuthenticationBuilder authBuilder = builder.Services.AddAuthentication(options =>
-            {
-                options.DefaultScheme = IdentityConstants.ApplicationScheme;
-                options.DefaultSignInScheme = IdentityConstants.ExternalScheme;
-            });
+                options.DefaultSignInScheme = IdentityConstants.ExternalScheme);
 
+            // API requests with a personal access token sign in with it, everything else with the cookie
             authBuilder.AddIdentityCookies();
+            authBuilder.AddPersonalAccessTokens(builder.Configuration.GetValue(FinTrackEnvironment.TokenFailuresPerHour,
+                TokenFailureLimiterOptions.DefaultFailuresPerHour));
 
             // How long a cookie is trusted before it's checked against the account, so a locked user or one whose
             // password changed is signed out within a minute rather than Identity's default half hour
@@ -153,6 +154,7 @@ public static class AuthenticationExtensions
                 return TypedResults.Redirect(LocalPath(context.Request, returnUrl));
             });
 
+            app.MapSingleSignOnConfirmation();
             return app;
         }
     }
@@ -274,7 +276,7 @@ public static class AuthenticationExtensions
     /// couldn't be reached (<see cref="HttpRequestException"/>).
     /// </summary>
     /// <param name="exception">What the challenge threw.</param>
-    private static bool IsProviderFailure(Exception exception) =>
+    internal static bool IsProviderFailure(Exception exception) =>
         exception is OpenIdConnectProtocolException or InvalidOperationException or HttpRequestException;
 
     /// <summary>
@@ -283,7 +285,7 @@ public static class AuthenticationExtensions
     /// </summary>
     /// <param name="request">The request, whose site the url has to be on.</param>
     /// <param name="returnUrl">Where to go once signed in.</param>
-    private static string LocalPath(HttpRequest request, string? returnUrl)
+    internal static string LocalPath(HttpRequest request, string? returnUrl)
     {
         Uri site = new($"{request.Scheme}://{request.Host}{request.PathBase}/");
         return Uri.TryCreate(site, returnUrl, out Uri? target) && target.Authority == site.Authority
@@ -307,6 +309,8 @@ public static class AuthenticationExtensions
             services.AddScoped<IEmailChange, EmailChange>();
             services.AddScoped<IProfileService, ProfileService>();
             services.AddScoped<IPasskeyService, PasskeyService>();
+            services.AddScoped<ITokensService, TokensService>();
+            services.AddScoped<ISingleSignOnConfirmation, SingleSignOnConfirmation>();
             services.AddScoped<IPasswordReset, PasswordReset>();
             services.AddScoped<IUsersService, UsersService>();
             services.AddScoped<ISecurityEmails, SecurityEmails>();

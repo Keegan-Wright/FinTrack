@@ -80,6 +80,7 @@ See [Reverse proxy](reverse-proxy.md).
 | `WEBHOOK_ALLOW_PRIVATE` | No | `true` lets webhooks reach your local network, e.g. Home Assistant. Push notifications follow it too, which only matters if you run your own push service. Defaults to `false`. |
 | `RATE_LIMIT_SIGN_INS_PER_MINUTE` | No | Sign in, register and password reset attempts per minute from one address. Defaults to 10. |
 | `RATE_LIMIT_INVITES_PER_HOUR` | No | Sharing invites per hour from one user. Defaults to 20. |
+| `RATE_LIMIT_TOKEN_FAILURES_PER_HOUR` | No | Refused API tokens per hour from one address before its tokens aren't looked at. Only refusals count. Defaults to 30. |
 
 ## Monitoring
 

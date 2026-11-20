@@ -1,0 +1,60 @@
+@* A token just made, shown this once to copy, as only a hash of it is kept. *@
+@inject IJSRuntime JsRuntime
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <div class="ft-stack">
+            <MudText Typo="Typo.body2">
+                Copy it now and keep it somewhere safe. You won't see it again.
+            </MudText>
+            <MudTextField T="string" Value="@Token" Label="Token" ReadOnly="true" Lines="2" Class="ft-token-created"/>
+            <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                Send it as <code>Authorization: Bearer</code> followed by the token. If it leaks, revoke it.
+            </MudText>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@Close">Done</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.ContentCopy"
+                   OnClick="@CopyAsync">Copy token
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+
+    /// <summary>
+    /// The dialog it's shown in.
+    /// </summary>
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    /// <summary>
+    /// The whole token.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public required string Token { get; set; }
+
+    /// <summary>
+    /// Copies it with the browser's clipboard, which only works over HTTPS or on this computer. Otherwise the token
+    /// is there to select and copy.
+    /// </summary>
+    internal async Task CopyAsync()
+    {
+        try
+        {
+            await JsRuntime.InvokeVoidAsync("navigator.clipboard.writeText", Token);
+            Snackbar.Add("Token copied", Severity.Success);
+        }
+        catch (JSException)
+        {
+            Snackbar.Add("Couldn't copy it, select the token and copy it instead", Severity.Warning);
+        }
+    }
+
+    /// <summary>
+    /// Closes the dialog.
+    /// </summary>
+    private void Close() => MudDialog.Close();
+
+}

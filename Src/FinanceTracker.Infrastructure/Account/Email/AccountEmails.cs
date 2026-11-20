@@ -53,6 +53,21 @@ public sealed class AccountEmails : IAccountEmails
     public const string PasskeyRemovedSubject = "A passkey was removed from your FinTrack account";
 
     /// <summary>
+    /// The subject of the email saying a personal access token was made.
+    /// </summary>
+    public const string TokenCreatedSubject = "An API token was made for your FinTrack account";
+
+    /// <summary>
+    /// The subject of the email saying a personal access token was revoked.
+    /// </summary>
+    public const string TokenRevokedSubject = "An API token was revoked on your FinTrack account";
+
+    /// <summary>
+    /// Where the token notices link to, the API tokens page.
+    /// </summary>
+    private const string TokensPath = "ApiTokens";
+
+    /// <summary>
     /// Where security notices link to, the profile's sign in settings.
     /// </summary>
     private const string ProfilePath = "YourProfile";
@@ -160,6 +175,35 @@ public sealed class AccountEmails : IAccountEmails
             "Your FinTrack admin removed all your passkeys, so none of them can sign in any more. Sign in with your " +
             "password and add new ones from your profile.",
             "Open your profile",
+            SecurityReason));
+
+    /// <inheritdoc/>
+    public Task<MailMessage> TokenCreatedAsync(string to, string name) =>
+        CreateAsync(to, _publicAddress.LinkTo(TokensPath), new AccountEmail(
+            TokenCreatedSubject,
+            "API token made",
+            $"An API token called \"{name}\" was made for your FinTrack account. It can read your data, but not " +
+            "change it, until it expires or you revoke it.",
+            "See your API tokens",
+            SecurityReason));
+
+    /// <inheritdoc/>
+    public Task<MailMessage> TokenRevokedAsync(string to, string name) =>
+        CreateAsync(to, _publicAddress.LinkTo(TokensPath), new AccountEmail(
+            TokenRevokedSubject,
+            "API token revoked",
+            $"The API token called \"{name}\" was revoked, so it can't read your FinTrack data any more.",
+            "See your API tokens",
+            SecurityReason));
+
+    /// <inheritdoc/>
+    public Task<MailMessage> TokensRevokedByAdminAsync(string to) =>
+        CreateAsync(to, _publicAddress.LinkTo(TokensPath), new AccountEmail(
+            TokenRevokedSubject,
+            "API tokens revoked",
+            "Your FinTrack admin revoked all your API tokens, so none of them can read your data any more. Make new " +
+            "ones for anything that still needs one.",
+            "See your API tokens",
             SecurityReason));
 
     /// <summary>

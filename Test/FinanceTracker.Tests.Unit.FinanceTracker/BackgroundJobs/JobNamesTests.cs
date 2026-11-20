@@ -18,6 +18,7 @@ public class JobNamesTests
             await Assert.That(JobNames.MonitorTokens).IsEqualTo(nameof(MonitorOpenBankingTokenExpirationAsync));
             await Assert.That(JobNames.MoveGoalsOn).IsEqualTo(nameof(MoveEventSavingsGoalsOnAsync));
             await Assert.That(JobNames.PruneNotifications).IsEqualTo(nameof(PruneReadNotificationsAsync));
+            await Assert.That(JobNames.NotifyTokens).IsEqualTo(nameof(NotifyExpiringApiTokensAsync));
         }
     }
 

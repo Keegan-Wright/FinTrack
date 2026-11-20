@@ -5,7 +5,7 @@ namespace FinanceTracker.Contracts.Services;
 /// <summary>
 /// Everyone who can sign in, for admins who they are, how they sign in, a reset link for one who's forgotten
 /// their password when FinTrack can't email them one, turning off two-factor sign in or removing passkeys for one
-/// who's lost their phone, locking one out, and who else is an admin.
+/// who's lost their phone, revoking API tokens, locking one out, and who else is an admin.
 /// </summary>
 public interface IUsersService
 {
@@ -39,6 +39,15 @@ public interface IUsersService
     /// their password.</returns>
     /// <exception cref="NotFoundException">There's no such user.</exception>
     Task<bool> RemovePasskeysAsync(Guid userId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Revokes all the API tokens of <paramref name="userId"/>, such as when one has leaked. They stop working
+    /// straight away, and the user is emailed to say so.
+    /// </summary>
+    /// <returns>Whether they were revoked, not for the admin asking, who revokes their own on the API tokens page.
+    /// </returns>
+    /// <exception cref="NotFoundException">There's no such user.</exception>
+    Task<bool> RevokeTokensAsync(Guid userId, CancellationToken cancellationToken);
 
     /// <summary>
     /// Locks <paramref name="userId"/> out until they're unlocked. They're signed out wherever they're signed in,

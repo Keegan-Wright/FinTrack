@@ -74,5 +74,10 @@ public enum NotificationKind
     /// <summary>
     /// Someone they're linked with changed what they share with them, declined their invite, or ended the link.
     /// </summary>
-    SharingChanged = 13
+    SharingChanged = 13,
+
+    /// <summary>
+    /// One of their API tokens expires within a week, or has expired, so whatever uses it stops working.
+    /// </summary>
+    ApiTokenExpiring = 14
 }
