@@ -14,7 +14,7 @@
                     It can read your data, but never change it. You'll see it once, so have somewhere ready to keep it.
                 </MudText>
                 <MudTextField T="string" @bind-Value="_model.Name" Label="Name" For="@(() => _model.Name)"
-                              HelperText="e.g. Home Assistant" Immediate="true"
+                              HelperText="e.g. Spending script" Immediate="true"
                               Validation="@(Validator.ValidateValue(_model, nameof(CreateToken.Name)))"/>
                 <MudSelect T="TokenExpiry" @bind-Value="_model.Expiry" Label="Expires"
                            For="@(() => _model.Expiry)" HelperText="@ExpiryHelperText">

@@ -3,7 +3,7 @@ using FinanceTracker.Contracts.Tokens;
 namespace FinanceTracker.Contracts.Services;
 
 /// <summary>
-/// The signed in user's personal access tokens, which scripts and Home Assistant read their data with. Making one asks
+/// The signed in user's personal access tokens, which scripts and other applications read their data with. Making one asks
 /// the user to confirm it's them, with their password, or for someone who signs in through the identity provider by
 /// signing in there again.
 /// </summary>

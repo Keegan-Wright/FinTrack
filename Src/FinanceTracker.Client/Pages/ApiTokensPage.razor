@@ -1,5 +1,5 @@
 @page "/ApiTokens"
-@* The user's personal access tokens (ITokensService), which scripts and Home Assistant read their data with. Making
+@* The user's personal access tokens (ITokensService), which scripts or other applications read their data with. Making
    one asks the user to confirm it's them, with their password, or by signing in at the identity provider again,
    which comes back here with new=true to carry on. The token is shown once. Revoking one stops it straight away. *@
 @using System.Globalization
@@ -15,12 +15,12 @@
 @inject NavigationManager Navigation
 
 <PageTitle>FinTrack - API tokens</PageTitle>
-<PageHeader Title="API tokens" Subtitle="Let scripts and Home Assistant read your data"/>
+<PageHeader Title="API tokens" Subtitle="Let scripts or other applications read your data"/>
 
 <Section>
     <div class="ft-stack">
         <MudText Typo="Typo.body2">
-            A token lets a script or Home Assistant read your accounts, transactions, budgets and the like, without
+            A token lets scripts or other applications read your accounts, transactions, budgets and the like, without
             signing in. It can never change anything, and it can't see your profile or settings.
         </MudText>
         <MudText Typo="Typo.body2" Class="mud-text-secondary">

@@ -30,23 +30,9 @@ public sealed class TokenAccessHandler : AuthorizationHandler<TokenAccessRequire
     }
 
     /// <summary>
-    /// Whether <paramref name="request"/> reads an endpoint opened to tokens.
+    /// Whether <paramref name="request"/> reads an endpoint opened to tokens, see <see cref="TokenReads"/>.
     /// </summary>
     /// <param name="request">The request.</param>
-    private static bool IsTokenRead(HttpContext request)
-    {
-        EndpointMetadataCollection? metadata = request.GetEndpoint()?.Metadata;
-        if (metadata?.GetMetadata<TokenReadableMetadata>() is null)
-        {
-            return false;
-        }
-
-        string method = request.Request.Method;
-        if (HttpMethods.IsGet(method) || HttpMethods.IsHead(method))
-        {
-            return true;
-        }
-
-        return HttpMethods.IsPost(method) && metadata.GetMetadata<ReadsOnlyMetadata>() is not null;
-    }
+    private static bool IsTokenRead(HttpContext request) =>
+        TokenReads.Allows(request.Request.Method, request.GetEndpoint()?.Metadata ?? EndpointMetadataCollection.Empty);
 }

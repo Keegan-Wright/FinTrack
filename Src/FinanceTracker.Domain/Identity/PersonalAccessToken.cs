@@ -3,7 +3,7 @@ using FinanceTracker.Domain.Common;
 namespace FinanceTracker.Domain.Identity;
 
 /// <summary>
-/// A token a script or Home Assistant reads the user's data with, instead of signing in. Only a hash of its secret is
+/// A token another app or script reads the user's data with, instead of signing in. Only a hash of its secret is
 /// kept, so it can't be shown again once made. It stops working when it expires or is revoked.
 /// </summary>
 public sealed class PersonalAccessToken : AggregateRoot

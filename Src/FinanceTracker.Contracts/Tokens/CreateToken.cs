@@ -1,7 +1,7 @@
 namespace FinanceTracker.Contracts.Tokens;
 
 /// <summary>
-/// A new personal access token, read only, for a script or Home Assistant.
+/// A new personal access token, read only, for another app or script.
 /// </summary>
 public sealed class CreateToken
 {
