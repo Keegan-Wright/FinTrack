@@ -163,6 +163,33 @@ public class TokensApiTests : IntegrationTestBase
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
     }
 
+    [Test]
+    public async Task AdminRevokesThem_TheyStopWorkingAndTheUserIsEmailed()
+    {
+        // Arrange
+        SignedInUser admin = await RegisterAdminAsync();
+        SignedInUser user = await RegisterUserAsync();
+        CreatedToken? created = await ApiFor(user).Get<ITokensService>()
+            .CreateAsync(Create(SignedInUser.DefaultPassword), CancellationToken);
+        int countBefore = (await ApiFor(admin).Get<IUsersService>().GetUsersAsync(CancellationToken)
+            .SingleAsync(x => x.Id == user.UserId, CancellationToken)).TokenCount;
+
+        // Act
+        bool revoked = await ApiFor(admin).Get<IUsersService>().RevokeTokensAsync(user.UserId, CancellationToken);
+
+        // Assert
+        IReadOnlyList<CaughtMail> mail =
+            await App.Mail.WaitForAsync(EmailOf(user), AccountEmails.TokenRevokedSubject, CancellationToken);
+        using (Assert.Multiple())
+        {
+            await Assert.That(countBefore).IsEqualTo(1);
+            await Assert.That(revoked).IsTrue();
+            await Assert.That((await ReadWithAsync(created!.Token!)).StatusCode)
+                .IsEqualTo(HttpStatusCode.Unauthorized);
+            await Assert.That(mail.Single().Text).Contains("Your FinTrack admin revoked all your API tokens");
+        }
+    }
+
     /// <summary>
     /// A token named <see cref="TokenName"/> lasting 90 days, with <paramref name="password"/>.
     /// </summary>

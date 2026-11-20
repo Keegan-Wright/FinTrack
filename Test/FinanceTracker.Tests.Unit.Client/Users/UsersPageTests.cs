@@ -15,59 +15,66 @@ public class UsersPageTests : ComponentTestBase
     private static readonly UserSummary Local = new()
     {
         Id = Guid.NewGuid(), Username = "sam", Name = "Sam Taylor", Email = "sam@example.test", EmailConfirmed = true,
-        HasPassword = true, TwoFactorEnabled = false, PasskeyCount = 0, UsesIdentityProvider = false, IsAdmin = true, IsLocked = false, IsYou = true
+        HasPassword = true, TwoFactorEnabled = false, PasskeyCount = 0, TokenCount = 0, UsesIdentityProvider = false, IsAdmin = true, IsLocked = false, IsYou = true
     };
 
     private static readonly UserSummary Provider = new()
     {
         Id = Guid.NewGuid(), Username = "alex", Name = "Alex Smith",
         Email = "alex@example.test", EmailConfirmed = false,
-        HasPassword = false, TwoFactorEnabled = false, PasskeyCount = 0, UsesIdentityProvider = true, IsAdmin = false, IsLocked = false, IsYou = false
+        HasPassword = false, TwoFactorEnabled = false, PasskeyCount = 0, TokenCount = 0, UsesIdentityProvider = true, IsAdmin = false, IsLocked = false, IsYou = false
     };
 
     private static readonly UserSummary LockedProvider = new()
     {
         Id = Provider.Id, Username = "alex", Name = "Alex Smith", Email = "alex@example.test", EmailConfirmed = false,
-        HasPassword = false, TwoFactorEnabled = false, PasskeyCount = 0, UsesIdentityProvider = true, IsAdmin = false, IsLocked = true, IsYou = false
+        HasPassword = false, TwoFactorEnabled = false, PasskeyCount = 0, TokenCount = 0, UsesIdentityProvider = true, IsAdmin = false, IsLocked = true, IsYou = false
     };
 
     private static readonly UserSummary Jo = new()
     {
         Id = Guid.NewGuid(), Username = "jo", Name = "Jo Brown", Email = "jo@example.test", EmailConfirmed = true,
-        HasPassword = true, TwoFactorEnabled = false, PasskeyCount = 0, UsesIdentityProvider = false, IsAdmin = false, IsLocked = false, IsYou = false
+        HasPassword = true, TwoFactorEnabled = false, PasskeyCount = 0, TokenCount = 0, UsesIdentityProvider = false, IsAdmin = false, IsLocked = false, IsYou = false
     };
 
     private static readonly UserSummary JoAsAdmin = new()
     {
         Id = Jo.Id, Username = "jo", Name = "Jo Brown", Email = "jo@example.test", EmailConfirmed = true,
-        HasPassword = true, TwoFactorEnabled = false, PasskeyCount = 0, UsesIdentityProvider = false, IsAdmin = true, IsLocked = false, IsYou = false
+        HasPassword = true, TwoFactorEnabled = false, PasskeyCount = 0, TokenCount = 0, UsesIdentityProvider = false, IsAdmin = true, IsLocked = false, IsYou = false
     };
 
     private static readonly UserSummary JoWithTwoFactor = new()
     {
         Id = Jo.Id, Username = "jo", Name = "Jo Brown", Email = "jo@example.test", EmailConfirmed = true,
-        HasPassword = true, TwoFactorEnabled = true, PasskeyCount = 0, UsesIdentityProvider = false, IsAdmin = false, IsLocked = false,
+        HasPassword = true, TwoFactorEnabled = true, PasskeyCount = 0, TokenCount = 0, UsesIdentityProvider = false, IsAdmin = false, IsLocked = false,
         IsYou = false
     };
 
     private static readonly UserSummary YouWithTwoFactor = new()
     {
         Id = Local.Id, Username = "sam", Name = "Sam Taylor", Email = "sam@example.test", EmailConfirmed = true,
-        HasPassword = true, TwoFactorEnabled = true, PasskeyCount = 0, UsesIdentityProvider = false, IsAdmin = true, IsLocked = false,
+        HasPassword = true, TwoFactorEnabled = true, PasskeyCount = 0, TokenCount = 0, UsesIdentityProvider = false, IsAdmin = true, IsLocked = false,
         IsYou = true
     };
 
     private static readonly UserSummary JoWithPasskeys = new()
     {
         Id = Jo.Id, Username = "jo", Name = "Jo Brown", Email = "jo@example.test", EmailConfirmed = true,
-        HasPassword = true, TwoFactorEnabled = false, PasskeyCount = 2, UsesIdentityProvider = false, IsAdmin = false,
+        HasPassword = true, TwoFactorEnabled = false, PasskeyCount = 2, TokenCount = 0, UsesIdentityProvider = false, IsAdmin = false,
         IsLocked = false, IsYou = false
+    };
+
+    private static readonly UserSummary JoWithTokens = new()
+    {
+        Id = Jo.Id, Username = "jo", Name = "Jo Brown", Email = "jo@example.test", EmailConfirmed = true,
+        HasPassword = true, TwoFactorEnabled = false, PasskeyCount = 0, TokenCount = 3, UsesIdentityProvider = false,
+        IsAdmin = false, IsLocked = false, IsYou = false
     };
 
     private static readonly UserSummary ProviderAdmin = new()
     {
         Id = Guid.NewGuid(), Username = "kit", Name = "Kit Green", Email = "kit@example.test", EmailConfirmed = true,
-        HasPassword = false, TwoFactorEnabled = false, PasskeyCount = 0, UsesIdentityProvider = true, IsAdmin = true, IsLocked = false, IsYou = false
+        HasPassword = false, TwoFactorEnabled = false, PasskeyCount = 0, TokenCount = 0, UsesIdentityProvider = true, IsAdmin = true, IsLocked = false, IsYou = false
     };
 
     private readonly IUsersService _usersService = Substitute.For<IUsersService>();
@@ -218,6 +225,32 @@ public class UsersPageTests : ComponentTestBase
         {
             await Assert.That(chipShown).IsTrue();
             await _usersService.Received(1).RemovePasskeysAsync(Jo.Id, Arg.Any<CancellationToken>());
+        }
+    }
+
+    [Test]
+    public async Task RevokeTokens_Confirmed_RevokesThemAndDropsTheChip()
+    {
+        // Arrange
+        _usersService.GetUsersAsync(Arg.Any<CancellationToken>()).Returns(
+            new[] { JoWithTokens, Local }.ToAsyncEnumerable(), new[] { Jo, Local }.ToAsyncEnumerable());
+        _usersService.RevokeTokensAsync(Jo.Id, Arg.Any<CancellationToken>()).Returns(true);
+        IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
+        IRenderedComponent<UsersPage> cut = RenderPage();
+        cut.WaitForState(() => cut.FindAll(".ft-users__row").Count == 2);
+        bool chipShown = Row(cut, "jo").TextContent.Contains("3 API tokens", StringComparison.Ordinal);
+
+        // Act
+        Task revoking = RowButton(cut, "jo", "Revoke tokens").ClickAsync(new());
+        await RowMenu.ConfirmAsync(dialogs, "Revoke");
+        await revoking.WaitAsync(TestTimeouts.Wait);
+
+        // Assert
+        cut.WaitForState(() => !Row(cut, "jo").TextContent.Contains("API token", StringComparison.Ordinal));
+        using (Assert.Multiple())
+        {
+            await Assert.That(chipShown).IsTrue();
+            await _usersService.Received(1).RevokeTokensAsync(Jo.Id, Arg.Any<CancellationToken>());
         }
     }
 

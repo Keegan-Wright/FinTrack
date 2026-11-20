@@ -196,6 +196,16 @@ public sealed class AccountEmails : IAccountEmails
             "See your API tokens",
             SecurityReason));
 
+    /// <inheritdoc/>
+    public Task<MailMessage> TokensRevokedByAdminAsync(string to) =>
+        CreateAsync(to, _publicAddress.LinkTo(TokensPath), new AccountEmail(
+            TokenRevokedSubject,
+            "API tokens revoked",
+            "Your FinTrack admin revoked all your API tokens, so none of them can read your data any more. Make new " +
+            "ones for anything that still needs one.",
+            "See your API tokens",
+            SecurityReason));
+
     /// <summary>
     /// What the email saying two-factor sign in is off says, by how it was turned off.
     /// </summary>

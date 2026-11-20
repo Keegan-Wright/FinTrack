@@ -21,6 +21,8 @@ public sealed class UsersService : IUsersService
     private readonly IPasswordReset _passwordReset;
     private readonly ICurrentUser _currentUser;
     private readonly ISecurityEmails _securityEmails;
+    private readonly IDbContextFactory<FinanceTrackerContext> _contextFactory;
+    private readonly TimeProvider _timeProvider;
     private readonly ILogger<UsersService> _logger;
     private readonly SignInMethods _signInMethods;
 
@@ -29,11 +31,16 @@ public sealed class UsersService : IUsersService
     /// <param name="currentUser">The signed in user.</param>
     /// <param name="signInMethods">Whether passwords can be used.</param>
     /// <param name="securityEmails">Tells a user when how they sign in changes.</param>
+    /// <param name="contextFactory">Reads and revokes users' API tokens.</param>
+    /// <param name="timeProvider">The clock, for which tokens still work.</param>
     /// <param name="logger">Its logger.</param>
     public UsersService(UserManager<FinanceTrackerUser> userManager, IPasswordReset passwordReset,
         ICurrentUser currentUser, SignInMethods signInMethods, ISecurityEmails securityEmails,
+        IDbContextFactory<FinanceTrackerContext> contextFactory, TimeProvider timeProvider,
         ILogger<UsersService> logger)
     {
+        _contextFactory = contextFactory;
+        _timeProvider = timeProvider;
         _securityEmails = securityEmails;
         _signInMethods = signInMethods;
         _userManager = userManager;
@@ -53,6 +60,7 @@ public sealed class UsersService : IUsersService
         List<FinanceTrackerUser> users = await _userManager.Users.AsNoTracking()
             .OrderBy(static x => x.UserName)
             .ToListAsync(cancellationToken);
+        Dictionary<Guid, int> tokenCounts = await ActiveTokenCountsAsync(cancellationToken);
 
         foreach (FinanceTrackerUser user in users)
         {
@@ -67,6 +75,7 @@ public sealed class UsersService : IUsersService
                 HasPassword = _signInMethods.CanUsePassword(user.PasswordHash is not null),
                 TwoFactorEnabled = user.TwoFactorEnabled,
                 PasskeyCount = passkeys.Count,
+                TokenCount = tokenCounts.GetValueOrDefault(user.Id),
                 UsesIdentityProvider = user.OpenIdConnectSubject is not null,
                 IsAdmin = admins.Contains(user.Id),
                 IsLocked = user.IsLockedByAdmin,
@@ -146,6 +155,51 @@ public sealed class UsersService : IUsersService
         }
 
         return true;
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> RevokeTokensAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        // Their own go through the API tokens page
+        if (userId == _currentUser.UserId)
+        {
+            return false;
+        }
+
+        FinanceTrackerUser user = await FindAsync(userId);
+        DateTime now = _timeProvider.GetUtcNow().UtcDateTime;
+        await using FinanceTrackerContext context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        List<PersonalAccessToken> tokens = await context.PersonalAccessTokens
+            .Where(x => x.UserId == user.Id && x.RevokedAt == null)
+            .ToListAsync(cancellationToken);
+        foreach (PersonalAccessToken token in tokens)
+        {
+            token.Revoke(now);
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
+        _logger.LogTokensRevokedByAdmin(_currentUser.UserId, tokens.Count, user.Id);
+        if (tokens.Count > 0)
+        {
+            await _securityEmails.TokensRevokedByAdminAsync(user);
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// How many API tokens each user has that still work, by user. Users with none aren't there.
+    /// </summary>
+    /// <param name="cancellationToken">Stops the work.</param>
+    private async Task<Dictionary<Guid, int>> ActiveTokenCountsAsync(CancellationToken cancellationToken)
+    {
+        DateTime now = _timeProvider.GetUtcNow().UtcDateTime;
+        await using FinanceTrackerContext context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        return await context.PersonalAccessTokens
+            .Where(x => x.RevokedAt == null && (x.ExpiresAt == null || x.ExpiresAt > now))
+            .GroupBy(static x => x.UserId)
+            .Select(static x => new { UserId = x.Key, Count = x.Count() })
+            .ToDictionaryAsync(static x => x.UserId, static x => x.Count, cancellationToken);
     }
 
     /// <inheritdoc/>

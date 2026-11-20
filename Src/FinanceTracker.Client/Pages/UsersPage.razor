@@ -26,7 +26,7 @@
         <MudText Typo="Typo.body2" Class="mud-text-secondary">
             Someone who's lost their phone and their recovery codes can have two-factor sign in turned off from here,
             and someone who's lost the devices their passkeys are on can have them removed. Make sure it's really them
-            asking first.
+            asking first. API tokens can be revoked here too, such as when one has leaked.
         </MudText>
         <MudText Typo="Typo.body2" Class="mud-text-secondary">
             Locking someone signs them out and stops them signing in until you unlock them.
@@ -72,6 +72,12 @@
                                              Icon="@Icons.Material.Outlined.Fingerprint">@PasskeysText(user)
                                     </MudChip>
                                 }
+                                @if (user.TokenCount > 0)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                                             Icon="@Icons.Material.Outlined.Key">@TokensText(user)
+                                    </MudChip>
+                                }
                                 @if (user.IsLocked)
                                 {
                                     <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
@@ -108,6 +114,14 @@
                                            StartIcon="@Icons.Material.Outlined.Delete"
                                            aria-label="@($"Remove passkeys for {user.Username}")"
                                            OnClick="@(() => RemovePasskeysAsync(user))">Remove passkeys
+                                </MudButton>
+                            }
+                            @if (user.TokenCount > 0 && !user.IsYou)
+                            {
+                                <MudButton Variant="Variant.Text" Color="Color.Warning" Size="Size.Small"
+                                           StartIcon="@Icons.Material.Outlined.Block"
+                                           aria-label="@($"Revoke tokens for {user.Username}")"
+                                           OnClick="@(() => RevokeTokensAsync(user))">Revoke tokens
                                 </MudButton>
                             }
                             @if (user.IsLocked)
@@ -293,6 +307,36 @@
                 }
             }, $"Couldn't remove the passkeys of {user.Username}, try again");
     }
+
+    /// <summary>
+    /// Revokes all a user's API tokens once the admin confirms.
+    /// </summary>
+    /// <param name="user">The user.</param>
+    internal async Task RevokeTokensAsync(UserSummary user)
+    {
+        bool? confirmed = await DialogService.ShowMessageBoxAsync($"Revoke the API tokens of {user.Username}?",
+            "They stop working straight away, and they're emailed to say so. They can make new ones.",
+            yesText: "Revoke", cancelText: "Cancel");
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        await ChangeAsync(async () =>
+            {
+                if (!await UsersService.RevokeTokensAsync(user.Id, _cts.Token))
+                {
+                    Snackbar.Add("Revoke your own tokens on the API tokens page", Severity.Warning);
+                }
+            }, $"Couldn't revoke the API tokens of {user.Username}, try again");
+    }
+
+    /// <summary>
+    /// How many API tokens a user has, for their chip.
+    /// </summary>
+    /// <param name="user">The user.</param>
+    private static string TokensText(UserSummary user) =>
+        user.TokenCount == 1 ? "1 API token" : $"{user.TokenCount} API tokens";
 
     /// <summary>
     /// How many passkeys a user has, for their chip.

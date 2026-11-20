@@ -58,6 +58,10 @@ public sealed class FinTrackMetrics
     /// </summary>
     public const string AuthenticatorCodesReusedName = "fintrack.authenticator.codes_reused";
     /// <summary>
+    /// The metric's name. Requests with a personal access token, by how they went.
+    /// </summary>
+    public const string TokenAuthenticationsName = "fintrack.tokens.authentications";
+    /// <summary>
     /// The metric's name. Transactions the user's rules changed.
     /// </summary>
     public const string RulesChangedName = "fintrack.rules.transactions_changed";
@@ -159,6 +163,7 @@ public sealed class FinTrackMetrics
     private readonly Histogram<double> _trueLayerThrottleWait;
     private readonly Counter<long> _singleSignOnFailures;
     private readonly Counter<long> _authenticatorCodesReused;
+    private readonly Counter<long> _tokenAuthentications;
     private readonly Counter<long> _rulesChanged;
     private readonly Counter<long> _transferDecisions;
     private readonly Counter<long> _billChanges;
@@ -207,6 +212,9 @@ public sealed class FinTrackMetrics
         _authenticatorCodesReused = meter.CreateCounter<long>(AuthenticatorCodesReusedName, "{code}",
             "Authenticator codes refused for having been used already, or being older than one that was. Someone may "
             + "have watched it typed or passed it on. Identity's own metrics count them as failures");
+        _tokenAuthentications = meter.CreateCounter<long>(TokenAuthenticationsName, "{request}",
+            "Requests with a personal access token, signed in or refused and why: malformed, unknown, expired or "
+            + "revoked, its user locked, or its address rate limited after too many refusals");
         _rulesChanged = meter.CreateCounter<long>(RulesChangedName, "{transaction}",
             "Transactions the user's rules changed, categorising, hiding or marking them");
         _transferDecisions = meter.CreateCounter<long>(TransferDecisionsName, "{transaction}",
@@ -314,6 +322,13 @@ public sealed class FinTrackMetrics
     public void AuthenticatorCodeReused() => _authenticatorCodesReused.Add(1);
 
     /// <summary>
+    /// A request with a personal access token, and how it went.
+    /// </summary>
+    /// <param name="result">Whether it signed in, or why it was refused.</param>
+    public void TokenAuthenticated(TokenAuthenticationResult result) =>
+        _tokenAuthentications.Add(1, new KeyValuePair<string, object?>(TelemetryTags.TokenResult, ResultTag(result)));
+
+    /// <summary>
     /// What one run of a user's rules changed.
     /// </summary>
     /// <param name="transactionsChanged">How many transactions changed.</param>
@@ -369,6 +384,31 @@ public sealed class FinTrackMetrics
     /// <param name="change">How the bill changed.</param>
     private static KeyValuePair<string, object?> BillChangeTag(string change) =>
         new(TelemetryTags.BillChange, change);
+
+    /// <summary>
+    /// The tag value for how a request with a token went.
+    /// </summary>
+    /// <param name="result">How it went.</param>
+    private static string ResultTag(TokenAuthenticationResult result)
+    {
+        switch (result)
+        {
+            case TokenAuthenticationResult.Succeeded:
+                return "succeeded";
+            case TokenAuthenticationResult.Malformed:
+                return "malformed";
+            case TokenAuthenticationResult.Unknown:
+                return "unknown";
+            case TokenAuthenticationResult.Inactive:
+                return "inactive";
+            case TokenAuthenticationResult.Locked:
+                return "locked";
+            case TokenAuthenticationResult.RateLimited:
+                return "rate_limited";
+            default:
+                throw new ArgumentOutOfRangeException(nameof(result), result, null);
+        }
+    }
 
     /// <summary>
     /// The tag value for why a single sign-on failed.

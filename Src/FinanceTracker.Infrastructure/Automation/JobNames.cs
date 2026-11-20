@@ -31,6 +31,11 @@ public static class JobNames
     public const string PruneNotifications = "PruneReadNotificationsAsync";
 
     /// <summary>
+    /// Tells users their API tokens expire soon or have, on a schedule.
+    /// </summary>
+    public const string NotifyTokens = "NotifyExpiringApiTokensAsync";
+
+    /// <summary>
     /// The trigger group a job's schedule is kept in, under the job's name.
     /// </summary>
     public const string ScheduleGroup = "schedules";

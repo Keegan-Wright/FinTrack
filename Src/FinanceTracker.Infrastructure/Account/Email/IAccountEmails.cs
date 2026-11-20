@@ -81,4 +81,10 @@ public interface IAccountEmails
     /// <param name="to">Who it's sent to.</param>
     /// <param name="name">The token's name.</param>
     Task<MailMessage> TokenRevokedAsync(string to, string name);
+
+    /// <summary>
+    /// Tells the user an admin revoked all their API tokens.
+    /// </summary>
+    /// <param name="to">Who it's sent to.</param>
+    Task<MailMessage> TokensRevokedByAdminAsync(string to);
 }

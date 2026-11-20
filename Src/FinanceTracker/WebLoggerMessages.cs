@@ -116,6 +116,10 @@ public static partial class WebLoggerMessages
     [LoggerMessage(LogLevel.Information, "User {userId} revoked personal access token {tokenId}")]
     public static partial void LogTokenRevoked(this ILogger logger, Guid userId, Guid tokenId);
 
+    [LoggerMessage(LogLevel.Warning,
+        "A personal access token from {address} wasn't looked at, too many were refused from there lately")]
+    public static partial void LogTokenAddressLimited(this ILogger logger, string address);
+
     [LoggerMessage(LogLevel.Warning, "A personal access token {lookupId} was refused, {reason}")]
     public static partial void LogTokenRefused(this ILogger logger, string lookupId, string reason);
 
@@ -127,6 +131,9 @@ public static partial class WebLoggerMessages
 
     [LoggerMessage(LogLevel.Warning, "A passkey for user {userId} couldn't be added: {reason}")]
     public static partial void LogPasskeyNotAdded(this ILogger logger, Guid userId, string reason);
+
+    [LoggerMessage(LogLevel.Warning, "Admin {adminId} revoked all {count} API tokens of user {userId}")]
+    public static partial void LogTokensRevokedByAdmin(this ILogger logger, Guid adminId, int count, Guid userId);
 
     [LoggerMessage(LogLevel.Warning, "Admin {adminId} removed all {count} passkeys of user {userId}")]
     public static partial void LogPasskeysRemovedByAdmin(this ILogger logger, Guid adminId, int count, Guid userId);

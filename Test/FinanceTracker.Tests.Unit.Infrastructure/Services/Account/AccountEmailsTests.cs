@@ -197,4 +197,18 @@ public class AccountEmailsTests
             await Assert.That(email.Text).Contains("\"Home Assistant\" was revoked");
         }
     }
+
+    [Test]
+    public async Task TokensRevokedByAdmin_SaysTheAdminDidIt()
+    {
+        // Act
+        MailMessage email = await TestEmails.Account(PublicUrl).TokensRevokedByAdminAsync("sam@example.test");
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(email.Subject).IsEqualTo(AccountEmails.TokenRevokedSubject);
+            await Assert.That(email.Text).Contains("Your FinTrack admin revoked all your API tokens");
+        }
+    }
 }

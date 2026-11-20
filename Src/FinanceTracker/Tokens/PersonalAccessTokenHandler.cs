@@ -1,8 +1,10 @@
+using System.Globalization;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using FinanceTracker.Domain.Identity;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Account.Tokens;
+using FinanceTracker.Telemetry;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -13,24 +15,38 @@ namespace FinanceTracker.Tokens;
 /// <summary>
 /// Signs in a request with a personal access token as the token's user. Checked on every request, so a revoked token
 /// or a locked user stops working straight away. The principal has no roles, so admin endpoints are never reached, and
-/// carries <see cref="PersonalAccessTokenDefaults.ScopeClaim"/> for <see cref="TokenAccessHandler"/>.
+/// carries <see cref="PersonalAccessTokenDefaults.ScopeClaim"/> for <see cref="TokenAccessHandler"/>. Refusals are
+/// counted per address by <see cref="ITokenFailureLimiter"/>, and an address over its limit gets 429 without its token
+/// being looked at.
 /// </summary>
 public sealed class PersonalAccessTokenHandler : AuthenticationHandler<AuthenticationSchemeOptions>
 {
+    /// <summary>
+    /// The request item set when its address was over the limit, so the challenge answers 429.
+    /// </summary>
+    private const string RateLimitedItem = "fintrack:token_rate_limited";
+
     private readonly IDbContextFactory<FinanceTrackerContext> _contextFactory;
     private readonly TimeProvider _timeProvider;
+    private readonly ITokenFailureLimiter _failureLimiter;
+    private readonly FinTrackMetrics _metrics;
 
     /// <param name="options">The scheme's options.</param>
     /// <param name="logger">Its logger.</param>
     /// <param name="encoder">Encodes URLs.</param>
     /// <param name="contextFactory">Finds the token and its user.</param>
     /// <param name="timeProvider">The clock expiry and lockout are checked against.</param>
+    /// <param name="failureLimiter">Counts refusals per address.</param>
+    /// <param name="metrics">Counts how token requests went.</param>
     public PersonalAccessTokenHandler(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger,
-        UrlEncoder encoder, IDbContextFactory<FinanceTrackerContext> contextFactory, TimeProvider timeProvider)
+        UrlEncoder encoder, IDbContextFactory<FinanceTrackerContext> contextFactory, TimeProvider timeProvider,
+        ITokenFailureLimiter failureLimiter, FinTrackMetrics metrics)
         : base(options, logger, encoder)
     {
         _contextFactory = contextFactory;
         _timeProvider = timeProvider;
+        _failureLimiter = failureLimiter;
+        _metrics = metrics;
     }
 
     /// <inheritdoc/>
@@ -42,9 +58,17 @@ public sealed class PersonalAccessTokenHandler : AuthenticationHandler<Authentic
             return AuthenticateResult.NoResult();
         }
 
+        if (_failureLimiter.IsBlocked(Address))
+        {
+            Context.Items[RateLimitedItem] = true;
+            _metrics.TokenAuthenticated(TokenAuthenticationResult.RateLimited);
+            Logger.LogTokenAddressLimited(Address);
+            return AuthenticateResult.Fail("Too many tokens were refused from this address lately.");
+        }
+
         if (!PersonalAccessTokenFormat.TryRead(token, out string? lookupId, out byte[]? secretHash))
         {
-            return Refuse(null, "it isn't in FinTrack's token format");
+            return Refuse(null, TokenAuthenticationResult.Malformed, "it isn't in FinTrack's token format");
         }
 
         await using FinanceTrackerContext context = await _contextFactory.CreateDbContextAsync(Context.RequestAborted);
@@ -52,31 +76,41 @@ public sealed class PersonalAccessTokenHandler : AuthenticationHandler<Authentic
             .SingleOrDefaultAsync(x => x.LookupId == lookupId, Context.RequestAborted);
         if (found is null || !PersonalAccessTokenFormat.Matches(secretHash, found.SecretHash))
         {
-            return Refuse(lookupId, "there's no such token");
+            return Refuse(lookupId, TokenAuthenticationResult.Unknown, "there's no such token");
         }
 
         DateTime now = _timeProvider.GetUtcNow().UtcDateTime;
         if (!found.IsActive(now))
         {
-            return Refuse(lookupId, "it's expired or revoked");
+            return Refuse(lookupId, TokenAuthenticationResult.Inactive, "it's expired or revoked");
         }
 
         FinanceTrackerUser? user = await context.Users.FindAsync([found.UserId], Context.RequestAborted);
         if (user is null || user.LockoutEnd > _timeProvider.GetUtcNow())
         {
-            return Refuse(lookupId, "its user is locked");
+            return Refuse(lookupId, TokenAuthenticationResult.Locked, "its user is locked");
         }
 
         await RecordUseAsync(context, found, now);
+        _metrics.TokenAuthenticated(TokenAuthenticationResult.Succeeded);
         return AuthenticateResult.Success(new AuthenticationTicket(PrincipalFor(user, found), Scheme.Name));
     }
 
     /// <summary>
-    /// A refused token gets a plain 401 saying it's a bearer token that's wanted, never a redirect to sign in.
+    /// A refused token gets a plain 401 saying it's a bearer token that's wanted, never a redirect to sign in. From an
+    /// address over its limit, 429 with when to try again.
     /// </summary>
     /// <param name="properties">The challenge's properties.</param>
     protected override Task HandleChallengeAsync(AuthenticationProperties properties)
     {
+        if (Context.Items.ContainsKey(RateLimitedItem))
+        {
+            Response.StatusCode = StatusCodes.Status429TooManyRequests;
+            Response.Headers.Append(HeaderNames.RetryAfter,
+                ((int)_failureLimiter.Window.TotalSeconds).ToString(CultureInfo.InvariantCulture));
+            return Task.CompletedTask;
+        }
+
         Response.StatusCode = StatusCodes.Status401Unauthorized;
         Response.Headers.Append(HeaderNames.WWWAuthenticate, "Bearer");
         return Task.CompletedTask;
@@ -118,10 +152,18 @@ public sealed class PersonalAccessTokenHandler : AuthenticationHandler<Authentic
     }
 
     /// <summary>
-    /// Fails the sign in, logging why with the token's public part, never the token.
+    /// The request's address, which refusals are counted against.
     /// </summary>
-    private AuthenticateResult Refuse(string? lookupId, string reason)
+    private string Address => Context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+    /// <summary>
+    /// Fails the sign in, counting it against the address and logging why with the token's public part, never the
+    /// token.
+    /// </summary>
+    private AuthenticateResult Refuse(string? lookupId, TokenAuthenticationResult result, string reason)
     {
+        _failureLimiter.RecordFailure(Address);
+        _metrics.TokenAuthenticated(result);
         Logger.LogTokenRefused(lookupId ?? "unreadable", reason);
         return AuthenticateResult.Fail($"The token was refused, {reason}.");
     }

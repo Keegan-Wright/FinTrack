@@ -33,6 +33,7 @@ public static class NotificationKindText
         NotificationKind.SharingAccepted => "Someone accepting your invite to share",
         NotificationKind.JointAccount => "A joint account being merged or split",
         NotificationKind.SharingChanged => "Someone changing what they share with you",
+        NotificationKind.ApiTokenExpiring => "An API token expiring",
         _ => kind.ToString()
     };
 
@@ -56,6 +57,7 @@ public static class NotificationKindText
         NotificationKind.SharingAccepted => Icons.Material.Outlined.Handshake,
         NotificationKind.JointAccount => Icons.Material.Outlined.JoinInner,
         NotificationKind.SharingChanged => Icons.Material.Outlined.Share,
+        NotificationKind.ApiTokenExpiring => Icons.Material.Outlined.Key,
         _ => Icons.Material.Outlined.Notifications
     };
 }

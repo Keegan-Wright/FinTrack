@@ -46,7 +46,8 @@ public static class AuthenticationExtensions
 
             // API requests with a personal access token sign in with it, everything else with the cookie
             authBuilder.AddIdentityCookies();
-            authBuilder.AddPersonalAccessTokens();
+            authBuilder.AddPersonalAccessTokens(builder.Configuration.GetValue(FinTrackEnvironment.TokenFailuresPerHour,
+                TokenFailureLimiterOptions.DefaultFailuresPerHour));
 
             // How long a cookie is trusted before it's checked against the account, so a locked user or one whose
             // password changed is signed out within a minute rather than Identity's default half hour

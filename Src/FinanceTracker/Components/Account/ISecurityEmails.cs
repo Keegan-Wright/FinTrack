@@ -63,4 +63,10 @@ public interface ISecurityEmails
     /// <param name="user">The user.</param>
     /// <param name="name">The token's name.</param>
     Task TokenRevokedAsync(FinanceTrackerUser user, string name);
+
+    /// <summary>
+    /// An admin revoked all <paramref name="user"/>'s API tokens.
+    /// </summary>
+    /// <param name="user">The user.</param>
+    Task TokensRevokedByAdminAsync(FinanceTrackerUser user);
 }
