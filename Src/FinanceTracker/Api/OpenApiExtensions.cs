@@ -19,7 +19,8 @@ public static class OpenApiExtensions
     extension(IServiceCollection services)
     {
         /// <summary>
-        /// Describes the API's endpoints, those under <c>api/</c>. The sign in pages and the sync hub are left out.
+        /// Describes the API's endpoints, those under <c>api/</c>, and which an API token can read. The sign in pages
+        /// and the sync hub are left out.
         /// </summary>
         public IServiceCollection AddFinTrackOpenApi()
         {
@@ -29,6 +30,8 @@ public static class OpenApiExtensions
                 options.ShouldInclude = static description =>
                     description.RelativePath?.StartsWith("api/", StringComparison.Ordinal) == true;
                 options.AddOperationTransformer<NoneAnswerOperationTransformer>();
+                options.AddDocumentTransformer<TokenSchemeDocumentTransformer>();
+                options.AddOperationTransformer<TokenSecurityOperationTransformer>();
             });
             return services;
         }

@@ -1,6 +1,7 @@
 using FinanceTracker.Contracts.Api;
 using FinanceTracker.Contracts.Calendar;
 using FinanceTracker.Contracts.Services;
+using FinanceTracker.Tokens;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace FinanceTracker.Api;
@@ -18,7 +19,8 @@ public static class CalendarEndpoints
         /// </summary>
         public RouteGroupBuilder MapCalendarEndpoints()
         {
-            RouteGroupBuilder calendar = api.MapGroup(ApiRoutes.Calendar);
+            RouteGroupBuilder calendar = api.MapGroup(ApiRoutes.Calendar)
+                .ReadableWithToken();
 
             calendar.MapGet("{year:int}/{month:int:range(1,12)}", (int year, int month, ICalendarService service,
                     CancellationToken cancellationToken) =>

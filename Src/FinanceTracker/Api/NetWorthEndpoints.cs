@@ -1,6 +1,7 @@
 using FinanceTracker.Contracts.Api;
 using FinanceTracker.Contracts.NetWorth;
 using FinanceTracker.Contracts.Services;
+using FinanceTracker.Tokens;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace FinanceTracker.Api;
@@ -18,7 +19,8 @@ public static class NetWorthEndpoints
         /// </summary>
         public RouteGroupBuilder MapNetWorthEndpoints()
         {
-            RouteGroupBuilder netWorth = api.MapGroup(ApiRoutes.NetWorth);
+            RouteGroupBuilder netWorth = api.MapGroup(ApiRoutes.NetWorth)
+                .ReadableWithToken();
 
             netWorth.MapGet(string.Empty, async Task<Ok<NetWorthHistory>> (DateOnly? from, INetWorthService service,
                     CancellationToken cancellationToken) =>

@@ -2,6 +2,7 @@ using FinanceTracker.Contracts.Api;
 using FinanceTracker.Contracts.Debts;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Transactions;
+using FinanceTracker.Tokens;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace FinanceTracker.Api;
@@ -20,7 +21,8 @@ public static class DebtEndpoints
         /// </summary>
         public RouteGroupBuilder MapDebtEndpoints()
         {
-            RouteGroupBuilder debts = api.MapGroup(ApiRoutes.Debts);
+            RouteGroupBuilder debts = api.MapGroup(ApiRoutes.Debts)
+                .ReadableWithToken();
 
             debts.MapGet(string.Empty, (IDebtsService service, CancellationToken cancellationToken) =>
                 service.GetDebtsAsync(cancellationToken));

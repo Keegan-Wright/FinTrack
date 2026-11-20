@@ -39,6 +39,7 @@ public partial class Program
 
         builder.Services.AddSingleton<AppUpdate>();
         builder.Services.AddSecurityHeaders();
+
         builder.AddFinTrackRateLimiting();
         builder.AddFinTrackForwardedHeaders();
 

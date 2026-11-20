@@ -1,6 +1,7 @@
 using FinanceTracker.Contracts.Api;
 using FinanceTracker.Contracts.PayPeriods;
 using FinanceTracker.Contracts.Services;
+using FinanceTracker.Tokens;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace FinanceTracker.Api;
@@ -18,7 +19,8 @@ public static class PayPeriodEndpoints
         /// </summary>
         public RouteGroupBuilder MapPayPeriodEndpoints()
         {
-            RouteGroupBuilder payPeriods = api.MapGroup(ApiRoutes.PayPeriods);
+            RouteGroupBuilder payPeriods = api.MapGroup(ApiRoutes.PayPeriods)
+                .ReadableWithToken();
 
             payPeriods.MapGet(string.Empty, async Task<Ok<YourPay>> (IPayPeriodsService service,
                     CancellationToken cancellationToken) =>

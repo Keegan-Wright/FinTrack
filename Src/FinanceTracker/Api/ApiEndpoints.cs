@@ -1,4 +1,5 @@
 using FinanceTracker.Contracts.Api;
+using FinanceTracker.Tokens;
 
 namespace FinanceTracker.Api;
 
@@ -16,8 +17,12 @@ public static class ApiEndpoints
         /// </summary>
         public IEndpointRouteBuilder MapFinTrackApi()
         {
+            // Signed in, and a personal access token only reads the endpoints opened to it, see TokenAccessHandler.
+            // One policy saying both, as a second RequireAuthorization with its own policy drops the default's
+            // signed in rule
             RouteGroupBuilder api = endpoints.MapGroup(string.Empty)
-                .RequireAuthorization()
+                .RequireAuthorization(static policy =>
+                    policy.RequireAuthenticatedUser().AddRequirements(new TokenAccessRequirement()))
                 .DisableCookieRedirect()
                 .AddEndpointFilter<ApiRequestHeaderFilter>()
                 .AddEndpointFilter<ExpectedFailureFilter>();
@@ -41,6 +46,7 @@ public static class ApiEndpoints
                 .MapReportEndpoints()
                 .MapRuleEndpoints()
                 .MapSavingsGoalEndpoints()
+                .MapTokenEndpoints()
                 .MapSharingEndpoints()
                 .MapNetWorthEndpoints()
                 .MapTransactionEndpoints()

@@ -1,0 +1,285 @@
+@page "/ApiTokens"
+@* The user's personal access tokens (ITokensService), which scripts or other applications read their data with. Making
+   one asks the user to confirm it's them, with their password, or by signing in at the identity provider again,
+   which comes back here with new=true to carry on. The token is shown once. Revoking one stops it straight away. *@
+@using System.Globalization
+@using FinanceTracker.Client.Components.Tokens
+@using FinanceTracker.Contracts.Tokens
+@using Microsoft.AspNetCore.Authorization
+@inherits PageComponent
+
+@attribute [Authorize]
+@inject ITokensService TokensService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>FinTrack - API tokens</PageTitle>
+<PageHeader Title="API tokens" Subtitle="Let scripts or other applications read your data"/>
+
+<Section>
+    <div class="ft-stack">
+        <MudText Typo="Typo.body2">
+            A token lets scripts or other applications read your accounts, transactions, budgets and the like, without
+            signing in. It can never change anything, and it can't see your profile or settings.
+        </MudText>
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+            Treat one like a password. You're emailed when one is made or revoked.
+        </MudText>
+
+        @if (Overview is { Confirmation: null })
+        {
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                Tokens are for accounts that sign in with a password or through single sign-on.
+            </MudText>
+        }
+        else if (Overview is not null)
+        {
+            @if (Overview.Tokens.Count == 0)
+            {
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">You haven't made any tokens.</MudText>
+            }
+            else
+            {
+                <div class="ft-list">
+                    @foreach (TokenSummary token in Overview.Tokens)
+                    {
+                        <div class="ft-list__row ft-tokens__row">
+                            <MudIcon Icon="@Icons.Material.Outlined.Key" aria-hidden="true"/>
+                            <div class="ft-list__main">
+                                <div class="ft-tokens__name">
+                                    <MudText Typo="Typo.body2" Class="ft-tokens__title">@token.Name</MudText>
+                                    @if (token.Expired)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">Expired
+                                        </MudChip>
+                                    }
+                                    else if (token.ExpiresAt is null)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                                                 Color="Color.Warning">Never expires
+                                        </MudChip>
+                                    }
+                                </div>
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">@DetailsText(token)</MudText>
+                            </div>
+                            <MudButton Variant="Variant.Text" Color="Color.Warning" Size="Size.Small"
+                                       StartIcon="@Icons.Material.Outlined.Block"
+                                       aria-label="@($"Revoke {token.Name}")"
+                                       OnClick="@(() => RevokeAsync(token))">Revoke
+                            </MudButton>
+                        </div>
+                    }
+                </div>
+            }
+
+            <div class="ft-stack">
+                @if (Overview.Confirmation == TokenConfirmation.SingleSignOn)
+                {
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        You sign in through single sign-on, so you'll sign in there again to confirm it's you first.
+                    </MudText>
+                }
+                <div>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Add"
+                               OnClick="@NewAsync">New token
+                    </MudButton>
+                </div>
+            </div>
+        }
+    </div>
+</Section>
+
+@code {
+
+    /// <summary>
+    /// The tokens and how to confirm, loaded once, see <see cref="PageComponent.LoadOnceAsync{T}"/>.
+    /// </summary>
+    [PersistentState]
+    public TokensOverview? Overview { get; set; }
+
+    /// <summary>
+    /// <c>true</c> when single sign-on has just confirmed the user, to carry on making the token.
+    /// </summary>
+    [SupplyParameterFromQuery(Name = "new")]
+    public bool CarryOn { get; set; }
+
+    /// <summary>
+    /// <c>failed</c> when single sign-on didn't confirm the user.
+    /// </summary>
+    [SupplyParameterFromQuery(Name = "sso")]
+    public string? SingleSignOn { get; set; }
+
+    /// <inheritdoc/>
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        Overview = await LoadOnceAsync(Overview, "Loading your tokens", LoadAsync);
+    }
+
+    /// <inheritdoc/>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Back from single sign-on, carry on making the token, or say it didn't confirm them. Once only
+        if (!firstRender || (!CarryOn && SingleSignOn is null))
+        {
+            return;
+        }
+
+        if (SingleSignOn == "failed")
+        {
+            Navigation.NavigateTo("ApiTokens", replace: true);
+            Snackbar.Add("Single sign-on didn't confirm it's you, try again", Severity.Error);
+            return;
+        }
+
+        // The address keeps new=true. MudBlazor closes open dialogs on the first navigation after a page load,
+        // whatever the address, so clearing it would close this one. Once the token's made the confirmation's used
+        // up, so coming back here doesn't open it again
+        if (Overview is { Confirmed: true })
+        {
+            await CreateAsync(askForPassword: false);
+        }
+    }
+
+    /// <summary>
+    /// When the token was made, when it expires, and when it was last used.
+    /// </summary>
+    /// <param name="token">The token.</param>
+    private static string DetailsText(TokenSummary token)
+    {
+        List<string> parts = [$"Made {Day(token.CreatedAt)}"];
+        if (token.ExpiresAt is { } expires)
+        {
+            string verb = token.Expired ? "Expired" : "Expires";
+            parts.Add($"{verb} {Day(expires)}");
+        }
+
+        parts.Add(token.LastUsedAt is { } used ? $"Last used {Day(used)}" : "Never used");
+        return string.Join(" · ", parts);
+    }
+
+    /// <summary>
+    /// <paramref name="utc"/>'s day where the user is.
+    /// </summary>
+    /// <param name="utc">A time in UTC.</param>
+    private static string Day(DateTime utc) =>
+        DateTime.SpecifyKind(utc, DateTimeKind.Utc).ToLocalTime().ToString("d MMM yyyy", CultureInfo.CurrentCulture);
+
+    /// <summary>
+    /// Starts making a token. A password user gives their password in the dialog. A single sign-on user goes to sign
+    /// in there again first, unless they just have.
+    /// </summary>
+    internal async Task NewAsync()
+    {
+        if (Overview is not { Confirmation: TokenConfirmation.SingleSignOn })
+        {
+            await CreateAsync(askForPassword: true);
+            return;
+        }
+
+        if (Overview.Confirmed)
+        {
+            await CreateAsync(askForPassword: false);
+            return;
+        }
+
+        // The provider's sign in is a full page load away, coming back here to carry on
+        string back = Uri.EscapeDataString("/ApiTokens?new=true");
+        Navigation.NavigateTo($"auth/oidc/confirm?returnUrl={back}", forceLoad: true);
+    }
+
+    /// <summary>
+    /// Asks what the token is for and how long it lasts, and the password when <paramref name="askForPassword"/>,
+    /// then makes it and shows it once.
+    /// </summary>
+    /// <param name="askForPassword">Whether to ask for the password.</param>
+    private async Task CreateAsync(bool askForPassword)
+    {
+        DialogParameters<NewTokenDialog> parameters = new() { { x => x.AskForPassword, askForPassword } };
+        IDialogReference dialog = await DialogService.ShowAsync<NewTokenDialog>("New API token", parameters);
+        DialogResult? result = await dialog.Result;
+        if (result is null || result.Canceled)
+        {
+            return;
+        }
+
+        CreatedToken? created = null;
+        SetLoadingState(true, "Making your token");
+        try
+        {
+            created = await TokensService.CreateAsync((CreateToken)result.Data!, _cts.Token);
+            Overview = await LoadAsync(_cts.Token);
+        }
+        catch (Exception) when (!_cts.IsCancellationRequested)
+        {
+            Snackbar.Add("Couldn't make the token, try again", Severity.Error);
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+
+        await ShowCreatedAsync(created);
+    }
+
+    /// <summary>
+    /// Shows a token just made, or says why it wasn't.
+    /// </summary>
+    /// <param name="created">How making it went, null when it failed or the user can't have tokens.</param>
+    private async Task ShowCreatedAsync(CreatedToken? created)
+    {
+        if (created is null)
+        {
+            return;
+        }
+
+        if (!created.Succeeded)
+        {
+            Snackbar.Add(created.Errors[0], Severity.Error);
+            return;
+        }
+
+        DialogParameters<TokenCreatedDialog> parameters = new() { { x => x.Token, created.Token! } };
+        DialogOptions options = new() { BackdropClick = false };
+        await DialogService.ShowAsync<TokenCreatedDialog>("Your new token", parameters, options);
+    }
+
+    /// <summary>
+    /// Revokes a token once the user confirms.
+    /// </summary>
+    /// <param name="token">The token.</param>
+    internal async Task RevokeAsync(TokenSummary token)
+    {
+        bool? confirmed = await DialogService.ShowMessageBoxAsync($"Revoke {token.Name}?",
+            "It stops working straight away. Anything using it will need a new one.",
+            yesText: "Revoke", cancelText: "Cancel");
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        SetLoadingState(true, "Revoking the token");
+        try
+        {
+            await TokensService.RevokeAsync(token.Id, _cts.Token);
+            Overview = await LoadAsync(_cts.Token);
+            Snackbar.Add("Token revoked", Severity.Success);
+        }
+        catch (Exception) when (!_cts.IsCancellationRequested)
+        {
+            Snackbar.Add("Couldn't revoke the token, try again", Severity.Error);
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
+    /// <summary>
+    /// The user's tokens and how they confirm.
+    /// </summary>
+    private Task<TokensOverview> LoadAsync(CancellationToken cancellationToken) =>
+        TokensService.GetTokensAsync(cancellationToken);
+
+}

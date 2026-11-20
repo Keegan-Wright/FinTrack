@@ -11,8 +11,8 @@ using Microsoft.OpenApi;
 namespace FinanceTracker.Tests.Unit.FinanceTracker.Api;
 
 /// <summary>
-/// The OpenAPI document as the app builds it:. The API's endpoints and nothing else, described from the doc comments,
-/// and only for a signed in user.
+/// The OpenAPI document as the app builds it. The API's endpoints and nothing else, described from the doc comments,
+/// with which an API token can read, and only for a signed in user.
 /// </summary>
 public class OpenApiDocumentTests
 {
@@ -69,6 +69,51 @@ public class OpenApiDocumentTests
             await Assert.That(resetLink.Operations![HttpMethod.Post].Responses!.Keys).IsEquivalentTo(["200", "409"]);
         }
     }
+
+    [Test]
+    public async Task Document_DescribesApiTokensAsABearerScheme()
+    {
+        // Arrange
+        await using WebApplication app = await StartAppAsync();
+
+        // Act
+        OpenApiDocument document = await DocumentAsync(app);
+        IOpenApiSecurityScheme scheme = document.Components!.SecuritySchemes!["ApiToken"];
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(scheme.Type).IsEqualTo(SecuritySchemeType.Http);
+            await Assert.That(scheme.Scheme).IsEqualTo("bearer");
+        }
+    }
+
+    [Test]
+    public async Task Document_ListsTheTokenOnlyWhereATokenCanRead()
+    {
+        // Arrange
+        await using WebApplication app = await StartAppAsync();
+
+        // Act
+        OpenApiDocument document = await DocumentAsync(app);
+
+        // Assert, reads of the data endpoints list it, writes and the account endpoints don't
+        using (Assert.Multiple())
+        {
+            await Assert.That(UsesToken(document, "/api/budgets", HttpMethod.Get)).IsTrue();
+            await Assert.That(UsesToken(document, "/api/transactions/search", HttpMethod.Post)).IsTrue();
+            await Assert.That(UsesToken(document, "/api/budgets", HttpMethod.Post)).IsFalse();
+            await Assert.That(UsesToken(document, "/api/profile", HttpMethod.Get)).IsFalse();
+            await Assert.That(UsesToken(document, "/api/tokens", HttpMethod.Get)).IsFalse();
+        }
+    }
+
+    /// <summary>
+    /// Whether the <paramref name="method"/> operation at <paramref name="path"/> lists the API token scheme.
+    /// </summary>
+    private static bool UsesToken(OpenApiDocument document, string path, HttpMethod method) =>
+        document.Paths[path].Operations![method].Security?
+            .Any(static x => x.Keys.Any(static k => k.Reference.Id == "ApiToken")) == true;
 
     [Test]
     public async Task DocumentEndpoint_NeedsASignedInUser()

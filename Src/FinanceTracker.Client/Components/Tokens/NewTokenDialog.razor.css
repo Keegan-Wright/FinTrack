@@ -1,0 +1,7 @@
+/* The message above its fields, at a readable width */
+.ft-new-token {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: min(360px, 100%);
+}

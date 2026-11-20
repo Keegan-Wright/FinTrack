@@ -1,5 +1,6 @@
 using FinanceTracker.Contracts.Api;
 using FinanceTracker.Contracts.Services;
+using FinanceTracker.Tokens;
 
 namespace FinanceTracker.Api;
 
@@ -15,7 +16,8 @@ public static class AccountEndpoints
         /// </summary>
         public RouteGroupBuilder MapAccountEndpoints()
         {
-            RouteGroupBuilder accounts = api.MapGroup(ApiRoutes.Accounts);
+            RouteGroupBuilder accounts = api.MapGroup(ApiRoutes.Accounts)
+                .ReadableWithToken();
 
             // GET ?transactions=5, each account with its 5 newest transactions
             accounts.MapGet(string.Empty, (int transactions, IAccountService service,

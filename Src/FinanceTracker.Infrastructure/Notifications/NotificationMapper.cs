@@ -49,6 +49,7 @@ public static class NotificationMapper
         DomainKind.SharingAccepted => ContractKind.SharingAccepted,
         DomainKind.JointAccount => ContractKind.JointAccount,
         DomainKind.SharingChanged => ContractKind.SharingChanged,
+        DomainKind.ApiTokenExpiring => ContractKind.ApiTokenExpiring,
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
     };
 
@@ -72,6 +73,7 @@ public static class NotificationMapper
         ContractKind.SharingAccepted => DomainKind.SharingAccepted,
         ContractKind.JointAccount => DomainKind.JointAccount,
         ContractKind.SharingChanged => DomainKind.SharingChanged,
+        ContractKind.ApiTokenExpiring => DomainKind.ApiTokenExpiring,
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
     };
 }

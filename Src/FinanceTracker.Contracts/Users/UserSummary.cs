@@ -48,6 +48,11 @@ public sealed class UserSummary
     public required int PasskeyCount { get; init; }
 
     /// <summary>
+    /// How many API tokens they have that still work.
+    /// </summary>
+    public required int TokenCount { get; init; }
+
+    /// <summary>
     /// Whether they can sign in through the identity provider.
     /// </summary>
     public required bool UsesIdentityProvider { get; init; }

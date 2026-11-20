@@ -74,7 +74,8 @@ public sealed class FakeOidcProvider : IDisposable
     /// someone has signed in and agreed.
     /// </summary>
     /// <param name="nonce">The nonce the app sent with the sign in, which the identity token has to carry back.</param>
-    public void Approve(string code, string nonce, FakeOidcUser user)
+    /// <param name="authTime">When they signed in at the provider, now unless given.</param>
+    public void Approve(string code, string nonce, FakeOidcUser user, DateTimeOffset? authTime = null)
     {
         string accessToken = $"access-{code}";
 
@@ -85,7 +86,7 @@ public sealed class FakeOidcProvider : IDisposable
                 .WithBody(new RegexMatcher($"(^|&)code={code}(&|$)")))
             .RespondWith(Json(new
             {
-                id_token = IdentityToken(nonce, user),
+                id_token = IdentityToken(nonce, user, authTime ?? DateTimeOffset.UtcNow),
                 access_token = accessToken,
                 token_type = "Bearer",
                 expires_in = 300
@@ -108,10 +109,11 @@ public sealed class FakeOidcProvider : IDisposable
     /// <summary>
     /// The identity token for <paramref name="user"/>, signed with the key the provider publishes.
     /// </summary>
-    private string IdentityToken(string nonce, FakeOidcUser user)
+    private string IdentityToken(string nonce, FakeOidcUser user, DateTimeOffset authTime)
     {
         long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         Dictionary<string, object> claims = user.Claims();
+        claims["auth_time"] = authTime.ToUnixTimeSeconds();
         claims["iss"] = Issuer;
         claims["aud"] = ClientId;
         claims["nonce"] = nonce;

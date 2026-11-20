@@ -189,6 +189,11 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
     public DbSet<Notification> Notifications { get; private set; }
 
     /// <summary>
+    /// The tokens scripts read users' data with.
+    /// </summary>
+    public DbSet<PersonalAccessToken> PersonalAccessTokens { get; private set; }
+
+    /// <summary>
     /// How users want to be notified.
     /// </summary>
     public DbSet<NotificationSettings> NotificationSettings { get; private set; }

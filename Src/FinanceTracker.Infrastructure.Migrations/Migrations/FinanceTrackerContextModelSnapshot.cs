@@ -549,6 +549,65 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("FinanceTracker.Domain.Identity.PersonalAccessToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("LastUsedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LookupId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<string>("Scope")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("SecretHash")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
+
+                    b.Property<DateTime?>("Updated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LookupId")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("PersonalAccessTokens", (string)null);
+                });
+
             modelBuilder.Entity("FinanceTracker.Domain.NetWorth.NetWorthSnapshot", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1987,6 +2046,15 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.Navigation("LinkedAccounts");
                 });
 
+            modelBuilder.Entity("FinanceTracker.Domain.Identity.PersonalAccessToken", b =>
+                {
+                    b.HasOne("FinanceTracker.Domain.Identity.FinanceTrackerUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("FinanceTracker.Domain.NetWorth.NetWorthSnapshot", b =>
                 {
                     b.HasOne("FinanceTracker.Domain.Identity.FinanceTrackerUser", null)
@@ -2779,11 +2847,13 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                         {
                             b1.Property<byte[]>("IdentityUserPasskeyCredentialId");
 
-                            b1.Property<byte[]>("AttestationObject")
-                                .IsRequired();
+                            b1.Property<string>("AttestationObject")
+                                .IsRequired()
+                                .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
-                            b1.Property<byte[]>("ClientDataJson")
-                                .IsRequired();
+                            b1.Property<string>("ClientDataJson")
+                                .IsRequired()
+                                .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                             b1.Property<DateTimeOffset>("CreatedAt");
 

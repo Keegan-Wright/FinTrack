@@ -28,6 +28,7 @@ public static class NotificationKindStyle
         NotificationKind.SharingAccepted => "Sharing",
         NotificationKind.JointAccount => "Sharing",
         NotificationKind.SharingChanged => "Sharing",
+        NotificationKind.ApiTokenExpiring => "API tokens",
         _ => "Notification"
     };
 
@@ -52,6 +53,7 @@ public static class NotificationKindStyle
         NotificationKind.SharingAccepted => LightPalette.Primary,
         NotificationKind.JointAccount => LightPalette.Primary,
         NotificationKind.SharingChanged => LightPalette.Primary,
+        NotificationKind.ApiTokenExpiring => LightPalette.Warning,
         _ => LightPalette.Primary
     };
 }
