@@ -6,15 +6,19 @@ using FinanceTracker.Tests.Unit.Shared;
 namespace FinanceTracker.Tests.Integration;
 
 /// <summary>
-/// A webhook on this machine for the app to post to, keeping each post as whatever receives it would see it.
+/// A webhook or push service on this machine for the app to post to, keeping each post as whatever receives it would
+/// see it.
 /// </summary>
 public sealed class WebhookCatcher : IDisposable
 {
     private readonly HttpListener _listener = new();
+    private readonly HttpStatusCode _answer;
     private readonly Channel<CaughtPost> _posts = Channel.CreateUnbounded<CaughtPost>();
 
-    public WebhookCatcher()
+    /// <param name="answer">What it answers each post with, e.g. 410 for a push to a browser that has gone.</param>
+    public WebhookCatcher(HttpStatusCode answer = HttpStatusCode.NoContent)
     {
+        _answer = answer;
         Url = new Uri($"http://127.0.0.1:{FreePort()}/hook/");
         _listener.Prefixes.Add(Url.ToString());
         _listener.Start();
@@ -58,7 +62,7 @@ public sealed class WebhookCatcher : IDisposable
                 .Where(static x => x is not null)
                 .ToDictionary(static x => x!, x => context.Request.Headers[x]!, StringComparer.OrdinalIgnoreCase);
 
-            context.Response.StatusCode = (int)HttpStatusCode.NoContent;
+            context.Response.StatusCode = (int)_answer;
             context.Response.Close();
             await _posts.Writer.WriteAsync(new CaughtPost(headers, body.ToArray()));
         }

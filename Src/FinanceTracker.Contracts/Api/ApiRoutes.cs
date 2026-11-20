@@ -77,6 +77,11 @@ public static class ApiRoutes
     public const string Notifications = "api/notifications";
 
     /// <summary>
+    /// <see cref="Services.IPushService"/>.
+    /// </summary>
+    public const string Push = "api/notifications/push";
+
+    /// <summary>
     /// <see cref="Services.ISharingService"/>'s links with other users.
     /// </summary>
     public const string SharingLinks = "api/sharing/links";

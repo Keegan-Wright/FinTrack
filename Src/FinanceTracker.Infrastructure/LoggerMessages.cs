@@ -444,4 +444,38 @@ public static partial class LoggerMessages
         "something else at the same moment")]
     public static partial void LogNotificationDeliveryNotRecorded(this ILogger logger, Exception exception,
         Guid notificationId, Guid userId);
+
+    /// <summary>
+    /// Logs at warning <c>Couldn't push user {userId} their test to device {deviceId}</c>.
+    /// </summary>
+    /// <param name="logger">The logger.</param>
+    /// <param name="exception">What went wrong.</param>
+    /// <param name="userId">The user.</param>
+    /// <param name="deviceId">The device.</param>
+    [LoggerMessage(LogLevel.Warning, "Couldn't push user {userId} their test to device {deviceId}")]
+    public static partial void LogTestPushFailed(this ILogger logger, Exception exception, Guid userId,
+        Guid deviceId);
+
+    /// <summary>
+    /// Logs at information <c>Removed user {userId}'s push device {deviceId}, its browser has unsubscribed</c>.
+    /// </summary>
+    /// <param name="logger">The logger.</param>
+    /// <param name="userId">The user.</param>
+    /// <param name="deviceId">The device.</param>
+    [LoggerMessage(LogLevel.Information,
+        "Removed user {userId}'s push device {deviceId}, its browser has unsubscribed")]
+    public static partial void LogPushDeviceGone(this ILogger logger, Guid userId, Guid deviceId);
+
+    /// <summary>
+    /// Logs at information <c>Moved push device {deviceId} from user {previousUserId} to user {userId}, the browser
+    /// changed hands</c>.
+    /// </summary>
+    /// <param name="logger">The logger.</param>
+    /// <param name="deviceId">The device the last user had.</param>
+    /// <param name="previousUserId">Who had it.</param>
+    /// <param name="userId">Who has it now.</param>
+    [LoggerMessage(LogLevel.Information,
+        "Moved push device {deviceId} from user {previousUserId} to user {userId}, the browser changed hands")]
+    public static partial void LogPushDeviceChangedHands(this ILogger logger, Guid deviceId, Guid previousUserId,
+        Guid userId);
 }

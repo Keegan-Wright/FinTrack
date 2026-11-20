@@ -1,6 +1,6 @@
-@page "/Notifications/Settings"
-@* What the user is notified about and where: each kind's channels, when alerts are raised, email and their
-   webhook, a tab each. *@
+﻿@page "/Notifications/Settings"
+@* What the user is notified about and where: each kind's channels, when alerts are raised, email, their webhook
+   and push notifications, a tab each. *@
 @using FinanceTracker.Client.Components.Notifications
 @using FinanceTracker.Contracts.Notifications
 @using Microsoft.AspNetCore.Authorization
@@ -39,6 +39,9 @@ else
         </MudTabPanel>
         <MudTabPanel Text="Webhook">
             <WebhookSection Settings="@Settings" SettingsChanged="@(changed => Settings = changed)"/>
+        </MudTabPanel>
+        <MudTabPanel Text="Push">
+            <PushSection/>
         </MudTabPanel>
     </MudTabs>
 }

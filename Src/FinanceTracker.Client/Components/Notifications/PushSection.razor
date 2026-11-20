@@ -1,0 +1,351 @@
+@* Push notifications on the user's phones and computers. Turns them on for this browser, lists the devices that have
+   them, and sends a test. Which kinds are pushed comes later, every device gets the test. *@
+@using System.Globalization
+@using FinanceTracker.Contracts.Notifications
+@using Microsoft.JSInterop
+@using Severity = MudBlazor.Severity
+@implements IDisposable
+@inject IPushService PushService
+@inject IDialogService DialogService
+@inject IJSRuntime JsRuntime
+@inject ISnackbar Snackbar
+@inject TimeProvider TimeProvider
+
+<Section>
+    <LoadingFrame Loading="@(!Loaded)" Message="Loading your devices" MinHeight="120" Cover="false">
+        @if (Loaded)
+        {
+            <div class="ft-stack">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                    Notifications pop up on your phone or computer, even when FinTrack isn't open. Turn them on for
+                    each device you want them on.
+                </MudText>
+
+                @if (_settings is null)
+                {
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">Your devices couldn't be loaded.</MudText>
+                }
+                else
+                {
+                    <div>
+                        @if (_support == NeedsInstall)
+                        {
+                            <MudAlert Severity="Severity.Info" Dense="true">
+                                On an iPhone or iPad, add FinTrack to your Home Screen first. Tap Share, then Add to
+                                Home Screen, then open FinTrack from there and turn notifications on here.
+                            </MudAlert>
+                        }
+                        else if (_support != Supported)
+                        {
+                            <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                                This browser can't get push notifications. Try a recent Chrome, Edge, Firefox or
+                                Safari.
+                            </MudText>
+                        }
+                        else if (ThisDeviceOn)
+                        {
+                            <MudButton Variant="Variant.Text" Color="Color.Warning"
+                                       StartIcon="@Icons.Material.Outlined.NotificationsOff" OnClick="@TurnOffAsync">
+                                Turn off for this device
+                            </MudButton>
+                        }
+                        else if (_permission == Denied)
+                        {
+                            <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                                Notifications are blocked for FinTrack in this browser. Allow them in the browser's
+                                site settings, then turn them on here.
+                            </MudText>
+                        }
+                        else
+                        {
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Outlined.NotificationsActive"
+                                       OnClick="@TurnOnAsync">Turn on for this device
+                            </MudButton>
+                        }
+                    </div>
+
+                    @if (_settings.Devices.Count > 0)
+                    {
+                        <div class="ft-list">
+                            @foreach (PushDevice device in _settings.Devices)
+                            {
+                                <div class="ft-list__row ft-push__row">
+                                    <MudIcon Icon="@Icons.Material.Outlined.Devices" aria-hidden="true"/>
+                                    <div class="ft-list__main">
+                                        <div class="ft-push__name-line">
+                                            <MudText Typo="Typo.body2" Class="ft-push__name">@device.Name</MudText>
+                                            @if (device.Id == _thisDeviceId)
+                                            {
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Primary"
+                                                         Variant="Variant.Outlined">This device
+                                                </MudChip>
+                                            }
+                                        </div>
+                                        <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                            @AddedText(device)
+                                        </MudText>
+                                        @if (device.LastPush is { } last)
+                                        {
+                                            <DeliveryStatusText Status="@last" What="push"/>
+                                        }
+                                    </div>
+                                    <MudButton Variant="Variant.Text" Color="Color.Warning" Size="Size.Small"
+                                               StartIcon="@Icons.Material.Outlined.Delete"
+                                               aria-label="@($"Remove {device.Name}")"
+                                               OnClick="@(() => RemoveAsync(device))">Remove
+                                    </MudButton>
+                                </div>
+                            }
+                        </div>
+
+                        <div>
+                            <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Outlined.Send" OnClick="@SendTestAsync">
+                                Send a test
+                            </MudButton>
+                        </div>
+                    }
+                }
+            </div>
+        }
+    </LoadingFrame>
+</Section>
+
+@code {
+
+    /// <summary>
+    /// The browser can get pushes.
+    /// </summary>
+    private const string Supported = "supported";
+
+    /// <summary>
+    /// An iPhone or iPad where FinTrack isn't on the Home Screen, the only way Safari takes pushes.
+    /// </summary>
+    private const string NeedsInstall = "needs-install";
+
+    /// <summary>
+    /// The person has blocked notifications from FinTrack.
+    /// </summary>
+    private const string Denied = "denied";
+
+    /// <summary>
+    /// The shared UI state, whose loading overlay covers the page while this saves.
+    /// </summary>
+    [CascadingParameter] private ApplicationState ApplicationState { get; set; } = null!;
+
+    private readonly CancellationTokenSource _cts = new();
+    private PushSettings? _settings;
+    private string _support = "unsupported";
+    private string _permission = "default";
+    private Guid? _thisDeviceId;
+    private bool _fetched;
+    private bool _browserChecked;
+
+    /// <summary>
+    /// Whether the devices are in and what the browser can do is known.
+    /// </summary>
+    private bool Loaded => _fetched && _browserChecked;
+
+    /// <summary>
+    /// Whether this browser is one of the user's devices.
+    /// </summary>
+    private bool ThisDeviceOn => _thisDeviceId is { } id && _settings?.Devices.Any(x => x.Id == id) == true;
+
+    /// <inheritdoc/>
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _settings = await PushService.GetSettingsAsync(_cts.Token);
+        }
+        catch (Exception) when (!_cts.IsCancellationRequested)
+        {
+            _settings = null;
+        }
+
+        _fetched = true;
+    }
+
+    /// <inheritdoc/>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // What the browser can do is only known once it's rendered
+        if (!firstRender)
+        {
+            return;
+        }
+
+        try
+        {
+            _support = await JsRuntime.InvokeAsync<string>("ftPushSupport", _cts.Token);
+            _permission = await JsRuntime.InvokeAsync<string>("ftPushPermission", _cts.Token);
+            string? remembered = await JsRuntime.InvokeAsync<string?>("ftPushDeviceId", _cts.Token);
+            _thisDeviceId = Guid.TryParse(remembered, out Guid id) ? id : null;
+        }
+        catch (JSException)
+        {
+            _support = "unsupported";
+        }
+
+        _browserChecked = true;
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// When the device was added.
+    /// </summary>
+    /// <param name="device">The device.</param>
+    private string AddedText(PushDevice device)
+    {
+        DateTime added = TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(device.Added, DateTimeKind.Utc),
+            TimeProvider.LocalTimeZone);
+        return $"Added {added.ToString("d MMM yyyy", CultureInfo.CurrentCulture)}";
+    }
+
+    /// <summary>
+    /// Asks the browser to show notifications, subscribes it and adds it as a device.
+    /// </summary>
+    internal async Task TurnOnAsync()
+    {
+        if (_settings is null)
+        {
+            return;
+        }
+
+        await RunAsync("Turning on notifications", "Couldn't turn on notifications here, try again", async () =>
+        {
+            AddPushDevice? subscription =
+                await JsRuntime.InvokeAsync<AddPushDevice?>("ftPushSubscribe", _cts.Token, _settings.PublicKey);
+            if (subscription is null)
+            {
+                _permission = await JsRuntime.InvokeAsync<string>("ftPushPermission", _cts.Token);
+                Snackbar.Add("Notifications weren't allowed", Severity.Warning);
+                return;
+            }
+
+            PushDeviceAdded added = await PushService.AddDeviceAsync(subscription, _cts.Token);
+            await JsRuntime.InvokeVoidAsync("ftRememberPushDevice", _cts.Token, added.DeviceId.ToString());
+            _thisDeviceId = added.DeviceId;
+            _settings = added.Settings;
+            _permission = "granted";
+            Snackbar.Add("Notifications turned on for this device", Severity.Success);
+        });
+    }
+
+    /// <summary>
+    /// Removes this browser once the user confirms.
+    /// </summary>
+    internal async Task TurnOffAsync()
+    {
+        PushDevice? device = _settings?.Devices.FirstOrDefault(x => x.Id == _thisDeviceId);
+        if (device is not null)
+        {
+            await RemoveAsync(device);
+        }
+    }
+
+    /// <summary>
+    /// Removes a device once the user confirms. Removing this one also unsubscribes the browser.
+    /// </summary>
+    /// <param name="device">The device.</param>
+    internal async Task RemoveAsync(PushDevice device)
+    {
+        bool? confirmed = await DialogService.ShowMessageBoxAsync($"Remove {device.Name}?",
+            "Notifications stop being pushed to it. You can turn them on again from that device.",
+            yesText: "Remove", cancelText: "Cancel");
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        await RunAsync("Removing the device", "Couldn't remove the device, try again", async () =>
+        {
+            PushSettings? settings = await PushService.RemoveDeviceAsync(device.Id, _cts.Token);
+            if (device.Id == _thisDeviceId)
+            {
+                await ForgetThisDeviceAsync();
+            }
+
+            if (settings is not null)
+            {
+                _settings = settings;
+            }
+
+            Snackbar.Add("Device removed", Severity.Success);
+        });
+    }
+
+    /// <summary>
+    /// Pushes a test to every device.
+    /// </summary>
+    internal async Task SendTestAsync()
+    {
+        await RunAsync("Sending a test", "Couldn't send the test, try again", async () =>
+        {
+            PushSettings? settings = await PushService.SendTestAsync(_cts.Token);
+            if (settings is null)
+            {
+                return;
+            }
+
+            _settings = settings;
+            if (settings.Devices.All(static x => x.LastPush is { Sent: true }))
+            {
+                Snackbar.Add("Test sent", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("The test didn't reach every device", Severity.Error);
+            }
+        });
+    }
+
+    /// <summary>
+    /// Unsubscribes this browser and forgets its device.
+    /// </summary>
+    private async Task ForgetThisDeviceAsync()
+    {
+        _thisDeviceId = null;
+        try
+        {
+            await JsRuntime.InvokeVoidAsync("ftPushUnsubscribe", _cts.Token);
+            await JsRuntime.InvokeVoidAsync("ftRememberPushDevice", _cts.Token, null);
+        }
+        catch (JSException)
+        {
+            // Already removed on the server, which is what stops the pushes
+        }
+    }
+
+    /// <summary>
+    /// Runs <paramref name="change"/> under the loading overlay, saying <paramref name="failed"/> if it fails.
+    /// </summary>
+    /// <param name="working">What's happening, under the overlay's spinner.</param>
+    /// <param name="failed">What's said when it fails.</param>
+    /// <param name="change">The change.</param>
+    private async Task RunAsync(string working, string failed, Func<Task> change)
+    {
+        ApplicationState.ShowLoading(working);
+        try
+        {
+            await change();
+        }
+        catch (Exception) when (!_cts.IsCancellationRequested)
+        {
+            Snackbar.Add(failed, Severity.Error);
+        }
+        finally
+        {
+            ApplicationState.HideLoading();
+        }
+    }
+
+    /// <inheritdoc/>
+    public void Dispose()
+    {
+        _cts.Cancel();
+        _cts.Dispose();
+    }
+
+}

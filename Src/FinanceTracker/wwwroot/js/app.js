@@ -177,3 +177,118 @@ customElements.define("ft-passkey-sign-in", class extends HTMLElement {
         }
     }
 });
+
+// Push notifications, for Notification settings' Push tab (PushSection.razor). The service worker (service-worker.js)
+// is only registered when someone turns push on, and only shows pushes, it never caches anything.
+
+// Whether this browser can get push notifications. "supported", "needs-install" for an iPhone or iPad where FinTrack
+// isn't on the Home Screen yet, which is the only way Safari takes them, or "unsupported"
+function ftPushSupport() {
+    if ("serviceWorker" in navigator && "PushManager" in window && "Notification" in window) {
+        return "supported";
+    }
+
+    const appleTouch = /iPhone|iPad|iPod/.test(navigator.userAgent)
+        || (navigator.userAgent.includes("Macintosh") && navigator.maxTouchPoints > 1);
+    return appleTouch && !navigator.standalone ? "needs-install" : "unsupported";
+}
+
+// Whether the browser lets FinTrack show notifications. "granted", "denied", or "default" when it hasn't asked.
+// From the Permissions API where there is one, which "prompt" means hasn't asked
+async function ftPushPermission() {
+    if (!("Notification" in window)) {
+        return "denied";
+    }
+
+    try {
+        const status = await navigator.permissions.query({name: "notifications"});
+        return status.state === "prompt" ? "default" : status.state;
+    } catch {
+        return Notification.permission;
+    }
+}
+
+// Asks to show notifications, then subscribes with the server's VAPID public key (base64url). Gives back what the
+// server needs to push to this browser, or null when the person says no. An old subscription made with another key
+// is replaced
+async function ftPushSubscribe(publicKey) {
+    if (await Notification.requestPermission() !== "granted") {
+        return null;
+    }
+
+    const registration = await navigator.serviceWorker.register("service-worker.js", {scope: "./"});
+    await navigator.serviceWorker.ready;
+
+    const key = ftBase64UrlBytes(publicKey);
+    let subscription = await registration.pushManager.getSubscription();
+    if (subscription && !ftSameBytes(subscription.options.applicationServerKey, key)) {
+        await subscription.unsubscribe();
+        subscription = null;
+    }
+
+    subscription ??= await registration.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: key});
+    const json = subscription.toJSON();
+    return {endpoint: json.endpoint, publicKey: json.keys.p256dh, authSecret: json.keys.auth, name: ftDeviceName()};
+}
+
+// Stops this browser's subscription, when this device is removed
+async function ftPushUnsubscribe() {
+    const registration = await navigator.serviceWorker?.getRegistration();
+    const subscription = await registration?.pushManager.getSubscription();
+    await subscription?.unsubscribe();
+}
+
+// The id the server gave this browser's device, kept so the Push tab can say which device is this one. Null when it
+// has none, or the browser keeps nothing
+function ftPushDeviceId() {
+    try {
+        return localStorage.getItem("ft-push-device");
+    } catch {
+        return null;
+    }
+}
+
+function ftRememberPushDevice(id) {
+    try {
+        if (id) {
+            localStorage.setItem("ft-push-device", id);
+        } else {
+            localStorage.removeItem("ft-push-device");
+        }
+    } catch {
+        // Not kept, the Push tab just can't tell which device is this one
+    }
+}
+
+// The browser and what it runs on, e.g. "Chrome on Android", so people can tell their devices apart
+function ftDeviceName() {
+    const agent = navigator.userAgent;
+    const browsers = [["Edge", /Edg\//], ["Samsung Internet", /SamsungBrowser/], ["Opera", /OPR\//],
+        ["Firefox", /Firefox|FxiOS/], ["Chrome", /Chrome|CriOS/], ["Safari", /Safari/]];
+    const systems = [["Android", /Android/], ["iPhone", /iPhone/], ["iPad", /iPad/], ["ChromeOS", /CrOS/],
+        ["Windows", /Windows/], ["Mac", /Macintosh/], ["Linux", /Linux/]];
+    const browser = browsers.find(([, pattern]) => pattern.test(agent))?.[0] ?? "Browser";
+    const system = systems.find(([, pattern]) => pattern.test(agent))?.[0];
+    return system ? `${browser} on ${system}` : browser;
+}
+
+function ftBase64UrlBytes(text) {
+    const base64 = text.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(text.length / 4) * 4, "=");
+    return Uint8Array.from(atob(base64), x => x.charCodeAt(0));
+}
+
+function ftSameBytes(buffer, bytes) {
+    const other = new Uint8Array(buffer ?? []);
+    return other.length === bytes.length && other.every((x, i) => x === bytes[i]);
+}
+
+// A tapped notification asks an open FinTrack to go to its page, see service-worker.js. Through Blazor's navigation,
+// so the tab moves to it like following a link rather than reloading
+if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.addEventListener("message", event => {
+        if (event.data?.type === "ft-open" && typeof event.data.url === "string") {
+            Blazor.navigateTo(event.data.url);
+        }
+    });
+    navigator.serviceWorker.startMessages();
+}

@@ -726,6 +726,68 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.ToTable("NotificationSettings", (string)null);
                 });
 
+            modelBuilder.Entity("FinanceTracker.Domain.Notifications.PushDevice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AuthSecret")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Endpoint")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
+
+                    b.Property<string>("EndpointBlindIndex")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.BlindIndexSource", "Endpoint");
+
+                    b.Property<DateTime?>("LastPushAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LastPushFailure")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
+
+                    b.Property<string>("PublicKey")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<DateTime?>("Updated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EndpointBlindIndex")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("PushDevices", (string)null);
+                });
+
             modelBuilder.Entity("FinanceTracker.Domain.OpenBanking.Accounts.BankAccount", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1662,6 +1724,28 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.ToTable("UserLinks", (string)null);
                 });
 
+            modelBuilder.Entity("FinanceTracker.Infrastructure.Notifications.Push.StoredVapidKeys", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PrivateKey")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("FinanceTracker.EncryptedColumn", true);
+
+                    b.Property<string>("PublicKey")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("VapidKeys", (string)null);
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey", b =>
                 {
                     b.Property<int>("Id")
@@ -2041,6 +2125,15 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                         });
 
                     b.Navigation("LowBalanceAlerts");
+                });
+
+            modelBuilder.Entity("FinanceTracker.Domain.Notifications.PushDevice", b =>
+                {
+                    b.HasOne("FinanceTracker.Domain.Identity.FinanceTrackerUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("FinanceTracker.Domain.OpenBanking.Accounts.BankAccount", b =>
@@ -2779,11 +2872,13 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                         {
                             b1.Property<byte[]>("IdentityUserPasskeyCredentialId");
 
-                            b1.Property<byte[]>("AttestationObject")
-                                .IsRequired();
+                            b1.Property<string>("AttestationObject")
+                                .IsRequired()
+                                .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
-                            b1.Property<byte[]>("ClientDataJson")
-                                .IsRequired();
+                            b1.Property<string>("ClientDataJson")
+                                .IsRequired()
+                                .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
                             b1.Property<DateTimeOffset>("CreatedAt");
 

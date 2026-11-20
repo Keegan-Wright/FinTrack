@@ -1,6 +1,7 @@
 using FinanceTracker.AppHost.ServiceDefaults;
 using FinanceTracker.Infrastructure.Notifications;
 using FinanceTracker.Infrastructure.Notifications.Email;
+using FinanceTracker.Infrastructure.Notifications.Push;
 using FinanceTracker.Infrastructure.Notifications.Webhooks;
 
 namespace FinanceTracker.Extensions;
@@ -14,7 +15,7 @@ public static class NotificationExtensions
     {
         /// <summary>
         /// Notifications pushed to users' browsers over the sync hub, email through the mail server in the
-        /// <c>SMTP_*</c> settings when there is one, and users' webhooks.
+        /// <c>SMTP_*</c> settings when there is one, users' webhooks, and push notifications to their devices.
         /// </summary>
         public WebApplicationBuilder AddFinTrackNotifications()
         {
@@ -25,6 +26,7 @@ public static class NotificationExtensions
 
             builder.Services.AddSingleton(builder.Configuration.GetWebhookSettings());
             builder.Services.AddWebhookClient();
+            builder.Services.AddPushClient();
             return builder;
         }
     }
@@ -32,7 +34,7 @@ public static class NotificationExtensions
     extension(IServiceCollection services)
     {
         /// <summary>
-        /// The client factory's <see cref="WebhookSender.ClientName"/> client: posts go through
+        /// The client factory's <see cref="WebhookSender.ClientName"/> client. Posts go through
         /// <see cref="WebhookHttp"/>'s handler, which only connects where <see cref="WebhookSettings"/> allows, and
         /// give up after <see cref="WebhookSender.Timeout"/>. Without the service defaults' retries, which would keep
         /// a test from the page waiting and post again to a receiver that may not expect a repeat.
@@ -41,6 +43,26 @@ public static class NotificationExtensions
         {
             IHttpClientBuilder client = services.AddHttpClient(WebhookSender.ClientName,
                     static http => http.Timeout = WebhookSender.Timeout)
+                .ConfigurePrimaryHttpMessageHandler(static provider =>
+                    WebhookHttp.CreateHandler(provider.GetRequiredService<WebhookSettings>()));
+
+#pragma warning disable EXTEXP0001 // Experimental, but the supported way to take the defaults' handler off one client
+            client.RemoveAllResilienceHandlers();
+#pragma warning restore EXTEXP0001
+
+            return client;
+        }
+
+        /// <summary>
+        /// The client factory's <see cref="PushSender.ClientName"/> client. Pushes go through
+        /// <see cref="WebhookHttp"/>'s handler like webhooks, as the address comes from the user's browser and could be
+        /// made up to point inside the network, and give up after <see cref="PushSender.Timeout"/>. Without the
+        /// service defaults' retries, which would keep a test from the page waiting.
+        /// </summary>
+        public IHttpClientBuilder AddPushClient()
+        {
+            IHttpClientBuilder client = services.AddHttpClient(PushSender.ClientName,
+                    static http => http.Timeout = PushSender.Timeout)
                 .ConfigurePrimaryHttpMessageHandler(static provider =>
                     WebhookHttp.CreateHandler(provider.GetRequiredService<WebhookSettings>()));
 

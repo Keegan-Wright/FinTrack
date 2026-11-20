@@ -36,7 +36,7 @@ public class NotificationSettingsPageTests : ComponentTestBase
         // Assert
         cut.WaitForState(() => cut.FindAll(".ft-channels").Count == 1);
         await Assert.That(cut.FindAll(".mud-tab").Select(static x => x.TextContent.Trim()))
-            .IsEquivalentTo(["What and where", "Alerts", "Email", "Webhook"],
+            .IsEquivalentTo(["What and where", "Alerts", "Email", "Webhook", "Push"],
                 TUnit.Assertions.Enums.CollectionOrdering.Matching);
     }
 
