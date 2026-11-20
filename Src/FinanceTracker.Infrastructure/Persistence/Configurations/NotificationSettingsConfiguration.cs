@@ -21,9 +21,11 @@ internal sealed class NotificationSettingsConfiguration : AggregateRootConfigura
         builder.Ignore(x => x.InApp);
         builder.Ignore(x => x.Emailed);
         builder.Ignore(x => x.Webhooked);
+        builder.Ignore(x => x.Pushed);
         builder.PrimitiveCollection(x => x.NotInApp).HasField("_notInApp");
         builder.PrimitiveCollection(x => x.NotEmailed).HasField("_notEmailed");
         builder.PrimitiveCollection(x => x.NotWebhooked).HasField("_notWebhooked");
+        builder.PrimitiveCollection(x => x.NotPushed).HasField("_notPushed");
 
         builder.Property(x => x.LastEmailFailure).HasMaxLength(200);
         builder.Property(x => x.LastWebhookFailure).HasMaxLength(200);

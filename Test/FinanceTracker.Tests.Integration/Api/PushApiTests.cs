@@ -103,6 +103,26 @@ public class PushApiTests : IntegrationTestBase
     }
 
     [Test]
+    public async Task LockScreen_AsTheyStart_HidesAmounts_AndChangingItIsKept()
+    {
+        // Arrange
+        SignedInUser user = await RegisterUserAsync();
+        IPushService service = ApiFor(user).Get<IPushService>();
+
+        // Act
+        PushSettings atFirst = await service.GetSettingsAsync(CancellationToken);
+        await service.ChangeLockScreenAsync(new ChangeLockScreen { ShowAmounts = true }, CancellationToken);
+        PushSettings after = await ApiFor(user).Get<IPushService>().GetSettingsAsync(CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(atFirst.ShowAmountsOnLockScreen).IsFalse();
+            await Assert.That(after.ShowAmountsOnLockScreen).IsTrue();
+        }
+    }
+
+    [Test]
     public async Task TestPush_NoDevices_Is409()
     {
         // Arrange

@@ -167,7 +167,8 @@ public class WebhookSectionTests : ComponentTestBase
         DeliveryStatus? lastWebhook = null) => new()
     {
         InApp = Enum.GetValues<NotificationKind>(), Emailed = Enum.GetValues<NotificationKind>(),
-        Webhooked = Enum.GetValues<NotificationKind>(), EmailAvailable = false, WebhookUrl = url,
+        Webhooked = Enum.GetValues<NotificationKind>(), Pushed = Enum.GetValues<NotificationKind>(),
+        EmailAvailable = false, WebhookUrl = url,
         WebhookSecret = url is null ? null : secret, LastWebhook = lastWebhook, BudgetWarningPercent = 80,
         BillReminderDays = 3, LowBalance = []
     };

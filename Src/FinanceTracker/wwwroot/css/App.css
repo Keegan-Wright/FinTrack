@@ -168,3 +168,11 @@ html {
     padding-right: env(safe-area-inset-right);
     padding-bottom: env(safe-area-inset-bottom);
 }
+
+/* MudBlazor slides a tab bar too narrow for its tabs along by itself, but a tab taking focus, e.g. from the arrow
+   keys, also scrolled the bar's clipped box, so the tabs moved twice and left the bar blank on a phone. Clip can't be
+   scrolled. It doesn't shrink like a scroll box, so it's let shrink, or the bar runs off a tablet's screen */
+.mud-tabs-tabbar-content {
+    overflow: clip;
+    min-width: 0;
+}

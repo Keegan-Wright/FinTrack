@@ -178,14 +178,16 @@ public class NotificationsServiceTests : InfrastructureTestBase
         // Act
         await Subject(Username).ChangeSettingsAsync(new ChangeNotificationSettings
         {
-            InApp = [NotificationKind.SyncFailed], Emailed = [NotificationKind.SyncFailed], Webhooked = []
+            InApp = [NotificationKind.SyncFailed], Emailed = [NotificationKind.SyncFailed], Webhooked = [],
+            Pushed = []
         }, CancellationToken);
         NotificationSettings changedAgain = await Subject(Username).ChangeSettingsAsync(
             new ChangeNotificationSettings
             {
                 InApp = [NotificationKind.ConsentEnded],
                 Emailed = [NotificationKind.ConsentEnded, NotificationKind.SyncFailed],
-                Webhooked = [NotificationKind.ConsentEnded]
+                Webhooked = [NotificationKind.ConsentEnded],
+                Pushed = [NotificationKind.SyncFailed]
             },
             CancellationToken);
         NotificationSettings read = await Subject(Username).GetSettingsAsync(CancellationToken);

@@ -9,8 +9,8 @@ using FinanceTracker.Tests.Unit.Shared.Scenarios;
 namespace FinanceTracker.Tests.Integration.Notifications;
 
 /// <summary>
-/// The scheduled consent check, run now, telling a user their bank's access is about to end: under the bell and by
-/// email to the mail catcher, linking to where they renew it. Not alongside the background sync tests either, which
+/// The scheduled consent check, run now, telling a user their bank's access is about to end. Under the bell, by email
+/// to the mail catcher and pushed to their device, linking to where they renew it. Not alongside the background sync tests either, which
 /// run the same job, as only one run of it can go at once.
 /// </summary>
 [NotInParallel([JobNames.MonitorTokens, nameof(OpenBanking.BackgroundSyncTests)])]
@@ -50,6 +50,38 @@ public class ConsentNoticeTests : IntegrationTestBase
             await Assert.That(email.Html).Contains("Open in FinTrack");
             await Assert.That(email.Html).Contains("/ProviderSetup\"");
             await Assert.That(email.InlineContentIds).IsEquivalentTo(["fintrack-logo"]);
+        }
+    }
+
+    [Test]
+    public async Task ConsentEndingWithinAWeek_PushesItToTheirDevice()
+    {
+        // Arrange, a device whose push service is on this machine
+        using WebhookCatcher pushService = new(System.Net.HttpStatusCode.Created);
+        using WebPushTestBrowser browser = new();
+        SignedInUser user = await RegisterUserAsync();
+        await ApiFor(user).Get<IPushService>().AddDeviceAsync(new AddPushDevice
+        {
+            Endpoint = pushService.Url.ToString(), PublicKey = browser.PublicKeyText,
+            AuthSecret = browser.AuthSecretText, Name = "Chrome on Android"
+        }, CancellationToken);
+        await Scenario.Do(s => s.BankConnectionScenario.WithConnection("bank", user.Username))
+            .Do(s => s.BankConnectionScenario.WithAccessToken("bank"))
+            .Do(s => s.BankConnectionScenario.WithConsentExpiresAt("bank", DateTime.UtcNow.AddDays(3)));
+        SignedInUser admin = await RegisterAdminAsync();
+
+        // Act
+        await ApiFor(admin).Get<IAutomationService>().RunNowAsync(JobNames.MonitorTokens, CancellationToken);
+
+        // Assert, read as the browser would, saying no amounts so shown as it is
+        CaughtPost post = await pushService.NextAsync(CancellationToken);
+        using System.Text.Json.JsonDocument message = System.Text.Json.JsonDocument.Parse(browser.Decrypt(post.Body));
+        Notification notification = await WaitForNotificationAsync(user);
+        using (Assert.Multiple())
+        {
+            await Assert.That(message.RootElement.GetProperty("title").GetString()).IsEqualTo(notification.Title);
+            await Assert.That(message.RootElement.GetProperty("body").GetString()).IsEqualTo(notification.Message);
+            await Assert.That(message.RootElement.GetProperty("path").GetString()).IsEqualTo("ProviderSetup");
         }
     }
 

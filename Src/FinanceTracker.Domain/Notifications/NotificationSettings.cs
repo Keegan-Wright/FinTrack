@@ -3,8 +3,8 @@ using FinanceTracker.Domain.Common;
 namespace FinanceTracker.Domain.Notifications;
 
 /// <summary>
-/// Where a user's notifications go: under the bell, by email, and to their webhook when they've set one. A kind
-/// turned off everywhere isn't raised at all. Also when some kinds are raised, e.g. how close to a budget's limit to
+/// Where a user's notifications go. Under the bell, by email, to their webhook when they've set one, and pushed to
+/// their devices when they've added any. A kind turned off everywhere isn't raised at all. Also when some kinds are raised, e.g. how close to a budget's limit to
 /// warn. One per user, a user without one has every kind shown and emailed and no webhook, so warnings such as a
 /// bank's consent ending reach them without setting anything up.
 /// </summary>
@@ -31,6 +31,7 @@ public sealed class NotificationSettings : AggregateRoot
     private readonly List<NotificationKind> _notInApp = [];
     private readonly List<NotificationKind> _notEmailed = [];
     private readonly List<NotificationKind> _notWebhooked = [];
+    private readonly List<NotificationKind> _notPushed = [];
     private readonly List<LowBalanceAlert> _lowBalanceAlerts = [];
 
     [Obsolete("EF Use Only")]
@@ -101,6 +102,22 @@ public sealed class NotificationSettings : AggregateRoot
     public IReadOnlyList<NotificationKind> NotWebhooked => _notWebhooked.AsReadOnly();
 
     /// <summary>
+    /// The kinds pushed to their devices, when they have any.
+    /// </summary>
+    public IReadOnlyList<NotificationKind> Pushed => AllBut(_notPushed);
+
+    /// <summary>
+    /// The kinds the user turned off pushing to their devices.
+    /// </summary>
+    public IReadOnlyList<NotificationKind> NotPushed => _notPushed.AsReadOnly();
+
+    /// <summary>
+    /// Whether pushes say amounts, which show on a locked phone's screen. Off unless the user turns it on, so a push
+    /// says what it's about without the money.
+    /// </summary>
+    public bool ShowAmountsOnLockScreen { get; private set; }
+
+    /// <summary>
     /// Last tried posting to their webhook, null when it never has.
     /// </summary>
     public DateTime? LastWebhookAt { get; private set; }
@@ -155,6 +172,12 @@ public sealed class NotificationSettings : AggregateRoot
     public bool IsWebhooked(NotificationKind kind) => HasWebhook && !_notWebhooked.Contains(kind);
 
     /// <summary>
+    /// Whether <paramref name="kind"/> is pushed to their devices, when they have any.
+    /// </summary>
+    /// <param name="kind">The kind of notification.</param>
+    public bool IsPushed(NotificationKind kind) => !_notPushed.Contains(kind);
+
+    /// <summary>
     /// Shows <paramref name="kinds"/> in the app from now on and no others.
     /// </summary>
     /// <param name="kinds">The kinds to show.</param>
@@ -171,6 +194,18 @@ public sealed class NotificationSettings : AggregateRoot
     /// </summary>
     /// <param name="kinds">The kinds to post.</param>
     public void WebhookOnly(IEnumerable<NotificationKind> kinds) => TurnOffAllBut(_notWebhooked, kinds);
+
+    /// <summary>
+    /// Pushes <paramref name="kinds"/> to their devices from now on and no others.
+    /// </summary>
+    /// <param name="kinds">The kinds to push.</param>
+    public void PushOnly(IEnumerable<NotificationKind> kinds) => TurnOffAllBut(_notPushed, kinds);
+
+    /// <summary>
+    /// Changes whether pushes say amounts on a locked phone's screen.
+    /// </summary>
+    /// <param name="show">Whether to say them.</param>
+    public void ChangeLockScreen(bool show) => ShowAmountsOnLockScreen = show;
 
     /// <summary>
     /// Changes when budgets, bills and large transactions are said.
@@ -349,6 +384,15 @@ public sealed class NotificationSettings : AggregateRoot
     /// <param name="kind">The kind of notification.</param>
     public static bool IsEmailedFor(NotificationSettings? settings, NotificationKind kind) =>
         settings is null || settings.IsEmailed(kind);
+
+    /// <summary>
+    /// Whether <paramref name="kind"/> is pushed for a user with <paramref name="settings"/>, null when they've never
+    /// changed them.
+    /// </summary>
+    /// <param name="settings">The user's settings, null when they've never changed them.</param>
+    /// <param name="kind">The kind of notification.</param>
+    public static bool IsPushedFor(NotificationSettings? settings, NotificationKind kind) =>
+        settings is null || settings.IsPushed(kind);
 
     /// <summary>
     /// Turns off every kind but <paramref name="on"/> in <paramref name="off"/>.

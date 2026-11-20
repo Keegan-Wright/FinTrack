@@ -694,6 +694,10 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                         .IsRequired()
                         .HasColumnType("integer[]");
 
+                    b.PrimitiveCollection<int[]>("NotPushed")
+                        .IsRequired()
+                        .HasColumnType("integer[]");
+
                     b.PrimitiveCollection<int[]>("NotWebhooked")
                         .IsRequired()
                         .HasColumnType("integer[]");
@@ -703,6 +707,9 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("xid")
                         .HasColumnName("xmin");
+
+                    b.Property<bool>("ShowAmountsOnLockScreen")
+                        .HasColumnType("boolean");
 
                     b.Property<DateTime?>("Updated")
                         .HasColumnType("timestamp with time zone");

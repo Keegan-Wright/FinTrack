@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using FinanceTracker.Domain.Notifications;
 
 namespace FinanceTracker.Infrastructure.Notifications.Push;
 
@@ -30,6 +31,30 @@ public sealed class PushMessage
     /// Where in the app tapping it opens, relative to the app, e.g. <c>Notifications</c>. Null opens the app's start.
     /// </summary>
     public string? Path { get; init; }
+
+    /// <summary>
+    /// What's said in place of the message when amounts are kept off the lock screen.
+    /// </summary>
+    public const string AmountsHiddenBody = "Open FinTrack to see the amount.";
+
+    /// <summary>
+    /// The push for <paramref name="notification"/>. When it says amounts and the user keeps them off the lock screen,
+    /// it shows <paramref name="titleWithoutAmounts"/> instead, and no message.
+    /// </summary>
+    /// <param name="notification">The notification.</param>
+    /// <param name="titleWithoutAmounts">Its title without amounts, null when it says none.</param>
+    /// <param name="showAmounts">Whether the user wants amounts on the lock screen.</param>
+    public static PushMessage For(Notification notification, string? titleWithoutAmounts, bool showAmounts)
+    {
+        ArgumentNullException.ThrowIfNull(notification);
+
+        if (titleWithoutAmounts is null || showAmounts)
+        {
+            return new PushMessage { Title = notification.Title, Body = notification.Message, Path = notification.Link };
+        }
+
+        return new PushMessage { Title = titleWithoutAmounts, Body = AmountsHiddenBody, Path = notification.Link };
+    }
 
     /// <summary>
     /// The test sent from the Notifications page.

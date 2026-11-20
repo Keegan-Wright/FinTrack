@@ -56,6 +56,16 @@ public sealed class PushApiClient : IPushService
     }
 
     /// <inheritdoc/>
+    public async Task<PushSettings> ChangeLockScreenAsync(ChangeLockScreen lockScreen,
+        CancellationToken cancellationToken)
+    {
+        using HttpResponseMessage response =
+            await _http.PutAsJsonAsync($"{ApiRoutes.Push}/lock-screen", lockScreen, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return await response.ReadRequiredJsonAsync<PushSettings>(cancellationToken);
+    }
+
+    /// <inheritdoc/>
     public async Task<PushSettings?> SendTestAsync(CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.PostAsync($"{ApiRoutes.Push}/test", null, cancellationToken);

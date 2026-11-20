@@ -45,7 +45,7 @@ public class BillNoticesTests : InfrastructureTestBase
         await NotifyAsync();
 
         // Assert
-        await _notifier.Received(1).NotifyAsync(NotificationKind.BillLate, LateKey(due), "Rent hasn't been paid",
+        await _notifier.Received(1).NotifyWithAmountsAsync(NotificationKind.BillLate, LateKey(due), "Rent hasn't been paid", "Rent hasn't been paid",
             $"£800.00 was due from Everyday on {due:d MMMM}.", BillNotices.BillsLink, Arg.Any<CancellationToken>());
     }
 
@@ -64,11 +64,11 @@ public class BillNoticesTests : InfrastructureTestBase
         // Assert
         using (Assert.Multiple())
         {
-            await _notifier.Received(1).NotifyAsync(NotificationKind.BillChanged,
-                $"bill-changed:{BillId:N}:{due:yyyyMMdd}", "Rent was £850.00",
+            await _notifier.Received(1).NotifyWithAmountsAsync(NotificationKind.BillChanged,
+                $"bill-changed:{BillId:N}:{due:yyyyMMdd}", "Rent was £850.00", "Rent was a different amount",
                 $"£800.00 was expected for {due:d MMMM}.", BillNotices.BillsLink, Arg.Any<CancellationToken>());
-            await _notifier.DidNotReceive().NotifyAsync(NotificationKind.BillLate, Arg.Any<string>(),
-                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+            await _notifier.DidNotReceive().NotifyWithAmountsAsync(NotificationKind.BillLate, Arg.Any<string>(),
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
         }
     }
 
@@ -84,8 +84,8 @@ public class BillNoticesTests : InfrastructureTestBase
         await NotifyAsync();
 
         // Assert
-        await _notifier.DidNotReceive().NotifyAsync(Arg.Is<NotificationKind>(x => x != NotificationKind.BillDueSoon),
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(),
+        await _notifier.DidNotReceive().NotifyWithAmountsAsync(Arg.Is<NotificationKind>(x => x != NotificationKind.BillDueSoon),
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -100,7 +100,7 @@ public class BillNoticesTests : InfrastructureTestBase
         await NotifyAsync();
 
         // Assert
-        await _notifier.DidNotReceiveWithAnyArgs().NotifyAsync(default, default!, default!, default!, default,
+        await _notifier.DidNotReceiveWithAnyArgs().NotifyWithAmountsAsync(default, default!, default!, default!, default!, default,
             default);
     }
 
@@ -115,8 +115,8 @@ public class BillNoticesTests : InfrastructureTestBase
         await NotifyAsync(addedToday);
 
         // Assert
-        await _notifier.DidNotReceive().NotifyAsync(NotificationKind.BillLate, Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        await _notifier.DidNotReceive().NotifyWithAmountsAsync(NotificationKind.BillLate, Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -132,8 +132,8 @@ public class BillNoticesTests : InfrastructureTestBase
         await NotifyAsync();
 
         // Assert
-        await _notifier.Received(1).NotifyAsync(NotificationKind.BillDueSoon, $"bill-due:{BillId:N}:{due:yyyyMMdd}",
-            "Rent is due in 2 days", $"£800.00 goes out from Everyday on {due:d MMMM}.", BillNotices.BillsLink,
+        await _notifier.Received(1).NotifyWithAmountsAsync(NotificationKind.BillDueSoon, $"bill-due:{BillId:N}:{due:yyyyMMdd}",
+            "Rent is due in 2 days", "Rent is due in 2 days", $"£800.00 goes out from Everyday on {due:d MMMM}.", BillNotices.BillsLink,
             Arg.Any<CancellationToken>());
     }
 
@@ -150,8 +150,8 @@ public class BillNoticesTests : InfrastructureTestBase
         await NotifyAsync();
 
         // Assert
-        await _notifier.Received(1).NotifyAsync(NotificationKind.BillDueSoon, Arg.Any<string>(),
-            "Rent is due tomorrow",
+        await _notifier.Received(1).NotifyWithAmountsAsync(NotificationKind.BillDueSoon, Arg.Any<string>(),
+            "Rent is due tomorrow", "Rent is due tomorrow",
             $"£800.00 goes out from Everyday on {due:d MMMM}. Its available balance of £500.00 won't cover it.",
             BillNotices.BillsLink, Arg.Any<CancellationToken>());
     }
@@ -167,7 +167,7 @@ public class BillNoticesTests : InfrastructureTestBase
         await NotifyAsync();
 
         // Assert
-        await _notifier.DidNotReceiveWithAnyArgs().NotifyAsync(default, default!, default!, default!, default,
+        await _notifier.DidNotReceiveWithAnyArgs().NotifyWithAmountsAsync(default, default!, default!, default!, default!, default,
             default);
     }
 
@@ -183,8 +183,8 @@ public class BillNoticesTests : InfrastructureTestBase
         await NotifyAsync();
 
         // Assert
-        await _notifier.DidNotReceive().NotifyAsync(NotificationKind.BillDueSoon, Arg.Any<string>(),
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        await _notifier.DidNotReceive().NotifyWithAmountsAsync(NotificationKind.BillDueSoon, Arg.Any<string>(),
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     private Guid BillId => Scenario.BillMappings[Bill];

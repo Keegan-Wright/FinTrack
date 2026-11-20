@@ -143,6 +143,47 @@ public abstract class UiTestBase : IntegrationTestBase
         page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = name, Exact = true });
 
     /// <summary>
+    /// Chooses the tab named <paramref name="name"/> as a person does. Where the bar is too narrow for its tabs, e.g.
+    /// on a phone, its right arrow is pressed until the tab shows or the bar can go no further, then the part of the
+    /// tab in view is tapped.
+    /// </summary>
+    protected static async Task ChooseTabAsync(IPage page, string name)
+    {
+        ILocator tab = page.GetByRole(AriaRole.Tab, new PageGetByRoleOptions { Name = name, Exact = true });
+        ILocator right = page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = "Scroll tabs right" });
+        for (int i = 0; i < 10 && await TabInViewAsync(page, tab) < 1 && await ArrowUsableAsync(right); i++)
+        {
+            await right.ClickAsync();
+            await page.WaitForTimeoutAsync(400);
+        }
+
+        LocatorBoundingBoxResult bar = (await page.Locator(".mud-tabs-tabbar-content").BoundingBoxAsync())!;
+        LocatorBoundingBoxResult box = (await tab.BoundingBoxAsync())!;
+        float left = Math.Max(box.X, bar.X);
+        float rightEdge = Math.Min(box.X + box.Width, bar.X + bar.Width);
+        await tab.ClickAsync(new LocatorClickOptions
+        {
+            Position = new Position { X = (left + rightEdge) / 2 - box.X, Y = box.Height / 2 }
+        });
+        await Assertions.Expect(tab).ToHaveAttributeAsync("aria-selected", "true");
+    }
+
+    /// <summary>
+    /// How much of <paramref name="tab"/> is inside its bar's visible box, 0 to 1.
+    /// </summary>
+    protected static async Task<float> TabInViewAsync(IPage page, ILocator tab)
+    {
+        LocatorBoundingBoxResult bar = (await page.Locator(".mud-tabs-tabbar-content").BoundingBoxAsync())!;
+        LocatorBoundingBoxResult box = (await tab.BoundingBoxAsync())!;
+        float shown = Math.Min(box.X + box.Width, bar.X + bar.Width) - Math.Max(box.X, bar.X);
+        return Math.Clamp(shown / box.Width, 0, 1);
+    }
+
+    // The bar's arrows only show when its tabs don't fit, and the right one is disabled at the end
+    private static async Task<bool> ArrowUsableAsync(ILocator arrow) =>
+        await arrow.CountAsync() > 0 && await arrow.IsVisibleAsync() && await arrow.IsEnabledAsync();
+
+    /// <summary>
     /// Opens the ⋮ menu labelled <c>Actions for {name}</c> and clicks <paramref name="item"/> in it.
     /// </summary>
     protected static async Task ChooseFromRowMenuAsync(IPage page, string name, string item)

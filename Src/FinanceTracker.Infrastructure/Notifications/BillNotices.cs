@@ -104,16 +104,19 @@ public sealed class BillNotices : ServiceBase<BillNotices>, ISyncNotices
         {
             if (period.State == BillState.Late)
             {
-                await _notifier.NotifyAsync(NotificationKind.BillLate, Key("bill-late", bill, period.Due),
-                    $"{name} hasn't been paid",
+                // The title says no amount, the message does
+                string title = $"{name} hasn't been paid";
+                await _notifier.NotifyWithAmountsAsync(NotificationKind.BillLate, Key("bill-late", bill, period.Due),
+                    title, title,
                     $"{NoticeText.Money(period.Expected)} was due {FromAccount(account)}on {NoticeText.Day(period.Due)}.",
                     BillsLink, cancellationToken);
             }
 
             if (period.State == BillState.Changed)
             {
-                await _notifier.NotifyAsync(NotificationKind.BillChanged, Key("bill-changed", bill, period.Due),
-                    $"{name} was {NoticeText.Money(period.Paid)}",
+                await _notifier.NotifyWithAmountsAsync(NotificationKind.BillChanged,
+                    Key("bill-changed", bill, period.Due),
+                    $"{name} was {NoticeText.Money(period.Paid)}", $"{name} was a different amount",
                     $"{NoticeText.Money(period.Expected)} was expected for {NoticeText.Day(period.Due)}.",
                     BillsLink, cancellationToken);
             }
@@ -146,9 +149,11 @@ public sealed class BillNotices : ServiceBase<BillNotices>, ISyncNotices
             string message = $"{NoticeText.Money(period.Expected)} goes out {FromAccount(account)}on " +
                              $"{NoticeText.Day(period.Due)}.{WontCover(account, period.Expected)}";
 
-            await _notifier.NotifyAsync(NotificationKind.BillDueSoon, Key("bill-due", bill, period.Due),
-                $"{NoticeText.Named(bill.Name, visible.SharedBy)} is due {NoticeText.DueIn(period.Due, today)}",
-                message, BillsLink, cancellationToken);
+            // The title says no amount, the message does
+            string title =
+                $"{NoticeText.Named(bill.Name, visible.SharedBy)} is due {NoticeText.DueIn(period.Due, today)}";
+            await _notifier.NotifyWithAmountsAsync(NotificationKind.BillDueSoon, Key("bill-due", bill, period.Due),
+                title, title, message, BillsLink, cancellationToken);
         }
     }
 

@@ -25,4 +25,8 @@ internal sealed class RecordingNotifier : INotifier
         _raised.Add((_currentUser.UserId, kind, title));
         return Task.FromResult(true);
     }
+
+    public Task<bool> NotifyWithAmountsAsync(NotificationKind kind, string key, string title,
+        string titleWithoutAmounts, string message, string? link, CancellationToken cancellationToken) =>
+        NotifyAsync(kind, key, title, message, link, cancellationToken);
 }

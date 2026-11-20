@@ -247,7 +247,7 @@ public class PushServiceTests : InfrastructureTestBase
 
     private PushService Subject(string username) =>
         new(CurrentUserFor(username), DbContextFactory, NullLogger<PushService>.Instance, _keyStore, _pushSender,
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now), TestMetrics.Unobserved);
 
     private AddPushDevice Subscription(string name) => new()
     {

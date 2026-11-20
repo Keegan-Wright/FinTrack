@@ -78,8 +78,10 @@ public sealed class TransactionNotices : ServiceBase<TransactionNotices>, ISyncN
                 from = $" from {accountName}";
             }
 
-            await _notifier.NotifyAsync(NotificationKind.LargeTransaction, $"large-transaction:{transaction.Id:N}",
+            await _notifier.NotifyWithAmountsAsync(NotificationKind.LargeTransaction,
+                $"large-transaction:{transaction.Id:N}",
                 $"{NoticeText.Money(-transaction.Amount)} paid to {transaction.Description}",
+                $"Large payment to {transaction.Description}",
                 $"Paid{from} on {NoticeText.Day(transaction.OccurredAt.LocalDayIn(timeZone))}.", TransactionsLink,
                 cancellationToken);
         }

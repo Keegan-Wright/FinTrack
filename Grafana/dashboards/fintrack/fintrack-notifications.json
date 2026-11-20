@@ -1,7 +1,7 @@
 {
   "uid": "fintrack-notifications",
   "title": "FinTrack notifications and email",
-  "description": "Notifications raised, and whether they reached people by email or webhook.",
+  "description": "Notifications raised, and whether they reached people by email, webhook or push.",
   "tags": [
     "fintrack"
   ],
@@ -211,7 +211,7 @@
     {
       "type": "stat",
       "title": "Sent on",
-      "description": "Notifications that also went out by email or webhook over the time range.",
+      "description": "Notifications that also went out by email, webhook or push over the time range.",
       "datasource": {
         "type": "prometheus",
         "uid": "${prometheus}"
@@ -276,7 +276,7 @@
     {
       "type": "stat",
       "title": "Couldn't send on",
-      "description": "Notifications whose email or webhook failed over the time range. They still show in the app.",
+      "description": "Notifications whose email, webhook or push failed over the time range. They still show in the app.",
       "datasource": {
         "type": "prometheus",
         "uid": "${prometheus}"
@@ -575,7 +575,7 @@
     },
     {
       "type": "timeseries",
-      "title": "Sent on by email or webhook",
+      "title": "Sent on by email, webhook or push",
       "description": "Notifications sent on, by channel and whether they got there.",
       "datasource": {
         "type": "prometheus",
@@ -669,6 +669,21 @@
                 "value": {
                   "mode": "fixed",
                   "fixedColor": "blue"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "push succeeded"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "purple"
                 }
               }
             ]
@@ -805,6 +820,191 @@
       }
     },
     {
+      "type": "timeseries",
+      "title": "Pushes",
+      "description": "Notifications pushed to people's phones and computers, one for each device, by whether the push service took them.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${prometheus}"
+          },
+          "expr": "sum by (fintrack_outcome) (increase(fintrack_notifications_delivered_total{job=\"$service\", fintrack_notification_channel=\"push\"}[$__interval]))",
+          "legendFormat": "{{fintrack_outcome}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "showPoints": "never",
+            "spanNulls": false,
+            "axisSoftMin": 0,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "insertNulls": false
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "succeeded"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "failed"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "interval": "2m",
+      "id": 9,
+      "gridPos": {
+        "x": 0,
+        "y": 20,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Push devices removed",
+      "description": "Devices removed because the push service said their browser had unsubscribed or its subscription ran out. A few is normal, a lot at once may mean the push keys changed.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${prometheus}"
+          },
+          "expr": "sum(increase(fintrack_push_devices_removed_total{job=\"$service\"}[$__interval]))",
+          "legendFormat": "removed",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "showPoints": "never",
+            "spanNulls": false,
+            "axisSoftMin": 0,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "insertNulls": false
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "interval": "2m",
+      "id": 10,
+      "gridPos": {
+        "x": 12,
+        "y": 20,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
       "type": "logs",
       "title": "Notification logs",
       "description": "Notifications raised, and any that couldn't be sent on, newest first.",
@@ -819,7 +1019,7 @@
             "type": "loki",
             "uid": "${loki}"
           },
-          "expr": "{service_name=\"$service\"} |~ \"(?i)notified user|notification|test email|test webhook|smtp|mail\"",
+          "expr": "{service_name=\"$service\"} |~ \"(?i)notified user|notification|test email|test webhook|push|smtp|mail\"",
           "legendFormat": "",
           "queryType": "range"
         }
@@ -835,10 +1035,10 @@
         "dedupStrategy": "none",
         "sortOrder": "Descending"
       },
-      "id": 9,
+      "id": 11,
       "gridPos": {
         "x": 0,
-        "y": 20,
+        "y": 28,
         "w": 24,
         "h": 12
       }

@@ -26,6 +26,12 @@ public interface IPushService
     Task<PushSettings?> RemoveDeviceAsync(Guid id, CancellationToken cancellationToken);
 
     /// <summary>
+    /// Changes whether pushes say amounts on a locked phone's screen.
+    /// </summary>
+    /// <returns>The settings.</returns>
+    Task<PushSettings> ChangeLockScreenAsync(ChangeLockScreen lockScreen, CancellationToken cancellationToken);
+
+    /// <summary>
     /// Pushes a test to each of their devices. Any whose browser has unsubscribed is removed.
     /// </summary>
     /// <returns>The settings with how each push went, null when they have no devices.</returns>

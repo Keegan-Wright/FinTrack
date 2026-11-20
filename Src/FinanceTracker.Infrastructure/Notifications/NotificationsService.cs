@@ -138,6 +138,7 @@ public sealed class NotificationsService : ServiceBase<NotificationsService>, IN
         stored.ShowInAppOnly(settings.InApp.Select(NotificationMapper.ToDomain));
         stored.EmailOnly(settings.Emailed.Select(NotificationMapper.ToDomain));
         stored.WebhookOnly(settings.Webhooked.Select(NotificationMapper.ToDomain));
+        stored.PushOnly(settings.Pushed.Select(NotificationMapper.ToDomain));
         await context.SaveChangesAsync(cancellationToken);
         Logger.LogChangedTheir(UserId, "changed", "notification settings");
         return await ToContractAsync(context, stored, cancellationToken);
@@ -417,6 +418,8 @@ public sealed class NotificationsService : ServiceBase<NotificationsService>, IN
             WebhookUrl = settings.WebhookUrl,
             WebhookSecret = settings.WebhookSecret,
             LastWebhook = Status(settings.LastWebhookAt, settings.LastWebhookFailure),
+            Pushed = settings.Pushed.Select(NotificationMapper.ToContract).ToList(),
+            HasPushDevices = await context.PushDevices.OwnedBy(UserId).AnyAsync(cancellationToken),
             BudgetWarningPercent = settings.BudgetWarningPercent,
             BillReminderDays = settings.BillReminderDays,
             LargeTransactionOver = settings.LargeTransactionOver,

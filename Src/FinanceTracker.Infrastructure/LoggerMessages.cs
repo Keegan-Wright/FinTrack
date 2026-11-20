@@ -357,11 +357,12 @@ public static partial class LoggerMessages
     /// <param name="inApp">Whether it shows in the app.</param>
     /// <param name="emailed">Whether it's emailed.</param>
     /// <param name="webhook">Whether it's posted to the webhook.</param>
+    /// <param name="pushed">Whether it's pushed to their devices.</param>
     [LoggerMessage(LogLevel.Information,
         "Notified user {userId} of {kind} with notification {notificationId}: in app {inApp}, emailed {emailed}, " +
-        "webhook {webhook}")]
+        "webhook {webhook}, pushed {pushed}")]
     public static partial void LogNotified(this ILogger logger, Guid userId, NotificationKind kind, Guid notificationId,
-        bool inApp, bool emailed, bool webhook);
+        bool inApp, bool emailed, bool webhook, bool pushed);
 
     /// <summary>
     /// Logs at warning: <c>Connection {connectionId} for user {userId} has started failing to sync, they've been
@@ -455,6 +456,20 @@ public static partial class LoggerMessages
     [LoggerMessage(LogLevel.Warning, "Couldn't push user {userId} their test to device {deviceId}")]
     public static partial void LogTestPushFailed(this ILogger logger, Exception exception, Guid userId,
         Guid deviceId);
+
+    /// <summary>
+    /// Logs at warning <c>Couldn't push notification {notificationId} to user {userId}'s device {deviceId}, it still
+    /// shows in the app</c>.
+    /// </summary>
+    /// <param name="logger">The logger.</param>
+    /// <param name="exception">What went wrong.</param>
+    /// <param name="notificationId">The notification.</param>
+    /// <param name="userId">The user.</param>
+    /// <param name="deviceId">The device.</param>
+    [LoggerMessage(LogLevel.Warning,
+        "Couldn't push notification {notificationId} to user {userId}'s device {deviceId}, it still shows in the app")]
+    public static partial void LogNotificationPushFailed(this ILogger logger, Exception exception,
+        Guid notificationId, Guid userId, Guid deviceId);
 
     /// <summary>
     /// Logs at information <c>Removed user {userId}'s push device {deviceId}, its browser has unsubscribed</c>.

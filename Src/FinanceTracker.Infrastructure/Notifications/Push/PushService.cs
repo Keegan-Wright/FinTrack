@@ -3,8 +3,10 @@ using FinanceTracker.Contracts.Services;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
 using FinanceTracker.Infrastructure.Persistence;
+using FinanceTracker.Telemetry;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using DomainNotificationSettings = FinanceTracker.Domain.Notifications.NotificationSettings;
 using DomainPushDevice = FinanceTracker.Domain.Notifications.PushDevice;
 
 namespace FinanceTracker.Infrastructure.Notifications.Push;
@@ -17,6 +19,7 @@ public sealed class PushService : ServiceBase<PushService>, IPushService
     private readonly IVapidKeyStore _vapidKeyStore;
     private readonly IPushSender _pushSender;
     private readonly TimeProvider _timeProvider;
+    private readonly FinTrackMetrics _metrics;
 
     /// <param name="currentUser">The signed in user, or who the work runs as.</param>
     /// <param name="financeTrackerContextFactory">Makes the contexts it reads and saves through.</param>
@@ -24,14 +27,17 @@ public sealed class PushService : ServiceBase<PushService>, IPushService
     /// <param name="vapidKeyStore">The server's key pair, whose public key browsers subscribe with.</param>
     /// <param name="pushSender">Sends the pushes.</param>
     /// <param name="timeProvider">The clock.</param>
+    /// <param name="metrics">Records its metrics.</param>
     public PushService(ICurrentUser currentUser,
         IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory, ILogger<PushService> logger,
-        IVapidKeyStore vapidKeyStore, IPushSender pushSender, TimeProvider timeProvider)
+        IVapidKeyStore vapidKeyStore, IPushSender pushSender, TimeProvider timeProvider,
+        FinTrackMetrics metrics)
         : base(currentUser, financeTrackerContextFactory, logger)
     {
         _vapidKeyStore = vapidKeyStore;
         _pushSender = pushSender;
         _timeProvider = timeProvider;
+        _metrics = metrics;
     }
 
     /// <inheritdoc/>
@@ -99,6 +105,31 @@ public sealed class PushService : ServiceBase<PushService>, IPushService
     }
 
     /// <inheritdoc/>
+    public async Task<PushSettings> ChangeLockScreenAsync(ChangeLockScreen lockScreen,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(lockScreen);
+
+        await using FinanceTrackerContext context =
+            await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
+
+        DomainNotificationSettings? settings = await context.NotificationSettings.OwnedBy(UserId)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        if (settings is null)
+        {
+            settings = new DomainNotificationSettings(UserId);
+            context.NotificationSettings.Add(settings);
+        }
+
+        settings.ChangeLockScreen(lockScreen.ShowAmounts);
+        await context.SaveChangesAsync(cancellationToken);
+
+        Logger.LogChangedTheir(UserId, "changed", "push lock screen setting");
+        return await SettingsAsync(context, cancellationToken);
+    }
+
+    /// <inheritdoc/>
     public async Task<PushSettings?> SendTestAsync(CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
@@ -135,6 +166,7 @@ public sealed class PushService : ServiceBase<PushService>, IPushService
             if (outcome == PushOutcome.Gone)
             {
                 context.PushDevices.Remove(device);
+                _metrics.PushDeviceRemoved();
                 Logger.LogPushDeviceGone(UserId, device.Id);
                 return;
             }
@@ -160,7 +192,16 @@ public sealed class PushService : ServiceBase<PushService>, IPushService
             .OrderBy(x => x.Id)
             .ToListAsync(cancellationToken);
 
-        return new PushSettings { PublicKey = keys.PublicKeyText, Devices = devices.Select(ToContract).ToList() };
+        bool showAmounts = await context.NotificationSettings.OwnedBy(UserId)
+            .Select(static x => x.ShowAmountsOnLockScreen)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        return new PushSettings
+        {
+            PublicKey = keys.PublicKeyText,
+            Devices = devices.Select(ToContract).ToList(),
+            ShowAmountsOnLockScreen = showAmounts
+        };
     }
 
     /// <summary>

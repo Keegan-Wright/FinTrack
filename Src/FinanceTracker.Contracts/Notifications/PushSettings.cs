@@ -14,4 +14,9 @@ public sealed class PushSettings
     /// The devices they get push notifications on, oldest first.
     /// </summary>
     public required IReadOnlyList<PushDevice> Devices { get; init; }
+
+    /// <summary>
+    /// Whether pushes say amounts, which show on a locked phone's screen. Off unless they turn it on.
+    /// </summary>
+    public required bool ShowAmountsOnLockScreen { get; init; }
 }

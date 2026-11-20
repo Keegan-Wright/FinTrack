@@ -199,8 +199,28 @@ public class PushSectionTests : ComponentTestBase
         await _pushService.Received(1).SendTestAsync(Arg.Any<CancellationToken>());
     }
 
+    [Test]
+    public async Task HideAmounts_TurnedOff_SavesThatPushesSayThem()
+    {
+        // Arrange, hidden as they start
+        _pushService.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(Settings(Phone));
+        _pushService.ChangeLockScreenAsync(Arg.Any<ChangeLockScreen>(), Arg.Any<CancellationToken>())
+            .Returns(new PushSettings { PublicKey = PublicKey, Devices = [Phone], ShowAmountsOnLockScreen = true });
+        IRenderedComponent<PushSection> cut = RenderSection();
+        cut.WaitForState(() => cut.Markup.Contains("Hide amounts on the lock screen", StringComparison.Ordinal));
+        AngleSharp.Dom.IElement toggle = cut.Find(".mud-switch input");
+        await Assert.That(toggle.HasAttribute("checked")).IsTrue();
+
+        // Act
+        await toggle.ChangeAsync(new() { Value = false });
+
+        // Assert
+        await _pushService.Received(1).ChangeLockScreenAsync(Arg.Is<ChangeLockScreen>(x => x.ShowAmounts),
+            Arg.Any<CancellationToken>());
+    }
+
     private static PushSettings Settings(params PushDevice[] devices) =>
-        new() { PublicKey = PublicKey, Devices = devices };
+        new() { PublicKey = PublicKey, Devices = devices, ShowAmountsOnLockScreen = false };
 
     private IRenderedComponent<PushSection> RenderSection()
     {

@@ -33,6 +33,10 @@ public static class PushEndpoints
                     CancellationToken cancellationToken) => service.RemoveDeviceAsync(id, cancellationToken))
                 .NotFoundWhenNone();
 
+            push.MapPut("lock-screen", async Task<Ok<PushSettings>> (ChangeLockScreen request,
+                    IPushService service, CancellationToken cancellationToken) =>
+                TypedResults.Ok(await service.ChangeLockScreenAsync(request, cancellationToken)));
+
             push.MapPost("test", (IPushService service, CancellationToken cancellationToken) =>
                     service.SendTestAsync(cancellationToken))
                 .ConflictWhenNone();

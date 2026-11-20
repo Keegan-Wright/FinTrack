@@ -60,6 +60,7 @@ public class TelemetryNamesTests
     [Arguments(FinTrackMetrics.NotificationsRaisedName, "fintrack.notifications.raised")]
     [Arguments(FinTrackMetrics.NotificationsDeliveredName, "fintrack.notifications.delivered")]
     [Arguments(FinTrackMetrics.EmailsSentName, "fintrack.emails.sent")]
+    [Arguments(FinTrackMetrics.PushDevicesRemovedName, "fintrack.push.devices_removed")]
     [Arguments(FinTrackMetrics.ConnectionsName, "fintrack.connections")]
     [Arguments(FinTrackMetrics.OldestSyncAgeName, "fintrack.sync.oldest_age")]
     [Arguments(FinTrackMetrics.TrueLayerThrottleWaitName, "fintrack.truelayer.throttle.wait")]
@@ -96,7 +97,7 @@ public class TelemetryNamesTests
         using (Assert.Multiple())
         {
             await Assert.That(tags).IsEqualTo(41);
-            await Assert.That(instruments).IsEqualTo(17);
+            await Assert.That(instruments).IsEqualTo(18);
         }
     }
 }

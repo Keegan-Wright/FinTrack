@@ -88,7 +88,7 @@ public class PushFlowTests : UiTestBase
     {
         await GoToAsync(page, "/Notifications/Settings");
         await WaitUntilLoadedAsync(page);
-        await page.GetByRole(AriaRole.Tab, new PageGetByRoleOptions { Name = "Push", Exact = true }).ClickAsync();
+        await ChooseTabAsync(page, "Push");
         await Assertions.Expect(Button(page, "Turn on for this device")).ToBeVisibleAsync();
     }
 }

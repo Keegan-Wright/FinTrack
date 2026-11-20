@@ -43,7 +43,7 @@ public class ChannelsSectionTests : ComponentTestBase
         {
             await Assert.That(cut.FindAll(".ft-channels thead th").Select(static x => x.TextContent.Trim()))
                 .IsEquivalentTo(["Notification", "In app"], TUnit.Assertions.Enums.CollectionOrdering.Matching);
-            await Assert.That(cut.Markup).Contains("Set up email or a webhook");
+            await Assert.That(cut.Markup).Contains("Set up email, a webhook or push");
         }
     }
 
@@ -112,6 +112,39 @@ public class ChannelsSectionTests : ComponentTestBase
             Arg.Is<ChangeNotificationSettings>(x => !x.InApp.Contains(NotificationKind.BillDueSoon)
                                                     && x.InApp.Count == Kinds - 1 && x.Emailed.Count == Kinds
                                                     && x.Webhooked.Count == Kinds),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Render_NoPushDevices_HasNoPushColumn()
+    {
+        // Act
+        IRenderedComponent<ChannelsSection> cut = RenderSection(Create(webhookUrl: Hook));
+
+        // Assert
+        await Assert.That(cut.FindAll("thead th").Select(static x => x.TextContent.Trim())).DoesNotContain("Push");
+    }
+
+    [Test]
+    public async Task Change_PushedOneTurnedOff_KeepsTheOtherChannels()
+    {
+        // Arrange
+        _notificationsService.ChangeSettingsAsync(Arg.Any<ChangeNotificationSettings>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                ChangeNotificationSettings change = call.Arg<ChangeNotificationSettings>();
+                return Create(pushed: change.Pushed, hasPushDevices: true);
+            });
+        IRenderedComponent<ChannelsSection> cut = RenderSection(Create(hasPushDevices: true));
+
+        // Act
+        await Box(cut, "Push: A bill coming up").ChangeAsync(new() { Value = false });
+
+        // Assert
+        await _notificationsService.Received(1).ChangeSettingsAsync(
+            Arg.Is<ChangeNotificationSettings>(x => !x.Pushed.Contains(NotificationKind.BillDueSoon)
+                                                    && x.Pushed.Count == Kinds - 1 && x.InApp.Count == Kinds
+                                                    && x.Emailed.Count == Kinds),
             Arg.Any<CancellationToken>());
     }
 

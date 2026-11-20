@@ -70,9 +70,10 @@ public sealed class BalanceNotices : ServiceBase<BalanceNotices>, ISyncNotices
 
         foreach ((BankAccount account, decimal available, LowBalanceAlert alert) in wentLow)
         {
-            await _notifier.NotifyAsync(NotificationKind.LowBalance,
+            string name = labels.GetValueOrDefault(account.Id, account.DisplayName);
+            await _notifier.NotifyWithAmountsAsync(NotificationKind.LowBalance,
                 $"low-balance:{account.Id:N}:{alert.LowSince:yyyyMMddHHmmss}",
-                $"{labels.GetValueOrDefault(account.Id, account.DisplayName)} is below {NoticeText.Money(alert.Below)}",
+                $"{name} is below {NoticeText.Money(alert.Below)}", $"{name} is running low",
                 $"Its available balance is {NoticeText.Money(available)}.", AccountsLink,
                 cancellationToken);
         }

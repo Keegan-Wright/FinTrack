@@ -1,5 +1,5 @@
 @* Push notifications on the user's phones and computers. Turns them on for this browser, lists the devices that have
-   them, and sends a test. Which kinds are pushed comes later, every device gets the test. *@
+   them, sends a test, and keeps amounts off the lock screen. Which kinds are pushed is in the What and where tab. *@
 @using System.Globalization
 @using FinanceTracker.Contracts.Notifications
 @using Microsoft.JSInterop
@@ -106,6 +106,15 @@
                             </MudButton>
                         </div>
                     }
+
+                    <div>
+                        <MudSwitch T="bool" Value="@(!_settings.ShowAmountsOnLockScreen)" Color="Color.Primary"
+                                   ValueChanged="@ChangeLockScreenAsync" Label="Hide amounts on the lock screen"/>
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary d-block">
+                            A push shows on a locked phone. With this on it says what it's about, like "Groceries is
+                            nearly used up", and the amount is in FinTrack.
+                        </MudText>
+                    </div>
                 }
             </div>
         }
@@ -298,6 +307,19 @@
             {
                 Snackbar.Add("The test didn't reach every device", Severity.Error);
             }
+        });
+    }
+
+    /// <summary>
+    /// Saves whether pushes say amounts on the lock screen.
+    /// </summary>
+    /// <param name="hide">Whether to keep amounts off it.</param>
+    internal async Task ChangeLockScreenAsync(bool hide)
+    {
+        await RunAsync("Saving", "Couldn't save that, try again", async () =>
+        {
+            _settings = await PushService.ChangeLockScreenAsync(new ChangeLockScreen { ShowAmounts = !hide },
+                _cts.Token);
         });
     }
 

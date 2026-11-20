@@ -11,7 +11,7 @@ shown after "as".
 | `FINTRACK_POSTGRES_PASSWORD` | Yes | The database password. |
 | `APP_CULTURE` | No | How dates and money are shown, e.g. `en-GB`. |
 | `TZ` | No | The time zone, e.g. `Europe/London`. |
-| `FINTRACK_PUBLIC_URL` | No | Your FinTrack address, e.g. `https://fintrack.example.com`, for links in emails and webhooks. Passkeys belong to its domain, see [Passkeys and your domain](#passkeys-and-your-domain). |
+| `FINTRACK_PUBLIC_URL` | No | Your FinTrack address, e.g. `https://fintrack.example.com`, for links in emails and webhooks, and given to push services as who sends FinTrack's pushes. Passkeys belong to its domain, see [Passkeys and your domain](#passkeys-and-your-domain). |
 
 ### Passkeys and your domain
 
@@ -77,7 +77,7 @@ See [Reverse proxy](reverse-proxy.md).
 |---|---|---|
 | `FINTRACK_PROXY_NETWORK` | No | Your reverse proxy's Docker network. Defaults to `proxy-net`. |
 | `TRUSTED_PROXIES` | Behind a proxy | Your proxy's addresses or networks, comma separated, e.g. `172.18.0.0/16`. |
-| `WEBHOOK_ALLOW_PRIVATE` | No | `true` lets webhooks reach your local network, e.g. Home Assistant. Defaults to `false`. |
+| `WEBHOOK_ALLOW_PRIVATE` | No | `true` lets webhooks reach your local network, e.g. Home Assistant. Push notifications follow it too, which only matters if you run your own push service. Defaults to `false`. |
 | `RATE_LIMIT_SIGN_INS_PER_MINUTE` | No | Sign in, register and password reset attempts per minute from one address. Defaults to 10. |
 | `RATE_LIMIT_INVITES_PER_HOUR` | No | Sharing invites per hour from one user. Defaults to 20. |
 

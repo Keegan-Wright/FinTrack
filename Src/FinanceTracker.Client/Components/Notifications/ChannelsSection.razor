@@ -1,5 +1,5 @@
-@* Which kinds of notification go where, in the app, by email and to their webhook. A column only for a channel
-   that's set up, and a kind turned off in all of them isn't raised at all. *@
+@* Which kinds of notification go where. In the app, by email, to their webhook and pushed to their devices. A column
+   only for a channel that's set up, and a kind turned off in all of them isn't raised at all. *@
 @using FinanceTracker.Contracts.Notifications
 @implements IDisposable
 @inject INotificationsService NotificationsService
@@ -24,6 +24,10 @@
                 {
                     <th scope="col">Webhook</th>
                 }
+                @if (Settings.HasPushDevices)
+                {
+                    <th scope="col">Push</th>
+                }
             </tr>
             </thead>
             <tbody>
@@ -34,14 +38,14 @@
                     <td>
                         <MudCheckBox T="bool" Value="@InApp(kind)" Color="Color.Primary"
                                      AriaLabel="@($"In app: {NotificationKindText.Label(kind)}")"
-                                     ValueChanged="@(on => ChangeSentAsync(kind, on, Emailed(kind), Webhooked(kind)))"/>
+                                     ValueChanged="@(on => ChangeInAppAsync(kind, on))"/>
                     </td>
                     @if (CanEmail)
                     {
                         <td>
                             <MudCheckBox T="bool" Value="@Emailed(kind)" Color="Color.Primary"
                                          AriaLabel="@($"Email: {NotificationKindText.Label(kind)}")"
-                                         ValueChanged="@(on => ChangeSentAsync(kind, InApp(kind), on, Webhooked(kind)))"/>
+                                         ValueChanged="@(on => ChangeEmailedAsync(kind, on))"/>
                         </td>
                     }
                     @if (HasWebhook)
@@ -49,17 +53,25 @@
                         <td>
                             <MudCheckBox T="bool" Value="@Webhooked(kind)" Color="Color.Primary"
                                          AriaLabel="@($"Webhook: {NotificationKindText.Label(kind)}")"
-                                         ValueChanged="@(on => ChangeSentAsync(kind, InApp(kind), Emailed(kind), on))"/>
+                                         ValueChanged="@(on => ChangeWebhookedAsync(kind, on))"/>
+                        </td>
+                    }
+                    @if (Settings.HasPushDevices)
+                    {
+                        <td>
+                            <MudCheckBox T="bool" Value="@Pushed(kind)" Color="Color.Primary"
+                                         AriaLabel="@($"Push: {NotificationKindText.Label(kind)}")"
+                                         ValueChanged="@(on => ChangePushedAsync(kind, on))"/>
                         </td>
                     }
                 </tr>
             }
             </tbody>
         </table>
-        @if (!CanEmail || !HasWebhook)
+        @if (!CanEmail || !HasWebhook || !Settings.HasPushDevices)
         {
             <MudText Typo="Typo.caption" Class="mud-text-secondary">
-                Set up email or a webhook in their tabs to be notified there too.
+                Set up email, a webhook or push in their tabs to be notified there too.
             </MudText>
         }
     </div>
@@ -110,19 +122,64 @@
     private bool Webhooked(NotificationKind kind) => Settings.Webhooked.Contains(kind);
 
     /// <summary>
-    /// Sends <paramref name="kind"/> where asked, the other kinds as they were.
+    /// Whether a kind is pushed to their devices.
     /// </summary>
-    internal async Task ChangeSentAsync(NotificationKind kind, bool inApp, bool emailed, bool webhooked)
+    /// <param name="kind">The kind.</param>
+    private bool Pushed(NotificationKind kind) => Settings.Pushed.Contains(kind);
+
+    /// <summary>
+    /// Shows <paramref name="kind"/> in the app or not, everything else as it was.
+    /// </summary>
+    /// <param name="kind">The kind.</param>
+    /// <param name="on">Whether to show it.</param>
+    internal Task ChangeInAppAsync(NotificationKind kind, bool on) => SaveAsync(new ChangeNotificationSettings
+    {
+        InApp = WithOrWithout(Settings.InApp, kind, on), Emailed = Settings.Emailed,
+        Webhooked = Settings.Webhooked, Pushed = Settings.Pushed
+    });
+
+    /// <summary>
+    /// Emails <paramref name="kind"/> or not, everything else as it was.
+    /// </summary>
+    /// <param name="kind">The kind.</param>
+    /// <param name="on">Whether to email it.</param>
+    internal Task ChangeEmailedAsync(NotificationKind kind, bool on) => SaveAsync(new ChangeNotificationSettings
+    {
+        InApp = Settings.InApp, Emailed = WithOrWithout(Settings.Emailed, kind, on),
+        Webhooked = Settings.Webhooked, Pushed = Settings.Pushed
+    });
+
+    /// <summary>
+    /// Posts <paramref name="kind"/> to the webhook or not, everything else as it was.
+    /// </summary>
+    /// <param name="kind">The kind.</param>
+    /// <param name="on">Whether to post it.</param>
+    internal Task ChangeWebhookedAsync(NotificationKind kind, bool on) => SaveAsync(new ChangeNotificationSettings
+    {
+        InApp = Settings.InApp, Emailed = Settings.Emailed,
+        Webhooked = WithOrWithout(Settings.Webhooked, kind, on), Pushed = Settings.Pushed
+    });
+
+    /// <summary>
+    /// Pushes <paramref name="kind"/> to their devices or not, everything else as it was.
+    /// </summary>
+    /// <param name="kind">The kind.</param>
+    /// <param name="on">Whether to push it.</param>
+    internal Task ChangePushedAsync(NotificationKind kind, bool on) => SaveAsync(new ChangeNotificationSettings
+    {
+        InApp = Settings.InApp, Emailed = Settings.Emailed, Webhooked = Settings.Webhooked,
+        Pushed = WithOrWithout(Settings.Pushed, kind, on)
+    });
+
+    /// <summary>
+    /// Saves <paramref name="change"/> and tells the page.
+    /// </summary>
+    /// <param name="change">Where each kind goes now.</param>
+    private async Task SaveAsync(ChangeNotificationSettings change)
     {
         try
         {
-            NotificationSettings settings = await NotificationsService.ChangeSettingsAsync(
-                new ChangeNotificationSettings
-                {
-                    InApp = WithOrWithout(Settings.InApp, kind, inApp),
-                    Emailed = WithOrWithout(Settings.Emailed, kind, emailed),
-                    Webhooked = WithOrWithout(Settings.Webhooked, kind, webhooked)
-                }, _cts.Token);
+            NotificationSettings settings = await NotificationsService.ChangeSettingsAsync(change, _cts.Token);
             Settings = settings;
             await SettingsChanged.InvokeAsync(settings);
         }

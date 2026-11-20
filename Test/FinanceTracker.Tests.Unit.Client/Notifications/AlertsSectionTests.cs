@@ -176,6 +176,7 @@ public class AlertsSectionTests : ComponentTestBase
             InApp = Enum.GetValues<NotificationKind>(),
             Emailed = Enum.GetValues<NotificationKind>(),
             Webhooked = Enum.GetValues<NotificationKind>(),
+            Pushed = Enum.GetValues<NotificationKind>(),
             EmailAvailable = false,
             BudgetWarningPercent = 80,
             BillReminderDays = 3,
