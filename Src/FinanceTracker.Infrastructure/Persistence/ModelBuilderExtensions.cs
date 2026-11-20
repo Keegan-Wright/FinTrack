@@ -44,6 +44,25 @@ public static class ModelBuilderExtensions
 
             return modelBuilder;
         }
+
+        /// <summary>
+        /// Gives every table of the app's own data an integrity tag column, see <see cref="RowIntegrity"/>. The domain's
+        /// entities, not the types they own (stored inside their owner's row), the Identity tables or the framework's.
+        /// </summary>
+        public ModelBuilder UseRowIntegrity()
+        {
+            ArgumentNullException.ThrowIfNull(modelBuilder);
+
+            foreach (IMutableEntityType entityType in modelBuilder.Model.GetEntityTypes()
+                         .Where(static x => !x.IsOwned() && typeof(Domain.Common.Entity).IsAssignableFrom(x.ClrType))
+                         .ToList())
+            {
+                entityType.AddProperty(RowIntegrity.TagProperty, typeof(string)).IsNullable = true;
+                entityType.SetAnnotation(Annotations.RowIntegrityAnnotation, true);
+            }
+
+            return modelBuilder;
+        }
     }
 
     /// <summary>

@@ -25,4 +25,9 @@ public static class Annotations
     /// order, see <see cref="NameBlindIndex"/>.
     /// </summary>
     internal const string NameBlindIndexSourceAnnotation = "FinanceTracker.NameBlindIndexSource";
+
+    /// <summary>
+    /// Marks an entity whose rows carry an integrity tag, see <see cref="RowIntegrity"/>.
+    /// </summary>
+    internal const string RowIntegrityAnnotation = "FinanceTracker.RowIntegrity";
 }

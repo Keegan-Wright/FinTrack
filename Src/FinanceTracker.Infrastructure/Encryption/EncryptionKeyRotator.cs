@@ -8,9 +8,9 @@ using Microsoft.Extensions.Logging;
 namespace FinanceTracker.Infrastructure.Encryption;
 
 /// <summary>
-/// Re-encrypts values written under an older key with the current one, recomputing blind indexes as it goes. Run at
-/// startup after migrations, so rotating a key is: add it to the keyring, make it current, restart. Old keys can be
-/// removed from the keyring once this has run.
+/// Re-encrypts values written under an older key with the current one, recomputing blind indexes and row integrity
+/// tags as it goes, and tags rows that have none yet. Run at startup after migrations, so rotating a key is to add it
+/// to the keyring, make it current and restart. Old keys can be removed from the keyring once this has run.
 /// </summary>
 public sealed class EncryptionKeyRotator
 {
@@ -44,9 +44,14 @@ public sealed class EncryptionKeyRotator
         int total = 0;
         foreach (IEntityType entityType in context.Model.GetEntityTypes().Where(static x => !x.IsOwned()))
         {
-            List<string> encryptedColumns = EncryptedColumns(entityType);
-            if (encryptedColumns.Count == 0 ||
-                !await HasStaleValuesAsync(context, entityType, encryptedColumns, currentKeyPrefix, cancellationToken))
+            List<string> staleableColumns = EncryptedColumns(entityType);
+            if (RowIntegrity.IsTagged(entityType))
+            {
+                staleableColumns.Add(RowIntegrity.TagProperty);
+            }
+
+            if (staleableColumns.Count == 0 ||
+                !await HasStaleValuesAsync(context, entityType, staleableColumns, currentKeyPrefix, cancellationToken))
             {
                 continue;
             }
@@ -81,11 +86,12 @@ public sealed class EncryptionKeyRotator
     }
 
     /// <summary>
-    /// Whether any of the table's encrypted columns still has a value under an older key.
+    /// Whether any of the table's encrypted columns still has a value under an older key, or a row has no integrity
+    /// tag or one under an older key.
     /// </summary>
     /// <param name="context">The context to read through.</param>
     /// <param name="entityType">The entity.</param>
-    /// <param name="encryptedColumns">Its encrypted columns.</param>
+    /// <param name="encryptedColumns">Its encrypted columns, and its tag column when it has one.</param>
     /// <param name="currentKeyPrefix">What a value under the current key starts with.</param>
     /// <param name="cancellationToken">Stops the work.</param>
     private static async Task<bool> HasStaleValuesAsync(FinanceTrackerContext context, IEntityType entityType,
@@ -94,8 +100,9 @@ public sealed class EncryptionKeyRotator
         string table = entityType.GetSchema() is { } schema
             ? $"\"{schema}\".\"{entityType.GetTableName()}\""
             : $"\"{entityType.GetTableName()}\"";
-        string stale = string.Join(" OR ",
-            encryptedColumns.Select(static x => $"(\"{x}\" <> '' AND \"{x}\" NOT LIKE {{0}})"));
+        string stale = string.Join(" OR ", encryptedColumns.Select(static x => x == RowIntegrity.TagProperty
+            ? $"(\"{x}\" IS NULL OR \"{x}\" NOT LIKE {{0}})"
+            : $"(\"{x}\" <> '' AND \"{x}\" NOT LIKE {{0}})"));
         string sql = $"SELECT CASE WHEN EXISTS (SELECT 1 FROM {table} WHERE {stale}) THEN 1 ELSE 0 END AS \"Value\"";
 
         // Identifiers come from the model, the key prefix is a parameter
@@ -106,7 +113,8 @@ public sealed class EncryptionKeyRotator
     }
 
     /// <summary>
-    /// Loads every row and marks its encrypted values changed, so saving writes them back under the current key.
+    /// Loads every row and marks its encrypted values and tag changed, so saving writes them back under the current
+    /// key.
     /// </summary>
     /// <param name="keyName">The entity's single column primary key, to page by.</param>
     /// <param name="cancellationToken">Stops the work.</param>
@@ -134,7 +142,8 @@ public sealed class EncryptionKeyRotator
             {
                 foreach (PropertyEntry property in entry.Properties)
                 {
-                    if (property.Metadata.FindAnnotation(Annotations.EncryptedPropertyAnnotation) is not null)
+                    bool isTag = property.Metadata.Name == RowIntegrity.TagProperty;
+                    if (isTag || property.Metadata.FindAnnotation(Annotations.EncryptedPropertyAnnotation) is not null)
                     {
                         property.IsModified = true;
                     }

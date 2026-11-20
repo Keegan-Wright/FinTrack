@@ -216,4 +216,9 @@ public static class TelemetryTags
     /// How a request with a personal access token went, see <see cref="TokenAuthenticationResult"/>, on metrics.
     /// </summary>
     public const string TokenResult = "fintrack.token.result";
+
+    /// <summary>
+    /// The table a row is in, as OpenTelemetry's database conventions name it.
+    /// </summary>
+    public const string Table = "db.collection.name";
 }

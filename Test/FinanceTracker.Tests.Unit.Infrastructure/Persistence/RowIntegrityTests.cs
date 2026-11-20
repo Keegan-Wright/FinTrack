@@ -1,0 +1,219 @@
+using FinanceTracker.Domain.OpenBanking.Connections;
+using FinanceTracker.Domain.OpenBanking.Transactions;
+using FinanceTracker.Infrastructure;
+using FinanceTracker.Infrastructure.Encryption;
+using FinanceTracker.Infrastructure.Persistence;
+using FinanceTracker.Tests.Unit.Shared;
+using FinanceTracker.Tests.Unit.Shared.Scenarios;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
+
+namespace FinanceTracker.Tests.Unit.Infrastructure.Persistence;
+
+/// <summary>
+/// Row integrity tags, with the database changed by raw SQL as someone without the key would change it.
+/// </summary>
+public class RowIntegrityTests : InfrastructureTestBase
+{
+    private const string Username = "primary";
+    private const string OtherUsername = "secondary";
+
+    [Before(Test)]
+    public async Task SetUpAsync() =>
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.UserScenario.WithUser(OtherUsername))
+            .Do(s => s.BankConnectionScenario.WithConnection("bank", Username))
+            .Do(s => s.BankAccountScenario.WithAccount("main", "bank"))
+            .Do(s => s.BankAccountScenario.WithAccount("savings", "bank"))
+            .Do(s => s.TransactionScenario.WithTransaction("rent", "main"))
+            .Do(s => s.TransactionScenario.WithTransaction("food", "main"));
+
+    [Test]
+    public async Task Save_TagsTheRowUnderTheCurrentKey_AndItLoads()
+    {
+        // Act
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        List<string?> tags = await context.BankTransactions
+            .Select(static x => EF.Property<string?>(x, RowIntegrity.TagProperty))
+            .ToListAsync(CancellationToken);
+        List<BankTransaction> loaded = await context.BankTransactions.ToListAsync(CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(tags.All(static x => x?.StartsWith("1:", StringComparison.Ordinal) == true)).IsTrue();
+            await Assert.That(loaded).Count().IsEqualTo(2);
+        }
+    }
+
+    [Test]
+    public async Task Load_OwnerChangedToAnotherUser_IsRefused()
+    {
+        // Arrange
+        await SqlAsync("""
+            UPDATE "BankConnections" SET "UserId" =
+                (SELECT "Id" FROM "AspNetUsers" WHERE "Id" <> "BankConnections"."UserId" LIMIT 1)
+            """);
+
+        // Act, Assert
+        RowIntegrityException? refused = await Assert.ThrowsAsync<RowIntegrityException>(LoadConnectionsAsync);
+        await Assert.That(refused!.Table).IsEqualTo("BankConnections");
+    }
+
+    [Test]
+    public async Task Load_TransactionMovedToAnotherAccount_IsRefused()
+    {
+        // Arrange
+        await SqlAsync("""
+            UPDATE "BankTransactions" SET "AccountId" =
+                (SELECT "Id" FROM "BankAccounts" WHERE "Id" <> "BankTransactions"."AccountId" LIMIT 1)
+            """);
+
+        // Act, Assert
+        await Assert.ThrowsAsync<RowIntegrityException>(LoadTransactionsAsync);
+    }
+
+    [Test]
+    public async Task Load_EncryptedValueCopiedFromAnotherRow_IsRefused()
+    {
+        // Arrange, the value still decrypts, it's just in the wrong row
+        await SqlAsync("""
+            UPDATE "BankTransactions" SET "Description" =
+                (SELECT "Description" FROM "BankTransactions" AS other WHERE other."Id" <> "BankTransactions"."Id")
+            """);
+
+        // Act, Assert
+        await Assert.ThrowsAsync<RowIntegrityException>(LoadTransactionsAsync);
+    }
+
+    [Test]
+    public async Task Load_RowGivenANewId_IsRefused()
+    {
+        // Arrange, as a row copied under a new id would be
+        string rent = Scenario.TransactionMappings["rent"].ToString().ToUpperInvariant();
+        string copy = Guid.NewGuid().ToString().ToUpperInvariant();
+        await SqlAsync($"""UPDATE "BankTransactions" SET "Id" = '{copy}' WHERE "Id" = '{rent}'""");
+
+        // Act, Assert
+        await Assert.ThrowsAsync<RowIntegrityException>(LoadTransactionsAsync);
+    }
+
+    [Test]
+    public async Task Load_NoTagYet_IsLetThrough()
+    {
+        // Arrange, as a row written before tags
+        await SqlAsync("""UPDATE "BankTransactions" SET "IntegrityTag" = NULL""");
+
+        // Act
+        List<BankTransaction> loaded = await LoadTransactionsAsync();
+
+        // Assert
+        await Assert.That(loaded).Count().IsEqualTo(2);
+    }
+
+    [Test]
+    public async Task Load_ChangedThroughTheApp_StillLoads()
+    {
+        // Arrange
+        await using (FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken))
+        {
+            BankTransaction transaction = await context.BankTransactions
+                .SingleAsync(x => x.Id == Scenario.TransactionMappings["rent"], CancellationToken);
+            context.Entry(transaction).Property(nameof(BankTransaction.Description)).CurrentValue = "RENT";
+            await context.SaveChangesAsync(CancellationToken);
+        }
+
+        // Act
+        List<BankTransaction> loaded = await LoadTransactionsAsync();
+
+        // Assert
+        await Assert.That(loaded.Select(static x => x.Description)).Contains("RENT");
+    }
+
+    [Test]
+    public async Task Load_TaggedUnderAnOlderKeyStillInTheKeyring_Loads()
+    {
+        // Arrange, key 2 now current, the rows tagged under 1
+        IDbContextFactory<FinanceTrackerContext> rotated =
+            CreateDbContextFactory(new ColumnEncryptionService(TestEncryptionKeys.Keyring(currentKeyId: 2, 1, 2)));
+
+        // Act
+        await using FinanceTrackerContext context = await rotated.CreateDbContextAsync(CancellationToken);
+        List<BankTransaction> loaded = await context.BankTransactions.ToListAsync(CancellationToken);
+
+        // Assert
+        await Assert.That(loaded).Count().IsEqualTo(2);
+    }
+
+    [Test]
+    public async Task Rotate_RowsWithoutTagsOrUnderAnOldKey_AreTaggedUnderTheCurrentOne()
+    {
+        // Arrange, one table written before tags, and key 2 made current
+        await SqlAsync("""UPDATE "BankConnections" SET "IntegrityTag" = NULL""");
+        IDbContextFactory<FinanceTrackerContext> rotated =
+            CreateDbContextFactory(new ColumnEncryptionService(TestEncryptionKeys.Keyring(currentKeyId: 2, 1, 2)));
+
+        // Act
+        await new EncryptionKeyRotator(rotated, NullLogger<EncryptionKeyRotator>.Instance)
+            .RotateAsync(CancellationToken);
+
+        // Assert, and they still load under the new key alone
+        await using FinanceTrackerContext context = await rotated.CreateDbContextAsync(CancellationToken);
+        List<string?> connectionTags = await TagsAsync(context, "BankConnections");
+        List<string?> transactionTags = await TagsAsync(context, "BankTransactions");
+        IDbContextFactory<FinanceTrackerContext> onlyNewKey =
+            CreateDbContextFactory(new ColumnEncryptionService(TestEncryptionKeys.Keyring(currentKeyId: 2)));
+        await using FinanceTrackerContext newKeyContext = await onlyNewKey.CreateDbContextAsync(CancellationToken);
+        using (Assert.Multiple())
+        {
+            await Assert.That(connectionTags.All(static x => x?.StartsWith("2:", StringComparison.Ordinal) == true)).IsTrue();
+            await Assert.That(transactionTags.All(static x => x?.StartsWith("2:", StringComparison.Ordinal) == true)).IsTrue();
+            await Assert.That(await newKeyContext.BankConnections.CountAsync(CancellationToken)).IsEqualTo(1);
+        }
+    }
+
+    [Test]
+    public async Task Tag_FromAnotherKeyring_IsRefused()
+    {
+        // Arrange, the same content tagged with a key FinTrack doesn't have
+        byte[] content = "content"u8.ToArray();
+        string forged = new ColumnEncryptionService(TestEncryptionKeys.Keyring(currentKeyId: 9)).ComputeRowTag(content);
+        string relabelled = "1" + forged[1..];
+
+        // Act, Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(ColumnEncryptionService.IsRowTagValid(ColumnEncryptionService.ComputeRowTag(content),
+                content)).IsTrue();
+            await Assert.That(ColumnEncryptionService.IsRowTagValid(forged, content)).IsFalse();
+            await Assert.That(ColumnEncryptionService.IsRowTagValid(relabelled, content)).IsFalse();
+            await Assert.That(ColumnEncryptionService.IsRowTagValid("not a tag", content)).IsFalse();
+        }
+    }
+
+    private async Task SqlAsync(string sql)
+    {
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+#pragma warning disable EF1002 // Test SQL with no input
+        await context.Database.ExecuteSqlRawAsync(sql, CancellationToken);
+#pragma warning restore EF1002
+    }
+
+    private async Task<List<BankConnection>> LoadConnectionsAsync()
+    {
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        return await context.BankConnections.ToListAsync(CancellationToken);
+    }
+
+    private async Task<List<BankTransaction>> LoadTransactionsAsync()
+    {
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        return await context.BankTransactions.ToListAsync(CancellationToken);
+    }
+
+    private Task<List<string?>> TagsAsync(FinanceTrackerContext context, string table) =>
+#pragma warning disable EF1002 // Test SQL, the table is the test's own
+        context.Database.SqlQueryRaw<string?>($"""SELECT "IntegrityTag" AS "Value" FROM "{table}" """)
+            .ToListAsync(CancellationToken);
+#pragma warning restore EF1002
+}
