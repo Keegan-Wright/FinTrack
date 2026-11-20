@@ -38,8 +38,8 @@ public class BalanceNoticesTests : InfrastructureTestBase
         await NotifyAsync(Now);
 
         // Assert
-        await _notifier.Received(1).NotifyAsync(NotificationKind.LowBalance,
-            $"low-balance:{AccountId:N}:{Now:yyyyMMddHHmmss}", "Everyday is below £100.00",
+        await _notifier.Received(1).NotifyWithAmountsAsync(NotificationKind.LowBalance,
+            $"low-balance:{AccountId:N}:{Now:yyyyMMddHHmmss}", "Everyday is below £100.00", "Everyday is running low",
             "Its available balance is £42.50.", BalanceNotices.AccountsLink, Arg.Any<CancellationToken>());
     }
 
@@ -55,8 +55,8 @@ public class BalanceNoticesTests : InfrastructureTestBase
         await NotifyAsync(Now.AddHours(4));
 
         // Assert
-        await _notifier.Received(1).NotifyAsync(NotificationKind.LowBalance, Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        await _notifier.Received(1).NotifyWithAmountsAsync(NotificationKind.LowBalance, Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -76,12 +76,12 @@ public class BalanceNoticesTests : InfrastructureTestBase
         // Assert, a new key, so it's raised again
         using (Assert.Multiple())
         {
-            await _notifier.Received(1).NotifyAsync(NotificationKind.LowBalance,
+            await _notifier.Received(1).NotifyWithAmountsAsync(NotificationKind.LowBalance,
                 $"low-balance:{AccountId:N}:{Now:yyyyMMddHHmmss}", Arg.Any<string>(), Arg.Any<string>(),
-                Arg.Any<string?>(), Arg.Any<CancellationToken>());
-            await _notifier.Received(1).NotifyAsync(NotificationKind.LowBalance,
+                Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+            await _notifier.Received(1).NotifyWithAmountsAsync(NotificationKind.LowBalance,
                 $"low-balance:{AccountId:N}:{Now.AddDays(2):yyyyMMddHHmmss}", Arg.Any<string>(), Arg.Any<string>(),
-                Arg.Any<string?>(), Arg.Any<CancellationToken>());
+                Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
         }
     }
 
@@ -100,7 +100,7 @@ public class BalanceNoticesTests : InfrastructureTestBase
         NotificationSettings settings = await context.NotificationSettings.SingleAsync(CancellationToken);
         using (Assert.Multiple())
         {
-            await _notifier.DidNotReceiveWithAnyArgs().NotifyAsync(default, default!, default!, default!, default,
+            await _notifier.DidNotReceiveWithAnyArgs().NotifyWithAmountsAsync(default, default!, default!, default!, default!, default,
                 default);
             await Assert.That(settings.LowBalanceAlerts.Single().LowSince).IsNull();
         }
@@ -116,7 +116,7 @@ public class BalanceNoticesTests : InfrastructureTestBase
         await NotifyAsync(Now);
 
         // Assert
-        await _notifier.DidNotReceiveWithAnyArgs().NotifyAsync(default, default!, default!, default!, default,
+        await _notifier.DidNotReceiveWithAnyArgs().NotifyWithAmountsAsync(default, default!, default!, default!, default!, default,
             default);
     }
 

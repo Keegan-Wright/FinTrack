@@ -2,6 +2,7 @@ using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Sharing;
 using FinanceTracker.Contracts.Tokens;
 using FinanceTracker.Tests.Integration.Http;
+using FinanceTracker.Tests.Unit.Shared;
 using Microsoft.Playwright;
 
 namespace FinanceTracker.Tests.Integration.Ui;
@@ -107,6 +108,40 @@ public class ScreenshotTests : UiTestBase
         await page.WaitForTimeoutAsync(1000);
         string file = Path.Combine(RepositoryRoot(), ImagesFolder,
             $"two-factor-setup-{screen.Name.ToLowerInvariant()}.png");
+        await page.ScreenshotAsync(new PageScreenshotOptions { Path = file });
+
+        // Assert
+        await Assert.That(File.Exists(file)).IsTrue();
+    }
+
+    [Test]
+    [MethodDataSource(nameof(DesktopAndPhone))]
+    public async Task PushNotifications_IsCaptured(ScreenSize screen)
+    {
+        // Arrange, for the phone docs. Turned on with a stand in subscription, the test browser has no push service
+        using WebhookCatcher pushService = new(System.Net.HttpStatusCode.Created);
+        using WebPushTestBrowser browser = new();
+        string username = $"{ScreenshotUser.FirstName}.push.{screen.Name}".ToLowerInvariant();
+        SignedInUser user = await RegisterUserAsync(username, firstName: ScreenshotUser.FirstName);
+        IPage page = await OpenAsync(screen, user, false);
+        await page.Context.GrantPermissionsAsync(["notifications"]);
+        await GoToAsync(page, "/Notifications/Settings");
+        await WaitUntilLoadedAsync(page);
+        await ChooseTabAsync(page, "Push");
+        await page.EvaluateAsync("subscription => { window.ftPushSubscribe = async () => subscription; }", new
+        {
+            endpoint = pushService.Url.ToString(),
+            publicKey = browser.PublicKeyText,
+            authSecret = browser.AuthSecretText,
+            name = "Chrome on Android"
+        });
+        await Button(page, "Turn on for this device").ClickAsync();
+        await Assertions.Expect(Button(page, "Turn off for this device")).ToBeVisibleAsync();
+        await page.EvaluateAsync("() => document.querySelectorAll('.mud-snackbar').forEach(x => x.remove())");
+
+        // Act, the tab's underline slides across
+        await page.WaitForTimeoutAsync(1000);
+        string file = Path.Combine(RepositoryRoot(), ImagesFolder, $"push-{screen.Name.ToLowerInvariant()}.png");
         await page.ScreenshotAsync(new PageScreenshotOptions { Path = file });
 
         // Assert

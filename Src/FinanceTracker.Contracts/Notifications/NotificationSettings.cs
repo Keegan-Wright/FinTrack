@@ -1,8 +1,8 @@
 namespace FinanceTracker.Contracts.Notifications;
 
 /// <summary>
-/// Where the user's notifications go: in the app, by email, and to their webhook. Also when budgets, bills, large
-/// transactions and low balances are said.
+/// Where the user's notifications go. In the app, by email, to their webhook and pushed to their devices. Also when
+/// budgets, bills, large transactions and low balances are said.
 /// </summary>
 public sealed class NotificationSettings
 {
@@ -55,6 +55,16 @@ public sealed class NotificationSettings
     /// How the last post to their webhook went, null when FinTrack hasn't posted to this one.
     /// </summary>
     public DeliveryStatus? LastWebhook { get; init; }
+
+    /// <summary>
+    /// The kinds pushed to their devices, when they have any.
+    /// </summary>
+    public required IReadOnlyList<NotificationKind> Pushed { get; init; }
+
+    /// <summary>
+    /// Whether they've turned push on for any device, see <see cref="Services.IPushService"/>.
+    /// </summary>
+    public bool HasPushDevices { get; init; }
 
     /// <summary>
     /// How far through a budget's money this month to warn, as a percentage. Going over is always said.

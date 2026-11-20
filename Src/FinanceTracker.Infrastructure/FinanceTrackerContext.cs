@@ -17,6 +17,7 @@ using FinanceTracker.Domain.Rules;
 using FinanceTracker.Domain.SavingsGoals;
 using FinanceTracker.Domain.Sharing;
 using FinanceTracker.Infrastructure.Encryption;
+using FinanceTracker.Infrastructure.Notifications.Push;
 using FinanceTracker.Infrastructure.Persistence;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
@@ -198,6 +199,11 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
     /// </summary>
     public DbSet<NotificationSettings> NotificationSettings { get; private set; }
 
+    /// <summary>
+    /// The browsers users get push notifications on.
+    /// </summary>
+    public DbSet<PushDevice> PushDevices { get; private set; }
+
     #endregion
 
     /// <summary>
@@ -211,6 +217,11 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
     /// survive redeploys, with their XML encrypted like any other sensitive column.
     /// </summary>
     public DbSet<DataProtectionKey> DataProtectionKeys { get; private set; }
+
+    /// <summary>
+    /// The server's key pair that signs push notifications, one row, see <see cref="StoredVapidKeys"/>.
+    /// </summary>
+    public DbSet<StoredVapidKeys> VapidKeys { get; private set; }
 
 
     /// <summary>

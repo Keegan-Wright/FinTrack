@@ -80,7 +80,8 @@ public class NotificationApiTests : IntegrationTestBase
         NotificationSettings atFirst = await service.GetSettingsAsync(CancellationToken);
         await service.ChangeSettingsAsync(new ChangeNotificationSettings
         {
-            InApp = Enum.GetValues<NotificationKind>(), Emailed = [NotificationKind.SyncFailed], Webhooked = []
+            InApp = Enum.GetValues<NotificationKind>(), Emailed = [NotificationKind.SyncFailed], Webhooked = [],
+            Pushed = [NotificationKind.BudgetOverLimit]
         }, CancellationToken);
         NotificationSettings after =
             await ApiFor(user).Get<INotificationsService>().GetSettingsAsync(CancellationToken);

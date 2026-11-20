@@ -1,4 +1,4 @@
-@inherits LayoutBase
+﻿@inherits LayoutBase
 @implements IDisposable
 
 @* The signed in app's shell: app bar, navigation, the shared loading overlay, and when the user's accounts last
@@ -19,6 +19,7 @@
 
 <MudThemeProvider @ref="@_mudThemeProvider" Theme="_theme" @bind-IsDarkMode="_isDarkMode" DefaultScrollbar="true"/>
 <MoneyColourStyles Dark="@_isDarkMode"/>
+<ThemeColour Dark="@_isDarkMode"/>
 
 <CascadingValue Value="@_isDarkMode" Name="IsDarkMode">
     <MudPopoverProvider/>

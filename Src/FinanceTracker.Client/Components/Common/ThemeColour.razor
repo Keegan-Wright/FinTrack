@@ -1,0 +1,14 @@
+@* The browser's colour for its bars around the page, the phone's status bar or an installed app's title bar, matching
+   the app bar in the mode the app is in. Rendered by a layout, which knows the mode, into the page's head *@
+<HeadContent>
+    <meta name="theme-color" content="@(Dark ? DarkPalette.AppbarBackground : LightPalette.AppbarBackground)"/>
+</HeadContent>
+
+@code {
+
+    /// <summary>
+    /// Whether the app is in dark mode.
+    /// </summary>
+    [Parameter] public bool Dark { get; set; }
+
+}

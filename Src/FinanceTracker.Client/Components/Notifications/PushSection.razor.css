@@ -1,0 +1,22 @@
+.ft-push__name-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+}
+
+.ft-push__name-line ::deep .ft-push__name {
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+/* A phone puts the button under the name rather than squeezing it */
+@media (max-width: 599.98px) {
+    .ft-push__row {
+        flex-wrap: wrap;
+    }
+
+    .ft-push__row ::deep .ft-list__main {
+        flex-basis: calc(100% - 36px);
+    }
+}

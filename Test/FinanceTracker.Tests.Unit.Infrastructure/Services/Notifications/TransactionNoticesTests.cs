@@ -43,8 +43,8 @@ public class TransactionNoticesTests : InfrastructureTestBase
 
         // Assert
         DateOnly paidOn = DateOnly.FromDateTime(Now.AddDays(-2));
-        await _notifier.Received(1).NotifyAsync(NotificationKind.LargeTransaction,
-            $"large-transaction:{Scenario.TransactionMappings["sofa shop"]:N}", "£650.00 paid to SOFA SHOP",
+        await _notifier.Received(1).NotifyWithAmountsAsync(NotificationKind.LargeTransaction,
+            $"large-transaction:{Scenario.TransactionMappings["sofa shop"]:N}", "£650.00 paid to SOFA SHOP", "Large payment to SOFA SHOP",
             $"Paid from Everyday on {paidOn:d MMMM}.", TransactionNotices.TransactionsLink,
             Arg.Any<CancellationToken>());
     }
@@ -60,8 +60,8 @@ public class TransactionNoticesTests : InfrastructureTestBase
         await NotifyAsync();
 
         // Assert
-        await _notifier.Received(1).NotifyAsync(NotificationKind.LargeTransaction, Arg.Any<string>(),
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        await _notifier.Received(1).NotifyWithAmountsAsync(NotificationKind.LargeTransaction, Arg.Any<string>(),
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -80,7 +80,7 @@ public class TransactionNoticesTests : InfrastructureTestBase
         await NotifyAsync();
 
         // Assert
-        await _notifier.DidNotReceiveWithAnyArgs().NotifyAsync(default, default!, default!, default!, default,
+        await _notifier.DidNotReceiveWithAnyArgs().NotifyWithAmountsAsync(default, default!, default!, default!, default!, default,
             default);
     }
 
@@ -94,7 +94,7 @@ public class TransactionNoticesTests : InfrastructureTestBase
         await NotifyAsync();
 
         // Assert
-        await _notifier.DidNotReceiveWithAnyArgs().NotifyAsync(default, default!, default!, default!, default,
+        await _notifier.DidNotReceiveWithAnyArgs().NotifyWithAmountsAsync(default, default!, default!, default!, default!, default,
             default);
     }
 

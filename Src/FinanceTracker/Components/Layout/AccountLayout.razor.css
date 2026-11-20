@@ -6,6 +6,10 @@
     gap: 24px;
     min-height: 100vh;
     padding: 48px 16px;
+    /* Clear of a phone's notch and home bar, see App.css */
+    padding-left: calc(16px + env(safe-area-inset-left));
+    padding-right: calc(16px + env(safe-area-inset-right));
+    padding-bottom: calc(48px + env(safe-area-inset-bottom));
     background-color: var(--mud-palette-background);
 }
 

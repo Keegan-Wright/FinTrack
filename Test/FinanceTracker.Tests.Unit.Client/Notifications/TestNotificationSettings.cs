@@ -19,7 +19,7 @@ internal static class TestNotificationSettings
     public static NotificationSettings Create(string? emailAddress = Address, bool emailAvailable = true,
         string? webhookUrl = null, DeliveryStatus? lastEmail = null, IReadOnlyList<NotificationKind>? inApp = null,
         IReadOnlyList<NotificationKind>? emailed = null, IReadOnlyList<NotificationKind>? webhooked = null,
-        bool emailConfirmed = true)
+        bool emailConfirmed = true, IReadOnlyList<NotificationKind>? pushed = null, bool hasPushDevices = false)
     {
         string? secret = null;
         if (webhookUrl is not null)
@@ -32,6 +32,8 @@ internal static class TestNotificationSettings
             InApp = inApp ?? Enum.GetValues<NotificationKind>(),
             Emailed = emailed ?? Enum.GetValues<NotificationKind>(),
             Webhooked = webhooked ?? Enum.GetValues<NotificationKind>(),
+            Pushed = pushed ?? Enum.GetValues<NotificationKind>(),
+            HasPushDevices = hasPushDevices,
             EmailAddress = emailAddress,
             EmailConfirmed = emailConfirmed,
             EmailAvailable = emailAvailable,

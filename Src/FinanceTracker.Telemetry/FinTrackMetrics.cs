@@ -30,13 +30,17 @@ public sealed class FinTrackMetrics
     /// </summary>
     public const string NotificationsRaisedName = "fintrack.notifications.raised";
     /// <summary>
-    /// The metric's name. Notifications sent on by email or webhook.
+    /// The metric's name. Notifications sent on by email, webhook or push.
     /// </summary>
     public const string NotificationsDeliveredName = "fintrack.notifications.delivered";
     /// <summary>
     /// The metric's name. Emails sent through the mail server.
     /// </summary>
     public const string EmailsSentName = "fintrack.emails.sent";
+    /// <summary>
+    /// The metric's name. Push devices removed because their browser had unsubscribed.
+    /// </summary>
+    public const string PushDevicesRemovedName = "fintrack.push.devices_removed";
     /// <summary>
     /// The metric's name. Bank connections by state.
     /// </summary>
@@ -111,6 +115,10 @@ public sealed class FinTrackMetrics
     /// </summary>
     private const string Webhook = "webhook";
     /// <summary>
+    /// A tag value. The push channel.
+    /// </summary>
+    private const string Push = "push";
+    /// <summary>
     /// A tag value. A connection that's fine.
     /// </summary>
     private const string Ok = "ok";
@@ -159,6 +167,7 @@ public sealed class FinTrackMetrics
     private readonly Counter<long> _notificationsRaised;
     private readonly Counter<long> _notificationsDelivered;
     private readonly Counter<long> _emailsSent;
+    private readonly Counter<long> _pushDevicesRemoved;
     private readonly Gauge<long> _connections;
     private readonly Histogram<double> _trueLayerThrottleWait;
     private readonly Counter<long> _singleSignOnFailures;
@@ -196,7 +205,9 @@ public sealed class FinTrackMetrics
         _notificationsRaised = meter.CreateCounter<long>(NotificationsRaisedName, "{notification}",
             "Notifications raised, by kind");
         _notificationsDelivered = meter.CreateCounter<long>(NotificationsDeliveredName, "{notification}",
-            "Notifications sent on by email or webhook, by whether they got there");
+            "Notifications sent on by email, webhook or push, by whether they got there");
+        _pushDevicesRemoved = meter.CreateCounter<long>(PushDevicesRemovedName, "{device}",
+            "Push devices removed because the push service said their browser had unsubscribed");
         _emailsSent = meter.CreateCounter<long>(EmailsSentName, "{email}",
             "Emails sent through the mail server, notifications and account emails alike, by whether it took them");
         _connections = meter.CreateGauge<long>(ConnectionsName, "{connection}",
@@ -272,6 +283,17 @@ public sealed class FinTrackMetrics
     /// </summary>
     /// <param name="succeeded">Whether it got there.</param>
     public void NotificationPostedToWebhook(bool succeeded) => Delivered(Webhook, succeeded);
+
+    /// <summary>
+    /// A notification pushed to one of a user's devices.
+    /// </summary>
+    /// <param name="succeeded">Whether the push service took it.</param>
+    public void NotificationPushed(bool succeeded) => Delivered(Push, succeeded);
+
+    /// <summary>
+    /// A push device removed because its browser had unsubscribed.
+    /// </summary>
+    public void PushDeviceRemoved() => _pushDevicesRemoved.Add(1);
 
     /// <summary>
     /// An email sent through the mail server, a notification or an account email.

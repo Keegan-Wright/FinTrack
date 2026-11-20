@@ -16,7 +16,7 @@ Structured, and linked to their traces.
 
 ### Traces
 
-- Requests, outgoing calls such as TrueLayer and webhooks, and database queries.
+- Requests, outgoing calls such as TrueLayer, webhooks and push services, and database queries.
 - Background jobs and the live update hub.
 - Bank syncs, broken down by connection, account and card, with what each one changed.
 
@@ -33,7 +33,8 @@ FinTrack's own, on the `FinanceTracker` meter.
 | `fintrack.connections` | Connections by state, such as ok, renewal due or failing. |
 | `fintrack.truelayer.throttle.wait` | Time spent waiting on FinTrack's TrueLayer rate limit. |
 | `fintrack.notifications.raised` | Notifications raised. |
-| `fintrack.notifications.delivered` | Notifications sent by email or webhook, and whether they arrived. |
+| `fintrack.notifications.delivered` | Notifications sent by email, webhook or push, and whether they arrived. |
+| `fintrack.push.devices_removed` | Push devices removed because their browser stopped taking pushes. |
 | `fintrack.emails.sent` | Emails sent, and whether the mail server accepted them. |
 | `fintrack.sso.failures` | Failed single sign-on attempts, and why. |
 | `fintrack.authenticator.codes_reused` | Authenticator codes refused for having been used already. |

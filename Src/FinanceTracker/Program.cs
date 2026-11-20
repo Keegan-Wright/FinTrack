@@ -5,6 +5,7 @@ using FinanceTracker.Client;
 using FinanceTracker.Components;
 using FinanceTracker.Components.Account;
 using FinanceTracker.Extensions;
+using FinanceTracker.WebApp;
 using MudBlazor.Services;
 
 namespace FinanceTracker;
@@ -93,6 +94,7 @@ public partial class Program
 
         app.UseAntiforgery();
         app.MapStaticAssets();
+        app.MapWebAppManifest();
         app.MapRazorComponents<App>()
             .AddInteractiveWebAssemblyRenderMode()
             .AddAdditionalAssemblies(typeof(ApplicationState).Assembly);

@@ -6,3 +6,4 @@
 - [Reading your data from scripts and other apps](api-tokens.md). API tokens for scripts or other applications.
 - [Users and admins](users-and-admins.md). Reset links, two-factor sign in, passkeys, API tokens, locking, and
   who's an admin.
+- [FinTrack on your phone](phone.md). Putting it on your home screen, and push notifications.

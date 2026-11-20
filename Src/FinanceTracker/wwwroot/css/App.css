@@ -149,3 +149,30 @@ html {
     overflow-x: clip;
     overflow-clip-margin: 4px;
 }
+
+/* The page covers the whole screen (viewport-fit=cover in App.razor), so the app's shell keeps clear of a phone's
+   notch and home bar, mostly for the installed app. The insets are 0 where there's nothing in the way. Not the top,
+   as the status bar isn't drawn over the page, and padding there would grow the app bar over the page's top */
+.mud-appbar {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+}
+
+.mud-drawer {
+    padding-left: env(safe-area-inset-left);
+    padding-bottom: env(safe-area-inset-bottom);
+}
+
+.mud-main-content {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* MudBlazor slides a tab bar too narrow for its tabs along by itself, but a tab taking focus, e.g. from the arrow
+   keys, also scrolled the bar's clipped box, so the tabs moved twice and left the bar blank on a phone. Clip can't be
+   scrolled. It doesn't shrink like a scroll box, so it's let shrink, or the bar runs off a tablet's screen */
+.mud-tabs-tabbar-content {
+    overflow: clip;
+    min-width: 0;
+}

@@ -2,7 +2,9 @@ using System.Diagnostics;
 using FinanceTracker.Domain.Notifications;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
+using FinanceTracker.Domain.Identity;
 using FinanceTracker.Infrastructure.Notifications.Email;
+using FinanceTracker.Infrastructure.Notifications.Push;
 using FinanceTracker.Infrastructure.Notifications.Webhooks;
 using FinanceTracker.Telemetry;
 using Microsoft.EntityFrameworkCore;
@@ -19,6 +21,7 @@ public sealed class Notifier : ServiceBase<Notifier>, INotifier
     private readonly IMailSender _mailSender;
     private readonly INotificationEmails _notificationEmails;
     private readonly IWebhookSender _webhookSender;
+    private readonly IPushSender _pushSender;
     private readonly PublicAddress _publicAddress;
     private readonly TimeProvider _timeProvider;
     private readonly FinTrackMetrics _metrics;
@@ -30,12 +33,14 @@ public sealed class Notifier : ServiceBase<Notifier>, INotifier
     /// <param name="mailSender">Sends the emails.</param>
     /// <param name="notificationEmails">Writes the notification emails.</param>
     /// <param name="webhookSender">Posts to webhooks.</param>
+    /// <param name="pushSender">Pushes to users' devices.</param>
     /// <param name="publicAddress">The app's address as people reach it.</param>
     /// <param name="timeProvider">The clock.</param>
     /// <param name="metrics">Records its metrics.</param>
     public Notifier(ICurrentUser currentUser, IDbContextFactory<FinanceTrackerContext> financeTrackerContextFactory,
         ILogger<Notifier> logger, INotificationPublisher notificationPublisher, IMailSender mailSender,
-        INotificationEmails notificationEmails, IWebhookSender webhookSender, PublicAddress publicAddress,
+        INotificationEmails notificationEmails, IWebhookSender webhookSender, IPushSender pushSender,
+        PublicAddress publicAddress,
         TimeProvider timeProvider, FinTrackMetrics metrics)
         : base(currentUser, financeTrackerContextFactory, logger)
     {
@@ -44,13 +49,33 @@ public sealed class Notifier : ServiceBase<Notifier>, INotifier
         _mailSender = mailSender;
         _notificationEmails = notificationEmails;
         _webhookSender = webhookSender;
+        _pushSender = pushSender;
         _publicAddress = publicAddress;
         _timeProvider = timeProvider;
     }
 
     /// <inheritdoc/>
-    public async Task<bool> NotifyAsync(NotificationKind kind, string key, string title, string message,
-        string? link, CancellationToken cancellationToken)
+    public Task<bool> NotifyAsync(NotificationKind kind, string key, string title, string message, string? link,
+        CancellationToken cancellationToken) =>
+        RaiseAsync(kind, key, title, null, message, link, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<bool> NotifyWithAmountsAsync(NotificationKind kind, string key, string title,
+        string titleWithoutAmounts, string message, string? link, CancellationToken cancellationToken) =>
+        RaiseAsync(kind, key, title, titleWithoutAmounts, message, link, cancellationToken);
+
+    /// <summary>
+    /// Raises it and sends it on, see <see cref="INotifier"/>.
+    /// </summary>
+    /// <param name="kind">What it's about.</param>
+    /// <param name="key">Which event it is.</param>
+    /// <param name="title">Its heading.</param>
+    /// <param name="titleWithoutAmounts">Its heading without the money, null when it says none.</param>
+    /// <param name="message">What it says.</param>
+    /// <param name="link">Where in the app to deal with it, null for nowhere.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
+    private async Task<bool> RaiseAsync(NotificationKind kind, string key, string title, string? titleWithoutAmounts,
+        string message, string? link, CancellationToken cancellationToken)
     {
         await using FinanceTrackerContext context =
             await FinanceTrackerContextFactory.CreateDbContextAsync(cancellationToken);
@@ -66,9 +91,10 @@ public sealed class Notifier : ServiceBase<Notifier>, INotifier
         bool inApp = NotificationSettings.IsInAppFor(settings, kind);
         string? address = await AddressIfEmailedAsync(context, settings, kind, cancellationToken);
         bool webhooked = settings is not null && settings.IsWebhooked(kind);
+        List<PushDevice> devices = await DevicesIfPushedAsync(context, settings, kind, cancellationToken);
 
         // Turned off everywhere, so it isn't raised.
-        if (!inApp && address is null && !webhooked)
+        if (!inApp && address is null && !webhooked && devices.Count == 0)
         {
             return false;
         }
@@ -85,7 +111,7 @@ public sealed class Notifier : ServiceBase<Notifier>, INotifier
             return false;
         }
 
-        Logger.LogNotified(UserId, kind, notification.Id, inApp, address is not null, webhooked);
+        Logger.LogNotified(UserId, kind, notification.Id, inApp, address is not null, webhooked, devices.Count > 0);
         CurrentActivity.Increment(TelemetryTags.NotificationsRaised);
         _metrics.NotificationRaised(kind.ToString());
         Activity.Current?.AddEvent(new ActivityEvent("Notified", tags: new ActivityTagsCollection
@@ -100,7 +126,101 @@ public sealed class Notifier : ServiceBase<Notifier>, INotifier
         }
 
         await SendOnAsync(context, settings, notification, address, webhooked, cancellationToken);
+        if (devices.Count > 0)
+        {
+            bool showAmounts = settings?.ShowAmountsOnLockScreen == true;
+            await PushAsync(context, devices, notification,
+                PushMessage.For(notification, titleWithoutAmounts, showAmounts), cancellationToken);
+        }
+
         return true;
+    }
+
+    /// <summary>
+    /// The user's devices to push <paramref name="kind"/> to. None when they don't want it pushed, have no devices,
+    /// or are locked, so a phone they no longer should have stops showing their money.
+    /// </summary>
+    /// <param name="context">The context to read through, which tracks the devices to record how each push went.</param>
+    /// <param name="settings">The user's settings, null when they've never changed them.</param>
+    /// <param name="kind">What it's about.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
+    private async Task<List<PushDevice>> DevicesIfPushedAsync(FinanceTrackerContext context,
+        NotificationSettings? settings, NotificationKind kind, CancellationToken cancellationToken)
+    {
+        if (!NotificationSettings.IsPushedFor(settings, kind))
+        {
+            return [];
+        }
+
+        bool locked = await context.Users.AnyAsync(
+            x => x.Id == UserId && x.LockoutEnd == FinanceTrackerUser.LockedByAdminUntil, cancellationToken);
+        if (locked)
+        {
+            return [];
+        }
+
+        return await context.PushDevices.OwnedBy(UserId).ToListAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Pushes it to each device and records how it went. A device whose browser has gone is removed, a failure is
+    /// logged and the notification stands.
+    /// </summary>
+    /// <param name="context">The context the devices are tracked in.</param>
+    /// <param name="devices">The devices.</param>
+    /// <param name="notification">The notification.</param>
+    /// <param name="message">What the push shows.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
+    private async Task PushAsync(FinanceTrackerContext context, List<PushDevice> devices, Notification notification,
+        PushMessage message, CancellationToken cancellationToken)
+    {
+        foreach (PushDevice device in devices)
+        {
+            await PushToAsync(context, device, notification, message, cancellationToken);
+        }
+
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException exception)
+        {
+            // A device was removed at the same moment, only the record of how this went is lost
+            Logger.LogNotificationDeliveryNotRecorded(exception, notification.Id, UserId);
+        }
+    }
+
+    /// <summary>
+    /// Pushes it to one device and records how it went.
+    /// </summary>
+    /// <param name="context">The context the device is tracked in.</param>
+    /// <param name="device">The device.</param>
+    /// <param name="notification">The notification.</param>
+    /// <param name="message">What the push shows.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
+    private async Task PushToAsync(FinanceTrackerContext context, PushDevice device, Notification notification,
+        PushMessage message, CancellationToken cancellationToken)
+    {
+        try
+        {
+            PushOutcome outcome = await _pushSender.SendAsync(device, message, cancellationToken);
+            if (outcome == PushOutcome.Gone)
+            {
+                context.PushDevices.Remove(device);
+                _metrics.PushDeviceRemoved();
+                Logger.LogPushDeviceGone(UserId, device.Id);
+                return;
+            }
+
+            _metrics.NotificationPushed(succeeded: true);
+            device.RecordPush(_timeProvider.UtcNow, null);
+        }
+        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            Logger.LogNotificationPushFailed(exception, notification.Id, UserId, device.Id);
+            _metrics.NotificationPushed(succeeded: false);
+            device.RecordPush(_timeProvider.UtcNow, PushFailure.Describe(exception));
+        }
     }
 
     /// <summary>

@@ -87,12 +87,15 @@ public class AppBarTests : UiTestBase
         // Act
         await Button(page, "Toggle dark mode").ClickAsync();
 
-        // Assert, the money colours follow the mode as MudBlazor's palette does
+        // Assert, the money colours and the browser's bars follow the mode as MudBlazor's palette does
         string moneyIn = startDark ? MoneyColours.LightMoneyIn : MoneyColours.DarkMoneyIn;
+        string themeColour = startDark ? LightPalette.AppbarBackground : DarkPalette.AppbarBackground;
         await page.WaitForFunctionAsync($"expected => {MoneyInScript} === expected", moneyIn);
+        await page.WaitForFunctionAsync($"expected => {ThemeColourScript} === expected", themeColour);
         using (Assert.Multiple())
         {
             await Assert.That(await page.EvaluateAsync<string>($"() => {MoneyInScript}")).IsEqualTo(moneyIn);
+            await Assert.That(await page.Locator("meta[name=theme-color]").CountAsync()).IsEqualTo(1);
             await Assert.That(await BackgroundAsync(page)).IsNotEqualTo(backgroundBefore);
             await Assert.That(BrowserErrors).IsEmpty();
         }
@@ -101,6 +104,10 @@ public class AppBarTests : UiTestBase
     // The money in colour the page is styled with, see MoneyColourStyles
     private const string MoneyInScript =
         "getComputedStyle(document.documentElement).getPropertyValue('--ft-money-in').trim()";
+
+    // The colour the browser draws its bars around the page in, see ThemeColour
+    private const string ThemeColourScript =
+        "document.querySelector('meta[name=theme-color]').content";
 
     // The page's background as the browser draws it, e.g. rgb(10, 10, 10)
     private static Task<string> BackgroundAsync(IPage page) =>

@@ -41,6 +41,7 @@ public static class ApiEndpoints
                 .MapNotificationEndpoints()
                 .MapOpenBankingEndpoints()
                 .MapPayPeriodEndpoints()
+                .MapPushEndpoints()
                 .MapProfileEndpoints()
                 .MapPasskeyEndpoints()
                 .MapReportEndpoints()

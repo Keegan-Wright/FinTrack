@@ -83,17 +83,17 @@ public sealed class BudgetNotices : ServiceBase<BudgetNotices>, ISyncNotices
 
         if (budget.Spent > budget.Available)
         {
-            await _notifier.NotifyAsync(NotificationKind.BudgetOverLimit, Key("budget-over", budget, month),
-                $"{name} is {NoticeText.Money(budget.Spent - budget.Available)} over", spent, BudgetsLink,
-                cancellationToken);
+            await _notifier.NotifyWithAmountsAsync(NotificationKind.BudgetOverLimit, Key("budget-over", budget, month),
+                $"{name} is {NoticeText.Money(budget.Spent - budget.Available)} over", $"{name} is over budget",
+                spent, BudgetsLink, cancellationToken);
             return;
         }
 
         if (budget.Available > 0 && budget.Spent >= budget.Available * warningPercent / 100)
         {
-            await _notifier.NotifyAsync(NotificationKind.BudgetNearLimit, Key("budget-near", budget, month),
-                $"{name} has {NoticeText.Money(budget.Remaining)} left", spent, BudgetsLink,
-                cancellationToken);
+            await _notifier.NotifyWithAmountsAsync(NotificationKind.BudgetNearLimit, Key("budget-near", budget, month),
+                $"{name} has {NoticeText.Money(budget.Remaining)} left", $"{name} is nearly used up", spent,
+                BudgetsLink, cancellationToken);
         }
     }
 

@@ -46,8 +46,8 @@ public class BudgetNoticesTests : InfrastructureTestBase
         await NotifyAsync();
 
         // Assert
-        await _notifier.Received(1).NotifyAsync(NotificationKind.BudgetNearLimit, $"budget-near:{BudgetId:N}:202611",
-            "Groceries has £15.00 left", "£85.00 of £100.00 spent this month.", BudgetNotices.BudgetsLink,
+        await _notifier.Received(1).NotifyWithAmountsAsync(NotificationKind.BudgetNearLimit, $"budget-near:{BudgetId:N}:202611",
+            "Groceries has £15.00 left", "Groceries is nearly used up", "£85.00 of £100.00 spent this month.", BudgetNotices.BudgetsLink,
             Arg.Any<CancellationToken>());
     }
 
@@ -64,11 +64,11 @@ public class BudgetNoticesTests : InfrastructureTestBase
         // Assert
         using (Assert.Multiple())
         {
-            await _notifier.Received(1).NotifyAsync(NotificationKind.BudgetOverLimit,
-                $"budget-over:{BudgetId:N}:202611", "Groceries is £20.00 over", "£120.00 of £100.00 spent this month.",
+            await _notifier.Received(1).NotifyWithAmountsAsync(NotificationKind.BudgetOverLimit,
+                $"budget-over:{BudgetId:N}:202611", "Groceries is £20.00 over", "Groceries is over budget", "£120.00 of £100.00 spent this month.",
                 BudgetNotices.BudgetsLink, Arg.Any<CancellationToken>());
-            await _notifier.DidNotReceive().NotifyAsync(NotificationKind.BudgetNearLimit, Arg.Any<string>(),
-                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+            await _notifier.DidNotReceive().NotifyWithAmountsAsync(NotificationKind.BudgetNearLimit, Arg.Any<string>(),
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
         }
     }
 
@@ -82,7 +82,7 @@ public class BudgetNoticesTests : InfrastructureTestBase
         await NotifyAsync();
 
         // Assert
-        await _notifier.DidNotReceiveWithAnyArgs().NotifyAsync(default, default!, default!, default!, default,
+        await _notifier.DidNotReceiveWithAnyArgs().NotifyWithAmountsAsync(default, default!, default!, default!, default!, default,
             default);
     }
 
@@ -103,7 +103,7 @@ public class BudgetNoticesTests : InfrastructureTestBase
         await NotifyAsync();
 
         // Assert
-        await _notifier.DidNotReceiveWithAnyArgs().NotifyAsync(default, default!, default!, default!, default,
+        await _notifier.DidNotReceiveWithAnyArgs().NotifyWithAmountsAsync(default, default!, default!, default!, default!, default,
             default);
     }
 
