@@ -1,9 +1,12 @@
 using FinanceTracker.Contracts.Services;
+using FinanceTracker.Domain.Notifications;
 using FinanceTracker.Infrastructure;
+using FinanceTracker.Infrastructure.Encryption;
 using FinanceTracker.Infrastructure.Persistence;
 using FinanceTracker.Tests.Integration.Http;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FinanceTracker.Tests.Integration.Persistence;
 
@@ -37,5 +40,29 @@ public class RowIntegrityTamperTests : IntegrationTestBase
         await using FinanceTrackerContext check = await DbContextFactory.CreateDbContextAsync(CancellationToken);
         await Assert.ThrowsAsync<RowIntegrityException>(() =>
             check.Debts.Where(x => x.Id == debtId).ToListAsync(CancellationToken));
+    }
+
+    [Test]
+    public async Task Rotate_EverythingAlreadyTagged_FindsNothingStale()
+    {
+        // Arrange, a balance in the account's row and alerts as jsonb, which Postgres writes back with spaces
+        SignedInUser user = await RegisterUserAsync();
+        await Scenario.Do(s => s.BankConnectionScenario.WithConnection("bank", user.Username))
+            .Do(s => s.BankAccountScenario.WithAccount("main", "bank"))
+            .Do(s => s.BankAccountScenario.WithBalance("main"));
+        await using (FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken))
+        {
+            NotificationSettings settings = new(Scenario.UserMappings[user.Username]);
+            settings.WatchBalances(new Dictionary<Guid, decimal> { [Scenario.AccountMappings["main"]] = 100m });
+            context.NotificationSettings.Add(settings);
+            await context.SaveChangesAsync(CancellationToken);
+        }
+
+        // Act
+        int reencrypted = await new EncryptionKeyRotator(DbContextFactory, NullLogger<EncryptionKeyRotator>.Instance)
+            .RotateAsync(CancellationToken);
+
+        // Assert, so startup doesn't rewrite them every time
+        await Assert.That(reencrypted).IsEqualTo(0);
     }
 }

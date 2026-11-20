@@ -2054,6 +2054,9 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                         .HasMaxLength(1024)
                         .HasColumnType("bytea");
 
+                    b.Property<string>("IntegrityTag")
+                        .HasColumnType("text");
+
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
 
@@ -2062,6 +2065,8 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("AspNetUserPasskeys", (string)null);
+
+                    b.HasAnnotation("FinanceTracker.RowIntegrity", true);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<System.Guid>", b =>
@@ -2092,6 +2097,9 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
 
+                    b.Property<string>("IntegrityTag")
+                        .HasColumnType("text");
+
                     b.Property<string>("Value")
                         .HasColumnType("text")
                         .HasAnnotation("FinanceTracker.EncryptedColumn", true);
@@ -2099,6 +2107,8 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                     b.HasKey("UserId", "LoginProvider", "Name");
 
                     b.ToTable("AspNetUserTokens", (string)null);
+
+                    b.HasAnnotation("FinanceTracker.RowIntegrity", true);
                 });
 
             modelBuilder.Entity("FinanceTracker.Domain.Bills.Bill", b =>
@@ -2130,13 +2140,16 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                                 .IsRequired()
                                 .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
+                            b1.Property<string>("IntegrityTag");
+
                             b1.HasKey("BillId", "__synthesizedOrdinal");
 
                             b1.ToTable("Bills");
 
                             b1
                                 .ToJson("Amounts")
-                                .HasColumnType("jsonb");
+                                .HasColumnType("jsonb")
+                                .HasAnnotation("FinanceTracker.RowIntegrity", true);
 
                             b1.WithOwner()
                                 .HasForeignKey("BillId");
@@ -2183,13 +2196,16 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                                 .IsRequired()
                                 .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
+                            b1.Property<string>("IntegrityTag");
+
                             b1.HasKey("BudgetId", "__synthesizedOrdinal");
 
                             b1.ToTable("Budgets");
 
                             b1
                                 .ToJson("Limits")
-                                .HasColumnType("jsonb");
+                                .HasColumnType("jsonb")
+                                .HasAnnotation("FinanceTracker.RowIntegrity", true);
 
                             b1.WithOwner()
                                 .HasForeignKey("BudgetId");
@@ -2261,6 +2277,9 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                                 .HasColumnType("text")
                                 .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
+                            b1.Property<string>("IntegrityTag")
+                                .HasColumnType("text");
+
                             b1.Property<string>("Number")
                                 .HasColumnType("text")
                                 .HasAnnotation("FinanceTracker.EncryptedColumn", true);
@@ -2274,6 +2293,8 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                             b1.HasIndex("HouseholdMemberId");
 
                             b1.ToTable("HouseholdMemberLinkedAccounts", (string)null);
+
+                            b1.HasAnnotation("FinanceTracker.RowIntegrity", true);
 
                             b1.WithOwner()
                                 .HasForeignKey("HouseholdMemberId");
@@ -2330,6 +2351,8 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                                 .IsRequired()
                                 .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
+                            b1.Property<string>("IntegrityTag");
+
                             b1.Property<DateTime?>("LowSince");
 
                             b1.HasKey("NotificationSettingsId", "__synthesizedOrdinal");
@@ -2338,7 +2361,8 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
                             b1
                                 .ToJson("LowBalanceAlerts")
-                                .HasColumnType("jsonb");
+                                .HasColumnType("jsonb")
+                                .HasAnnotation("FinanceTracker.RowIntegrity", true);
 
                             b1.WithOwner()
                                 .HasForeignKey("NotificationSettingsId");
@@ -2398,9 +2422,14 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                                 .HasColumnName("Balance_Current")
                                 .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
+                            b1.Property<string>("IntegrityTag")
+                                .HasColumnType("text");
+
                             b1.HasKey("BankAccountId");
 
                             b1.ToTable("BankAccounts");
+
+                            b1.HasAnnotation("FinanceTracker.RowIntegrity", true);
 
                             b1.WithOwner()
                                 .HasForeignKey("BankAccountId");
@@ -2416,6 +2445,9 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                                 .HasColumnName("Identifier_Iban")
                                 .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
+                            b1.Property<string>("IntegrityTag")
+                                .HasColumnType("text");
+
                             b1.Property<string>("Number")
                                 .HasColumnType("text")
                                 .HasColumnName("Identifier_Number")
@@ -2430,6 +2462,8 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
                             b1.ToTable("BankAccounts");
 
+                            b1.HasAnnotation("FinanceTracker.RowIntegrity", true);
+
                             b1.WithOwner()
                                 .HasForeignKey("BankAccountId");
                         });
@@ -2443,6 +2477,9 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                                 .HasColumnType("text")
                                 .HasColumnName("Card_CardType")
                                 .HasAnnotation("FinanceTracker.EncryptedColumn", true);
+
+                            b1.Property<string>("IntegrityTag")
+                                .HasColumnType("text");
 
                             b1.Property<string>("NameOnCard")
                                 .HasColumnType("text")
@@ -2467,6 +2504,8 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                             b1.HasKey("BankAccountId");
 
                             b1.ToTable("BankAccounts");
+
+                            b1.HasAnnotation("FinanceTracker.RowIntegrity", true);
 
                             b1.WithOwner()
                                 .HasForeignKey("BankAccountId");
@@ -2550,9 +2589,14 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                                 .HasColumnName("Balance_Current")
                                 .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
+                            b1.Property<string>("IntegrityTag")
+                                .HasColumnType("text");
+
                             b1.HasKey("BalanceSnapshotId");
 
                             b1.ToTable("BalanceSnapshots");
+
+                            b1.HasAnnotation("FinanceTracker.RowIntegrity", true);
 
                             b1.WithOwner()
                                 .HasForeignKey("BalanceSnapshotId");
@@ -2669,6 +2713,8 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                                 .IsRequired()
                                 .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
+                            b1.Property<string>("IntegrityTag");
+
                             b1.Property<Guid?>("RuleId");
 
                             b1.HasKey("BankTransactionId", "__synthesizedOrdinal");
@@ -2677,7 +2723,8 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
                             b1
                                 .ToJson("HiddenClassifications")
-                                .HasColumnType("jsonb");
+                                .HasColumnType("jsonb")
+                                .HasAnnotation("FinanceTracker.RowIntegrity", true);
 
                             b1.WithOwner()
                                 .HasForeignKey("BankTransactionId");
@@ -2698,6 +2745,9 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                                 .HasColumnName("Meta_DebtorAccountName")
                                 .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
+                            b1.Property<string>("IntegrityTag")
+                                .HasColumnType("text");
+
                             b1.Property<string>("MerchantName")
                                 .HasColumnType("text")
                                 .HasColumnName("Meta_MerchantName")
@@ -2717,6 +2767,8 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
                             b1.ToTable("BankTransactions");
 
+                            b1.HasAnnotation("FinanceTracker.RowIntegrity", true);
+
                             b1.WithOwner()
                                 .HasForeignKey("BankTransactionId");
                         });
@@ -2732,6 +2784,8 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                                 .IsRequired()
                                 .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
+                            b1.Property<string>("IntegrityTag");
+
                             b1.Property<string>("Note")
                                 .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
@@ -2743,7 +2797,8 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
                             b1
                                 .ToJson("Splits")
-                                .HasColumnType("jsonb");
+                                .HasColumnType("jsonb")
+                                .HasAnnotation("FinanceTracker.RowIntegrity", true);
 
                             b1.WithOwner()
                                 .HasForeignKey("BankTransactionId");
@@ -2883,6 +2938,8 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
                             b1.Property<Guid?>("DebtId");
 
+                            b1.Property<string>("IntegrityTag");
+
                             b1.Property<string>("Type")
                                 .IsRequired();
 
@@ -2892,7 +2949,8 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
                             b1
                                 .ToJson("Actions")
-                                .HasColumnType("jsonb");
+                                .HasColumnType("jsonb")
+                                .HasAnnotation("FinanceTracker.RowIntegrity", true);
 
                             b1.WithOwner()
                                 .HasForeignKey("RuleId");
@@ -2910,6 +2968,8 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
                             b1.Property<bool>("IgnoreCase");
 
+                            b1.Property<string>("IntegrityTag");
+
                             b1.Property<string>("Operator")
                                 .IsRequired();
 
@@ -2926,7 +2986,8 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
                             b1
                                 .ToJson("Conditions")
-                                .HasColumnType("jsonb");
+                                .HasColumnType("jsonb")
+                                .HasAnnotation("FinanceTracker.RowIntegrity", true);
 
                             b1.WithOwner()
                                 .HasForeignKey("RuleId");
@@ -2994,6 +3055,8 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
                                 .IsRequired()
                                 .HasAnnotation("FinanceTracker.EncryptedColumn", true);
 
+                            b1.Property<string>("IntegrityTag");
+
                             b1.Property<DateTime>("OpenedAt");
 
                             b1.Property<string>("To")
@@ -3005,7 +3068,8 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
                             b1
                                 .ToJson("Gaps")
-                                .HasColumnType("jsonb");
+                                .HasColumnType("jsonb")
+                                .HasAnnotation("FinanceTracker.RowIntegrity", true);
 
                             b1.WithOwner()
                                 .HasForeignKey("JointAccountId");
@@ -3102,6 +3166,8 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
                             b1.Property<DateTimeOffset>("CreatedAt");
 
+                            b1.Property<string>("IntegrityTag");
+
                             b1.Property<bool>("IsBackedUp");
 
                             b1.Property<bool>("IsBackupEligible");
@@ -3125,7 +3191,8 @@ namespace FinanceTracker.Infrastructure.Migrations.Migrations
 
                             b1
                                 .ToJson("Data")
-                                .HasColumnType("jsonb");
+                                .HasColumnType("jsonb")
+                                .HasAnnotation("FinanceTracker.RowIntegrity", true);
 
                             b1.WithOwner()
                                 .HasForeignKey("IdentityUserPasskeyCredentialId");

@@ -1,3 +1,4 @@
+using FinanceTracker.Domain.Notifications;
 using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Infrastructure;
@@ -5,6 +6,7 @@ using FinanceTracker.Infrastructure.Encryption;
 using FinanceTracker.Infrastructure.Persistence;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -99,6 +101,107 @@ public class RowIntegrityTests : InfrastructureTestBase
     }
 
     [Test]
+    public async Task Load_BalanceCopiedFromAnotherAccount_IsRefused()
+    {
+        // Arrange, the balance lives in a type the account owns, stored in its row
+        await Scenario.Do(s => s.BankAccountScenario.WithBalance("main"))
+            .Do(s => s.BankAccountScenario.WithBalance("savings"));
+        await SqlAsync("""
+            UPDATE "BankAccounts" SET "Balance_Current" =
+                (SELECT "Balance_Current" FROM "BankAccounts" AS other WHERE other."Id" <> "BankAccounts"."Id")
+            """);
+
+        // Act, Assert
+        await Assert.ThrowsAsync<RowIntegrityException>(async () =>
+        {
+            await using FinanceTrackerContext context =
+                await DbContextFactory.CreateDbContextAsync(CancellationToken);
+            await context.BankAccounts.ToListAsync(CancellationToken);
+        });
+    }
+
+    [Test]
+    public async Task Load_JsonListCopiedFromAnotherUsersRow_IsRefused()
+    {
+        // Arrange, low balance alerts are stored as JSON in each user's settings row
+        await AddSettingsAsync(Username, 100m);
+        await AddSettingsAsync(OtherUsername, 5000m);
+        await SqlAsync("""
+            UPDATE "NotificationSettings" SET "LowBalanceAlerts" =
+                (SELECT "LowBalanceAlerts" FROM "NotificationSettings" AS other
+                 WHERE other."Id" <> "NotificationSettings"."Id")
+            """);
+
+        // Act, Assert
+        await Assert.ThrowsAsync<RowIntegrityException>(async () =>
+        {
+            await using FinanceTrackerContext context =
+                await DbContextFactory.CreateDbContextAsync(CancellationToken);
+            await context.NotificationSettings.ToListAsync(CancellationToken);
+        });
+    }
+
+    [Test]
+    public async Task Load_AuthenticatorKeyMovedToAnotherUser_IsRefused()
+    {
+        // Arrange, someone moving their own authenticator key onto another user to pass their two-factor check
+        await using (FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken))
+        {
+            context.UserTokens.Add(new IdentityUserToken<Guid>
+            {
+                UserId = Scenario.UserMappings[Username], LoginProvider = "[AspNetUserStore]",
+                Name = "AuthenticatorKey", Value = "PLACEHOLDERKEY"
+            });
+            await context.SaveChangesAsync(CancellationToken);
+        }
+
+        await SqlAsync("""
+            UPDATE "AspNetUserTokens" SET "UserId" =
+                (SELECT "Id" FROM "AspNetUsers" WHERE "Id" <> "AspNetUserTokens"."UserId" LIMIT 1)
+            """);
+
+        // Act, Assert
+        await Assert.ThrowsAsync<RowIntegrityException>(async () =>
+        {
+            await using FinanceTrackerContext context =
+                await DbContextFactory.CreateDbContextAsync(CancellationToken);
+            await context.UserTokens.ToListAsync(CancellationToken);
+        });
+    }
+
+    [Test]
+    public async Task Load_PasskeyMovedToAnotherUser_IsRefused()
+    {
+        // Arrange, someone moving their own passkey onto another user to sign in as them
+        await using (FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken))
+        {
+            context.UserPasskeys.Add(new IdentityUserPasskey<Guid>
+            {
+                CredentialId = [1, 2, 3, 4], UserId = Scenario.UserMappings[Username],
+                Data = new IdentityPasskeyData
+                {
+                    PublicKey = [5, 6, 7, 8], Name = "Placeholder laptop", CreatedAt = DateTimeOffset.UnixEpoch,
+                    Transports = [], AttestationObject = [9], ClientDataJson = [10]
+                }
+            });
+            await context.SaveChangesAsync(CancellationToken);
+        }
+
+        await SqlAsync("""
+            UPDATE "AspNetUserPasskeys" SET "UserId" =
+                (SELECT "Id" FROM "AspNetUsers" WHERE "Id" <> "AspNetUserPasskeys"."UserId" LIMIT 1)
+            """);
+
+        // Act, Assert
+        await Assert.ThrowsAsync<RowIntegrityException>(async () =>
+        {
+            await using FinanceTrackerContext context =
+                await DbContextFactory.CreateDbContextAsync(CancellationToken);
+            await context.UserPasskeys.ToListAsync(CancellationToken);
+        });
+    }
+
+    [Test]
     public async Task Load_NoTagYet_IsLetThrough()
     {
         // Arrange, as a row written before tags
@@ -173,6 +276,33 @@ public class RowIntegrityTests : InfrastructureTestBase
     }
 
     [Test]
+    public async Task Rotate_OwnedAndJsonValues_AreTaggedUnderTheNewKey_AndAThirdRunDoesNothing()
+    {
+        // Arrange, a balance stored in the account's row, alerts stored as JSON, and key 2 made current
+        await Scenario.Do(s => s.BankAccountScenario.WithBalance("main"));
+        await AddSettingsAsync(Username, 100m);
+        IDbContextFactory<FinanceTrackerContext> rotated =
+            CreateDbContextFactory(new ColumnEncryptionService(TestEncryptionKeys.Keyring(currentKeyId: 2, 1, 2)));
+        EncryptionKeyRotator rotator = new(rotated, NullLogger<EncryptionKeyRotator>.Instance);
+
+        // Act
+        await rotator.RotateAsync(CancellationToken);
+        int again = await rotator.RotateAsync(CancellationToken);
+
+        // Assert, they load under the new key alone, and nothing stays stale, e.g. the account without a card
+        IDbContextFactory<FinanceTrackerContext> onlyNewKey =
+            CreateDbContextFactory(new ColumnEncryptionService(TestEncryptionKeys.Keyring(currentKeyId: 2)));
+        await using FinanceTrackerContext context = await onlyNewKey.CreateDbContextAsync(CancellationToken);
+        using (Assert.Multiple())
+        {
+            await Assert.That(again).IsEqualTo(0);
+            await Assert.That(await context.BankAccounts.CountAsync(CancellationToken)).IsEqualTo(2);
+            await Assert.That((await context.NotificationSettings.SingleAsync(CancellationToken)).LowBalanceAlerts)
+                .Count().IsEqualTo(1);
+        }
+    }
+
+    [Test]
     public async Task Tag_FromAnotherKeyring_IsRefused()
     {
         // Arrange, the same content tagged with a key FinTrack doesn't have
@@ -189,6 +319,15 @@ public class RowIntegrityTests : InfrastructureTestBase
             await Assert.That(ColumnEncryptionService.IsRowTagValid(relabelled, content)).IsFalse();
             await Assert.That(ColumnEncryptionService.IsRowTagValid("not a tag", content)).IsFalse();
         }
+    }
+
+    private async Task AddSettingsAsync(string username, decimal below)
+    {
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        NotificationSettings settings = new(Scenario.UserMappings[username]);
+        settings.WatchBalances(new Dictionary<Guid, decimal> { [Scenario.AccountMappings["main"]] = below });
+        context.NotificationSettings.Add(settings);
+        await context.SaveChangesAsync(CancellationToken);
     }
 
     private async Task SqlAsync(string sql)
