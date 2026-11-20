@@ -1884,14 +1884,107 @@
       }
     },
     {
-      "type": "row",
-      "title": "Outgoing calls",
-      "collapsed": false,
-      "panels": [],
+      "type": "timeseries",
+      "title": "Rows failing their integrity check",
+      "description": "Rows refused on load because their integrity tag didn't match, by table. Any at all means the database was changed outside FinTrack, e.g. a row moved to another user. See the encryption keys docs.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheus}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${prometheus}"
+          },
+          "expr": "sum by (db_collection_name) (increase(fintrack_row_integrity_failed_total{job=\"$service\"}[$__interval]))",
+          "legendFormat": "{{db_collection_name}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "showPoints": "never",
+            "spanNulls": false,
+            "axisSoftMin": 0,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "insertNulls": false
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "interval": "2m",
       "id": 24,
       "gridPos": {
         "x": 0,
         "y": 46,
+        "w": 24,
+        "h": 6
+      }
+    },
+    {
+      "type": "row",
+      "title": "Outgoing calls",
+      "collapsed": false,
+      "panels": [],
+      "id": 25,
+      "gridPos": {
+        "x": 0,
+        "y": 52,
         "w": 24,
         "h": 1
       }
@@ -1964,10 +2057,10 @@
           "sort": "desc"
         }
       },
-      "id": 25,
+      "id": 26,
       "gridPos": {
         "x": 0,
-        "y": 47,
+        "y": 53,
         "w": 12,
         "h": 8
       }
@@ -2041,10 +2134,10 @@
           "sort": "desc"
         }
       },
-      "id": 26,
+      "id": 27,
       "gridPos": {
         "x": 12,
-        "y": 47,
+        "y": 53,
         "w": 12,
         "h": 8
       }
@@ -2061,10 +2154,10 @@
             "mode": "markdown",
             "content": "Where FinTrack spends its time and memory, from Pyroscope's profiler, over the time range. Wider means more. These show 0 samples until profiling is turned on in FinTrack's compose file. **Drilldown \u2192 Profiles** in Grafana's menu compares time ranges and goes into more detail."
           },
-          "id": 28,
+          "id": 29,
           "gridPos": {
             "x": 0,
-            "y": 56,
+            "y": 62,
             "w": 24,
             "h": 2
           }
@@ -2092,10 +2185,10 @@
             }
           ],
           "options": {},
-          "id": 29,
+          "id": 30,
           "gridPos": {
             "x": 0,
-            "y": 58,
+            "y": 64,
             "w": 12,
             "h": 14
           }
@@ -2123,10 +2216,10 @@
             }
           ],
           "options": {},
-          "id": 30,
+          "id": 31,
           "gridPos": {
             "x": 12,
-            "y": 58,
+            "y": 64,
             "w": 12,
             "h": 14
           }
@@ -2154,10 +2247,10 @@
             }
           ],
           "options": {},
-          "id": 31,
+          "id": 32,
           "gridPos": {
             "x": 0,
-            "y": 72,
+            "y": 78,
             "w": 12,
             "h": 12
           }
@@ -2185,19 +2278,19 @@
             }
           ],
           "options": {},
-          "id": 32,
+          "id": 33,
           "gridPos": {
             "x": 12,
-            "y": 72,
+            "y": 78,
             "w": 12,
             "h": 12
           }
         }
       ],
-      "id": 27,
+      "id": 28,
       "gridPos": {
         "x": 0,
-        "y": 55,
+        "y": 61,
         "w": 24,
         "h": 1
       }

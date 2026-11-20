@@ -35,6 +35,7 @@ FinTrack's own, on the `FinanceTracker` meter.
 | `fintrack.notifications.raised` | Notifications raised. |
 | `fintrack.notifications.delivered` | Notifications sent by email, webhook or push, and whether they arrived. |
 | `fintrack.push.devices_removed` | Push devices removed because their browser stopped taking pushes. |
+| `fintrack.row_integrity.failed` | Rows refused on load because they were changed outside FinTrack, by table. See [Row integrity](encryption-keys.md#row-integrity). |
 | `fintrack.emails.sent` | Emails sent, and whether the mail server accepted them. |
 | `fintrack.sso.failures` | Failed single sign-on attempts, and why. |
 | `fintrack.authenticator.codes_reused` | Authenticator codes refused for having been used already. |
@@ -63,8 +64,21 @@ There are six dashboards in [Grafana/dashboards](../../Grafana/dashboards).
 - **Bank sync.** Connections, syncs, TrueLayer and the scheduled jobs.
 - **Notifications and email.** What was sent, and whether it arrived.
 - **Sign-ins and pages.** Sign ins, two-factor codes, passkeys, API tokens, permissions and page use.
-- **Runtime and database.** The process, .NET runtime, database and outgoing calls.
+- **Runtime and database.** The process, .NET runtime, database, rows failing their integrity check, and outgoing
+  calls.
 - **Logs and traces.** Search logs and find failed or slow requests.
 
 Import them in Grafana, or mount them with [Grafana/dashboards.yaml](../../Grafana/dashboards.yaml) to load them into
 otel-lgtm automatically.
+
+## Alerts
+
+[Grafana/alerting](../../Grafana/alerting) has FinTrack's alert rules.
+
+- **Rows failing their integrity check.** Any row refused on load in the last 10 minutes, meaning the database was
+  changed outside FinTrack. See [When a row fails its check](encryption-keys.md#when-a-row-fails-its-check).
+
+To load them, mount the folder at Grafana's `provisioning/alerting`, for otel-lgtm
+`/otel-lgtm/grafana/conf/provisioning/alerting`. The rules read from the Prometheus datasource with uid `prometheus`,
+otel-lgtm's. Change `datasourceUid` in the file if yours differs. Alerts go to Grafana's default contact point, so set
+that up, or a notification policy for `severity=critical`, to be told.
