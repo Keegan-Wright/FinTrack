@@ -42,6 +42,10 @@ public sealed class FinTrackMetrics
     /// </summary>
     public const string PushDevicesRemovedName = "fintrack.push.devices_removed";
     /// <summary>
+    /// The metric's name. Rows that failed their integrity check when loaded, changed outside the app.
+    /// </summary>
+    public const string RowIntegrityFailedName = "fintrack.row_integrity.failed";
+    /// <summary>
     /// The metric's name. Bank connections by state.
     /// </summary>
     public const string ConnectionsName = "fintrack.connections";
@@ -168,6 +172,7 @@ public sealed class FinTrackMetrics
     private readonly Counter<long> _notificationsDelivered;
     private readonly Counter<long> _emailsSent;
     private readonly Counter<long> _pushDevicesRemoved;
+    private readonly Counter<long> _rowIntegrityFailed;
     private readonly Gauge<long> _connections;
     private readonly Histogram<double> _trueLayerThrottleWait;
     private readonly Counter<long> _singleSignOnFailures;
@@ -206,6 +211,9 @@ public sealed class FinTrackMetrics
             "Notifications raised, by kind");
         _notificationsDelivered = meter.CreateCounter<long>(NotificationsDeliveredName, "{notification}",
             "Notifications sent on by email, webhook or push, by whether they got there");
+        _rowIntegrityFailed = meter.CreateCounter<long>(RowIntegrityFailedName, "{row}",
+            "Rows that failed their integrity check when loaded, by table. Any at all means the database was changed "
+            + "outside FinTrack");
         _pushDevicesRemoved = meter.CreateCounter<long>(PushDevicesRemovedName, "{device}",
             "Push devices removed because the push service said their browser had unsubscribed");
         _emailsSent = meter.CreateCounter<long>(EmailsSentName, "{email}",
@@ -294,6 +302,13 @@ public sealed class FinTrackMetrics
     /// A push device removed because its browser had unsubscribed.
     /// </summary>
     public void PushDeviceRemoved() => _pushDevicesRemoved.Add(1);
+
+    /// <summary>
+    /// A row in <paramref name="table"/> failed its integrity check when loaded.
+    /// </summary>
+    /// <param name="table">The row's table.</param>
+    public void RowIntegrityFailed(string table) =>
+        _rowIntegrityFailed.Add(1, new KeyValuePair<string, object?>(TelemetryTags.Table, table));
 
     /// <summary>
     /// An email sent through the mail server, a notification or an account email.

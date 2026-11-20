@@ -8,9 +8,9 @@ using Microsoft.Extensions.Logging;
 namespace FinanceTracker.Infrastructure.Encryption;
 
 /// <summary>
-/// Re-encrypts values written under an older key with the current one, recomputing blind indexes as it goes. Run at
-/// startup after migrations, so rotating a key is: add it to the keyring, make it current, restart. Old keys can be
-/// removed from the keyring once this has run.
+/// Re-encrypts values written under an older key with the current one, recomputing blind indexes and row integrity
+/// tags as it goes, and tags rows that have none yet. Run at startup after migrations, so rotating a key is to add it
+/// to the keyring, make it current and restart. Old keys can be removed from the keyring once this has run.
 /// </summary>
 public sealed class EncryptionKeyRotator
 {
@@ -44,16 +44,16 @@ public sealed class EncryptionKeyRotator
         int total = 0;
         foreach (IEntityType entityType in context.Model.GetEntityTypes().Where(static x => !x.IsOwned()))
         {
-            List<string> encryptedColumns = EncryptedColumns(entityType);
-            if (encryptedColumns.Count == 0 ||
-                !await HasStaleValuesAsync(context, entityType, encryptedColumns, currentKeyPrefix, cancellationToken))
+            Dictionary<string, List<string>> staleWhere = StaleConditions(entityType);
+            if (staleWhere.Count == 0 ||
+                !await HasStaleValuesAsync(context, staleWhere, currentKeyPrefix, cancellationToken))
             {
                 continue;
             }
 
-            string keyName = entityType.FindPrimaryKey()!.Properties.Single().Name;
+            List<string> keyNames = entityType.FindPrimaryKey()!.Properties.Select(static x => x.Name).ToList();
             int reencrypted = await (Task<int>)ReencryptMethod.MakeGenericMethod(entityType.ClrType)
-                .Invoke(this, [keyName, cancellationToken])!;
+                .Invoke(this, [keyNames, cancellationToken])!;
 
             _logger.LogReencrypted(reencrypted, entityType.DisplayName(), context.EncryptionService.CurrentKeyId);
             total += reencrypted;
@@ -63,54 +63,180 @@ public sealed class EncryptionKeyRotator
     }
 
     /// <summary>
-    /// Encrypted columns in the entity's table, including those of owned types stored alongside it.
+    /// What makes a row of <paramref name="entityType"/> stale, as SQL conditions by the table they're on. Its table
+    /// and the tables of types it owns. In each, <c>{0}</c> is a value under the current key, and <c>{1}</c> and
+    /// <c>{2}</c> a tag under it inside JSON.
     /// </summary>
     /// <param name="entityType">The entity.</param>
-    private static List<string> EncryptedColumns(IEntityType entityType)
+    private static Dictionary<string, List<string>> StaleConditions(IEntityType entityType)
     {
-        StoreObjectIdentifier table = StoreObjectIdentifier.Table(entityType.GetTableName()!, entityType.GetSchema());
+        Dictionary<string, List<string>> byTable = [];
+        AddStaleConditions(byTable, entityType, isRoot: true);
+        foreach (IEntityType owned in OwnedTypes(entityType))
+        {
+            AddStaleConditions(byTable, owned, isRoot: false);
+        }
 
-        return entityType.GetProperties()
-            .Concat(entityType.GetNavigations()
-                .Where(static x => x.TargetEntityType.IsOwned() && !x.IsCollection)
-                .SelectMany(static x => x.TargetEntityType.GetProperties()))
-            .Where(static x => x.FindAnnotation(Annotations.EncryptedPropertyAnnotation) is not null)
-            .Select(x => x.GetColumnName(table))
-            .OfType<string>()
-            .ToList();
+        return byTable.Where(static x => x.Value.Count > 0).ToDictionary();
     }
 
     /// <summary>
-    /// Whether any of the table's encrypted columns still has a value under an older key.
+    /// The types <paramref name="entityType"/> owns, and the types they own in turn.
     /// </summary>
-    /// <param name="context">The context to read through.</param>
     /// <param name="entityType">The entity.</param>
-    /// <param name="encryptedColumns">Its encrypted columns.</param>
-    /// <param name="currentKeyPrefix">What a value under the current key starts with.</param>
-    /// <param name="cancellationToken">Stops the work.</param>
-    private static async Task<bool> HasStaleValuesAsync(FinanceTrackerContext context, IEntityType entityType,
-        List<string> encryptedColumns, string currentKeyPrefix, CancellationToken cancellationToken)
+    private static IEnumerable<IEntityType> OwnedTypes(IEntityType entityType)
+    {
+        foreach (INavigation navigation in entityType.GetNavigations().Where(static x => x.TargetEntityType.IsOwned()))
+        {
+            yield return navigation.TargetEntityType;
+            foreach (IEntityType nested in OwnedTypes(navigation.TargetEntityType))
+            {
+                yield return nested;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Adds what makes <paramref name="entityType"/>'s part of a row stale. Encrypted values under an older key, and
+    /// a tag that's missing or under an older key. An owned type stored in its owner's row only counts as missing its
+    /// tag when it's there at all, and one stored as JSON when its JSON holds no tag under the current key.
+    /// </summary>
+    /// <param name="byTable">The conditions so far, by table.</param>
+    /// <param name="entityType">The entity or owned type.</param>
+    /// <param name="isRoot">Whether it's the entity rather than a type it owns.</param>
+    private static void AddStaleConditions(Dictionary<string, List<string>> byTable, IEntityType entityType,
+        bool isRoot)
+    {
+        if (entityType.IsMappedToJson())
+        {
+            AddJsonStaleCondition(byTable, entityType);
+            return;
+        }
+
+        StoreObjectIdentifier table = StoreObjectIdentifier.Table(entityType.GetTableName()!, entityType.GetSchema());
+        List<string> conditions = ConditionsFor(byTable, entityType);
+        foreach (IProperty property in entityType.GetDeclaredProperties()
+                     .Where(static x => x.FindAnnotation(Annotations.EncryptedPropertyAnnotation) is not null))
+        {
+            string column = Column(property, table);
+            conditions.Add($"({column} <> '' AND {column} NOT LIKE {{0}})");
+        }
+
+        if (!RowIntegrity.IsTagged(entityType))
+        {
+            return;
+        }
+
+        string tag = Column(entityType.FindProperty(RowIntegrity.TagProperty)!, table);
+        bool sharesOwnersRow = !isRoot &&
+                               entityType.FindOwnership()!.PrincipalEntityType.GetTableName() == entityType.GetTableName();
+        if (!sharesOwnersRow)
+        {
+            conditions.Add($"({tag} IS NULL OR {tag} NOT LIKE {{0}})");
+            return;
+        }
+
+        string present = string.Join(" OR ", RowIntegrity.Covered(entityType)
+            .Where(static x => !x.IsPrimaryKey())
+            .Select(x => x.FindAnnotation(Annotations.EncryptedPropertyAnnotation) is not null
+                ? $"{Column(x, table)} <> ''"
+                : $"{Column(x, table)} IS NOT NULL"));
+        conditions.Add($"({tag} NOT LIKE {{0}} OR ({tag} IS NULL AND ({present})))");
+    }
+
+    /// <summary>
+    /// Adds what makes a JSON column of owned values stale. It holds some, but no tag under the current key.
+    /// </summary>
+    /// <param name="byTable">The conditions so far, by table.</param>
+    /// <param name="entityType">The owned type stored as JSON.</param>
+    private static void AddJsonStaleCondition(Dictionary<string, List<string>> byTable, IEntityType entityType)
+    {
+        if (!RowIntegrity.IsTagged(entityType) || entityType.FindOwnership()!.PrincipalEntityType.IsMappedToJson())
+        {
+            return;
+        }
+
+        // Postgres writes jsonb back with a space after each colon, SQLite as it was given
+        string json = $"CAST(\"{entityType.GetContainerColumnName()}\" AS TEXT)";
+        ConditionsFor(byTable, entityType).Add(
+            $"({json} NOT IN ('', '[]', 'null') AND {json} NOT LIKE {{1}} AND {json} NOT LIKE {{2}})");
+    }
+
+    /// <summary>
+    /// The conditions on <paramref name="entityType"/>'s table, added to <paramref name="byTable"/> when it has none
+    /// yet.
+    /// </summary>
+    /// <param name="byTable">The conditions so far, by table.</param>
+    /// <param name="entityType">The entity or owned type.</param>
+    private static List<string> ConditionsFor(Dictionary<string, List<string>> byTable, IEntityType entityType)
     {
         string table = entityType.GetSchema() is { } schema
             ? $"\"{schema}\".\"{entityType.GetTableName()}\""
             : $"\"{entityType.GetTableName()}\"";
-        string stale = string.Join(" OR ",
-            encryptedColumns.Select(static x => $"(\"{x}\" <> '' AND \"{x}\" NOT LIKE {{0}})"));
-        string sql = $"SELECT CASE WHEN EXISTS (SELECT 1 FROM {table} WHERE {stale}) THEN 1 ELSE 0 END AS \"Value\"";
+        if (!byTable.TryGetValue(table, out List<string>? conditions))
+        {
+            conditions = [];
+            byTable[table] = conditions;
+        }
 
-        // Identifiers come from the model, the key prefix is a parameter
+        return conditions;
+    }
+
+    /// <summary>
+    /// A property's column in <paramref name="table"/>, quoted.
+    /// </summary>
+    /// <param name="property">The property.</param>
+    /// <param name="table">The table.</param>
+    private static string Column(IProperty property, StoreObjectIdentifier table) =>
+        $"\"{property.GetColumnName(table)}\"";
+
+    /// <summary>
+    /// Whether any row in any of the tables meets one of its stale conditions.
+    /// </summary>
+    /// <param name="context">The context to read through.</param>
+    /// <param name="staleWhere">The conditions, by table.</param>
+    /// <param name="currentKeyPrefix">What a value under the current key starts with.</param>
+    /// <param name="cancellationToken">Stops the work.</param>
+    private static async Task<bool> HasStaleValuesAsync(FinanceTrackerContext context,
+        Dictionary<string, List<string>> staleWhere, string currentKeyPrefix, CancellationToken cancellationToken)
+    {
+        string exists = string.Join(" OR ", staleWhere.Select(static x =>
+            $"EXISTS (SELECT 1 FROM {x.Key} WHERE {string.Join(" OR ", x.Value)})"));
+        string sql = $"SELECT CASE WHEN {exists} THEN 1 ELSE 0 END AS \"Value\"";
+        string tagInJson = $"\"{RowIntegrity.TagProperty}\":";
+
+        // Identifiers come from the model, the key prefixes are parameters
 #pragma warning disable EF1002
-        return await context.Database.SqlQueryRaw<int>(sql, currentKeyPrefix + "%")
+        return await context.Database.SqlQueryRaw<int>(sql, currentKeyPrefix + "%",
+                $"%{tagInJson}\"{currentKeyPrefix}%", $"%{tagInJson} \"{currentKeyPrefix}%")
             .SingleAsync(cancellationToken) == 1;
 #pragma warning restore EF1002
     }
 
     /// <summary>
-    /// Loads every row and marks its encrypted values changed, so saving writes them back under the current key.
+    /// <paramref name="rows"/> in the order of their key, column by column.
     /// </summary>
-    /// <param name="keyName">The entity's single column primary key, to page by.</param>
+    /// <param name="rows">The rows.</param>
+    /// <param name="keyNames">The key's columns.</param>
+    private static IOrderedQueryable<TEntity> OrderedByKey<TEntity>(IQueryable<TEntity> rows, List<string> keyNames)
+        where TEntity : class
+    {
+        IOrderedQueryable<TEntity> ordered = rows.OrderBy(x => EF.Property<object>(x, keyNames[0]));
+        foreach (string keyName in keyNames.Skip(1))
+        {
+            ordered = ordered.ThenBy(x => EF.Property<object>(x, keyName));
+        }
+
+        return ordered;
+    }
+
+    /// <summary>
+    /// Loads every row and marks its encrypted values and tag changed, so saving writes them back under the current
+    /// key.
+    /// </summary>
+    /// <param name="keyNames">The entity's primary key columns, to page by. Identity's tokens have three.</param>
     /// <param name="cancellationToken">Stops the work.</param>
-    private async Task<int> ReencryptAsync<TEntity>(string keyName, CancellationToken cancellationToken)
+    private async Task<int> ReencryptAsync<TEntity>(List<string> keyNames, CancellationToken cancellationToken)
         where TEntity : class
     {
         int total = 0;
@@ -119,8 +245,7 @@ public sealed class EncryptionKeyRotator
             await using FinanceTrackerContext context = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
 
             // Rewriting a row doesn't change its key, so paging by key stays stable while saving
-            List<TEntity> batch = await context.Set<TEntity>()
-                .OrderBy(x => EF.Property<object>(x, keyName))
+            List<TEntity> batch = await OrderedByKey(context.Set<TEntity>(), keyNames)
                 .Skip(total)
                 .Take(BatchSize)
                 .ToListAsync(cancellationToken);
@@ -134,7 +259,8 @@ public sealed class EncryptionKeyRotator
             {
                 foreach (PropertyEntry property in entry.Properties)
                 {
-                    if (property.Metadata.FindAnnotation(Annotations.EncryptedPropertyAnnotation) is not null)
+                    bool isTag = property.Metadata.Name == RowIntegrity.TagProperty;
+                    if (isTag || property.Metadata.FindAnnotation(Annotations.EncryptedPropertyAnnotation) is not null)
                     {
                         property.IsModified = true;
                     }

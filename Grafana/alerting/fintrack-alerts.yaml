@@ -1,0 +1,46 @@
+# FinTrack's Grafana alert rules, provisioned like the dashboards. Mount this folder at Grafana's
+# provisioning/alerting, see Docs/self-hosting/monitoring.md. Alerts go to Grafana's default contact point unless a
+# notification policy routes them elsewhere.
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: FinTrack security
+    folder: fintrack
+    interval: 1m
+    rules:
+      - uid: fintrack-row-integrity
+        title: Rows failing their integrity check
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            # otel-lgtm's Prometheus. Change this to your Prometheus datasource's uid if yours differs
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: sum(increase(fintrack_row_integrity_failed_total[10m])) or vector(0)
+              instant: true
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
+        noDataState: OK
+        execErrState: Error
+        for: 0s
+        labels:
+          severity: critical
+        annotations:
+          summary: FinTrack refused rows that were changed in its database outside the app
+          description: >-
+            Rows failed their integrity check when loaded, so their tables were changed directly in the database, for
+            example a row moved to another user. FinTrack refuses those rows rather than showing them. See "Row
+            integrity" in FinTrack's encryption keys docs for what to do.

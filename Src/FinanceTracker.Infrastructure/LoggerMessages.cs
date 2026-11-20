@@ -493,4 +493,24 @@ public static partial class LoggerMessages
         "Moved push device {deviceId} from user {previousUserId} to user {userId}, the browser changed hands")]
     public static partial void LogPushDeviceChangedHands(this ILogger logger, Guid deviceId, Guid previousUserId,
         Guid userId);
+
+    /// <summary>
+    /// Logs at critical <c>Row {id} in {table} failed its integrity check, it was changed in the database outside
+    /// FinTrack</c>.
+    /// </summary>
+    /// <param name="logger">The logger.</param>
+    /// <param name="table">The row's table.</param>
+    /// <param name="id">The row's id.</param>
+    [LoggerMessage(LogLevel.Critical,
+        "Row {id} in {table} failed its integrity check, it was changed in the database outside FinTrack")]
+    public static partial void LogRowIntegrityFailed(this ILogger logger, string table, string id);
+
+    /// <summary>
+    /// Logs at warning <c>Row {id} in {table} has no integrity tag yet, so it wasn't checked</c>.
+    /// </summary>
+    /// <param name="logger">The logger.</param>
+    /// <param name="table">The row's table.</param>
+    /// <param name="id">The row's id.</param>
+    [LoggerMessage(LogLevel.Warning, "Row {id} in {table} has no integrity tag yet, so it wasn't checked")]
+    public static partial void LogRowIntegrityTagMissing(this ILogger logger, string table, string id);
 }

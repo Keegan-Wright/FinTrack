@@ -9,8 +9,8 @@ namespace FinanceTracker.Infrastructure.Encryption;
 /// <summary>
 /// AES-256-GCM column encryption over a keyring, with keys derived from each keyring key by HKDF-SHA256. Stored values
 /// are <c>{keyId}:{base64(nonce | ciphertext | tag)}</c>. A random nonce per value means equal values don't look equal
-/// when stored at rest. Tag means tampered values fail to decrypt. Blind indexes are HMAC-SHA256 with their own
-/// derived key.
+/// when stored at rest. Tag means tampered values fail to decrypt. Blind indexes and row integrity tags are
+/// HMAC-SHA256, each with their own derived key.
 /// </summary>
 [InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
 [Singleton<IColumnEncryptionService>]
@@ -32,9 +32,11 @@ public class ColumnEncryptionService : IColumnEncryptionService
     // Separate keys per purpose, derived from each keyring key with HKDF-SHA256
     private static readonly byte[] EncryptionKeyInfo = "FinTrack column encryption v1"u8.ToArray();
     private static readonly byte[] BlindIndexKeyInfo = "FinTrack blind index v1"u8.ToArray();
+    private static readonly byte[] RowIntegrityKeyInfo = "FinTrack row integrity v1"u8.ToArray();
 
     private readonly Dictionary<int, byte[]> _encryptionKeys;
     private readonly byte[] _blindIndexKey;
+    private readonly Dictionary<int, byte[]> _rowIntegrityKeys;
 
     /// <param name="encryptionConfiguration">The keyring.</param>
     public ColumnEncryptionService(EncryptionConfiguration encryptionConfiguration)
@@ -63,6 +65,9 @@ public class ColumnEncryptionService : IColumnEncryptionService
             static x => x.Key,
             static x => DeriveKey(x.Value, EncryptionKeyInfo));
         _blindIndexKey = DeriveKey(encryptionConfiguration.Keys[CurrentKeyId], BlindIndexKeyInfo);
+        _rowIntegrityKeys = encryptionConfiguration.Keys.ToDictionary(
+            static x => x.Key,
+            static x => DeriveKey(x.Value, RowIntegrityKeyInfo));
         KeyringFingerprint = ComputeFingerprint(encryptionConfiguration);
     }
 
@@ -75,7 +80,7 @@ public class ColumnEncryptionService : IColumnEncryptionService
     /// <inheritdoc/>
     public string Encrypt<T>(T value)
     {
-        string? plainText = ToPlainText(value);
+        string? plainText = PlainText.From(value);
         if (string.IsNullOrEmpty(plainText))
         {
             return string.Empty;
@@ -156,6 +161,42 @@ public class ColumnEncryptionService : IColumnEncryptionService
         return Convert.ToBase64String(HMACSHA256.HashData(_blindIndexKey, Encoding.UTF8.GetBytes(value)));
     }
 
+    /// <inheritdoc/>
+    public string ComputeRowTag(byte[] content)
+    {
+        ArgumentNullException.ThrowIfNull(content);
+        byte[] tag = HMACSHA256.HashData(_rowIntegrityKeys[CurrentKeyId], content);
+        return string.Create(CultureInfo.InvariantCulture,
+            $"{CurrentKeyId}{KeyIdSeparator}{Convert.ToBase64String(tag)}");
+    }
+
+    /// <inheritdoc/>
+    public bool IsRowTagValid(string tag, byte[] content)
+    {
+        ArgumentNullException.ThrowIfNull(tag);
+        ArgumentNullException.ThrowIfNull(content);
+
+        int separator = tag.IndexOf(KeyIdSeparator, StringComparison.Ordinal);
+        if (separator <= 0 ||
+            !int.TryParse(tag.AsSpan(0, separator), NumberStyles.None, CultureInfo.InvariantCulture, out int keyId) ||
+            !_rowIntegrityKeys.TryGetValue(keyId, out byte[]? key))
+        {
+            return false;
+        }
+
+        byte[] given;
+        try
+        {
+            given = Convert.FromBase64String(tag[(separator + 1)..]);
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+
+        return CryptographicOperations.FixedTimeEquals(given, HMACSHA256.HashData(key, content));
+    }
+
     /// <summary>
     /// A key for one use derived from a keyring key with HKDF-SHA256, so encryption and blind indexes never share a
     /// key. No salt, as RFC 5869 allows when the keyring key is already uniformly random.
@@ -181,23 +222,6 @@ public class ColumnEncryptionService : IColumnEncryptionService
 
         return Convert.ToHexString(hash.GetHashAndReset());
     }
-
-    /// <summary>
-    /// Invariant culture and round-trip formats so stored values don't depend on the host's locale.
-    /// </summary>
-    /// <param name="value">The value.</param>
-    private static string? ToPlainText<T>(T value) => value switch
-    {
-        null => null,
-        string text => text,
-        byte[] byteArray => Convert.ToBase64String(byteArray),
-        DateTime dateTime => dateTime.ToString("O", CultureInfo.InvariantCulture),
-        DateTimeOffset dateTimeOffset => dateTimeOffset.ToString("O", CultureInfo.InvariantCulture),
-        DateOnly dateOnly => dateOnly.ToString("O", CultureInfo.InvariantCulture),
-        System.Collections.IEnumerable enumerable => System.Text.Json.JsonSerializer.Serialize(enumerable),
-        IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture),
-        _ => value.ToString()
-    };
 
     /// <summary>
     /// Whether a type is a collection, stored as JSON.

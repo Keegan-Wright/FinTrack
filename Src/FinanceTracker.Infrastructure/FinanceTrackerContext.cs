@@ -233,7 +233,13 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
     /// <inheritdoc/>
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
-        optionsBuilder.AddInterceptors(AuditingInterceptor.Instance, BlindIndexInterceptor.Instance);
+        optionsBuilder.AddInterceptors(
+            AuditingInterceptor.Instance,
+            BlindIndexInterceptor.Instance,
+            RowIntegrityInterceptor.Instance,
+            RowIntegrityCheckInterceptor.Instance
+            );
+
         optionsBuilder.ReplaceService<IModelCacheKeyFactory, EncryptionModelCacheKeyFactory>();
     }
 
@@ -246,6 +252,7 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
         builder.ApplyConfigurationsFromAssembly(typeof(FinanceTrackerContext).Assembly);
 
         builder.UseEncryption(_columnEncryptionService);
+        builder.UseRowIntegrity();
     }
 
     /// <summary>

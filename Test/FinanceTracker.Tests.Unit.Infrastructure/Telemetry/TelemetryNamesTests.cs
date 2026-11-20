@@ -51,6 +51,7 @@ public class TelemetryNamesTests
     [Arguments(TelemetryTags.TransferDecision, "fintrack.transfer.decision")]
     [Arguments(TelemetryTags.BillChange, "fintrack.bill.change")]
     [Arguments(TelemetryTags.TokenResult, "fintrack.token.result")]
+    [Arguments(TelemetryTags.Table, "db.collection.name")]
     public async Task Tag_GoesOutUnderItsName(string tag, string name) =>
         await Assert.That(tag).IsEqualTo(name);
 
@@ -68,6 +69,7 @@ public class TelemetryNamesTests
     [Arguments(FinTrackMetrics.SingleSignOnFailuresName, "fintrack.sso.failures")]
     [Arguments(FinTrackMetrics.AuthenticatorCodesReusedName, "fintrack.authenticator.codes_reused")]
     [Arguments(FinTrackMetrics.TokenAuthenticationsName, "fintrack.tokens.authentications")]
+    [Arguments(FinTrackMetrics.RowIntegrityFailedName, "fintrack.row_integrity.failed")]
     [Arguments(FinTrackMetrics.RulesChangedName, "fintrack.rules.transactions_changed")]
     [Arguments(FinTrackMetrics.TransferDecisionsName, "fintrack.transfers.decisions")]
     [Arguments(FinTrackMetrics.BillChangesName, "fintrack.bills.changes")]
@@ -98,8 +100,8 @@ public class TelemetryNamesTests
 
         using (Assert.Multiple())
         {
-            await Assert.That(tags).IsEqualTo(42);
-            await Assert.That(instruments).IsEqualTo(19);
+            await Assert.That(tags).IsEqualTo(43);
+            await Assert.That(instruments).IsEqualTo(20);
         }
     }
 }

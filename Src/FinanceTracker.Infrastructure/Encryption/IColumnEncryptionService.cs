@@ -1,7 +1,8 @@
 namespace FinanceTracker.Infrastructure.Encryption;
 
 /// <summary>
-/// Encrypts and decrypts sensitive columns with the keyring, and computes their blind indexes.
+/// Encrypts and decrypts sensitive columns with the keyring, and computes their blind indexes and rows' integrity
+/// tags.
 /// </summary>
 public interface IColumnEncryptionService
 {
@@ -37,4 +38,19 @@ public interface IColumnEncryptionService
     /// </summary>
     /// <param name="value">The value.</param>
     string ComputeBlindIndex(string value);
+
+    /// <summary>
+    /// A row's integrity tag over <paramref name="content"/>, an HMAC under the current key, stored as
+    /// <c>{keyId}:{base64}</c> like encrypted values so it can be checked after the key changes.
+    /// </summary>
+    /// <param name="content">What the tag covers, see <c>RowIntegrity</c>.</param>
+    string ComputeRowTag(byte[] content);
+
+    /// <summary>
+    /// Whether <paramref name="tag"/> is the tag of <paramref name="content"/> under the key it names. Compared in
+    /// fixed time.
+    /// </summary>
+    /// <param name="tag">The stored tag.</param>
+    /// <param name="content">What the tag should cover, worked out from the row as loaded.</param>
+    bool IsRowTagValid(string tag, byte[] content);
 }

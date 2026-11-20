@@ -44,6 +44,69 @@ public static class ModelBuilderExtensions
 
             return modelBuilder;
         }
+
+        /// <summary>
+        /// Gives rows an integrity tag column, see <see cref="RowIntegrity"/>. The domain's entities, the types they own
+        /// that hold something worth covering (stored in their owner's row or their own table, not JSON), and
+        /// Identity's tokens and passkeys, which an attacker could otherwise copy or move to sign in as someone.
+        /// </summary>
+        public ModelBuilder UseRowIntegrity()
+        {
+            ArgumentNullException.ThrowIfNull(modelBuilder);
+
+            List<IMutableEntityType> tagged = modelBuilder.Model.GetEntityTypes()
+                .Where(static x => !x.IsOwned() && IsTaggedType(x.ClrType))
+                .ToList();
+
+            List<IMutableEntityType> owned = modelBuilder.Model.GetEntityTypes()
+                .Where(static x => x.IsOwned() && CoversMoreThanItsKey(x))
+                .Where(x => tagged.Contains(Root(x)))
+                .ToList();
+
+            foreach (IMutableEntityType entityType in tagged.Concat(owned))
+            {
+                entityType.AddProperty(RowIntegrity.TagProperty, typeof(string)).IsNullable = true;
+                entityType.SetAnnotation(Annotations.RowIntegrityAnnotation, true);
+            }
+
+            return modelBuilder;
+        }
+    }
+
+    /// <summary>
+    /// Whether rows of <paramref name="type"/> carry a tag. The domain's entities, and Identity's tokens (the
+    /// authenticator key, recovery codes) and passkeys. Not Identity's users, which it writes often and partly outside
+    /// EF's tracking.
+    /// </summary>
+    /// <param name="type">The entity's class.</param>
+    private static bool IsTaggedType(Type type) =>
+        typeof(Domain.Common.Entity).IsAssignableFrom(type)
+        || type == typeof(Microsoft.AspNetCore.Identity.IdentityUserToken<Guid>)
+        || type == typeof(Microsoft.AspNetCore.Identity.IdentityUserPasskey<Guid>);
+
+    /// <summary>
+    /// Whether an owned type has something to cover beyond its key, which is its owner's, so a tag would add nothing.
+    /// </summary>
+    /// <param name="entityType">The owned type.</param>
+    private static bool CoversMoreThanItsKey(IMutableEntityType entityType) =>
+        entityType.GetProperties().Any(static x => !x.IsPrimaryKey()
+                                                   && (x.IsForeignKey()
+                                                       || x.FindAnnotation(Annotations.EncryptedPropertyAnnotation)
+                                                       is not null));
+
+    /// <summary>
+    /// The entity at the top of an owned type's chain of owners.
+    /// </summary>
+    /// <param name="entityType">The owned type.</param>
+    private static IMutableEntityType Root(IMutableEntityType entityType)
+    {
+        IMutableEntityType current = entityType;
+        while (current.FindOwnership() is { } ownership)
+        {
+            current = ownership.PrincipalEntityType;
+        }
+
+        return current;
     }
 
     /// <summary>
