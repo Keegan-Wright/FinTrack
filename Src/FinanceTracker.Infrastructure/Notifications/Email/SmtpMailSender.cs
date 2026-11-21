@@ -68,7 +68,9 @@ public sealed class SmtpMailSender : IMailSender
             await client.AuthenticateAsync(_settings.Username, _settings.Password ?? "", cancellationToken);
         }
 
-        await client.SendAsync(mime, cancellationToken);
+        var sendRequest = new SmtpSendRequest(mime);
+
+        await client.SendAsync(sendRequest, cancellationToken);
         await client.DisconnectAsync(true, cancellationToken);
     }
 

@@ -224,17 +224,42 @@
 
         await RunAsync("Turning on notifications", "Couldn't turn on notifications here, try again", async () =>
         {
-            AddPushDevice? subscription =
-                await JsRuntime.InvokeAsync<AddPushDevice?>("ftPushSubscribe", _cts.Token, _settings.PublicKey);
+            AddPushDevice? subscription = null;
+
+            try
+            {
+                subscription = await JsRuntime.InvokeAsync<AddPushDevice?>("ftPushSubscribe", _cts.Token, _settings.PublicKey);
+            }
+            catch (Exception)
+            {
+
+            }
+
             if (subscription is null)
             {
-                _permission = await JsRuntime.InvokeAsync<string>("ftPushPermission", _cts.Token);
+                try
+                {
+                    _permission = await JsRuntime.InvokeAsync<string>("ftPushPermission", _cts.Token);
+                }
+                catch (Exception)
+                {
+                }
+
                 Snackbar.Add("Notifications weren't allowed", Severity.Warning);
                 return;
             }
 
             PushDeviceAdded added = await PushService.AddDeviceAsync(subscription, _cts.Token);
-            await JsRuntime.InvokeVoidAsync("ftRememberPushDevice", _cts.Token, added.DeviceId.ToString());
+
+            try
+            {
+                await JsRuntime.InvokeVoidAsync("ftRememberPushDevice", _cts.Token, added.DeviceId.ToString());
+            }
+            catch (Exception)
+            {
+
+            }
+
             _thisDeviceId = added.DeviceId;
             _settings = added.Settings;
             _permission = "granted";

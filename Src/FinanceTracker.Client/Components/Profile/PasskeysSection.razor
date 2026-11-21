@@ -171,8 +171,18 @@
                 return;
             }
 
-            string? credential = await JsRuntime.InvokeAsync<string?>("ftCreatePasskey", _cts.Token,
-                started!.CreationOptionsJson);
+            string? credential = null;
+
+            try
+            {
+              credential = await JsRuntime.InvokeAsync<string?>("ftCreatePasskey", _cts.Token,
+                    started!.CreationOptionsJson);
+            }
+            catch (Exception )
+            {
+            }
+
+
             if (credential is null)
             {
                 Snackbar.Add("No passkey was made", Severity.Info);

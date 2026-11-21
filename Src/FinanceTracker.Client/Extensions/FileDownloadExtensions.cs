@@ -28,7 +28,13 @@ public static class FileDownloadExtensions
             ArgumentNullException.ThrowIfNull(content);
 
             using DotNetStreamReference reference = new(content, leaveOpen: true);
-            await js.InvokeVoidAsync(DownloadFunction, cancellationToken, fileName, contentType, reference);
+            try
+            {
+                await js.InvokeVoidAsync(DownloadFunction, cancellationToken, fileName, contentType, reference);
+            }
+            catch (Exception)
+            {
+            }
         }
     }
 }

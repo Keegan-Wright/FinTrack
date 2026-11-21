@@ -300,7 +300,6 @@
     {
         _filters = filters;
         _loading = true;
-        StateHasChanged();
         _transactions.Clear();
 
         await foreach (var transaction in TransactionsService.GetAllTransactionsAsync(filters.ToRequest(TimeProvider.LocalTimeZone), _cts.Token))

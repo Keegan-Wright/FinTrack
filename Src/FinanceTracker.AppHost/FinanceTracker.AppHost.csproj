@@ -1,8 +1,8 @@
-<Project Sdk="Aspire.AppHost.Sdk/13.6.5">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net11.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AnalysisMode>Recommended</AnalysisMode>
@@ -13,15 +13,16 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\FinanceTracker\FinanceTracker.csproj"/>
-    <ProjectReference Include="..\FinanceTracker.AppHost.ServiceDefaults\FinanceTracker.AppHost.ServiceDefaults.csproj" IsAspireProjectResource="false"/>
+    <ProjectReference Include="..\FinanceTracker\FinanceTracker.csproj" />
+    <ProjectReference Include="..\FinanceTracker.AppHost.ServiceDefaults\FinanceTracker.AppHost.ServiceDefaults.csproj" IsAspireProjectResource="false" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Aspire.Hosting.AppHost"/>
-    <PackageReference Include="Aspire.Hosting.Docker"/>
-    <PackageReference Include="Aspire.Hosting.PostgreSQL"/>
-    <PackageReference Include="CommunityToolkit.Aspire.Hosting.MailPit"/>
+    <PackageReference Include="Aspire.Hosting.AppHost" />
+    <PackageReference Include="Aspire.Hosting.Docker" />
+    <PackageReference Include="Aspire.Hosting.Dotnet" />
+    <PackageReference Include="Aspire.Hosting.PostgreSQL" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.MailPit" />
   </ItemGroup>
 
 </Project>

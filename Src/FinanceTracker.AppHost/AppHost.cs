@@ -1,3 +1,4 @@
+using Aspire.Hosting.Dotnet;
 using FinanceTracker.AppHost.ServiceDefaults;
 
 #pragma warning disable ASPIRECOMPUTE003
@@ -43,7 +44,7 @@ IResourceBuilder<PostgresServerResource> postgres = builder.AddPostgres(FinTrack
 IResourceBuilder<PostgresDatabaseResource> postgresDb = postgres.AddDatabase(FinTrackResources.Database);
 
 
-IResourceBuilder<ProjectResource> finTrack = builder.AddProject<Projects.FinanceTracker>(FinTrackResources.Web)
+IResourceBuilder<DotnetProjectResource> finTrack = builder.AddDotnetProject(FinTrackResources.Web ,"../FinanceTracker/")
     .WithEnvironment(FinTrackEnvironment.EncryptionKeys, encryptionKeys)
     .WithEnvironment(FinTrackEnvironment.EncryptionCurrentKeyId, encryptionCurrentKeyId)
     .WithEnvironment(FinTrackEnvironment.TrueLayerBaseAuthUrl, openBankingAuthUrl)
