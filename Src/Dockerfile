@@ -3,7 +3,7 @@ WORKDIR /app
 EXPOSE 8080
 
 
-FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:11.0 AS build
 ARG TARGETARCH
 WORKDIR /src
 COPY ["Directory.Packages.props", "Directory.Build.props", ".editorconfig", "global.json", "./"]
@@ -29,7 +29,7 @@ COPY ["Src/", "Src/"]
 # Pyroscope's .NET profiler, for continuous profiling. It only loads when the compose file turns it on with
 # CORECLR_ENABLE_PROFILING and the rest of its settings, otherwise the files sit unused. Pinned by checksum, so a
 # release replaced upstream fails the build rather than going into the image
-FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0 AS profiler
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:11.0 AS profiler
 ARG TARGETARCH
 ARG PYROSCOPE_VERSION=1.6.1
 ARG PYROSCOPE_SHA256_ARM64=de0f1fc384f2af754bfb331ce4c0028ba92ec6a25ce98efba4aa9e2f81a012c4
