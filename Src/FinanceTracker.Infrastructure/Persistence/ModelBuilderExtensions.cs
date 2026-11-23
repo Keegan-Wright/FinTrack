@@ -26,11 +26,11 @@ public static class ModelBuilderExtensions
 
             foreach (IMutableEntityType entityType in modelBuilder.Model.GetEntityTypes())
             {
-                var encrptionMarkedProperties = entityType.GetProperties()
+                List<IMutableProperty> encrptionMarkedProperties = PropertiesOf(entityType)
                     .Where(x => x.FindAnnotation(Annotations.EncryptedPropertyAnnotation) != null)
                     .ToList();
 
-                foreach (IMutableProperty? markedProperty in encrptionMarkedProperties)
+                foreach (IMutableProperty markedProperty in encrptionMarkedProperties)
                 {
                     markedProperty.SetValueConverter(CreateConverter(markedProperty.ClrType, encryptionService));
 
@@ -72,6 +72,14 @@ public static class ModelBuilderExtensions
             return modelBuilder;
         }
     }
+
+    /// <summary>
+    /// A type's own properties and those of the complex types it holds, at any depth.
+    /// </summary>
+    /// <param name="type">The entity or complex type.</param>
+    private static IEnumerable<IMutableProperty> PropertiesOf(IMutableTypeBase type) =>
+        type.GetDeclaredProperties()
+            .Concat(type.GetDeclaredComplexProperties().SelectMany(static x => PropertiesOf(x.ComplexType)));
 
     /// <summary>
     /// Whether rows of <paramref name="type"/> carry a tag. The domain's entities, and Identity's tokens (the

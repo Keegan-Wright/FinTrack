@@ -44,9 +44,10 @@ internal sealed class RowIntegrityInterceptor : SaveChangesInterceptor
                 continue;
             }
 
-            byte[] content = RowIntegrity.Content(entry.Metadata, property => entry.Property(property).CurrentValue);
+            byte[] content = RowIntegrity.Content(entry.Metadata, property => entry.Property(property).CurrentValue,
+                entry.Entity);
             entry.Property(RowIntegrity.TagProperty).CurrentValue =
-                financeTrackerContext.EncryptionService.ComputeRowTag(content);
+                RowIntegrity.Tag(financeTrackerContext.EncryptionService, content);
         }
     }
 }

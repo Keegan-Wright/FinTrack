@@ -64,8 +64,9 @@ public sealed class EncryptionKeyRotator
 
     /// <summary>
     /// What makes a row of <paramref name="entityType"/> stale, as SQL conditions by the table they're on. Its table
-    /// and the tables of types it owns. In each, <c>{0}</c> is a value under the current key, and <c>{1}</c> and
-    /// <c>{2}</c> a tag under it inside JSON.
+    /// and the tables of types it owns. In each, <c>{0}</c> matches a value under the current key, <c>{1}</c> and
+    /// <c>{2}</c> a tag under it inside JSON, <c>{3}</c> a tag under it at the current format, and <c>{4}</c> is
+    /// what a value under the current key starts with.
     /// </summary>
     /// <param name="entityType">The entity.</param>
     private static Dictionary<string, List<string>> StaleConditions(IEntityType entityType)
@@ -115,12 +116,13 @@ public sealed class EncryptionKeyRotator
 
         StoreObjectIdentifier table = StoreObjectIdentifier.Table(entityType.GetTableName()!, entityType.GetSchema());
         List<string> conditions = ConditionsFor(byTable, entityType);
-        foreach (IProperty property in entityType.GetDeclaredProperties()
-                     .Where(static x => x.FindAnnotation(Annotations.EncryptedPropertyAnnotation) is not null))
+        foreach (IProperty property in entityType.GetDeclaredProperties().Where(RowIntegrity.IsEncrypted))
         {
             string column = Column(property, table);
             conditions.Add($"({column} <> '' AND {column} NOT LIKE {{0}})");
         }
+
+        AddComplexStaleConditions(conditions, entityType, table);
 
         if (!RowIntegrity.IsTagged(entityType))
         {
@@ -132,7 +134,7 @@ public sealed class EncryptionKeyRotator
                                entityType.FindOwnership()!.PrincipalEntityType.GetTableName() == entityType.GetTableName();
         if (!sharesOwnersRow)
         {
-            conditions.Add($"({tag} IS NULL OR {tag} NOT LIKE {{0}})");
+            conditions.Add($"({tag} IS NULL OR {tag} NOT LIKE {{3}})");
             return;
         }
 
@@ -141,7 +143,7 @@ public sealed class EncryptionKeyRotator
             .Select(x => x.FindAnnotation(Annotations.EncryptedPropertyAnnotation) is not null
                 ? $"{Column(x, table)} <> ''"
                 : $"{Column(x, table)} IS NOT NULL"));
-        conditions.Add($"({tag} NOT LIKE {{0}} OR ({tag} IS NULL AND ({present})))");
+        conditions.Add($"({tag} NOT LIKE {{3}} OR ({tag} IS NULL AND ({present})))");
     }
 
     /// <summary>
@@ -161,6 +163,60 @@ public sealed class EncryptionKeyRotator
         ConditionsFor(byTable, entityType).Add(
             $"({json} NOT IN ('', '[]', 'null') AND {json} NOT LIKE {{1}} AND {json} NOT LIKE {{2}})");
     }
+
+    /// <summary>
+    /// Adds what makes the values in <paramref name="type"/>'s complex types stale. One stored in its owner's columns
+    /// is checked column by column. One stored as JSON is stale when it holds more encrypted values than it holds
+    /// under the current key, counted property by property, as EF can update part of a JSON value.
+    /// </summary>
+    /// <param name="conditions">The conditions on the table.</param>
+    /// <param name="type">The entity or complex type.</param>
+    /// <param name="table">The table.</param>
+    private static void AddComplexStaleConditions(List<string> conditions, ITypeBase type, StoreObjectIdentifier table)
+    {
+        foreach (IComplexProperty complexProperty in RowIntegrity.CoveredComplex(type))
+        {
+            IComplexType complexType = complexProperty.ComplexType;
+            if (!complexType.IsMappedToJson())
+            {
+                foreach (IProperty property in complexType.GetProperties().Where(RowIntegrity.IsEncrypted))
+                {
+                    string column = Column(property, table);
+                    conditions.Add($"({column} <> '' AND {column} NOT LIKE {{0}})");
+                }
+
+                AddComplexStaleConditions(conditions, complexType, table);
+                continue;
+            }
+
+            string json = $"CAST(\"{complexType.GetContainerColumnName()}\" AS TEXT)";
+            foreach (string name in EncryptedJsonNames(complexType))
+            {
+                conditions.Add($"({Occurrences(json, $"'\"{name}\":\"'")} + {Occurrences(json, $"'\"{name}\": \"'")}" +
+                               $" <> {Occurrences(json, $"'\"{name}\":\"' || {{4}}")}" +
+                               $" + {Occurrences(json, $"'\"{name}\": \"' || {{4}}")})");
+            }
+        }
+    }
+
+    /// <summary>
+    /// The JSON names of the encrypted properties in a complex type stored as JSON, and in the complex types it holds.
+    /// </summary>
+    /// <param name="complexType">The complex type.</param>
+    private static IEnumerable<string> EncryptedJsonNames(IComplexType complexType) =>
+        complexType.GetProperties().Where(RowIntegrity.IsEncrypted)
+            .Select(static x => x.GetJsonPropertyName() ?? x.Name)
+            .Concat(RowIntegrity.CoveredComplex(complexType).SelectMany(static x => EncryptedJsonNames(x.ComplexType)))
+            .Distinct();
+
+    /// <summary>
+    /// SQL counting how often <paramref name="pattern"/> appears in <paramref name="text"/>. Postgres writes jsonb
+    /// back with a space after each colon, SQLite as it was given, so both are counted by the caller.
+    /// </summary>
+    /// <param name="text">The SQL text being searched.</param>
+    /// <param name="pattern">The SQL text being counted.</param>
+    private static string Occurrences(string text, string pattern) =>
+        $"((LENGTH({text}) - LENGTH(REPLACE({text}, {pattern}, ''))) / LENGTH({pattern}))";
 
     /// <summary>
     /// The conditions on <paramref name="entityType"/>'s table, added to <paramref name="byTable"/> when it has none
@@ -204,11 +260,13 @@ public sealed class EncryptionKeyRotator
             $"EXISTS (SELECT 1 FROM {x.Key} WHERE {string.Join(" OR ", x.Value)})"));
         string sql = $"SELECT CASE WHEN {exists} THEN 1 ELSE 0 END AS \"Value\"";
         string tagInJson = $"\"{RowIntegrity.TagProperty}\":";
+        string currentTagPrefix = RowIntegrity.TagPrefix(context.EncryptionService.CurrentKeyId);
 
         // Identifiers come from the model, the key prefixes are parameters
 #pragma warning disable EF1002
         return await context.Database.SqlQueryRaw<int>(sql, currentKeyPrefix + "%",
-                $"%{tagInJson}\"{currentKeyPrefix}%", $"%{tagInJson} \"{currentKeyPrefix}%")
+                $"%{tagInJson}\"{currentTagPrefix}%", $"%{tagInJson} \"{currentTagPrefix}%", currentTagPrefix + "%",
+                currentKeyPrefix)
             .SingleAsync(cancellationToken) == 1;
 #pragma warning restore EF1002
     }
@@ -228,6 +286,47 @@ public sealed class EncryptionKeyRotator
         }
 
         return ordered;
+    }
+
+    /// <summary>
+    /// Marks the encrypted values in complex types changed. One stored as JSON is written back whole, one stored in
+    /// its owner's columns column by column.
+    /// </summary>
+    /// <param name="complexProperties">The single complex values.</param>
+    /// <param name="complexCollections">The lists of complex values.</param>
+    private static void MarkEncryptedModified(IEnumerable<ComplexPropertyEntry> complexProperties,
+        IEnumerable<ComplexCollectionEntry> complexCollections)
+    {
+        foreach (ComplexPropertyEntry complexProperty in complexProperties)
+        {
+            if (complexProperty.CurrentValue is null ||
+                !RowIntegrity.CoveredComplex(complexProperty.Metadata.DeclaringType).Contains(complexProperty.Metadata))
+            {
+                continue;
+            }
+
+            if (complexProperty.Metadata.ComplexType.IsMappedToJson())
+            {
+                complexProperty.IsModified = true;
+                continue;
+            }
+
+            foreach (PropertyEntry property in complexProperty.Properties.Where(x => RowIntegrity.IsEncrypted(x.Metadata)))
+            {
+                property.IsModified = true;
+            }
+
+            MarkEncryptedModified(complexProperty.ComplexProperties, complexProperty.ComplexCollections);
+        }
+
+        foreach (ComplexCollectionEntry complexCollection in complexCollections)
+        {
+            if (complexCollection.CurrentValue is not null &&
+                RowIntegrity.CoveredComplex(complexCollection.Metadata.DeclaringType).Contains(complexCollection.Metadata))
+            {
+                complexCollection.IsModified = true;
+            }
+        }
     }
 
     /// <summary>
@@ -260,11 +359,13 @@ public sealed class EncryptionKeyRotator
                 foreach (PropertyEntry property in entry.Properties)
                 {
                     bool isTag = property.Metadata.Name == RowIntegrity.TagProperty;
-                    if (isTag || property.Metadata.FindAnnotation(Annotations.EncryptedPropertyAnnotation) is not null)
+                    if (isTag || RowIntegrity.IsEncrypted(property.Metadata))
                     {
                         property.IsModified = true;
                     }
                 }
+
+                MarkEncryptedModified(entry.ComplexProperties, entry.ComplexCollections);
             }
 
             await context.SaveChangesAsync(cancellationToken);

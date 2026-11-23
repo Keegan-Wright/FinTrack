@@ -48,7 +48,9 @@ It doesn't catch:
   passkeys are covered.
 
 Tags are added to existing rows the first time FinTrack starts with this version, and remade under the new key when
-you rotate.
+you rotate. When an upgrade changes what tags cover, FinTrack remakes them at startup. Until a row's tag has been
+remade it loads unchecked, and FinTrack logs
+`Row {id} in {table} has an integrity tag from an older format, so it wasn't checked` at warning.
 
 ### When a row fails its check
 

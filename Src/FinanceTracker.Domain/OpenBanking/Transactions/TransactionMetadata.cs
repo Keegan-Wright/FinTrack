@@ -20,5 +20,5 @@ public sealed record TransactionMetadata(
     /// <summary>
     /// Nothing from the provider.
     /// </summary>
-    public static TransactionMetadata None { get; } = new(null, null, null, null, null);
+    public static TransactionMetadata None => new(null, null, null, null, null);
 }

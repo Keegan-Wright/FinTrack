@@ -21,4 +21,20 @@ public static class PropertyBuilderExtensions
             return propertyBuilder;
         }
     }
+
+    extension<TProperty>(ComplexTypePropertyBuilder<TProperty> propertyBuilder)
+    {
+        /// <summary>
+        /// Marks a complex type's property to be encrypted at rest, whether it's stored in its owner's columns or
+        /// its JSON.
+        /// </summary>
+        public ComplexTypePropertyBuilder<TProperty> Encrypted()
+        {
+            ArgumentNullException.ThrowIfNull(propertyBuilder);
+
+            propertyBuilder.HasAnnotation(Annotations.EncryptedPropertyAnnotation, true);
+
+            return propertyBuilder;
+        }
+    }
 }

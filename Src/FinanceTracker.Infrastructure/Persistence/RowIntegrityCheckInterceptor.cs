@@ -1,16 +1,12 @@
-using FinanceTracker.Telemetry;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore.Metadata;
 
 namespace FinanceTracker.Infrastructure.Persistence;
 
 /// <summary>
-/// Checks each row's integrity tag as it's loaded, see <see cref="RowIntegrity"/>. A row whose tag doesn't match was
-/// changed outside the app, so it's refused, logged and counted rather than shown. A row without a tag yet, written
-/// before tags or not yet filled in at startup, is let through and logged.
+/// Checks each row's integrity tag as it's loaded, see <see cref="RowIntegrityCheck"/>. A row whose tag covers JSON
+/// is checked once EF has filled the JSON in, just before the query hands it back, see
+/// <see cref="PendingRowIntegrityChecks"/>.
 /// </summary>
 internal sealed class RowIntegrityCheckInterceptor : IMaterializationInterceptor
 {
@@ -18,45 +14,23 @@ internal sealed class RowIntegrityCheckInterceptor : IMaterializationInterceptor
 
     public object InitializedInstance(MaterializationInterceptionData materializationData, object entity)
     {
-        if (!RowIntegrity.IsTagged(materializationData.EntityType) ||
-            materializationData.Context is not FinanceTrackerContext context)
+        IEntityType entityType = materializationData.EntityType;
+        if (!RowIntegrity.IsTagged(entityType) || materializationData.Context is not FinanceTrackerContext context)
         {
             return entity;
         }
 
-        string table = materializationData.EntityType.GetTableName() ?? materializationData.EntityType.Name;
-        string id = string.Join(",", materializationData.EntityType.FindPrimaryKey()!.Properties
-            .Select(x => materializationData.GetPropertyValue(x)));
         string? tag = materializationData.GetPropertyValue<string?>(RowIntegrity.TagProperty);
-        if (tag is null)
+        if (!RowIntegrity.CoversJson(entityType))
         {
-            LoggerFor(context)?.LogRowIntegrityTagMissing(table, id);
+            RowIntegrityCheck.Verify(context, entityType, entity, tag, materializationData.GetPropertyValue);
             return entity;
         }
 
-        byte[] content = RowIntegrity.Content(materializationData.EntityType, materializationData.GetPropertyValue);
-        if (context.EncryptionService.IsRowTagValid(tag, content))
-        {
-            return entity;
-        }
-
-        LoggerFor(context)?.LogRowIntegrityFailed(table, id);
-        AppService<FinTrackMetrics>(context)?.RowIntegrityFailed(table);
-        throw new RowIntegrityException(table, id);
+        // The values are only readable here, the JSON only once the row has been read
+        Dictionary<IProperty, object?> values = RowIntegrity.Covered(entityType)
+            .ToDictionary(static x => x, materializationData.GetPropertyValue);
+        context.PendingRowIntegrityChecks.Add(new PendingRowIntegrityCheck(entityType, entity, tag, values));
+        return entity;
     }
-
-    /// <summary>
-    /// The logger, null for a context made without the app's services, e.g. at design time.
-    /// </summary>
-    /// <param name="context">The context loading the row.</param>
-    private static ILogger? LoggerFor(DbContext context) =>
-        AppService<ILoggerFactory>(context)?.CreateLogger<RowIntegrityCheckInterceptor>();
-
-    /// <summary>
-    /// One of the app's services, null for a context made without them.
-    /// </summary>
-    /// <param name="context">The context loading the row.</param>
-    private static T? AppService<T>(DbContext context) where T : class =>
-        context.GetService<IDbContextOptions>().FindExtension<CoreOptionsExtension>()?.ApplicationServiceProvider
-            ?.GetService<T>();
 }
