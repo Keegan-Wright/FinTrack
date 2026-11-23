@@ -36,11 +36,6 @@ internal sealed class NotificationSettingsConfiguration : AggregateRootConfigura
 
 
         builder.Property(x => x.LargeTransactionOver).Encrypted();
-        builder.OwnsMany(x => x.LowBalanceAlerts, alerts =>
-        {
-            alerts.ToJson("LowBalanceAlerts");
-            alerts.Property(x => x.Below).Encrypted();
-        });
-        builder.Navigation(x => x.LowBalanceAlerts).HasField("_lowBalanceAlerts");
+        builder.ComplexJsonCollection(x => x.LowBalanceAlerts, alerts => alerts.Property(x => x.Below).Encrypted());
     }
 }

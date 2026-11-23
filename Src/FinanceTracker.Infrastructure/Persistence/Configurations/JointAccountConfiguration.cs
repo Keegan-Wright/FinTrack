@@ -34,13 +34,11 @@ internal sealed class JointAccountConfiguration : AggregateRootConfiguration<Joi
             .OnDelete(DeleteBehavior.Cascade);
 
         // The times are the shown copy's transactions', encrypted as those are
-        builder.OwnsMany(x => x.Gaps, gaps =>
+        builder.ComplexJsonCollection(x => x.Gaps, gaps =>
         {
-            gaps.ToJson("Gaps");
             gaps.Property(x => x.From).Encrypted();
             gaps.Property(x => x.To).Encrypted();
         });
-        builder.Navigation(x => x.Gaps).HasField("_gaps");
 
         // Each account is in one merge at most
         builder.HasIndex(x => x.ShownAccountId).IsUnique();

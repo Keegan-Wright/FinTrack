@@ -31,7 +31,7 @@ internal sealed class BankTransactionConfiguration : AggregateRootConfiguration<
         builder.Property(x => x.ProviderClassifications).HasField("_providerClassifications").Encrypted();
 
         // Required so a transaction whose bank sent none of the fields still loads with empty metadata, not null
-        builder.OwnsOne(x => x.Metadata, metadata =>
+        builder.ComplexProperty(x => x.Metadata, metadata =>
         {
             metadata.Property(x => x.ProviderReference).HasColumnName("Meta_ProviderReference").Encrypted();
             metadata.Property(x => x.ProviderCategory).HasColumnName("Meta_ProviderCategory").Encrypted();
@@ -40,10 +40,9 @@ internal sealed class BankTransactionConfiguration : AggregateRootConfiguration<
                 .Encrypted();
             metadata.Property(x => x.DebtorAccountName).HasColumnName("Meta_DebtorAccountName").Encrypted();
         });
-        builder.Navigation(x => x.Metadata).IsRequired();
 
         // Not encrypted, like IsPending, so the transactions to review can be found and counted in the database
-        builder.OwnsOne(x => x.Transfer, transfer =>
+        builder.ComplexProperty(x => x.Transfer, transfer =>
         {
             transfer.Property(x => x.Decision).HasColumnName("Transfer_Decision").HasConversion<string>();
             transfer.Property(x => x.Source).HasColumnName("Transfer_Source").HasConversion<string>();
@@ -55,27 +54,27 @@ internal sealed class BankTransactionConfiguration : AggregateRootConfiguration<
             transfer.Property(x => x.RuleId).HasColumnName("Transfer_RuleId");
         });
 
-        builder.OwnsOne(x => x.BillPayment, payment =>
+        builder.ComplexProperty(x => x.BillPayment, payment =>
         {
             payment.Property(x => x.BillId).HasColumnName("BillPayment_BillId");
             payment.Property(x => x.Source).HasColumnName("BillPayment_Source").HasConversion<string>();
             payment.Property(x => x.DecidedAt).HasColumnName("BillPayment_DecidedAt");
             payment.Property(x => x.RuleId).HasColumnName("BillPayment_RuleId");
-
-            // A bill's payments are loaded by its id
-            payment.HasIndex(x => x.BillId);
         });
 
-        builder.OwnsOne(x => x.DebtPayment, payment =>
+        // A bill's payments are loaded by its id
+        builder.HasIndex(x => x.BillPayment!.BillId);
+
+        builder.ComplexProperty(x => x.DebtPayment, payment =>
         {
             payment.Property(x => x.DebtId).HasColumnName("DebtPayment_DebtId");
             payment.Property(x => x.Source).HasColumnName("DebtPayment_Source").HasConversion<string>();
             payment.Property(x => x.DecidedAt).HasColumnName("DebtPayment_DecidedAt");
             payment.Property(x => x.RuleId).HasColumnName("DebtPayment_RuleId");
-
-            // A debt's payments are loaded by its id
-            payment.HasIndex(x => x.DebtId);
         });
+
+        // A debt's payments are loaded by its id
+        builder.HasIndex(x => x.DebtPayment!.DebtId);
 
         string externalIdBlindIndex = builder.HasBlindIndex(x => x.ExternalId);
         builder.HasIndex(nameof(BankTransaction.AccountId), externalIdBlindIndex).IsUnique();
@@ -87,25 +86,18 @@ internal sealed class BankTransactionConfiguration : AggregateRootConfiguration<
         builder.PrimitiveCollection(x => x.CustomClassificationIds).HasField("_customClassificationIds");
 
         // Only ids, which rule added which tag, read with the transaction and never queried on their own
-        builder.OwnsMany(x => x.RuleTags, ruleTags => ruleTags.ToJson("RuleTags"));
-        builder.Navigation(x => x.RuleTags).HasField("_ruleTags");
+        builder.ComplexJsonCollection(x => x.RuleTags);
 
         // The bank's classifications the user or a rule hid.
-        builder.OwnsMany(x => x.HiddenClassifications, hidden =>
-        {
-            hidden.ToJson("HiddenClassifications");
-            hidden.Property(x => x.Classification).Encrypted();
-        });
-        builder.Navigation(x => x.HiddenClassifications).HasField("_hiddenClassifications");
+        builder.ComplexJsonCollection(x => x.HiddenClassifications,
+            hidden => hidden.Property(x => x.Classification).Encrypted());
 
         // Read with the transaction and never queried on their own, amounts and notes encrypted like the transaction's
-        builder.OwnsMany(x => x.Splits, splits =>
+        builder.ComplexJsonCollection(x => x.Splits, splits =>
         {
-            splits.ToJson("Splits");
             splits.Property(x => x.Amount).Encrypted();
             splits.Property(x => x.Note).Encrypted();
         });
-        builder.Navigation(x => x.Splits).HasField("_splits");
         builder.Ignore(x => x.IsSplit);
     }
 }

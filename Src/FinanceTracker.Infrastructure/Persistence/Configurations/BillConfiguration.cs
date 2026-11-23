@@ -25,13 +25,11 @@ internal sealed class BillConfiguration : AggregateRootConfiguration<Bill>
         builder.Ignore(x => x.HasEnded);
         builder.Ignore(x => x.ExpectedAmount);
 
-        builder.OwnsMany(x => x.Amounts, amounts =>
+        builder.ComplexJsonCollection(x => x.Amounts, amounts =>
         {
-            amounts.ToJson("Amounts");
             amounts.Property(x => x.From).Encrypted();
             amounts.Property(x => x.Amount).Encrypted();
         });
-        builder.Navigation(x => x.Amounts).HasField("_amounts");
 
         // Goes with its account, like the account's transactions
         builder.HasOne<BankAccount>()

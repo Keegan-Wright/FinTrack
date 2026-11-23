@@ -42,7 +42,7 @@ public sealed class EncryptionKeyRotator
         string currentKeyPrefix = $"{context.EncryptionService.CurrentKeyId}:";
 
         int total = 0;
-        foreach (IEntityType entityType in context.Model.GetEntityTypes().Where(static x => !x.IsOwned()))
+        foreach (IEntityType entityType in context.Model.GetEntityTypes())
         {
             Dictionary<string, List<string>> staleWhere = StaleConditions(entityType);
             if (staleWhere.Count == 0 ||
@@ -63,59 +63,16 @@ public sealed class EncryptionKeyRotator
     }
 
     /// <summary>
-    /// What makes a row of <paramref name="entityType"/> stale, as SQL conditions by the table they're on. Its table
-    /// and the tables of types it owns. In each, <c>{0}</c> matches a value under the current key, <c>{1}</c> and
-    /// <c>{2}</c> a tag under it inside JSON, <c>{3}</c> a tag under it at the current format, and <c>{4}</c> is
-    /// what a value under the current key starts with.
+    /// What makes a row of <paramref name="entityType"/> stale, as SQL conditions on its table. Encrypted values under
+    /// an older key, in its columns or its complex types, and a tag that's missing, from an older format or under an
+    /// older key. <c>{0}</c> matches a value under the current key, <c>{1}</c> a tag under it at the current format,
+    /// and <c>{2}</c> is what a value under the current key starts with.
     /// </summary>
     /// <param name="entityType">The entity.</param>
     private static Dictionary<string, List<string>> StaleConditions(IEntityType entityType)
     {
-        Dictionary<string, List<string>> byTable = [];
-        AddStaleConditions(byTable, entityType, isRoot: true);
-        foreach (IEntityType owned in OwnedTypes(entityType))
-        {
-            AddStaleConditions(byTable, owned, isRoot: false);
-        }
-
-        return byTable.Where(static x => x.Value.Count > 0).ToDictionary();
-    }
-
-    /// <summary>
-    /// The types <paramref name="entityType"/> owns, and the types they own in turn.
-    /// </summary>
-    /// <param name="entityType">The entity.</param>
-    private static IEnumerable<IEntityType> OwnedTypes(IEntityType entityType)
-    {
-        foreach (INavigation navigation in entityType.GetNavigations().Where(static x => x.TargetEntityType.IsOwned()))
-        {
-            yield return navigation.TargetEntityType;
-            foreach (IEntityType nested in OwnedTypes(navigation.TargetEntityType))
-            {
-                yield return nested;
-            }
-        }
-    }
-
-    /// <summary>
-    /// Adds what makes <paramref name="entityType"/>'s part of a row stale. Encrypted values under an older key, and
-    /// a tag that's missing or under an older key. An owned type stored in its owner's row only counts as missing its
-    /// tag when it's there at all, and one stored as JSON when its JSON holds no tag under the current key.
-    /// </summary>
-    /// <param name="byTable">The conditions so far, by table.</param>
-    /// <param name="entityType">The entity or owned type.</param>
-    /// <param name="isRoot">Whether it's the entity rather than a type it owns.</param>
-    private static void AddStaleConditions(Dictionary<string, List<string>> byTable, IEntityType entityType,
-        bool isRoot)
-    {
-        if (entityType.IsMappedToJson())
-        {
-            AddJsonStaleCondition(byTable, entityType);
-            return;
-        }
-
         StoreObjectIdentifier table = StoreObjectIdentifier.Table(entityType.GetTableName()!, entityType.GetSchema());
-        List<string> conditions = ConditionsFor(byTable, entityType);
+        List<string> conditions = [];
         foreach (IProperty property in entityType.GetDeclaredProperties().Where(RowIntegrity.IsEncrypted))
         {
             string column = Column(property, table);
@@ -124,44 +81,18 @@ public sealed class EncryptionKeyRotator
 
         AddComplexStaleConditions(conditions, entityType, table);
 
-        if (!RowIntegrity.IsTagged(entityType))
+        if (RowIntegrity.IsTagged(entityType))
         {
-            return;
+            string tag = Column(entityType.FindProperty(RowIntegrity.TagProperty)!, table);
+            conditions.Add($"({tag} IS NULL OR {tag} NOT LIKE {{1}})");
         }
 
-        string tag = Column(entityType.FindProperty(RowIntegrity.TagProperty)!, table);
-        bool sharesOwnersRow = !isRoot &&
-                               entityType.FindOwnership()!.PrincipalEntityType.GetTableName() == entityType.GetTableName();
-        if (!sharesOwnersRow)
+        if (conditions.Count == 0)
         {
-            conditions.Add($"({tag} IS NULL OR {tag} NOT LIKE {{3}})");
-            return;
+            return [];
         }
 
-        string present = string.Join(" OR ", RowIntegrity.Covered(entityType)
-            .Where(static x => !x.IsPrimaryKey())
-            .Select(x => x.FindAnnotation(Annotations.EncryptedPropertyAnnotation) is not null
-                ? $"{Column(x, table)} <> ''"
-                : $"{Column(x, table)} IS NOT NULL"));
-        conditions.Add($"({tag} NOT LIKE {{3}} OR ({tag} IS NULL AND ({present})))");
-    }
-
-    /// <summary>
-    /// Adds what makes a JSON column of owned values stale. It holds some, but no tag under the current key.
-    /// </summary>
-    /// <param name="byTable">The conditions so far, by table.</param>
-    /// <param name="entityType">The owned type stored as JSON.</param>
-    private static void AddJsonStaleCondition(Dictionary<string, List<string>> byTable, IEntityType entityType)
-    {
-        if (!RowIntegrity.IsTagged(entityType) || entityType.FindOwnership()!.PrincipalEntityType.IsMappedToJson())
-        {
-            return;
-        }
-
-        // Postgres writes jsonb back with a space after each colon, SQLite as it was given
-        string json = $"CAST(\"{entityType.GetContainerColumnName()}\" AS TEXT)";
-        ConditionsFor(byTable, entityType).Add(
-            $"({json} NOT IN ('', '[]', 'null') AND {json} NOT LIKE {{1}} AND {json} NOT LIKE {{2}})");
+        return new Dictionary<string, List<string>> { [QuotedTable(entityType)] = conditions };
     }
 
     /// <summary>
@@ -193,8 +124,8 @@ public sealed class EncryptionKeyRotator
             foreach (string name in EncryptedJsonNames(complexType))
             {
                 conditions.Add($"({Occurrences(json, $"'\"{name}\":\"'")} + {Occurrences(json, $"'\"{name}\": \"'")}" +
-                               $" <> {Occurrences(json, $"'\"{name}\":\"' || {{4}}")}" +
-                               $" + {Occurrences(json, $"'\"{name}\": \"' || {{4}}")})");
+                               $" <> {Occurrences(json, $"'\"{name}\":\"' || {{2}}")}" +
+                               $" + {Occurrences(json, $"'\"{name}\": \"' || {{2}}")})");
             }
         }
     }
@@ -219,24 +150,13 @@ public sealed class EncryptionKeyRotator
         $"((LENGTH({text}) - LENGTH(REPLACE({text}, {pattern}, ''))) / LENGTH({pattern}))";
 
     /// <summary>
-    /// The conditions on <paramref name="entityType"/>'s table, added to <paramref name="byTable"/> when it has none
-    /// yet.
+    /// <paramref name="entityType"/>'s table, quoted, with its schema when it has one.
     /// </summary>
-    /// <param name="byTable">The conditions so far, by table.</param>
-    /// <param name="entityType">The entity or owned type.</param>
-    private static List<string> ConditionsFor(Dictionary<string, List<string>> byTable, IEntityType entityType)
-    {
-        string table = entityType.GetSchema() is { } schema
+    /// <param name="entityType">The entity.</param>
+    private static string QuotedTable(IEntityType entityType) =>
+        entityType.GetSchema() is { } schema
             ? $"\"{schema}\".\"{entityType.GetTableName()}\""
             : $"\"{entityType.GetTableName()}\"";
-        if (!byTable.TryGetValue(table, out List<string>? conditions))
-        {
-            conditions = [];
-            byTable[table] = conditions;
-        }
-
-        return conditions;
-    }
 
     /// <summary>
     /// A property's column in <paramref name="table"/>, quoted.
@@ -259,13 +179,11 @@ public sealed class EncryptionKeyRotator
         string exists = string.Join(" OR ", staleWhere.Select(static x =>
             $"EXISTS (SELECT 1 FROM {x.Key} WHERE {string.Join(" OR ", x.Value)})"));
         string sql = $"SELECT CASE WHEN {exists} THEN 1 ELSE 0 END AS \"Value\"";
-        string tagInJson = $"\"{RowIntegrity.TagProperty}\":";
         string currentTagPrefix = RowIntegrity.TagPrefix(context.EncryptionService.CurrentKeyId);
 
         // Identifiers come from the model, the key prefixes are parameters
 #pragma warning disable EF1002
-        return await context.Database.SqlQueryRaw<int>(sql, currentKeyPrefix + "%",
-                $"%{tagInJson}\"{currentTagPrefix}%", $"%{tagInJson} \"{currentTagPrefix}%", currentTagPrefix + "%",
+        return await context.Database.SqlQueryRaw<int>(sql, currentKeyPrefix + "%", currentTagPrefix + "%",
                 currentKeyPrefix)
             .SingleAsync(cancellationToken) == 1;
 #pragma warning restore EF1002

@@ -110,9 +110,9 @@ public class FinanceTrackerContextTests : InfrastructureTestBase
         // Act
         await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
         HouseholdMember member = await context.HouseholdMembers.SingleAsync(CancellationToken);
-        List<string> storedNumbers = await context.Database
-            .SqlQueryRaw<string>("SELECT \"Number\" AS \"Value\" FROM \"HouseholdMemberLinkedAccounts\"")
-            .ToListAsync(CancellationToken);
+        string storedLinkedAccounts = await context.Database
+            .SqlQueryRaw<string>("SELECT \"LinkedAccounts\" AS \"Value\" FROM \"HouseholdMembers\"")
+            .SingleAsync(CancellationToken);
         string storedPayeeNames = await context.Database
             .SqlQueryRaw<string>("SELECT \"PayeeNames\" AS \"Value\" FROM \"HouseholdMembers\"")
             .SingleAsync(CancellationToken);
@@ -125,7 +125,8 @@ public class FinanceTrackerContextTests : InfrastructureTestBase
                 AccountIdentifier.Create("112233", "12345678", null)!,
                 AccountIdentifier.Create("220040", "20589674", null)!
             ]);
-            await Assert.That(storedNumbers).All().Satisfy(x => x.StartsWith("1:"));
+            await Assert.That(storedLinkedAccounts).Contains("\"Number\":\"1:");
+            await Assert.That(storedLinkedAccounts).DoesNotContain("12345678");
             await Assert.That(storedPayeeNames).DoesNotContain("Smith");
         }
     }

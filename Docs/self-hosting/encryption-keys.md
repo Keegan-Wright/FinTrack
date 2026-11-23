@@ -43,7 +43,6 @@ It doesn't catch:
   for anything.
 - **An older copy of a whole row put back**, for example from a backup. Its tag was valid then and still is.
 - **Deleted rows.**
-- **The order of a list kept inside a row**, such as a split transaction's parts.
 - **The users table itself**, which ASP.NET Identity writes often. Users' authenticator keys, recovery codes and
   passkeys are covered.
 

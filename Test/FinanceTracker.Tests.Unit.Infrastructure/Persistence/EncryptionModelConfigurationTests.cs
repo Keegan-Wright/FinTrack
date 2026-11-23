@@ -34,6 +34,20 @@ public class EncryptionModelConfigurationTests : InfrastructureTestBase
     }
 
     [Test]
+    public async Task Model_HasNoOwnedTypes()
+    {
+        // Encryption, row integrity and key rotation only follow complex types, so an owned type would go unchecked
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+
+        List<string> owned = context.Model.GetEntityTypes()
+            .Where(static x => x.IsOwned())
+            .Select(static x => x.DisplayName())
+            .ToList();
+
+        await Assert.That(owned).IsEmpty();
+    }
+
+    [Test]
     public async Task Encrypted_NullComplexTypePropertyBuilder_Throws()
     {
         await Assert.That(() => ((ComplexTypePropertyBuilder<string>)null!).Encrypted())

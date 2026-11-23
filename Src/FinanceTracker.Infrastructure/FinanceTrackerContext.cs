@@ -244,7 +244,8 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
             AuditingInterceptor.Instance,
             BlindIndexInterceptor.Instance,
             RowIntegrityInterceptor.Instance,
-            RowIntegrityCheckInterceptor.Instance
+            RowIntegrityCheckInterceptor.Instance,
+            ComplexJsonCollectionQueryInterceptor.Instance
             );
 
         optionsBuilder.ReplaceService<IModelCacheKeyFactory, EncryptionModelCacheKeyFactory>();

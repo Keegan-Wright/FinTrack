@@ -26,6 +26,14 @@ internal sealed class AuditingInterceptor : SaveChangesInterceptor
     }
 
     /// <summary>
+    /// Whether one of the entity's own columns changed, not only its complex types, e.g. a transaction's transfer
+    /// decision or rule tags. Those are the app's own decisions, which the rules and transfer matching runs don't
+    /// count as changes when they look for what changed since their last run.
+    /// </summary>
+    /// <param name="entry">The entity's entry.</param>
+    private static bool OwnColumnsChanged(EntityEntry entry) => entry.Properties.Any(static x => x.IsModified);
+
+    /// <summary>
     /// Stamps the created and updated times on what's being saved.
     /// </summary>
     /// <param name="context">The context being saved.</param>
@@ -49,7 +57,7 @@ internal sealed class AuditingInterceptor : SaveChangesInterceptor
                     // By name, the interface member expression doesn't resolve to the mapped property
                     entry.Property(nameof(IAuditable.Created)).CurrentValue = now;
                     break;
-                case EntityState.Modified:
+                case EntityState.Modified when OwnColumnsChanged(entry):
                     entry.Property(nameof(IAuditable.Updated)).CurrentValue = now;
                     break;
             }

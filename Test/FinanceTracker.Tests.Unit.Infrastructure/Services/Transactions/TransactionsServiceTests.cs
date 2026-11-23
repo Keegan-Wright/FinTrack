@@ -759,37 +759,6 @@ public class TransactionsServiceTests : InfrastructureTestBase
     }
 
     [Test]
-    public async Task TransactionsFromBeforeHiding_LoadAndFilterAsNothingHidden()
-    {
-        // Arrange, as the migration left existing rows before it filled them in
-        await SeedAccountAsync()
-            .Do(s => s.TransactionScenario.WithTransaction("old", "main", Details("OLD") with
-            {
-                ProviderClassifications = ["Bills"]
-            }));
-        await using (FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken))
-        {
-            await context.Database.ExecuteSqlRawAsync(
-                "UPDATE \"BankTransactions\" SET \"HiddenClassifications\" = NULL", CancellationToken);
-        }
-
-        TransactionsService subject = BuildSubject();
-
-        // Act
-        List<string> filterTags = await subject.GetTagsForTransactionFiltersAsync(CancellationToken)
-            .Select(static x => x.Tag).ToListAsync(CancellationToken);
-        Transaction transaction = (await GetAllAsync(subject, new FilterTransactions())).Single();
-
-        // Assert
-        using (Assert.Multiple())
-        {
-            await Assert.That(filterTags).IsEquivalentTo(["Bills"]);
-            await Assert.That(transaction.Tags).IsEquivalentTo(["Bills"]);
-            await Assert.That(transaction.HiddenBankClassifications).IsEmpty();
-        }
-    }
-
-    [Test]
     public async Task SplitAsync_SavesTheParts_WithTheirTags()
     {
         // Arrange

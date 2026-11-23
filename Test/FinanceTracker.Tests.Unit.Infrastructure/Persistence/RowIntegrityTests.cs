@@ -142,6 +142,35 @@ public class RowIntegrityTests : InfrastructureTestBase
     }
 
     [Test]
+    public async Task Load_JsonListReordered_IsRefused()
+    {
+        // Arrange, two alerts in one user's settings, their order swapped
+        await using (FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken))
+        {
+            NotificationSettings settings = new(Scenario.UserMappings[Username]);
+            settings.WatchBalances(new Dictionary<Guid, decimal>
+            {
+                [Scenario.AccountMappings["main"]] = 100m, [Scenario.AccountMappings["savings"]] = 5000m
+            });
+            context.NotificationSettings.Add(settings);
+            await context.SaveChangesAsync(CancellationToken);
+        }
+
+        await SqlAsync("""
+            UPDATE "NotificationSettings" SET "LowBalanceAlerts" =
+                json_array(json(json_extract("LowBalanceAlerts", '$[1]')), json(json_extract("LowBalanceAlerts", '$[0]')))
+            """);
+
+        // Act, Assert
+        await Assert.ThrowsAsync<RowIntegrityException>(async () =>
+        {
+            await using FinanceTrackerContext context =
+                await DbContextFactory.CreateDbContextAsync(CancellationToken);
+            await context.NotificationSettings.ToListAsync(CancellationToken);
+        });
+    }
+
+    [Test]
     public async Task Load_AuthenticatorKeyMovedToAnotherUser_IsRefused()
     {
         // Arrange, someone moving their own authenticator key onto another user to pass their two-factor check

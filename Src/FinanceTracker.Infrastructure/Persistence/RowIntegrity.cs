@@ -87,13 +87,11 @@ internal static class RowIntegrity
 
     /// <summary>
     /// The row's own properties the tag covers. The key, the foreign keys and the encrypted properties, in name
-    /// order. Not an owned JSON element's position in its list, which EF only numbers once it's read back, so the
-    /// element is tied to its owner but not its place.
+    /// order.
     /// </summary>
     /// <param name="entityType">The entity.</param>
     public static IReadOnlyList<IProperty> Covered(IEntityType entityType) =>
         CoveredCache.GetOrAdd(entityType, static x => ((IEntityType)x).GetProperties()
-            .Where(static property => !IsJsonPosition(property))
             .Where(static property => property.IsKey()
                                       || property.IsForeignKey()
                                       || IsEncrypted(property))
@@ -149,15 +147,6 @@ internal static class RowIntegrity
 
         return content.ToArray();
     }
-
-    /// <summary>
-    /// Whether <paramref name="property"/> is an owned JSON element's position in its list, the part of its key that
-    /// isn't its owner's.
-    /// </summary>
-    /// <param name="property">The property.</param>
-    private static bool IsJsonPosition(IProperty property) =>
-        property.DeclaringType is IEntityType { } entityType && entityType.IsMappedToJson()
-                                                            && property.IsPrimaryKey() && !property.IsForeignKey();
 
     /// <summary>
     /// Whether a complex type holds an encrypted value, in itself or the complex types it holds.
