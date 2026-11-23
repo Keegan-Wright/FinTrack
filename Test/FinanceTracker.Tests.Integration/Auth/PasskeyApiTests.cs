@@ -25,7 +25,7 @@ public class PasskeyApiTests : IntegrationTestBase
             .StartAddingAsync(new ConfirmPassword { Password = SignedInUser.DefaultPassword }, CancellationToken);
 
         // Assert, the domain is the public address's, and no algorithm hashes with SHA-1
-        using JsonDocument options = JsonDocument.Parse(change!.CreationOptionsJson!);
+        using JsonDocument options = JsonDocument.Parse(((PasskeyAddingStarted)change!).CreationOptionsJson);
         JsonElement root = options.RootElement;
         List<int> algorithms = root.GetProperty("pubKeyCredParams").EnumerateArray()
             .Select(static x => x.GetProperty("alg").GetInt32())
@@ -54,11 +54,7 @@ public class PasskeyApiTests : IntegrationTestBase
             .StartAddingAsync(new ConfirmPassword { Password = "not-the-password" }, CancellationToken);
 
         // Assert
-        using (Assert.Multiple())
-        {
-            await Assert.That(change!.Errors).IsEquivalentTo(["Your password isn't right"]);
-            await Assert.That(change.CreationOptionsJson).IsNull();
-        }
+        await Assert.That(((PasskeyChangeRefused)change!).Errors).IsEquivalentTo(["Your password isn't right"]);
     }
 
     [Test]
@@ -72,7 +68,7 @@ public class PasskeyApiTests : IntegrationTestBase
             .AddAsync(new AddPasskey { CredentialJson = "{}", Name = "Placeholder" }, CancellationToken);
 
         // Assert
-        await Assert.That(change!.Succeeded).IsFalse();
+        await Assert.That(change).IsTypeOf<PasskeyChangeRefused>();
     }
 
     [Test]

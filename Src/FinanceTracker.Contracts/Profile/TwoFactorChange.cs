@@ -1,22 +1,10 @@
+using System.Text.Json.Serialization;
+
 namespace FinanceTracker.Contracts.Profile;
 
 /// <summary>
-/// How a change to the user's two-factor sign in went.
+/// How a change to the user's two-factor sign in went. One of <see cref="TwoFactorChangeRefused"/>, <see
+/// cref="TwoFactorChangeMade"/> or <see cref="RecoveryCodesMade"/>, so a caller handles each.
 /// </summary>
-public sealed class TwoFactorChange
-{
-    /// <summary>
-    /// Why it wasn't made, in words for the user. Empty when it was.
-    /// </summary>
-    public IReadOnlyList<string> Errors { get; init; } = [];
-
-    /// <summary>
-    /// New recovery codes, shown to the user once. Empty when the change made none.
-    /// </summary>
-    public IReadOnlyList<string> RecoveryCodes { get; init; } = [];
-
-    /// <summary>
-    /// Whether the change was made.
-    /// </summary>
-    public bool Succeeded => Errors.Count == 0;
-}
+[JsonPolymorphic(InferClosedTypePolymorphism = true)]
+public closed record TwoFactorChange;

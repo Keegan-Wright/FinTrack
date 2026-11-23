@@ -32,8 +32,8 @@ public class SingleSignOnTokenTests : IntegrationTestBase
         HttpResponseMessage returned =
             await SingleSignOnSteps.FinishAsync(user.Client, App.Oidc, authorize, person, CancellationToken);
         TokensOverview after = await tokens.GetTokensAsync(CancellationToken);
-        CreatedToken? first = await tokens.CreateAsync(Create(), CancellationToken);
-        CreatedToken? second = await tokens.CreateAsync(Create(), CancellationToken);
+        TokenCreation? first = await tokens.CreateAsync(Create(), CancellationToken);
+        TokenCreation? second = await tokens.CreateAsync(Create(), CancellationToken);
 
         // Assert, the provider was asked to sign them in again, without max_age=0, which Authelia can never satisfy,
         // and the confirmation made one token only
@@ -45,9 +45,9 @@ public class SingleSignOnTokenTests : IntegrationTestBase
             await Assert.That(authorize.ContainsKey("max_age")).IsFalse();
             await Assert.That(returned.Headers.Location?.OriginalString).IsEqualTo(ReturnUrl);
             await Assert.That(after.Confirmed).IsTrue();
-            await Assert.That(first!.Token).StartsWith("ftk_");
-            await Assert.That(await ReadWithAsync(first.Token!)).IsEqualTo(HttpStatusCode.OK);
-            await Assert.That(second!.Succeeded).IsFalse();
+            await Assert.That(((TokenCreated)first!).Token).StartsWith("ftk_");
+            await Assert.That(await ReadWithAsync(((TokenCreated)first).Token)).IsEqualTo(HttpStatusCode.OK);
+            await Assert.That(second).IsTypeOf<TokenCreationRefused>();
         }
     }
 
@@ -58,14 +58,11 @@ public class SingleSignOnTokenTests : IntegrationTestBase
         (SignedInUser user, _) = await SignInThroughProviderAsync();
 
         // Act
-        CreatedToken? created = await ApiFor(user).Get<ITokensService>().CreateAsync(Create(), CancellationToken);
+        TokenCreation? created = await ApiFor(user).Get<ITokensService>().CreateAsync(Create(), CancellationToken);
 
         // Assert
-        using (Assert.Multiple())
-        {
-            await Assert.That(created!.Succeeded).IsFalse();
-            await Assert.That(created.Errors.Single()).Contains("Confirm it's you with single sign-on first");
-        }
+        TokenCreationRefused refused = (TokenCreationRefused)created!;
+        await Assert.That(refused.Errors.Single()).Contains("Confirm it's you with single sign-on first");
     }
 
     [Test]

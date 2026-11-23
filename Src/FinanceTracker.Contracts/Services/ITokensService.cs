@@ -22,7 +22,7 @@ public interface ITokensService
     /// <param name="request">Its name, how long it lasts and, for a password user, their password.</param>
     /// <param name="cancellationToken">Stops the work.</param>
     /// <returns>The token to show once, or why it wasn't made. Null when they can't have tokens.</returns>
-    Task<CreatedToken?> CreateAsync(CreateToken request, CancellationToken cancellationToken);
+    Task<TokenCreation?> CreateAsync(CreateToken request, CancellationToken cancellationToken);
 
     /// <summary>
     /// Stops one of the user's tokens working, straight away. The user is emailed to say so.

@@ -204,11 +204,11 @@
             return;
         }
 
-        CreatedToken? created = null;
+        TokenCreation? creation = null;
         SetLoadingState(true, "Making your token");
         try
         {
-            created = await TokensService.CreateAsync((CreateToken)result.Data!, _cts.Token);
+            creation = await TokensService.CreateAsync((CreateToken)result.Data!, _cts.Token);
             Overview = await LoadAsync(_cts.Token);
         }
         catch (Exception) when (!_cts.IsCancellationRequested)
@@ -220,29 +220,26 @@
             SetLoadingState(false);
         }
 
-        await ShowCreatedAsync(created);
+        await ShowCreatedAsync(creation);
     }
 
     /// <summary>
     /// Shows a token just made, or says why it wasn't.
     /// </summary>
-    /// <param name="created">How making it went, null when it failed or the user can't have tokens.</param>
-    private async Task ShowCreatedAsync(CreatedToken? created)
+    /// <param name="creation">How making it went, null when it failed or the user can't have tokens.</param>
+    private async Task ShowCreatedAsync(TokenCreation? creation)
     {
-        if (created is null)
+        switch (creation)
         {
-            return;
+            case TokenCreationRefused refused:
+                Snackbar.Add(refused.Errors[0], Severity.Error);
+                break;
+            case TokenCreated created:
+                DialogParameters<TokenCreatedDialog> parameters = new() { { x => x.Token, created.Token } };
+                DialogOptions options = new() { BackdropClick = false };
+                await DialogService.ShowAsync<TokenCreatedDialog>("Your new token", parameters, options);
+                break;
         }
-
-        if (!created.Succeeded)
-        {
-            Snackbar.Add(created.Errors[0], Severity.Error);
-            return;
-        }
-
-        DialogParameters<TokenCreatedDialog> parameters = new() { { x => x.Token, created.Token! } };
-        DialogOptions options = new() { BackdropClick = false };
-        await DialogService.ShowAsync<TokenCreatedDialog>("Your new token", parameters, options);
     }
 
     /// <summary>

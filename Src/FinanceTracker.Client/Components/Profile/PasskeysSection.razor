@@ -166,7 +166,7 @@
         {
             PasskeyChange? started = await PasskeyService.StartAddingAsync(
                 new ConfirmPassword { Password = details.Password }, _cts.Token);
-            if (ShowRefusal(started))
+            if (ShowRefusal(started) || started is not PasskeyAddingStarted adding)
             {
                 return;
             }
@@ -175,7 +175,7 @@
             try
             {
                 credential = await JsRuntime.InvokeAsync<string?>("ftCreatePasskey", _cts.Token,
-                    started!.CreationOptionsJson);
+                    adding.CreationOptionsJson);
             }
             catch (JSException)
             {
@@ -275,9 +275,9 @@
             return true;
         }
 
-        if (!change.Succeeded)
+        if (change is PasskeyChangeRefused refused)
         {
-            Snackbar.Add(change.Errors[0], Severity.Error);
+            Snackbar.Add(refused.Errors[0], Severity.Error);
             return true;
         }
 

@@ -75,8 +75,8 @@ public class PasskeysSectionTests : ComponentTestBase
         // Arrange
         _passkeyService.GetPasskeysAsync(Arg.Any<CancellationToken>()).Returns([], [Laptop]);
         _passkeyService.StartAddingAsync(Arg.Any<ConfirmPassword>(), Arg.Any<CancellationToken>())
-            .Returns(new PasskeyChange { CreationOptionsJson = Options });
-        _passkeyService.AddAsync(Arg.Any<AddPasskey>(), Arg.Any<CancellationToken>()).Returns(new PasskeyChange());
+            .Returns(new PasskeyAddingStarted(Options));
+        _passkeyService.AddAsync(Arg.Any<AddPasskey>(), Arg.Any<CancellationToken>()).Returns(new PasskeyChangeMade());
         JSInterop.Setup<string?>("ftCreatePasskey", Options).SetResult(Credential);
         IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
         IRenderedComponent<PasskeysSection> cut = RenderSection();
@@ -105,7 +105,7 @@ public class PasskeysSectionTests : ComponentTestBase
         // Arrange
         _passkeyService.GetPasskeysAsync(Arg.Any<CancellationToken>()).Returns([]);
         _passkeyService.StartAddingAsync(Arg.Any<ConfirmPassword>(), Arg.Any<CancellationToken>())
-            .Returns(new PasskeyChange { CreationOptionsJson = Options });
+            .Returns(new PasskeyAddingStarted(Options));
         JSInterop.Setup<string?>("ftCreatePasskey", Options).SetResult(null);
         IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
         IRenderedComponent<PasskeysSection> cut = RenderSection();
@@ -126,7 +126,7 @@ public class PasskeysSectionTests : ComponentTestBase
         // Arrange, e.g. the password manager already holds one for this account
         _passkeyService.GetPasskeysAsync(Arg.Any<CancellationToken>()).Returns([]);
         _passkeyService.StartAddingAsync(Arg.Any<ConfirmPassword>(), Arg.Any<CancellationToken>())
-            .Returns(new PasskeyChange { CreationOptionsJson = Options });
+            .Returns(new PasskeyAddingStarted(Options));
         JSInterop.Setup<string?>("ftCreatePasskey", Options).SetException(new JSException("InvalidStateError"));
         IRenderedComponent<MudSnackbarProvider> snackbars = Render<MudSnackbarProvider>();
         IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
@@ -149,7 +149,7 @@ public class PasskeysSectionTests : ComponentTestBase
         // Arrange
         _passkeyService.GetPasskeysAsync(Arg.Any<CancellationToken>()).Returns([]);
         _passkeyService.StartAddingAsync(Arg.Any<ConfirmPassword>(), Arg.Any<CancellationToken>())
-            .Returns(new PasskeyChange { Errors = ["Your password isn't right"] });
+            .Returns(new PasskeyChangeRefused(["Your password isn't right"]));
         IRenderedComponent<MudSnackbarProvider> snackbars = Render<MudSnackbarProvider>();
         IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
         IRenderedComponent<PasskeysSection> cut = RenderSection();
@@ -172,7 +172,7 @@ public class PasskeysSectionTests : ComponentTestBase
         _passkeyService.GetPasskeysAsync(Arg.Any<CancellationToken>())
             .Returns([Laptop], Array.Empty<PasskeySummary>());
         _passkeyService.RemoveAsync(Laptop.Id, Arg.Any<ConfirmPassword>(), Arg.Any<CancellationToken>())
-            .Returns(new PasskeyChange());
+            .Returns(new PasskeyChangeMade());
         IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
         IRenderedComponent<PasskeysSection> cut = RenderSection();
         cut.WaitForState(() => cut.FindAll(".ft-passkeys__row").Count == 1);

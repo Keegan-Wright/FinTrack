@@ -25,10 +25,11 @@ public class TokensApiTests : IntegrationTestBase
         ITokensService tokens = ApiFor(user).Get<ITokensService>();
 
         // Act
-        CreatedToken? created = await tokens.CreateAsync(Create(SignedInUser.DefaultPassword), CancellationToken);
+        TokenCreated created =
+            (TokenCreated)(await tokens.CreateAsync(Create(SignedInUser.DefaultPassword), CancellationToken))!;
 
         // Assert
-        HttpResponseMessage read = await ReadWithAsync(created!.Token!);
+        HttpResponseMessage read = await ReadWithAsync(created.Token);
         TokensOverview listed = await tokens.GetTokensAsync(CancellationToken);
         IReadOnlyList<CaughtMail> mail =
             await App.Mail.WaitForAsync(EmailOf(user), AccountEmails.TokenCreatedSubject, CancellationToken);
@@ -51,13 +52,13 @@ public class TokensApiTests : IntegrationTestBase
         ITokensService tokens = ApiFor(user).Get<ITokensService>();
 
         // Act
-        CreatedToken? created = await tokens.CreateAsync(Create("not-the-password"), CancellationToken);
+        TokenCreationRefused refused =
+            (TokenCreationRefused)(await tokens.CreateAsync(Create("not-the-password"), CancellationToken))!;
 
         // Assert
         using (Assert.Multiple())
         {
-            await Assert.That(created!.Errors).IsEquivalentTo(["Your password isn't right"]);
-            await Assert.That(created.Token).IsNull();
+            await Assert.That(refused.Errors).IsEquivalentTo(["Your password isn't right"]);
             await Assert.That((await tokens.GetTokensAsync(CancellationToken)).Tokens).IsEmpty();
         }
     }
@@ -84,14 +85,15 @@ public class TokensApiTests : IntegrationTestBase
         // Arrange
         SignedInUser user = await RegisterUserAsync();
         ITokensService tokens = ApiFor(user).Get<ITokensService>();
-        CreatedToken? created = await tokens.CreateAsync(Create(SignedInUser.DefaultPassword), CancellationToken);
+        TokenCreated created =
+            (TokenCreated)(await tokens.CreateAsync(Create(SignedInUser.DefaultPassword), CancellationToken))!;
         Guid id = (await tokens.GetTokensAsync(CancellationToken)).Tokens.Single().Id;
 
         // Act
         bool revoked = await tokens.RevokeAsync(id, CancellationToken);
 
         // Assert
-        HttpResponseMessage read = await ReadWithAsync(created!.Token!);
+        HttpResponseMessage read = await ReadWithAsync(created.Token);
         IReadOnlyList<CaughtMail> mail =
             await App.Mail.WaitForAsync(EmailOf(user), AccountEmails.TokenRevokedSubject, CancellationToken);
         using (Assert.Multiple())
@@ -109,8 +111,8 @@ public class TokensApiTests : IntegrationTestBase
         // Arrange
         SignedInUser owner = await RegisterUserAsync();
         SignedInUser other = await RegisterUserAsync();
-        CreatedToken? created = await ApiFor(owner).Get<ITokensService>()
-            .CreateAsync(Create(SignedInUser.DefaultPassword), CancellationToken);
+        TokenCreated created = (TokenCreated)(await ApiFor(owner).Get<ITokensService>()
+            .CreateAsync(Create(SignedInUser.DefaultPassword), CancellationToken))!;
         Guid id = (await ApiFor(owner).Get<ITokensService>().GetTokensAsync(CancellationToken)).Tokens.Single().Id;
 
         // Act
@@ -120,7 +122,7 @@ public class TokensApiTests : IntegrationTestBase
         using (Assert.Multiple())
         {
             await Assert.That(revoked).IsFalse();
-            await Assert.That((await ReadWithAsync(created!.Token!)).StatusCode).IsEqualTo(HttpStatusCode.OK);
+            await Assert.That((await ReadWithAsync(created.Token)).StatusCode).IsEqualTo(HttpStatusCode.OK);
         }
     }
 
@@ -138,7 +140,7 @@ public class TokensApiTests : IntegrationTestBase
         // Act
         ITokensService tokens = ApiFor(user).Get<ITokensService>();
         TokensOverview listed = await tokens.GetTokensAsync(CancellationToken);
-        CreatedToken? created = await tokens.CreateAsync(Create(SignedInUser.DefaultPassword), CancellationToken);
+        TokenCreation? created = await tokens.CreateAsync(Create(SignedInUser.DefaultPassword), CancellationToken);
 
         // Assert
         using (Assert.Multiple())
@@ -153,11 +155,11 @@ public class TokensApiTests : IntegrationTestBase
     {
         // Arrange
         SignedInUser user = await RegisterUserAsync();
-        CreatedToken? created = await ApiFor(user).Get<ITokensService>()
-            .CreateAsync(Create(SignedInUser.DefaultPassword), CancellationToken);
+        TokenCreated created = (TokenCreated)(await ApiFor(user).Get<ITokensService>()
+            .CreateAsync(Create(SignedInUser.DefaultPassword), CancellationToken))!;
 
         // Act
-        HttpResponseMessage response = await ReadWithAsync(created!.Token!, ApiRoutes.Tokens);
+        HttpResponseMessage response = await ReadWithAsync(created.Token, ApiRoutes.Tokens);
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
@@ -169,8 +171,8 @@ public class TokensApiTests : IntegrationTestBase
         // Arrange
         SignedInUser admin = await RegisterAdminAsync();
         SignedInUser user = await RegisterUserAsync();
-        CreatedToken? created = await ApiFor(user).Get<ITokensService>()
-            .CreateAsync(Create(SignedInUser.DefaultPassword), CancellationToken);
+        TokenCreated created = (TokenCreated)(await ApiFor(user).Get<ITokensService>()
+            .CreateAsync(Create(SignedInUser.DefaultPassword), CancellationToken))!;
         int countBefore = (await ApiFor(admin).Get<IUsersService>().GetUsersAsync(CancellationToken)
             .SingleAsync(x => x.Id == user.UserId, CancellationToken)).TokenCount;
 
@@ -184,7 +186,7 @@ public class TokensApiTests : IntegrationTestBase
         {
             await Assert.That(countBefore).IsEqualTo(1);
             await Assert.That(revoked).IsTrue();
-            await Assert.That((await ReadWithAsync(created!.Token!)).StatusCode)
+            await Assert.That((await ReadWithAsync(created.Token)).StatusCode)
                 .IsEqualTo(HttpStatusCode.Unauthorized);
             await Assert.That(mail.Single().Text).Contains("Your FinTrack admin revoked all your API tokens");
         }

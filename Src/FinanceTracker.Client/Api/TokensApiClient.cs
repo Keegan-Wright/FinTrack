@@ -30,7 +30,7 @@ public sealed class TokensApiClient : ITokensService
     }
 
     /// <inheritdoc/>
-    public async Task<CreatedToken?> CreateAsync(CreateToken request, CancellationToken cancellationToken)
+    public async Task<TokenCreation?> CreateAsync(CreateToken request, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await _http.PostAsJsonAsync(ApiRoutes.Tokens, request, cancellationToken);
         if (response.StatusCode == HttpStatusCode.Conflict)
@@ -39,7 +39,7 @@ public sealed class TokensApiClient : ITokensService
         }
 
         response.EnsureSuccessStatusCode();
-        return await response.ReadRequiredJsonAsync<CreatedToken>(cancellationToken);
+        return await response.ReadRequiredJsonAsync<TokenCreation>(cancellationToken);
     }
 
     /// <inheritdoc/>

@@ -144,27 +144,22 @@
     /// <param name="newEmail">The email asked for.</param>
     private async Task ShowAsync(ProfileChange? change, string newEmail)
     {
-        if (change is null)
+        switch (change)
         {
-            // Its email became the identity provider's meanwhile, the page loads again to say so
-            await ProfileChanged.InvokeAsync();
-            return;
-        }
-
-        if (!change.Succeeded)
-        {
-            _error = string.Join(". ", change.Errors);
-            return;
-        }
-
-        if (change.LinkSent)
-        {
-            _sentTo = newEmail;
-        }
-        else
-        {
-            Snackbar.Add("Email changed", Severity.Success);
-            await ProfileChanged.InvokeAsync();
+            case null:
+                // Its email became the identity provider's meanwhile, the page loads again to say so
+                await ProfileChanged.InvokeAsync();
+                return;
+            case ProfileChangeRefused refused:
+                _error = string.Join(". ", refused.Errors);
+                return;
+            case EmailChangeLinkSent:
+                _sentTo = newEmail;
+                break;
+            case ProfileChangeMade:
+                Snackbar.Add("Email changed", Severity.Success);
+                await ProfileChanged.InvokeAsync();
+                break;
         }
 
         _model.NewEmail = string.Empty;

@@ -84,8 +84,9 @@ public class TwoFactorSignInTests : IntegrationTestBase
         // Assert
         using (Assert.Multiple())
         {
-            await Assert.That(wrongPassword!.Errors).IsEquivalentTo(["Your password isn't right"]);
-            await Assert.That(wrongCode!.Succeeded).IsFalse();
+            await Assert.That(((TwoFactorChangeRefused)wrongPassword!).Errors)
+                .IsEquivalentTo(["Your password isn't right"]);
+            await Assert.That(wrongCode).IsTypeOf<TwoFactorChangeRefused>();
             await Assert.That((await profile.GetTwoFactorAsync(CancellationToken))!.Enabled).IsFalse();
         }
     }
@@ -237,7 +238,7 @@ public class TwoFactorSignInTests : IntegrationTestBase
             await client.LoginAsync(user.Username, SignedInUser.DefaultPassword, CancellationToken);
         using (Assert.Multiple())
         {
-            await Assert.That(change!.Succeeded).IsTrue();
+            await Assert.That(change).IsTypeOf<TwoFactorChangeMade>();
             await Assert.That(signIn.Headers.Location?.OriginalString).DoesNotContain("LoginWith2fa");
             await Assert.That(client.IsSignedIn).IsTrue();
         }
@@ -272,7 +273,7 @@ public class TwoFactorSignInTests : IntegrationTestBase
         TwoFactorChange? change = await profile.EnableAuthenticatorAsync(
             new EnableAuthenticator { Code = AuthenticatorApp.Code(key), Password = SignedInUser.DefaultPassword },
             CancellationToken);
-        return change!.RecoveryCodes;
+        return ((RecoveryCodesMade)change!).RecoveryCodes;
     }
 
     /// <summary>
