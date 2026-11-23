@@ -39,7 +39,7 @@ A token works on these parts of the API, to read only:
 Anything else answers **403**. A token that's wrong, expired or revoked, or whose account is locked, answers **401**.
 
 To see every endpoint, open `/openapi/v1.json` in your browser while signed in. The endpoints a token can read list
-the `ApiToken` scheme.
+the `ApiToken` scheme. The document is in the OpenAPI 3.2 spec.
 
 ## Expiry and revoking
 

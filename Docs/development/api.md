@@ -3,8 +3,8 @@
 The browser talks to the server through a JSON API under `/api`. Every endpoint needs a signed in user, acts for that
 user only, and expects an `X-FinTrack-Request` header.
 
-The OpenAPI document is at `/openapi/v1.json` once you're signed in. Its descriptions come from the doc comments in
-`FinanceTracker.Contracts`, so keep those up to date.
+The OpenAPI document is at `/openapi/v1.json` once you're signed in, written as OpenAPI 3.2. Its
+descriptions come from the doc comments in `FinanceTracker.Contracts`, so keep those up to date.
 
 Routes are in `ApiRoutes`, and the endpoints in `Src/FinanceTracker/Api`.
 

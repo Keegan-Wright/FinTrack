@@ -44,13 +44,13 @@
     <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.21.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.21.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.21.0" />
-    <PackageVersion Include="OpenTelemetry.Resources.Container" Version="1.20.1-beta.1" />
-    <PackageVersion Include="OpenTelemetry.Resources.Host" Version="1.20.1-beta.1" />
-    <PackageVersion Include="OpenTelemetry.Resources.OperatingSystem" Version="1.20.1-beta.1" />
-    <PackageVersion Include="OpenTelemetry.Resources.Process" Version="1.20.1-rc.1" />
-    <PackageVersion Include="OpenTelemetry.Resources.ProcessRuntime" Version="1.20.1-beta.1" />
+    <PackageVersion Include="OpenTelemetry.Resources.Container" Version="1.21.0-beta.1" />
+    <PackageVersion Include="OpenTelemetry.Resources.Host" Version="1.21.0-beta.1" />
+    <PackageVersion Include="OpenTelemetry.Resources.OperatingSystem" Version="1.21.0-beta.1" />
+    <PackageVersion Include="OpenTelemetry.Resources.Process" Version="1.21.0-rc.1" />
+    <PackageVersion Include="OpenTelemetry.Resources.ProcessRuntime" Version="1.21.0-beta.1" />
     <PackageVersion Include="NSubstitute" Version="6.2.0" />
-    <PackageVersion Include="Quartz" Version="4.8.0" />
+    <PackageVersion Include="Quartz" Version="4.8.1" />
     <PackageVersion Include="QuestPDF" Version="2026.9.2" />
     <PackageVersion Include="Testcontainers.PostgreSql" Version="4.16.0" />
     <PackageVersion Include="bunit" Version="2.15.2" />
@@ -69,7 +69,7 @@
     <PackageVersion Include="QRCoder" Version="1.9.0" />
     <PackageVersion Include="FluentValidation" Version="12.2.0" />
     <PackageVersion Include="MudBlazor" Version="9.14.0" />
-    <PackageVersion Include="Extensions.MudBlazor.StaticInput" Version="4.1.0" />
+    <PackageVersion Include="Extensions.MudBlazor.StaticInput" Version="4.2.0" />
     <PackageVersion Include="Bogus" Version="35.6.5" />
   </ItemGroup>
 </Project>
