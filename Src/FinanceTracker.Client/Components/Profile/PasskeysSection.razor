@@ -171,17 +171,18 @@
                 return;
             }
 
-            string? credential = null;
-
+            string? credential;
             try
             {
-              credential = await JsRuntime.InvokeAsync<string?>("ftCreatePasskey", _cts.Token,
+                credential = await JsRuntime.InvokeAsync<string?>("ftCreatePasskey", _cts.Token,
                     started!.CreationOptionsJson);
             }
-            catch (Exception )
+            catch (JSException)
             {
+                // Not cancelled, the browser or password manager refused, e.g. it already holds one for this account
+                Snackbar.Add("This device couldn't make a passkey", Severity.Error);
+                return;
             }
-
 
             if (credential is null)
             {

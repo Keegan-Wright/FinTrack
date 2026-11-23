@@ -337,7 +337,10 @@
     {
         string text = $"FinTrack recovery codes. Each one signs you in once.\n\n{string.Join('\n', _recoveryCodes)}\n";
         using MemoryStream content = new(Encoding.UTF8.GetBytes(text));
-        await JsRuntime.SaveFileAsync("fintrack-recovery-codes.txt", "text/plain", content, _cts.Token);
+        if (!await JsRuntime.SaveFileAsync("fintrack-recovery-codes.txt", "text/plain", content, _cts.Token))
+        {
+            Snackbar.Add("Couldn't download them, copy the codes instead", Severity.Warning);
+        }
     }
 
     /// <summary>

@@ -224,42 +224,28 @@
 
         await RunAsync("Turning on notifications", "Couldn't turn on notifications here, try again", async () =>
         {
-            AddPushDevice? subscription = null;
-
+            AddPushDevice? subscription;
             try
             {
-                subscription = await JsRuntime.InvokeAsync<AddPushDevice?>("ftPushSubscribe", _cts.Token, _settings.PublicKey);
+                subscription =
+                    await JsRuntime.InvokeAsync<AddPushDevice?>("ftPushSubscribe", _cts.Token, _settings.PublicKey);
             }
-            catch (Exception)
+            catch (JSException)
             {
-
+                // Allowed, but the browser couldn't register the service worker or subscribe
+                Snackbar.Add("This browser couldn't turn on notifications", Severity.Error);
+                return;
             }
 
             if (subscription is null)
             {
-                try
-                {
-                    _permission = await JsRuntime.InvokeAsync<string>("ftPushPermission", _cts.Token);
-                }
-                catch (Exception)
-                {
-                }
-
+                await RefreshPermissionAsync();
                 Snackbar.Add("Notifications weren't allowed", Severity.Warning);
                 return;
             }
 
             PushDeviceAdded added = await PushService.AddDeviceAsync(subscription, _cts.Token);
-
-            try
-            {
-                await JsRuntime.InvokeVoidAsync("ftRememberPushDevice", _cts.Token, added.DeviceId.ToString());
-            }
-            catch (Exception)
-            {
-
-            }
-
+            await RememberThisDeviceAsync(added.DeviceId);
             _thisDeviceId = added.DeviceId;
             _settings = added.Settings;
             _permission = "granted";
@@ -346,6 +332,37 @@
             _settings = await PushService.ChangeLockScreenAsync(new ChangeLockScreen { ShowAmounts = !hide },
                 _cts.Token);
         });
+    }
+
+    /// <summary>
+    /// Reads whether the browser lets FinTrack show notifications, keeping what was known when it can't tell.
+    /// </summary>
+    private async Task RefreshPermissionAsync()
+    {
+        try
+        {
+            _permission = await JsRuntime.InvokeAsync<string>("ftPushPermission", _cts.Token);
+        }
+        catch (JSException)
+        {
+            // What was known before stays
+        }
+    }
+
+    /// <summary>
+    /// Remembers in the browser which device it is, so the Push tab can mark it as this one.
+    /// </summary>
+    /// <param name="deviceId">The device's id.</param>
+    private async Task RememberThisDeviceAsync(Guid deviceId)
+    {
+        try
+        {
+            await JsRuntime.InvokeVoidAsync("ftRememberPushDevice", _cts.Token, deviceId.ToString());
+        }
+        catch (JSException)
+        {
+            // Not kept, the Push tab just can't tell which device is this one. Pushes still arrive
+        }
     }
 
     /// <summary>

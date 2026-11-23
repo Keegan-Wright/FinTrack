@@ -1,3 +1,4 @@
+using Microsoft.JSInterop;
 using Bunit;
 using FinanceTracker.Client;
 using FinanceTracker.Client.Components.Profile;
@@ -116,6 +117,29 @@ public class PasskeysSectionTests : ComponentTestBase
         await adding.WaitAsync(TestTimeouts.Wait);
 
         // Assert
+        await _passkeyService.DidNotReceive().AddAsync(Arg.Any<AddPasskey>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Add_RefusedByTheBrowser_SaysThisDeviceCouldntMakeOne_AndAddsNothing()
+    {
+        // Arrange, e.g. the password manager already holds one for this account
+        _passkeyService.GetPasskeysAsync(Arg.Any<CancellationToken>()).Returns([]);
+        _passkeyService.StartAddingAsync(Arg.Any<ConfirmPassword>(), Arg.Any<CancellationToken>())
+            .Returns(new PasskeyChange { CreationOptionsJson = Options });
+        JSInterop.Setup<string?>("ftCreatePasskey", Options).SetException(new JSException("InvalidStateError"));
+        IRenderedComponent<MudSnackbarProvider> snackbars = Render<MudSnackbarProvider>();
+        IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
+        IRenderedComponent<PasskeysSection> cut = RenderSection();
+        cut.WaitForState(() => cut.Markup.Contains("Add a passkey", StringComparison.Ordinal));
+
+        // Act
+        Task adding = Button(cut, "Add a passkey").ClickAsync(new());
+        await FillAndConfirmAsync(dialogs, "Placeholder laptop", "my-password");
+        await adding.WaitAsync(TestTimeouts.Wait);
+
+        // Assert
+        snackbars.WaitForState(() => snackbars.Markup.Contains("This device couldn", StringComparison.Ordinal));
         await _passkeyService.DidNotReceive().AddAsync(Arg.Any<AddPasskey>(), Arg.Any<CancellationToken>());
     }
 
