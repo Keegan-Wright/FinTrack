@@ -138,6 +138,10 @@ csharp_style_pattern_local_over_anonymous_function = false:none
 # IDE0031: Use null propagation - keep as silent hint to avoid build errors with TreatWarningsAsErrors
 dotnet_diagnostic.IDE0031.severity = silent
 
+# IDE0410: a labelled break or continue (C# 15) rather than a flag or goto to leave nested loops. A warning, so the build
+# holds new code to it
+dotnet_diagnostic.IDE0410.severity = warning
+
 # Space preferences
 csharp_space_after_cast = false
 csharp_space_after_colon_in_inheritance_clause = true
