@@ -7,7 +7,6 @@
     <PackageVersion Include="Aspire.Hosting.Docker" Version="17.0.0" />
     <PackageVersion Include="Aspire.Hosting.Dotnet" Version="17.0.0" />
     <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="17.0.0" />
-    <PackageVersion Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="13.6.5" />
     <PackageVersion Include="CommunityToolkit.Aspire.Hosting.MailPit" Version="17.0.0" />
     <PackageVersion Include="CsvHelper" Version="34.1.0" />
     <PackageVersion Include="MailKit" Version="5.0.0" />

@@ -19,7 +19,6 @@
 
 
   <ItemGroup>
-    <PackageReference Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL"/>
     <PackageReference Include="Blazilla"/>
     <PackageReference Include="FluentValidation"/>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect"/>
