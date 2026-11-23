@@ -26,7 +26,6 @@
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Authentication" Version="11.0.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="11.0.0" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="11.0.0" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Tools" Version="11.0.0" />
     <PackageVersion Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="8.23.0" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="11.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Identity.Stores" Version="11.0.0" />
@@ -34,7 +33,6 @@
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="11.0.0" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="11.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Http" Version="11.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="11.0.0" />
     <PackageVersion Include="Microsoft.Data.Sqlite" Version="11.0.0" />
     <PackageVersion Include="Npgsql.OpenTelemetry" Version="11.0.0" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="11.0.0" />
@@ -51,17 +49,14 @@
     <PackageVersion Include="NSubstitute" Version="6.2.0" />
     <PackageVersion Include="Quartz" Version="4.8.1" />
     <PackageVersion Include="QuestPDF" Version="2026.9.2" />
-    <PackageVersion Include="Testcontainers.PostgreSql" Version="4.16.0" />
     <PackageVersion Include="bunit" Version="2.15.2" />
     <PackageVersion Include="Deque.AxeCore.Playwright" Version="4.14.0" />
     <PackageVersion Include="Microsoft.Playwright" Version="1.65.1" />
     <PackageVersion Include="TUnit" Version="1.87.12" />
     <PackageVersion Include="TUnit.Core" Version="1.87.12" />
-    <PackageVersion Include="TUnit.AspNetCore" Version="1.87.12" />
     <PackageVersion Include="TUnit.Aspire" Version="1.87.12" />
     <PackageVersion Include="WireMock.Net" Version="2.32.0" />
-    <!-- Not used directly. WireMock.Net, up to 2.30.0, still brings 2.3.0, which has GHSA-6527-9fp8-r4x6. Referencing
-         the patched version from the integration tests overrides it, drop both once WireMock depends on 2.3.14 or later -->
+    <!-- For QueryHelpers in the integration tests, which don't have ASP.NET Core's shared framework -->
     <PackageVersion Include="Microsoft.AspNetCore.WebUtilities" Version="11.0.0" />
     <PackageVersion Include="Blazilla" Version="3.0.1" />
     <PackageVersion Include="Blazor-ApexCharts" Version="8.0.0" />

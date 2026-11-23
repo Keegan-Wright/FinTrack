@@ -18,7 +18,6 @@
 
   <ItemGroup>
     <PackageReference Include="CsvHelper"/>
-    <PackageReference Include="FluentValidation"/>
     <PackageReference Include="MailKit"/>
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore"/>
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore"/>

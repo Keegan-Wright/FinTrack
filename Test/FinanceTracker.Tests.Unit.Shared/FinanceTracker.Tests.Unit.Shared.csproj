@@ -13,7 +13,6 @@
 
   <ItemGroup>
     <PackageReference Include="TUnit"/>
-    <PackageReference Include="TUnit.AspNetCore"/>
     <PackageReference Include="TUnit.Core"/>
 
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite"/>
