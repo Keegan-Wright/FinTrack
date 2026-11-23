@@ -45,7 +45,7 @@ goes and plan what's coming.
 
 | Area | Built with |
 |---|---|
-| App | .NET 10, ASP.NET Core, Blazor WebAssembly, MudBlazor, ApexCharts |
+| App | .NET 11, ASP.NET Core, Blazor WebAssembly, MudBlazor, ApexCharts |
 | Data | PostgreSQL, Entity Framework Core, AES-256-GCM column encryption with HKDF-SHA256 derived keys |
 | Background jobs | Quartz.NET |
 | Open banking | TrueLayer |
