@@ -21,8 +21,8 @@ internal sealed class PayScheduleConfiguration : AggregateRootConfiguration<PayS
         builder.Property(x => x.Amount).Encrypted();
         builder.Property(x => x.Rule).Encrypted();
         builder.Property(x => x.Day).Encrypted();
-        builder.Property(x => x.PayDays).Encrypted();
-        builder.PrimitiveCollection(x => x.PayDays).HasField("_payDays");
+
+        builder.Property(x => x.PayDays).HasField("_payDays").Encrypted();
         builder.Ignore(x => x.Pattern);
 
         // One per user

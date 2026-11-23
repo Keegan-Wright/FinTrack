@@ -30,8 +30,7 @@ internal sealed class HouseholdMemberConfiguration : AggregateRootConfiguration<
             .OnDelete(DeleteBehavior.SetNull);
         builder.HasIndex(x => new { x.UserId, x.LinkedUserId }).IsUnique().HasFilter("\"LinkedUserId\" IS NOT NULL");
 
-        builder.Property(x => x.PayeeNames).Encrypted();
-        builder.PrimitiveCollection(x => x.PayeeNames).HasField("_payeeNames");
+        builder.Property(x => x.PayeeNames).HasField("_payeeNames").Encrypted();
 
         // Its own table, which the key rotator re-encrypts along with the member as owned rows load with their owner
         builder.OwnsMany(x => x.LinkedAccounts, account =>

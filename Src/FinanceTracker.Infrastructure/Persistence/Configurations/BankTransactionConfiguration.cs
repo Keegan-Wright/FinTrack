@@ -27,7 +27,8 @@ internal sealed class BankTransactionConfiguration : AggregateRootConfiguration<
         builder.Property(x => x.Amount).Encrypted();
         builder.Property(x => x.Currency).Encrypted();
         builder.Property(x => x.OccurredAt).Encrypted();
-        builder.Property(x => x.ProviderClassifications).Encrypted();
+
+        builder.Property(x => x.ProviderClassifications).HasField("_providerClassifications").Encrypted();
 
         // Required so a transaction whose bank sent none of the fields still loads with empty metadata, not null
         builder.OwnsOne(x => x.Metadata, metadata =>
@@ -83,7 +84,6 @@ internal sealed class BankTransactionConfiguration : AggregateRootConfiguration<
         string occurredDayBlindIndex = builder.HasDayBlindIndex(x => x.OccurredAt);
         builder.HasIndex(nameof(BankTransaction.UserId), occurredDayBlindIndex);
 
-        builder.PrimitiveCollection(x => x.ProviderClassifications).HasField("_providerClassifications");
         builder.PrimitiveCollection(x => x.CustomClassificationIds).HasField("_customClassificationIds");
 
         // Only ids, which rule added which tag, read with the transaction and never queried on their own
