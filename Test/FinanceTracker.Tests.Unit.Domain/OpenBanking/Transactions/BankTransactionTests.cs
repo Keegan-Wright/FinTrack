@@ -67,6 +67,33 @@ public class BankTransactionTests
     }
 
     [Test]
+    public async Task BankTransaction_UpdateFromSync_TheSameDetails_ReportsNoChange()
+    {
+        var transaction = BankTransaction.Import(BuildAccount(), Details("tx-1"));
+
+        bool changed = transaction.UpdateFromSync(Details("tx-1"));
+
+        await Assert.That(changed).IsFalse();
+    }
+
+    [Test]
+    public async Task BankTransaction_UpdateFromSync_AnythingDifferent_ReportsAChange()
+    {
+        var transaction = BankTransaction.Import(BuildAccount(), Details("tx-1") with { IsPending = true });
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(transaction.UpdateFromSync(Details("tx-1"))).IsTrue();
+            await Assert.That(transaction.UpdateFromSync(Details("tx-1") with { Description = "Renamed" })).IsTrue();
+            await Assert.That(transaction.UpdateFromSync(Details("tx-1") with { ProviderClassifications = ["Drink"] }))
+                .IsTrue();
+            await Assert.That(transaction.UpdateFromSync(
+                    Details("tx-1") with { Metadata = TransactionMetadata.None with { MerchantName = "Cafe" } }))
+                .IsTrue();
+        }
+    }
+
+    [Test]
     public async Task BankTransaction_UpdateFromSync_ReplacesDetails()
     {
         var transaction = BankTransaction.Import(BuildAccount(), Details("tx-1") with

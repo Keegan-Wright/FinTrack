@@ -550,6 +550,46 @@ public class OpenBankingSyncServiceTests : OpenBankingTestBase
     }
 
     [Test]
+    public async Task SyncConnectionAsync_TheSameTransactionsAgain_CountsNoneUpdated()
+    {
+        // Arrange, a first sync brings them in, and the next fetches the same ones again as its window overlaps
+        await SeedConnectionAsync();
+        GivenProviderReturns(accounts: [new ExternalOpenBankingAccountFaker().Generate()],
+            transactions: new ExternalOpenBankingAccountTransactionFaker().Generate(2).ToArray());
+        await BuildSubject().SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+        using TestMetrics metrics = new();
+        using MetricCollector<long> synced = metrics.Collect<long>(FinTrackMetrics.TransactionsSyncedName);
+
+        // Act
+        await BuildSubject(metrics: metrics.Metrics)
+            .SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        await Assert.That(SyncedCount(synced, "updated")).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task SyncConnectionAsync_APendingTransactionSettles_CountsItUpdated()
+    {
+        // Arrange, pending on the first sync, booked on the next
+        await SeedConnectionAsync();
+        ExternalOpenBankingAccount account = new ExternalOpenBankingAccountFaker().Generate();
+        ExternalOpenBankingAccountTransaction transaction = new ExternalOpenBankingAccountTransactionFaker().Generate();
+        GivenProviderReturns(accounts: [account], pendingTransactions: [transaction]);
+        await BuildSubject().SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+        GivenProviderReturns(accounts: [account], transactions: [transaction]);
+        using TestMetrics metrics = new();
+        using MetricCollector<long> synced = metrics.Collect<long>(FinTrackMetrics.TransactionsSyncedName);
+
+        // Act
+        await BuildSubject(metrics: metrics.Metrics)
+            .SyncConnectionAsync(Scenario.ConnectionMappings["bank"], SyncTypes.All, CancellationToken);
+
+        // Assert
+        await Assert.That(SyncedCount(synced, "updated")).IsEqualTo(1);
+    }
+
+    [Test]
     public async Task SyncConnectionAsync_FetchFails_MarksItsSpanFailedAndCountsIt()
     {
         // Arrange
@@ -1158,6 +1198,14 @@ public class OpenBankingSyncServiceTests : OpenBankingTestBase
 
     /// <param name="fetcherLogger">For what the bank's fetches log, such as one failing.</param>
     /// <param name="writerLogger">For what storing the fetched data logs, such as stale pending removed.</param>
+    /// <summary>
+    /// The transactions the sync counted as <paramref name="change"/>, <c>added</c> or <c>updated</c>.
+    /// </summary>
+    private static long SyncedCount(MetricCollector<long> synced, string change) =>
+        synced.GetMeasurementSnapshot()
+            .Where(x => Equals(x.Tags[TelemetryTags.Change], change))
+            .Sum(static x => x.Value);
+
     private OpenBankingSyncService BuildSubject(ILogger<OpenBankingSyncService>? logger = null,
         FinTrackMetrics? metrics = null, ILogger<AccountSnapshotFetcher>? fetcherLogger = null,
         ILogger<AccountSnapshotWriter>? writerLogger = null)

@@ -230,9 +230,11 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
     /// Takes in what a later sync reports for it. A split whose amount changes is undone, its tags stay on the whole.
     /// </summary>
     /// <param name="details">What the provider reports for it now.</param>
+    /// <returns>Whether anything differed from what it held, so a sync counts real updates rather than every
+    /// transaction the provider sent again.</returns>
     /// <exception cref="InvalidOperationException">The details are for another transaction.</exception>
     [MemberNotNull(nameof(Description), nameof(Category), nameof(Currency), nameof(Metadata))]
-    public void UpdateFromSync(TransactionDetails details)
+    public bool UpdateFromSync(TransactionDetails details)
     {
         ArgumentNullException.ThrowIfNull(details);
         if (ExternalId is not null && ExternalId != details.ExternalId)
@@ -240,6 +242,8 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
             throw new InvalidOperationException(
                 $"Cannot update transaction {Id} with details for a different transaction.");
         }
+
+        bool changed = !Holds(details);
 
         // Parts that no longer add up would put the wrong amounts under their tags, the tags stay on the whole
         if (IsSplit && Amount != details.Amount)
@@ -259,7 +263,24 @@ public sealed class BankTransaction : AggregateRoot, IBelongsToAccount
 
         _providerClassifications.Clear();
         _providerClassifications.AddRange(details.ProviderClassifications.Distinct());
+        return changed;
     }
+
+    /// <summary>
+    /// Whether it already holds everything <paramref name="details"/> reports.
+    /// </summary>
+    /// <param name="details">What the provider reports for it.</param>
+    private bool Holds(TransactionDetails details) =>
+        Description == details.Description
+        && Type == details.Type
+        && Category == details.Category
+        && Amount == details.Amount
+        && Currency == details.Currency
+        && OccurredAt == details.OccurredAt
+        && IsPending == details.IsPending
+        && Metadata == details.Metadata
+        && LabelledAsTransfer == details.LabelledAsTransfer
+        && _providerClassifications.SequenceEqual(details.ProviderClassifications.Distinct());
 
     /// <summary>
     /// Records <paramref name="transfer"/> unless a source with higher precedence has already decided.

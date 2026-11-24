@@ -5,6 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AnalysisMode>Recommended</AnalysisMode>
+    <FinTrackRunsInBrowser>true</FinTrackRunsInBrowser>
   </PropertyGroup>
 
   <ItemGroup>

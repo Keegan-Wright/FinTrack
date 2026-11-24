@@ -8,6 +8,8 @@
     <!-- Served by the server project, which owns the launch settings and static web assets -->
     <NoDefaultLaunchSettingsFile>true</NoDefaultLaunchSettingsFile>
     <StaticWebAssetProjectMode>Default</StaticWebAssetProjectMode>
+    <!-- Loaded in the browser, whose Mono runtime has no runtime async, see Directory.Build.targets -->
+    <FinTrackRunsInBrowser>true</FinTrackRunsInBrowser>
 
     <!-- The [InjectionCategory] destination the source generators register in Program -->
     <FinTrackServiceDestination>Client</FinTrackServiceDestination>
