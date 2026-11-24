@@ -1,7 +1,7 @@
-# Keeps the workflows' actions current. They're pinned to commits, see the workflows, and Dependabot moves the pin
-# and its version comment together in a pull request
+# Keeps the workflows' actions, the NuGet packages and the .NET SDK current, each with weekly pull requests
 version: 2
 updates:
+  # The actions are pinned to commits, see the workflows, and Dependabot moves the pin and its version comment together
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
@@ -10,3 +10,19 @@ updates:
       actions:
         patterns:
           - "*"
+
+
+  - package-ecosystem: "nuget"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      packages:
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "dotnet-sdk"
+    directory: "/"
+    schedule:
+      interval: "weekly"
