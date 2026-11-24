@@ -1,6 +1,6 @@
 services:
   fintrack-postgres:
-    image: "docker.io/library/postgres:17.6"
+    image: "docker.io/library/postgres:18.7"
     command: [ "postgres", "-c", "shared_preload_libraries=pg_stat_statements" ]
     environment:
       POSTGRES_HOST_AUTH_METHOD: "scram-sha-256"
@@ -17,7 +17,7 @@ services:
       retries: 10
     volumes:
       - type: "volume"
-        target: "/var/lib/postgresql/data"
+        target: "/var/lib/postgresql"
         source: "FinTrack-Postgres-data"
         read_only: false
     networks:

@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -44,9 +45,17 @@ internal sealed class RowIntegrityInterceptor : SaveChangesInterceptor
                 continue;
             }
 
-            byte[] content = RowIntegrity.Content(entry.Metadata, property => entry.Property(property).CurrentValue);
-            entry.Property(RowIntegrity.TagProperty).CurrentValue =
-                financeTrackerContext.EncryptionService.ComputeRowTag(content);
+            byte[] content = RowIntegrity.Content(entry.Metadata, property => entry.Property(property).CurrentValue,
+                entry.Entity);
+            try
+            {
+                entry.Property(RowIntegrity.TagProperty).CurrentValue =
+                    RowIntegrity.Tag(financeTrackerContext.EncryptionService, content);
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(content);
+            }
         }
     }
 }

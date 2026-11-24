@@ -29,7 +29,7 @@ internal sealed class BankAccountConfiguration : AggregateRootConfiguration<Bank
 
         builder.HasIndex(x => new { x.ConnectionId, x.ExternalId }).IsUnique();
 
-        builder.OwnsOne(x => x.Balance, balance =>
+        builder.ComplexProperty(x => x.Balance, balance =>
         {
             balance.Property(x => x.Available).HasColumnName("Balance_Available").Encrypted();
             balance.Property(x => x.Current).HasColumnName("Balance_Current").Encrypted();
@@ -37,7 +37,7 @@ internal sealed class BankAccountConfiguration : AggregateRootConfiguration<Bank
             balance.Property(x => x.CreditLimit).HasColumnName("Balance_CreditLimit").Encrypted();
         });
 
-        builder.OwnsOne(x => x.Card, card =>
+        builder.ComplexProperty(x => x.Card, card =>
         {
             card.Property(x => x.Network).HasColumnName("Card_Network").Encrypted();
             card.Property(x => x.CardType).HasColumnName("Card_CardType").Encrypted();
@@ -46,16 +46,12 @@ internal sealed class BankAccountConfiguration : AggregateRootConfiguration<Bank
             card.Property(x => x.ValidTo).HasColumnName("Card_ValidTo").Encrypted();
         });
 
-        builder.Navigation(x => x.Card).IsRequired();
-
-        builder.OwnsOne(x => x.Identifier, identifier =>
+        builder.ComplexProperty(x => x.Identifier, identifier =>
         {
             identifier.Property(x => x.SortCode).HasColumnName("Identifier_SortCode").Encrypted();
             identifier.Property(x => x.Number).HasColumnName("Identifier_Number").Encrypted();
             identifier.Property(x => x.Iban).HasColumnName("Identifier_Iban").Encrypted();
         });
-
-        builder.Navigation(x => x.Identifier).IsRequired();
 
         builder.HasMany(x => x.StandingOrders)
             .WithOne()

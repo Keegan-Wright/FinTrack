@@ -93,9 +93,14 @@ public class ColumnEncryptionService : IColumnEncryptionService
         Span<byte> tag = payload.AsSpan(NonceSize + plainBytes.Length, TagSize);
 
         RandomNumberGenerator.Fill(nonce);
-        using (AesGcm aes = new(_encryptionKeys[CurrentKeyId], TagSize))
+        try
         {
+            using AesGcm aes = new(_encryptionKeys[CurrentKeyId], TagSize);
             aes.Encrypt(nonce, plainBytes, cipherBytes, tag);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(plainBytes);
         }
 
         return string.Create(CultureInfo.InvariantCulture,
@@ -142,23 +147,35 @@ public class ColumnEncryptionService : IColumnEncryptionService
 
         int cipherLength = payload.Length - NonceSize - TagSize;
         byte[] plainBytes = new byte[cipherLength];
-        using (AesGcm aes = new(key, TagSize))
+        try
         {
+            using AesGcm aes = new(key, TagSize);
             aes.Decrypt(
                 payload.AsSpan(0, NonceSize),
                 payload.AsSpan(NonceSize, cipherLength),
                 payload.AsSpan(NonceSize + cipherLength, TagSize),
                 plainBytes);
+            return FromPlainText<T>(Encoding.UTF8.GetString(plainBytes));
         }
-
-        return FromPlainText<T>(Encoding.UTF8.GetString(plainBytes));
+        finally
+        {
+            CryptographicOperations.ZeroMemory(plainBytes);
+        }
     }
 
     /// <inheritdoc/>
     public string ComputeBlindIndex(string value)
     {
         ArgumentNullException.ThrowIfNull(value);
-        return Convert.ToBase64String(HMACSHA256.HashData(_blindIndexKey, Encoding.UTF8.GetBytes(value)));
+        byte[] valueBytes = Encoding.UTF8.GetBytes(value);
+        try
+        {
+            return Convert.ToBase64String(HMACSHA256.HashData(_blindIndexKey, valueBytes));
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(valueBytes);
+        }
     }
 
     /// <inheritdoc/>

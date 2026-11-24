@@ -84,6 +84,7 @@ public class AccountService : ServiceBase<AccountService>, IAccountService
                 Logo = connections[account.ConnectionId].Logo,
                 Transactions = transactions[account.Id]
                     .OrderByDescending(static x => x.OccurredAt)
+                    .ThenByDescending(static x => x.Id)
                     .Take(transactionsToReturn)
                     .Select(transaction => new AccountTransaction
                     {

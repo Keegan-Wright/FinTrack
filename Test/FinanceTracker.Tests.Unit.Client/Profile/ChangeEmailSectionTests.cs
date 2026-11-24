@@ -69,7 +69,7 @@ public class ChangeEmailSectionTests : ComponentTestBase
     {
         // Arrange
         _profileService.ChangeEmailAsync(Arg.Any<ChangeEmail>(), Arg.Any<CancellationToken>())
-            .Returns(new ProfileChange { LinkSent = true });
+            .Returns(new EmailChangeLinkSent());
         IRenderedComponent<ChangeEmailSection> cut = RenderSection(Create());
 
         // Act
@@ -94,7 +94,7 @@ public class ChangeEmailSectionTests : ComponentTestBase
     {
         // Arrange
         _profileService.ChangeEmailAsync(Arg.Any<ChangeEmail>(), Arg.Any<CancellationToken>())
-            .Returns(new ProfileChange());
+            .Returns(new ProfileChangeMade());
         IRenderedComponent<MudSnackbarProvider> snackbars = Render<MudSnackbarProvider>();
         IRenderedComponent<ChangeEmailSection> cut = RenderSection(Create(mailAvailable: false));
 
@@ -112,7 +112,7 @@ public class ChangeEmailSectionTests : ComponentTestBase
     {
         // Arrange
         _profileService.ChangeEmailAsync(Arg.Any<ChangeEmail>(), Arg.Any<CancellationToken>())
-            .Returns(new ProfileChange { Errors = ["Another account uses that email"] });
+            .Returns(new ProfileChangeRefused(["Another account uses that email"]));
         IRenderedComponent<ChangeEmailSection> cut = RenderSection(Create());
 
         // Act

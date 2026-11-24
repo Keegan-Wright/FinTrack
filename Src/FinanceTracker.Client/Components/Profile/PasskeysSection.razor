@@ -166,13 +166,24 @@
         {
             PasskeyChange? started = await PasskeyService.StartAddingAsync(
                 new ConfirmPassword { Password = details.Password }, _cts.Token);
-            if (ShowRefusal(started))
+            if (ShowRefusal(started) || started is not PasskeyAddingStarted adding)
             {
                 return;
             }
 
-            string? credential = await JsRuntime.InvokeAsync<string?>("ftCreatePasskey", _cts.Token,
-                started!.CreationOptionsJson);
+            string? credential;
+            try
+            {
+                credential = await JsRuntime.InvokeAsync<string?>("ftCreatePasskey", _cts.Token,
+                    adding.CreationOptionsJson);
+            }
+            catch (JSException)
+            {
+                // Not cancelled, the browser or password manager refused, e.g. it already holds one for this account
+                Snackbar.Add("This device couldn't make a passkey", Severity.Error);
+                return;
+            }
+
             if (credential is null)
             {
                 Snackbar.Add("No passkey was made", Severity.Info);
@@ -264,9 +275,9 @@
             return true;
         }
 
-        if (!change.Succeeded)
+        if (change is PasskeyChangeRefused refused)
         {
-            Snackbar.Add(change.Errors[0], Severity.Error);
+            Snackbar.Add(refused.Errors[0], Severity.Error);
             return true;
         }
 

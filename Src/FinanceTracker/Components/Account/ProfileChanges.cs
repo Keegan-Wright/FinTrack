@@ -12,10 +12,10 @@ internal static class ProfileChanges
     {
         if (result.Succeeded)
         {
-            return new ProfileChange();
+            return new ProfileChangeMade();
         }
 
-        return new ProfileChange { Errors = result.Errors.Select(Describe).ToList() };
+        return new ProfileChangeRefused(result.Errors.Select(Describe).ToList());
     }
 
     /// <summary>

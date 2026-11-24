@@ -166,6 +166,31 @@ public class TransfersServiceTests : InfrastructureTestBase
     /// <c>{prefix}-out</c> from a current account and <c>{prefix}-in</c> into savings, the same amount on the same day
     /// with no transfer label, which FinTrack suggests for review.
     /// </summary>
+    [Test]
+    public async Task GetTransfersToReviewAsync_AtTheSameTime_OrderedByIdNewestFirst()
+    {
+        // Arrange, a mirror pair at the same moment. Postgres returns rows in no set order, so the tie mustn't
+        // shuffle between loads
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("bank", Username))
+            .Do(s => s.BankAccountScenario.WithAccount("current", "bank", Account("Current")))
+            .Do(s => s.BankAccountScenario.WithAccount("savings", "bank", Account("Savings")))
+            .Do(s => s.TransactionScenario.WithTransaction("out", "current", Details(-20m, "To savings")))
+            .Do(s => s.TransactionScenario.WithTransaction("in", "savings", Details(20m, "Into savings")));
+        await MatchAsync(Username);
+        List<Guid> expected = Scenario.TransactionMappings.Values.OrderDescending().ToList();
+
+        TransfersService subject = BuildSubject(Username);
+
+        // Act
+        List<Transaction> toReview = await subject.GetTransfersToReviewAsync(CancellationToken)
+            .ToListAsync(CancellationToken);
+
+        // Assert
+        await Assert.That(toReview.Select(x => x.TransactionId)).IsEquivalentTo(expected,
+            TUnit.Assertions.Enums.CollectionOrdering.Matching);
+    }
+
     private Task<TestingScenario> SeedUnlabelledPairAsync(string username, string prefix) =>
         Scenario.Do(s => s.UserScenario.WithUser(username))
             .Do(s => s.BankConnectionScenario.WithConnection(prefix, username))

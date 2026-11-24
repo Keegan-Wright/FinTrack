@@ -5,5 +5,6 @@
 - [Testing](testing.md)
 - [Migrations](migrations.md)
 - [The API](api.md)
+- [Runtime async](runtime-async.md)
 
 See also the [contributing guide](../../CONTRIBUTING.md).

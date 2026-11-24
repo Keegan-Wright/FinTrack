@@ -60,7 +60,7 @@ public sealed class SmtpMailSender : IMailSender
     private async Task SendThroughAsync(string host, MailMessage message, CancellationToken cancellationToken)
     {
         using MimeMessage mime = ToMime(message);
-        using SmtpClient client = new() { Timeout = (int)Timeout.TotalMilliseconds };
+        await using SmtpClient client = new() { Timeout = (int)Timeout.TotalMilliseconds };
 
         await client.ConnectAsync(host, _settings.Port, SocketOptions(_settings.Security), cancellationToken);
         if (!string.IsNullOrEmpty(_settings.Username))
@@ -68,7 +68,8 @@ public sealed class SmtpMailSender : IMailSender
             await client.AuthenticateAsync(_settings.Username, _settings.Password ?? "", cancellationToken);
         }
 
-        await client.SendAsync(mime, cancellationToken);
+        await client.SendAsync(new SmtpSendRequest(mime), cancellationToken);
+
         await client.DisconnectAsync(true, cancellationToken);
     }
 

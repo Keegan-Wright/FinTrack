@@ -14,11 +14,12 @@ internal sealed class UserPasskeyConfiguration : IEntityTypeConfiguration<Identi
 {
     /// <inheritdoc/>
     public void Configure(EntityTypeBuilder<IdentityUserPasskey<Guid>> builder) =>
-        builder.OwnsOne(x => x.Data, data =>
+        builder.ComplexProperty(x => x.Data, data =>
         {
             data.Property(x => x.Name).Encrypted();
             data.Property(x => x.PublicKey).Encrypted();
             data.Property(x => x.AttestationObject).Encrypted();
             data.Property(x => x.ClientDataJson).Encrypted();
+            data.Property(x => x.Aaguid).Encrypted();
         });
 }

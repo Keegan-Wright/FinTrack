@@ -206,14 +206,20 @@
         await RunAsync("Turning on two-factor sign in", "Couldn't turn on two-factor sign in, try again", async () =>
         {
             TwoFactorChange? change = await ProfileService.EnableAuthenticatorAsync(_enable, _cts.Token);
-            if (change is not { Succeeded: true })
+            if (change is null)
             {
-                _errors = change?.Errors ?? ["Your account has no password here"];
+                _errors = ["Your account has no password here"];
+                return;
+            }
+
+            if (change is TwoFactorChangeRefused refused)
+            {
+                _errors = refused.Errors;
                 return;
             }
 
             _setup = null;
-            _recoveryCodes = change.RecoveryCodes;
+            _recoveryCodes = CodesIn(change);
             await ReloadAsync();
             Snackbar.Add("Two-factor sign in is on", Severity.Success);
         });
@@ -248,7 +254,7 @@
                 return;
             }
 
-            _recoveryCodes = change!.RecoveryCodes;
+            _recoveryCodes = CodesIn(change!);
             await ReloadAsync();
         });
     }
@@ -337,7 +343,10 @@
     {
         string text = $"FinTrack recovery codes. Each one signs you in once.\n\n{string.Join('\n', _recoveryCodes)}\n";
         using MemoryStream content = new(Encoding.UTF8.GetBytes(text));
-        await JsRuntime.SaveFileAsync("fintrack-recovery-codes.txt", "text/plain", content, _cts.Token);
+        if (!await JsRuntime.SaveFileAsync("fintrack-recovery-codes.txt", "text/plain", content, _cts.Token))
+        {
+            Snackbar.Add("Couldn't download them, copy the codes instead", Severity.Warning);
+        }
     }
 
     /// <summary>
@@ -383,13 +392,27 @@
             return true;
         }
 
-        if (!change.Succeeded)
+        if (change is TwoFactorChangeRefused refused)
         {
-            Snackbar.Add(change.Errors[0], Severity.Error);
+            Snackbar.Add(refused.Errors[0], Severity.Error);
             return true;
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// The recovery codes a change made, to show the user once, none when it made none.
+    /// </summary>
+    /// <param name="change">What the server did.</param>
+    private static IReadOnlyList<string> CodesIn(TwoFactorChange change)
+    {
+        if (change is RecoveryCodesMade made)
+        {
+            return made.RecoveryCodes;
+        }
+
+        return [];
     }
 
     /// <summary>

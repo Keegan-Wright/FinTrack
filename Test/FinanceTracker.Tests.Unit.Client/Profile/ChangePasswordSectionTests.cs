@@ -36,7 +36,7 @@ public class ChangePasswordSectionTests : ComponentTestBase
     {
         // Arrange
         _profileService.ChangePasswordAsync(Arg.Any<ChangePassword>(), Arg.Any<CancellationToken>())
-            .Returns(new ProfileChange());
+            .Returns(new ProfileChangeMade());
         IRenderedComponent<MudSnackbarProvider> snackbars = Render<MudSnackbarProvider>();
         IRenderedComponent<ChangePasswordSection> cut = Render<ChangePasswordSection>();
 
@@ -61,7 +61,7 @@ public class ChangePasswordSectionTests : ComponentTestBase
     {
         // Arrange
         _profileService.ChangePasswordAsync(Arg.Any<ChangePassword>(), Arg.Any<CancellationToken>())
-            .Returns(new ProfileChange { Errors = ["Your current password isn't right"] });
+            .Returns(new ProfileChangeRefused(["Your current password isn't right"]));
         IRenderedComponent<ChangePasswordSection> cut = Render<ChangePasswordSection>();
 
         // Act

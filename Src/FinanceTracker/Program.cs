@@ -71,7 +71,6 @@ public partial class Program
         if (app.Environment.IsDevelopment())
         {
             app.UseMigrationsEndPoint();
-            app.UseWebAssemblyDebugging();
         }
         else
         {

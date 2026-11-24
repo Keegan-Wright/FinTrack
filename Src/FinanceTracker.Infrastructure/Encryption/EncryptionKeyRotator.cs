@@ -42,7 +42,7 @@ public sealed class EncryptionKeyRotator
         string currentKeyPrefix = $"{context.EncryptionService.CurrentKeyId}:";
 
         int total = 0;
-        foreach (IEntityType entityType in context.Model.GetEntityTypes().Where(static x => !x.IsOwned()))
+        foreach (IEntityType entityType in context.Model.GetEntityTypes())
         {
             Dictionary<string, List<string>> staleWhere = StaleConditions(entityType);
             if (staleWhere.Count == 0 ||
@@ -63,124 +63,100 @@ public sealed class EncryptionKeyRotator
     }
 
     /// <summary>
-    /// What makes a row of <paramref name="entityType"/> stale, as SQL conditions by the table they're on. Its table
-    /// and the tables of types it owns. In each, <c>{0}</c> is a value under the current key, and <c>{1}</c> and
-    /// <c>{2}</c> a tag under it inside JSON.
+    /// What makes a row of <paramref name="entityType"/> stale, as SQL conditions on its table. Encrypted values under
+    /// an older key, in its columns or its complex types, and a tag that's missing, from an older format or under an
+    /// older key. <c>{0}</c> matches a value under the current key, <c>{1}</c> a tag under it at the current format,
+    /// and <c>{2}</c> is what a value under the current key starts with.
     /// </summary>
     /// <param name="entityType">The entity.</param>
     private static Dictionary<string, List<string>> StaleConditions(IEntityType entityType)
     {
-        Dictionary<string, List<string>> byTable = [];
-        AddStaleConditions(byTable, entityType, isRoot: true);
-        foreach (IEntityType owned in OwnedTypes(entityType))
-        {
-            AddStaleConditions(byTable, owned, isRoot: false);
-        }
-
-        return byTable.Where(static x => x.Value.Count > 0).ToDictionary();
-    }
-
-    /// <summary>
-    /// The types <paramref name="entityType"/> owns, and the types they own in turn.
-    /// </summary>
-    /// <param name="entityType">The entity.</param>
-    private static IEnumerable<IEntityType> OwnedTypes(IEntityType entityType)
-    {
-        foreach (INavigation navigation in entityType.GetNavigations().Where(static x => x.TargetEntityType.IsOwned()))
-        {
-            yield return navigation.TargetEntityType;
-            foreach (IEntityType nested in OwnedTypes(navigation.TargetEntityType))
-            {
-                yield return nested;
-            }
-        }
-    }
-
-    /// <summary>
-    /// Adds what makes <paramref name="entityType"/>'s part of a row stale. Encrypted values under an older key, and
-    /// a tag that's missing or under an older key. An owned type stored in its owner's row only counts as missing its
-    /// tag when it's there at all, and one stored as JSON when its JSON holds no tag under the current key.
-    /// </summary>
-    /// <param name="byTable">The conditions so far, by table.</param>
-    /// <param name="entityType">The entity or owned type.</param>
-    /// <param name="isRoot">Whether it's the entity rather than a type it owns.</param>
-    private static void AddStaleConditions(Dictionary<string, List<string>> byTable, IEntityType entityType,
-        bool isRoot)
-    {
-        if (entityType.IsMappedToJson())
-        {
-            AddJsonStaleCondition(byTable, entityType);
-            return;
-        }
-
         StoreObjectIdentifier table = StoreObjectIdentifier.Table(entityType.GetTableName()!, entityType.GetSchema());
-        List<string> conditions = ConditionsFor(byTable, entityType);
-        foreach (IProperty property in entityType.GetDeclaredProperties()
-                     .Where(static x => x.FindAnnotation(Annotations.EncryptedPropertyAnnotation) is not null))
+        List<string> conditions = [];
+        foreach (IProperty property in entityType.GetDeclaredProperties().Where(RowIntegrity.IsEncrypted))
         {
             string column = Column(property, table);
             conditions.Add($"({column} <> '' AND {column} NOT LIKE {{0}})");
         }
 
-        if (!RowIntegrity.IsTagged(entityType))
+        AddComplexStaleConditions(conditions, entityType, table);
+
+        if (RowIntegrity.IsTagged(entityType))
         {
-            return;
+            string tag = Column(entityType.FindProperty(RowIntegrity.TagProperty)!, table);
+            conditions.Add($"({tag} IS NULL OR {tag} NOT LIKE {{1}})");
         }
 
-        string tag = Column(entityType.FindProperty(RowIntegrity.TagProperty)!, table);
-        bool sharesOwnersRow = !isRoot &&
-                               entityType.FindOwnership()!.PrincipalEntityType.GetTableName() == entityType.GetTableName();
-        if (!sharesOwnersRow)
+        if (conditions.Count == 0)
         {
-            conditions.Add($"({tag} IS NULL OR {tag} NOT LIKE {{0}})");
-            return;
+            return [];
         }
 
-        string present = string.Join(" OR ", RowIntegrity.Covered(entityType)
-            .Where(static x => !x.IsPrimaryKey())
-            .Select(x => x.FindAnnotation(Annotations.EncryptedPropertyAnnotation) is not null
-                ? $"{Column(x, table)} <> ''"
-                : $"{Column(x, table)} IS NOT NULL"));
-        conditions.Add($"({tag} NOT LIKE {{0}} OR ({tag} IS NULL AND ({present})))");
+        return new Dictionary<string, List<string>> { [QuotedTable(entityType)] = conditions };
     }
 
     /// <summary>
-    /// Adds what makes a JSON column of owned values stale. It holds some, but no tag under the current key.
+    /// Adds what makes the values in <paramref name="type"/>'s complex types stale. One stored in its owner's columns
+    /// is checked column by column. One stored as JSON is stale when it holds more encrypted values than it holds
+    /// under the current key, counted property by property, as EF can update part of a JSON value.
     /// </summary>
-    /// <param name="byTable">The conditions so far, by table.</param>
-    /// <param name="entityType">The owned type stored as JSON.</param>
-    private static void AddJsonStaleCondition(Dictionary<string, List<string>> byTable, IEntityType entityType)
+    /// <param name="conditions">The conditions on the table.</param>
+    /// <param name="type">The entity or complex type.</param>
+    /// <param name="table">The table.</param>
+    private static void AddComplexStaleConditions(List<string> conditions, ITypeBase type, StoreObjectIdentifier table)
     {
-        if (!RowIntegrity.IsTagged(entityType) || entityType.FindOwnership()!.PrincipalEntityType.IsMappedToJson())
+        foreach (IComplexProperty complexProperty in RowIntegrity.CoveredComplex(type))
         {
-            return;
-        }
+            IComplexType complexType = complexProperty.ComplexType;
+            if (!complexType.IsMappedToJson())
+            {
+                foreach (IProperty property in complexType.GetProperties().Where(RowIntegrity.IsEncrypted))
+                {
+                    string column = Column(property, table);
+                    conditions.Add($"({column} <> '' AND {column} NOT LIKE {{0}})");
+                }
 
-        // Postgres writes jsonb back with a space after each colon, SQLite as it was given
-        string json = $"CAST(\"{entityType.GetContainerColumnName()}\" AS TEXT)";
-        ConditionsFor(byTable, entityType).Add(
-            $"({json} NOT IN ('', '[]', 'null') AND {json} NOT LIKE {{1}} AND {json} NOT LIKE {{2}})");
+                AddComplexStaleConditions(conditions, complexType, table);
+                continue;
+            }
+
+            string json = $"CAST(\"{complexType.GetContainerColumnName()}\" AS TEXT)";
+            foreach (string name in EncryptedJsonNames(complexType))
+            {
+                conditions.Add($"({Occurrences(json, $"'\"{name}\":\"'")} + {Occurrences(json, $"'\"{name}\": \"'")}" +
+                               $" <> {Occurrences(json, $"'\"{name}\":\"' || {{2}}")}" +
+                               $" + {Occurrences(json, $"'\"{name}\": \"' || {{2}}")})");
+            }
+        }
     }
 
     /// <summary>
-    /// The conditions on <paramref name="entityType"/>'s table, added to <paramref name="byTable"/> when it has none
-    /// yet.
+    /// The JSON names of the encrypted properties in a complex type stored as JSON, and in the complex types it holds.
     /// </summary>
-    /// <param name="byTable">The conditions so far, by table.</param>
-    /// <param name="entityType">The entity or owned type.</param>
-    private static List<string> ConditionsFor(Dictionary<string, List<string>> byTable, IEntityType entityType)
-    {
-        string table = entityType.GetSchema() is { } schema
+    /// <param name="complexType">The complex type.</param>
+    private static IEnumerable<string> EncryptedJsonNames(IComplexType complexType) =>
+        complexType.GetProperties().Where(RowIntegrity.IsEncrypted)
+            .Select(static x => x.GetJsonPropertyName() ?? x.Name)
+            .Concat(RowIntegrity.CoveredComplex(complexType).SelectMany(static x => EncryptedJsonNames(x.ComplexType)))
+            .Distinct();
+
+    /// <summary>
+    /// SQL counting how often <paramref name="pattern"/> appears in <paramref name="text"/>. Postgres writes jsonb
+    /// back with a space after each colon, SQLite as it was given, so both are counted by the caller.
+    /// </summary>
+    /// <param name="text">The SQL text being searched.</param>
+    /// <param name="pattern">The SQL text being counted.</param>
+    private static string Occurrences(string text, string pattern) =>
+        $"((LENGTH({text}) - LENGTH(REPLACE({text}, {pattern}, ''))) / LENGTH({pattern}))";
+
+    /// <summary>
+    /// <paramref name="entityType"/>'s table, quoted, with its schema when it has one.
+    /// </summary>
+    /// <param name="entityType">The entity.</param>
+    private static string QuotedTable(IEntityType entityType) =>
+        entityType.GetSchema() is { } schema
             ? $"\"{schema}\".\"{entityType.GetTableName()}\""
             : $"\"{entityType.GetTableName()}\"";
-        if (!byTable.TryGetValue(table, out List<string>? conditions))
-        {
-            conditions = [];
-            byTable[table] = conditions;
-        }
-
-        return conditions;
-    }
 
     /// <summary>
     /// A property's column in <paramref name="table"/>, quoted.
@@ -203,12 +179,12 @@ public sealed class EncryptionKeyRotator
         string exists = string.Join(" OR ", staleWhere.Select(static x =>
             $"EXISTS (SELECT 1 FROM {x.Key} WHERE {string.Join(" OR ", x.Value)})"));
         string sql = $"SELECT CASE WHEN {exists} THEN 1 ELSE 0 END AS \"Value\"";
-        string tagInJson = $"\"{RowIntegrity.TagProperty}\":";
+        string currentTagPrefix = RowIntegrity.TagPrefix(context.EncryptionService.CurrentKeyId);
 
         // Identifiers come from the model, the key prefixes are parameters
 #pragma warning disable EF1002
-        return await context.Database.SqlQueryRaw<int>(sql, currentKeyPrefix + "%",
-                $"%{tagInJson}\"{currentKeyPrefix}%", $"%{tagInJson} \"{currentKeyPrefix}%")
+        return await context.Database.SqlQueryRaw<int>(sql, currentKeyPrefix + "%", currentTagPrefix + "%",
+                currentKeyPrefix)
             .SingleAsync(cancellationToken) == 1;
 #pragma warning restore EF1002
     }
@@ -231,6 +207,47 @@ public sealed class EncryptionKeyRotator
     }
 
     /// <summary>
+    /// Marks the encrypted values in complex types changed. One stored as JSON is written back whole, one stored in
+    /// its owner's columns column by column.
+    /// </summary>
+    /// <param name="complexProperties">The single complex values.</param>
+    /// <param name="complexCollections">The lists of complex values.</param>
+    private static void MarkEncryptedModified(IEnumerable<ComplexPropertyEntry> complexProperties,
+        IEnumerable<ComplexCollectionEntry> complexCollections)
+    {
+        foreach (ComplexPropertyEntry complexProperty in complexProperties)
+        {
+            if (complexProperty.CurrentValue is null ||
+                !RowIntegrity.CoveredComplex(complexProperty.Metadata.DeclaringType).Contains(complexProperty.Metadata))
+            {
+                continue;
+            }
+
+            if (complexProperty.Metadata.ComplexType.IsMappedToJson())
+            {
+                complexProperty.IsModified = true;
+                continue;
+            }
+
+            foreach (PropertyEntry property in complexProperty.Properties.Where(x => RowIntegrity.IsEncrypted(x.Metadata)))
+            {
+                property.IsModified = true;
+            }
+
+            MarkEncryptedModified(complexProperty.ComplexProperties, complexProperty.ComplexCollections);
+        }
+
+        foreach (ComplexCollectionEntry complexCollection in complexCollections)
+        {
+            if (complexCollection.CurrentValue is not null &&
+                RowIntegrity.CoveredComplex(complexCollection.Metadata.DeclaringType).Contains(complexCollection.Metadata))
+            {
+                complexCollection.IsModified = true;
+            }
+        }
+    }
+
+    /// <summary>
     /// Loads every row and marks its encrypted values and tag changed, so saving writes them back under the current
     /// key.
     /// </summary>
@@ -243,6 +260,9 @@ public sealed class EncryptionKeyRotator
         while (true)
         {
             await using FinanceTrackerContext context = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+            // Rows tagged in an older format are what it's here to tag again, so they have to load
+            context.AcceptsOutdatedRowTags = true;
 
             // Rewriting a row doesn't change its key, so paging by key stays stable while saving
             List<TEntity> batch = await OrderedByKey(context.Set<TEntity>(), keyNames)
@@ -260,11 +280,13 @@ public sealed class EncryptionKeyRotator
                 foreach (PropertyEntry property in entry.Properties)
                 {
                     bool isTag = property.Metadata.Name == RowIntegrity.TagProperty;
-                    if (isTag || property.Metadata.FindAnnotation(Annotations.EncryptedPropertyAnnotation) is not null)
+                    if (isTag || RowIntegrity.IsEncrypted(property.Metadata))
                     {
                         property.IsModified = true;
                     }
                 }
+
+                MarkEncryptedModified(entry.ComplexProperties, entry.ComplexCollections);
             }
 
             await context.SaveChangesAsync(cancellationToken);

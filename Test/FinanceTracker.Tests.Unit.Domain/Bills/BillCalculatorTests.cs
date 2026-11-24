@@ -1,3 +1,4 @@
+using System.Globalization;
 using FinanceTracker.Domain.Bills;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Transactions;
@@ -152,19 +153,20 @@ public class BillCalculatorTests
     }
 
     [Test]
-    [Arguments(BillFrequency.Weekly, 43.33)]
-    [Arguments(BillFrequency.Fortnightly, 21.67)]
-    [Arguments(BillFrequency.FourWeekly, 10.83)]
-    [Arguments(BillFrequency.Monthly, 10)]
-    [Arguments(BillFrequency.Quarterly, 3.33)]
-    [Arguments(BillFrequency.Yearly, 0.83)]
-    public async Task MonthlyCost_SpreadsTheAmountOverAMonth(BillFrequency frequency, double cost)
+    [Arguments(BillFrequency.Weekly, "43.33")]
+    [Arguments(BillFrequency.Fortnightly, "21.67")]
+    [Arguments(BillFrequency.FourWeekly, "10.83")]
+    [Arguments(BillFrequency.Monthly, "10")]
+    [Arguments(BillFrequency.Quarterly, "3.33")]
+    [Arguments(BillFrequency.Yearly, "0.83")]
+    public async Task MonthlyCost_SpreadsTheAmountOverAMonth(BillFrequency frequency, string cost)
     {
-        // Arrange
+        // Arrange, the cost as text as attributes can't hold decimals, and a double isn't exactly 10.83
         Bill bill = new(UserId, Account.Id, "Bill", "Payee", frequency, 10m, January10, BillSource.Manual);
 
         // Act & Assert
-        await Assert.That(BillCalculator.MonthlyCost(bill, February10)).IsEqualTo((decimal)cost);
+        await Assert.That(BillCalculator.MonthlyCost(bill, February10))
+            .IsEqualTo(decimal.Parse(cost, CultureInfo.InvariantCulture));
     }
 
     [Test]

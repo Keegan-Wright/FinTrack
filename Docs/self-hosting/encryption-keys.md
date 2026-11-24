@@ -43,12 +43,13 @@ It doesn't catch:
   for anything.
 - **An older copy of a whole row put back**, for example from a backup. Its tag was valid then and still is.
 - **Deleted rows.**
-- **The order of a list kept inside a row**, such as a split transaction's parts.
 - **The users table itself**, which ASP.NET Identity writes often. Users' authenticator keys, recovery codes and
   passkeys are covered.
 
 Tags are added to existing rows the first time FinTrack starts with this version, and remade under the new key when
-you rotate.
+you rotate. When an upgrade changes what tags cover, FinTrack remakes them at startup, before it serves anything, and
+logs `Row {id} in {table} has an integrity tag from an older format, so it wasn't checked` at warning for each. After
+that every tag is in the current format, so a row with an older one is refused, as one that fails its check is.
 
 ### When a row fails its check
 

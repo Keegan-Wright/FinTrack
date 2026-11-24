@@ -25,6 +25,7 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Query.Internal;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
@@ -54,6 +55,19 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
     /// The clock <see cref="Persistence.AuditingInterceptor"/> stamps audit times from.
     /// </summary>
     internal TimeProvider TimeProvider { get; } = TimeProvider.System;
+
+    /// <summary>
+    /// Loaded rows whose integrity tags cover JSON, checked once it's filled in, see
+    /// <see cref="RowIntegrityQueryCompiler"/>.
+    /// </summary>
+    internal PendingRowIntegrityChecks PendingRowIntegrityChecks { get; } = new();
+
+    /// <summary>
+    /// Whether a row tagged in an older format loads, set only while <see cref="EncryptionKeyRotator"/> tags such rows
+    /// again at startup. Once it has, every row is at the current format, so any other context refuses one that isn't,
+    /// see <see cref="RowIntegrityCheck"/>.
+    /// </summary>
+    internal bool AcceptsOutdatedRowTags { get; set; }
 
     /// <summary>
     /// Only for the design time tools, to reach <see cref="CreateDbContext"/>.
@@ -237,10 +251,14 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
             AuditingInterceptor.Instance,
             BlindIndexInterceptor.Instance,
             RowIntegrityInterceptor.Instance,
-            RowIntegrityCheckInterceptor.Instance
+            RowIntegrityCheckInterceptor.Instance,
+            ComplexJsonCollectionQueryInterceptor.Instance
             );
 
         optionsBuilder.ReplaceService<IModelCacheKeyFactory, EncryptionModelCacheKeyFactory>();
+#pragma warning disable EF1001 // See RowIntegrityQueryCompiler
+        optionsBuilder.ReplaceService<IQueryCompiler, RowIntegrityQueryCompiler>();
+#pragma warning restore EF1001
     }
 
     /// <inheritdoc/>

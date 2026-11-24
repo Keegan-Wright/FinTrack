@@ -22,11 +22,11 @@ public static class DataProtectionExtensions
                 // Fixed, the default is the content root, which differs between machines and container images
                 .SetApplicationName("FinTrack")
                 .PersistKeysToDbContext<FinanceTrackerContext>()
-                // AES-256-GCM like the encrypted columns, rather than the default AES-256-CBC with HMAC-SHA256.
+                // AES-256-GCM like the encrypted columns, rather than the default AES-256-CBC with HMAC-SHA256. GCM
+                // authenticates what it encrypts itself, so there's no separate validation algorithm to set
                 .UseCryptographicAlgorithms(new AuthenticatedEncryptorConfiguration
                 {
-                    EncryptionAlgorithm = EncryptionAlgorithm.AES_256_GCM,
-                    ValidationAlgorithm = ValidationAlgorithm.HMACSHA256,
+                    EncryptionAlgorithm = EncryptionAlgorithm.AES_256_GCM
                 });
 
             // Data Protection warns each new key is stored unencrypted, as it doesn't know EF encrypts the column

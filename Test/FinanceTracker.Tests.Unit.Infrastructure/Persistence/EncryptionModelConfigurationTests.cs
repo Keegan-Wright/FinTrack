@@ -5,6 +5,7 @@ using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Persistence;
 using FinanceTracker.Tests.Unit.Shared;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata;
 
@@ -28,7 +29,29 @@ public class EncryptionModelConfigurationTests : InfrastructureTestBase
     [Test]
     public async Task Encrypted_NullPropertyBuilder_Throws()
     {
-        await Assert.That(() => PropertyBuilderExtensions.Encrypted<string>(null!)).Throws<ArgumentNullException>();
+        await Assert.That(() => ((PropertyBuilder<string>)null!).Encrypted())
+            .Throws<ArgumentNullException>();
+    }
+
+    [Test]
+    public async Task Model_HasNoOwnedTypes()
+    {
+        // Encryption, row integrity and key rotation only follow complex types, so an owned type would go unchecked
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+
+        List<string> owned = context.Model.GetEntityTypes()
+            .Where(static x => x.IsOwned())
+            .Select(static x => x.DisplayName())
+            .ToList();
+
+        await Assert.That(owned).IsEmpty();
+    }
+
+    [Test]
+    public async Task Encrypted_NullComplexTypePropertyBuilder_Throws()
+    {
+        await Assert.That(() => ((ComplexTypePropertyBuilder<string>)null!).Encrypted())
+            .Throws<ArgumentNullException>();
     }
 
     [Test]

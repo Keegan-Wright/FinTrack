@@ -57,7 +57,8 @@ public class EncryptionKeyRotatorTests : InfrastructureTestBase
             await Assert.That(await ReadRawAsync("BankAccounts", "Balance_Current")).StartsWith("2:");
             await Assert.That(await ReadRawAsync("StandingOrders", "Payee")).StartsWith("2:");
             await Assert.That(await ReadRawAsync("AccessTokens", "Token")).StartsWith("2:");
-            await Assert.That(await ReadRawAsync("HouseholdMemberLinkedAccounts", "Number")).StartsWith("2:");
+            await Assert.That(await ReadRawAsync("HouseholdMembers", "LinkedAccounts")).Contains("\"Number\":\"2:");
+            await Assert.That(await ReadRawAsync("HouseholdMembers", "LinkedAccounts")).DoesNotContain("\":\"1:");
         }
     }
 

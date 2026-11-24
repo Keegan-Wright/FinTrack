@@ -85,6 +85,31 @@ public class DebtsServiceTests : InfrastructureTestBase
     }
 
     [Test]
+    public async Task GetDebtAsync_PaymentsAtTheSameTime_OrderedByIdNewestFirst()
+    {
+        // Arrange, Postgres returns rows in no set order, so a tie mustn't shuffle between loads
+        await SeedAsync()
+            .Do(s => s.TransactionScenario.WithTransaction("first", "main", Paid("CAR FINANCE", -50m, 10, 1)))
+            .Do(s => s.TransactionScenario.WithTransaction("second", "main", Paid("CAR FINANCE", -50m, 10, 1)))
+            .Do(s => s.TransactionScenario.WithTransaction("third", "main", Paid("CAR FINANCE", -50m, 10, 1)));
+        List<Guid> expected = Scenario.TransactionMappings.Values.OrderDescending().ToList();
+
+        DebtsService subject = BuildSubject(Username);
+        Debt added = await subject.AddDebtAsync(CarLoan(), CancellationToken);
+        foreach (Guid transactionId in Scenario.TransactionMappings.Values)
+        {
+            await subject.PayDebtAsync(transactionId, new PayDebt { DebtId = added.Id }, CancellationToken);
+        }
+
+        // Act
+        DebtDetail detail = await subject.GetDebtAsync(added.Id, CancellationToken);
+
+        // Assert
+        await Assert.That(detail.Payments.Select(x => x.TransactionId)).IsEquivalentTo(expected,
+            TUnit.Assertions.Enums.CollectionOrdering.Matching);
+    }
+
+    [Test]
     public async Task UpdateDebtAsync_LinkedToACard_OwesItsBalanceWithHistoryFromItsDailyBalances()
     {
         // Arrange

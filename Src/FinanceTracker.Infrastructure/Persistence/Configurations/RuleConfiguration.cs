@@ -21,22 +21,18 @@ internal sealed class RuleConfiguration : AggregateRootConfiguration<Rule>
         builder.HasIndex(x => new { x.UserId, x.Order });
 
         // Values hold what a user looks for in their transactions, e.g. a merchant's name, so they're encrypted.
-        builder.OwnsMany(x => x.Conditions, conditions =>
+        builder.ComplexJsonCollection(x => x.Conditions, conditions =>
         {
-            conditions.ToJson("Conditions");
             conditions.Property(x => x.Field).HasConversion<string>();
             conditions.Property(x => x.Operator).HasConversion<string>();
             conditions.Property(x => x.Value).Encrypted();
             conditions.Property(x => x.SecondValue).Encrypted();
         });
-        builder.Navigation(x => x.Conditions).HasField("_conditions");
 
-        builder.OwnsMany(x => x.Actions, actions =>
+        builder.ComplexJsonCollection(x => x.Actions, actions =>
         {
-            actions.ToJson("Actions");
             actions.Property(x => x.Type).HasConversion<string>();
             actions.Property(x => x.BankClassification).Encrypted();
         });
-        builder.Navigation(x => x.Actions).HasField("_actions");
     }
 }

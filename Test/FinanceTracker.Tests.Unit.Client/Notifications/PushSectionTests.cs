@@ -1,3 +1,4 @@
+using Microsoft.JSInterop;
 using Bunit;
 using FinanceTracker.Client;
 using FinanceTracker.Client.Components.Notifications;
@@ -129,6 +130,44 @@ public class PushSectionTests : ComponentTestBase
             await Assert.That(JSInterop.VerifyInvoke("ftRememberPushDevice").Arguments.Single())
                 .IsEqualTo(Phone.Id.ToString());
         }
+    }
+
+    [Test]
+    public async Task TurnOn_BrowserCantSubscribe_SaysSo_AndAddsNothing()
+    {
+        // Arrange, allowed, but e.g. the service worker wouldn't register
+        _pushService.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(Settings());
+        JSInterop.Setup<AddPushDevice?>("ftPushSubscribe", PublicKey).SetException(new JSException("AbortError"));
+        IRenderedComponent<MudSnackbarProvider> snackbars = Render<MudSnackbarProvider>();
+        IRenderedComponent<PushSection> cut = RenderSection();
+        cut.WaitForState(() => cut.Markup.Contains("Turn on for this device", StringComparison.Ordinal));
+
+        // Act
+        await Button(cut, "Turn on for this device").ClickAsync(new());
+
+        // Assert
+        snackbars.WaitForState(() => snackbars.Markup.Contains("This browser couldn", StringComparison.Ordinal));
+        await _pushService.DidNotReceive().AddDeviceAsync(Arg.Any<AddPushDevice>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task TurnOn_DeviceCantBeRemembered_StillTurnsOn()
+    {
+        // Arrange, e.g. the browser's storage is off
+        _pushService.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(Settings());
+        _pushService.AddDeviceAsync(Arg.Any<AddPushDevice>(), Arg.Any<CancellationToken>())
+            .Returns(new PushDeviceAdded { DeviceId = Phone.Id, Settings = Settings(Phone) });
+        JSInterop.Setup<AddPushDevice?>("ftPushSubscribe", PublicKey).SetResult(Subscription);
+        JSInterop.SetupVoid("ftRememberPushDevice", Phone.Id.ToString()).SetException(new JSException("SecurityError"));
+        IRenderedComponent<PushSection> cut = RenderSection();
+        cut.WaitForState(() => cut.Markup.Contains("Turn on for this device", StringComparison.Ordinal));
+
+        // Act
+        await Button(cut, "Turn on for this device").ClickAsync(new());
+
+        // Assert
+        cut.WaitForState(() => cut.Markup.Contains("Turn off for this device", StringComparison.Ordinal));
+        await _pushService.Received(1).AddDeviceAsync(Arg.Any<AddPushDevice>(), Arg.Any<CancellationToken>());
     }
 
     [Test]

@@ -124,7 +124,7 @@ public class TwoFactorAdminTests : IntegrationTestBase
         TwoFactorChange? change = await profile.EnableAuthenticatorAsync(
             new EnableAuthenticator { Code = AuthenticatorApp.Code(key), Password = SignedInUser.DefaultPassword },
             CancellationToken);
-        if (change is not { Succeeded: true })
+        if (change is null or TwoFactorChangeRefused)
         {
             throw new InvalidOperationException($"Two-factor sign in couldn't be turned on for {user.Username}");
         }

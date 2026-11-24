@@ -513,4 +513,14 @@ public static partial class LoggerMessages
     /// <param name="id">The row's id.</param>
     [LoggerMessage(LogLevel.Warning, "Row {id} in {table} has no integrity tag yet, so it wasn't checked")]
     public static partial void LogRowIntegrityTagMissing(this ILogger logger, string table, string id);
+
+    /// <summary>
+    /// Logs at warning <c>Row {id} in {table} has an integrity tag from an older format, so it wasn't checked</c>.
+    /// </summary>
+    /// <param name="logger">The logger.</param>
+    /// <param name="table">The row's table.</param>
+    /// <param name="id">The row's id.</param>
+    [LoggerMessage(LogLevel.Warning,
+        "Row {id} in {table} has an integrity tag from an older format, so it wasn't checked")]
+    public static partial void LogRowIntegrityTagOutdated(this ILogger logger, string table, string id);
 }

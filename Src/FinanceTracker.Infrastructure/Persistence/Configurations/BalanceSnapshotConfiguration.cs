@@ -24,14 +24,13 @@ internal sealed class BalanceSnapshotConfiguration : AggregateRootConfiguration<
         builder.HasIndex(x => new { x.AccountId, x.Date }).IsUnique();
         builder.HasIndex(x => new { x.UserId, x.Date });
 
-        builder.OwnsOne(x => x.Balance, balance =>
+        builder.ComplexProperty(x => x.Balance, balance =>
         {
             balance.Property(x => x.Available).HasColumnName("Balance_Available").Encrypted();
             balance.Property(x => x.Current).HasColumnName("Balance_Current").Encrypted();
             balance.Property(x => x.AsOf).HasColumnName("Balance_AsOf").Encrypted();
             balance.Property(x => x.CreditLimit).HasColumnName("Balance_CreditLimit").Encrypted();
         });
-        builder.Navigation(x => x.Balance).IsRequired();
 
         builder.Property(x => x.Source).HasConversion<string>();
     }

@@ -1,3 +1,4 @@
+using Microsoft.JSInterop;
 using Bunit;
 using FinanceTracker.Client;
 using FinanceTracker.Client.Components.Profile;
@@ -74,8 +75,8 @@ public class PasskeysSectionTests : ComponentTestBase
         // Arrange
         _passkeyService.GetPasskeysAsync(Arg.Any<CancellationToken>()).Returns([], [Laptop]);
         _passkeyService.StartAddingAsync(Arg.Any<ConfirmPassword>(), Arg.Any<CancellationToken>())
-            .Returns(new PasskeyChange { CreationOptionsJson = Options });
-        _passkeyService.AddAsync(Arg.Any<AddPasskey>(), Arg.Any<CancellationToken>()).Returns(new PasskeyChange());
+            .Returns(new PasskeyAddingStarted(Options));
+        _passkeyService.AddAsync(Arg.Any<AddPasskey>(), Arg.Any<CancellationToken>()).Returns(new PasskeyChangeMade());
         JSInterop.Setup<string?>("ftCreatePasskey", Options).SetResult(Credential);
         IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
         IRenderedComponent<PasskeysSection> cut = RenderSection();
@@ -104,7 +105,7 @@ public class PasskeysSectionTests : ComponentTestBase
         // Arrange
         _passkeyService.GetPasskeysAsync(Arg.Any<CancellationToken>()).Returns([]);
         _passkeyService.StartAddingAsync(Arg.Any<ConfirmPassword>(), Arg.Any<CancellationToken>())
-            .Returns(new PasskeyChange { CreationOptionsJson = Options });
+            .Returns(new PasskeyAddingStarted(Options));
         JSInterop.Setup<string?>("ftCreatePasskey", Options).SetResult(null);
         IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
         IRenderedComponent<PasskeysSection> cut = RenderSection();
@@ -120,12 +121,35 @@ public class PasskeysSectionTests : ComponentTestBase
     }
 
     [Test]
+    public async Task Add_RefusedByTheBrowser_SaysThisDeviceCouldntMakeOne_AndAddsNothing()
+    {
+        // Arrange, e.g. the password manager already holds one for this account
+        _passkeyService.GetPasskeysAsync(Arg.Any<CancellationToken>()).Returns([]);
+        _passkeyService.StartAddingAsync(Arg.Any<ConfirmPassword>(), Arg.Any<CancellationToken>())
+            .Returns(new PasskeyAddingStarted(Options));
+        JSInterop.Setup<string?>("ftCreatePasskey", Options).SetException(new JSException("InvalidStateError"));
+        IRenderedComponent<MudSnackbarProvider> snackbars = Render<MudSnackbarProvider>();
+        IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
+        IRenderedComponent<PasskeysSection> cut = RenderSection();
+        cut.WaitForState(() => cut.Markup.Contains("Add a passkey", StringComparison.Ordinal));
+
+        // Act
+        Task adding = Button(cut, "Add a passkey").ClickAsync(new());
+        await FillAndConfirmAsync(dialogs, "Placeholder laptop", "my-password");
+        await adding.WaitAsync(TestTimeouts.Wait);
+
+        // Assert
+        snackbars.WaitForState(() => snackbars.Markup.Contains("This device couldn", StringComparison.Ordinal));
+        await _passkeyService.DidNotReceive().AddAsync(Arg.Any<AddPasskey>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task Add_WrongPassword_SaysWhyWithoutAskingTheBrowser()
     {
         // Arrange
         _passkeyService.GetPasskeysAsync(Arg.Any<CancellationToken>()).Returns([]);
         _passkeyService.StartAddingAsync(Arg.Any<ConfirmPassword>(), Arg.Any<CancellationToken>())
-            .Returns(new PasskeyChange { Errors = ["Your password isn't right"] });
+            .Returns(new PasskeyChangeRefused(["Your password isn't right"]));
         IRenderedComponent<MudSnackbarProvider> snackbars = Render<MudSnackbarProvider>();
         IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
         IRenderedComponent<PasskeysSection> cut = RenderSection();
@@ -148,7 +172,7 @@ public class PasskeysSectionTests : ComponentTestBase
         _passkeyService.GetPasskeysAsync(Arg.Any<CancellationToken>())
             .Returns([Laptop], Array.Empty<PasskeySummary>());
         _passkeyService.RemoveAsync(Laptop.Id, Arg.Any<ConfirmPassword>(), Arg.Any<CancellationToken>())
-            .Returns(new PasskeyChange());
+            .Returns(new PasskeyChangeMade());
         IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
         IRenderedComponent<PasskeysSection> cut = RenderSection();
         cut.WaitForState(() => cut.FindAll(".ft-passkeys__row").Count == 1);

@@ -77,8 +77,10 @@ public sealed class AccountSnapshotWriter : IAccountSnapshotWriter
         {
             if (existing.TryGetValue(details.ExternalId, out BankTransaction? transaction))
             {
-                transaction.UpdateFromSync(details);
-                tally.TransactionsUpdated++;
+                if (transaction.UpdateFromSync(details))
+                {
+                    tally.TransactionsUpdated++;
+                }
             }
             else
             {

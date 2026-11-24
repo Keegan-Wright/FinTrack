@@ -106,7 +106,7 @@ public sealed class ProfileService : IProfileService
         }
 
         ProfileChange result = await _emailChange.RequestAsync(user, change.NewEmail, cancellationToken);
-        if (result is { Succeeded: true, LinkSent: false })
+        if (result is ProfileChangeMade)
         {
             // Changed straight away, which signs out everywhere else as a password change does
             await _signInManager.RefreshSignInAsync(user);
@@ -190,7 +190,7 @@ public sealed class ProfileService : IProfileService
         await _signInManager.RefreshSignInAsync(user);
         _logger.LogTwoFactorEnabled(user.Id);
         await _securityEmails.TwoFactorOnAsync(user);
-        return new TwoFactorChange { RecoveryCodes = codes?.ToList() ?? [] };
+        return CodesMade(codes);
     }
 
     /// <inheritdoc/>
@@ -217,7 +217,7 @@ public sealed class ProfileService : IProfileService
         IEnumerable<string>? codes = await _userManager.GenerateNewTwoFactorRecoveryCodesAsync(user, RecoveryCodeCount);
         _logger.LogRecoveryCodesMade(user.Id);
         await _securityEmails.RecoveryCodesMadeAsync(user);
-        return new TwoFactorChange { RecoveryCodes = codes?.ToList() ?? [] };
+        return CodesMade(codes);
     }
 
     /// <inheritdoc/>
@@ -247,7 +247,7 @@ public sealed class ProfileService : IProfileService
             await _securityEmails.TwoFactorOffAsync(user, TwoFactorOffCause.AuthenticatorReset);
         }
 
-        return new TwoFactorChange();
+        return new TwoFactorChangeMade();
     }
 
     /// <inheritdoc/>
@@ -275,7 +275,7 @@ public sealed class ProfileService : IProfileService
             await _securityEmails.TwoFactorOffAsync(user, TwoFactorOffCause.TurnedOff);
         }
 
-        return new TwoFactorChange();
+        return new TwoFactorChangeMade();
     }
 
     /// <inheritdoc/>
@@ -287,7 +287,7 @@ public sealed class ProfileService : IProfileService
     /// </summary>
     /// <param name="user">The user.</param>
     /// <param name="password">The password they typed.</param>
-    private async Task<TwoFactorChange?> PasswordRefusedAsync(FinanceTrackerUser user, string password)
+    private async Task<TwoFactorChangeRefused?> PasswordRefusedAsync(FinanceTrackerUser user, string password)
     {
         if (await _userManager.CheckPasswordAsync(user, password))
         {
@@ -301,7 +301,23 @@ public sealed class ProfileService : IProfileService
     /// A change that wasn't made, saying why.
     /// </summary>
     /// <param name="error">Why, in words for the user.</param>
-    private static TwoFactorChange Refused(string error) => new() { Errors = [error] };
+    private static TwoFactorChangeRefused Refused(string error) => new([error]);
+
+    /// <summary>
+    /// A change that made recovery codes, to show the user. Identity gives none back when it couldn't make them, which
+    /// leaves the change made with nothing to show.
+    /// </summary>
+    /// <param name="codes">The codes Identity made.</param>
+    private static TwoFactorChange CodesMade(IEnumerable<string>? codes)
+    {
+        List<string> made = codes?.ToList() ?? [];
+        if (made.Count == 0)
+        {
+            return new TwoFactorChangeMade();
+        }
+
+        return new RecoveryCodesMade(made);
+    }
 
     /// <summary>
     /// The signed in user.

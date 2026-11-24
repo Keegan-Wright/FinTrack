@@ -22,13 +22,22 @@ public static class FileDownloadExtensions
         /// <param name="contentType">The file's media type.</param>
         /// <param name="content">The file's bytes.</param>
         /// <param name="cancellationToken">Stops the work.</param>
-        public async Task SaveFileAsync(string fileName, string contentType, Stream content,
+        /// <returns>Whether the browser saved it, so the caller can say when it didn't.</returns>
+        public async Task<bool> SaveFileAsync(string fileName, string contentType, Stream content,
             CancellationToken cancellationToken)
         {
             ArgumentNullException.ThrowIfNull(content);
 
             using DotNetStreamReference reference = new(content, leaveOpen: true);
-            await js.InvokeVoidAsync(DownloadFunction, cancellationToken, fileName, contentType, reference);
+            try
+            {
+                await js.InvokeVoidAsync(DownloadFunction, cancellationToken, fileName, contentType, reference);
+                return true;
+            }
+            catch (JSException)
+            {
+                return false;
+            }
         }
     }
 }

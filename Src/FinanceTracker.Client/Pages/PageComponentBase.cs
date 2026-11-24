@@ -134,7 +134,10 @@ public class PageComponent : ComponentBase, IDisposable
             using MemoryStream file = new();
             await write(file, _cts.Token);
             file.Position = 0;
-            await PageJS.SaveFileAsync(fileName, contentType, file, _cts.Token);
+            if (!await PageJS.SaveFileAsync(fileName, contentType, file, _cts.Token))
+            {
+                PageSnackbar.Add(failure, Severity.Error);
+            }
         }
         catch (OperationCanceledException) when (_cts.IsCancellationRequested)
         {

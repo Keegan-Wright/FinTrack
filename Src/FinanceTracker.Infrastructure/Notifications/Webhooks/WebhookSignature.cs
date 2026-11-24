@@ -1,3 +1,4 @@
+using System.Buffers.Text;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
@@ -20,9 +21,18 @@ public static class WebhookSignature
     /// <summary>
     /// A new secret, 32 random bytes as URL safe base 64.
     /// </summary>
-    public static string NewSecret() =>
-        Convert.ToBase64String(RandomNumberGenerator.GetBytes(SecretBytes))
-            .TrimEnd('=').Replace('+', '-').Replace('/', '_');
+    public static string NewSecret()
+    {
+        byte[] secret = RandomNumberGenerator.GetBytes(SecretBytes);
+        try
+        {
+            return Base64Url.EncodeToString(secret);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(secret);
+        }
+    }
 
     /// <param name="secret">The webhook's secret.</param>
     /// <param name="timestamp">When it's sent, in Unix seconds.</param>
@@ -37,7 +47,14 @@ public static class WebhookSignature
         prefix.CopyTo(signed, 0);
         body.CopyTo(signed.AsSpan(prefix.Length));
 
-        byte[] hash = HMACSHA256.HashData(Encoding.UTF8.GetBytes(secret), signed);
-        return "sha256=" + Convert.ToHexStringLower(hash);
+        byte[] key = Encoding.UTF8.GetBytes(secret);
+        try
+        {
+            return "sha256=" + Convert.ToHexStringLower(HMACSHA256.HashData(key, signed));
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(key);
+        }
     }
 }

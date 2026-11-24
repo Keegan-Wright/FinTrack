@@ -77,7 +77,7 @@ public sealed class TokensService : ITokensService
     }
 
     /// <inheritdoc/>
-    public async Task<CreatedToken?> CreateAsync(CreateToken request, CancellationToken cancellationToken)
+    public async Task<TokenCreation?> CreateAsync(CreateToken request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
         FinanceTrackerUser user = await UserAsync();
@@ -90,7 +90,7 @@ public sealed class TokensService : ITokensService
         string? refusal = await RefusalAsync(user, confirmation.Value, request.Password);
         if (refusal is not null)
         {
-            return new CreatedToken { Errors = [refusal] };
+            return new TokenCreationRefused([refusal]);
         }
 
         DateTime now = _timeProvider.GetUtcNow().UtcDateTime;
@@ -106,7 +106,7 @@ public sealed class TokensService : ITokensService
 
         _logger.LogTokenCreated(user.Id, token.Id);
         await _securityEmails.TokenCreatedAsync(user, token.Name);
-        return new CreatedToken { Token = issued.Token };
+        return new TokenCreated(issued.Token);
     }
 
     /// <inheritdoc/>

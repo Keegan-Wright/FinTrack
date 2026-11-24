@@ -81,7 +81,7 @@ public class ApiTokensPageTests : ComponentTestBase
         // Arrange
         _tokensService.GetTokensAsync(Arg.Any<CancellationToken>()).Returns(Overview(), Overview(HomeAssistant));
         _tokensService.CreateAsync(Arg.Any<CreateToken>(), Arg.Any<CancellationToken>())
-            .Returns(new CreatedToken { Token = "ftk_0123456789abcdef_placeholder" });
+            .Returns(new TokenCreated("ftk_0123456789abcdef_placeholder"));
         IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
         IRenderedComponent<ApiTokensPage> cut = RenderPage();
         cut.WaitForState(() => cut.Markup.Contains("New token", StringComparison.Ordinal));
@@ -113,7 +113,7 @@ public class ApiTokensPageTests : ComponentTestBase
         // Arrange
         _tokensService.GetTokensAsync(Arg.Any<CancellationToken>()).Returns(Overview());
         _tokensService.CreateAsync(Arg.Any<CreateToken>(), Arg.Any<CancellationToken>())
-            .Returns(new CreatedToken { Errors = ["Your password isn't right"] });
+            .Returns(new TokenCreationRefused(["Your password isn't right"]));
         IRenderedComponent<MudSnackbarProvider> snackbars = Render<MudSnackbarProvider>();
         IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
         IRenderedComponent<ApiTokensPage> cut = RenderPage();

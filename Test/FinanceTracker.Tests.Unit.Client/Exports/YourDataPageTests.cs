@@ -1,3 +1,4 @@
+using Microsoft.JSInterop;
 using System.Globalization;
 using AngleSharp.Dom;
 using Bunit;
@@ -90,6 +91,21 @@ public class YourDataPageTests : ComponentTestBase
             await Assert.That(JSInterop.Invocations.Any(static x => x.Identifier == "ftDownloadFile")).IsFalse();
             await Assert.That(DownloadButton(cut).HasAttribute("disabled")).IsFalse();
         }
+    }
+
+    [Test]
+    public async Task DownloadStatement_BrowserCantSaveIt_SaysSo()
+    {
+        // Arrange
+        JSInterop.SetupVoid("ftDownloadFile", static _ => true).SetException(new JSException("SecurityError"));
+        IRenderedComponent<MudSnackbarProvider> snackbars = Render<MudSnackbarProvider>();
+        IRenderedComponent<YourDataPage> cut = RenderPage();
+
+        // Act
+        await cut.InvokeAsync(() => Button(cut, "Download statement").Click());
+
+        // Assert
+        snackbars.WaitForState(() => snackbars.Markup.Contains("make your statement", StringComparison.Ordinal));
     }
 
     [Test]

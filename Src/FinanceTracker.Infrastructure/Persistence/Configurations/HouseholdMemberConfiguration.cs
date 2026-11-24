@@ -30,20 +30,13 @@ internal sealed class HouseholdMemberConfiguration : AggregateRootConfiguration<
             .OnDelete(DeleteBehavior.SetNull);
         builder.HasIndex(x => new { x.UserId, x.LinkedUserId }).IsUnique().HasFilter("\"LinkedUserId\" IS NOT NULL");
 
-        builder.Property(x => x.PayeeNames).Encrypted();
-        builder.PrimitiveCollection(x => x.PayeeNames).HasField("_payeeNames");
+        builder.Property(x => x.PayeeNames).HasField("_payeeNames").Encrypted();
 
-        // Its own table, which the key rotator re-encrypts along with the member as owned rows load with their owner
-        builder.OwnsMany(x => x.LinkedAccounts, account =>
+        builder.ComplexJsonCollection(x => x.LinkedAccounts, account =>
         {
-            account.ToTable("HouseholdMemberLinkedAccounts");
-            // Generated on the client, the database doesn't generate the default int key of a composite one
-            account.Property<Guid>("Id").ValueGeneratedOnAdd();
-            account.HasKey("Id");
             account.Property(x => x.SortCode).Encrypted();
             account.Property(x => x.Number).Encrypted();
             account.Property(x => x.Iban).Encrypted();
         });
-        builder.Navigation(x => x.LinkedAccounts).HasField("_linkedAccounts");
     }
 }

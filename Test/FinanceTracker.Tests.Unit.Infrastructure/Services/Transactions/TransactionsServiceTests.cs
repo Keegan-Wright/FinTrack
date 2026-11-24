@@ -46,6 +46,27 @@ public class TransactionsServiceTests : InfrastructureTestBase
     }
 
     [Test]
+    public async Task GetAllTransactionsAsync_AtTheSameTime_OrderedByIdNewestFirst()
+    {
+        // Arrange, Postgres returns rows in no set order, so a tie mustn't shuffle between loads
+        DateTime now = DateTime.UtcNow;
+        await SeedAccountAsync()
+            .Do(s => s.TransactionScenario.WithTransaction("first", "main", Details("First", now)))
+            .Do(s => s.TransactionScenario.WithTransaction("second", "main", Details("Second", now)))
+            .Do(s => s.TransactionScenario.WithTransaction("third", "main", Details("Third", now)));
+        List<Guid> expected = Scenario.TransactionMappings.Values.OrderDescending().ToList();
+
+        TransactionsService subject = BuildSubject();
+
+        // Act
+        List<Transaction> transactions = await GetAllAsync(subject, new FilterTransactions());
+
+        // Assert
+        await Assert.That(transactions.Select(x => x.TransactionId)).IsEquivalentTo(expected,
+            TUnit.Assertions.Enums.CollectionOrdering.Matching);
+    }
+
+    [Test]
     public async Task GetAllTransactionsAsync_MapsTransaction()
     {
         // Arrange
@@ -756,37 +777,6 @@ public class TransactionsServiceTests : InfrastructureTestBase
                 Scenario.TransactionMappings["theirs"], new ChangeBankClassification { Classification = "TV" },
                 CancellationToken))
             .Throws<InvalidOperationException>();
-    }
-
-    [Test]
-    public async Task TransactionsFromBeforeHiding_LoadAndFilterAsNothingHidden()
-    {
-        // Arrange, as the migration left existing rows before it filled them in
-        await SeedAccountAsync()
-            .Do(s => s.TransactionScenario.WithTransaction("old", "main", Details("OLD") with
-            {
-                ProviderClassifications = ["Bills"]
-            }));
-        await using (FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken))
-        {
-            await context.Database.ExecuteSqlRawAsync(
-                "UPDATE \"BankTransactions\" SET \"HiddenClassifications\" = NULL", CancellationToken);
-        }
-
-        TransactionsService subject = BuildSubject();
-
-        // Act
-        List<string> filterTags = await subject.GetTagsForTransactionFiltersAsync(CancellationToken)
-            .Select(static x => x.Tag).ToListAsync(CancellationToken);
-        Transaction transaction = (await GetAllAsync(subject, new FilterTransactions())).Single();
-
-        // Assert
-        using (Assert.Multiple())
-        {
-            await Assert.That(filterTags).IsEquivalentTo(["Bills"]);
-            await Assert.That(transaction.Tags).IsEquivalentTo(["Bills"]);
-            await Assert.That(transaction.HiddenBankClassifications).IsEmpty();
-        }
     }
 
     [Test]

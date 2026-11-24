@@ -30,4 +30,10 @@ public static class Annotations
     /// Marks an entity whose rows carry an integrity tag, see <see cref="RowIntegrity"/>.
     /// </summary>
     internal const string RowIntegrityAnnotation = "FinanceTracker.RowIntegrity";
+
+    /// <summary>
+    /// Marks a complex property holding a decision the app makes about the entity, which doesn't count as the entity
+    /// changing, see <see cref="AppDecisionBuilderExtensions"/>.
+    /// </summary>
+    internal const string AppDecisionAnnotation = "FinanceTracker.AppDecision";
 }

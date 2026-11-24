@@ -1,6 +1,7 @@
 using System.Net;
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
+using Aspire.Hosting.Dotnet;
 using Aspire.Hosting.Testing;
 using FinanceTracker.AppHost.ServiceDefaults;
 using FinanceTracker.Infrastructure;
@@ -91,7 +92,7 @@ public sealed class FinTrackAppFixture : AspireFixture<Projects.FinanceTracker_A
         }
 
         // The app only reports healthy once it has migrated and is serving requests
-        ProjectResource web = builder.Resources.OfType<ProjectResource>().Single(x => x.Name == FinTrackResources.Web);
+        DotnetProjectResource web = builder.Resources.OfType<DotnetProjectResource>().Single(x => x.Name == FinTrackResources.Web);
         builder.CreateResourceBuilder(web).WithHttpHealthCheck("/health")
             // Lets each test's requests move the clock, see TestClock
             .WithEnvironment(FinTrackEnvironment.TestClock, "true")

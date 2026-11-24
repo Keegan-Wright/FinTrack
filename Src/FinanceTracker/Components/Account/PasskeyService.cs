@@ -82,7 +82,7 @@ public sealed class PasskeyService : IPasskeyService
             DisplayName = DisplayNameOf(user)
         };
         string options = await _signInManager.MakePasskeyCreationOptionsAsync(entity);
-        return new PasskeyChange { CreationOptionsJson = options };
+        return new PasskeyAddingStarted(options);
     }
 
     /// <inheritdoc/>
@@ -128,7 +128,7 @@ public sealed class PasskeyService : IPasskeyService
 
         _logger.LogPasskeyAdded(user.Id);
         await _securityEmails.PasskeyAddedAsync(user, result.Passkey.Name);
-        return new PasskeyChange();
+        return new PasskeyChangeMade();
     }
 
     /// <inheritdoc/>
@@ -154,7 +154,7 @@ public sealed class PasskeyService : IPasskeyService
             return Refused("That passkey couldn't be renamed, try again");
         }
 
-        return new PasskeyChange();
+        return new PasskeyChangeMade();
     }
 
     /// <inheritdoc/>
@@ -187,7 +187,7 @@ public sealed class PasskeyService : IPasskeyService
 
         _logger.LogPasskeyRemoved(user.Id);
         await _securityEmails.PasskeyRemovedAsync(user, passkey.Name ?? "Passkey");
-        return new PasskeyChange();
+        return new PasskeyChangeMade();
     }
 
     /// <summary>
@@ -229,7 +229,7 @@ public sealed class PasskeyService : IPasskeyService
     /// A change that wasn't made, saying why.
     /// </summary>
     /// <param name="error">Why, in words for the user.</param>
-    private static PasskeyChange Refused(string error) => new() { Errors = [error] };
+    private static PasskeyChangeRefused Refused(string error) => new([error]);
 
     /// <summary>
     /// The signed in user.

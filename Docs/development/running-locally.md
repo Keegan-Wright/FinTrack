@@ -4,7 +4,7 @@ FinTrack runs locally through the .NET Aspire AppHost, which starts Postgres, a 
 
 ## You'll need
 
-- The .NET 10 SDK.
+- The .NET 11 SDK.
 - Docker, for Postgres and the mail catcher.
 - A trusted development certificate, `dotnet dev-certs https --trust`.
 - TrueLayer sandbox credentials, see [Your bank connection](../self-hosting/open-banking.md).

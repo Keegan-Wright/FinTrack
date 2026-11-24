@@ -35,7 +35,7 @@ public class TwoFactorSectionTests : ComponentTestBase
         _profileService.GetAuthenticatorSetupAsync(Arg.Any<CancellationToken>())
             .Returns(new AuthenticatorSetup { SharedKey = "abcd efgh ijkl mnop", QrCodeSvg = "<svg></svg>" });
         _profileService.EnableAuthenticatorAsync(Arg.Any<EnableAuthenticator>(), Arg.Any<CancellationToken>())
-            .Returns(new TwoFactorChange { RecoveryCodes = ["aaaa-1111", "bbbb-2222"] });
+            .Returns(new RecoveryCodesMade(["aaaa-1111", "bbbb-2222"]));
         IRenderedComponent<TwoFactorSection> cut = RenderSection();
 
         // Act
@@ -65,7 +65,7 @@ public class TwoFactorSectionTests : ComponentTestBase
         _profileService.GetAuthenticatorSetupAsync(Arg.Any<CancellationToken>())
             .Returns(new AuthenticatorSetup { SharedKey = "abcd", QrCodeSvg = "<svg></svg>" });
         _profileService.EnableAuthenticatorAsync(Arg.Any<EnableAuthenticator>(), Arg.Any<CancellationToken>())
-            .Returns(new TwoFactorChange { Errors = ["That code isn't right, try the one your app shows now"] });
+            .Returns(new TwoFactorChangeRefused(["That code isn't right, try the one your app shows now"]));
         IRenderedComponent<TwoFactorSection> cut = RenderSection();
 
         // Act
@@ -112,7 +112,7 @@ public class TwoFactorSectionTests : ComponentTestBase
             .Returns(new TwoFactorStatus { Enabled = true, RecoveryCodesLeft = 10, BrowserRemembered = false },
                 Off);
         _profileService.TurnOffTwoFactorAsync(Arg.Any<ConfirmPassword>(), Arg.Any<CancellationToken>())
-            .Returns(new TwoFactorChange());
+            .Returns(new TwoFactorChangeMade());
         IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
         IRenderedComponent<TwoFactorSection> cut = RenderSection();
         cut.WaitForState(() => cut.Markup.Contains("Turn off", StringComparison.Ordinal));

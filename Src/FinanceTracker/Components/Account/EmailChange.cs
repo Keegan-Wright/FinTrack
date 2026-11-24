@@ -69,12 +69,12 @@ public sealed class EmailChange : IEmailChange
         });
 
         await _mailSender.SendAsync(await _accountEmails.ChangeEmailAsync(email, link), cancellationToken);
-        return new ProfileChange { LinkSent = true };
+        return new EmailChangeLinkSent();
     }
 
     /// <summary>
     /// A change that didn't happen, and why.
     /// </summary>
     /// <param name="error">Why, for the user.</param>
-    private static ProfileChange Failed(string error) => new() { Errors = [error] };
+    private static ProfileChangeRefused Failed(string error) => new([error]);
 }

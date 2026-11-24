@@ -22,13 +22,10 @@ internal sealed class BudgetConfiguration : AggregateRootConfiguration<Budget>
         builder.PrimitiveCollection(x => x.TagIds).HasField("_tagIds");
         builder.PrimitiveCollection(x => x.AccountIds).HasField("_accountIds");
 
-        builder.OwnsMany(x => x.Limits, limits =>
+        builder.ComplexJsonCollection(x => x.Limits, limits =>
         {
-            limits.ToJson("Limits");
             limits.Property(x => x.From).Encrypted();
             limits.Property(x => x.Amount).Encrypted();
-            limits.Ignore(x => x.Month);
         });
-        builder.Navigation(x => x.Limits).HasField("_limits");
     }
 }
