@@ -44,6 +44,7 @@ internal sealed class BankTransactionConfiguration : AggregateRootConfiguration<
         // Not encrypted, like IsPending, so the transactions to review can be found and counted in the database
         builder.ComplexProperty(x => x.Transfer, transfer =>
         {
+            transfer.IsAppDecision();
             transfer.Property(x => x.Decision).HasColumnName("Transfer_Decision").HasConversion<string>();
             transfer.Property(x => x.Source).HasColumnName("Transfer_Source").HasConversion<string>();
             transfer.Property(x => x.Reason).HasColumnName("Transfer_Reason").HasConversion<string>();
@@ -56,6 +57,7 @@ internal sealed class BankTransactionConfiguration : AggregateRootConfiguration<
 
         builder.ComplexProperty(x => x.BillPayment, payment =>
         {
+            payment.IsAppDecision();
             payment.Property(x => x.BillId).HasColumnName("BillPayment_BillId");
             payment.Property(x => x.Source).HasColumnName("BillPayment_Source").HasConversion<string>();
             payment.Property(x => x.DecidedAt).HasColumnName("BillPayment_DecidedAt");
@@ -67,6 +69,7 @@ internal sealed class BankTransactionConfiguration : AggregateRootConfiguration<
 
         builder.ComplexProperty(x => x.DebtPayment, payment =>
         {
+            payment.IsAppDecision();
             payment.Property(x => x.DebtId).HasColumnName("DebtPayment_DebtId");
             payment.Property(x => x.Source).HasColumnName("DebtPayment_Source").HasConversion<string>();
             payment.Property(x => x.DecidedAt).HasColumnName("DebtPayment_DecidedAt");
@@ -86,11 +89,11 @@ internal sealed class BankTransactionConfiguration : AggregateRootConfiguration<
         builder.PrimitiveCollection(x => x.CustomClassificationIds).HasField("_customClassificationIds");
 
         // Only ids, which rule added which tag, read with the transaction and never queried on their own
-        builder.ComplexJsonCollection(x => x.RuleTags);
+        builder.ComplexJsonCollection(x => x.RuleTags, static ruleTags => ruleTags.IsAppDecision());
 
         // The bank's classifications the user or a rule hid.
         builder.ComplexJsonCollection(x => x.HiddenClassifications,
-            hidden => hidden.Property(x => x.Classification).Encrypted());
+            hidden => hidden.IsAppDecision().Property(x => x.Classification).Encrypted());
 
         // Read with the transaction and never queried on their own, amounts and notes encrypted like the transaction's
         builder.ComplexJsonCollection(x => x.Splits, splits =>

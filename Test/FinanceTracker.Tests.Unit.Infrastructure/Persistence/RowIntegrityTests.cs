@@ -544,6 +544,27 @@ public class RowIntegrityTests : InfrastructureTestBase
         }
     }
 
+    [Test]
+    public async Task Rotate_JsonHoldingAnEmptyString_IsRewrittenOnce()
+    {
+        // Arrange, as the migration copies an empty value from a column into JSON. EF itself writes empty values as
+        // null, so a rewrite clears the "" and the next run has nothing to do
+        await AddPasskeyAsync(Username, 1, "Placeholder laptop");
+        await SqlAsync("""UPDATE "AspNetUserPasskeys" SET "Data" = json_set("Data", '$.Aaguid', '')""");
+        EncryptionKeyRotator rotator = new(DbContextFactory, NullLogger<EncryptionKeyRotator>.Instance);
+
+        // Act
+        int first = await rotator.RotateAsync(CancellationToken);
+        int second = await rotator.RotateAsync(CancellationToken);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(first).IsEqualTo(1);
+            await Assert.That(second).IsEqualTo(0);
+        }
+    }
+
     private const string LoadAll = "all";
     private const string LoadAllUntracked = "all untracked";
     private const string LoadSingle = "single";
