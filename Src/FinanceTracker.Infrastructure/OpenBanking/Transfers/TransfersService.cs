@@ -55,6 +55,7 @@ public class TransfersService : ServiceBase<TransfersService>, ITransfersService
                 .Where(static x => x.Transfer != null && x.Transfer.Decision == TransferDecision.NeedsReview)
                 .ToListAsync(cancellationToken))
             .OrderByDescending(static x => x.OccurredAt)
+            .ThenByDescending(static x => x.Id)
             .ToList();
 
         // Every account shared with them, so another person's half shows when it's on one they can see

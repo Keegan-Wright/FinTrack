@@ -56,10 +56,12 @@ public class TransactionsService : ServiceBase<TransactionsService>, ITransactio
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
-        // Encrypted timestamps sort by ciphertext in SQL, order after decryption
+        // Encrypted timestamps sort by ciphertext in SQL, order after decryption. Postgres returns rows in no set
+        // order, so transactions at the same time are ordered by id too, or the list could shuffle between loads
         List<BankTransaction> matching = transactions
             .Where(x => criteria.MatchesClientFilters(x, customTags, view))
             .OrderByDescending(static x => x.OccurredAt)
+            .ThenByDescending(static x => x.Id)
             .ToList();
 
         TransactionMapper mapper =

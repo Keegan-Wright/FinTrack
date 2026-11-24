@@ -83,6 +83,7 @@ public class DebtsService : ServiceBase<DebtsService>, IDebtsService
         // Dates are encrypted, so they're ordered once decrypted
         List<DebtPaymentItem> items = seen
             .OrderByDescending(static x => x.OccurredAt)
+            .ThenByDescending(static x => x.Id)
             .Select(x => DebtMapper.ToItem(x, accountNames.GetValueOrDefault(x.AccountId) ?? string.Empty,
                 RuleName(ruleNames, x.DebtPayment!.RuleId)))
             .ToList();

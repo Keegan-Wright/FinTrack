@@ -46,6 +46,27 @@ public class TransactionsServiceTests : InfrastructureTestBase
     }
 
     [Test]
+    public async Task GetAllTransactionsAsync_AtTheSameTime_OrderedByIdNewestFirst()
+    {
+        // Arrange, Postgres returns rows in no set order, so a tie mustn't shuffle between loads
+        DateTime now = DateTime.UtcNow;
+        await SeedAccountAsync()
+            .Do(s => s.TransactionScenario.WithTransaction("first", "main", Details("First", now)))
+            .Do(s => s.TransactionScenario.WithTransaction("second", "main", Details("Second", now)))
+            .Do(s => s.TransactionScenario.WithTransaction("third", "main", Details("Third", now)));
+        List<Guid> expected = Scenario.TransactionMappings.Values.OrderDescending().ToList();
+
+        TransactionsService subject = BuildSubject();
+
+        // Act
+        List<Transaction> transactions = await GetAllAsync(subject, new FilterTransactions());
+
+        // Assert
+        await Assert.That(transactions.Select(x => x.TransactionId)).IsEquivalentTo(expected,
+            TUnit.Assertions.Enums.CollectionOrdering.Matching);
+    }
+
+    [Test]
     public async Task GetAllTransactionsAsync_MapsTransaction()
     {
         // Arrange

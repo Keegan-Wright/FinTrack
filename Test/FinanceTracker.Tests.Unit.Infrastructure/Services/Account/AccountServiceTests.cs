@@ -46,6 +46,38 @@ public class AccountServiceTests : InfrastructureTestBase
     }
 
     [Test]
+    public async Task GetAccountsAndMostRecentTransactionsAsync_AtTheSameTime_OrderedByIdNewestFirst()
+    {
+        // Arrange, Postgres returns rows in no set order, so a tie mustn't shuffle between loads
+        DateTime now = DateTime.UtcNow.AddDays(-1);
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("bank", Username))
+            .Do(s => s.BankAccountScenario.WithAccount("main", "bank"))
+            .Do(s => s.TransactionScenario.WithTransaction("first", "main",
+                new TransactionDetailsFaker().Generate() with { Description = "first", OccurredAt = now }))
+            .Do(s => s.TransactionScenario.WithTransaction("second", "main",
+                new TransactionDetailsFaker().Generate() with { Description = "second", OccurredAt = now }))
+            .Do(s => s.TransactionScenario.WithTransaction("third", "main",
+                new TransactionDetailsFaker().Generate() with { Description = "third", OccurredAt = now }));
+        // The summary carries no id, so its descriptions, which are the scenario names, stand in
+        List<string> expected = Scenario.TransactionMappings
+            .OrderByDescending(static x => x.Value)
+            .Select(static x => x.Key)
+            .ToList();
+
+        AccountService subject = BuildSubject(Username);
+
+        // Act
+        List<AccountAndTransactions> accounts = await subject
+            .GetAccountsAndMostRecentTransactionsAsync(3, CancellationToken)
+            .ToListAsync(CancellationToken);
+
+        // Assert
+        await Assert.That(accounts.Single().Transactions!.Select(x => x.Description)).IsEquivalentTo(expected,
+            TUnit.Assertions.Enums.CollectionOrdering.Matching);
+    }
+
+    [Test]
     public async Task GetAccountsAndMostRecentTransactionsAsync_MapsAccountBalanceBankAndLogo()
     {
         // Arrange
