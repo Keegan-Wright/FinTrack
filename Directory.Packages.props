@@ -54,7 +54,7 @@
     <PackageVersion Include="TUnit" Version="1.87.12" />
     <PackageVersion Include="TUnit.Core" Version="1.87.12" />
     <PackageVersion Include="TUnit.Aspire" Version="1.87.12" />
-    <PackageVersion Include="WireMock.Net" Version="2.32.0" />
+    <PackageVersion Include="WireMock.Net" Version="2.33.0" />
     <!-- For QueryHelpers in the integration tests, which don't have ASP.NET Core's shared framework -->
     <PackageVersion Include="Microsoft.AspNetCore.WebUtilities" Version="11.0.0" />
     <PackageVersion Include="Blazilla" Version="3.0.1" />
