@@ -122,22 +122,25 @@ public class PageComponent : ComponentBase, IDisposable
     /// Has <paramref name="write"/> make the file, then saves it in the browser as <paramref name="fileName"/>, or
     /// says <paramref name="failure"/>. Nothing more once the user leaves the page.
     /// </summary>
+    /// <returns>Whether the file was saved.</returns>
     /// <param name="fileName">The file's name.</param>
     /// <param name="contentType">The file's media type.</param>
     /// <param name="write">Writes the file.</param>
     /// <param name="failure">What to tell the user when it fails.</param>
-    internal async Task SaveFileAsync(string fileName, string contentType, Func<Stream, CancellationToken, Task> write,
-        string failure)
+    internal async Task<bool> SaveFileAsync(string fileName, string contentType,
+        Func<Stream, CancellationToken, Task> write, string failure)
     {
         try
         {
             using MemoryStream file = new();
             await write(file, _cts.Token);
             file.Position = 0;
-            if (!await PageJS.SaveFileAsync(fileName, contentType, file, _cts.Token))
+            if (await PageJS.SaveFileAsync(fileName, contentType, file, _cts.Token))
             {
-                PageSnackbar.Add(failure, Severity.Error);
+                return true;
             }
+
+            PageSnackbar.Add(failure, Severity.Error);
         }
         catch (OperationCanceledException) when (_cts.IsCancellationRequested)
         {
@@ -147,6 +150,8 @@ public class PageComponent : ComponentBase, IDisposable
         {
             PageSnackbar.Add(failure, Severity.Error);
         }
+
+        return false;
     }
 
     /// <summary>

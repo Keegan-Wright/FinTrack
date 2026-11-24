@@ -1,17 +1,21 @@
 @page "/YourData"
 @* A copy of everything FinTrack holds for the user, to keep or take elsewhere (IExportsService). The statement is a PDF
-   of one pay period. The backup is a zip of JSON and a transactions CSV; *@
+   of one pay period. The backup is a zip of JSON and a transactions CSV, protected with a password when the user
+   asks. *@
 @using FinanceTracker.Client.Extensions
 @using FinanceTracker.Contracts.Api
 @using FinanceTracker.Contracts.Exports
 @using FinanceTracker.Contracts.PayPeriods
+@using FluentValidation
 @using Microsoft.AspNetCore.Authorization
+@using Severity = MudBlazor.Severity
 @inherits PageComponent
 
 @attribute [Authorize]
 @inject IExportsService ExportsService
 @inject IPayPeriodsService PayPeriodsService
 @inject TimeProvider TimeProvider
+@inject IValidator<ExportBackup> BackupValidator
 
 <PageTitle>FinTrack - Your data</PageTitle>
 <PageHeader Title="Your data" Subtitle="Take a copy of everything FinTrack holds for you"/>
@@ -62,13 +66,44 @@
                 </ul>
                 <MudText Typo="Typo.caption" Class="mud-text-secondary">
                     Each file is JSON, with your transactions also as a spreadsheet. Your bank connections' access and
-                    your password are never in it.
+                    your sign in password are never in it.
                 </MudText>
 
-                <MudAlert Severity="Severity.Warning" Variant="Variant.Text" Dense="true">
-                    The backup isn't encrypted. It's your financial data in plain text, so keep it somewhere safe and
-                    don't share it. Password protection is coming.
-                </MudAlert>
+                <MudSwitch T="bool" @bind-Value="_protectBackup" Color="Color.Primary"
+                           Label="Protect with a password"/>
+
+                @if (_protectBackup)
+                {
+                    <MudForm @ref="_backupForm" Model="@_backup">
+                        <div class="ft-your-data__password">
+                            <MudTextField T="string" @bind-Value="_backup.Password" Label="Password"
+                                          Variant="Variant.Outlined" Margin="Margin.Dense"
+                                          InputType="InputType.Password" HelperText="@BackupPasswordRules.Hint"
+                                          For="@(() => _backup.Password)"
+                                          UserAttributes="@NewPassword"
+                                          Validation="@(BackupValidator.ValidateValue(_backup, nameof(ExportBackup.Password)))"/>
+                            <MudTextField T="string" @bind-Value="_backup.ConfirmPassword" Label="Confirm password"
+                                          Variant="Variant.Outlined" Margin="Margin.Dense"
+                                          InputType="InputType.Password" For="@(() => _backup.ConfirmPassword)"
+                                          UserAttributes="@NewPassword"
+                                          Validation="@(BackupValidator.ValidateValue(_backup, nameof(ExportBackup.ConfirmPassword)))"/>
+                        </div>
+                    </MudForm>
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                        You'll need it to open any file in the backup. It can't be recovered if you lose it, so keep
+                        it somewhere safe, e.g. a password manager.
+                    </MudText>
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                        The names of the files inside can still be seen, but not what's in them.
+                    </MudText>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Warning" Variant="Variant.Text" Dense="true">
+                        The backup isn't encrypted without a password. It's your financial data in plain text, so keep
+                        it somewhere safe and don't share it.
+                    </MudAlert>
+                }
 
                 <div>
                     <MudButton Variant="Variant.Filled" Color="Color.Primary"
@@ -127,6 +162,14 @@
     private DateOnly _statementMonth;
     private bool _downloadingStatement;
     private bool _downloadingBackup;
+    private bool _protectBackup;
+    private ExportBackup _backup = new();
+    private MudForm? _backupForm;
+
+    /// <summary>
+    /// Tells password managers the backup's fields are a new password, not the user's sign in one.
+    /// </summary>
+    private static readonly Dictionary<string, object?> NewPassword = new() { ["autocomplete"] = "new-password" };
 
     /// <summary>
     /// How the statement's months run.
@@ -206,16 +249,33 @@
     }
 
     /// <summary>
-    /// Downloads the backup.
+    /// Downloads the backup, protected with the password when the user asked for one and it's valid.
     /// </summary>
     private async Task DownloadBackupAsync()
     {
+        ExportBackup request = new();
+        if (_protectBackup)
+        {
+            await _backupForm!.ValidateAsync();
+            if (!_backupForm.IsValid)
+            {
+                return;
+            }
+
+            request = new ExportBackup { Password = _backup.Password, ConfirmPassword = _backup.ConfirmPassword };
+        }
+
         _downloadingBackup = true;
         try
         {
-            await SaveFileAsync(ExportFileNames.Backup(TimeProvider.GetLocalNow()), "application/zip",
-                (stream, cancellationToken) => ExportsService.WriteBackupAsync(new ExportBackup(), stream,
-                    cancellationToken), "Couldn't make your backup, try again");
+            bool saved = await SaveFileAsync(ExportFileNames.Backup(TimeProvider.GetLocalNow()), "application/zip",
+                (stream, cancellationToken) => ExportsService.WriteBackupAsync(request, stream, cancellationToken),
+                "Couldn't make your backup, try again");
+            if (saved && _protectBackup)
+            {
+                // Not kept on the page once it's done its job
+                _backup = new ExportBackup();
+            }
         }
         finally
         {
