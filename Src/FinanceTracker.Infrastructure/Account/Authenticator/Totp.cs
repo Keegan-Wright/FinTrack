@@ -31,11 +31,20 @@ public static class Totp
         Span<byte> counter = stackalloc byte[sizeof(long)];
         BinaryPrimitives.WriteInt64BigEndian(counter, step);
         Span<byte> hash = stackalloc byte[HMACSHA256.HashSizeInBytes];
-        HMACSHA256.HashData(key, counter, hash);
+        int truncated;
+        try
+        {
+            HMACSHA256.HashData(key, counter, hash);
 
-        // RFC 4226's dynamic truncation, 31 bits from where the last nibble points
-        int offset = hash[^1] & 0x0f;
-        int truncated = BinaryPrimitives.ReadInt32BigEndian(hash[offset..]) & 0x7fffffff;
+            // RFC 4226's dynamic truncation, 31 bits from where the last nibble points
+            int offset = hash[^1] & 0x0f;
+            truncated = BinaryPrimitives.ReadInt32BigEndian(hash[offset..]) & 0x7fffffff;
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(hash);
+        }
+
         int modulus = (int)Math.Pow(10, digits);
         return (truncated % modulus).ToString("D" + digits, CultureInfo.InvariantCulture);
     }

@@ -1,6 +1,7 @@
 using System.Buffers.Binary;
 using System.Collections;
 using System.Collections.Concurrent;
+using System.Security.Cryptography;
 using System.Text;
 using FinanceTracker.Infrastructure.Encryption;
 using Microsoft.EntityFrameworkCore;
@@ -145,7 +146,10 @@ internal static class RowIntegrity
                 complexProperty.GetGetter().GetClrValue(entity));
         }
 
-        return content.ToArray();
+
+        byte[] copied = content.ToArray();
+        CryptographicOperations.ZeroMemory(content.GetBuffer());
+        return copied;
     }
 
     /// <summary>
@@ -249,5 +253,6 @@ internal static class RowIntegrity
         BinaryPrimitives.WriteInt32BigEndian(length, bytes.Length);
         content.Write(length);
         content.Write(bytes);
+        CryptographicOperations.ZeroMemory(bytes);
     }
 }

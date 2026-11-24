@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using FinanceTracker.Telemetry;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -40,7 +41,17 @@ internal static class RowIntegrityCheck
         }
 
         byte[] content = RowIntegrity.Content(entityType, valueOf, entity);
-        if (RowIntegrity.IsValid(context.EncryptionService, tag, content))
+        bool valid;
+        try
+        {
+            valid = RowIntegrity.IsValid(context.EncryptionService, tag, content);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(content);
+        }
+
+        if (valid)
         {
             return;
         }
