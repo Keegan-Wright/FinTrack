@@ -435,22 +435,18 @@ public class RowIntegrityTests : InfrastructureTestBase
     }
 
     [Test]
-    public async Task Load_TagFromAnOlderFormat_IsLetThrough()
+    public async Task Load_TagFromAnOlderFormat_IsRefused()
     {
-        // Arrange, as a row tagged before tags covered complex types
+        // Arrange, startup tags every row at the current format, so an older one now means the database was edited
         await AddPasskeyAsync(Username, 1, "Placeholder laptop");
         await SqlAsync("""UPDATE "AspNetUserPasskeys" SET "IntegrityTag" = '1:AAAA'""");
         await SqlAsync("""UPDATE "BankTransactions" SET "IntegrityTag" = '1:AAAA'""");
 
-        // Act
-        List<IdentityUserPasskey<Guid>> passkeys = await LoadPasskeysAsync(LoadAll);
-        List<BankTransaction> transactions = await LoadTransactionsAsync();
-
-        // Assert
+        // Act, Assert, a row checked as it loads and one checked once its JSON is filled in
         using (Assert.Multiple())
         {
-            await Assert.That(passkeys).Count().IsEqualTo(1);
-            await Assert.That(transactions).Count().IsEqualTo(2);
+            await Assert.ThrowsAsync<RowIntegrityException>(LoadTransactionsAsync);
+            await Assert.ThrowsAsync<RowIntegrityException>(() => LoadPasskeysAsync(LoadAll));
         }
     }
 

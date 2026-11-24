@@ -5,6 +5,7 @@ using FinanceTracker.Domain.Household;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Domain.OpenBanking.Transactions;
+using FinanceTracker.Domain.OpenBanking.Transfers;
 using FinanceTracker.Domain.SavingsGoals;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Tests.Unit.Shared;
@@ -278,6 +279,54 @@ public class FinanceTrackerContextTests : InfrastructureTestBase
     }
 
     [Test]
+    public async Task SaveChanges_SyncBringsAMerchantName_StampsUpdated()
+    {
+        // Arrange, the bank fills the merchant in on a later sync, which rules and transfer matching should see
+        TransactionDetails details = PaymentDetails();
+        Guid transactionId = await SeedPaymentAsync(details);
+
+        // Act
+        await using (FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken))
+        {
+            BankTransaction transaction =
+                await context.BankTransactions.SingleAsync(x => x.Id == transactionId, CancellationToken);
+            transaction.UpdateFromSync(details with
+            {
+                Metadata = TransactionMetadata.None with { MerchantName = "Placeholder Cafe" }
+            });
+            await context.SaveChangesAsync(CancellationToken);
+        }
+
+        // Assert
+        await Assert.That((await LoadTransactionAsync(transactionId)).Updated).IsNotNull();
+    }
+
+    [Test]
+    public async Task SaveChanges_OnlyATransferDecision_LeavesUpdated()
+    {
+        // Arrange, the app's own decisions aren't changes the rules and transfer matching runs look for
+        Guid transactionId = await SeedPaymentAsync(PaymentDetails());
+
+        // Act
+        bool decided;
+        await using (FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken))
+        {
+            BankTransaction transaction =
+                await context.BankTransactions.SingleAsync(x => x.Id == transactionId, CancellationToken);
+            decided = transaction.DecideTransfer(
+                TransferInfo.FromRule(TransferDecision.Transfer, Guid.NewGuid(), DateTime.UtcNow));
+            await context.SaveChangesAsync(CancellationToken);
+        }
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(decided).IsTrue();
+            await Assert.That((await LoadTransactionAsync(transactionId)).Updated).IsNull();
+        }
+    }
+
+    [Test]
     public async Task SaveChanges_Synchronous_StampsCreatedAndUpdated()
     {
         // Arrange
@@ -526,5 +575,24 @@ public class FinanceTrackerContextTests : InfrastructureTestBase
             CancellationToken);
 
         await Assert.That(loaded.CustomClassificationIds.Count).IsEqualTo(0);
+    }
+
+    private static TransactionDetails PaymentDetails() =>
+        new("ext-1", "Payment", TransactionType.Debit, "PURCHASE", -12.34m, "GBP",
+            new DateTime(2026, 1, 2, 3, 4, 5, DateTimeKind.Utc), false, ["Food"], TransactionMetadata.None, false);
+
+    private async Task<Guid> SeedPaymentAsync(TransactionDetails details)
+    {
+        await Scenario.Do(s => s.UserScenario.WithUser(Username))
+            .Do(s => s.BankConnectionScenario.WithConnection("bank", Username))
+            .Do(s => s.BankAccountScenario.WithAccount("main", "bank"))
+            .Do(s => s.TransactionScenario.WithTransaction("payment", "main", details));
+        return Scenario.TransactionMappings["payment"];
+    }
+
+    private async Task<BankTransaction> LoadTransactionAsync(Guid transactionId)
+    {
+        await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
+        return await context.BankTransactions.SingleAsync(x => x.Id == transactionId, CancellationToken);
     }
 }

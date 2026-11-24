@@ -31,8 +31,9 @@ internal static class RowIntegrity
     public const string TagProperty = "IntegrityTag";
 
     /// <summary>
-    /// The version of what a tag covers, at the start of every tag. A tag from an older version is treated as no tag
-    /// at all, and tagged again at startup by <see cref="EncryptionKeyRotator"/>. Version 2 covers complex types.
+    /// The version of what a tag covers, at the start of every tag. A row tagged in an older version is tagged again
+    /// at startup by <see cref="EncryptionKeyRotator"/>, and refused if one turns up after that. Version 2 covers
+    /// complex types.
     /// </summary>
     public const string FormatVersion = "v2";
 

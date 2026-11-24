@@ -261,6 +261,9 @@ public sealed class EncryptionKeyRotator
         {
             await using FinanceTrackerContext context = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
 
+            // Rows tagged in an older format are what it's here to tag again, so they have to load
+            context.AcceptsOutdatedRowTags = true;
+
             // Rewriting a row doesn't change its key, so paging by key stays stable while saving
             List<TEntity> batch = await OrderedByKey(context.Set<TEntity>(), keyNames)
                 .Skip(total)

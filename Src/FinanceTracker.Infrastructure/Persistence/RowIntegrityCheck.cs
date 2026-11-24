@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
 using FinanceTracker.Telemetry;
 using Microsoft.EntityFrameworkCore;
@@ -10,8 +11,9 @@ namespace FinanceTracker.Infrastructure.Persistence;
 
 /// <summary>
 /// Checks one loaded row against its integrity tag, see <see cref="RowIntegrity"/>. A row whose tag doesn't match was
-/// changed outside the app, so it's refused, logged and counted rather than shown. A row without a tag yet, or with
-/// one from an older format, is let through and logged, and tagged at startup.
+/// changed outside the app, so it's refused, logged and counted rather than shown. A row without a tag yet is let
+/// through and logged, and tagged at startup. One tagged in an older format is only let through while startup tags it
+/// again, see <see cref="FinanceTrackerContext.AcceptsOutdatedRowTags"/>, and refused like a mismatch otherwise.
 /// </summary>
 internal static class RowIntegrityCheck
 {
@@ -36,8 +38,14 @@ internal static class RowIntegrityCheck
 
         if (!RowIntegrity.IsCurrentFormat(tag))
         {
-            LoggerFor(context)?.LogRowIntegrityTagOutdated(table, IdOf(entityType, valueOf));
-            return;
+            if (context.AcceptsOutdatedRowTags)
+            {
+                LoggerFor(context)?.LogRowIntegrityTagOutdated(table, IdOf(entityType, valueOf));
+                return;
+            }
+
+            // Startup tags every row at the current format before anything else loads, so this was written since
+            Refuse(context, entityType, table, valueOf);
         }
 
         byte[] content = RowIntegrity.Content(entityType, valueOf, entity);
@@ -51,11 +59,24 @@ internal static class RowIntegrityCheck
             CryptographicOperations.ZeroMemory(content);
         }
 
-        if (valid)
+        if (!valid)
         {
-            return;
+            Refuse(context, entityType, table, valueOf);
         }
+    }
 
+    /// <summary>
+    /// Logs and counts a row that fails its check, then refuses it.
+    /// </summary>
+    /// <param name="context">The context loading it.</param>
+    /// <param name="entityType">Its entity type.</param>
+    /// <param name="table">Its table.</param>
+    /// <param name="valueOf">Each of the row's own covered properties' values as loaded.</param>
+    /// <exception cref="RowIntegrityException">Always.</exception>
+    [DoesNotReturn]
+    private static void Refuse(FinanceTrackerContext context, IEntityType entityType, string table,
+        Func<IProperty, object?> valueOf)
+    {
         string id = IdOf(entityType, valueOf);
         LoggerFor(context)?.LogRowIntegrityFailed(table, id);
         AppService<FinTrackMetrics>(context)?.RowIntegrityFailed(table);
