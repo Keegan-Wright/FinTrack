@@ -1,4 +1,4 @@
-﻿FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled-extra AS base
+﻿FROM mcr.microsoft.com/dotnet/aspnet:11.0-resolute-chiseled-extra AS base
 WORKDIR /app
 EXPOSE 8080
 
@@ -6,7 +6,7 @@ EXPOSE 8080
 FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:11.0 AS build
 ARG TARGETARCH
 WORKDIR /src
-COPY ["Directory.Packages.props", "Directory.Build.props", ".editorconfig", "global.json", "./"]
+COPY ["Directory.Packages.props", "Directory.Build.props", "Directory.Build.targets", ".editorconfig", "global.json", "./"]
 
 COPY ["Src/FinanceTracker/FinanceTracker.csproj", "Src/FinanceTracker/"]
 COPY ["Src/FinanceTracker.AppHost.ServiceDefaults/FinanceTracker.AppHost.ServiceDefaults.csproj", "Src/FinanceTracker.AppHost.ServiceDefaults/"]
@@ -49,7 +49,7 @@ RUN if [ "$TARGETARCH" = "arm64" ]; then \
 # Without it the runtime quietly skips loading the profiler. Taken from the same Ubuntu release the chiseled image is
 # cut from, for the target's architecture, and put beside the profiler, which looks in its own folder first. Nothing
 # runs in this stage, so it builds without emulation
-FROM ubuntu:24.04 AS zlib
+FROM ubuntu:26.04 AS zlib
 
 # Publish builds the app itself, for the target's architecture only, so the image carries only its native libraries
 FROM build AS publish
