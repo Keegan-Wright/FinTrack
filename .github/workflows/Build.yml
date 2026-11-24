@@ -27,7 +27,7 @@ jobs:
       - name: Install .NET Core
         uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
-          dotnet-version: 10.0.x
+          dotnet-version: 11.0.x
 
       - name: Restore workloads
         run: dotnet workload restore
@@ -50,7 +50,7 @@ jobs:
       - name: Install .NET Core
         uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
-          dotnet-version: 10.0.x
+          dotnet-version: 11.0.x
 
       - name: Restore workloads
         run: dotnet workload restore
@@ -112,7 +112,7 @@ jobs:
       - name: Install .NET Core
         uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
-          dotnet-version: 10.0.x
+          dotnet-version: 11.0.x
 
       - name: Restore workloads
         run: dotnet workload restore
@@ -133,7 +133,7 @@ jobs:
       # The tests install Chromium themselves when it's missing, but not its libraries
       - name: Install Playwright's Chromium
         if: matrix.browser
-        run: pwsh Test/FinanceTracker.Tests.Integration/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+        run: pwsh Test/FinanceTracker.Tests.Integration/bin/Release/net11.0/playwright.ps1 install --with-deps chromium
 
       - name: Restore tools
         run: dotnet tool restore
@@ -186,7 +186,7 @@ jobs:
       - name: Install .NET Core
         uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
-          dotnet-version: 10.0.x
+          dotnet-version: 11.0.x
 
       - name: Restore workloads
         run: dotnet workload restore
@@ -196,7 +196,7 @@ jobs:
         run: dotnet build Test/FinanceTracker.Tests.Integration -c Release
 
       - name: Install Playwright's Chromium
-        run: pwsh Test/FinanceTracker.Tests.Integration/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+        run: pwsh Test/FinanceTracker.Tests.Integration/bin/Release/net11.0/playwright.ps1 install --with-deps chromium
 
       # For this runner's platform, the published images are built for both in the release workflow
       - name: Build the image
@@ -257,7 +257,7 @@ jobs:
       - name: Install .NET Core
         uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
-          dotnet-version: 10.0.x
+          dotnet-version: 11.0.x
 
       - name: Restore tools
         run: dotnet tool restore
