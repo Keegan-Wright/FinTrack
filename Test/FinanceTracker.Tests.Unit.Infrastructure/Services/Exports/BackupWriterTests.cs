@@ -22,6 +22,7 @@ namespace FinanceTracker.Tests.Unit.Infrastructure.Services.Exports;
 public class BackupWriterTests : UnitTestBase
 {
     private static readonly DateTime Now = new(2026, 11, 4, 12, 0, 0, DateTimeKind.Utc);
+    private const string Password = "Placeholder backup password";
 
     private static readonly string[] Files =
     [
@@ -65,6 +66,51 @@ public class BackupWriterTests : UnitTestBase
             await Assert.That(manifest.Files["bills.json"]).IsEqualTo(0);
             await Assert.That(manifest.Files["pay.json"]).IsEqualTo(1);
         }
+    }
+
+    [Test]
+    public async Task WriteAsync_WithAPassword_EveryFileIsAes256AndOpensOnlyWithIt()
+    {
+        // Act
+        using ZipArchive zip = await WriteAsync(Password);
+
+        // Assert
+        ZipArchiveEntry manifest = zip.GetEntry("manifest.json")!;
+        using (Assert.Multiple())
+        {
+            await Assert.That(zip.Entries.Select(static x => x.EncryptionMethod).Distinct())
+                .IsEquivalentTo([ZipEncryptionMethod.Aes256]);
+            await Assert.That(JsonSerializer.Deserialize<BackupManifest>(Bytes(zip, "manifest.json", Password),
+                JsonSerializerOptions.Web)!.Files).Count().IsEqualTo(Files.Length);
+            await Assert.That(() => manifest.Open("Placeholder-wrong-password")).Throws<InvalidDataException>();
+            await Assert.That(() => manifest.Open()).Throws<InvalidDataException>();
+        }
+    }
+
+    [Test]
+    public async Task WriteAsync_WithoutAPassword_NoFileIsEncrypted()
+    {
+        // Act
+        using ZipArchive zip = await WriteAsync();
+
+        // Assert
+        await Assert.That(zip.Entries.Select(static x => x.EncryptionMethod).Distinct())
+            .IsEquivalentTo([ZipEncryptionMethod.None]);
+    }
+
+    [Test]
+    public async Task WriteAsync_IntoAStreamThatRefusesSynchronousWrites_WritesTheWholeZip()
+    {
+        // Arrange, as an HTTP response body is, which the backup is written straight into
+        AsyncWritesOnlyStream response = new();
+
+        // Act
+        await BuildWriter(_transactionsService, _accountService).WriteAsync(response, Password, CancellationToken);
+
+        // Assert
+        response.Written.Position = 0;
+        using ZipArchive zip = new(response.Written, ZipArchiveMode.Read);
+        await Assert.That(zip.Entries.Select(static x => x.FullName)).IsEquivalentTo([.. Files, "manifest.json"]);
     }
 
     [Test]
@@ -150,12 +196,20 @@ public class BackupWriterTests : UnitTestBase
             household, pay, netWorth, new FixedTimeProvider(Now));
     }
 
-    private async Task<ZipArchive> WriteAsync()
+    private async Task<ZipArchive> WriteAsync(string? password = null)
     {
         MemoryStream backup = new();
-        await BuildWriter(_transactionsService, _accountService).WriteAsync(backup, CancellationToken);
+        await BuildWriter(_transactionsService, _accountService).WriteAsync(backup, password, CancellationToken);
         backup.Position = 0;
         return new ZipArchive(backup, ZipArchiveMode.Read);
+    }
+
+    private static byte[] Bytes(ZipArchive zip, string name, string password)
+    {
+        using Stream entry = zip.GetEntry(name)!.Open(password);
+        using MemoryStream copy = new();
+        entry.CopyTo(copy);
+        return copy.ToArray();
     }
 
     private static byte[] Bytes(ZipArchive zip, string name)

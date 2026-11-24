@@ -3,8 +3,11 @@ using System.Globalization;
 using AngleSharp.Dom;
 using Bunit;
 using FinanceTracker.Client;
+using FinanceTracker.Contracts.Exports;
 using FinanceTracker.Contracts.PayPeriods;
 using FinanceTracker.Contracts.Services;
+using FinanceTracker.Contracts.Validation;
+using FluentValidation;
 using FinanceTracker.Tests.Unit.Client.PayPeriods;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
@@ -28,6 +31,7 @@ public class YourDataPageTests : ComponentTestBase
         AddAuthorization().SetAuthorized("someone");
         Services.AddSingleton(_exportsService);
         Services.AddSingleton(_payPeriodsService);
+        Services.AddScoped<IValidator<ExportBackup>, ExportBackupValidator>();
         // Paid on 30 October, so today, 4 November, is in November's period
         _payPeriodsService.GetYourPayAsync(Arg.Any<CancellationToken>()).Returns(YourPays.FromPayToPay());
         // The oldest transaction came in September's period
@@ -53,6 +57,74 @@ public class YourDataPageTests : ComponentTestBase
     }
 
     [Test]
+    public async Task ProtectBackup_ShowsThePasswordFieldsAndTheRuleInsteadOfTheWarning()
+    {
+        // Arrange
+        IRenderedComponent<YourDataPage> cut = RenderPage();
+
+        // Act
+        await ProtectAsync(cut);
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(cut.FindAll("label").Select(static x => x.TextContent.Trim()))
+                .Contains("Password").And.Contains("Confirm password");
+            await Assert.That(cut.Markup).Contains(BackupPasswordRules.Hint);
+            await Assert.That(cut.Markup).Contains("can't be recovered");
+            await Assert.That(cut.FindAll(".mud-alert")).IsEmpty();
+        }
+    }
+
+    [Test]
+    public async Task DownloadBackup_Protected_SendsThePasswordThenClearsTheFields()
+    {
+        // Arrange
+        const string password = "Placeholder backup password";
+        IRenderedComponent<YourDataPage> cut = RenderPage();
+        await ProtectAsync(cut);
+        await Field(cut, "Password").ChangeAsync(new() { Value = password });
+        await Field(cut, "Confirm password").ChangeAsync(new() { Value = password });
+
+        // Act
+        await cut.InvokeAsync(() => DownloadButton(cut).Click());
+
+        // Assert
+        cut.WaitForState(() => JSInterop.Invocations.Any(static x => x.Identifier == "ftDownloadFile"));
+        using (Assert.Multiple())
+        {
+            await _exportsService.Received(1).WriteBackupAsync(
+                Arg.Is<ExportBackup>(static x => x.Password == password && x.ConfirmPassword == password),
+                Arg.Any<Stream>(), Arg.Any<CancellationToken>());
+            await Assert.That(Field(cut, "Password").GetAttribute("value") ?? string.Empty).IsEmpty();
+            await Assert.That(Field(cut, "Confirm password").GetAttribute("value") ?? string.Empty).IsEmpty();
+        }
+    }
+
+    [Test]
+    public async Task DownloadBackup_ProtectedWithATooShortPassword_SaysWhyAndDownloadsNothing()
+    {
+        // Arrange
+        string password = new('a', BackupPasswordRules.MinimumLength - 1);
+        IRenderedComponent<YourDataPage> cut = RenderPage();
+        await ProtectAsync(cut);
+        await Field(cut, "Password").ChangeAsync(new() { Value = password });
+        await Field(cut, "Confirm password").ChangeAsync(new() { Value = password });
+
+        // Act
+        await cut.InvokeAsync(() => DownloadButton(cut).Click());
+
+        // Assert
+        cut.WaitForState(() => cut.Markup.Contains(BackupPasswordRules.TooShort, StringComparison.Ordinal));
+        using (Assert.Multiple())
+        {
+            await _exportsService.DidNotReceive().WriteBackupAsync(Arg.Any<ExportBackup>(), Arg.Any<Stream>(),
+                Arg.Any<CancellationToken>());
+            await Assert.That(JSInterop.Invocations.Any(static x => x.Identifier == "ftDownloadFile")).IsFalse();
+        }
+    }
+
+    [Test]
     public async Task DownloadBackup_SavesItAsAZip()
     {
         // Arrange
@@ -66,7 +138,8 @@ public class YourDataPageTests : ComponentTestBase
         JSRuntimeInvocation saved = JSInterop.Invocations.Single(static x => x.Identifier == "ftDownloadFile");
         using (Assert.Multiple())
         {
-            await _exportsService.Received(1).WriteBackupAsync(Arg.Any<Stream>(), Arg.Any<CancellationToken>());
+            await _exportsService.Received(1).WriteBackupAsync(Arg.Is<ExportBackup>(static x => x.Password == null),
+                Arg.Any<Stream>(), Arg.Any<CancellationToken>());
             await Assert.That(saved.Arguments[0]).IsEqualTo("fintrack-backup-2026-11-04.zip");
             await Assert.That(saved.Arguments[1]).IsEqualTo("application/zip");
         }
@@ -76,7 +149,7 @@ public class YourDataPageTests : ComponentTestBase
     public async Task DownloadBackup_WhenItFails_SaysSoAndCanBeTriedAgain()
     {
         // Arrange
-        _exportsService.WriteBackupAsync(Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+        _exportsService.WriteBackupAsync(Arg.Any<ExportBackup>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new HttpRequestException("The server didn't answer"));
         IRenderedComponent<MudSnackbarProvider> snackbars = Render<MudSnackbarProvider>();
         IRenderedComponent<YourDataPage> cut = RenderPage();
@@ -208,6 +281,15 @@ public class YourDataPageTests : ComponentTestBase
 
     private IRenderedComponent<YourDataPage> RenderPage() =>
         Render<YourDataPage>(p => p.AddCascadingValue(_applicationState));
+
+    private static Task ProtectAsync(IRenderedComponent<YourDataPage> cut) =>
+        cut.Find(".mud-switch input").ChangeAsync(new() { Value = true });
+
+    private static IElement Field(IRenderedComponent<YourDataPage> cut, string label)
+    {
+        string id = cut.FindAll("label").Single(x => x.TextContent.Trim() == label).GetAttribute("for")!;
+        return cut.Find($"#{id}");
+    }
 
     private static IElement DownloadButton(IRenderedComponent<YourDataPage> cut) =>
         Button(cut, "Download backup");

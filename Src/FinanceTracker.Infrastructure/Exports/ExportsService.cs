@@ -64,10 +64,18 @@ public sealed class ExportsService : IExportsService
     }
 
     /// <inheritdoc/>
-    public async Task WriteBackupAsync(Stream destination, CancellationToken cancellationToken)
+    public async Task WriteBackupAsync(ExportBackup backup, Stream destination, CancellationToken cancellationToken)
     {
-        await _backupWriter.WriteAsync(destination, cancellationToken);
-        _logger.LogExported(_currentUser.UserId, "a backup");
+        ArgumentNullException.ThrowIfNull(backup);
+
+        await _backupWriter.WriteAsync(destination, backup.Password, cancellationToken);
+        if (backup.Password is null)
+        {
+            _logger.LogExported(_currentUser.UserId, "a backup");
+            return;
+        }
+
+        _logger.LogExported(_currentUser.UserId, "a password protected backup");
     }
 
     /// <inheritdoc/>

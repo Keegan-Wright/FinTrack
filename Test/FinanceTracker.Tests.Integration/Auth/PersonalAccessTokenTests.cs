@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FinanceTracker.Contracts.Api;
 using FinanceTracker.Contracts.Calendar;
+using FinanceTracker.Contracts.Exports;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Transactions;
 using FinanceTracker.Domain.Identity;
@@ -81,12 +82,26 @@ public class PersonalAccessTokenTests : IntegrationTestBase
     }
 
     [Test]
+    public async Task Backup_WithAToken_IsForbidden()
+    {
+        // Arrange, a POST that only reads, but a copy of everything isn't opened to tokens
+        SignedInUser user = await RegisterUserAsync();
+        string token = await TokenForAsync(user);
+
+        // Act
+        HttpResponseMessage response =
+            await SendAsync(HttpMethod.Post, $"{ApiRoutes.Exports}/backup", token, new ExportBackup());
+
+        // Assert
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+    }
+
+    [Test]
     [Arguments("api/profile")]
     [Arguments("api/profile/two-factor/authenticator")]
     [Arguments("api/profile/passkeys")]
     [Arguments("api/notifications/settings")]
     [Arguments("api/sharing/links")]
-    [Arguments("api/exports/backup")]
     public async Task Read_AnAccountOrSettingsEndpoint_IsForbidden(string path)
     {
         // Arrange

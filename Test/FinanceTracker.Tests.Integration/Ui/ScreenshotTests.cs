@@ -178,6 +178,31 @@ public class ScreenshotTests : UiTestBase
 
     [Test]
     [MethodDataSource(nameof(DesktopAndPhone))]
+    public async Task YourDataBackup_IsCaptured(ScreenSize screen)
+    {
+        // Arrange, for the Your data docs, the backup about to be protected with a password
+        string username = $"{ScreenshotUser.FirstName}.yourdata.{screen.Name}".ToLowerInvariant();
+        SignedInUser user = await RegisterUserAsync(username, firstName: ScreenshotUser.FirstName);
+        IPage page = await OpenAsync(screen, user, false);
+        await GoToAsync(page, "/YourData");
+        await page.GetByText("Protect with a password", new PageGetByTextOptions { Exact = true }).ClickAsync();
+        await page.GetByLabel("Password", new PageGetByLabelOptions { Exact = true })
+            .FillAsync("Placeholder backup password");
+        await page.GetByLabel("Confirm password", new PageGetByLabelOptions { Exact = true })
+            .FillAsync("Placeholder backup password");
+
+        // Act, the backup section in view
+        await Button(page, "Download backup").ScrollIntoViewIfNeededAsync();
+        await page.WaitForTimeoutAsync(500);
+        string file = Path.Combine(RepositoryRoot(), ImagesFolder, $"your-data-{screen.Name.ToLowerInvariant()}.png");
+        await page.ScreenshotAsync(new PageScreenshotOptions { Path = file });
+
+        // Assert
+        await Assert.That(File.Exists(file)).IsTrue();
+    }
+
+    [Test]
+    [MethodDataSource(nameof(DesktopAndPhone))]
     public async Task ApiTokens_IsCaptured(ScreenSize screen)
     {
         // Arrange, for the API tokens docs, one token that expires and one that never does

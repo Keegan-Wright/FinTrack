@@ -11,6 +11,7 @@ public interface IBackupWriter
     /// Writes the backup zip to <paramref name="destination"/>.
     /// </summary>
     /// <param name="destination">Where the zip is written.</param>
+    /// <param name="password">The password every file is encrypted with, AES-256, or null for a plain zip.</param>
     /// <param name="cancellationToken">Stops the work.</param>
-    Task WriteAsync(Stream destination, CancellationToken cancellationToken);
+    Task WriteAsync(Stream destination, string? password, CancellationToken cancellationToken);
 }

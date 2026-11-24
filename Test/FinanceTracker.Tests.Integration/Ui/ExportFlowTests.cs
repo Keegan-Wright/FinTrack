@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using FinanceTracker.Tests.Integration.Http;
 using FinanceTracker.Tests.Unit.Shared.Fakers;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
@@ -55,6 +56,34 @@ public class ExportFlowTests : UiTestBase
             await Assert.That(await StartOfAsync(statement, 5)).IsEqualTo("%PDF-");
             await Assert.That(backup.SuggestedFilename).StartsWith("fintrack-backup-");
             await Assert.That(await StartOfAsync(backup, 2)).IsEqualTo("PK");
+            await Assert.That(BrowserErrors).IsEmpty();
+        }
+    }
+
+    [Test]
+    public async Task YourData_ProtectedBackup_IsSavedAndOpensOnlyWithThePassword()
+    {
+        // Arrange
+        const string password = "Placeholder backup password";
+        SignedInUser user = await WithATransactionAsync();
+        IPage page = await OpenAsync(ScreenSize.Desktop, user);
+        await GoToAsync(page, "/YourData");
+        await page.GetByText("Protect with a password", new PageGetByTextOptions { Exact = true }).ClickAsync();
+        await page.GetByLabel("Password", new PageGetByLabelOptions { Exact = true }).FillAsync(password);
+        await page.GetByLabel("Confirm password", new PageGetByLabelOptions { Exact = true }).FillAsync(password);
+
+        // Act
+        IDownload backup = await DownloadAsync(page, () => Button(page, "Download backup").ClickAsync());
+
+        // Assert
+        using ZipArchive zip = ZipFile.OpenRead(await backup.PathAsync());
+        ZipArchiveEntry transactions = zip.GetEntry("transactions.json")!;
+        using StreamReader reader = new(transactions.Open(password));
+        using (Assert.Multiple())
+        {
+            await Assert.That(transactions.EncryptionMethod).IsEqualTo(ZipEncryptionMethod.Aes256);
+            await Assert.That(await reader.ReadToEndAsync(CancellationToken)).Contains("COFFEE SHOP");
+            await Assert.That(() => transactions.Open()).Throws<InvalidDataException>();
             await Assert.That(BrowserErrors).IsEmpty();
         }
     }
