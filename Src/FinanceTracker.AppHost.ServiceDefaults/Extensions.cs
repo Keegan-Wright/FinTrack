@@ -40,21 +40,16 @@ public static class Extensions
     private const string EntityFrameworkCoreMeterName = "Microsoft.EntityFrameworkCore";
 
     /// <summary>
-    /// The meter ASP.NET Core Identity publishes through since .NET 10: sign ins and their results, password checks,
-    /// sign outs, users created and changed.
+    /// The meter the .NET runtime publishes through since .NET 9: CPU, memory, garbage collection, the thread pool,
+    /// lock contention and exceptions, the <c>dotnet.*</c> metrics.
     /// </summary>
-    private const string IdentityMeterName = "Microsoft.AspNetCore.Identity";
+    private const string RuntimeMeterName = "System.Runtime";
 
     /// <summary>
     /// The meter Polly, under the HTTP clients' resilience handlers, publishes through: retries, such as TrueLayer's
     /// 429s, and how long each attempt took, by pipeline.
     /// </summary>
     private const string PollyMeterName = "Polly";
-
-    /// <summary>
-    /// The activity source ASP.NET Core's SignalR server publishes hub method calls through.
-    /// </summary>
-    private const string SignalRServerActivitySource = "Microsoft.AspNetCore.SignalR.Server";
 
     /// <summary>
     /// OpenTelemetry's resource attribute for the version of the service, see <see cref="ServiceVersion"/>.
@@ -114,9 +109,11 @@ public static class Extensions
                     // request that made it
                     metrics.SetExemplarFilter(ExemplarFilterType.TraceBased);
 
+                    // ASP.NET Core's own meters, including Identity's sign ins, authentication and SignalR
                     metrics.AddAspNetCoreInstrumentation()
-                        .AddHttpClientInstrumentation()
-                        .AddRuntimeInstrumentation();
+                        .AddHttpClientInstrumentation();
+
+                    metrics.AddMeter(RuntimeMeterName);
 
                     metrics.AddNpgsqlInstrumentation();
 
@@ -127,8 +124,7 @@ public static class Extensions
                     // FinTrack's own, see FinTrackMetrics
                     metrics.AddMeter(FinTrackMetrics.MeterName);
 
-                    // Sign ins, and retries of outgoing calls
-                    metrics.AddMeter(IdentityMeterName);
+                    // Retries of outgoing calls
                     metrics.AddMeter(PollyMeterName);
 
                     // Job run times, retries, misfires and the store's operations
@@ -138,9 +134,6 @@ public static class Extensions
                 {
                     // A span for each job run and each store write, the jobs' own spans inside them
                     tracing.AddSource(QuartzInstrumentationName);
-
-                    // Each hub method call the browser makes, ASP.NET Core's own source
-                    tracing.AddSource(SignalRServerActivitySource);
 
                     // FinTrack's own spans, the web app's and the services'
                     tracing.AddSource([.. FinTrackActivitySources.All]);

@@ -7,9 +7,6 @@
     <Nullable>enable</Nullable>
     <AnalysisMode>Recommended</AnalysisMode>
     <UserSecretsId>c41d3b74-0082-44cb-9211-9c1c6c9baade</UserSecretsId>
-    <!-- Aspire 13.6 leaves the CLI bundle off by default and always warns. Turning it on changes where the dashboard
-         and orchestrator are found and expects the Aspire CLI, nothing used here needs it. -->
-    <NoWarn>$(NoWarn);ASPIRE010</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

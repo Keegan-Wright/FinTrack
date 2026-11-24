@@ -175,7 +175,7 @@ jobs:
       - name: Start the image
         run: |
           docker network create fintrack-ci
-          docker run -d --name fintrack-ci-db --network fintrack-ci -e POSTGRES_PASSWORD=ci postgres:17.6
+          docker run -d --name fintrack-ci-db --network fintrack-ci -e POSTGRES_PASSWORD=ci postgres:18.7
           until docker exec fintrack-ci-db pg_isready -U postgres; do sleep 1; done
           docker run -d --name fintrack-ci-web --network fintrack-ci -p 8080:8080 \
             -e HTTP_PORTS=8080 \

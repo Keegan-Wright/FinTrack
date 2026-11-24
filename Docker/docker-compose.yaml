@@ -1,6 +1,6 @@
 services:
   fintrack-postgres:
-    image: "docker.io/library/postgres:17.6"
+    image: "docker.io/library/postgres:18.7"
     command: [ "postgres", "-c", "shared_preload_libraries=pg_stat_statements" ]
     environment:
       POSTGRES_HOST_AUTH_METHOD: "scram-sha-256"
@@ -15,10 +15,12 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    # Postgres 18 keeps its data in /var/lib/postgresql/18/docker, so the volume goes on /var/lib/postgresql. It's a
+    # new volume, a 17 one won't open on 18, see Docs/self-hosting/backups-and-upgrades.md
     volumes:
       - type: "volume"
-        target: "/var/lib/postgresql/data"
-        source: "FinTrack-Postgres-data"
+        target: "/var/lib/postgresql"
+        source: "FinTrack-Postgres18-data"
         read_only: false
     networks:
       - "fintrack"
@@ -111,5 +113,5 @@ networks:
     name: "${FINTRACK_PROXY_NETWORK:-proxy-net}"
     external: true
 volumes:
-  FinTrack-Postgres-data:
+  FinTrack-Postgres18-data:
     driver: "local"
