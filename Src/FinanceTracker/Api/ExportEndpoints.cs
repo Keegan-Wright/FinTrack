@@ -28,11 +28,13 @@ public static class ExportEndpoints
                     stream => service.WriteTransactionsCsvAsync(request, stream, cancellationToken),
                     "text/csv; charset=utf-8", ExportFileNames.Transactions(timeProvider.GetLocalNow())));
 
-            // A zip of everything the user has, see IExportsService.WriteBackupAsync
-            exports.MapGet("backup", (IExportsService service, TimeProvider timeProvider,
-                    CancellationToken cancellationToken) =>
-                TypedResults.Stream(stream => service.WriteBackupAsync(stream, cancellationToken), "application/zip",
-                    ExportFileNames.Backup(timeProvider.GetLocalNow())));
+            // A zip of everything the user has, see IExportsService.WriteBackupAsync. POST so a password goes in the
+            // body, as a URL ends up in logs and traces
+            exports.MapPost("backup", (ExportBackup request, IExportsService service, TimeProvider timeProvider,
+                        CancellationToken cancellationToken) =>
+                    TypedResults.Stream(stream => service.WriteBackupAsync(request, stream, cancellationToken),
+                        "application/zip", ExportFileNames.Backup(timeProvider.GetLocalNow())))
+                .Validated<ExportBackup>();
 
             // The periods there's a statement for, see IExportsService.GetStatementPeriodsAsync
             exports.MapGet("statement/periods", async Task<Ok<List<PayPeriod>>> (IExportsService service,

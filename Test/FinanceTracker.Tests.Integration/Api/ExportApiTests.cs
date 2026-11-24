@@ -1,3 +1,4 @@
+using System.Net;
 using System.IO.Compression;
 using System.Text;
 using System.Text.Json;
@@ -50,6 +51,59 @@ public class ExportApiTests : IntegrationTestBase
     }
 
     [Test]
+    public async Task Backup_WithAPassword_IsAZipThatOpensOnlyWithIt()
+    {
+        // Arrange
+        SignedInUser user = await RegisterUserAsync();
+        await Scenario.Do(s => s.BankConnectionScenario.WithConnection("mine", user.Username))
+            .Do(s => s.BankAccountScenario.WithAccount("main", "mine"))
+            .Do(s => s.TransactionScenario.WithTransaction("coffee", "main",
+                new TransactionDetailsFaker().Generate() with { Description = "COFFEE SHOP" }));
+        IExportsService service = ApiFor(user).Get<IExportsService>();
+        using MemoryStream backup = new();
+        const string password = "Placeholder backup password";
+
+        // Act
+        await service.WriteBackupAsync(new ExportBackup { Password = password, ConfirmPassword = password }, backup,
+            CancellationToken);
+
+        // Assert
+        backup.Position = 0;
+        using ZipArchive zip = new(backup, ZipArchiveMode.Read);
+        ZipArchiveEntry transactions = zip.GetEntry("transactions.json")!;
+        using StreamReader reader = new(transactions.Open(password));
+        using (Assert.Multiple())
+        {
+            await Assert.That(zip.Entries.Select(static x => x.EncryptionMethod).Distinct())
+                .IsEquivalentTo([ZipEncryptionMethod.Aes256]);
+            await Assert.That(await reader.ReadToEndAsync(CancellationToken)).Contains("COFFEE SHOP");
+            await Assert.That(() => transactions.Open("Placeholder-wrong-password")).Throws<InvalidDataException>();
+        }
+    }
+
+    [Test]
+    public async Task Backup_WithATooShortPassword_IsABadRequest()
+    {
+        // Arrange
+        SignedInUser user = await RegisterUserAsync();
+        IExportsService service = ApiFor(user).Get<IExportsService>();
+        using MemoryStream backup = new();
+        string password = new('a', BackupPasswordRules.MinimumLength - 1);
+
+        // Act
+        HttpRequestException? exception = await Assert.ThrowsAsync<HttpRequestException>(() =>
+            service.WriteBackupAsync(new ExportBackup { Password = password, ConfirmPassword = password }, backup,
+                CancellationToken));
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(exception!.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+            await Assert.That(backup.Length).IsEqualTo(0);
+        }
+    }
+
+    [Test]
     public async Task Backup_IsAZipOfOnlyTheUsersOwnData()
     {
         // Arrange
@@ -67,7 +121,7 @@ public class ExportApiTests : IntegrationTestBase
         using MemoryStream backup = new();
 
         // Act
-        await service.WriteBackupAsync(backup, CancellationToken);
+        await service.WriteBackupAsync(new ExportBackup(), backup, CancellationToken);
 
         // Assert
         backup.Position = 0;

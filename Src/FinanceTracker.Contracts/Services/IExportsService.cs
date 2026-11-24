@@ -21,9 +21,10 @@ public interface IExportsService
     /// Writes a backup of everything the user has to <paramref name="destination"/> as a zip. A JSON file for each
     /// kind of data, in the shapes the API returns, a <c>transactions.csv</c> as
     /// <see cref="WriteTransactionsCsvAsync"/> writes it, and a <c>manifest.json</c> saying when it was made, which
-    /// format it's in and how many of each there are. Not encrypted.
+    /// format it's in and how many of each there are. Encrypted with AES-256 when <paramref name="backup"/> has a
+    /// password, which every file in it then needs to open. The files' names aren't encrypted, as zips don't hide them.
     /// </summary>
-    Task WriteBackupAsync(Stream destination, CancellationToken cancellationToken);
+    Task WriteBackupAsync(ExportBackup backup, Stream destination, CancellationToken cancellationToken);
 
     /// <summary>
     /// The pay periods there's a statement for, newest first: today's back to the one the user's oldest transaction

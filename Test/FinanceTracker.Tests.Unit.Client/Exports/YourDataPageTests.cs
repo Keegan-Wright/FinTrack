@@ -3,6 +3,7 @@ using System.Globalization;
 using AngleSharp.Dom;
 using Bunit;
 using FinanceTracker.Client;
+using FinanceTracker.Contracts.Exports;
 using FinanceTracker.Contracts.PayPeriods;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Tests.Unit.Client.PayPeriods;
@@ -66,7 +67,8 @@ public class YourDataPageTests : ComponentTestBase
         JSRuntimeInvocation saved = JSInterop.Invocations.Single(static x => x.Identifier == "ftDownloadFile");
         using (Assert.Multiple())
         {
-            await _exportsService.Received(1).WriteBackupAsync(Arg.Any<Stream>(), Arg.Any<CancellationToken>());
+            await _exportsService.Received(1).WriteBackupAsync(Arg.Is<ExportBackup>(static x => x.Password == null),
+                Arg.Any<Stream>(), Arg.Any<CancellationToken>());
             await Assert.That(saved.Arguments[0]).IsEqualTo("fintrack-backup-2026-11-04.zip");
             await Assert.That(saved.Arguments[1]).IsEqualTo("application/zip");
         }
@@ -76,7 +78,7 @@ public class YourDataPageTests : ComponentTestBase
     public async Task DownloadBackup_WhenItFails_SaysSoAndCanBeTriedAgain()
     {
         // Arrange
-        _exportsService.WriteBackupAsync(Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+        _exportsService.WriteBackupAsync(Arg.Any<ExportBackup>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new HttpRequestException("The server didn't answer"));
         IRenderedComponent<MudSnackbarProvider> snackbars = Render<MudSnackbarProvider>();
         IRenderedComponent<YourDataPage> cut = RenderPage();

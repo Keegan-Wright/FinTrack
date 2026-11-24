@@ -1,4 +1,5 @@
 using System.Text;
+using FinanceTracker.Contracts.Exports;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Transactions;
 using FinanceTracker.Infrastructure;
@@ -7,6 +8,7 @@ using FinanceTracker.Infrastructure.Exports.Statements;
 using FinanceTracker.Tests.Unit.Shared;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging.Testing;
 using NSubstitute;
 
 namespace FinanceTracker.Tests.Unit.Infrastructure.Services.Exports;
@@ -14,6 +16,31 @@ namespace FinanceTracker.Tests.Unit.Infrastructure.Services.Exports;
 public class ExportsServiceTests : UnitTestBase
 {
     private readonly ITransactionsService _transactionsService = Substitute.For<ITransactionsService>();
+    private readonly FakeLogger<ExportsService> _logger = new();
+
+    [Test]
+    public async Task WriteBackupAsync_WithAPassword_LogsTheExportButNeverThePassword()
+    {
+        // Arrange
+        const string password = "Placeholder backup password";
+        using MemoryStream destination = new();
+
+        // Act
+        await BuildSubject().WriteBackupAsync(new ExportBackup { Password = password, ConfirmPassword = password },
+            destination, CancellationToken);
+
+        // Assert, neither the message nor any of its values
+        IReadOnlyList<FakeLogRecord> logged = _logger.Collector.GetSnapshot();
+        using (Assert.Multiple())
+        {
+            await Assert.That(logged.Select(static x => x.Message)).Contains(static x =>
+                x.Contains("a password protected backup", StringComparison.Ordinal));
+            await Assert.That(logged.SelectMany(static x => x.StructuredState ?? [])
+                    .Select(static x => x.Value ?? string.Empty)
+                    .Concat(logged.Select(static x => x.Message)))
+                .DoesNotContain(static x => x.Contains(password, StringComparison.Ordinal));
+        }
+    }
 
     [Test]
     public async Task WriteTransactionsCsvAsync_WritesTheHeaderThenAWindowsLineForEachTransactionTheFiltersFind()
@@ -65,5 +92,5 @@ public class ExportsServiceTests : UnitTestBase
                 TimeProvider.System),
             ReportDocumentBuilderTests.BuildBuilder(),
             new FixedTimeProvider(DateTime.UtcNow), Substitute.For<ICurrentUser>(),
-            NullLogger<ExportsService>.Instance);
+            _logger);
 }

@@ -71,70 +71,70 @@ public sealed class BackupWriter : IBackupWriter
     }
 
     /// <inheritdoc/>
-    public async Task WriteAsync(Stream destination, CancellationToken cancellationToken)
+    public async Task WriteAsync(Stream destination, string? password, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(destination);
 
-        // Built in memory then copied, as .NET 10 closes each zip entry with a synchronous write, which an HTTP
-        // response refuses. A backup compresses to a few MB, and the browser holds the whole file to save it anyway.
-        using MemoryStream backup = new();
-        await WriteZipAsync(backup, cancellationToken);
-        backup.Position = 0;
-        await backup.CopyToAsync(destination, cancellationToken);
-    }
-
-    /// <summary>
-    /// Writes every file into the zip, then a manifest of what each holds.
-    /// </summary>
-    /// <param name="destination">Where the zip is written.</param>
-    /// <param name="cancellationToken">Stops the work.</param>
-    private async Task WriteZipAsync(Stream destination, CancellationToken cancellationToken)
-    {
         DateTimeOffset exportedAt = _timeProvider.GetUtcNow();
         Dictionary<string, int> files = [];
 
-        await using ZipArchive zip = await ZipArchive.CreateAsync(destination, ZipArchiveMode.Create,
+        // Written straight into the response. Since .NET 11 a zip entry closes without a synchronous write, which an
+        // HTTP response refuses
+        await using ZipArchive archive = await ZipArchive.CreateAsync(destination, ZipArchiveMode.Create,
             leaveOpen: true, entryNameEncoding: null, cancellationToken);
+        BackupZip zip = new(archive, password);
 
         // Accounts without their transactions, which have a file of their own
         files["accounts.json"] = await WriteListAsync(zip, "accounts.json",
             _accountService.GetAccountsAndMostRecentTransactionsAsync(0, cancellationToken), cancellationToken);
+
         files["transactions.json"] = await WriteListAsync(zip, "transactions.json",
             _transactionsService.GetAllTransactionsAsync(new FilterTransactions(), cancellationToken),
             cancellationToken);
+
         files["transactions.csv"] = await WriteTransactionsCsvAsync(zip, cancellationToken);
+
         // Their own, not those someone else shares with them
         files["bills.json"] = await WriteListAsync(zip, "bills.json",
             _billsService.GetBillsAsync(cancellationToken).Where(static x => x.SharedBy is null),
             cancellationToken);
+
         files["budgets.json"] = await WriteListAsync(zip, "budgets.json",
             _budgetsService.GetBudgetsAsync(cancellationToken).Where(static x => x.SharedBy is null),
             cancellationToken);
+
         // Their own, not those someone else shares with them
         files["debts.json"] = await WriteListAsync(zip, "debts.json",
             _debtsService.GetDebtsAsync(cancellationToken).Where(static x => x.SharedBy is null),
             cancellationToken);
+
         files["savings-goals.json"] = await WriteListAsync(zip, "savings-goals.json",
             _savingsGoalsService.GetSavingsGoalsAsync(cancellationToken).Where(static x => x.SharedBy is null),
             cancellationToken);
+
         // Their own, not those someone else shares with them
         files["rules.json"] = await WriteListAsync(zip, "rules.json",
             _rulesService.GetRulesAsync(cancellationToken).Where(static x => x.SharedBy is null), cancellationToken);
+
         // Their own, not those someone else shares with them
         files["tags.json"] = await WriteListAsync(zip, "tags.json",
             _classificationService.GetAllCustomClassificationsAsync(cancellationToken)
                 .Where(static x => x.SharedBy is null), cancellationToken);
+
         files["calendar-events.json"] = await WriteListAsync(zip, "calendar-events.json",
             _calendarService.GetEventsAsync(cancellationToken).Where(static x => x.SharedBy is null),
             cancellationToken);
+
         files["household.json"] = await WriteListAsync(zip, "household.json",
             _householdMemberService.GetHouseholdMembersAsync(cancellationToken), cancellationToken);
+
         files["pay.json"] = await WriteOneAsync(zip, "pay.json",
             await _payPeriodsService.GetYourPayAsync(cancellationToken), cancellationToken);
 
         // From the first snapshot, history that can't be rebuilt once the bank no longer sends those transactions
         files["net-worth.json"] = await WriteOneAsync(zip, "net-worth.json",
             await _netWorthService.GetNetWorthAsync(from: null, cancellationToken), cancellationToken);
+
         files["balance-history.json"] = await WriteListAsync(zip, "balance-history.json",
             _netWorthService.GetBalanceHistoriesAsync(from: null, cancellationToken), cancellationToken);
 
@@ -151,11 +151,11 @@ public sealed class BackupWriter : IBackupWriter
     /// <param name="records">The records to write.</param>
     /// <param name="cancellationToken">Stops the work.</param>
     /// <returns>How many records it holds.</returns>
-    private static async Task<int> WriteListAsync<T>(ZipArchive zip, string name, IAsyncEnumerable<T> records,
+    private static async Task<int> WriteListAsync<T>(BackupZip zip, string name, IAsyncEnumerable<T> records,
         CancellationToken cancellationToken)
     {
         int count = 0;
-        await using Stream entry = await zip.CreateEntry(name, CompressionLevel.Optimal).OpenAsync(cancellationToken);
+        await using Stream entry = await zip.OpenEntryAsync(name, cancellationToken);
         await JsonSerializer.SerializeAsync(entry, Counted(records, () => count++), Json, cancellationToken);
         return count;
     }
@@ -165,10 +165,10 @@ public sealed class BackupWriter : IBackupWriter
     /// <param name="record">The record to write.</param>
     /// <param name="cancellationToken">Stops the work.</param>
     /// <returns>1, the one record it holds.</returns>
-    private static async Task<int> WriteOneAsync<T>(ZipArchive zip, string name, T record,
+    private static async Task<int> WriteOneAsync<T>(BackupZip zip, string name, T record,
         CancellationToken cancellationToken)
     {
-        await using Stream entry = await zip.CreateEntry(name, CompressionLevel.Optimal).OpenAsync(cancellationToken);
+        await using Stream entry = await zip.OpenEntryAsync(name, cancellationToken);
         await JsonSerializer.SerializeAsync(entry, record, Json, cancellationToken);
         return 1;
     }
@@ -176,11 +176,10 @@ public sealed class BackupWriter : IBackupWriter
     /// <param name="zip">The backup.</param>
     /// <param name="cancellationToken">Stops the work.</param>
     /// <returns>How many transactions it holds.</returns>
-    private async Task<int> WriteTransactionsCsvAsync(ZipArchive zip, CancellationToken cancellationToken)
+    private async Task<int> WriteTransactionsCsvAsync(BackupZip zip, CancellationToken cancellationToken)
     {
         int count = 0;
-        await using Stream entry = await zip.CreateEntry("transactions.csv", CompressionLevel.Optimal)
-            .OpenAsync(cancellationToken);
+        await using Stream entry = await zip.OpenEntryAsync("transactions.csv", cancellationToken);
         IAsyncEnumerable<Transaction> transactions =
             _transactionsService.GetAllTransactionsAsync(new FilterTransactions(), cancellationToken);
         await TransactionCsv.WriteAsync(Counted(transactions, () => count++), entry, _timeProvider.LocalTimeZone,

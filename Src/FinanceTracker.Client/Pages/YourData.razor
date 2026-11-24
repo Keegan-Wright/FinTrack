@@ -3,6 +3,7 @@
    of one pay period. The backup is a zip of JSON and a transactions CSV; *@
 @using FinanceTracker.Client.Extensions
 @using FinanceTracker.Contracts.Api
+@using FinanceTracker.Contracts.Exports
 @using FinanceTracker.Contracts.PayPeriods
 @using Microsoft.AspNetCore.Authorization
 @inherits PageComponent
@@ -213,7 +214,8 @@
         try
         {
             await SaveFileAsync(ExportFileNames.Backup(TimeProvider.GetLocalNow()), "application/zip",
-                ExportsService.WriteBackupAsync, "Couldn't make your backup, try again");
+                (stream, cancellationToken) => ExportsService.WriteBackupAsync(new ExportBackup(), stream,
+                    cancellationToken), "Couldn't make your backup, try again");
         }
         finally
         {
