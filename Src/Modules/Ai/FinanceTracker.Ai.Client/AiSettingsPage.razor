@@ -1,0 +1,100 @@
+@page "/Ai/Settings"
+@* The install's AI settings, for admins. The Ollama server everyone's AI runs on, saved here or taken from the
+   OLLAMA_ENDPOINT environment variable. *@
+@inherits PageComponent
+@attribute [Authorize(Roles = FinTrackRoles.Admin)]
+@inject IAiService AiService
+@inject AiStatusState AiStatusState
+@inject ISnackbar Snackbar
+
+<PageTitle>FinTrack - AI settings</PageTitle>
+<PageHeader Title="AI" Subtitle="Set up AI for everyone on this install"/>
+
+@if (Settings is null)
+{
+    <Section>
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">The AI settings couldn't be loaded.</MudText>
+    </Section>
+}
+else
+{
+    <Section Title="Ollama">
+        <MudText Typo="Typo.body2">
+            Everyone's AI runs on an Ollama server. Each user still turns AI on for themselves in Your profile.
+        </MudText>
+        <MudText Typo="Typo.body2" Class="mt-2">@EnvironmentText</MudText>
+        <MudTextField T="string" @bind-Value="_save.OllamaEndpoint" For="@(() => _save.OllamaEndpoint)"
+                      Label="Ollama address" Variant="Variant.Outlined" Margin="Margin.Dense" Class="mt-4"
+                      HelperText="@HelperText" Error="@(_error is not null)" ErrorText="@_error"/>
+        <div class="mt-4">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@SaveAsync">Save</MudButton>
+        </div>
+    </Section>
+}
+
+@code {
+
+    private readonly SaveAiSettings _save = new();
+    private string? _error;
+
+    /// <summary>
+    /// The settings, loaded once, see <see cref="PageComponent.LoadOnceAsync{T}"/>.
+    /// </summary>
+    [PersistentState]
+    public AiSettings? Settings { get; set; }
+
+    /// <summary>
+    /// Where the address comes from when none is saved here.
+    /// </summary>
+    private string EnvironmentText => Settings?.EnvironmentOllamaEndpoint is { } environment
+        ? $"The OLLAMA_ENDPOINT environment variable gives {environment}. An address saved here is used instead."
+        : "The OLLAMA_ENDPOINT environment variable isn't set, so AI is off until an address is saved here.";
+
+    /// <summary>
+    /// Under the address field.
+    /// </summary>
+    private string HelperText => Settings?.EnvironmentOllamaEndpoint is null
+        ? "e.g. http://ollama:11434"
+        : "e.g. http://ollama:11434. Empty uses OLLAMA_ENDPOINT's";
+
+    /// <inheritdoc/>
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        Settings = await LoadOnceAsync(Settings, "Loading the AI settings",
+            cancellationToken => AiService.GetSettingsAsync(cancellationToken));
+        _save.OllamaEndpoint = Settings?.OllamaEndpoint;
+    }
+
+    /// <summary>
+    /// Saves the address, once it's one Ollama can be reached on.
+    /// </summary>
+    private async Task SaveAsync()
+    {
+        _error = null;
+        if (!string.IsNullOrWhiteSpace(_save.OllamaEndpoint) && !OllamaEndpoint.IsValid(_save.OllamaEndpoint))
+        {
+            _error = OllamaEndpoint.InvalidMessage;
+            return;
+        }
+
+        SetLoadingState(true, "Saving the AI settings");
+        try
+        {
+            Settings = await AiService.SaveSettingsAsync(_save, PageCancellation);
+            _save.OllamaEndpoint = Settings.OllamaEndpoint;
+            // Whether AI is set up may have changed, so Your profile's switch and the menu follow straight away
+            await AiStatusState.RefreshAsync(PageCancellation);
+            Snackbar.Add("AI settings saved", Severity.Success);
+        }
+        catch (Exception) when (!PageCancellation.IsCancellationRequested)
+        {
+            Snackbar.Add("Couldn't save the AI settings, try again", Severity.Error);
+        }
+        finally
+        {
+            SetLoadingState(false);
+        }
+    }
+
+}

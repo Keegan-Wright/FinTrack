@@ -1,4 +1,6 @@
 #if FINTRACK_AI
+using FinanceTracker.Ai.Contracts;
+using FinanceTracker.Client.Ai;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Tests.Integration.Http;
 using Microsoft.EntityFrameworkCore;
@@ -14,11 +16,19 @@ namespace FinanceTracker.Tests.Integration.Ui;
 [ParallelLimiter<UiParallelLimit>]
 public class AiModuleTests : UiTestBase
 {
+    /// <summary>
+    /// The Ollama address every test sets, the same each time as the install's settings are shared. Nothing is
+    /// called on it yet.
+    /// </summary>
+    private const string OllamaAddress = "http://ollama.example.test:11434";
+
     [Test]
-    public async Task AppBarButton_OpensTheAiPageWithoutReloading()
+    public async Task AppBarButton_UserHasTurnedAiOn_OpensTheAiPageWithoutReloading()
     {
         // Arrange
+        await SetUpAiAsync();
         SignedInUser user = await RegisterUserAsync();
+        await Ai(user).ChangeOptInAsync(new ChangeAiOptIn { OptedIn = true }, CancellationToken);
         IPage page = await OpenAsync(ScreenSize.Desktop, user);
         await GoToAsync(page, "/");
         await WaitUntilInteractiveAsync(page);
@@ -43,7 +53,9 @@ public class AiModuleTests : UiTestBase
     public async Task AiPage_OpenedDirectly_RendersAndStaysOnScreen(ScreenSize screen)
     {
         // Arrange
+        await SetUpAiAsync();
         SignedInUser user = await RegisterUserAsync();
+        await Ai(user).ChangeOptInAsync(new ChangeAiOptIn { OptedIn = true }, CancellationToken);
         IPage page = await OpenAsync(screen, user);
 
         // Act, the server renders it, then the browser loads the module before taking over
@@ -53,6 +65,67 @@ public class AiModuleTests : UiTestBase
         // Assert
         await Assertions.Expect(page.Locator(".ft-page-header__title")).ToHaveTextAsync("AI");
         await Assert.That(BrowserErrors).IsEmpty();
+    }
+
+    [Test]
+    public async Task ProfileSwitch_TurningAiOn_ShowsItInTheMenu()
+    {
+        // Arrange
+        await SetUpAiAsync();
+        SignedInUser user = await RegisterUserAsync();
+        IPage page = await OpenAsync(ScreenSize.Desktop, user);
+        await GoToAsync(page, "/YourProfile");
+        await WaitUntilInteractiveAsync(page);
+        ILocator aiInMenu = page.Locator("#nav-drawer")
+            .GetByRole(AriaRole.Link, new LocatorGetByRoleOptions { Name = "AI", Exact = true });
+        await Assertions.Expect(aiInMenu).ToHaveCountAsync(0);
+
+        // Act
+        await page.GetByLabel("Use AI").ClickAsync();
+
+        // Assert
+        await Assertions.Expect(aiInMenu).ToBeVisibleAsync();
+        using (Assert.Multiple())
+        {
+            await Assert.That((await Ai(user).GetStatusAsync(CancellationToken)).OptedIn).IsTrue();
+            await Assert.That(BrowserErrors).IsEmpty();
+        }
+    }
+
+    [Test]
+    public async Task SettingsPage_AdminSavesAnAddress_KeepsIt()
+    {
+        // Arrange
+        SignedInUser admin = await RegisterAdminAsync();
+        IPage page = await OpenAsync(ScreenSize.Desktop, admin);
+        await GoToAsync(page, "/Ai/Settings");
+        await WaitUntilInteractiveAsync(page);
+
+        // Act
+        await page.GetByLabel("Ollama address").FillAsync(OllamaAddress);
+        await Button(page, "Save").ClickAsync();
+        await Assertions.Expect(page.GetByText("AI settings saved")).ToBeVisibleAsync();
+        await page.ReloadAsync();
+        await WaitUntilInteractiveAsync(page);
+
+        // Assert
+        await Assertions.Expect(page.GetByLabel("Ollama address")).ToHaveValueAsync(OllamaAddress);
+        await Assert.That(BrowserErrors).IsEmpty();
+    }
+
+    [Test]
+    public async Task SaveSettings_AddressThatIsNotHttp_IsRefused()
+    {
+        // Arrange
+        SignedInUser admin = await RegisterAdminAsync();
+
+        // Act
+        Func<Task> save = () => Ai(admin)
+            .SaveSettingsAsync(new SaveAiSettings { OllamaEndpoint = "ftp://ollama:11434" }, CancellationToken);
+
+        // Assert
+        HttpRequestException? refused = await Assert.That(save).Throws<HttpRequestException>();
+        await Assert.That(refused!.StatusCode).IsEqualTo(System.Net.HttpStatusCode.BadRequest);
     }
 
     [Test]
@@ -79,7 +152,7 @@ public class AiModuleTests : UiTestBase
     }
 
     [Test]
-    public async Task Startup_AppliesTheModulesMigrationInItsOwnSchema()
+    public async Task Startup_AppliesTheModulesMigrationsInItsOwnSchema()
     {
         // Act
         await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
@@ -89,7 +162,21 @@ public class AiModuleTests : UiTestBase
             .ToListAsync(CancellationToken);
 
         // Assert
-        await Assert.That(tables).IsEquivalentTo(["Settings", "__AiMigrationsHistory"]);
+        await Assert.That(tables).IsEquivalentTo(["Settings", "UserSettings", "__AiMigrationsHistory"]);
+    }
+
+    /// <summary>
+    /// The AI API as <paramref name="user"/>, through the browser's own client.
+    /// </summary>
+    private AiApiClient Ai(SignedInUser user) => new(ApiFor(user).Get<IHttpClientFactory>());
+
+    /// <summary>
+    /// Sets AI up for the install, as an admin would.
+    /// </summary>
+    private async Task SetUpAiAsync()
+    {
+        SignedInUser admin = await RegisterAdminAsync();
+        await Ai(admin).SaveSettingsAsync(new SaveAiSettings { OllamaEndpoint = OllamaAddress }, CancellationToken);
     }
 }
 #endif

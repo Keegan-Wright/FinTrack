@@ -1,3 +1,6 @@
+#if FINTRACK_AI
+using FinanceTracker.Ai.Contracts;
+#endif
 using FinanceTracker.Api;
 using FinanceTracker.Contracts.Api;
 using FinanceTracker.Contracts.Auth;
@@ -19,7 +22,12 @@ namespace FinanceTracker.Tests.Unit.FinanceTracker.Api;
 public class ApiEndpointSecurityTests
 {
     private static readonly string[] AdminRoutes =
-        [ApiRoutes.AutomationJobs, ApiRoutes.AutomationRuns, ApiRoutes.Users];
+    [
+        ApiRoutes.AutomationJobs, ApiRoutes.AutomationRuns, ApiRoutes.Users,
+#if FINTRACK_AI
+        AiRoutes.Settings
+#endif
+    ];
 
     [Test]
     public async Task EveryEndpoint_NeedsASignedInUser()
@@ -75,6 +83,32 @@ public class ApiEndpointSecurityTests
         await Assert.That(adminOnly).IsEmpty();
     }
 
+#if FINTRACK_AI
+    [Test]
+    [Category("AiModule")]
+    public async Task AiEndpoints_StatusAndOptInForEveryoneSettingsForAdminsOnly()
+    {
+        // Arrange
+        List<RouteEndpoint> endpoints = MapApi();
+
+        // Act
+        List<RouteEndpoint> ai = endpoints.Where(static x => Route(x).StartsWith("api/ai", StringComparison.Ordinal))
+            .ToList();
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(ai.Where(static x => Route(x).StartsWith(AiRoutes.Settings, StringComparison.Ordinal)))
+                .Count().IsEqualTo(2);
+            await Assert.That(ai.All(NeedsSignIn)).IsTrue();
+            await Assert.That(ai.Where(static x => !Route(x).StartsWith(AiRoutes.Settings, StringComparison.Ordinal))
+                .Any(NeedsAnAdmin)).IsFalse();
+            await Assert.That(ai.Where(static x => Route(x).StartsWith(AiRoutes.Settings, StringComparison.Ordinal))
+                .All(NeedsAnAdmin)).IsTrue();
+        }
+    }
+
+#endif
     /// <summary>
     /// The API's endpoints as the app maps them, with the services they take registered as the app does so each
     /// endpoint builds, nothing is resolved or called.

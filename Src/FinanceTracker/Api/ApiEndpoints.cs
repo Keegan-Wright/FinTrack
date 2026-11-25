@@ -1,3 +1,6 @@
+#if FINTRACK_AI
+using FinanceTracker.Ai.Api;
+#endif
 using FinanceTracker.Contracts.Api;
 using FinanceTracker.Tokens;
 
@@ -53,6 +56,9 @@ public static class ApiEndpoints
                 .MapTransactionEndpoints()
                 .MapTransferEndpoints()
                 .MapUsersEndpoints();
+#if FINTRACK_AI
+            api.MapAiEndpoints();
+#endif
 
             // An API address that isn't an endpoint answers a bare 404 for the app to read, rather than the front
             // end's not found page, whose catch-all route it otherwise matches

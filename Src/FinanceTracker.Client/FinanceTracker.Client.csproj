@@ -30,6 +30,7 @@
   <!-- The AI module's pages, only with FinTrackAi=true. -->
   <ItemGroup Condition="'$(FinTrackAi)' == 'true'">
     <ProjectReference Include="..\Modules\Ai\FinanceTracker.Ai.Client\FinanceTracker.Ai.Client.csproj"/>
+    <ProjectReference Include="..\Modules\Ai\FinanceTracker.Ai.Contracts\FinanceTracker.Ai.Contracts.csproj"/>
     <BlazorWebAssemblyLazyLoad Include="FinanceTracker.Ai.Client.wasm"/>
   </ItemGroup>
 

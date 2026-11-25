@@ -1,5 +1,9 @@
+using FinanceTracker.Ai.Backup;
+using FinanceTracker.Ai.Contracts;
 using FinanceTracker.Ai.Persistence;
+using FinanceTracker.Ai.Services;
 using FinanceTracker.Infrastructure.Common.Encryption;
+using FinanceTracker.Infrastructure.Common.Exports;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,6 +25,8 @@ public static class AiModuleExtensions
         {
             builder.Services.AddDbContextFactory<FinanceTrackerAiContext>(options =>
                 FinanceTrackerAiContextOptions.Configure(options, connectionString));
+            builder.Services.AddScoped<IAiService, AiService>();
+            builder.Services.AddScoped<IBackupSection, AiBackupSection>();
             return builder;
         }
     }

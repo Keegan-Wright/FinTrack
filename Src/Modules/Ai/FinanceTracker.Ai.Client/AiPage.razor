@@ -1,9 +1,47 @@
 @page "/Ai"
+@* The AI module's page. Asking about your money arrives with the chat, for now it says where the user stands. *@
 @inherits PageComponent
+@inject IAiService AiService
 
-@* The AI module's page. Only a placeholder for now, it proves the page loads from the lazily loaded assembly. *@
 <PageTitle>FinTrack - AI</PageTitle>
 <PageHeader Title="AI" Subtitle="Ask about your money"/>
 <Section>
-    <MudText Typo="Typo.body2">The AI module is built into this install.</MudText>
+    @if (Status is null)
+    {
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">Where AI stands couldn't be loaded.</MudText>
+    }
+    else if (!Status.Available)
+    {
+        <MudText Typo="Typo.body2">
+            AI isn't set up on this install yet. An admin can set it up under Settings, AI.
+        </MudText>
+    }
+    else if (!Status.OptedIn)
+    {
+        <MudText Typo="Typo.body2">
+            AI is off for you. Turn it on in <MudLink Href="YourProfile">Your profile</MudLink>.
+        </MudText>
+    }
+    else
+    {
+        <MudText Typo="Typo.body2">AI is on. Asking about your money arrives in a coming update.</MudText>
+    }
 </Section>
+
+@code {
+
+    /// <summary>
+    /// Where the user stands, loaded once, see <see cref="PageComponent.LoadOnceAsync{T}"/>.
+    /// </summary>
+    [PersistentState]
+    public AiStatus? Status { get; set; }
+
+    /// <inheritdoc/>
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        Status = await LoadOnceAsync(Status, "Loading AI",
+            cancellationToken => AiService.GetStatusAsync(cancellationToken));
+    }
+
+}

@@ -1,5 +1,6 @@
 using Bunit;
 #if FINTRACK_AI
+using FinanceTracker.Ai.Contracts;
 using FinanceTracker.Client.Ai;
 using Microsoft.AspNetCore.Components.WebAssembly.Services;
 #endif
@@ -39,6 +40,12 @@ public abstract class ComponentTestBase : BunitContext
         // already reference
         Services.AddSingleton<LazyAssemblyLoader>();
         Services.AddSingleton<AiModuleLoader>();
+        // AI isn't set up unless a test says so, so its components stay hidden. A test about AI registers its own,
+        // which wins
+        IAiService ai = Substitute.For<IAiService>();
+        ai.GetStatusAsync(Arg.Any<CancellationToken>()).Returns(new AiStatus());
+        Services.AddSingleton(ai);
+        Services.AddSingleton<AiStatusState>();
 #endif
     }
 }

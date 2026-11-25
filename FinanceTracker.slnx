@@ -88,6 +88,7 @@
   </Folder>
   <Folder Name="/Modules/"/>
   <Folder Name="/Modules/Ai/">
+    <Project Path="Src/Modules/Ai/FinanceTracker.Ai.Contracts/FinanceTracker.Ai.Contracts.csproj"/>
     <Project Path="Src/Modules/Ai/FinanceTracker.Ai/FinanceTracker.Ai.csproj"/>
     <Project Path="Src/Modules/Ai/FinanceTracker.Ai.Client/FinanceTracker.Ai.Client.csproj"/>
   </Folder>
@@ -104,6 +105,10 @@
   <Project Path="Src/FinanceTracker.Infrastructure.Migrations/FinanceTracker.Infrastructure.Migrations.csproj"/>
   <Folder Name="/Tests/Integration/">
     <Project Path="Test/FinanceTracker.Tests.Integration/FinanceTracker.Tests.Integration.csproj"/>
+  </Folder>
+  <Folder Name="/Tests/Modules/"/>
+  <Folder Name="/Tests/Modules/Ai/">
+    <Project Path="Test/Modules/Ai/FinanceTracker.Tests.Unit.Ai/FinanceTracker.Tests.Unit.Ai.csproj"/>
   </Folder>
   <Folder Name="/Tests/Unit/">
     <Project Path="Test/FinanceTracker.Tests.Unit.Shared/FinanceTracker.Tests.Unit.Shared.csproj"/>

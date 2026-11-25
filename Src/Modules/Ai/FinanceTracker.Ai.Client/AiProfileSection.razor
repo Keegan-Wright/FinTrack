@@ -1,0 +1,89 @@
+@* Turning AI on or off for yourself, on Your profile. Off until the user turns it on, and only once the install has
+   AI set up. *@
+@implements IDisposable
+@attribute [ModuleSlot(ModuleSlots.Profile)]
+@inject AiStatusState AiStatusState
+@inject ISnackbar Snackbar
+
+<Section Title="AI">
+    <MudText Typo="Typo.body2">
+        Ask questions about your money in plain words, e.g. what you spent on takeaways this year.
+    </MudText>
+    <MudText Typo="Typo.body2" Class="mt-2">
+        It runs on this install's own AI server, so your data stays with FinTrack. It's off until you turn it on.
+    </MudText>
+    @if (_status is null)
+    {
+        <MudText Typo="Typo.body2" Class="mud-text-secondary mt-2">Checking whether AI is set up.</MudText>
+    }
+    else if (!_status.Available)
+    {
+        <MudText Typo="Typo.body2" Class="mud-text-secondary mt-2">
+            AI isn't set up on this install yet. An admin can set it up under Settings, AI.
+        </MudText>
+    }
+    else
+    {
+        <MudSwitch T="bool" Value="@_status.OptedIn" ValueChanged="@ChangeAsync" Disabled="@_busy"
+                   Color="Color.Primary" Label="Use AI" Class="mt-2"/>
+    }
+</Section>
+
+@code {
+
+    private AiStatus? _status;
+    private bool _busy;
+
+    /// <inheritdoc/>
+    protected override async Task OnInitializedAsync()
+    {
+        AiStatusState.Changed += OnStatusChanged;
+        try
+        {
+            _status = await AiStatusState.GetAsync();
+        }
+        catch (HttpRequestException)
+        {
+            Snackbar.Add("Couldn't check whether AI is set up, refresh to try again", Severity.Warning);
+        }
+    }
+
+    /// <inheritdoc/>
+    public void Dispose()
+    {
+        AiStatusState.Changed -= OnStatusChanged;
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Turns AI on or off for the user.
+    /// </summary>
+    /// <param name="optedIn">Whether they want it on.</param>
+    private async Task ChangeAsync(bool optedIn)
+    {
+        _busy = true;
+        try
+        {
+            _status = await AiStatusState.ChangeOptInAsync(optedIn, CancellationToken.None);
+            Snackbar.Add(optedIn ? "AI turned on" : "AI turned off", Severity.Success);
+        }
+        catch (HttpRequestException)
+        {
+            Snackbar.Add("Couldn't change AI, try again", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    /// <summary>
+    /// Follows AI being turned on or off elsewhere.
+    /// </summary>
+    private void OnStatusChanged() => _ = InvokeAsync(async () =>
+    {
+        _status = await AiStatusState.GetAsync();
+        StateHasChanged();
+    });
+
+}

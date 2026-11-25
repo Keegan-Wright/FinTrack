@@ -52,20 +52,10 @@ public class LayoutBase : LayoutComponentBase
 
 #if FINTRACK_AI
     /// <summary>
-    /// Loads the AI module, for its app bar button.
+    /// Loads the AI module, for its components in the app's slots.
     /// </summary>
     [Inject]
     private AiModuleLoader AiModuleLoader { get; set; } = null!;
-
-    /// <summary>
-    /// A built-in module's app bar button once its assembly has loaded, null before.
-    /// </summary>
-    internal Type? ModuleAppBarButton => AiModuleLoader.AppBarButton;
-#else
-    /// <summary>
-    /// A built-in module's app bar button, never one, no modules are built in.
-    /// </summary>
-    internal static Type? ModuleAppBarButton => null;
 #endif
 
     /// <inheritdoc/>
@@ -85,9 +75,9 @@ public class LayoutBase : LayoutComponentBase
             await _mudThemeProvider.WatchSystemDarkModeAsync(OnSystemPreferenceChanged);
             StateHasChanged();
 #if FINTRACK_AI
-            // After the layout's own setup, so the drawer and dark mode don't wait on the download
+            // After the layout's own setup, so the drawer and dark mode don't wait on the download. The slots show
+            // the module's components once it has loaded
             await AiModuleLoader.LoadAsync();
-            StateHasChanged();
 #endif
         }
     }

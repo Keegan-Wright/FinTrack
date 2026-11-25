@@ -1,0 +1,6 @@
+@* One of the app's places a module built in can show its own components, see ModuleSlots. Empty in the plain build,
+   and until the module has loaded. *@
+@foreach (Type component in Components)
+{
+    <DynamicComponent Type="component"/>
+}

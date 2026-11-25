@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AnalysisMode>Recommended</AnalysisMode>
+    <!-- Loaded in the browser, whose Mono runtime has no runtime async, see Directory.Build.targets -->
+    <FinTrackRunsInBrowser>true</FinTrackRunsInBrowser>
+  </PropertyGroup>
+</Project>

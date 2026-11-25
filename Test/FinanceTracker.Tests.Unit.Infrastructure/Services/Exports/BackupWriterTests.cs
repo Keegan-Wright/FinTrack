@@ -13,6 +13,7 @@ using FinanceTracker.Contracts.Rules;
 using FinanceTracker.Contracts.SavingsGoals;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Transactions;
+using FinanceTracker.Infrastructure.Common.Exports;
 using FinanceTracker.Infrastructure.Exports;
 using FinanceTracker.Tests.Unit.Shared;
 using NSubstitute;
@@ -65,6 +66,34 @@ public class BackupWriterTests : UnitTestBase
             await Assert.That(manifest.Files["transactions.csv"]).IsEqualTo(2);
             await Assert.That(manifest.Files["bills.json"]).IsEqualTo(0);
             await Assert.That(manifest.Files["pay.json"]).IsEqualTo(1);
+        }
+    }
+
+    [Test]
+    public async Task WriteAsync_WithAModuleSection_AddsItsFileEncryptedAndCountsIt()
+    {
+        // Arrange
+        IBackupSection section = Substitute.For<IBackupSection>();
+        section.FileName.Returns("module.json");
+        section.ReadAsync(Arg.Any<CancellationToken>())
+            .Returns(new BackupSectionData(new { Setting = "On" }, Records: 1));
+        MemoryStream backup = new();
+
+        // Act
+        await BuildWriter(_transactionsService, _accountService, section)
+            .WriteAsync(backup, Password, CancellationToken);
+
+        // Assert
+        backup.Position = 0;
+        using ZipArchive zip = new(backup, ZipArchiveMode.Read);
+        BackupManifest manifest = JsonSerializer.Deserialize<BackupManifest>(
+            Bytes(zip, "manifest.json", Password), JsonSerializerOptions.Web)!;
+        using (Assert.Multiple())
+        {
+            await Assert.That(zip.GetEntry("module.json")!.EncryptionMethod).IsEqualTo(ZipEncryptionMethod.Aes256);
+            await Assert.That(manifest.Files["module.json"]).IsEqualTo(1);
+            await Assert.That(System.Text.Encoding.UTF8.GetString(Bytes(zip, "module.json", Password)))
+                .Contains("\"setting\": \"On\"");
         }
     }
 
@@ -151,7 +180,7 @@ public class BackupWriterTests : UnitTestBase
     /// A <see cref="BackupWriter"/> whose services have nothing, apart from those given.
     /// </summary>
     internal static BackupWriter BuildWriter(ITransactionsService? transactions = null,
-        IAccountService? accounts = null)
+        IAccountService? accounts = null, params IBackupSection[] sections)
     {
         if (accounts is null)
         {
@@ -193,7 +222,7 @@ public class BackupWriterTests : UnitTestBase
             .Returns(_ => AsyncEnumerable.Empty<AccountBalanceHistory>());
 
         return new BackupWriter(accounts, transactions, bills, budgets, debts, goals, rules, tags, calendar,
-            household, pay, netWorth, new FixedTimeProvider(Now));
+            household, pay, netWorth, new FixedTimeProvider(Now), sections);
     }
 
     private async Task<ZipArchive> WriteAsync(string? password = null)

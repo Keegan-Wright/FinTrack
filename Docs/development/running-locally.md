@@ -41,12 +41,23 @@ aspire run
 
 Or `dotnet run --project Src/FinanceTracker.AppHost`, or run the AppHost from your IDE.
 
-To run with the AI module built in, the way the `fintrackweb-ai` image is, set `FinTrackAi`:
+To run with the AI module built in, the way the `fintrackweb-ai` image is, add a `FinTrack.local.props` beside
+`Directory.Build.props`. It's untracked, and every project reads it however it's built, the IDE, the command line or
+Aspire:
 
-```sh
-FinTrackAi=true aspire run
+```xml
+<Project>
+  <PropertyGroup>
+    <FinTrackAi>true</FinTrackAi>
+  </PropertyGroup>
+</Project>
 ```
 
-MSBuild reads it from the environment, so it works with any of the above.
+Delete it to go back to the plain build, or pass `-p:FinTrackAi=false` for one build. For a one-off run without the
+file, `FinTrackAi=true aspire run` works too. An IDE's own MSBuild settings may not reach every project, the browser
+project in particular, so use the file there.
+
+The plain and AI builds share the same output folders. After switching, rebuild the solution, or a stale file can
+leave the app half one build and half the other.
 
 The Aspire dashboard links to the app, its logs and traces, and Mailpit, where any emails end up.

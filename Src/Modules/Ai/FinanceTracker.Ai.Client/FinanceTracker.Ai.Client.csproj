@@ -9,14 +9,20 @@
     <FinTrackRunsInBrowser>true</FinTrackRunsInBrowser>
   </PropertyGroup>
 
-  <!-- The AI module's pages and components, only built into the app with FinTrackAi=true. The browser loads it lazily,
-       so nobody downloads it until they use AI. Built from the shared building blocks, never the app's own pages -->
+  <!-- The AI module's pages and components, only built into the app with FinTrackAi=true. The browser loads it after
+       the app starts. Built from the shared building blocks, never the app's own pages. It can't register services, it
+       loads too late, so the app registers what its components inject -->
   <ItemGroup>
     <SupportedPlatform Include="browser"/>
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\FinanceTracker.Client.Common\FinanceTracker.Client.Common.csproj"/>
+    <ProjectReference Include="..\FinanceTracker.Ai.Contracts\FinanceTracker.Ai.Contracts.csproj"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.Authorization"/>
   </ItemGroup>
 
 </Project>

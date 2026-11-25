@@ -21,7 +21,7 @@ browser as WebAssembly, calling that API.
 | `FinanceTracker.AppHost` | Runs everything locally, see [Running locally](running-locally.md). |
 | `FinanceTracker.AppHost.ServiceDefaults` | Shared setup such as telemetry and health checks, and the app's setting names. |
 | `Generators/` | Source generators for registering services. |
-| `Modules/Ai/` | The AI module, `FinanceTracker.Ai` on the server and `FinanceTracker.Ai.Client` in the browser. Only built in with `FinTrackAi=true`, see [Modules](#modules). |
+| `Modules/Ai/` | The AI module, `FinanceTracker.Ai` on the server, `FinanceTracker.Ai.Client` in the browser and `FinanceTracker.Ai.Contracts` between them. Only built in with `FinTrackAi=true`, see [Modules](#modules). |
 
 ## Registering services
 
@@ -64,8 +64,16 @@ the `fintrackweb-ai` image. The plain `fintrackweb` image has none of its code, 
 - The build switch adds the module's projects and defines `FINTRACK_AI`. The few places that wire it in sit behind
   `#if FINTRACK_AI`, the client's `Ai/AiModuleLoader.cs`, `Routes.razor.cs` and `LayoutBase.cs`, and the server's
   `Program.cs`, `Extensions/AiModuleHostExtensions.cs` and `Extensions/RoutedAssemblies.cs`.
-- The module's browser assembly is lazy loaded, so the browser only fetches it when it's needed. The app can't refer to
-  its types directly, the layout renders its app bar button by name.
+- The module's browser assembly is lazy loaded, after the app has started. The app can't refer to its types, so a
+  module shows its components in the app's slots instead, the app bar, the menu, the menu's Settings group and Your
+  profile. A component marked `[ModuleSlot(ModuleSlots.AppBar)]` shows wherever the app has a
+  `<ModuleSlot Name="@ModuleSlots.AppBar"/>`. The module loads too late to register services, so the app registers
+  what its components inject, in `FinanceTracker.Client/Ai`.
+- Its API is mapped onto the app's, in `ApiEndpoints.cs`, so it shares the app's sign in, token and request rules.
+- Its data goes in the user's backup through `IBackupSection`, one file per module, e.g. `ai.json`.
+- Each user turns AI on for themselves in Your profile. Until they do, its menu entry and app bar button stay hidden.
+  An admin sets the Ollama address on the AI settings page, or it comes from the `OLLAMA_ENDPOINT` environment
+  variable.
 - Its tables live in their own schema, `ai`, with their own migrations history, so moving back to the plain image
   leaves them alone. They're encrypted and tagged like the core's, with the same keys, and rotated at startup after the
   core's. Its migrations are made from the module's project on its own:

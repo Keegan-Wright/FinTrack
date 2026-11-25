@@ -112,6 +112,6 @@ public partial class Program
         app.MapFinTrackApi();
         app.MapFinTrackOpenApi();
 
-        await app.RunAsync();
+            await app.RunAsync();
     }
 }

@@ -41,6 +41,11 @@ public class FinanceTrackerAiContext(DbContextOptions<FinanceTrackerAiContext> o
     /// </summary>
     public DbSet<AiSetting> Settings => Set<AiSetting>();
 
+    /// <summary>
+    /// Each user's AI choices.
+    /// </summary>
+    public DbSet<AiUserSetting> UserSettings => Set<AiUserSetting>();
+
     /// <inheritdoc/>
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) =>
         optionsBuilder.UseEncryptedContext();
@@ -54,6 +59,12 @@ public class FinanceTrackerAiContext(DbContextOptions<FinanceTrackerAiContext> o
             setting.ToTable("Settings");
             setting.HasKey(static x => x.Name);
             setting.Property(static x => x.Value).Encrypted();
+            setting.HasData(AiSetting.All.Select(static name => new AiSetting { Name = name }));
+        });
+        modelBuilder.Entity<AiUserSetting>(setting =>
+        {
+            setting.ToTable("UserSettings");
+            setting.HasKey(static x => x.UserId);
         });
 
         modelBuilder.UseEncryption(EncryptionService);

@@ -1,5 +1,6 @@
 using ApexCharts;
 #if FINTRACK_AI
+using FinanceTracker.Ai.Contracts;
 using FinanceTracker.Client.Ai;
 using Microsoft.AspNetCore.Components;
 #endif
@@ -53,6 +54,8 @@ public static partial class Program
 #if FINTRACK_AI
         // One per browser tab, shared by the startup below, the router and the layout
         builder.Services.AddSingleton<AiModuleLoader>();
+        builder.Services.AddSingleton<IAiService, AiApiClient>();
+        builder.Services.AddSingleton<AiStatusState>();
 #endif
         builder.Services.AddTransient<SignedOutHandler>();
         builder.Services.AddTransient<ServerVersionHandler>();

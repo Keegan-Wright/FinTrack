@@ -6,6 +6,7 @@ using FinanceTracker.Contracts.Exports;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Transactions;
 using FinanceTracker.Generated.Attributes;
+using FinanceTracker.Infrastructure.Common.Exports;
 using FinanceTracker.Generated.Enums;
 
 namespace FinanceTracker.Infrastructure.Exports;
@@ -34,6 +35,7 @@ public sealed class BackupWriter : IBackupWriter
     private readonly IPayPeriodsService _payPeriodsService;
     private readonly INetWorthService _netWorthService;
     private readonly TimeProvider _timeProvider;
+    private readonly IEnumerable<IBackupSection> _sections;
 
     /// <param name="accountService">Gives the accounts.</param>
     /// <param name="transactionsService">Gives the transactions.</param>
@@ -48,12 +50,13 @@ public sealed class BackupWriter : IBackupWriter
     /// <param name="payPeriodsService">Gives the user's pay.</param>
     /// <param name="netWorthService">Gives net worth.</param>
     /// <param name="timeProvider">The clock.</param>
+    /// <param name="sections">The modules' own data, each in its own file.</param>
     public BackupWriter(IAccountService accountService, ITransactionsService transactionsService,
         IBillsService billsService, IBudgetsService budgetsService, IDebtsService debtsService,
         ISavingsGoalsService savingsGoalsService, IRulesService rulesService,
         IClassificationService classificationService, ICalendarService calendarService,
         IHouseholdMemberService householdMemberService, IPayPeriodsService payPeriodsService,
-        INetWorthService netWorthService, TimeProvider timeProvider)
+        INetWorthService netWorthService, TimeProvider timeProvider, IEnumerable<IBackupSection> sections)
     {
         _accountService = accountService;
         _transactionsService = transactionsService;
@@ -68,6 +71,7 @@ public sealed class BackupWriter : IBackupWriter
         _payPeriodsService = payPeriodsService;
         _netWorthService = netWorthService;
         _timeProvider = timeProvider;
+        _sections = sections;
     }
 
     /// <inheritdoc/>
@@ -137,6 +141,13 @@ public sealed class BackupWriter : IBackupWriter
 
         files["balance-history.json"] = await WriteListAsync(zip, "balance-history.json",
             _netWorthService.GetBalanceHistoriesAsync(from: null, cancellationToken), cancellationToken);
+
+        foreach (IBackupSection section in _sections)
+        {
+            BackupSectionData data = await section.ReadAsync(cancellationToken);
+            await WriteOneAsync(zip, section.FileName, data.Data, cancellationToken);
+            files[section.FileName] = data.Records;
+        }
 
         await WriteOneAsync(zip, "manifest.json", new BackupManifest
         {

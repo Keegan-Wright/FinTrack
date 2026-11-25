@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NSubstitute"/>
+    <PackageReference Include="TUnit"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\Src\Modules\Ai\FinanceTracker.Ai\FinanceTracker.Ai.csproj"/>
+    <ProjectReference Include="..\..\..\FinanceTracker.Tests.Unit.Shared\FinanceTracker.Tests.Unit.Shared.csproj"/>
+  </ItemGroup>
+
+</Project>
