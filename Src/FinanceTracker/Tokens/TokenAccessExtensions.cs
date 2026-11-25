@@ -1,3 +1,5 @@
+using FinanceTracker.Domain.Identity;
+
 namespace FinanceTracker.Tokens;
 
 /// <summary>
@@ -17,5 +19,12 @@ public static class TokenAccessExtensions
         /// Marks a POST that only reads, such as a search with its filters in the body, so a token may use it.
         /// </summary>
         public TBuilder ReadsOnly() => builder.WithMetadata(new ReadsOnlyMetadata());
+
+        /// <summary>
+        /// Lets tokens of <paramref name="scope"/> use these endpoints, and nothing else. A token of another scope,
+        /// reading the API included, is refused here.
+        /// </summary>
+        /// <param name="scope">The scope whose tokens may use them.</param>
+        public TBuilder UsableWithToken(TokenScope scope) => builder.WithMetadata(new TokenScopeMetadata(scope));
     }
 }

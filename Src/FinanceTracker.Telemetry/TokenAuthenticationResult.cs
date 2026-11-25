@@ -33,5 +33,10 @@ public enum TokenAuthenticationResult
     /// <summary>
     /// Its address has had too many tokens refused lately, so it wasn't looked at.
     /// </summary>
-    RateLimited
+    RateLimited,
+
+    /// <summary>
+    /// The token was good, but its user has turned off what it's for, such as AI for an AI client's token.
+    /// </summary>
+    ScopeTurnedOff
 }

@@ -34,19 +34,26 @@ public static class PersonalAccessTokenDefaults
     private const string Bearer = "Bearer ";
 
     /// <summary>
-    /// The paths tokens are read on. Anywhere else a token is ignored, so it can't fetch the app's pages.
+    /// The paths tokens are read on, besides the endpoints marked for a token's scope. Anywhere else a token is
+    /// ignored, so it can't fetch the app's pages.
     /// </summary>
     private static readonly PathString ApiPath = "/api";
 
     /// <summary>
-    /// Whether <paramref name="request"/> is for the API and carries a FinTrack token.
+    /// Whether <paramref name="request"/> carries a FinTrack token where tokens are read, the API or an endpoint marked
+    /// for a token's scope, see <see cref="TokenAccessExtensions.UsableWithToken"/>.
     /// </summary>
     /// <param name="request">The request.</param>
     public static bool IsTokenRequest(HttpRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return request.Path.StartsWithSegments(ApiPath, StringComparison.OrdinalIgnoreCase) &&
-               TokenFrom(request) is not null;
+        if (TokenFrom(request) is null)
+        {
+            return false;
+        }
+
+        return request.Path.StartsWithSegments(ApiPath, StringComparison.OrdinalIgnoreCase) ||
+               request.HttpContext.GetEndpoint()?.Metadata.GetMetadata<TokenScopeMetadata>() is not null;
     }
 
     /// <summary>

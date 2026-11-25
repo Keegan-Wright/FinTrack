@@ -442,6 +442,8 @@ public sealed class FinTrackMetrics
                 return "locked";
             case TokenAuthenticationResult.RateLimited:
                 return "rate_limited";
+            case TokenAuthenticationResult.ScopeTurnedOff:
+                return "scope_turned_off";
             default:
                 throw new ArgumentOutOfRangeException(nameof(result), result, null);
         }

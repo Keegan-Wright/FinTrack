@@ -1,5 +1,7 @@
 #if FINTRACK_AI
 using FinanceTracker.Ai.Api;
+using FinanceTracker.Ai.Mcp;
+using FinanceTracker.Domain.Identity;
 #endif
 using FinanceTracker.Contracts.Api;
 using FinanceTracker.Tokens;
@@ -65,6 +67,17 @@ public static class ApiEndpoints
             api.Map("api/{**path}", static () => TypedResults.NotFound()).ExcludeFromDescription();
 
             endpoints.MapHub<SyncHub>(SyncHubContract.Path);
+#if FINTRACK_AI
+
+            // AI clients through MCP, signed in with a token made for them and only such a token. Never the browser's
+            // cookie, which another site could otherwise send. See TokenAccessHandler
+            endpoints.MapFinTrackMcp()
+                .RequireAuthorization(static policy => policy
+                    .AddAuthenticationSchemes(PersonalAccessTokenDefaults.Scheme)
+                    .RequireAuthenticatedUser()
+                    .AddRequirements(new TokenAccessRequirement()))
+                .UsableWithToken(TokenScope.Ai);
+#endif
 
             return endpoints;
         }

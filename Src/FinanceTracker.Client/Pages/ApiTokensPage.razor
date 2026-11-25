@@ -60,6 +60,11 @@
                                                  Color="Color.Warning">Never expires
                                         </MudChip>
                                     }
+                                    @if (UseOf(token) is { } use)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@use
+                                        </MudChip>
+                                    }
                                 </div>
                                 <MudText Typo="Typo.caption" Class="mud-text-secondary">@DetailsText(token)</MudText>
                             </div>

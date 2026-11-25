@@ -4,6 +4,7 @@ using System.Text.Encodings.Web;
 using FinanceTracker.Domain.Identity;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Account.Tokens;
+using FinanceTracker.Infrastructure.Common.Tokens;
 using FinanceTracker.Telemetry;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
@@ -30,6 +31,7 @@ public sealed class PersonalAccessTokenHandler : AuthenticationHandler<Authentic
     private readonly TimeProvider _timeProvider;
     private readonly ITokenFailureLimiter _failureLimiter;
     private readonly FinTrackMetrics _metrics;
+    private readonly IEnumerable<ITokenScopeCheck> _scopeChecks;
 
     /// <param name="options">The scheme's options.</param>
     /// <param name="logger">Its logger.</param>
@@ -38,11 +40,13 @@ public sealed class PersonalAccessTokenHandler : AuthenticationHandler<Authentic
     /// <param name="timeProvider">The clock expiry and lockout are checked against.</param>
     /// <param name="failureLimiter">Counts refusals per address.</param>
     /// <param name="metrics">Counts how token requests went.</param>
+    /// <param name="scopeChecks">Modules' checks on tokens of their scopes, see <see cref="ITokenScopeCheck"/>.</param>
     public PersonalAccessTokenHandler(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger,
         UrlEncoder encoder, IDbContextFactory<FinanceTrackerContext> contextFactory, TimeProvider timeProvider,
-        ITokenFailureLimiter failureLimiter, FinTrackMetrics metrics)
+        ITokenFailureLimiter failureLimiter, FinTrackMetrics metrics, IEnumerable<ITokenScopeCheck> scopeChecks)
         : base(options, logger, encoder)
     {
+        _scopeChecks = scopeChecks;
         _contextFactory = contextFactory;
         _timeProvider = timeProvider;
         _failureLimiter = failureLimiter;
@@ -91,6 +95,14 @@ public sealed class PersonalAccessTokenHandler : AuthenticationHandler<Authentic
             return Refuse(lookupId, TokenAuthenticationResult.Locked, "its user is locked");
         }
 
+        if (!await ScopeAllowedAsync(found))
+        {
+            // A real token, so not counted against the address
+            _metrics.TokenAuthenticated(TokenAuthenticationResult.ScopeTurnedOff);
+            Logger.LogTokenRefused(lookupId!, "its user has turned off what it's for");
+            return AuthenticateResult.Fail("The token was refused, its user has turned off what it's for.");
+        }
+
         await RecordUseAsync(context, found, now);
         _metrics.TokenAuthenticated(TokenAuthenticationResult.Succeeded);
         return AuthenticateResult.Success(new AuthenticationTicket(PrincipalFor(user, found), Scheme.Name));
@@ -114,6 +126,23 @@ public sealed class PersonalAccessTokenHandler : AuthenticationHandler<Authentic
         Response.StatusCode = StatusCodes.Status401Unauthorized;
         Response.Headers.Append(HeaderNames.WWWAuthenticate, "Bearer");
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Whether every module's check on tokens of <paramref name="token"/>'s scope lets its user in.
+    /// </summary>
+    private async Task<bool> ScopeAllowedAsync(PersonalAccessToken token)
+    {
+        string scope = token.Scope.ToString();
+        foreach (ITokenScopeCheck check in _scopeChecks)
+        {
+            if (check.Scope == scope && !await check.AllowsAsync(token.UserId, Context.RequestAborted))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /// <summary>

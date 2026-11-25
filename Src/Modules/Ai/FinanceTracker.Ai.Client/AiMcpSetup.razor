@@ -1,0 +1,61 @@
+@* How to use FinTrack from an AI client the user already has, through MCP. The address, and the settings most clients
+   take, with a token made for AI clients. *@
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JsRuntime
+@inject ISnackbar Snackbar
+
+<div class="mt-4">
+    <MudText Typo="Typo.subtitle2">Use FinTrack from your own AI client</MudText>
+    <MudText Typo="Typo.body2" Class="mt-1">
+        AI clients that support MCP can read your data through FinTrack's MCP server. They can never change anything.
+    </MudText>
+    <MudText Typo="Typo.body2" Class="mt-2">
+        Make a token for it on <MudLink Href="ApiTokens">API tokens</MudLink>, choosing AI clients (MCP), then add
+        these settings to the client with your token in place of &lt;your token&gt;.
+    </MudText>
+    <MudText Typo="Typo.body2" Class="mt-2">The address is <strong>@Address</strong>.</MudText>
+    <pre class="ai-mcp-setup__snippet mt-2"><code>@Snippet</code></pre>
+    <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.ContentCopy"
+               OnClick="@CopyAsync" Class="mt-2">Copy settings
+    </MudButton>
+</div>
+
+@code {
+
+    /// <summary>
+    /// The MCP server's address, on the address FinTrack is open at.
+    /// </summary>
+    private string Address => $"{NavigationManager.BaseUri.TrimEnd('/')}/mcp";
+
+    /// <summary>
+    /// The settings most MCP clients take.
+    /// </summary>
+    private string Snippet => $$"""
+        {
+          "mcpServers": {
+            "fintrack": {
+              "type": "http",
+              "url": "{{Address}}",
+              "headers": { "Authorization": "Bearer <your token>" }
+            }
+          }
+        }
+        """;
+
+    /// <summary>
+    /// Copies the settings with the browser's clipboard, which only works over HTTPS or on this computer.
+    /// </summary>
+    private async Task CopyAsync()
+    {
+        try
+        {
+            await JsRuntime.InvokeVoidAsync("navigator.clipboard.writeText", Snippet);
+            Snackbar.Add("Settings copied", Severity.Success);
+        }
+        catch (JSException)
+        {
+            Snackbar.Add("Couldn't copy them, select the settings and copy them instead", Severity.Warning);
+        }
+    }
+
+}

@@ -1361,7 +1361,7 @@
     {
       "type": "timeseries",
       "title": "API tokens",
-      "description": "Requests with an API token, by how they went: succeeded, malformed, unknown (a guess or typo), inactive (expired or revoked), locked (its user is), or rate_limited (its address had too many refused lately, so it wasn't looked at).",
+      "description": "Requests with an API token, by how they went: succeeded, malformed, unknown (a guess or typo), inactive (expired or revoked), locked (its user is), rate_limited (its address had too many refused lately, so it wasn't looked at), or scope_turned_off (a good token whose user has turned off what it's for, such as AI).",
       "datasource": {
         "type": "prometheus",
         "uid": "${prometheus}"

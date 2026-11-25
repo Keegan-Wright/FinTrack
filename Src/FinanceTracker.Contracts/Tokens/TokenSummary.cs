@@ -35,4 +35,11 @@ public sealed class TokenSummary
     /// Whether it's expired, so no longer works.
     /// </summary>
     public required bool Expired { get; init; }
+#if FINTRACK_AI
+
+    /// <summary>
+    /// Whether it's for AI clients through MCP. Only in the AI build.
+    /// </summary>
+    public bool ForAiClients { get; init; }
+#endif
 }

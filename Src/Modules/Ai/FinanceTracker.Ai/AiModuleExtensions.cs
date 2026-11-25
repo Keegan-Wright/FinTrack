@@ -1,9 +1,12 @@
 using FinanceTracker.Ai.Backup;
 using FinanceTracker.Ai.Contracts;
+using FinanceTracker.Ai.Mcp;
 using FinanceTracker.Ai.Persistence;
 using FinanceTracker.Ai.Services;
+using FinanceTracker.Ai.Tools;
 using FinanceTracker.Infrastructure.Common.Encryption;
 using FinanceTracker.Infrastructure.Common.Exports;
+using FinanceTracker.Infrastructure.Common.Tokens;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,6 +30,12 @@ public static class AiModuleExtensions
                 FinanceTrackerAiContextOptions.Configure(options, connectionString));
             builder.Services.AddScoped<IAiService, AiService>();
             builder.Services.AddScoped<IBackupSection, AiBackupSection>();
+
+            AiTools tools = new();
+            builder.Services.AddSingleton<IAiTools>(tools);
+            builder.Services.AddSingleton<PageLinks>();
+            builder.Services.AddFinTrackMcp(tools);
+            builder.Services.AddSingleton<ITokenScopeCheck, AiTokenScopeCheck>();
             return builder;
         }
     }

@@ -3,6 +3,7 @@ using FinanceTracker.AppHost.ServiceDefaults;
 #if FINTRACK_AI
 using FinanceTracker.AppHost.Ollama;
 #endif
+using Microsoft.Extensions.Configuration;
 
 #pragma warning disable ASPIRECOMPUTE003
 #pragma warning disable ASPIREPIPELINES003
@@ -39,7 +40,10 @@ IResourceBuilder<ParameterResource> openBankingPublicIpAddress =
     builder.AddParameterFromConfiguration("OpenBanking-Public-IP-Address", "OpenBanking:TrueLayer:PublicIpAddress");
 
 
-IResourceBuilder<PostgresServerResource> postgres = builder.AddPostgres(FinTrackResources.Postgres)
+// A fixed port while running locally, so database tools keep their connection between runs. Empty for a free port,
+// e.g. for the tests
+int? postgresPort = builder.ExecutionContext.IsRunMode ? builder.Configuration.GetValue<int?>("Postgres:Port") : null;
+IResourceBuilder<PostgresServerResource> postgres = builder.AddPostgres(FinTrackResources.Postgres, port: postgresPort)
     .WithDataVolume(isReadOnly: false)
     .PublishAsDockerComposeService((resource, service) => { service.Restart = "unless-stopped"; });
 

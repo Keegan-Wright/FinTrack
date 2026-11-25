@@ -68,7 +68,10 @@ public sealed class TokensService : ITokensService
                 CreatedAt = x.Created,
                 ExpiresAt = x.ExpiresAt,
                 LastUsedAt = x.LastUsedAt,
-                Expired = !x.IsActive(now)
+                Expired = !x.IsActive(now),
+#if FINTRACK_AI
+                ForAiClients = x.Scope == TokenScope.Ai
+#endif
             })
             .ToList();
 
@@ -97,7 +100,7 @@ public sealed class TokensService : ITokensService
         DateTime now = _timeProvider.GetUtcNow().UtcDateTime;
         IssuedToken issued = PersonalAccessTokenFormat.Issue();
         PersonalAccessToken token = new(user.Id, request.Name, issued.LookupId, issued.SecretHash,
-            ExpiresAt(request.Expiry, now));
+            ExpiresAt(request.Expiry, now), ScopeFor(request));
 
         await using (FinanceTrackerContext context = await _contextFactory.CreateDbContextAsync(cancellationToken))
         {
@@ -127,6 +130,20 @@ public sealed class TokensService : ITokensService
         _logger.LogTokenRevoked(user.Id, token.Id);
         await _securityEmails.TokenRevokedAsync(user, token.Name);
         return true;
+    }
+
+    /// <summary>
+    /// What a new token may do, read the API unless the AI build was asked for one for AI clients.
+    /// </summary>
+    /// <param name="request">The new token's details.</param>
+    private static TokenScope ScopeFor(CreateToken request)
+    {
+#if FINTRACK_AI
+        return request.ForAiClients ? TokenScope.Ai : TokenScope.Read;
+#else
+        ArgumentNullException.ThrowIfNull(request);
+        return TokenScope.Read;
+#endif
     }
 
     /// <summary>
