@@ -1,4 +1,7 @@
 using System.ComponentModel;
+#if FINTRACK_AI
+using FinanceTracker.Client.Ai;
+#endif
 using FinanceTracker.Client.Common;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
@@ -47,6 +50,24 @@ public class LayoutBase : LayoutComponentBase
     [Inject]
     private IBrowserViewportService BrowserViewportService { get; set; } = null!;
 
+#if FINTRACK_AI
+    /// <summary>
+    /// Loads the AI module, for its app bar button.
+    /// </summary>
+    [Inject]
+    private AiModuleLoader AiModuleLoader { get; set; } = null!;
+
+    /// <summary>
+    /// A built-in module's app bar button once its assembly has loaded, null before.
+    /// </summary>
+    internal Type? ModuleAppBarButton => AiModuleLoader.AppBarButton;
+#else
+    /// <summary>
+    /// A built-in module's app bar button, never one, no modules are built in.
+    /// </summary>
+    internal static Type? ModuleAppBarButton => null;
+#endif
+
     /// <inheritdoc/>
     protected override void OnInitialized()
     {
@@ -63,6 +84,11 @@ public class LayoutBase : LayoutComponentBase
             _isDarkMode = await _mudThemeProvider.GetSystemDarkModeAsync();
             await _mudThemeProvider.WatchSystemDarkModeAsync(OnSystemPreferenceChanged);
             StateHasChanged();
+#if FINTRACK_AI
+            // After the layout's own setup, so the drawer and dark mode don't wait on the download
+            await AiModuleLoader.LoadAsync();
+            StateHasChanged();
+#endif
         }
     }
 

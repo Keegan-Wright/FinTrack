@@ -28,6 +28,26 @@ dotnet test --project Test/FinanceTracker.Tests.Integration -- --treenode-filter
 
 A failed UI test saves a Playwright trace, which you can open at [trace.playwright.dev](https://trace.playwright.dev).
 
+## Modules
+
+The core's suites run on the plain build, with no module built in. Each module is tested on its own, in its own CI job
+built with the module in. That job runs:
+
+- the core's tests where the module meets it, which sit behind `#if FINTRACK_AI` and are tagged
+  `[Category("AiModule")]`
+- the module's own tests, in `Test/Modules/<Name>/`
+- its image, as it ships
+
+To run a module's tests locally, build with it in and filter by its category:
+
+```sh
+export FinTrackAi=true
+dotnet build Test/FinanceTracker.Tests.Integration
+dotnet test --project Test/FinanceTracker.Tests.Integration --no-build -- --treenode-filter "/*/*/*/*[Category=AiModule]"
+```
+
+`AiModuleBuildTests` checks the plain build has none of the module and the AI build has all of it.
+
 ## Coverage
 
 ```sh

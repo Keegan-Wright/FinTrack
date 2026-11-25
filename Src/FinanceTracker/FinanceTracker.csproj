@@ -40,6 +40,11 @@
   </ItemGroup>
 
 
+  <!-- The AI module's server side, only with FinTrackAi=true, for the fintrackweb-ai image -->
+  <ItemGroup Condition="'$(FinTrackAi)' == 'true'">
+    <ProjectReference Include="..\Modules\Ai\FinanceTracker.Ai\FinanceTracker.Ai.csproj"/>
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\FinanceTracker.Infrastructure.Migrations\FinanceTracker.Infrastructure.Migrations.csproj"/>
     <ProjectReference Include="..\FinanceTracker.AppHost.ServiceDefaults\FinanceTracker.AppHost.ServiceDefaults.csproj"/>

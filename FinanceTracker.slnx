@@ -77,6 +77,11 @@
     <File Path="Grafana\dashboards\fintrack\fintrack-sync.json"/>
     <File Path="Grafana\dashboards\fintrack\fintrack-users.json"/>
   </Folder>
+  <Folder Name="/Modules/"/>
+  <Folder Name="/Modules/Ai/">
+    <Project Path="Src/Modules/Ai/FinanceTracker.Ai/FinanceTracker.Ai.csproj"/>
+    <Project Path="Src/Modules/Ai/FinanceTracker.Ai.Client/FinanceTracker.Ai.Client.csproj"/>
+  </Folder>
   <Folder Name="/SourceGenerators/">
     <Project
       Path="Src/Generators/FinanceTracker.Generated.Attributes/FinanceTracker.Generated.Attributes/FinanceTracker.Generated.Attributes.csproj"/>

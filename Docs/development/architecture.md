@@ -20,6 +20,7 @@ browser as WebAssembly, calling that API.
 | `FinanceTracker.AppHost` | Runs everything locally, see [Running locally](running-locally.md). |
 | `FinanceTracker.AppHost.ServiceDefaults` | Shared setup such as telemetry and health checks, and the app's setting names. |
 | `Generators/` | Source generators for registering services. |
+| `Modules/Ai/` | The AI module, `FinanceTracker.Ai` on the server and `FinanceTracker.Ai.Client` in the browser. Only built in with `FinTrackAi=true`, see [Modules](#modules). |
 
 ## Registering services
 
@@ -52,6 +53,25 @@ public class SplitTransactionValidator : AbstractValidator<SplitTransaction>
 ```
 
 Each app then calls the generated `AddFinanceTrackerServices` and `AddFinanceTrackerValidators` in its `Program.cs`.
+
+## Modules
+
+A module is a feature only some installs want, built into its own image rather than switched off in every one. Each
+lives in `Src/Modules/<Name>/` with a matching solution folder. AI is the only one, built in with `FinTrackAi=true` for
+the `fintrackweb-ai` image. The plain `fintrackweb` image has none of its code, packages, pages or tables.
+
+- The build switch adds the module's projects and defines `FINTRACK_AI`. The few places that wire it in sit behind
+  `#if FINTRACK_AI`, the client's `Ai/AiModuleLoader.cs`, `Routes.razor.cs` and `LayoutBase.cs`, and the server's
+  `Program.cs`, `Extensions/AiModuleHostExtensions.cs` and `Extensions/RoutedAssemblies.cs`.
+- The module's browser assembly is lazy loaded, so the browser only fetches it when it's needed. The app can't refer to
+  its types directly, the layout renders its app bar button by name.
+- Its tables live in their own schema, `ai`, with their own migrations history, so moving back to the plain image
+  leaves them alone. Its migrations are made from the module's project on its own:
+
+  ```sh
+  dotnet ef migrations add <Name> --project Src/Modules/Ai/FinanceTracker.Ai \
+    --startup-project Src/Modules/Ai/FinanceTracker.Ai --output-dir Persistence/Migrations
+  ```
 
 ## Data
 

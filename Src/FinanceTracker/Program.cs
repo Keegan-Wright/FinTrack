@@ -1,4 +1,7 @@
 using ApexCharts;
+#if FINTRACK_AI
+using FinanceTracker.Ai;
+#endif
 using FinanceTracker.Api;
 using FinanceTracker.AppHost.ServiceDefaults;
 using FinanceTracker.Client;
@@ -41,6 +44,9 @@ public partial class Program
 
         builder.Services.AddSingleton<AppUpdate>();
         builder.Services.AddSecurityHeaders();
+#if FINTRACK_AI
+        builder.AddFinTrackAiModule();
+#endif
 
         builder.AddFinTrackRateLimiting();
         builder.AddFinTrackForwardedHeaders();
@@ -84,6 +90,9 @@ public partial class Program
         app.UseSecurityHeaders();
 
         await app.MigrateDatabaseAsync();
+#if FINTRACK_AI
+        await app.MigrateAiDatabaseAsync();
+#endif
         await app.EnsureAdminAsync();
 
         app.UseAppVersionHeader();
@@ -97,7 +106,7 @@ public partial class Program
         app.MapWebAppManifest();
         app.MapRazorComponents<App>()
             .AddInteractiveWebAssemblyRenderMode()
-            .AddAdditionalAssemblies(typeof(Routes).Assembly);
+            .AddAdditionalAssemblies(RoutedAssemblies.All);
 
         app.MapAdditionalIdentityEndpoints();
         app.MapFinTrackApi();

@@ -46,6 +46,10 @@
             }
         </span>
 
+        @if (ModuleAppBarButton is { } moduleAppBarButton)
+        {
+            <DynamicComponent Type="moduleAppBarButton"/>
+        }
         <NotificationBell Unread="@ApplicationState.UnreadNotifications"/>
         <MudTooltip Text="@(_isDarkMode ? "Switch to light mode" : "Switch to dark mode")">
             <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Outlined.LightMode : Icons.Material.Outlined.DarkMode)"

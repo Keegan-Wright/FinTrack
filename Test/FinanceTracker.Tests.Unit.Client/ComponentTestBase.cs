@@ -1,4 +1,8 @@
 using Bunit;
+#if FINTRACK_AI
+using FinanceTracker.Client.Ai;
+using Microsoft.AspNetCore.Components.WebAssembly.Services;
+#endif
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Sharing;
 using Microsoft.Extensions.DependencyInjection;
@@ -29,5 +33,12 @@ public abstract class ComponentTestBase : BunitContext
         sharing.GetViewAsync(Arg.Any<CancellationToken>())
             .Returns(new SharingView { IncludesShared = true, HasSharedAccounts = false });
         Services.AddSingleton(sharing);
+
+#if FINTRACK_AI
+        // The layout loads the AI module in the AI build. Outside the browser loading finds the assembly the tests
+        // already reference
+        Services.AddSingleton<LazyAssemblyLoader>();
+        Services.AddSingleton<AiModuleLoader>();
+#endif
     }
 }
