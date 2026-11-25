@@ -212,6 +212,10 @@ resharper_auto_property_can_be_made_get_only_local_highlighting = none
 [Src/FinanceTracker.Infrastructure.Migrations/Migrations/**.cs]
 generated_code = true
 
+# The AI module's own migrations, generated the same way
+[Src/Modules/Ai/FinanceTracker.Ai/Persistence/Migrations/**.cs]
+generated_code = true
+
 [Test/**.cs]
 # Test names read as sentences: Method_Scenario_Expectation
 dotnet_diagnostic.CA1707.severity = none

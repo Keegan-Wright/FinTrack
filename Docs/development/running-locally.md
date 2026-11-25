@@ -41,4 +41,12 @@ aspire run
 
 Or `dotnet run --project Src/FinanceTracker.AppHost`, or run the AppHost from your IDE.
 
+To run with the AI module built in, the way the `fintrackweb-ai` image is, set `FinTrackAi`:
+
+```sh
+FinTrackAi=true aspire run
+```
+
+MSBuild reads it from the environment, so it works with any of the above.
+
 The Aspire dashboard links to the app, its logs and traces, and Mailpit, where any emails end up.

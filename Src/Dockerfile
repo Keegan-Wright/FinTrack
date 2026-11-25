@@ -5,6 +5,8 @@ EXPOSE 8080
 
 FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:11.0 AS build
 ARG TARGETARCH
+# true builds the AI module in, for the fintrackweb-ai image. The plain image leaves it out entirely
+ARG FINTRACK_AI=false
 WORKDIR /src
 COPY ["Directory.Packages.props", "Directory.Build.props", "Directory.Build.targets", ".editorconfig", "global.json", "./"]
 
@@ -23,7 +25,9 @@ COPY ["Src/Generators/FinanceTracker.Generated.Attributes/FinanceTracker.Generat
 COPY ["Src/Generators/FinanceTracker.Generated.DependencyInjection/FinanceTracker.Generated.DependencyInjection/FinanceTracker.Generated.DependencyInjection.csproj", "Src/Generators/FinanceTracker.Generated.DependencyInjection/FinanceTracker.Generated.DependencyInjection/"]
 COPY ["Src/Generators/FinanceTracker.Generated.Enums/FinanceTracker.Generated.Enums/FinanceTracker.Generated.Enums.csproj", "Src/Generators/FinanceTracker.Generated.Enums/FinanceTracker.Generated.Enums/"]
 COPY ["Src/Generators/FinanceTracker.Generated.Shared/FinanceTracker.Generated.Shared.csproj", "Src/Generators/FinanceTracker.Generated.Shared/"]
-RUN dotnet restore "Src/FinanceTracker/FinanceTracker.csproj" -a $TARGETARCH
+COPY ["Src/Modules/Ai/FinanceTracker.Ai/FinanceTracker.Ai.csproj", "Src/Modules/Ai/FinanceTracker.Ai/"]
+COPY ["Src/Modules/Ai/FinanceTracker.Ai.Client/FinanceTracker.Ai.Client.csproj", "Src/Modules/Ai/FinanceTracker.Ai.Client/"]
+RUN dotnet restore "Src/FinanceTracker/FinanceTracker.csproj" -a $TARGETARCH -p:FinTrackAi=$FINTRACK_AI
 
 COPY ["Src/", "Src/"]
 
@@ -58,8 +62,11 @@ ARG BUILD_CONFIGURATION=Release
 # The release's git tag (e.g. v0.1.1) and commit, shown in the app. .git isn't copied in, so the commit is passed
 ARG VERSION=v0.0.0-dev
 ARG SOURCE_REVISION=
+# Build arguments don't carry between stages, so it's declared again to reach publish
+ARG FINTRACK_AI=false
 RUN dotnet publish "Src/FinanceTracker/FinanceTracker.csproj" -c $BUILD_CONFIGURATION -a $TARGETARCH --no-restore \
-    -o /app/publish /p:UseAppHost=false /p:Version=${VERSION#v} /p:SourceRevisionId=$SOURCE_REVISION
+    -o /app/publish /p:UseAppHost=false /p:Version=${VERSION#v} /p:SourceRevisionId=$SOURCE_REVISION \
+    /p:FinTrackAi=$FINTRACK_AI
 
 FROM base AS final
 WORKDIR /app

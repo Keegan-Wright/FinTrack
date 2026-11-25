@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AnalysisMode>Recommended</AnalysisMode>
+    <!-- Loaded in the browser, whose Mono runtime has no runtime async, see Directory.Build.targets -->
+    <FinTrackRunsInBrowser>true</FinTrackRunsInBrowser>
+  </PropertyGroup>
+
+  <!-- The AI module's pages and components, only built into the app with FinTrackAi=true. The browser loads it lazily,
+       so nobody downloads it until they use AI. Built from the shared building blocks, never the app's own pages -->
+  <ItemGroup>
+    <SupportedPlatform Include="browser"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\FinanceTracker.Client.Common\FinanceTracker.Client.Common.csproj"/>
+  </ItemGroup>
+
+</Project>

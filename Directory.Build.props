@@ -12,5 +12,9 @@
     <!-- Release builds set the version from the git tag (Src/Dockerfile), anything else is a dev build. The SDK adds
          the commit to the informational version, shown in the app, see AppVersion.cs -->
     <Version Condition="'$(Version)' == ''">0.0.0-dev</Version>
+    <!-- Builds the AI module into the app, for the fintrackweb-ai image. Off by default, so the plain build has no AI
+         code at all. Turn on with -p:FinTrackAi=true -->
+    <FinTrackAi Condition="'$(FinTrackAi)' == ''">false</FinTrackAi>
+    <DefineConstants Condition="'$(FinTrackAi)' == 'true'">$(DefineConstants);FINTRACK_AI</DefineConstants>
   </PropertyGroup>
 </Project>

@@ -1,4 +1,8 @@
 using ApexCharts;
+#if FINTRACK_AI
+using FinanceTracker.Client.Ai;
+using Microsoft.AspNetCore.Components;
+#endif
 using FinanceTracker.Client.Api;
 using FinanceTracker.Client.Common;
 using FinanceTracker.Client.Diagnostics;
@@ -46,12 +50,23 @@ public static partial class Program
 
 
         builder.Services.AddSingleton<AppUpdate>();
+#if FINTRACK_AI
+        // One per browser tab, shared by the startup below, the router and the layout
+        builder.Services.AddSingleton<AiModuleLoader>();
+#endif
         builder.Services.AddTransient<SignedOutHandler>();
         builder.Services.AddTransient<ServerVersionHandler>();
         builder.Services.AddFinTrackServerConnections(new Uri(builder.HostEnvironment.BaseAddress))
             .AddHttpMessageHandler<SignedOutHandler>()
             .AddHttpMessageHandler<ServerVersionHandler>();
 
-        await builder.Build().RunAsync();
+        WebAssemblyHost host = builder.Build();
+#if FINTRACK_AI
+        // Opening an AI page loads its assembly before the app starts, so the server's page stays on screen rather
+        // than going blank while the router waits for it
+        await host.Services.GetRequiredService<AiModuleLoader>()
+            .LoadIfOpeningModulePageAsync(host.Services.GetRequiredService<NavigationManager>());
+#endif
+        await host.RunAsync();
     }
 }

@@ -462,6 +462,31 @@ public class MainLayoutTests : ComponentTestBase
         await Assert.That(cut.FindAll(".ft-update-banner")).IsEmpty();
     }
 
+#if FINTRACK_AI
+    [Test]
+    [TUnit.Core.Category("AiModule")]
+    public async Task Render_InTheAiBuild_ShowsTheAiButtonOnceLoaded()
+    {
+        // Act
+        IRenderedComponent<MainLayout> cut = RenderLayout();
+
+        // Assert
+        cut.WaitForAssertion(() => cut.Find("[aria-label='Open AI']"));
+        await Assert.That(cut.Find("[aria-label='Open AI']").GetAttribute("href")).IsEqualTo("/Ai");
+    }
+#else
+    [Test]
+    public async Task Render_InThePlainBuild_ShowsNoAiButton()
+    {
+        // Act
+        IRenderedComponent<MainLayout> cut = RenderLayout();
+
+        // Assert
+        cut.WaitForState(() => _onSyncStarted is not null);
+        await Assert.That(cut.FindAll("[aria-label='Open AI']")).IsEmpty();
+    }
+#endif
+
     [Test]
     public async Task Update_HeardWhileOpen_SaysSoAndReloadsWhenAsked()
     {
