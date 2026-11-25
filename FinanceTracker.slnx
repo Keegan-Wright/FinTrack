@@ -12,6 +12,14 @@
   <Folder Name="/Misc/Automation/">
     <File Path=".github\workflows\Build.yml"/>
     <File Path=".github\workflows\PublishDockerImages.yml"/>
+    <File Path=".github\workflows\_build.yml"/>
+    <File Path=".github\workflows\_unit-tests.yml"/>
+    <File Path=".github\workflows\_integration-tests.yml"/>
+    <File Path=".github\workflows\_published-image.yml"/>
+    <File Path=".github\workflows\_modules.yml"/>
+    <File Path=".github\actions\setup-dotnet\action.yml"/>
+    <File Path=".github\actions\prepare-browser-tests\action.yml"/>
+    <File Path=".github\actions\start-image\action.yml"/>
   </Folder>
   <Folder Name="/Misc/Docs/">
     <File Path="README.md"/>

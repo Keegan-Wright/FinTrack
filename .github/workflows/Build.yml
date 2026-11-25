@@ -1,3 +1,4 @@
+# Checks for pull requests and main. Each job is a reusable workflow, the _*.yml files beside this one.
 name: FinTrack Build
 
 on:
@@ -14,340 +15,27 @@ permissions:
   contents: read
 
 jobs:
-  # The one compile check, the whole solution, so a warning anywhere fails it (TreatWarningsAsErrors in
-  # Directory.Build.props). The tests start once it passes, each building only what it needs
   build:
-    name: Build
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Install .NET Core
-        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
-        with:
-          dotnet-version: 11.0.x
-
-      - name: Restore workloads
-        run: dotnet workload restore
-
-      - name: Restore the application
-        run: dotnet restore
-
-      - name: Build Solution
-        run: dotnet build -c Release --no-restore
+    uses: ./.github/workflows/_build.yml
 
   unit-tests:
-    name: Unit tests
     needs: build
-    runs-on: ubuntu-latest
+    uses: ./.github/workflows/_unit-tests.yml
+    with:
+      coverage: true
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Install .NET Core
-        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
-        with:
-          dotnet-version: 11.0.x
-
-      - name: Restore workloads
-        run: dotnet workload restore
-
-      - name: Restore tools
-        run: dotnet tool restore
-
-      # Each project connects to one coverage collector, which writes a single file when it shuts down
-      - name: Unit Tests
-        run: |
-          dotnet dotnet-coverage collect --session-id unit --server-mode --background \
-            --settings Test/CodeCoverage.xml --output-format cobertura --output coverage/unit.cobertura.xml
-          for project in Client Domain FinanceTracker Infrastructure; do
-            dotnet dotnet-coverage connect --nologo unit \
-              dotnet test --project Test/FinanceTracker.Tests.Unit.$project -c Release || exit 1
-          done
-          dotnet dotnet-coverage shutdown unit
-
-      - name: Upload Coverage
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: Coverage-Unit
-          path: coverage/unit.cobertura.xml
-
-      - name: Upload HTML Test Report
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: always()
-        with:
-          name: TestReport-Unit
-          path: '**/*-report.html'
-
-  # The integration tests split across three runners, the UI tests in two as they're the time-consuming ones.
   integration-tests:
-    name: Integration tests (${{ matrix.suite }})
     needs: build
-    runs-on: ubuntu-latest
+    uses: ./.github/workflows/_integration-tests.yml
+    with:
+      coverage: true
 
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # A look at each page
-          - suite: UI pages
-            filter: '/*/FinanceTracker.Tests.Integration.Ui/(SeededPageTests|PageRenderTests|AccountPageTests|LoadFailureTests)/*'
-            browser: true
-          # Everything else in a browser, flows, dialogs and failures, a new UI test class lands here
-          - suite: UI flows
-            filter: '/*/FinanceTracker.Tests.Integration.Ui/(!(SeededPageTests|PageRenderTests|AccountPageTests|LoadFailureTests))/*'
-            browser: true
-          # Everything not in a browser, the published image has its own job below
-          - suite: API and services
-            filter: '/*/(!(FinanceTracker.Tests.Integration.Ui|FinanceTracker.Tests.Integration.Image))/*/*'
-            browser: false
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Install .NET Core
-        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
-        with:
-          dotnet-version: 11.0.x
-
-      - name: Restore workloads
-        run: dotnet workload restore
-
-      # Built first, its output holds Playwright's install script
-      - name: Build Integration Tests
-        run: dotnet build Test/FinanceTracker.Tests.Integration -c Release
-
-      # Trusted, so Aspire's health check of the app's https endpoint can connect. On Linux trusting writes the
-      # certificate to ~/.aspnet/dev-certs/trust, which OpenSSL only reads once it's on SSL_CERT_DIR. The runner has
-      # no browser certificate stores, so trust is only partial and reported as an error, OpenSSL is all .NET needs
-      - name: Create development certificate
-        run: |
-          dotnet dev-certs https --trust || true
-          echo "SSL_CERT_DIR=$HOME/.aspnet/dev-certs/trust:/usr/lib/ssl/certs" >> "$GITHUB_ENV"
-
-      # Chromium and the system libraries it needs for the UI tests, which use the app in a browser with Playwright.
-      # The tests install Chromium themselves when it's missing, but not its libraries
-      - name: Install Playwright's Chromium
-        if: matrix.browser
-        run: pwsh Test/FinanceTracker.Tests.Integration/bin/Release/net11.0/playwright.ps1 install --with-deps chromium
-
-      - name: Restore tools
-        run: dotnet tool restore
-
-      # The app Aspire starts inherits the coverage profiler from the test run, so its code counts too
-      - name: Integration Tests
-        run: |
-          dotnet dotnet-coverage collect --session-id integration --server-mode --background \
-            --settings Test/CodeCoverage.xml --output-format cobertura --output coverage/integration.cobertura.xml
-
-          dotnet dotnet-coverage connect --nologo integration \
-            dotnet test --project Test/FinanceTracker.Tests.Integration -c Release --no-build \
-            -- --treenode-filter "${{ matrix.filter }}" || exit 1
-
-          dotnet dotnet-coverage shutdown integration
-
-      - name: Upload Coverage
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: Coverage-${{ matrix.suite }}
-          path: coverage/integration.cobertura.xml
-
-      - name: Upload HTML Test Report
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: always()
-        with:
-          name: TestReport-${{ matrix.suite }}
-          path: '**/*-report.html'
-
-      # What a failed UI test saw, step by step, open with https://trace.playwright.dev
-      - name: Upload Playwright Traces
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: failure() && matrix.browser
-        with:
-          name: PlaywrightTraces-${{ matrix.suite }}
-          path: '**/playwright-traces/*.zip'
-          if-no-files-found: ignore
-
-  # The Docker image as it ships, run with a Postgres and used in a browser. The other UI tests run the app built for
-  # testing, so something only a publish gets wrong, e.g. Blazor's own script missing from the image, passes them all
   published-image:
-    name: Published image
     needs: build
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Install .NET Core
-        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
-        with:
-          dotnet-version: 11.0.x
-
-      - name: Restore workloads
-        run: dotnet workload restore
-
-      # Built first, its output holds Playwright's install script
-      - name: Build Integration Tests
-        run: dotnet build Test/FinanceTracker.Tests.Integration -c Release
-
-      - name: Install Playwright's Chromium
-        run: pwsh Test/FinanceTracker.Tests.Integration/bin/Release/net11.0/playwright.ps1 install --with-deps chromium
-
-      # For this runner's platform, the published images are built for both in the release workflow
-      - name: Build the image
-        run: docker build -f Src/Dockerfile -t fintrack:ci .
-
-      # A throwaway Postgres and placeholder settings, the image as a self-hoster runs it, until it answers
-      - name: Start the image
-        run: |
-          docker network create fintrack-ci
-          docker run -d --name fintrack-ci-db --network fintrack-ci -e POSTGRES_PASSWORD=ci postgres:18.7
-          until docker exec fintrack-ci-db pg_isready -U postgres; do sleep 1; done
-          docker run -d --name fintrack-ci-web --network fintrack-ci -p 8080:8080 \
-            -e HTTP_PORTS=8080 \
-            -e ENCRYPTION_KEYS="1:$(head -c 32 /dev/urandom | base64)" -e ENCRYPTION_CURRENT_KEY_ID=1 \
-            -e OPEN_BANKING_TRUELAYER_BASE_AUTH_URL=https://auth.example.test \
-            -e OPEN_BANKING_TRUELAYER_BASE_DATA_URL=https://api.example.test \
-            -e OPEN_BANKING_TRUELAYER_AUTH_REDIRECT_URL=http://localhost:8080/callback \
-            -e OPEN_BANKING_TRUELAYER_CLIENT_ID=ci -e OPEN_BANKING_TRUELAYER_CLIENT_SECRET=ci \
-            -e OPEN_BANKING_PUBLIC_IP_ADDRESS=127.0.0.1 -e APP_CULTURE=en-GB -e TZ=Europe/London \
-            -e "ConnectionStrings__FinTrackDb=Host=fintrack-ci-db;Port=5432;Username=postgres;Password=ci;Database=FinTrackDb" \
-            fintrack:ci
-          timeout 120 bash -c 'until curl -sf -o /dev/null http://localhost:8080/Account/Login; do sleep 2; done'
-
-      - name: Published Image Tests
-        env:
-          FINTRACK_IMAGE_URL: http://localhost:8080
-        run: >-
-          dotnet test --project Test/FinanceTracker.Tests.Integration -c Release --no-build
-          -- --treenode-filter "/*/FinanceTracker.Tests.Integration.Image/*/*"
-
-      - name: Image logs
-        if: failure()
-        run: docker logs fintrack-ci-web
-
-      - name: Upload HTML Test Report
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: always()
-        with:
-          name: TestReport-Published image
-          path: '**/*-report.html'
-
+    uses: ./.github/workflows/_published-image.yml
 
   modules:
-    name: Module (${{ matrix.name }})
-    runs-on: ubuntu-latest
-
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: AI
-            property: FinTrackAi
-            folder: Ai
-            category: AiModule
-            build-arg: FINTRACK_AI
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Install .NET Core
-        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
-        with:
-          dotnet-version: 11.0.x
-
-      - name: Restore workloads
-        run: dotnet workload restore
-
-      # MSBuild reads it from the environment, so every dotnet command below builds the module in
-      - name: Build the module in
-        run: echo "${{ matrix.property }}=true" >> "$GITHUB_ENV"
-
-      - name: Restore the application
-        run: dotnet restore
-
-      - name: Build Solution
-        run: dotnet build -c Release --no-restore
-
-      # The core's unit tests that meet the module, by category, then the module's own in full. Exit code 8 is no
-      # tests matching, fine for a core project the module doesn't touch
-      - name: Unit Tests
-        run: |
-          for project in Client FinanceTracker; do
-            dotnet test --project Test/FinanceTracker.Tests.Unit.$project -c Release --no-build \
-              -- --treenode-filter "/*/*/*/*[Category=${{ matrix.category }}]" --ignore-exit-code 8 || exit 1
-          done
-          for project in Test/Modules/${{ matrix.folder }}/*/; do
-            [ -d "$project" ] || continue
-            dotnet test --project "$project" -c Release --no-build || exit 1
-          done
-
-      - name: Create development certificate
-        run: |
-          dotnet dev-certs https --trust || true
-          echo "SSL_CERT_DIR=$HOME/.aspnet/dev-certs/trust:/usr/lib/ssl/certs" >> "$GITHUB_ENV"
-
-      - name: Install Playwright's Chromium
-        run: pwsh Test/FinanceTracker.Tests.Integration/bin/Release/net11.0/playwright.ps1 install --with-deps chromium
-
-      - name: Integration Tests
-        run: >-
-          dotnet test --project Test/FinanceTracker.Tests.Integration -c Release --no-build
-          -- --treenode-filter "/*/*/*/*[Category=${{ matrix.category }}]"
-
-      - name: Build the image
-        run: docker build -f Src/Dockerfile --build-arg ${{ matrix.build-arg }}=true -t fintrack:ci .
-
-      # The same as the core's image check, the module's image as a self-hoster runs it
-      - name: Start the image
-        run: |
-          docker network create fintrack-ci
-          docker run -d --name fintrack-ci-db --network fintrack-ci -e POSTGRES_PASSWORD=ci postgres:18.7
-          until docker exec fintrack-ci-db pg_isready -U postgres; do sleep 1; done
-          docker run -d --name fintrack-ci-web --network fintrack-ci -p 8080:8080 \
-            -e HTTP_PORTS=8080 \
-            -e ENCRYPTION_KEYS="1:$(head -c 32 /dev/urandom | base64)" -e ENCRYPTION_CURRENT_KEY_ID=1 \
-            -e OPEN_BANKING_TRUELAYER_BASE_AUTH_URL=https://auth.example.test \
-            -e OPEN_BANKING_TRUELAYER_BASE_DATA_URL=https://api.example.test \
-            -e OPEN_BANKING_TRUELAYER_AUTH_REDIRECT_URL=http://localhost:8080/callback \
-            -e OPEN_BANKING_TRUELAYER_CLIENT_ID=ci -e OPEN_BANKING_TRUELAYER_CLIENT_SECRET=ci \
-            -e OPEN_BANKING_PUBLIC_IP_ADDRESS=127.0.0.1 -e APP_CULTURE=en-GB -e TZ=Europe/London \
-            -e "ConnectionStrings__FinTrackDb=Host=fintrack-ci-db;Port=5432;Username=postgres;Password=ci;Database=FinTrackDb" \
-            fintrack:ci
-          timeout 120 bash -c 'until curl -sf -o /dev/null http://localhost:8080/Account/Login; do sleep 2; done'
-
-      - name: Published Image Tests
-        env:
-          FINTRACK_IMAGE_URL: http://localhost:8080
-        run: >-
-          dotnet test --project Test/FinanceTracker.Tests.Integration -c Release --no-build
-          -- --treenode-filter "/*/FinanceTracker.Tests.Integration.Image/*/*"
-
-      - name: Image logs
-        if: failure()
-        run: docker logs fintrack-ci-web
-
-      - name: Upload HTML Test Report
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: always()
-        with:
-          name: TestReport-Module-${{ matrix.name }}
-          path: '**/*-report.html'
-
-      # What a failed UI test saw, step by step, open with https://trace.playwright.dev
-      - name: Upload Playwright Traces
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: failure()
-        with:
-          name: PlaywrightTraces-Module-${{ matrix.name }}
-          path: '**/playwright-traces/*.zip'
-          if-no-files-found: ignore
+    uses: ./.github/workflows/_modules.yml
 
   coverage:
     name: Coverage
@@ -364,13 +52,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Install .NET Core
-        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+      - name: Set up .NET
+        uses: ./.github/actions/setup-dotnet
         with:
-          dotnet-version: 11.0.x
-
-      - name: Restore tools
-        run: dotnet tool restore
+          tools: true
 
       # Each into its own folder, named after the artifact
       - name: Download Coverage

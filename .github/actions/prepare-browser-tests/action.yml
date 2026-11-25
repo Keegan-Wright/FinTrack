@@ -1,0 +1,31 @@
+# Gets a runner ready for the integration tests. Trusts a development certificate for Aspire and installs
+# Chromium for Playwright. Run it after building the integration tests.
+name: Prepare the integration tests
+description: A development certificate and Chromium for the integration tests.
+
+inputs:
+  certificate:
+    description: Whether to trust a development certificate, for tests that start the app through Aspire.
+    default: 'true'
+  browser:
+    description: Whether to install Chromium, for tests that use the app in a browser.
+    default: 'true'
+
+runs:
+  using: composite
+  steps:
+    # Trusted, so Aspire's health check of the app's https endpoint can connect. On Linux trusting writes the
+    # certificate to ~/.aspnet/dev-certs/trust, which OpenSSL only reads once it's on SSL_CERT_DIR. The runner has
+    # no browser certificate stores, so trust is only partial and reported as an error, OpenSSL is all .NET needs
+    - name: Create development certificate
+      if: inputs.certificate == 'true'
+      shell: bash
+      run: |
+        dotnet dev-certs https --trust || true
+        echo "SSL_CERT_DIR=$HOME/.aspnet/dev-certs/trust:/usr/lib/ssl/certs" >> "$GITHUB_ENV"
+
+    # The tests install Chromium themselves when it's missing, but not its libraries
+    - name: Install Playwright's Chromium
+      if: inputs.browser == 'true'
+      shell: bash
+      run: pwsh Test/FinanceTracker.Tests.Integration/bin/Release/net11.0/playwright.ps1 install --with-deps chromium

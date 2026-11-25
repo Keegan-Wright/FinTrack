@@ -1,0 +1,25 @@
+# Sets up .NET for a job. The .NET 11 SDK, the repo's workloads, and its local tools when asked.
+name: Set up .NET
+description: The .NET SDK, workloads and local tools.
+
+inputs:
+  tools:
+    description: Whether to restore the local tools too, such as dotnet-coverage and ReportGenerator.
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - name: Install .NET
+      uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+      with:
+        dotnet-version: 11.0.x
+
+    - name: Restore workloads
+      shell: bash
+      run: dotnet workload restore
+
+    - name: Restore tools
+      if: inputs.tools == 'true'
+      shell: bash
+      run: dotnet tool restore
