@@ -106,7 +106,7 @@
     /// <summary>
     /// The same range again, with what the sync brought in.
     /// </summary>
-    protected override async Task OnSyncedAsync() => Data = await LoadDashboardAsync(View.Preset, _cts.Token);
+    protected override async Task OnSyncedAsync() => Data = await LoadDashboardAsync(View.Preset, PageCancellation);
 
     /// <summary>
     /// Shows another range.
@@ -120,7 +120,7 @@
         SetLoadingState(true, "Loading your dashboard");
         try
         {
-            Data = await LoadDashboardAsync(preset, _cts.Token);
+            Data = await LoadDashboardAsync(preset, PageCancellation);
         }
         finally
         {

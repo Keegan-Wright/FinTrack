@@ -28,8 +28,8 @@
     min-width: 0;
 }
 
-/* ScrollBody: capped when stacked. On wide screens it fills the section's height instead, size stops the
-   content sizing the row so whatever sits beside the section sets it */
+/* With ScrollBody the body is capped when stacked. On wide screens it fills the section's height instead, size
+   stops the content sizing the row so whatever sits beside the section sets it */
 .ft-section--scroll .ft-section__body {
     max-height: 480px;
     margin-right: -8px;

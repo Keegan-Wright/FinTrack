@@ -2,7 +2,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using FinanceTracker.Contracts.OpenBanking;
 
-namespace FinanceTracker.Client;
+namespace FinanceTracker.Client.Common;
 
 /// <summary>
 /// UI state shared by the layout and the page inside it, cascaded from the root. Pages set it through
@@ -170,7 +170,8 @@ public sealed class ApplicationState : INotifyPropertyChanged
     }
 
     /// <summary>
-    /// Sets <see cref="ConnectionsToRenew"/> from the user's connections: those not <see cref="ConsentState.Active"/>.
+    /// Sets <see cref="ConnectionsToRenew"/> from the user's connections, counting those not
+    /// <see cref="ConsentState.Active"/>.
     /// </summary>
     /// <param name="connections">The user's bank connections.</param>
     public void CountConnectionsToRenew(IEnumerable<BankConnectionSummary> connections) =>

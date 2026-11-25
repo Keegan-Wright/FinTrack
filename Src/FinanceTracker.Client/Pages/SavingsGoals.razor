@@ -106,8 +106,8 @@
     /// </summary>
     protected override async Task OnSyncedAsync()
     {
-        Goals = await SavingsGoalsService.GetSavingsGoalsAsync(_cts.Token).ToListAsync(_cts.Token);
-        Accounts = await SavingsGoalsService.GetSavingsAccountsAsync(_cts.Token).ToListAsync(_cts.Token);
+        Goals = await SavingsGoalsService.GetSavingsGoalsAsync(PageCancellation).ToListAsync(PageCancellation);
+        Accounts = await SavingsGoalsService.GetSavingsAccountsAsync(PageCancellation).ToListAsync(PageCancellation);
     }
 
     /// <summary>
@@ -121,7 +121,7 @@
             return;
         }
 
-        await SaveAsync($"{goal.Name} added", () => SavingsGoalsService.AddSavingsGoalAsync(goal, _cts.Token));
+        await SaveAsync($"{goal.Name} added", () => SavingsGoalsService.AddSavingsGoalAsync(goal, PageCancellation));
     }
 
     /// <summary>
@@ -137,7 +137,7 @@
         }
 
         await SaveAsync($"{goal.Name} saved",
-            () => SavingsGoalsService.UpdateSavingsGoalAsync(existing.Id, goal, _cts.Token));
+            () => SavingsGoalsService.UpdateSavingsGoalAsync(existing.Id, goal, PageCancellation));
     }
 
     /// <summary>
@@ -154,7 +154,7 @@
             return;
         }
 
-        await SaveAsync($"{goal.Name} deleted", () => SavingsGoalsService.DeleteSavingsGoalAsync(goal.Id, _cts.Token));
+        await SaveAsync($"{goal.Name} deleted", () => SavingsGoalsService.DeleteSavingsGoalAsync(goal.Id, PageCancellation));
     }
 
     /// <returns>What the user entered, null when they cancelled.</returns>
@@ -187,8 +187,8 @@
         {
             SetLoadingState(true, "Saving");
             await change();
-            Goals = await SavingsGoalsService.GetSavingsGoalsAsync(_cts.Token).ToListAsync(_cts.Token);
-            Accounts = await SavingsGoalsService.GetSavingsAccountsAsync(_cts.Token).ToListAsync(_cts.Token);
+            Goals = await SavingsGoalsService.GetSavingsGoalsAsync(PageCancellation).ToListAsync(PageCancellation);
+            Accounts = await SavingsGoalsService.GetSavingsAccountsAsync(PageCancellation).ToListAsync(PageCancellation);
             Snackbar.Add(done, Severity.Success);
         }
         catch (NameTakenException ex)

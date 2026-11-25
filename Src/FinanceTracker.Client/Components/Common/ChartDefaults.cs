@@ -1,5 +1,6 @@
 using System.Globalization;
 using ApexCharts;
+using FinanceTracker.Client.Common.Components;
 using FinanceTracker.Design;
 
 namespace FinanceTracker.Client.Components.Common;

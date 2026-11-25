@@ -1,5 +1,6 @@
 using Bunit;
 using FinanceTracker.Client;
+using FinanceTracker.Client.Common;
 using FinanceTracker.Contracts.Classifications;
 using FinanceTracker.Contracts.SavingsGoals;
 using FinanceTracker.Contracts.Services;

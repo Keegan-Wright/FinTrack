@@ -65,7 +65,7 @@
         if (RendererInfo.IsInteractive && !_loaded)
         {
             _loaded = true;
-            _toReview = await TransfersService.GetTransfersToReviewAsync(_cts.Token).ToListAsync(_cts.Token);
+            _toReview = await TransfersService.GetTransfersToReviewAsync(PageCancellation).ToListAsync(PageCancellation);
             _pairs = ReviewPairs.Group(_toReview);
             _loading = false;
         }
@@ -81,8 +81,8 @@
             return;
         }
 
-        List<Transaction> toReview = await TransfersService.GetTransfersToReviewAsync(_cts.Token)
-            .ToListAsync(_cts.Token);
+        List<Transaction> toReview = await TransfersService.GetTransfersToReviewAsync(PageCancellation)
+            .ToListAsync(PageCancellation);
         _toReview = toReview.Where(x => !_answered.Contains(x.TransactionId)).ToList();
         _pairs = ReviewPairs.Group(_toReview);
     }
@@ -101,7 +101,7 @@
             if (action == TransferAction.MarkAsTransfer)
             {
                 // Confirms the other half with it
-                changed.AddRange(await TransfersService.MarkAsTransferAsync(pair.First.TransactionId, _cts.Token));
+                changed.AddRange(await TransfersService.MarkAsTransferAsync(pair.First.TransactionId, PageCancellation));
             }
             else
             {
@@ -109,7 +109,7 @@
                 foreach (var transaction in pair.Transactions)
                 {
                     changed.AddRange(
-                        await TransfersService.MarkNotATransferAsync(transaction.TransactionId, _cts.Token));
+                        await TransfersService.MarkNotATransferAsync(transaction.TransactionId, PageCancellation));
                 }
             }
 

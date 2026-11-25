@@ -87,6 +87,6 @@ else
     /// <summary>
     /// The email changed straight away, so the page shows the new one.
     /// </summary>
-    private async Task ReloadAsync() => Profile = await ProfileService.GetProfileAsync(_cts.Token);
+    private async Task ReloadAsync() => Profile = await ProfileService.GetProfileAsync(PageCancellation);
 
 }

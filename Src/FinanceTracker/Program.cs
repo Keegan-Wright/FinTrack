@@ -2,6 +2,7 @@ using ApexCharts;
 using FinanceTracker.Api;
 using FinanceTracker.AppHost.ServiceDefaults;
 using FinanceTracker.Client;
+using FinanceTracker.Client.Common;
 using FinanceTracker.Components;
 using FinanceTracker.Components.Account;
 using FinanceTracker.Extensions;
@@ -96,7 +97,7 @@ public partial class Program
         app.MapWebAppManifest();
         app.MapRazorComponents<App>()
             .AddInteractiveWebAssemblyRenderMode()
-            .AddAdditionalAssemblies(typeof(ApplicationState).Assembly);
+            .AddAdditionalAssemblies(typeof(Routes).Assembly);
 
         app.MapAdditionalIdentityEndpoints();
         app.MapFinTrackApi();

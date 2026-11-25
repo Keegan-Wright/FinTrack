@@ -1,3 +1,4 @@
+using FinanceTracker.Client.Common;
 using FinanceTracker.Client.Layout;
 
 namespace FinanceTracker.Tests.Unit.Client.Layout;

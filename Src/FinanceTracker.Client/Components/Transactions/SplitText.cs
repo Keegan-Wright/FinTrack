@@ -1,4 +1,4 @@
-using FinanceTracker.Client.Components.Common;
+using FinanceTracker.Client.Common.Components;
 using FinanceTracker.Contracts.Classifications;
 using FinanceTracker.Contracts.Transactions;
 

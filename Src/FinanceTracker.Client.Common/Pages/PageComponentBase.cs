@@ -1,11 +1,11 @@
-using FinanceTracker.Client.Extensions;
+using FinanceTracker.Client.Common.Extensions;
 using FinanceTracker.Contracts.OpenBanking;
 using FinanceTracker.Contracts.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using MudBlazor;
 
-namespace FinanceTracker.Client.Pages;
+namespace FinanceTracker.Client.Common.Pages;
 
 /// <summary>
 /// Base for every page. A cancellation token tied to the page's lifetime, the shared loading overlay, a quiet
@@ -15,9 +15,14 @@ namespace FinanceTracker.Client.Pages;
 public class PageComponent : ComponentBase, IDisposable
 {
     /// <summary>
+    /// Cancelled when the user leaves the page.
+    /// </summary>
+    private readonly CancellationTokenSource _pageCancellationSource = new();
+
+    /// <summary>
     /// Cancelled when the user leaves the page, pass it to every service call so abandoned work stops.
     /// </summary>
-    internal readonly CancellationTokenSource _cts = new();
+    protected CancellationToken PageCancellation => _pageCancellationSource.Token;
 
     /// <summary>
     /// The shared UI state.
@@ -127,22 +132,22 @@ public class PageComponent : ComponentBase, IDisposable
     /// <param name="contentType">The file's media type.</param>
     /// <param name="write">Writes the file.</param>
     /// <param name="failure">What to tell the user when it fails.</param>
-    internal async Task<bool> SaveFileAsync(string fileName, string contentType,
+    protected async Task<bool> SaveFileAsync(string fileName, string contentType,
         Func<Stream, CancellationToken, Task> write, string failure)
     {
         try
         {
             using MemoryStream file = new();
-            await write(file, _cts.Token);
+            await write(file, PageCancellation);
             file.Position = 0;
-            if (await PageJS.SaveFileAsync(fileName, contentType, file, _cts.Token))
+            if (await PageJS.SaveFileAsync(fileName, contentType, file, PageCancellation))
             {
                 return true;
             }
 
             PageSnackbar.Add(failure, Severity.Error);
         }
-        catch (OperationCanceledException) when (_cts.IsCancellationRequested)
+        catch (OperationCanceledException) when (PageCancellation.IsCancellationRequested)
         {
             // The user left the page
         }
@@ -170,7 +175,7 @@ public class PageComponent : ComponentBase, IDisposable
         ApplicationState.LoadingMessage = null;
         // Cancelled, not disposed a load still running when the user moves on reads the token once it resumes, and a
         // disposed source throws there, which the layout shows as the next page failing. A cancelled load is ignored
-        _cts.Cancel();
+        _pageCancellationSource.Cancel();
         GC.SuppressFinalize(this);
     }
 
@@ -182,7 +187,7 @@ public class PageComponent : ComponentBase, IDisposable
     /// <param name="persisted">The page's <see cref="PersistentStateAttribute"/> property, null until loaded.</param>
     /// <param name="loadingMessage">Shown under the loading overlay while loading.</param>
     /// <param name="load">Loads the data, with the page's cancellation token.</param>
-    internal async Task<T> LoadOnceAsync<T>(T? persisted, string loadingMessage, Func<CancellationToken, Task<T>> load)
+    protected async Task<T> LoadOnceAsync<T>(T? persisted, string loadingMessage, Func<CancellationToken, Task<T>> load)
         where T : class
     {
         if (persisted is not null)
@@ -193,7 +198,7 @@ public class PageComponent : ComponentBase, IDisposable
         SetLoadingState(true, loadingMessage);
         try
         {
-            return await load(_cts.Token);
+            return await load(PageCancellation);
         }
         finally
         {
@@ -204,14 +209,14 @@ public class PageComponent : ComponentBase, IDisposable
     /// <summary>
     /// Shows the user's accounts as syncing in the layout, after queuing a sync. Cleared when the sync finishes.
     /// </summary>
-    internal void ShowSyncing() => ApplicationState.Syncing = true;
+    protected void ShowSyncing() => ApplicationState.Syncing = true;
 
     /// <summary>
     /// Updates the navigation's count of transfers to review, after the user decides about one.
     /// </summary>
     /// <param name="transfersService">Gives the transfers to review.</param>
-    internal async Task RefreshTransfersToReviewAsync(ITransfersService transfersService) =>
-        ApplicationState.TransfersToReview = await transfersService.GetReviewCountAsync(_cts.Token);
+    protected async Task RefreshTransfersToReviewAsync(ITransfersService transfersService) =>
+        ApplicationState.TransfersToReview = await transfersService.GetReviewCountAsync(PageCancellation);
 
     /// <summary>
     /// Updates the navigation's count of subscriptions to review, after the user confirms or dismisses one or adds a
@@ -219,9 +224,9 @@ public class PageComponent : ComponentBase, IDisposable
     /// </summary>
     /// <param name="billsService">Gives the subscriptions to review.</param>
     /// <returns>The new count, for the page to show too.</returns>
-    internal async Task<int> RefreshSubscriptionsToReviewAsync(IBillsService billsService)
+    protected async Task<int> RefreshSubscriptionsToReviewAsync(IBillsService billsService)
     {
-        int count = await billsService.GetSuggestionCountAsync(_cts.Token);
+        int count = await billsService.GetSuggestionCountAsync(PageCancellation);
         ApplicationState.SubscriptionsToReview = count;
         return count;
     }
@@ -230,13 +235,13 @@ public class PageComponent : ComponentBase, IDisposable
     /// Updates the bell's and the navigation's count of unread notifications, after the user reads some.
     /// </summary>
     /// <param name="count">How many are unread.</param>
-    internal void SetUnreadNotifications(int count) => ApplicationState.UnreadNotifications = count;
+    protected void SetUnreadNotifications(int count) => ApplicationState.UnreadNotifications = count;
 
     /// <summary>
     /// Updates the count of connections to renew in the navigation and banner.
     /// </summary>
     /// <param name="connections">The user's bank connections.</param>
-    internal void RefreshConnectionsToRenew(IEnumerable<BankConnectionSummary> connections) =>
+    protected void RefreshConnectionsToRenew(IEnumerable<BankConnectionSummary> connections) =>
         ApplicationState.CountConnectionsToRenew(connections);
 
     /// <summary>
@@ -244,7 +249,7 @@ public class PageComponent : ComponentBase, IDisposable
     /// </summary>
     /// <param name="loading">Whether it's loading.</param>
     /// <param name="message">What's loading, null for the default.</param>
-    internal void SetLoadingState(bool loading, string? message = null)
+    protected void SetLoadingState(bool loading, string? message = null)
     {
         if (loading)
         {

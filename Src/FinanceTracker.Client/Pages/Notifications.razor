@@ -125,7 +125,7 @@
     /// </summary>
     protected override async Task OnSyncedAsync()
     {
-        Items = await NotificationsService.GetNotificationsAsync(Shown, _cts.Token).ToListAsync(_cts.Token);
+        Items = await NotificationsService.GetNotificationsAsync(Shown, PageCancellation).ToListAsync(PageCancellation);
         SetUnreadNotifications(UnreadCount);
     }
 
@@ -181,11 +181,11 @@
 
         try
         {
-            await NotificationsService.MarkReadAsync(notification.Id, _cts.Token);
+            await NotificationsService.MarkReadAsync(notification.Id, PageCancellation);
             Replace(notification, Read(notification));
             SetUnreadNotifications(UnreadCount);
         }
-        catch (Exception) when (!_cts.IsCancellationRequested)
+        catch (Exception) when (!PageCancellation.IsCancellationRequested)
         {
             Snackbar.Add("Couldn't mark it as read, try again", Severity.Error);
         }
@@ -198,11 +198,11 @@
     {
         try
         {
-            await NotificationsService.MarkAllReadAsync(_cts.Token);
+            await NotificationsService.MarkAllReadAsync(PageCancellation);
             Items = Items?.Select(Read).ToList();
             SetUnreadNotifications(0);
         }
-        catch (Exception) when (!_cts.IsCancellationRequested)
+        catch (Exception) when (!PageCancellation.IsCancellationRequested)
         {
             Snackbar.Add("Couldn't mark them as read, try again", Severity.Error);
         }

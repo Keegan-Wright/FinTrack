@@ -1,6 +1,7 @@
 using Bunit;
 using Bunit.TestDoubles;
 using FinanceTracker.Client;
+using FinanceTracker.Client.Common;
 using FinanceTracker.Client.Layout;
 using FinanceTracker.Contracts.OpenBanking;
 using FinanceTracker.Contracts.Profile;

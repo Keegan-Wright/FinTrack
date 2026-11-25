@@ -9,6 +9,7 @@ browser as WebAssembly, calling that API.
 |---|---|
 | `FinanceTracker` | The web host. API endpoints, the sign in pages, background jobs and the live update hub. |
 | `FinanceTracker.Client` | The pages and components that run in the browser, and the HTTP clients for the API. |
+| `FinanceTracker.Client.Common` | The shared building blocks pages are made from like headers, sections, stats, money text, the search field, the page and dialog bases with the loading overlay. |
 | `FinanceTracker.Contracts` | What the server and browser share. Requests, responses, routes and service interfaces. |
 | `FinanceTracker.Domain` | The entities and their rules, with no dependencies on the database or web. |
 | `FinanceTracker.Infrastructure` | The services behind the API, the database context, TrueLayer, exports, notifications and encryption. |

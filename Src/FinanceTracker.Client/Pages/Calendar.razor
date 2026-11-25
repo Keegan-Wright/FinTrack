@@ -387,7 +387,7 @@
     protected override async Task OnSyncedAsync()
     {
         DateTime month = MonthStart;
-        List<CalendarItems> days = await LoadMonthAsync(_cts.Token);
+        List<CalendarItems> days = await LoadMonthAsync(PageCancellation);
 
         // The user moved to another month meanwhile, which loads that month itself
         if (MonthStart == month)
@@ -423,7 +423,7 @@
         SetLoadingState(true, "Flipping the calendar");
         try
         {
-            Days = await LoadMonthAsync(_cts.Token);
+            Days = await LoadMonthAsync(PageCancellation);
             _selectedDate = DefaultSelectedDate();
         }
         finally
@@ -465,7 +465,7 @@
         }
 
         await SaveEventAsync($"{calendarEvent.Title} added",
-            () => CalendarService.AddEventAsync(calendarEvent, _cts.Token));
+            () => CalendarService.AddEventAsync(calendarEvent, PageCancellation));
     }
 
     /// <summary>
@@ -495,7 +495,7 @@
         }
 
         await SaveEventAsync($"{calendarEvent.Title} saved",
-            () => CalendarService.UpdateEventAsync(existing.Id, calendarEvent, _cts.Token));
+            () => CalendarService.UpdateEventAsync(existing.Id, calendarEvent, PageCancellation));
     }
 
     /// <summary>
@@ -514,7 +514,7 @@
             return;
         }
 
-        await SaveEventAsync($"{item.Title} deleted", () => CalendarService.DeleteEventAsync(item.EventId, _cts.Token));
+        await SaveEventAsync($"{item.Title} deleted", () => CalendarService.DeleteEventAsync(item.EventId, PageCancellation));
     }
 
     /// <summary>
@@ -522,14 +522,14 @@
     /// </summary>
     private async Task<CalendarEvent?> FindEventAsync(Guid id)
     {
-        List<CalendarEvent> calendarEvents = await CalendarService.GetEventsAsync(_cts.Token).ToListAsync(_cts.Token);
+        List<CalendarEvent> calendarEvents = await CalendarService.GetEventsAsync(PageCancellation).ToListAsync(PageCancellation);
         return calendarEvents.FirstOrDefault(x => x.Id == id);
     }
 
     /// <returns>What the user entered, null when they cancelled.</returns>
     private async Task<SaveCalendarEvent?> ShowEventDialogAsync(CalendarEvent? calendarEvent)
     {
-        List<SavingsGoal> goals = await SavingsGoalsService.GetSavingsGoalsAsync(_cts.Token).ToListAsync(_cts.Token);
+        List<SavingsGoal> goals = await SavingsGoalsService.GetSavingsGoalsAsync(PageCancellation).ToListAsync(PageCancellation);
         DialogParameters<CalendarEventDialog> parameters = new()
         {
             { x => x.Event, calendarEvent },
@@ -558,7 +558,7 @@
         {
             SetLoadingState(true, "Saving");
             await change();
-            Days = await LoadMonthAsync(_cts.Token);
+            Days = await LoadMonthAsync(PageCancellation);
             Snackbar.Add(done, Severity.Success);
         }
         catch (NameTakenException ex)

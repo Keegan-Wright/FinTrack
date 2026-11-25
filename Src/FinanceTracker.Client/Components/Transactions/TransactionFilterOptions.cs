@@ -6,7 +6,7 @@ namespace FinanceTracker.Client.Components.Transactions;
 
 /// <summary>
 /// The values the transaction filters offer, shared by the transactions page and the reports. Persisted from the
-/// prerender as one value, see <see cref="Pages.PageComponent.LoadOnceAsync{T}"/>.
+/// prerender as one value, see the pages' LoadOnceAsync.
 /// </summary>
 public sealed class TransactionFilterOptions
 {

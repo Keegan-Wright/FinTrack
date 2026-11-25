@@ -208,10 +208,10 @@
         SetLoadingState(true, "Making your token");
         try
         {
-            creation = await TokensService.CreateAsync((CreateToken)result.Data!, _cts.Token);
-            Overview = await LoadAsync(_cts.Token);
+            creation = await TokensService.CreateAsync((CreateToken)result.Data!, PageCancellation);
+            Overview = await LoadAsync(PageCancellation);
         }
-        catch (Exception) when (!_cts.IsCancellationRequested)
+        catch (Exception) when (!PageCancellation.IsCancellationRequested)
         {
             Snackbar.Add("Couldn't make the token, try again", Severity.Error);
         }
@@ -259,11 +259,11 @@
         SetLoadingState(true, "Revoking the token");
         try
         {
-            await TokensService.RevokeAsync(token.Id, _cts.Token);
-            Overview = await LoadAsync(_cts.Token);
+            await TokensService.RevokeAsync(token.Id, PageCancellation);
+            Overview = await LoadAsync(PageCancellation);
             Snackbar.Add("Token revoked", Severity.Success);
         }
-        catch (Exception) when (!_cts.IsCancellationRequested)
+        catch (Exception) when (!PageCancellation.IsCancellationRequested)
         {
             Snackbar.Add("Couldn't revoke the token, try again", Severity.Error);
         }

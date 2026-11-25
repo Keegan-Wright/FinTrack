@@ -128,8 +128,8 @@ else
     /// </summary>
     protected override async Task OnSyncedAsync()
     {
-        Accounts = await LoadAccountsAsync(_cts.Token);
-        Histories = await LoadHistoriesAsync(_cts.Token);
+        Accounts = await LoadAccountsAsync(PageCancellation);
+        Histories = await LoadHistoriesAsync(PageCancellation);
         IndexHistories();
     }
 

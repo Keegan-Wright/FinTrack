@@ -11,6 +11,7 @@ COPY ["Directory.Packages.props", "Directory.Build.props", "Directory.Build.targ
 COPY ["Src/FinanceTracker/FinanceTracker.csproj", "Src/FinanceTracker/"]
 COPY ["Src/FinanceTracker.AppHost.ServiceDefaults/FinanceTracker.AppHost.ServiceDefaults.csproj", "Src/FinanceTracker.AppHost.ServiceDefaults/"]
 COPY ["Src/FinanceTracker.Client/FinanceTracker.Client.csproj", "Src/FinanceTracker.Client/"]
+COPY ["Src/FinanceTracker.Client.Common/FinanceTracker.Client.Common.csproj", "Src/FinanceTracker.Client.Common/"]
 COPY ["Src/FinanceTracker.Contracts/FinanceTracker.Contracts.csproj", "Src/FinanceTracker.Contracts/"]
 COPY ["Src/FinanceTracker.Design/FinanceTracker.Design.csproj", "Src/FinanceTracker.Design/"]
 COPY ["Src/FinanceTracker.Domain/FinanceTracker.Domain.csproj", "Src/FinanceTracker.Domain/"]

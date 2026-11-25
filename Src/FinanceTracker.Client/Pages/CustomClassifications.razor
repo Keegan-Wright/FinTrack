@@ -133,7 +133,7 @@
         {
             SetLoadingState(true, "Printing a fresh label");
             var classification = await ClassificationService.AddCustomClassificationAsync(
-                (AddClassifications)dialogActionResult.Data!, _cts.Token);
+                (AddClassifications)dialogActionResult.Data!, PageCancellation);
             (Classifications ??= []).Add(classification);
             Snackbar.Add($"Tag \"{classification.Tag}\" added", Severity.Success);
         }
@@ -170,7 +170,7 @@
             SetLoadingState(true, "Relabelling");
             RenameClassification rename = new() { Tag = ((AddClassifications)result.Data!).Tag };
             Classification renamed = await ClassificationService.RenameCustomClassificationAsync(
-                classification.ClassificationId, rename, _cts.Token);
+                classification.ClassificationId, rename, PageCancellation);
 
             // Still shared as it was, the rename only changes its name
             Classifications![Classifications.IndexOf(classification)] = new Classification
@@ -214,7 +214,7 @@
         try
         {
             SetLoadingState(true, $"Deleting {classification.Tag}");
-            await ClassificationService.RemoveCustomClassificationAsync(classification.ClassificationId, _cts.Token);
+            await ClassificationService.RemoveCustomClassificationAsync(classification.ClassificationId, PageCancellation);
             Classifications!.Remove(classification);
             Snackbar.Add($"Tag \"{classification.Tag}\" deleted", Severity.Success);
         }

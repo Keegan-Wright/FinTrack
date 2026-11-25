@@ -1,4 +1,5 @@
 using FinanceTracker.Client;
+using FinanceTracker.Client.Common;
 
 namespace FinanceTracker.Tests.Unit.Client;
 

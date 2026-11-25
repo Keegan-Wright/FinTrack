@@ -1,6 +1,7 @@
 using AngleSharp.Dom;
 using Bunit;
 using FinanceTracker.Client;
+using FinanceTracker.Client.Common;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Sharing;
 using Microsoft.Extensions.DependencyInjection;

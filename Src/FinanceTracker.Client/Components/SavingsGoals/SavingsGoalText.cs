@@ -1,5 +1,5 @@
 using System.Globalization;
-using FinanceTracker.Client.Components.Common;
+using FinanceTracker.Client.Common.Components;
 using FinanceTracker.Contracts.SavingsGoals;
 
 namespace FinanceTracker.Client.Components.SavingsGoals;

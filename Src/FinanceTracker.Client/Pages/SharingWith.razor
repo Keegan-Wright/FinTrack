@@ -252,7 +252,7 @@ else
         SetLoadingState(true, "Loading what you share");
         try
         {
-            Shares = await SharingService.GetSharesAsync(LinkId, _cts.Token);
+            Shares = await SharingService.GetSharesAsync(LinkId, PageCancellation);
         }
         finally
         {
@@ -416,7 +416,7 @@ else
                     Accounts = _accounts
                         .Select(static x => new AccountShareChoice { AccountId = x.Key, Mode = x.Value })
                         .ToList()
-                }, _cts.Token);
+                }, PageCancellation);
             }
 
             if (itemsChanged)
@@ -429,7 +429,7 @@ else
                             Kind = kind.Key, ItemId = x.Key, Mode = x.Value
                         }))
                         .ToList()
-                }, _cts.Token);
+                }, PageCancellation);
             }
 
             Shares = saved;
@@ -459,14 +459,14 @@ else
                     YourAccountId = x.YourAccountId, TheirAccountId = x.TheirAccountId
                 })
                 .ToList()
-        }, _cts.Token), SharingText.MergeDoneText(suggestions));
+        }, PageCancellation), SharingText.MergeDoneText(suggestions));
 
     /// <summary>
     /// Splits a merged joint account again.
     /// </summary>
     /// <param name="joint">The merged account.</param>
     private async Task SplitAsync(MergedJointAccount joint) =>
-        await ChangeJointAsync(() => SharingService.SplitJointAccountAsync(LinkId, joint.JointAccountId, _cts.Token),
+        await ChangeJointAsync(() => SharingService.SplitJointAccountAsync(LinkId, joint.JointAccountId, PageCancellation),
             $"Split {joint.Name}, you each see your own copy again");
 
     /// <summary>
@@ -508,7 +508,7 @@ else
         try
         {
             SetLoadingState(true, $"Ending your link with {name}");
-            await SharingService.EndAsync(LinkId, _cts.Token);
+            await SharingService.EndAsync(LinkId, PageCancellation);
 
             // Nothing left to save, so leaving doesn't ask
             Shares = null;

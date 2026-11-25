@@ -1,13 +1,14 @@
 using AngleSharp.Dom;
 using Bunit;
+using DebtDetailsPage = FinanceTracker.Client.Pages.DebtDetails;
+using FinanceTracker.Client.Common;
 using FinanceTracker.Client;
 using FinanceTracker.Contracts.Debts;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Transactions;
 using Microsoft.Extensions.DependencyInjection;
-using NSubstitute;
 using NSubstitute.ExceptionExtensions;
-using DebtDetailsPage = FinanceTracker.Client.Pages.DebtDetails;
+using NSubstitute;
 
 namespace FinanceTracker.Tests.Unit.Client.Debts;
 

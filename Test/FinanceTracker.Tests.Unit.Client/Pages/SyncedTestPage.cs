@@ -1,3 +1,4 @@
+using FinanceTracker.Client.Common.Pages;
 using FinanceTracker.Client.Pages;
 using Microsoft.AspNetCore.Components.Rendering;
 

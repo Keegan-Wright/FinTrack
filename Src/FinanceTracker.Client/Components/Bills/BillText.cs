@@ -1,5 +1,5 @@
 using System.Globalization;
-using FinanceTracker.Client.Components.Common;
+using FinanceTracker.Client.Common.Components;
 using FinanceTracker.Contracts.Bills;
 using FinanceTracker.Contracts.Transactions;
 using MudBlazor;

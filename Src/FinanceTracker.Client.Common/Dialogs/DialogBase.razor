@@ -1,4 +1,4 @@
-@* The shared dialog frame: title, content, and submit/cancel returning a TResponse. *@
+@* The shared dialog frame. It has a title, content, and submit and cancel, and returns a TResponse. *@
 @typeparam TResponse
 
 <MudDialog>
@@ -46,7 +46,7 @@
     /// <summary>
     /// Closes with the response, unless there's none.
     /// </summary>
-    internal async Task Submit()
+    private async Task Submit()
     {
         var response = await ResponseConstructor.Invoke();
         if (response != null)
@@ -58,7 +58,7 @@
     /// <summary>
     /// Closes without a response.
     /// </summary>
-    internal void Cancel()
+    private void Cancel()
     {
         MudDialog.Cancel();
     }

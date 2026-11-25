@@ -1,4 +1,4 @@
-namespace FinanceTracker.Client.Components.Common;
+namespace FinanceTracker.Client.Common.Components;
 
 /// <summary>
 /// The classes in <c>App.css</c> that colour money in the <see cref="FinanceTracker.Design.MoneyColours"/>, which

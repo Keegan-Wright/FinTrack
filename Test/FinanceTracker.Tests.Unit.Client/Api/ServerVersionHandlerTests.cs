@@ -1,6 +1,7 @@
 using System.Net;
 using FinanceTracker.Client;
 using FinanceTracker.Client.Api;
+using FinanceTracker.Client.Common;
 using FinanceTracker.Contracts.Api;
 
 namespace FinanceTracker.Tests.Unit.Client.Api;

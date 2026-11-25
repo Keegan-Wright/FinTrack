@@ -28,6 +28,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\FinanceTracker.Client.Common\FinanceTracker.Client.Common.csproj"/>
     <ProjectReference Include="..\FinanceTracker.Contracts\FinanceTracker.Contracts.csproj"/>
     <ProjectReference Include="..\FinanceTracker.Design\FinanceTracker.Design.csproj"/>
     <InternalsVisibleTo Include="FinanceTracker.Tests.Unit.Client"/>
