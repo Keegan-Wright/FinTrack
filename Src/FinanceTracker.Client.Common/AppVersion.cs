@@ -1,6 +1,6 @@
 using System.Reflection;
 
-namespace FinanceTracker.Client.Layout;
+namespace FinanceTracker.Client.Common;
 
 /// <summary>
 /// The running build's version, e.g <c>v0.1.1 · 3e871e2</c>.

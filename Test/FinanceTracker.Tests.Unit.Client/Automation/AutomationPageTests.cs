@@ -1,5 +1,7 @@
 using AngleSharp.Dom;
+using AutomationPage = FinanceTracker.Client.Pages.Automation;
 using Bunit;
+using FinanceTracker.Client.Common;
 using FinanceTracker.Client;
 using FinanceTracker.Contracts.Automation;
 using FinanceTracker.Contracts.Services;
@@ -7,7 +9,6 @@ using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
 using NSubstitute;
 using TUnit.Assertions.Enums;
-using AutomationPage = FinanceTracker.Client.Pages.Automation;
 
 namespace FinanceTracker.Tests.Unit.Client.Automation;
 

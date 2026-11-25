@@ -1,5 +1,6 @@
-using FinanceTracker.Client;
 using Bunit;
+using FinanceTracker.Client;
+using FinanceTracker.Client.Common;
 using FinanceTracker.Client.Components.Notifications;
 using FinanceTracker.Contracts.Notifications;
 using FinanceTracker.Contracts.Services;

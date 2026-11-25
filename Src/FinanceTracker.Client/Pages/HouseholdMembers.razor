@@ -204,7 +204,7 @@
         {
             SetLoadingState(true, $"Updating {member.FirstName}");
             HouseholdMember saved = await HouseholdMemberService.LinkHouseholdMemberAsync(member.Id,
-                new LinkHouseholdMember { LinkId = person?.Id }, _cts.Token);
+                new LinkHouseholdMember { LinkId = person?.Id }, PageCancellation);
             Members![Members.IndexOf(member)] = saved;
             Snackbar.Add(person is null
                 ? $"{saved.FirstName} is no longer marked as someone you share with"
@@ -240,7 +240,7 @@
         {
             SetLoadingState(true, "Making room at the table");
             var householdMember = await HouseholdMemberService.AddHouseholdMemberAsync(
-                (AddHouseholdMember)dialogActionResult.Data!, _cts.Token);
+                (AddHouseholdMember)dialogActionResult.Data!, PageCancellation);
             (Members ??= []).Add(householdMember);
             Snackbar.Add($"{householdMember.FirstName} added", Severity.Success);
         }
@@ -284,7 +284,7 @@
         {
             SetLoadingState(true, $"Updating {member.FirstName}");
             HouseholdMember saved = await HouseholdMemberService.UpdateHouseholdMemberAsync(member.Id, update,
-                _cts.Token);
+                PageCancellation);
             Members![Members.IndexOf(member)] = saved;
             Snackbar.Add($"{saved.FirstName} updated", Severity.Success);
         }
@@ -320,7 +320,7 @@
         try
         {
             SetLoadingState(true, $"Removing {member.FirstName}");
-            await HouseholdMemberService.DeleteHouseholdMemberAsync(member.Id, _cts.Token);
+            await HouseholdMemberService.DeleteHouseholdMemberAsync(member.Id, PageCancellation);
             Members!.Remove(member);
             Snackbar.Add($"{member.FirstName} deleted", Severity.Success);
         }
@@ -351,7 +351,7 @@
         {
             SetLoadingState(true, $"Looking for {member.FirstName}'s payments");
             HouseholdMemberRecognitionSaved saved = await HouseholdMemberService.UpdateRecognitionAsync(member.Id,
-                (UpdateHouseholdMemberRecognition)dialogActionResult.Data!, _cts.Token);
+                (UpdateHouseholdMemberRecognition)dialogActionResult.Data!, PageCancellation);
 
             Members![Members.IndexOf(member)] = saved.Member;
             Snackbar.Add(saved.RecognisedTransactions switch

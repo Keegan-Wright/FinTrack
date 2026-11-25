@@ -1,5 +1,6 @@
 using Bunit;
 using FinanceTracker.Client;
+using FinanceTracker.Client.Common;
 using FinanceTracker.Client.Components.Common;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Sharing;

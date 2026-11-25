@@ -1,5 +1,6 @@
 using Bunit;
 using FinanceTracker.Client;
+using FinanceTracker.Client.Common;
 using FinanceTracker.Contracts.Notifications;
 using FinanceTracker.Contracts.Services;
 using Microsoft.Extensions.DependencyInjection;

@@ -1,6 +1,6 @@
 using System.Globalization;
+using FinanceTracker.Client.Common.Components;
 using FinanceTracker.Client.Components.Bills;
-using FinanceTracker.Client.Components.Common;
 using FinanceTracker.Contracts.Debts;
 using FinanceTracker.Contracts.Transactions;
 

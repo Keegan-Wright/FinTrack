@@ -1,13 +1,14 @@
 using Bunit;
+using DebtsPage = FinanceTracker.Client.Pages.Debts;
+using FinanceTracker.Client.Common;
 using FinanceTracker.Client;
 using FinanceTracker.Contracts.Debts;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Transactions;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
-using NSubstitute;
 using NSubstitute.ExceptionExtensions;
-using DebtsPage = FinanceTracker.Client.Pages.Debts;
+using NSubstitute;
 
 namespace FinanceTracker.Tests.Unit.Client.Debts;
 

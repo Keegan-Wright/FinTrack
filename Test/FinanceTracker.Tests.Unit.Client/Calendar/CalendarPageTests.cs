@@ -1,11 +1,12 @@
 using Bunit;
+using CalendarPage = FinanceTracker.Client.Pages.Calendar;
+using FinanceTracker.Client.Common;
 using FinanceTracker.Client;
 using FinanceTracker.Contracts.Calendar;
 using FinanceTracker.Contracts.SavingsGoals;
 using FinanceTracker.Contracts.Services;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
-using CalendarPage = FinanceTracker.Client.Pages.Calendar;
 
 namespace FinanceTracker.Tests.Unit.Client.Calendar;
 

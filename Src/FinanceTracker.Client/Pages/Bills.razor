@@ -221,13 +221,13 @@
     protected override async Task OnSyncedAsync()
     {
         // A sync can pick up the pay
-        Pay = await PayPeriodsService.GetYourPayAsync(_cts.Token);
+        Pay = await PayPeriodsService.GetYourPayAsync(PageCancellation);
         DateOnly month = Month;
-        BillMonthOverview overview = await BillsService.GetMonthAsync(month.Year, month.Month, _cts.Token);
-        BillList = await BillsService.GetBillsAsync(_cts.Token).ToListAsync(_cts.Token);
+        BillMonthOverview overview = await BillsService.GetMonthAsync(month.Year, month.Month, PageCancellation);
+        BillList = await BillsService.GetBillsAsync(PageCancellation).ToListAsync(PageCancellation);
 
-        Accounts = await TransactionsService.GetAccountsForTransactionFiltersAsync(_cts.Token)
-            .ToListAsync(_cts.Token);
+        Accounts = await TransactionsService.GetAccountsForTransactionFiltersAsync(PageCancellation)
+            .ToListAsync(PageCancellation);
 
         await LoadSuggestionCountAsync();
 
@@ -247,7 +247,7 @@
         try
         {
             SetLoadingState(true, $"Loading {BudgetText.Month(month)}");
-            Overview = await BillsService.GetMonthAsync(month.Year, month.Month, _cts.Token);
+            Overview = await BillsService.GetMonthAsync(month.Year, month.Month, PageCancellation);
         }
         catch (Exception)
         {
@@ -270,7 +270,7 @@
             return;
         }
 
-        await SaveAsync($"{bill.Name} added", () => BillsService.AddBillAsync(bill, _cts.Token));
+        await SaveAsync($"{bill.Name} added", () => BillsService.AddBillAsync(bill, PageCancellation));
     }
 
     /// <summary>
@@ -285,7 +285,7 @@
             return;
         }
 
-        await SaveAsync($"{bill.Name} saved", () => BillsService.UpdateBillAsync(existing.Id, bill, _cts.Token));
+        await SaveAsync($"{bill.Name} saved", () => BillsService.UpdateBillAsync(existing.Id, bill, PageCancellation));
     }
 
     /// <summary>
@@ -302,7 +302,7 @@
             return;
         }
 
-        await SaveAsync($"{bill.Name} ended", () => BillsService.EndBillAsync(bill.Id, _cts.Token));
+        await SaveAsync($"{bill.Name} ended", () => BillsService.EndBillAsync(bill.Id, PageCancellation));
     }
 
     /// <summary>
@@ -310,7 +310,7 @@
     /// </summary>
     /// <param name="bill">The bill.</param>
     private Task ReopenAsync(Bill bill) =>
-        SaveAsync($"{bill.Name} reopened", () => BillsService.ReopenBillAsync(bill.Id, _cts.Token));
+        SaveAsync($"{bill.Name} reopened", () => BillsService.ReopenBillAsync(bill.Id, PageCancellation));
 
     /// <summary>
     /// Deletes a bill once the user confirms.
@@ -325,7 +325,7 @@
             return;
         }
 
-        await SaveAsync($"{bill.Name} deleted", () => BillsService.DeleteBillAsync(bill.Id, _cts.Token));
+        await SaveAsync($"{bill.Name} deleted", () => BillsService.DeleteBillAsync(bill.Id, PageCancellation));
     }
 
     /// <returns>What the user entered, null when they cancelled.</returns>
@@ -359,8 +359,8 @@
             SetLoadingState(true, "Saving");
             await change();
             DateOnly month = Month;
-            Overview = await BillsService.GetMonthAsync(month.Year, month.Month, _cts.Token);
-            BillList = await BillsService.GetBillsAsync(_cts.Token).ToListAsync(_cts.Token);
+            Overview = await BillsService.GetMonthAsync(month.Year, month.Month, PageCancellation);
+            BillList = await BillsService.GetBillsAsync(PageCancellation).ToListAsync(PageCancellation);
             _suggestionCount = await RefreshSubscriptionsToReviewAsync(BillsService);
             Snackbar.Add(done, Severity.Success);
         }

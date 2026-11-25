@@ -1,3 +1,4 @@
+using FinanceTracker.Client.Common;
 using FinanceTracker.Client.Layout;
 using FinanceTracker.Contracts.Api;
 

@@ -1,6 +1,5 @@
-using FinanceTracker.Client.Layout;
 
-namespace FinanceTracker.Client;
+namespace FinanceTracker.Client.Common;
 
 /// <summary>
 /// Whether FinTrack has been updated since this tab loaded it the server runs another build than the one running

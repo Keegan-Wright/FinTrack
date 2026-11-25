@@ -266,7 +266,7 @@
             return;
         }
 
-        FilterOptions = await LoadFilterOptionsAsync(_cts.Token);
+        FilterOptions = await LoadFilterOptionsAsync(PageCancellation);
         List<Transaction> transactions = await FetchAsync(_filters);
 
         _transactions.Clear();
@@ -302,7 +302,7 @@
         _loading = true;
         _transactions.Clear();
 
-        await foreach (var transaction in TransactionsService.GetAllTransactionsAsync(filters.ToRequest(TimeProvider.LocalTimeZone), _cts.Token))
+        await foreach (var transaction in TransactionsService.GetAllTransactionsAsync(filters.ToRequest(TimeProvider.LocalTimeZone), PageCancellation))
         {
             _transactions.Add(transaction);
         }
@@ -334,7 +334,7 @@
     /// </summary>
     /// <param name="filters">The filters.</param>
     private Task<List<Transaction>> FetchAsync(ActiveTransactionFilters filters) =>
-        TransactionsService.GetAllTransactionsAsync(filters.ToRequest(TimeProvider.LocalTimeZone), _cts.Token).ToListAsync(_cts.Token).AsTask();
+        TransactionsService.GetAllTransactionsAsync(filters.ToRequest(TimeProvider.LocalTimeZone), PageCancellation).ToListAsync(PageCancellation).AsTask();
 
     /// <summary>
     /// How it counts, for the grid's column.
@@ -388,9 +388,9 @@
             var id = transaction.TransactionId;
             IReadOnlyList<Transaction> changed = action switch
             {
-                TransferAction.MarkAsTransfer => await TransfersService.MarkAsTransferAsync(id, _cts.Token),
-                TransferAction.NotATransfer => await TransfersService.MarkNotATransferAsync(id, _cts.Token),
-                _ => await TransfersService.ResetTransferAsync(id, _cts.Token)
+                TransferAction.MarkAsTransfer => await TransfersService.MarkAsTransferAsync(id, PageCancellation),
+                TransferAction.NotATransfer => await TransfersService.MarkNotATransferAsync(id, PageCancellation),
+                _ => await TransfersService.ResetTransferAsync(id, PageCancellation)
             };
 
             // The decision can change the other half too, swap in each that's listed
@@ -436,12 +436,12 @@
             if (hide)
             {
                 updated = await TransactionsService.HideBankClassificationAsync(transaction.TransactionId, request,
-                    _cts.Token);
+                    PageCancellation);
             }
             else
             {
                 updated = await TransactionsService.ShowBankClassificationAsync(transaction.TransactionId, request,
-                    _cts.Token);
+                    PageCancellation);
             }
 
             int index = _transactions.FindIndex(x => x.TransactionId == updated.TransactionId);
@@ -465,7 +465,7 @@
     /// </summary>
     private async Task PayBillAsync(Transaction transaction)
     {
-        List<Bill> bills = TransactionChoices.For(await BillsService.GetBillsAsync(_cts.Token).ToListAsync(_cts.Token),
+        List<Bill> bills = TransactionChoices.For(await BillsService.GetBillsAsync(PageCancellation).ToListAsync(PageCancellation),
             static x => x.SharedBy, transaction);
         DialogParameters<PayBillDialog> parameters = new()
         {
@@ -484,7 +484,7 @@
         {
             SetLoadingState(true, "Saving");
             Transaction updated = await BillsService.PayBillAsync(transaction.TransactionId, (PayBill)result.Data!,
-                _cts.Token);
+                PageCancellation);
 
             int index = _transactions.FindIndex(x => x.TransactionId == updated.TransactionId);
             if (index >= 0)
@@ -510,7 +510,7 @@
     /// </summary>
     private async Task PayDebtAsync(Transaction transaction)
     {
-        List<Debt> debts = TransactionChoices.For(await DebtsService.GetDebtsAsync(_cts.Token).ToListAsync(_cts.Token),
+        List<Debt> debts = TransactionChoices.For(await DebtsService.GetDebtsAsync(PageCancellation).ToListAsync(PageCancellation),
             static x => x.SharedBy, transaction);
         DialogParameters<PayDebtDialog> parameters = new()
         {
@@ -529,7 +529,7 @@
         {
             SetLoadingState(true, "Saving");
             Transaction updated = await DebtsService.PayDebtAsync(transaction.TransactionId, (PayDebt)result.Data!,
-                _cts.Token);
+                PageCancellation);
 
             int index = _transactions.FindIndex(x => x.TransactionId == updated.TransactionId);
             if (index >= 0)
@@ -556,7 +556,7 @@
     private async Task SplitAsync(Transaction transaction)
     {
         List<Classification> own = TransactionChoices.For(await ClassificationsService
-            .GetAllCustomClassificationsAsync(_cts.Token).ToListAsync(_cts.Token), static x => x.SharedBy, transaction);
+            .GetAllCustomClassificationsAsync(PageCancellation).ToListAsync(PageCancellation), static x => x.SharedBy, transaction);
         DialogParameters<SplitTransactionDialog> parameters = new()
         {
             { x => x.Transaction, transaction },
@@ -575,7 +575,7 @@
         {
             SetLoadingState(true, "Saving");
             SplitTransaction request = (SplitTransaction)result.Data!;
-            Replace(await TransactionsService.SplitAsync(transaction.TransactionId, request, _cts.Token));
+            Replace(await TransactionsService.SplitAsync(transaction.TransactionId, request, PageCancellation));
             Snackbar.Add($"Split into {request.Parts.Count} parts", Severity.Success);
         }
         catch (CannotSplitTransactionException ex)
@@ -608,7 +608,7 @@
         try
         {
             SetLoadingState(true, "Saving");
-            Replace(await TransactionsService.UnsplitAsync(transaction.TransactionId, _cts.Token));
+            Replace(await TransactionsService.UnsplitAsync(transaction.TransactionId, PageCancellation));
             Snackbar.Add("Split removed", Severity.Success);
         }
         catch (Exception)
@@ -648,7 +648,7 @@
     private async Task AddClassificationsAsync(Transaction transaction)
     {
         List<Classification> classifications = TransactionChoices.For(await ClassificationsService
-            .GetAllCustomClassificationsAsync(_cts.Token).ToListAsync(_cts.Token), static x => x.SharedBy, transaction);
+            .GetAllCustomClassificationsAsync(PageCancellation).ToListAsync(PageCancellation), static x => x.SharedBy, transaction);
 
         if (classifications.Count == 0)
         {
@@ -672,7 +672,7 @@
         {
             SetLoadingState(true, "Adding tags");
             var classificationsToAdd = (AddCustomClassificationsToTransaction)dialogActionResult.Data!;
-            await ClassificationsService.AddCustomClassificationsToTransactionAsync(classificationsToAdd, _cts.Token);
+            await ClassificationsService.AddCustomClassificationsToTransactionAsync(classificationsToAdd, PageCancellation);
 
             var added = classificationsToAdd.Classifications.Select(static c => c.ClassificationId).ToHashSet();
             List<string> addedTags = classifications.Where(x => added.Contains(x.ClassificationId))

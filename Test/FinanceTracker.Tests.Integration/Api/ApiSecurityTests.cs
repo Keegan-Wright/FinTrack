@@ -54,7 +54,7 @@ public class ApiSecurityTests : IntegrationTestBase
 
         // Assert, the front end's build, the one the server serves
         response.Headers.TryGetValues(ApiHeaders.Version, out IEnumerable<string>? versions);
-        await Assert.That(versions).IsEquivalentTo([FinanceTracker.Client.Layout.AppVersion.Full]);
+        await Assert.That(versions).IsEquivalentTo([FinanceTracker.Client.Common.AppVersion.Full]);
     }
 
     [Test]

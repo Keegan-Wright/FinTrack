@@ -1,5 +1,5 @@
 using Bunit;
-using FinanceTracker.Client.Components.Common;
+using FinanceTracker.Client.Common.Components;
 using MudBlazor;
 
 namespace FinanceTracker.Tests.Unit.Client.Common;

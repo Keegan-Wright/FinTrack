@@ -121,7 +121,7 @@
     /// </summary>
     protected override async Task OnSyncedAsync()
     {
-        History = await NetWorthService.GetNetWorthAsync(From(_months), _cts.Token);
+        History = await NetWorthService.GetNetWorthAsync(From(_months), PageCancellation);
         BuildPoints();
     }
 
@@ -154,7 +154,7 @@
         try
         {
             SetLoadingState(true, "Totting up your net worth");
-            History = await NetWorthService.GetNetWorthAsync(From(months), _cts.Token);
+            History = await NetWorthService.GetNetWorthAsync(From(months), PageCancellation);
             BuildPoints();
         }
         catch (Exception)

@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace FinanceTracker.Client.Components.Common;
+namespace FinanceTracker.Client.Common.Components;
 
 /// <summary>
 /// Money formatting shared across the app, see <see cref="MoneyText"/>.

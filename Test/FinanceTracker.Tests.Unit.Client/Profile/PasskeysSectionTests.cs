@@ -1,12 +1,13 @@
-using Microsoft.JSInterop;
 using Bunit;
 using FinanceTracker.Client;
+using FinanceTracker.Client.Common;
 using FinanceTracker.Client.Components.Profile;
 using FinanceTracker.Contracts.Profile;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Validation;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.JSInterop;
 using MudBlazor;
 using NSubstitute;
 

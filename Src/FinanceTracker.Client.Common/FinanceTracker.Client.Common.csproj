@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AnalysisMode>Recommended</AnalysisMode>
+    <!-- Loaded in the browser, whose Mono runtime has no runtime async, see Directory.Build.targets -->
+    <FinTrackRunsInBrowser>true</FinTrackRunsInBrowser>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <SupportedPlatform Include="browser"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web"/>
+    <PackageReference Include="MudBlazor"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FinanceTracker.Contracts\FinanceTracker.Contracts.csproj"/>
+    <ProjectReference Include="..\FinanceTracker.Design\FinanceTracker.Design.csproj"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="FinanceTracker.Tests.Unit.Client"/>
+  </ItemGroup>
+
+</Project>

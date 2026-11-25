@@ -1,4 +1,4 @@
-using FinanceTracker.Client.Components.Common;
+using FinanceTracker.Client.Common.Components;
 
 namespace FinanceTracker.Tests.Unit.Client.Common;
 

@@ -152,9 +152,9 @@
     /// </summary>
     protected override async Task OnSyncedAsync()
     {
-        DebtList = await DebtsService.GetDebtsAsync(_cts.Token).ToListAsync(_cts.Token);
-        Accounts = await TransactionsService.GetAccountsForTransactionFiltersAsync(_cts.Token)
-            .ToListAsync(_cts.Token);
+        DebtList = await DebtsService.GetDebtsAsync(PageCancellation).ToListAsync(PageCancellation);
+        Accounts = await TransactionsService.GetAccountsForTransactionFiltersAsync(PageCancellation)
+            .ToListAsync(PageCancellation);
     }
 
     /// <summary>
@@ -168,7 +168,7 @@
             return;
         }
 
-        await SaveAsync($"{debt.Name} added", () => DebtsService.AddDebtAsync(debt, _cts.Token));
+        await SaveAsync($"{debt.Name} added", () => DebtsService.AddDebtAsync(debt, PageCancellation));
     }
 
     /// <summary>
@@ -183,7 +183,7 @@
             return;
         }
 
-        await SaveAsync($"{debt.Name} saved", () => DebtsService.UpdateDebtAsync(existing.Id, debt, _cts.Token));
+        await SaveAsync($"{debt.Name} saved", () => DebtsService.UpdateDebtAsync(existing.Id, debt, PageCancellation));
     }
 
     /// <summary>
@@ -200,7 +200,7 @@
             return;
         }
 
-        await SaveAsync($"{debt.Name} deleted", () => DebtsService.DeleteDebtAsync(debt.Id, _cts.Token));
+        await SaveAsync($"{debt.Name} deleted", () => DebtsService.DeleteDebtAsync(debt.Id, PageCancellation));
     }
 
     /// <returns>What the user entered, null when they cancelled.</returns>
@@ -233,7 +233,7 @@
         {
             SetLoadingState(true, "Saving");
             await change();
-            DebtList = await DebtsService.GetDebtsAsync(_cts.Token).ToListAsync(_cts.Token);
+            DebtList = await DebtsService.GetDebtsAsync(PageCancellation).ToListAsync(PageCancellation);
             Snackbar.Add(done, Severity.Success);
         }
         catch (NameTakenException ex)

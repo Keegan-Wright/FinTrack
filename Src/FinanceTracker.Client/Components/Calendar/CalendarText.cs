@@ -1,4 +1,4 @@
-using FinanceTracker.Client.Components.Common;
+using FinanceTracker.Client.Common.Components;
 using FinanceTracker.Contracts.Calendar;
 
 namespace FinanceTracker.Client.Components.Calendar;

@@ -1,5 +1,6 @@
 using Bunit;
 using FinanceTracker.Client;
+using FinanceTracker.Client.Common;
 using MudBlazor;
 
 namespace FinanceTracker.Tests.Unit.Client.Pages;

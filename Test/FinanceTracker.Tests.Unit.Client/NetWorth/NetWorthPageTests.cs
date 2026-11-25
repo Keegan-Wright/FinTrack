@@ -1,5 +1,6 @@
 using Bunit;
 using FinanceTracker.Client;
+using FinanceTracker.Client.Common;
 using FinanceTracker.Contracts.NetWorth;
 using FinanceTracker.Contracts.Services;
 using Microsoft.AspNetCore.Components;

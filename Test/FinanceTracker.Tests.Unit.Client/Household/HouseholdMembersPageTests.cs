@@ -1,6 +1,7 @@
 using AngleSharp.Dom;
 using Bunit;
 using FinanceTracker.Client;
+using FinanceTracker.Client.Common;
 using FinanceTracker.Client.Pages;
 using FinanceTracker.Contracts;
 using FinanceTracker.Contracts.HouseholdMember;

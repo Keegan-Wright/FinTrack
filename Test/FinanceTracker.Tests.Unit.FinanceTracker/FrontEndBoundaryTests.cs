@@ -1,5 +1,6 @@
 using System.Reflection;
-using FinanceTracker.Client;
+using FinanceTracker.Client.Common;
+using FinanceTracker.Client.Layout;
 using FinanceTracker.Contracts.Services;
 
 namespace FinanceTracker.Tests.Unit.FinanceTracker;
@@ -22,6 +23,10 @@ public class FrontEndBoundaryTests
 
     [Test]
     public async Task Client_DoesNotReferenceServerOnlyAssemblies() =>
+        await Assert.That(ServerOnlyReferences(typeof(LayoutBase).Assembly)).IsEmpty();
+
+    [Test]
+    public async Task SharedComponents_DoNotReferenceServerOnlyAssemblies() =>
         await Assert.That(ServerOnlyReferences(typeof(ApplicationState).Assembly)).IsEmpty();
 
     [Test]

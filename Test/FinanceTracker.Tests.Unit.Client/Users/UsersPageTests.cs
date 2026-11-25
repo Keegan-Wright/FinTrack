@@ -1,6 +1,7 @@
 using Bunit;
 using Bunit.TestDoubles;
 using FinanceTracker.Client;
+using FinanceTracker.Client.Common;
 using FinanceTracker.Client.Pages;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Users;

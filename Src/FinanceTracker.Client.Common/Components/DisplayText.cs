@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace FinanceTracker.Client.Components.Common;
+namespace FinanceTracker.Client.Common.Components;
 
 /// <summary>
 /// Tidies the text providers send for showing to people.

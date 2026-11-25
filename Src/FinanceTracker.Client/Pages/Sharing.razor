@@ -306,7 +306,7 @@
         try
         {
             SetLoadingState(true, $"Inviting {who}");
-            InviteOutcome outcome = await SharingService.InviteAsync(new InviteToShare { Who = who }, _cts.Token);
+            InviteOutcome outcome = await SharingService.InviteAsync(new InviteToShare { Who = who }, PageCancellation);
             if (outcome.Refusal is { } refusal)
             {
                 _inviteError = RefusalText(refusal, who);
@@ -414,8 +414,8 @@
         try
         {
             SetLoadingState(true, $"Updating your link with {link.Name}");
-            bool found = await action(link.Id, _cts.Token);
-            Links = await LoadLinksAsync(_cts.Token);
+            bool found = await action(link.Id, PageCancellation);
+            Links = await LoadLinksAsync(PageCancellation);
             if (found)
             {
                 Snackbar.Add(done, Severity.Success);

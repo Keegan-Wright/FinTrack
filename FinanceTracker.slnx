@@ -99,6 +99,7 @@
     <Project Path="Test\FinanceTracker.Tests.Unit.Infrastructure\FinanceTracker.Tests.Unit.Infrastructure.csproj"/>
   </Folder>
   <Project Path="Src/FinanceTracker.Client/FinanceTracker.Client.csproj"/>
+  <Project Path="Src/FinanceTracker.Client.Common/FinanceTracker.Client.Common.csproj"/>
   <Project Path="Src/FinanceTracker.Contracts/FinanceTracker.Contracts.csproj"/>
   <Project Path="Src/FinanceTracker.Telemetry/FinanceTracker.Telemetry.csproj"/>
   <Project Path="Src/FinanceTracker.Design/FinanceTracker.Design.csproj"/>

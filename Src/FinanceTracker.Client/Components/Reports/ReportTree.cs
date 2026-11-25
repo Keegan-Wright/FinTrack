@@ -1,5 +1,4 @@
 using System.Globalization;
-using FinanceTracker.Client.Components.Common;
 using FinanceTracker.Client.Components.PayPeriods;
 using FinanceTracker.Contracts.Reports;
 using FinanceTracker.Contracts.Reports.Account;

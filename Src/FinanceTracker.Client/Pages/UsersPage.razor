@@ -234,7 +234,7 @@
         SetLoadingState(true, "Making a reset link");
         try
         {
-            ResetLink? link = await UsersService.CreateResetLinkAsync(user.Id, _cts.Token);
+            ResetLink? link = await UsersService.CreateResetLinkAsync(user.Id, PageCancellation);
             if (link is null)
             {
                 Snackbar.Add($"{user.Username} signs in through the identity provider, there's no password to reset",
@@ -249,7 +249,7 @@
             };
             await DialogService.ShowAsync<ResetLinkDialog>($"Reset link for {user.Username}", parameters);
         }
-        catch (Exception) when (!_cts.IsCancellationRequested)
+        catch (Exception) when (!PageCancellation.IsCancellationRequested)
         {
             Snackbar.Add("Couldn't make a reset link, try again", Severity.Error);
         }
@@ -277,7 +277,7 @@
 
         await ChangeAsync(async () =>
             {
-                if (!await UsersService.TurnOffTwoFactorAsync(user.Id, _cts.Token))
+                if (!await UsersService.TurnOffTwoFactorAsync(user.Id, PageCancellation))
                 {
                     Snackbar.Add("Turn off your own two-factor sign in from Your profile", Severity.Warning);
                 }
@@ -301,7 +301,7 @@
 
         await ChangeAsync(async () =>
             {
-                if (!await UsersService.RemovePasskeysAsync(user.Id, _cts.Token))
+                if (!await UsersService.RemovePasskeysAsync(user.Id, PageCancellation))
                 {
                     Snackbar.Add("Remove your own passkeys from Your profile", Severity.Warning);
                 }
@@ -324,7 +324,7 @@
 
         await ChangeAsync(async () =>
             {
-                if (!await UsersService.RevokeTokensAsync(user.Id, _cts.Token))
+                if (!await UsersService.RevokeTokensAsync(user.Id, PageCancellation))
                 {
                     Snackbar.Add("Revoke your own tokens on the API tokens page", Severity.Warning);
                 }
@@ -362,7 +362,7 @@
 
         await ChangeAsync(async () =>
             {
-                if (!await UsersService.LockAsync(user.Id, _cts.Token))
+                if (!await UsersService.LockAsync(user.Id, PageCancellation))
                 {
                     Snackbar.Add($"{user.Name} is an admin, remove their admin access first", Severity.Warning);
                 }
@@ -383,7 +383,7 @@
             return;
         }
 
-        await ChangeAsync(async () => NotifyIfRefused(user, await UsersService.GrantAdminAsync(user.Id, _cts.Token)),
+        await ChangeAsync(async () => NotifyIfRefused(user, await UsersService.GrantAdminAsync(user.Id, PageCancellation)),
             $"Couldn't add admin access for {user.Name}, try again");
     }
 
@@ -415,7 +415,7 @@
             return;
         }
 
-        await ChangeAsync(async () => NotifyIfRefused(user, await UsersService.RemoveAdminAsync(user.Id, _cts.Token)),
+        await ChangeAsync(async () => NotifyIfRefused(user, await UsersService.RemoveAdminAsync(user.Id, PageCancellation)),
             $"Couldn't remove admin access for {user.Name}, try again");
     }
 
@@ -428,7 +428,7 @@
         SetLoadingState(true, "Saving");
         try
         {
-            AdminChange change = await UsersService.RemoveAdminAsync(you.Id, _cts.Token);
+            AdminChange change = await UsersService.RemoveAdminAsync(you.Id, PageCancellation);
             if (change == AdminChange.Changed)
             {
                 Navigation.NavigateTo("/", forceLoad: true);
@@ -437,7 +437,7 @@
 
             NotifyIfRefused(you, change);
         }
-        catch (Exception) when (!_cts.IsCancellationRequested)
+        catch (Exception) when (!PageCancellation.IsCancellationRequested)
         {
             Snackbar.Add("Couldn't remove your admin access, try again", Severity.Error);
         }
@@ -471,7 +471,7 @@
     /// </summary>
     /// <param name="user">The user.</param>
     internal Task UnlockAsync(UserSummary user) =>
-        ChangeAsync(() => UsersService.UnlockAsync(user.Id, _cts.Token), $"Couldn't unlock {user.Username}, try again");
+        ChangeAsync(() => UsersService.UnlockAsync(user.Id, PageCancellation), $"Couldn't unlock {user.Username}, try again");
 
     // Makes a change to a user, then reloads them all so the rows show it
     /// <summary>
@@ -485,9 +485,9 @@
         try
         {
             await change();
-            Items = await UsersService.GetUsersAsync(_cts.Token).ToListAsync(_cts.Token);
+            Items = await UsersService.GetUsersAsync(PageCancellation).ToListAsync(PageCancellation);
         }
-        catch (Exception) when (!_cts.IsCancellationRequested)
+        catch (Exception) when (!PageCancellation.IsCancellationRequested)
         {
             Snackbar.Add(failed, Severity.Error);
         }

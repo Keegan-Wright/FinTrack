@@ -1,5 +1,6 @@
 using Bunit;
 using FinanceTracker.Client;
+using FinanceTracker.Client.Common;
 using FinanceTracker.Contracts.Account;
 using FinanceTracker.Contracts.Budgets;
 using FinanceTracker.Contracts.Dashboard;
@@ -9,10 +10,10 @@ using FinanceTracker.Contracts.SavingsGoals;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Contracts.Transactions;
 using FinanceTracker.Tests.Unit.Client.PayPeriods;
+using HomePage = FinanceTracker.Client.Pages.Home;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
-using HomePage = FinanceTracker.Client.Pages.Home;
 
 namespace FinanceTracker.Tests.Unit.Client.Home;
 

@@ -181,7 +181,7 @@
             return;
         }
 
-        FilterOptions = await LoadFilterOptionsAsync(_cts.Token);
+        FilterOptions = await LoadFilterOptionsAsync(PageCancellation);
         await LoadAsync(quiet: true);
     }
 
@@ -239,7 +239,7 @@
         if (_loadCts is not null)
             await _loadCts.CancelAsync();
 
-        _loadCts = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token);
+        _loadCts = CancellationTokenSource.CreateLinkedTokenSource(PageCancellation);
         var cancellationToken = _loadCts.Token;
         var breakdown = _breakdown;
 

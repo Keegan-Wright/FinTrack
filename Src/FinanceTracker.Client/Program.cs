@@ -1,5 +1,6 @@
 using ApexCharts;
 using FinanceTracker.Client.Api;
+using FinanceTracker.Client.Common;
 using FinanceTracker.Client.Diagnostics;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using MudBlazor.Services;

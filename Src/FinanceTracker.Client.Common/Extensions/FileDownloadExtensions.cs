@@ -1,6 +1,6 @@
 using Microsoft.JSInterop;
 
-namespace FinanceTracker.Client.Extensions;
+namespace FinanceTracker.Client.Common.Extensions;
 
 /// <summary>
 /// Saves files in the browser.

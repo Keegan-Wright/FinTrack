@@ -1,7 +1,7 @@
-namespace FinanceTracker.Client.Components.Common;
+namespace FinanceTracker.Client.Common.Components;
 
 /// <summary>
-/// Which way money goes, for the colour it's shown in, see <see cref="ChartDefaults.MoneyColour"/>.
+/// Which way money goes, for the colour it's shown in.
 /// </summary>
 public enum MoneyFlow
 {

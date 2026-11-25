@@ -71,7 +71,7 @@
         if (RendererInfo.IsInteractive && !_loaded)
         {
             _loaded = true;
-            _suggestions = await BillsService.GetSuggestionsAsync(_cts.Token).ToListAsync(_cts.Token);
+            _suggestions = await BillsService.GetSuggestionsAsync(PageCancellation).ToListAsync(PageCancellation);
             _loading = false;
         }
     }
@@ -86,7 +86,7 @@
             return;
         }
 
-        List<BillSuggestion> suggestions = await BillsService.GetSuggestionsAsync(_cts.Token).ToListAsync(_cts.Token);
+        List<BillSuggestion> suggestions = await BillsService.GetSuggestionsAsync(PageCancellation).ToListAsync(PageCancellation);
         _suggestions = suggestions.Where(x => !_answered.Contains(x.Id)).ToList();
     }
 
@@ -102,12 +102,12 @@
             SetLoadingState(true, "Saving");
             if (isBill)
             {
-                Bill bill = await BillsService.ConfirmSuggestionAsync(suggestion.Id, _cts.Token);
+                Bill bill = await BillsService.ConfirmSuggestionAsync(suggestion.Id, PageCancellation);
                 Snackbar.Add($"{bill.Name} is a bill now", Severity.Success);
             }
             else
             {
-                await BillsService.DismissSuggestionAsync(suggestion.Id, _cts.Token);
+                await BillsService.DismissSuggestionAsync(suggestion.Id, PageCancellation);
                 Snackbar.Add($"{suggestion.Name} won't be suggested again", Severity.Success);
             }
 

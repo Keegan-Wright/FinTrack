@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using FinanceTracker.Client.Common;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
 
@@ -35,7 +36,7 @@ public class LayoutBase : LayoutComponentBase
     internal MudThemeProvider _mudThemeProvider = null!;
 
     /// <summary>
-    /// The shared UI state, see <see cref="Client.ApplicationState"/>.
+    /// The shared UI state, see <see cref="Common.ApplicationState"/>.
     /// </summary>
     [CascadingParameter]
     internal ApplicationState ApplicationState { get; set; } = null!;

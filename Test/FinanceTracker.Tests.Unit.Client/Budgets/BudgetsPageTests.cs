@@ -1,5 +1,7 @@
+using BudgetsPage = FinanceTracker.Client.Pages.Budgets;
 using Bunit;
 using FinanceTracker.Client;
+using FinanceTracker.Client.Common;
 using FinanceTracker.Contracts.Budgets;
 using FinanceTracker.Contracts.Classifications;
 using FinanceTracker.Contracts.PayPeriods;
@@ -9,7 +11,6 @@ using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
 using NSubstitute;
-using BudgetsPage = FinanceTracker.Client.Pages.Budgets;
 
 namespace FinanceTracker.Tests.Unit.Client.Budgets;
 

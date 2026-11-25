@@ -176,7 +176,7 @@
         SetLoadingState(true, $"Asking {connection.Name} for a renewal link");
         try
         {
-            _renewalUrl = await OpenBankingService.GetRenewalUrlAsync(connection.ConnectionId, _cts.Token);
+            _renewalUrl = await OpenBankingService.GetRenewalUrlAsync(connection.ConnectionId, PageCancellation);
             _renewing = connection;
         }
         catch (HttpRequestException)
@@ -199,7 +199,7 @@
     /// </summary>
     private async Task ReloadConnectionsAsync()
     {
-        Connections = await OpenBankingService.GetConnectionsAsync(_cts.Token).ToListAsync(_cts.Token);
+        Connections = await OpenBankingService.GetConnectionsAsync(PageCancellation).ToListAsync(PageCancellation);
         RefreshConnectionsToRenew(Connections);
     }
 
@@ -279,7 +279,7 @@
             Scopes = _selected.SelectMany(x => x.Scopes).Distinct().ToList()
         };
 
-        _openBankingAuthUrl = await OpenBankingService.BuildAuthUrlAsync(requestModel, _cts.Token);
+        _openBankingAuthUrl = await OpenBankingService.BuildAuthUrlAsync(requestModel, PageCancellation);
     }
 
     /// <summary>
@@ -302,7 +302,7 @@
             AccessCode = _vendorAccessToken
         };
 
-        var response = await OpenBankingService.AddVendorViaAccessCodeAsync(requestModel, _cts.Token);
+        var response = await OpenBankingService.AddVendorViaAccessCodeAsync(requestModel, PageCancellation);
 
         SetLoadingState(false);
         if (response)

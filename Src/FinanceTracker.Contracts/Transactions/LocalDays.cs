@@ -1,4 +1,4 @@
-namespace FinanceTracker.Client.Components.Common;
+namespace FinanceTracker.Contracts.Transactions;
 
 /// <summary>
 /// The instants whole days where the user is run between, in UTC, for the date filters the server compares with

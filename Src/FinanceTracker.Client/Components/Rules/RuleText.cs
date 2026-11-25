@@ -1,5 +1,5 @@
 using System.Globalization;
-using FinanceTracker.Client.Components.Common;
+using FinanceTracker.Client.Common.Components;
 using FinanceTracker.Contracts.Rules;
 using FinanceTracker.Contracts.Transactions;
 
