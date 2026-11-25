@@ -1,0 +1,65 @@
+# Runs the core's unit tests on the plain build, with coverage when asked.
+name: Unit tests
+
+on:
+  workflow_call:
+    inputs:
+      coverage:
+        description: Whether to measure coverage and upload it as Coverage-Unit.
+        type: boolean
+        default: false
+      timeout-minutes:
+        description: How long the job may run.
+        type: number
+        default: 360
+
+env:
+  PROJECTS: Client Domain FinanceTracker Infrastructure
+
+jobs:
+  unit-tests:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up .NET
+        uses: ./.github/actions/setup-dotnet
+        with:
+          tools: ${{ inputs.coverage }}
+
+      - name: Unit Tests
+        if: ${{ !inputs.coverage }}
+        run: |
+          for project in $PROJECTS; do
+            dotnet test --project Test/FinanceTracker.Tests.Unit.$project -c Release || exit 1
+          done
+
+      # Each project connects to one coverage collector, which writes a single file when it shuts down
+      - name: Unit Tests with coverage
+        if: inputs.coverage
+        run: |
+          dotnet dotnet-coverage collect --session-id unit --server-mode --background \
+            --settings Test/CodeCoverage.xml --output-format cobertura --output coverage/unit.cobertura.xml
+          for project in $PROJECTS; do
+            dotnet dotnet-coverage connect --nologo unit \
+              dotnet test --project Test/FinanceTracker.Tests.Unit.$project -c Release || exit 1
+          done
+          dotnet dotnet-coverage shutdown unit
+
+      - name: Upload Coverage
+        if: inputs.coverage
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: Coverage-Unit
+          path: coverage/unit.cobertura.xml
+
+      - name: Upload HTML Test Report
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: TestReport-Unit
+          path: '**/*-report.html'

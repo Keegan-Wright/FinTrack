@@ -1,0 +1,97 @@
+# Runs the core's integration tests on the plain build, with coverage when asked. Split over three runners, two for
+# the slow UI suites.
+name: Integration tests
+
+on:
+  workflow_call:
+    inputs:
+      coverage:
+        description: Whether to measure coverage and upload it as Coverage-<suite>.
+        type: boolean
+        default: false
+      timeout-minutes:
+        description: How long each job may run.
+        type: number
+        default: 360
+
+jobs:
+  integration-tests:
+    name: ${{ matrix.suite }}
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # A look at each page
+          - suite: UI pages
+            filter: '/*/FinanceTracker.Tests.Integration.Ui/(SeededPageTests|PageRenderTests|AccountPageTests|LoadFailureTests)/*'
+            browser: true
+          # Everything else in a browser, flows, dialogs and failures, a new UI test class lands here
+          - suite: UI flows
+            filter: '/*/FinanceTracker.Tests.Integration.Ui/(!(SeededPageTests|PageRenderTests|AccountPageTests|LoadFailureTests))/*'
+            browser: true
+          # Everything not in a browser, the published image has its own job
+          - suite: API and services
+            filter: '/*/(!(FinanceTracker.Tests.Integration.Ui|FinanceTracker.Tests.Integration.Image))/*/*'
+            browser: false
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up .NET
+        uses: ./.github/actions/setup-dotnet
+        with:
+          tools: ${{ inputs.coverage }}
+
+      - name: Build Integration Tests
+        run: dotnet build Test/FinanceTracker.Tests.Integration -c Release
+
+      - name: Prepare the integration tests
+        uses: ./.github/actions/prepare-browser-tests
+        with:
+          browser: ${{ matrix.browser }}
+
+      - name: Integration Tests
+        if: ${{ !inputs.coverage }}
+        run: >-
+          dotnet test --project Test/FinanceTracker.Tests.Integration -c Release --no-build
+          -- --treenode-filter "${{ matrix.filter }}"
+
+      # The app Aspire starts inherits the coverage profiler from the test run, so its code counts too
+      - name: Integration Tests with coverage
+        if: inputs.coverage
+        run: |
+          dotnet dotnet-coverage collect --session-id integration --server-mode --background \
+            --settings Test/CodeCoverage.xml --output-format cobertura --output coverage/integration.cobertura.xml
+
+          dotnet dotnet-coverage connect --nologo integration \
+            dotnet test --project Test/FinanceTracker.Tests.Integration -c Release --no-build \
+            -- --treenode-filter "${{ matrix.filter }}" || exit 1
+
+          dotnet dotnet-coverage shutdown integration
+
+      - name: Upload Coverage
+        if: inputs.coverage
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: Coverage-${{ matrix.suite }}
+          path: coverage/integration.cobertura.xml
+
+      - name: Upload HTML Test Report
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: TestReport-${{ matrix.suite }}
+          path: '**/*-report.html'
+
+      # What a failed UI test saw, step by step, open with https://trace.playwright.dev
+      - name: Upload Playwright Traces
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure() && matrix.browser
+        with:
+          name: PlaywrightTraces-${{ matrix.suite }}
+          path: '**/playwright-traces/*.zip'
+          if-no-files-found: ignore

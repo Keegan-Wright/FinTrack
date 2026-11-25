@@ -1,0 +1,31 @@
+# Runs a built image as a self-hoster would, beside a throwaway Postgres, and waits until it answers on port 8080.
+name: Start the image
+description: Runs a built image with a throwaway Postgres.
+
+inputs:
+  image:
+    description: The image to run, already built.
+    default: fintrack:ci
+
+runs:
+  using: composite
+  steps:
+    - name: Start the image
+      shell: bash
+      env:
+        IMAGE: ${{ inputs.image }}
+      run: |
+        docker network create fintrack-ci
+        docker run -d --name fintrack-ci-db --network fintrack-ci -e POSTGRES_PASSWORD=ci postgres:18.7
+        until docker exec fintrack-ci-db pg_isready -U postgres; do sleep 1; done
+        docker run -d --name fintrack-ci-web --network fintrack-ci -p 8080:8080 \
+          -e HTTP_PORTS=8080 \
+          -e ENCRYPTION_KEYS="1:$(head -c 32 /dev/urandom | base64)" -e ENCRYPTION_CURRENT_KEY_ID=1 \
+          -e OPEN_BANKING_TRUELAYER_BASE_AUTH_URL=https://auth.example.test \
+          -e OPEN_BANKING_TRUELAYER_BASE_DATA_URL=https://api.example.test \
+          -e OPEN_BANKING_TRUELAYER_AUTH_REDIRECT_URL=http://localhost:8080/callback \
+          -e OPEN_BANKING_TRUELAYER_CLIENT_ID=ci -e OPEN_BANKING_TRUELAYER_CLIENT_SECRET=ci \
+          -e OPEN_BANKING_PUBLIC_IP_ADDRESS=127.0.0.1 -e APP_CULTURE=en-GB -e TZ=Europe/London \
+          -e "ConnectionStrings__FinTrackDb=Host=fintrack-ci-db;Port=5432;Username=postgres;Password=ci;Database=FinTrackDb" \
+          "$IMAGE"
+        timeout 120 bash -c 'until curl -sf -o /dev/null http://localhost:8080/Account/Login; do sleep 2; done'

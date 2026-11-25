@@ -1,0 +1,98 @@
+# Tests each module with it built in. Its crossover tests by category, its own tests in Test/Modules, and its image.
+# Runs on every change, so a core change that breaks a module fails here. A new module is one more matrix entry.
+name: Modules
+
+on:
+  workflow_call:
+    inputs:
+      timeout-minutes:
+        description: How long each job may run.
+        type: number
+        default: 360
+
+jobs:
+  module:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: AI
+            property: FinTrackAi
+            folder: Ai
+            category: AiModule
+            build-arg: FINTRACK_AI
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up .NET
+        uses: ./.github/actions/setup-dotnet
+
+      # MSBuild reads it from the environment, so every dotnet command below builds the module in
+      - name: Build the module in
+        run: echo "${{ matrix.property }}=true" >> "$GITHUB_ENV"
+
+      - name: Restore the application
+        run: dotnet restore
+
+      - name: Build Solution
+        run: dotnet build -c Release --no-restore
+
+      # The core's unit tests that meet the module, by category, then the module's own in full. Exit code 8 is no
+      # tests matching, fine for a core project the module doesn't touch
+      - name: Unit Tests
+        run: |
+          for project in Client FinanceTracker; do
+            dotnet test --project Test/FinanceTracker.Tests.Unit.$project -c Release --no-build \
+              -- --treenode-filter "/*/*/*/*[Category=${{ matrix.category }}]" --ignore-exit-code 8 || exit 1
+          done
+          for project in Test/Modules/${{ matrix.folder }}/*/; do
+            [ -d "$project" ] || continue
+            dotnet test --project "$project" -c Release --no-build || exit 1
+          done
+
+      - name: Prepare the integration tests
+        uses: ./.github/actions/prepare-browser-tests
+
+      - name: Integration Tests
+        run: >-
+          dotnet test --project Test/FinanceTracker.Tests.Integration -c Release --no-build
+          -- --treenode-filter "/*/*/*/*[Category=${{ matrix.category }}]"
+
+      - name: Build the image
+        run: docker build -f Src/Dockerfile --build-arg ${{ matrix.build-arg }}=true -t fintrack:ci .
+
+      - name: Start the image
+        uses: ./.github/actions/start-image
+
+      - name: Published Image Tests
+        env:
+          FINTRACK_IMAGE_URL: http://localhost:8080
+        run: >-
+          dotnet test --project Test/FinanceTracker.Tests.Integration -c Release --no-build
+          -- --treenode-filter "/*/FinanceTracker.Tests.Integration.Image/*/*"
+
+      - name: Image logs
+        if: failure()
+        run: docker logs fintrack-ci-web
+
+      - name: Upload HTML Test Report
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: TestReport-Module-${{ matrix.name }}
+          path: '**/*-report.html'
+
+      # What a failed UI test saw, step by step, open with https://trace.playwright.dev
+      - name: Upload Playwright Traces
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: PlaywrightTraces-Module-${{ matrix.name }}
+          path: '**/playwright-traces/*.zip'
+          if-no-files-found: ignore

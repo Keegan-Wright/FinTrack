@@ -1,0 +1,29 @@
+# Builds the whole solution once. A warning anywhere fails, see TreatWarningsAsErrors in Directory.Build.props.
+name: Build
+
+on:
+  workflow_call:
+    inputs:
+      timeout-minutes:
+        description: How long the job may run.
+        type: number
+        default: 360
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up .NET
+        uses: ./.github/actions/setup-dotnet
+
+      - name: Restore the application
+        run: dotnet restore
+
+      - name: Build Solution
+        run: dotnet build -c Release --no-restore
