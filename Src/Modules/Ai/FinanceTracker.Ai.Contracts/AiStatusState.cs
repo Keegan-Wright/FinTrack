@@ -29,18 +29,6 @@ public sealed class AiStatusState(IAiService aiService)
     }
 
     /// <summary>
-    /// Fetches the status again, then tells everything showing it, e.g. once an admin has set AI up.
-    /// </summary>
-    /// <param name="cancellationToken">Stops the work.</param>
-    public async Task<AiStatus> RefreshAsync(CancellationToken cancellationToken)
-    {
-        AiStatus status = await aiService.GetStatusAsync(cancellationToken);
-        _status = Task.FromResult(status);
-        Changed?.Invoke();
-        return status;
-    }
-
-    /// <summary>
     /// Turns AI on or off for the user, then tells everything showing it.
     /// </summary>
     /// <param name="optedIn">Whether they want it on.</param>

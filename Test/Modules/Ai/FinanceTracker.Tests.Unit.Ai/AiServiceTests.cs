@@ -1,12 +1,11 @@
 using FinanceTracker.Ai.Contracts;
-using FinanceTracker.Ai.Persistence;
-using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.Tests.Unit.Ai;
 
 public class AiServiceTests : AiServiceTestBase
 {
     private const string Address = "http://ollama.example.test:11434";
+
 
     [Test]
     public async Task GetStatusAsync_NothingSetUp_IsNotAvailableAndNotOptedIn()
@@ -63,51 +62,4 @@ public class AiServiceTests : AiServiceTestBase
         // Assert
         await Assert.That(status.OptedIn).IsFalse();
     }
-
-    [Test]
-    public async Task SaveSettingsAsync_SavesTheAddressTrimmedAndEncrypted()
-    {
-        // Act
-        AiSettings settings = await Service()
-            .SaveSettingsAsync(new SaveAiSettings { OllamaEndpoint = $"  {Address} " }, CancellationToken);
-
-        // Assert
-        await using FinanceTrackerAiContext context = ContextFactory.CreateDbContext();
-        string stored = await context.Database
-            .SqlQuery<string>($"SELECT \"Value\" AS \"Value\" FROM \"Settings\"")
-            .SingleAsync(CancellationToken);
-        using (Assert.Multiple())
-        {
-            await Assert.That(settings.OllamaEndpoint).IsEqualTo(Address);
-            await Assert.That(stored).StartsWith("1:");
-            await Assert.That(stored).DoesNotContain("ollama");
-        }
-    }
-
-    [Test]
-    public async Task SaveSettingsAsync_EmptyAddress_GoesBackToTheEnvironments()
-    {
-        // Arrange
-        await Service().SaveSettingsAsync(new SaveAiSettings { OllamaEndpoint = Address }, CancellationToken);
-
-        // Act
-        AiSettings settings = await Service(environmentEndpoint: "http://env.example.test:11434")
-            .SaveSettingsAsync(new SaveAiSettings { OllamaEndpoint = " " }, CancellationToken);
-
-        // Assert
-        using (Assert.Multiple())
-        {
-            await Assert.That(settings.OllamaEndpoint).IsNull();
-            await Assert.That(settings.EnvironmentOllamaEndpoint).IsEqualTo("http://env.example.test:11434");
-        }
-    }
-
-    [Test]
-    [Arguments("http://ollama:11434", true)]
-    [Arguments("https://ollama.example.test", true)]
-    [Arguments("ftp://ollama:11434", false)]
-    [Arguments("ollama:11434", false)]
-    [Arguments("not an address", false)]
-    public async Task IsValid_OnlyAbsoluteHttpAndHttps(string endpoint, bool valid) =>
-        await Assert.That(OllamaEndpoint.IsValid(endpoint)).IsEqualTo(valid);
 }

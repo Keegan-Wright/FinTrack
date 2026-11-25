@@ -6,7 +6,8 @@ namespace FinanceTracker.Ai.Contracts;
 public sealed class AiStatus
 {
     /// <summary>
-    /// Whether the install has AI set up, an Ollama endpoint to talk to.
+    /// Whether the install has AI set up, an Ollama server to talk to from the <c>OLLAMA_ENDPOINT</c> environment
+    /// variable.
     /// </summary>
     public bool Available { get; init; }
 

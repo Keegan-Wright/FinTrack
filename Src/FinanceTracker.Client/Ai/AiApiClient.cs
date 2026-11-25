@@ -28,17 +28,5 @@ public sealed class AiApiClient : IAiService
         response.EnsureSuccessStatusCode();
         return (await response.Content.ReadFromJsonAsync<AiStatus>(cancellationToken))!;
     }
-
-    /// <inheritdoc/>
-    public async Task<AiSettings> GetSettingsAsync(CancellationToken cancellationToken) =>
-        (await _http.GetFromJsonAsync<AiSettings>(AiRoutes.Settings, cancellationToken))!;
-
-    /// <inheritdoc/>
-    public async Task<AiSettings> SaveSettingsAsync(SaveAiSettings settings, CancellationToken cancellationToken)
-    {
-        using HttpResponseMessage response = await _http.PutAsJsonAsync(AiRoutes.Settings, settings, cancellationToken);
-        response.EnsureSuccessStatusCode();
-        return (await response.Content.ReadFromJsonAsync<AiSettings>(cancellationToken))!;
-    }
 }
 #endif

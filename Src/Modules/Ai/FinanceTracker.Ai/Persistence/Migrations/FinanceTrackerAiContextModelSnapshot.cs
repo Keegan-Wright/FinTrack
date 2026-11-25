@@ -16,7 +16,7 @@ partial class FinanceTrackerAiContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261125154954_AiUserSettings";
+    public override string LastMigrationId => "20261125162601_AiUserSettings";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -27,31 +27,6 @@ partial class FinanceTrackerAiContextModelSnapshot : ModelSnapshot
             .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
         NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
-
-        modelBuilder.Entity("FinanceTracker.Ai.Persistence.AiSetting", b =>
-            {
-                b.Property<string>("Name")
-                    .HasColumnType("text");
-
-                b.Property<string>("IntegrityTag")
-                    .HasColumnType("text");
-
-                b.Property<string>("Value")
-                    .HasColumnType("text")
-                    .HasAnnotation("FinanceTracker.EncryptedColumn", true);
-
-                b.HasKey("Name");
-
-                b.ToTable("Settings", "ai");
-
-                b.HasAnnotation("FinanceTracker.RowIntegrity", true);
-
-                b.HasData(
-                    new
-                    {
-                        Name = "OllamaEndpoint"
-                    });
-            });
 
         modelBuilder.Entity("FinanceTracker.Ai.Persistence.AiUserSetting", b =>
             {

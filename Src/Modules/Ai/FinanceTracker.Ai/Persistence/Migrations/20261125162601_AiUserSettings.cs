@@ -6,19 +6,14 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace FinanceTracker.Ai.Persistence.Migrations;
 
 /// <inheritdoc />
-public partial class _20261125154954_AiUserSettings : Migration
+public partial class _20261125162601_AiUserSettings : Migration
 {
     /// <inheritdoc />
     protected override void Up(MigrationBuilder migrationBuilder)
     {
-        migrationBuilder.AlterColumn<string>(
-            name: "Value",
-            schema: "ai",
-            table: "Settings",
-            type: "text",
-            nullable: true,
-            oldClrType: typeof(string),
-            oldType: "text");
+        migrationBuilder.DropTable(
+            name: "Settings",
+            schema: "ai");
 
         migrationBuilder.CreateTable(
             name: "UserSettings",
@@ -33,12 +28,6 @@ public partial class _20261125154954_AiUserSettings : Migration
             {
                 table.PrimaryKey("PK_UserSettings", x => x.UserId);
             });
-
-        migrationBuilder.InsertData(
-            schema: "ai",
-            table: "Settings",
-            columns: new[] { "Name", "IntegrityTag", "Value" },
-            values: new object[] { "OllamaEndpoint", null, null });
     }
 
     /// <inheritdoc />
@@ -48,21 +37,18 @@ public partial class _20261125154954_AiUserSettings : Migration
             name: "UserSettings",
             schema: "ai");
 
-        migrationBuilder.DeleteData(
+        migrationBuilder.CreateTable(
+            name: "Settings",
             schema: "ai",
-            table: "Settings",
-            keyColumn: "Name",
-            keyValue: "OllamaEndpoint");
-
-        migrationBuilder.AlterColumn<string>(
-            name: "Value",
-            schema: "ai",
-            table: "Settings",
-            type: "text",
-            nullable: false,
-            defaultValue: "",
-            oldClrType: typeof(string),
-            oldType: "text",
-            oldNullable: true);
+            columns: table => new
+            {
+                Name = table.Column<string>(type: "text", nullable: false),
+                IntegrityTag = table.Column<string>(type: "text", nullable: true),
+                Value = table.Column<string>(type: "text", nullable: false)
+            },
+            constraints: table =>
+            {
+                table.PrimaryKey("PK_Settings", x => x.Name);
+            });
     }
 }

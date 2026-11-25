@@ -16,11 +16,6 @@ public static class ModuleSlots
     public const string NavMenu = "NavMenu";
 
     /// <summary>
-    /// The menu's Settings group, which only admins see.
-    /// </summary>
-    public const string SettingsNavMenu = "SettingsNavMenu";
-
-    /// <summary>
     /// Your profile, after the app's own sections.
     /// </summary>
     public const string Profile = "Profile";

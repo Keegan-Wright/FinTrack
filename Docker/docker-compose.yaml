@@ -69,6 +69,8 @@ services:
       WEBHOOK_ALLOW_PRIVATE: "${WEBHOOK_ALLOW_PRIVATE:-false}"
       # false turns off username and password sign in, leaving single sign-on, which then has to be set up
       PASSWORD_SIGN_IN: "${PASSWORD_SIGN_IN:-true}"
+      # The fintrackweb-ai image only. The Ollama server its AI runs on, AI is off without it. Uncomment with that image
+      # OLLAMA_ENDPOINT: "${OLLAMA_ENDPOINT}"
       RATE_LIMIT_SIGN_INS_PER_MINUTE: "${RATE_LIMIT_SIGN_INS_PER_MINUTE:-10}"
       RATE_LIMIT_INVITES_PER_HOUR: "${RATE_LIMIT_INVITES_PER_HOUR:-20}"
       RATE_LIMIT_TOKEN_FAILURES_PER_HOUR: "${RATE_LIMIT_TOKEN_FAILURES_PER_HOUR:-30}"

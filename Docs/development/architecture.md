@@ -65,15 +65,14 @@ the `fintrackweb-ai` image. The plain `fintrackweb` image has none of its code, 
   `#if FINTRACK_AI`, the client's `Ai/AiModuleLoader.cs`, `Routes.razor.cs` and `LayoutBase.cs`, and the server's
   `Program.cs`, `Extensions/AiModuleHostExtensions.cs` and `Extensions/RoutedAssemblies.cs`.
 - The module's browser assembly is lazy loaded, after the app has started. The app can't refer to its types, so a
-  module shows its components in the app's slots instead, the app bar, the menu, the menu's Settings group and Your
-  profile. A component marked `[ModuleSlot(ModuleSlots.AppBar)]` shows wherever the app has a
+  module shows its components in the app's slots instead, the app bar, the menu and Your profile. A component marked `[ModuleSlot(ModuleSlots.AppBar)]` shows wherever the app has a
   `<ModuleSlot Name="@ModuleSlots.AppBar"/>`. The module loads too late to register services, so the app registers
   what its components inject, in `FinanceTracker.Client/Ai`.
 - Its API is mapped onto the app's, in `ApiEndpoints.cs`, so it shares the app's sign in, token and request rules.
 - Its data goes in the user's backup through `IBackupSection`, one file per module, e.g. `ai.json`.
 - Each user turns AI on for themselves in Your profile. Until they do, its menu entry and app bar button stay hidden.
-  An admin sets the Ollama address on the AI settings page, or it comes from the `OLLAMA_ENDPOINT` environment
-  variable.
+  AI is only set up when the `OLLAMA_ENDPOINT` environment variable points at an Ollama server. Locally the AppHost
+  runs one, see [Running locally](running-locally.md#ollama).
 - Its tables live in their own schema, `ai`, with their own migrations history, so moving back to the plain image
   leaves them alone. They're encrypted and tagged like the core's, with the same keys, and rotated at startup after the
   core's. Its migrations are made from the module's project on its own:

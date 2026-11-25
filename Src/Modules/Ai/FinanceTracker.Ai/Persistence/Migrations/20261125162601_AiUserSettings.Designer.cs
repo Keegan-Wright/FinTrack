@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FinanceTracker.Ai.Persistence.Migrations;
 
 [DbContext(typeof(FinanceTrackerAiContext))]
-[Migration("20261125154954_AiUserSettings")]
-partial class _20261125154954_AiUserSettings
+[Migration("20261125162601_AiUserSettings")]
+partial class _20261125162601_AiUserSettings
 {
     /// <inheritdoc />
     protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -25,31 +25,6 @@ partial class _20261125154954_AiUserSettings
             .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
         NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
-
-        modelBuilder.Entity("FinanceTracker.Ai.Persistence.AiSetting", b =>
-            {
-                b.Property<string>("Name")
-                    .HasColumnType("text");
-
-                b.Property<string>("IntegrityTag")
-                    .HasColumnType("text");
-
-                b.Property<string>("Value")
-                    .HasColumnType("text")
-                    .HasAnnotation("FinanceTracker.EncryptedColumn", true);
-
-                b.HasKey("Name");
-
-                b.ToTable("Settings", "ai");
-
-                b.HasAnnotation("FinanceTracker.RowIntegrity", true);
-
-                b.HasData(
-                    new
-                    {
-                        Name = "OllamaEndpoint"
-                    });
-            });
 
         modelBuilder.Entity("FinanceTracker.Ai.Persistence.AiUserSetting", b =>
             {

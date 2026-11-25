@@ -37,11 +37,6 @@ public class FinanceTrackerAiContext(DbContextOptions<FinanceTrackerAiContext> o
     public TimeProvider TimeProvider { get; } = TimeProvider.System;
 
     /// <summary>
-    /// The admin's app-wide settings.
-    /// </summary>
-    public DbSet<AiSetting> Settings => Set<AiSetting>();
-
-    /// <summary>
     /// Each user's AI choices.
     /// </summary>
     public DbSet<AiUserSetting> UserSettings => Set<AiUserSetting>();
@@ -54,18 +49,7 @@ public class FinanceTrackerAiContext(DbContextOptions<FinanceTrackerAiContext> o
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(Schema);
-        modelBuilder.Entity<AiSetting>(setting =>
-        {
-            setting.ToTable("Settings");
-            setting.HasKey(static x => x.Name);
-            setting.Property(static x => x.Value).Encrypted();
-            setting.HasData(AiSetting.All.Select(static name => new AiSetting { Name = name }));
-        });
-        modelBuilder.Entity<AiUserSetting>(setting =>
-        {
-            setting.ToTable("UserSettings");
-            setting.HasKey(static x => x.UserId);
-        });
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(FinanceTrackerAiContext).Assembly);
 
         modelBuilder.UseEncryption(EncryptionService);
         // Every table here is the module's own, so every row carries a tag

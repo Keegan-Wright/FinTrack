@@ -22,12 +22,7 @@ namespace FinanceTracker.Tests.Unit.FinanceTracker.Api;
 public class ApiEndpointSecurityTests
 {
     private static readonly string[] AdminRoutes =
-    [
-        ApiRoutes.AutomationJobs, ApiRoutes.AutomationRuns, ApiRoutes.Users,
-#if FINTRACK_AI
-        AiRoutes.Settings
-#endif
-    ];
+        [ApiRoutes.AutomationJobs, ApiRoutes.AutomationRuns, ApiRoutes.Users];
 
     [Test]
     public async Task EveryEndpoint_NeedsASignedInUser()
@@ -86,7 +81,7 @@ public class ApiEndpointSecurityTests
 #if FINTRACK_AI
     [Test]
     [Category("AiModule")]
-    public async Task AiEndpoints_StatusAndOptInForEveryoneSettingsForAdminsOnly()
+    public async Task AiEndpoints_NeedASignedInUserButNotAnAdmin()
     {
         // Arrange
         List<RouteEndpoint> endpoints = MapApi();
@@ -98,13 +93,9 @@ public class ApiEndpointSecurityTests
         // Assert
         using (Assert.Multiple())
         {
-            await Assert.That(ai.Where(static x => Route(x).StartsWith(AiRoutes.Settings, StringComparison.Ordinal)))
-                .Count().IsEqualTo(2);
+            await Assert.That(ai.Select(Route)).IsEquivalentTo([AiRoutes.Status, AiRoutes.OptIn]);
             await Assert.That(ai.All(NeedsSignIn)).IsTrue();
-            await Assert.That(ai.Where(static x => !Route(x).StartsWith(AiRoutes.Settings, StringComparison.Ordinal))
-                .Any(NeedsAnAdmin)).IsFalse();
-            await Assert.That(ai.Where(static x => Route(x).StartsWith(AiRoutes.Settings, StringComparison.Ordinal))
-                .All(NeedsAnAdmin)).IsTrue();
+            await Assert.That(ai.Any(NeedsAnAdmin)).IsFalse();
         }
     }
 

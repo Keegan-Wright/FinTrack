@@ -1,5 +1,8 @@
 using Aspire.Hosting.Dotnet;
 using FinanceTracker.AppHost.ServiceDefaults;
+#if FINTRACK_AI
+using FinanceTracker.AppHost.Ollama;
+#endif
 
 #pragma warning disable ASPIRECOMPUTE003
 #pragma warning disable ASPIREPIPELINES003
@@ -77,6 +80,11 @@ if (builder.ExecutionContext.IsRunMode)
 }
 
 // OIDC sign in is optional, it's only wired up when an authority is configured
+#if FINTRACK_AI
+// Ollama for the AI module, on this machine's GPU when it has one
+finTrack.WithOllama(builder);
+#endif
+
 if (!string.IsNullOrEmpty(builder.Configuration["OIDC:Authority"]))
 {
     finTrack
