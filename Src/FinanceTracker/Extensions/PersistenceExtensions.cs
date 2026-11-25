@@ -1,6 +1,6 @@
 using FinanceTracker.AppHost.ServiceDefaults;
 using FinanceTracker.Infrastructure;
-using FinanceTracker.Infrastructure.Encryption;
+using FinanceTracker.Infrastructure.Common.Encryption;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.Extensions;
@@ -58,7 +58,7 @@ public static class PersistenceExtensions
                 await db.Database.MigrateAsync();
             }
 
-            await ActivatorUtilities.CreateInstance<EncryptionKeyRotator>(scope.ServiceProvider)
+            await ActivatorUtilities.CreateInstance<EncryptionKeyRotator<FinanceTrackerContext>>(scope.ServiceProvider)
                 .RotateAsync(CancellationToken.None);
         }
     }

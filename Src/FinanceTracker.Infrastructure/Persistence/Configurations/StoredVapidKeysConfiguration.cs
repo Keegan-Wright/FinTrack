@@ -1,3 +1,4 @@
+using FinanceTracker.Infrastructure.Common.Persistence;
 using FinanceTracker.Infrastructure.Notifications.Push;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;

@@ -2,7 +2,7 @@ using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.Sharing;
-using FinanceTracker.Infrastructure.Persistence;
+using FinanceTracker.Infrastructure.Common.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.Infrastructure.Sharing;

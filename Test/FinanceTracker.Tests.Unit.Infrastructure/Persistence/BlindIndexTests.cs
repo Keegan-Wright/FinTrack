@@ -5,7 +5,7 @@ using FinanceTracker.Domain.Household;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.SavingsGoals;
 using FinanceTracker.Infrastructure;
-using FinanceTracker.Infrastructure.Persistence;
+using FinanceTracker.Infrastructure.Common.Persistence;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.EntityFrameworkCore;

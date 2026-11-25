@@ -1,8 +1,8 @@
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Domain.Notifications;
 using FinanceTracker.Infrastructure;
-using FinanceTracker.Infrastructure.Encryption;
-using FinanceTracker.Infrastructure.Persistence;
+using FinanceTracker.Infrastructure.Common.Encryption;
+using FinanceTracker.Infrastructure.Common.Persistence;
 using FinanceTracker.Tests.Integration.Http;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.EntityFrameworkCore;
@@ -59,10 +59,14 @@ public class RowIntegrityTamperTests : IntegrationTestBase
         }
 
         // Act
-        int reencrypted = await new EncryptionKeyRotator(DbContextFactory, NullLogger<EncryptionKeyRotator>.Instance)
+        int reencrypted = await Rotator(DbContextFactory)
             .RotateAsync(CancellationToken);
 
         // Assert, so startup doesn't rewrite them every time
         await Assert.That(reencrypted).IsEqualTo(0);
     }
+
+    private static EncryptionKeyRotator<FinanceTrackerContext> Rotator(
+        IDbContextFactory<FinanceTrackerContext> factory) =>
+        new(factory, NullLogger<EncryptionKeyRotator<FinanceTrackerContext>>.Instance);
 }

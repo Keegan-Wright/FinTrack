@@ -2,12 +2,13 @@ using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.SavingsGoals;
 using FinanceTracker.Infrastructure;
-using FinanceTracker.Infrastructure.Persistence;
+using FinanceTracker.Infrastructure.Common.Encryption;
+using FinanceTracker.Infrastructure.Common.Persistence;
 using FinanceTracker.Tests.Unit.Shared;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace FinanceTracker.Tests.Unit.Infrastructure.Persistence;
 

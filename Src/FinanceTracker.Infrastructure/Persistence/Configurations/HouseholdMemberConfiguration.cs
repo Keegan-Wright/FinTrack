@@ -1,5 +1,6 @@
 using FinanceTracker.Domain.Household;
 using FinanceTracker.Domain.Identity;
+using FinanceTracker.Infrastructure.Common.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

@@ -1,4 +1,5 @@
 using FinanceTracker.Domain.Classifications;
+using FinanceTracker.Infrastructure.Common.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

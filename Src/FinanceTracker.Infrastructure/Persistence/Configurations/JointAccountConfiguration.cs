@@ -1,5 +1,6 @@
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.Sharing;
+using FinanceTracker.Infrastructure.Common.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

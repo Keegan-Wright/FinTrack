@@ -5,7 +5,7 @@ using Aspire.Hosting.Dotnet;
 using Aspire.Hosting.Testing;
 using FinanceTracker.AppHost.ServiceDefaults;
 using FinanceTracker.Infrastructure;
-using FinanceTracker.Infrastructure.Encryption;
+using FinanceTracker.Infrastructure.Common.Encryption;
 using FinanceTracker.Infrastructure.Persistence;
 using FinanceTracker.Tests.Integration.Auth;
 using FinanceTracker.Tests.Integration.Http;

@@ -9,6 +9,12 @@ namespace FinanceTracker.Infrastructure.Persistence;
 /// </summary>
 public static class AppDecisionBuilderExtensions
 {
+    /// <summary>
+    /// Marks a complex property holding a decision the app makes about the entity, which doesn't count as the entity
+    /// changing.
+    /// </summary>
+    internal const string AppDecisionAnnotation = "FinanceTracker.AppDecision";
+
     extension<TComplex>(ComplexPropertyBuilder<TComplex> builder) where TComplex : notnull
     {
         /// <summary>
@@ -18,7 +24,7 @@ public static class AppDecisionBuilderExtensions
         {
             ArgumentNullException.ThrowIfNull(builder);
 
-            builder.HasPropertyAnnotation(Annotations.AppDecisionAnnotation, true);
+            builder.HasPropertyAnnotation(AppDecisionAnnotation, true);
             return builder;
         }
     }
@@ -32,7 +38,7 @@ public static class AppDecisionBuilderExtensions
         {
             ArgumentNullException.ThrowIfNull(builder);
 
-            builder.HasPropertyAnnotation(Annotations.AppDecisionAnnotation, true);
+            builder.HasPropertyAnnotation(AppDecisionAnnotation, true);
             return builder;
         }
     }

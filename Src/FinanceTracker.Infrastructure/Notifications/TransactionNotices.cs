@@ -3,7 +3,7 @@ using FinanceTracker.Domain.Notifications;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
-using FinanceTracker.Infrastructure.Persistence;
+using FinanceTracker.Infrastructure.Common.Persistence;
 using FinanceTracker.Infrastructure.Sharing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;

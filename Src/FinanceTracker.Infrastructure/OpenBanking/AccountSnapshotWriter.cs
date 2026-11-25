@@ -2,9 +2,9 @@ using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
+using FinanceTracker.Infrastructure.Common.Persistence;
 using FinanceTracker.Infrastructure.OpenBanking.TrueLayer;
 using FinanceTracker.Infrastructure.OpenBanking.TrueLayer.Contracts;
-using FinanceTracker.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 

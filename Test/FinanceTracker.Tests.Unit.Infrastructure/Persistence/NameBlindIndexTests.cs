@@ -1,4 +1,4 @@
-using FinanceTracker.Infrastructure.Persistence;
+using FinanceTracker.Infrastructure.Common.Persistence;
 
 namespace FinanceTracker.Tests.Unit.Infrastructure.Persistence;
 

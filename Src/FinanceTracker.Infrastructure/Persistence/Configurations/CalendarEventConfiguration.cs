@@ -1,5 +1,6 @@
 using FinanceTracker.Domain.Calendar;
 using FinanceTracker.Domain.SavingsGoals;
+using FinanceTracker.Infrastructure.Common.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
