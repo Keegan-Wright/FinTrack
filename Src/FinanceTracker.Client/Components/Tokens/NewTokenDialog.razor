@@ -23,6 +23,16 @@
                     <MudSelectItem T="TokenExpiry" Value="@TokenExpiry.OneYear">In a year</MudSelectItem>
                     <MudSelectItem T="TokenExpiry" Value="@TokenExpiry.Never">Never</MudSelectItem>
                 </MudSelect>
+                @if (UseOptions.Count > 0)
+                {
+                    <MudSelect T="string" @bind-Value="Use" Label="For" For="@(() => Use)"
+                               HelperText="@UseHelperText">
+                        @foreach (TokenUseOption option in UseOptions)
+                        {
+                            <MudSelectItem T="string" Value="@option.Value">@option.Label</MudSelectItem>
+                        }
+                    </MudSelect>
+                }
                 @if (AskForPassword)
                 {
                     <MudTextField T="string" @bind-Value="_model.Password" Label="Your password"

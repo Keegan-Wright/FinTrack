@@ -11,7 +11,7 @@ shown after "as".
 | `FINTRACK_POSTGRES_PASSWORD` | Yes | The database password. |
 | `APP_CULTURE` | No | How dates and money are shown, e.g. `en-GB`. |
 | `TZ` | No | The time zone, e.g. `Europe/London`. |
-| `FINTRACK_PUBLIC_URL` | No | Your FinTrack address, e.g. `https://fintrack.example.com`, for links in emails and webhooks, and given to push services as who sends FinTrack's pushes. Passkeys belong to its domain, see [Passkeys and your domain](#passkeys-and-your-domain). |
+| `FINTRACK_PUBLIC_URL` | No | Your FinTrack address, e.g. `https://fintrack.example.com`, for links in emails, webhooks and AI clients' answers, and given to push services as who sends FinTrack's pushes. Passkeys belong to its domain, see [Passkeys and your domain](#passkeys-and-your-domain). |
 
 ### Passkeys and your domain
 
@@ -90,3 +90,16 @@ See [Monitoring](monitoring.md).
 |---|---|---|
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | No | Where to send logs, traces and metrics, e.g. `http://otel-lgtm:4317`. |
 | `PYROSCOPE_SERVER_ADDRESS` | No | Where to send profiles, once profiling is turned on. |
+
+## AI
+
+Only in the `keeganwright12/fintrackweb-ai` image, which is the same app with the AI module built in. Use it in place of
+`fintrackweb` in the compose file. The plain image has no AI code at all.
+
+| Setting | Required | Description |
+|---|---|---|
+| `OLLAMA_ENDPOINT` | No | The Ollama server AI runs on, e.g. `http://ollama:11434`. AI is off when it isn't set. Uncomment it in the compose file to pass it in. |
+
+Each user turns AI on for themselves on **Your profile**. Once it's on they can also connect their own AI clients
+through MCP at `/mcp`, with a token made for AI clients, see [Using FinTrack from AI clients](../using/ai-clients.md).
+Set `FINTRACK_PUBLIC_URL` so the links in their answers open FinTrack.

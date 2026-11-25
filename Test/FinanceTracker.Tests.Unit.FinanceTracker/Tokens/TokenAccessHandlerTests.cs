@@ -1,4 +1,7 @@
 using System.Security.Claims;
+#if FINTRACK_AI
+using FinanceTracker.Domain.Identity;
+#endif
 using FinanceTracker.Tokens;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -76,6 +79,46 @@ public class TokenAccessHandlerTests
         await Assert.That(passed).IsFalse();
     }
 
+#if FINTRACK_AI
+    [Test]
+    [Category("AiModule")]
+    [Arguments("POST")]
+    [Arguments("GET")]
+    public async Task AiToken_OnItsScopesEndpoint_Passes(string method)
+    {
+        // Act
+        bool passed = await PassesAsync(User(token: true, scope: "Ai"),
+            Request(method, new TokenScopeMetadata(TokenScope.Ai)));
+
+        // Assert
+        await Assert.That(passed).IsTrue();
+    }
+
+    [Test]
+    [Category("AiModule")]
+    public async Task AiToken_ReadingTheApi_IsRefused()
+    {
+        // Act
+        bool passed = await PassesAsync(User(token: true, scope: "Ai"), Request("GET", new TokenReadableMetadata()));
+
+        // Assert
+        await Assert.That(passed).IsFalse();
+    }
+
+    [Test]
+    [Category("AiModule")]
+    [Arguments("POST")]
+    [Arguments("GET")]
+    public async Task ReadToken_OnAnAiEndpoint_IsRefused(string method)
+    {
+        // Act
+        bool passed = await PassesAsync(User(token: true), Request(method, new TokenScopeMetadata(TokenScope.Ai)));
+
+        // Assert
+        await Assert.That(passed).IsFalse();
+    }
+
+#endif
     private async Task<bool> PassesAsync(ClaimsPrincipal user, HttpContext request)
     {
         TokenAccessRequirement requirement = new();
@@ -84,12 +127,12 @@ public class TokenAccessHandlerTests
         return context.HasSucceeded;
     }
 
-    private static ClaimsPrincipal User(bool token)
+    private static ClaimsPrincipal User(bool token, string scope = "Read")
     {
         List<Claim> claims = [new(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())];
         if (token)
         {
-            claims.Add(new Claim(PersonalAccessTokenDefaults.ScopeClaim, "Read"));
+            claims.Add(new Claim(PersonalAccessTokenDefaults.ScopeClaim, scope));
         }
 
         return new ClaimsPrincipal(new ClaimsIdentity(claims, "Test"));

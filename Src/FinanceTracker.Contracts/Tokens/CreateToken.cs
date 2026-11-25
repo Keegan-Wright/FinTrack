@@ -20,4 +20,11 @@ public sealed class CreateToken
     /// who confirms through the identity provider instead.
     /// </summary>
     public string Password { get; set; } = string.Empty;
+#if FINTRACK_AI
+
+    /// <summary>
+    /// Whether it's for AI clients through MCP, which is all it can then be used for. Only in the AI build.
+    /// </summary>
+    public bool ForAiClients { get; set; }
+#endif
 }

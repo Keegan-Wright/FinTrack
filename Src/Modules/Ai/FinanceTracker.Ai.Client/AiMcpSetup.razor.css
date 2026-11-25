@@ -1,0 +1,9 @@
+/* The settings to copy, scrolling sideways on a phone rather than widening the page */
+.ai-mcp-setup__snippet {
+    overflow-x: auto;
+    padding: 12px;
+    border-radius: 4px;
+    background: var(--mud-palette-background-gray);
+    font-size: 0.8125rem;
+    max-width: 100%;
+}

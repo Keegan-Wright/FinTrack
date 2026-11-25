@@ -108,6 +108,85 @@ public class ApiTokensPageTests : ComponentTestBase
         }
     }
 
+#if FINTRACK_AI
+    [Test]
+    [TUnit.Core.Category("AiModule")]
+    public async Task Render_TokenForAiClients_SaysSo()
+    {
+        // Arrange
+        TokenSummary aiClient = new()
+        {
+            Id = Guid.NewGuid(), Name = "Placeholder AI client", CreatedAt = Made, Expired = false,
+            ForAiClients = true
+        };
+        _tokensService.GetTokensAsync(Arg.Any<CancellationToken>()).Returns(Overview(aiClient, OldScript));
+
+        // Act
+        IRenderedComponent<ApiTokensPage> cut = RenderPage();
+
+        // Assert
+        cut.WaitForState(() => cut.FindAll(".ft-tokens__row").Count == 2);
+        using (Assert.Multiple())
+        {
+            await Assert.That(Row(cut, "Placeholder AI client").TextContent).Contains("For AI clients");
+            await Assert.That(Row(cut, "Old script").TextContent).DoesNotContain("For AI clients");
+        }
+    }
+
+    [Test]
+    [TUnit.Core.Category("AiModule")]
+    public async Task New_ForAiClients_MakesATokenForThem()
+    {
+        // Arrange
+        _tokensService.GetTokensAsync(Arg.Any<CancellationToken>()).Returns(Overview());
+        _tokensService.CreateAsync(Arg.Any<CreateToken>(), Arg.Any<CancellationToken>())
+            .Returns(new TokenCreated("ftk_0123456789abcdef_placeholder"));
+        IRenderedComponent<MudPopoverProvider> popovers = Render<MudPopoverProvider>();
+        IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
+        IRenderedComponent<ApiTokensPage> cut = RenderPage();
+        cut.WaitForState(() => cut.Markup.Contains("New token", StringComparison.Ordinal));
+
+        // Act
+        Task making = Button(cut, "New token").ClickAsync(new());
+        AngleSharp.Dom.IElement name = dialogs.WaitForElement(".mud-dialog input:not([type='password'])");
+        await name.InputAsync(new() { Value = "Placeholder AI client" });
+        await dialogs.FindAll(".mud-dialog .mud-input-control")
+            .Single(static x => x.QuerySelector("label")?.TextContent.Trim() == "For")
+            .MouseDownAsync(new());
+        await popovers.WaitForElements(".mud-popover-open .mud-list-item")
+            .Single(static x => x.TextContent.Trim() == "AI clients (MCP)")
+            .ClickAsync(new());
+        await dialogs.Find(".mud-dialog input[type='password']").ChangeAsync(new() { Value = "my-password" });
+        await dialogs.FindAll(".mud-dialog-actions button").Single(static x => x.TextContent.Trim() == "OK")
+            .ClickAsync(new());
+        await making.WaitAsync(TestTimeouts.Wait);
+
+        // Assert
+        await _tokensService.Received(1).CreateAsync(
+            Arg.Is<CreateToken>(static x => x.Name == "Placeholder AI client" && x.ForAiClients),
+            Arg.Any<CancellationToken>());
+    }
+
+#else
+    [Test]
+    public async Task New_WithoutTheAiModule_DoesNotAskWhatItsFor()
+    {
+        // Arrange
+        _tokensService.GetTokensAsync(Arg.Any<CancellationToken>()).Returns(Overview());
+        IRenderedComponent<MudDialogProvider> dialogs = Render<MudDialogProvider>();
+        IRenderedComponent<ApiTokensPage> cut = RenderPage();
+        cut.WaitForState(() => cut.Markup.Contains("New token", StringComparison.Ordinal));
+
+        // Act
+        _ = Button(cut, "New token").ClickAsync(new());
+        dialogs.WaitForElement(".mud-dialog input:not([type='password'])");
+
+        // Assert
+        await Assert.That(dialogs.FindAll(".mud-dialog label").Select(static x => x.TextContent.Trim()))
+            .DoesNotContain("For");
+    }
+
+#endif
     [Test]
     public async Task New_WrongPassword_SaysWhyWithoutShowingAToken()
     {

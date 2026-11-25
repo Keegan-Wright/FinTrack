@@ -1,3 +1,7 @@
+#if FINTRACK_AI
+using FinanceTracker.Ai.Mcp;
+using FinanceTracker.Ai.Tools;
+#endif
 using FinanceTracker.Api;
 using FinanceTracker.Extensions;
 using Microsoft.AspNetCore.Authorization;
@@ -155,6 +159,9 @@ public class OpenApiDocumentTests
         builder.Services.AddSingleton(TimeProvider.System);
         builder.Services.AddAuthorization();
         builder.Services.AddSignalR();
+#if FINTRACK_AI
+        builder.Services.AddFinTrackMcp(new AiTools());
+#endif
         builder.Services.AddFinTrackOpenApi();
 
         WebApplication app = builder.Build();

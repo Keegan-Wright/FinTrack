@@ -39,6 +39,10 @@ From the repo root, with the [Aspire CLI](https://aspire.dev):
 aspire run
 ```
 
+Postgres is on port 5432 each run, so a database tool keeps its connection. Set `Postgres:Port` in the AppHost's
+settings to use another, or leave it empty for a free port. The integration tests use a free port, so they can run
+beside the app.
+
 Or `dotnet run --project Src/FinanceTracker.AppHost`, or run the AppHost from your IDE.
 
 To run with the AI module built in, the way the `fintrackweb-ai` image is, add a `FinTrack.local.props` beside
@@ -77,6 +81,8 @@ Change it with these AppHost settings, in user secrets or as environment variabl
 | `Ollama:Gpu` | `nvidia`, `amd` or `none`, instead of looking. `none` when a card's found but Docker can't use it. |
 | `Ollama:Model` | The model to pull, `qwen3:4b` when not set, e.g. `qwen3:8b` for better answers. |
 | `Ollama:Endpoint` | An Ollama you run yourself, e.g. `http://localhost:11434`. No container starts. |
+| `Ollama:Port` | `11434` unless set, Ollama's usual port, so other tools on this machine, e.g. a chat app, can reach it. |
+| `Ollama:ContextLength` | How many tokens a model reads at once, `16384` unless set. Ollama's own default is too small for the tools, it cuts the start of the prompt. |
 | `Ollama:Enabled` | `false` to run without Ollama, AI then shows as not set up. The integration tests do this. |
 
 The Aspire dashboard links to the app, its logs and traces, and Mailpit, where any emails end up.

@@ -1,5 +1,9 @@
 #if FINTRACK_AI
 using FinanceTracker.Ai.Contracts;
+using FinanceTracker.Ai.Mcp;
+using FinanceTracker.Ai.Tools;
+using FinanceTracker.Domain.Identity;
+using FinanceTracker.Tokens;
 #endif
 using FinanceTracker.Api;
 using FinanceTracker.Contracts.Api;
@@ -99,6 +103,28 @@ public class ApiEndpointSecurityTests
         }
     }
 
+    [Test]
+    [Category("AiModule")]
+    public async Task McpEndpoints_NeedASignedInUserWithAnAiToken()
+    {
+        // Arrange
+        List<RouteEndpoint> endpoints = MapApi();
+
+        // Act
+        List<RouteEndpoint> mcp = endpoints
+            .Where(static x => $"/{Route(x)}".StartsWith(McpServerExtensions.Path, StringComparison.Ordinal))
+            .ToList();
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(mcp).IsNotEmpty();
+            await Assert.That(mcp.All(NeedsSignIn)).IsTrue();
+            await Assert.That(mcp.All(static x =>
+                x.Metadata.GetMetadata<TokenScopeMetadata>()?.Scope == TokenScope.Ai)).IsTrue();
+        }
+    }
+
 #endif
     /// <summary>
     /// The API's endpoints as the app maps them, with the services they take registered as the app does so each
@@ -122,6 +148,9 @@ public class ApiEndpointSecurityTests
         builder.Services.AddSingleton(TimeProvider.System);
         builder.Services.AddAuthorization();
         builder.Services.AddSignalR();
+#if FINTRACK_AI
+        builder.Services.AddFinTrackMcp(new AiTools());
+#endif
 
         WebApplication app = builder.Build();
         app.MapFinTrackApi();

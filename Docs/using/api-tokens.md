@@ -36,7 +36,9 @@ A token works on these parts of the API, to read only:
 - Budgets, bills, debts, savings goals and calendar events
 - Tags, pay periods, net worth, the dashboard's figures and the reports
 
-Anything else answers **403**. A token that's wrong, expired or revoked, or whose account is locked, answers **401**.
+Anything else answers **403**. Where FinTrack runs with AI, a token can instead be made for AI clients, which only
+works through MCP, see [Using FinTrack from AI clients](ai-clients.md). Those tokens are refused by the API, and API
+tokens are refused by MCP. A token that's wrong, expired or revoked, or whose account is locked, answers **401**.
 
 To see every endpoint, open `/openapi/v1.json` in your browser while signed in. The endpoints a token can read list
 the `ApiToken` scheme. The document is in the OpenAPI 3.2 spec.

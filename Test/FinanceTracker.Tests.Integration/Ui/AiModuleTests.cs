@@ -84,6 +84,29 @@ public class AiModuleTests : UiTestBase
     }
 
     [Test]
+    [MethodDataSource(typeof(ScreenSize), nameof(ScreenSize.All))]
+    public async Task ProfileSection_AiOn_ShowsHowToConnectAnAiClient(ScreenSize screen)
+    {
+        // Arrange
+        SignedInUser user = await RegisterUserAsync();
+        await Ai(user).ChangeOptInAsync(new ChangeAiOptIn { OptedIn = true }, CancellationToken);
+        IPage page = await OpenAsync(screen, user);
+
+        // Act
+        await GoToAsync(page, "/YourProfile");
+        await WaitUntilInteractiveAsync(page);
+
+        // Assert, the settings scroll on their own rather than widening the page
+        string address = new Uri(App.WebBaseAddress, "/mcp").ToString();
+        await Assertions.Expect(page.Locator(".ai-mcp-setup__snippet")).ToContainTextAsync(address);
+        using (Assert.Multiple())
+        {
+            await Assert.That(await WhatScrollsSidewaysAsync(page)).IsEmpty();
+            await Assert.That(BrowserErrors).IsEmpty();
+        }
+    }
+
+    [Test]
     public async Task Status_OllamaEndpointSet_IsAvailableAndOffUntilTurnedOn()
     {
         // Arrange

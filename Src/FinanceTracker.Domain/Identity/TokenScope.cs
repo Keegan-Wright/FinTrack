@@ -6,7 +6,14 @@ namespace FinanceTracker.Domain.Identity;
 public enum TokenScope
 {
     /// <summary>
-    /// Read the user's data, never change it. The only scope.
+    /// Read the user's data through the API, never change it.
     /// </summary>
-    Read
+    Read,
+#if FINTRACK_AI
+
+    /// <summary>
+    /// Used by AI clients through MCP, and nothing else. Only in the AI build.
+    /// </summary>
+    Ai
+#endif
 }

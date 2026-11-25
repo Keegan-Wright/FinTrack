@@ -25,8 +25,10 @@ public sealed class PersonalAccessToken : AggregateRoot
     /// <param name="lookupId">The public part of the token it's found by.</param>
     /// <param name="secretHash">The SHA-256 hash of the secret part.</param>
     /// <param name="expiresAt">When it stops working, in UTC, null for never.</param>
+    /// <param name="scope">What it may do, read the API unless it's for something else.</param>
     /// <exception cref="ArgumentException">The name or lookup id is blank, or there's no hash.</exception>
-    public PersonalAccessToken(Guid userId, string name, string lookupId, byte[] secretHash, DateTime? expiresAt)
+    public PersonalAccessToken(Guid userId, string name, string lookupId, byte[] secretHash, DateTime? expiresAt,
+        TokenScope scope = TokenScope.Read)
         : base(userId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
@@ -36,7 +38,7 @@ public sealed class PersonalAccessToken : AggregateRoot
         Name = name.Trim();
         LookupId = lookupId;
         SecretHash = secretHash;
-        Scope = TokenScope.Read;
+        Scope = scope;
         ExpiresAt = expiresAt;
     }
 

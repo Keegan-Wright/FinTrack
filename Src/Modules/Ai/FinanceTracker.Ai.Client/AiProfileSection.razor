@@ -26,6 +26,10 @@
     {
         <MudSwitch T="bool" Value="@_status.OptedIn" ValueChanged="@ChangeAsync" Disabled="@_busy"
                    Color="Color.Primary" Label="Use AI" Class="mt-2"/>
+        @if (_status.OptedIn)
+        {
+            <AiMcpSetup/>
+        }
     }
 </Section>
 

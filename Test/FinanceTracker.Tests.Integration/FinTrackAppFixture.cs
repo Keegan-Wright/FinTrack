@@ -67,6 +67,8 @@ public sealed class FinTrackAppFixture : AspireFixture<Projects.FinanceTracker_A
         $"--OpenBanking:TrueLayer:ClientId={FakeTrueLayer.ClientId}",
         $"--OpenBanking:TrueLayer:ClientSecret={FakeTrueLayer.ClientSecret}",
         "--OpenBanking:TrueLayer:PublicIpAddress=127.0.0.1",
+        // A free port, so the tests run beside the app running locally
+        "--Postgres:Port=",
         "--OIDC:Authority=",
         "--OIDC:ClientId=",
         "--OIDC:ClientSecret=",
