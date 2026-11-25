@@ -1,6 +1,6 @@
 using System.Security.Claims;
 
-namespace FinanceTracker.Infrastructure;
+namespace FinanceTracker.Infrastructure.Common;
 
 /// <summary>
 /// The user the current scope acts for. Services read their user from here rather than from an

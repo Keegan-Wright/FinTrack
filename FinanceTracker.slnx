@@ -1,123 +1,126 @@
 <Solution>
   <Folder Name="/Host/">
-    <Project Path="Src/FinanceTracker.AppHost.ServiceDefaults/FinanceTracker.AppHost.ServiceDefaults.csproj"/>
-    <Project Path="Src/FinanceTracker.AppHost/FinanceTracker.AppHost.csproj"/>
+    <Project Path="Src/FinanceTracker.AppHost.ServiceDefaults/FinanceTracker.AppHost.ServiceDefaults.csproj" />
+    <Project Path="Src/FinanceTracker.AppHost/FinanceTracker.AppHost.csproj" />
   </Folder>
-  <Project Path="Src/FinanceTracker.Infrastructure/FinanceTracker.Infrastructure.csproj"/>
-  <Project Path="Src/FinanceTracker.Infrastructure.Common/FinanceTracker.Infrastructure.Common.csproj"/>
+  <Project Path="Src/FinanceTracker.Infrastructure/FinanceTracker.Infrastructure.csproj" />
+  <Project Path="Src/FinanceTracker.Infrastructure.Common/FinanceTracker.Infrastructure.Common.csproj" />
   <Folder Name="/Misc/">
-    <File Path=".editorconfig"/>
-    <File Path=".gitignore"/>
-    <File Path="Directory.Packages.props"/>
+    <File Path=".editorconfig" />
+    <File Path=".gitignore" />
+    <File Path="Directory.Packages.props" />
+    <File Path="FinTrack.local.props" />
   </Folder>
   <Folder Name="/Misc/Automation/">
-    <File Path=".github\workflows\Build.yml"/>
-    <File Path=".github\workflows\PublishDockerImages.yml"/>
-    <File Path=".github\workflows\_build.yml"/>
-    <File Path=".github\workflows\_unit-tests.yml"/>
-    <File Path=".github\workflows\_integration-tests.yml"/>
-    <File Path=".github\workflows\_published-image.yml"/>
-    <File Path=".github\workflows\_modules.yml"/>
-    <File Path=".github\actions\setup-dotnet\action.yml"/>
-    <File Path=".github\actions\prepare-browser-tests\action.yml"/>
-    <File Path=".github\actions\start-image\action.yml"/>
+    <File Path=".github\workflows\Build.yml" />
+    <File Path=".github\workflows\PublishDockerImages.yml" />
+    <File Path=".github\workflows\_build.yml" />
+    <File Path=".github\workflows\_unit-tests.yml" />
+    <File Path=".github\workflows\_integration-tests.yml" />
+    <File Path=".github\workflows\_published-image.yml" />
+    <File Path=".github\workflows\_modules.yml" />
+    <File Path=".github\actions\setup-dotnet\action.yml" />
+    <File Path=".github\actions\prepare-browser-tests\action.yml" />
+    <File Path=".github\actions\start-image\action.yml" />
   </Folder>
   <Folder Name="/Misc/Docs/">
-    <File Path="README.md"/>
-    <File Path="CONTRIBUTING.md"/>
-    <File Path="SECURITY.md"/>
-    <File Path="Docker\README.md"/>
-    <File Path="Grafana\README.md"/>
-    <File Path="Docs\README.md"/>
+    <File Path="README.md" />
+    <File Path="CONTRIBUTING.md" />
+    <File Path="SECURITY.md" />
+    <File Path="Docker\README.md" />
+    <File Path="Grafana\README.md" />
+    <File Path="Docs\README.md" />
   </Folder>
   <Folder Name="/Misc/Docs/Assets/">
-    <File Path="Docs\images\accounts-desktop.png"/>
-    <File Path="Docs\images\accounts-phone.png"/>
-    <File Path="Docs\images\bills-desktop.png"/>
-    <File Path="Docs\images\bills-phone.png"/>
-    <File Path="Docs\images\dashboard-desktop.png"/>
-    <File Path="Docs\images\dashboard-phone.png"/>
-    <File Path="Docs\images\net-worth-desktop.png"/>
-    <File Path="Docs\images\net-worth-phone.png"/>
-    <File Path="Docs\images\rule-desktop.png"/>
-    <File Path="Docs\images\rule-phone.png"/>
-    <File Path="Docs\images\sharing-desktop.png"/>
-    <File Path="Docs\images\sharing-phone.png"/>
-    <File Path="Docs\images\transactions-desktop.png"/>
-    <File Path="Docs\images\transactions-phone.png"/>
+    <File Path="Docs\images\accounts-desktop.png" />
+    <File Path="Docs\images\accounts-phone.png" />
+    <File Path="Docs\images\bills-desktop.png" />
+    <File Path="Docs\images\bills-phone.png" />
+    <File Path="Docs\images\dashboard-desktop.png" />
+    <File Path="Docs\images\dashboard-phone.png" />
+    <File Path="Docs\images\net-worth-desktop.png" />
+    <File Path="Docs\images\net-worth-phone.png" />
+    <File Path="Docs\images\rule-desktop.png" />
+    <File Path="Docs\images\rule-phone.png" />
+    <File Path="Docs\images\sharing-desktop.png" />
+    <File Path="Docs\images\sharing-phone.png" />
+    <File Path="Docs\images\transactions-desktop.png" />
+    <File Path="Docs\images\transactions-phone.png" />
   </Folder>
   <Folder Name="/Misc/Docs/Development/">
-    <File Path="Docs\development\README.md"/>
-    <File Path="Docs\development\api.md"/>
-    <File Path="Docs\development\architecture.md"/>
-    <File Path="Docs\development\migrations.md"/>
-    <File Path="Docs\development\running-locally.md"/>
-    <File Path="Docs\development\testing.md"/>
+    <File Path="Docs\development\README.md" />
+    <File Path="Docs\development\api.md" />
+    <File Path="Docs\development\architecture.md" />
+    <File Path="Docs\development\migrations.md" />
+    <File Path="Docs\development\running-locally.md" />
+    <File Path="Docs\development\testing.md" />
   </Folder>
   <Folder Name="/Misc/Docs/Self-hosting/">
-    <File Path="Docs\self-hosting\README.md"/>
-    <File Path="Docs\self-hosting\backups-and-upgrades.md"/>
-    <File Path="Docs\self-hosting\configuration.md"/>
-    <File Path="Docs\self-hosting\email.md"/>
-    <File Path="Docs\self-hosting\encryption-keys.md"/>
-    <File Path="Docs\self-hosting\installing.md"/>
-    <File Path="Docs\self-hosting\monitoring.md"/>
-    <File Path="Docs\self-hosting\open-banking.md"/>
-    <File Path="Docs\self-hosting\reverse-proxy.md"/>
-    <File Path="Docs\self-hosting\single-sign-on.md"/>
+    <File Path="Docs\self-hosting\README.md" />
+    <File Path="Docs\self-hosting\backups-and-upgrades.md" />
+    <File Path="Docs\self-hosting\configuration.md" />
+    <File Path="Docs\self-hosting\email.md" />
+    <File Path="Docs\self-hosting\encryption-keys.md" />
+    <File Path="Docs\self-hosting\installing.md" />
+    <File Path="Docs\self-hosting\monitoring.md" />
+    <File Path="Docs\self-hosting\open-banking.md" />
+    <File Path="Docs\self-hosting\reverse-proxy.md" />
+    <File Path="Docs\self-hosting\single-sign-on.md" />
   </Folder>
   <Folder Name="/Misc/Docs/Using/">
-    <File Path="Docs\using\README.md"/>
-    <File Path="Docs\using\getting-started.md"/>
+    <File Path="Docs\using\README.md" />
+    <File Path="Docs\using\getting-started.md" />
   </Folder>
   <Folder Name="/Misc/Docker/">
-    <File Path="Docker\.env.example"/>
-    <File Path="Docker\docker-compose.yaml"/>
-    <File Path="Src\Dockerfile"/>
+    <File Path="Docker\.env.example" />
+    <File Path="Docker\docker-compose.yaml" />
+    <File Path="Src\Dockerfile" />
   </Folder>
   <Folder Name="/Misc/Grafana/">
-    <File Path="Grafana\dashboards.yaml"/>
+    <File Path="Grafana\dashboards.yaml" />
   </Folder>
   <Folder Name="/Misc/Grafana/Dashboards/">
-    <File Path="Grafana\dashboards\fintrack\fintrack-logs.json"/>
-    <File Path="Grafana\dashboards\fintrack\fintrack-notifications.json"/>
-    <File Path="Grafana\dashboards\fintrack\fintrack-overview.json"/>
-    <File Path="Grafana\dashboards\fintrack\fintrack-runtime.json"/>
-    <File Path="Grafana\dashboards\fintrack\fintrack-sync.json"/>
-    <File Path="Grafana\dashboards\fintrack\fintrack-users.json"/>
+    <File Path="Grafana\dashboards\fintrack\fintrack-logs.json" />
+    <File Path="Grafana\dashboards\fintrack\fintrack-notifications.json" />
+    <File Path="Grafana\dashboards\fintrack\fintrack-overview.json" />
+    <File Path="Grafana\dashboards\fintrack\fintrack-runtime.json" />
+    <File Path="Grafana\dashboards\fintrack\fintrack-sync.json" />
+    <File Path="Grafana\dashboards\fintrack\fintrack-users.json" />
   </Folder>
-  <Folder Name="/Modules/"/>
+  <Folder Name="/Modules/" />
   <Folder Name="/Modules/Ai/">
-    <Project Path="Src/Modules/Ai/FinanceTracker.Ai/FinanceTracker.Ai.csproj"/>
-    <Project Path="Src/Modules/Ai/FinanceTracker.Ai.Client/FinanceTracker.Ai.Client.csproj"/>
+    <Project Path="Src/Modules/Ai/FinanceTracker.Ai.Contracts/FinanceTracker.Ai.Contracts.csproj" />
+    <Project Path="Src/Modules/Ai/FinanceTracker.Ai/FinanceTracker.Ai.csproj" />
+    <Project Path="Src/Modules/Ai/FinanceTracker.Ai.Client/FinanceTracker.Ai.Client.csproj" />
   </Folder>
   <Folder Name="/SourceGenerators/">
-    <Project
-      Path="Src/Generators/FinanceTracker.Generated.Attributes/FinanceTracker.Generated.Attributes/FinanceTracker.Generated.Attributes.csproj"/>
-    <Project
-      Path="Src/Generators/FinanceTracker.Generated.DependencyInjection/FinanceTracker.Generated.DependencyInjection/FinanceTracker.Generated.DependencyInjection.csproj"/>
-    <Project
-      Path="Src/Generators/FinanceTracker.Generated.Enums/FinanceTracker.Generated.Enums/FinanceTracker.Generated.Enums.csproj"/>
-    <Project Path="Src\Generators\FinanceTracker.Generated.Shared\FinanceTracker.Generated.Shared.csproj"/>
+    <Project Path="Src/Generators/FinanceTracker.Generated.Attributes/FinanceTracker.Generated.Attributes/FinanceTracker.Generated.Attributes.csproj" />
+    <Project Path="Src/Generators/FinanceTracker.Generated.DependencyInjection/FinanceTracker.Generated.DependencyInjection/FinanceTracker.Generated.DependencyInjection.csproj" />
+    <Project Path="Src/Generators/FinanceTracker.Generated.Enums/FinanceTracker.Generated.Enums/FinanceTracker.Generated.Enums.csproj" />
+    <Project Path="Src\Generators\FinanceTracker.Generated.Shared\FinanceTracker.Generated.Shared.csproj" />
   </Folder>
-  <Folder Name="/Tests/"/>
-  <Project Path="Src/FinanceTracker.Infrastructure.Migrations/FinanceTracker.Infrastructure.Migrations.csproj"/>
+  <Folder Name="/Tests/" />
+  <Project Path="Src/FinanceTracker.Infrastructure.Migrations/FinanceTracker.Infrastructure.Migrations.csproj" />
   <Folder Name="/Tests/Integration/">
-    <Project Path="Test/FinanceTracker.Tests.Integration/FinanceTracker.Tests.Integration.csproj"/>
+    <Project Path="Test/FinanceTracker.Tests.Integration/FinanceTracker.Tests.Integration.csproj" />
+  </Folder>
+  <Folder Name="/Tests/Modules/" />
+  <Folder Name="/Tests/Modules/Ai/">
+    <Project Path="Test/Modules/Ai/FinanceTracker.Tests.Unit.Ai/FinanceTracker.Tests.Unit.Ai.csproj" />
   </Folder>
   <Folder Name="/Tests/Unit/">
-    <Project Path="Test/FinanceTracker.Tests.Unit.Shared/FinanceTracker.Tests.Unit.Shared.csproj"/>
-    <Project Path="Test\FinanceTracker.Tests.Unit.Client\FinanceTracker.Tests.Unit.Client.csproj"/>
-    <Project Path="Test\FinanceTracker.Tests.Unit.Domain\FinanceTracker.Tests.Unit.Domain.csproj"/>
-    <Project Path="Test\FinanceTracker.Tests.Unit.FinanceTracker\FinanceTracker.Tests.Unit.FinanceTracker.csproj"/>
-    <Project Path="Test\FinanceTracker.Tests.Unit.Infrastructure\FinanceTracker.Tests.Unit.Infrastructure.csproj"/>
+    <Project Path="Test/FinanceTracker.Tests.Unit.Shared/FinanceTracker.Tests.Unit.Shared.csproj" />
+    <Project Path="Test\FinanceTracker.Tests.Unit.Client\FinanceTracker.Tests.Unit.Client.csproj" />
+    <Project Path="Test\FinanceTracker.Tests.Unit.Domain\FinanceTracker.Tests.Unit.Domain.csproj" />
+    <Project Path="Test\FinanceTracker.Tests.Unit.FinanceTracker\FinanceTracker.Tests.Unit.FinanceTracker.csproj" />
+    <Project Path="Test\FinanceTracker.Tests.Unit.Infrastructure\FinanceTracker.Tests.Unit.Infrastructure.csproj" />
   </Folder>
-  <Project Path="Src/FinanceTracker.Client/FinanceTracker.Client.csproj"/>
-  <Project Path="Src/FinanceTracker.Client.Common/FinanceTracker.Client.Common.csproj"/>
-  <Project Path="Src/FinanceTracker.Contracts/FinanceTracker.Contracts.csproj"/>
-  <Project Path="Src/FinanceTracker.Telemetry/FinanceTracker.Telemetry.csproj"/>
-  <Project Path="Src/FinanceTracker.Design/FinanceTracker.Design.csproj"/>
-  <Project Path="Src/FinanceTracker.Domain/FinanceTracker.Domain.csproj"/>
-  <Project Path="Src/FinanceTracker.Emails/FinanceTracker.Emails.csproj"/>
-  <Project Path="Src/FinanceTracker/FinanceTracker.csproj"/>
+  <Project Path="Src/FinanceTracker.Client/FinanceTracker.Client.csproj" />
+  <Project Path="Src/FinanceTracker.Client.Common/FinanceTracker.Client.Common.csproj" />
+  <Project Path="Src/FinanceTracker.Contracts/FinanceTracker.Contracts.csproj" />
+  <Project Path="Src/FinanceTracker.Telemetry/FinanceTracker.Telemetry.csproj" />
+  <Project Path="Src/FinanceTracker.Design/FinanceTracker.Design.csproj" />
+  <Project Path="Src/FinanceTracker.Domain/FinanceTracker.Domain.csproj" />
+  <Project Path="Src/FinanceTracker.Emails/FinanceTracker.Emails.csproj" />
+  <Project Path="Src/FinanceTracker/FinanceTracker.csproj" />
 </Solution>

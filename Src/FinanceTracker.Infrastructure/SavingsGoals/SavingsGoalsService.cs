@@ -10,6 +10,7 @@ using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.SavingsGoals;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
+using FinanceTracker.Infrastructure.Common;
 using FinanceTracker.Infrastructure.Common.Persistence;
 using FinanceTracker.Infrastructure.NetWorth;
 using FinanceTracker.Infrastructure.Sharing;

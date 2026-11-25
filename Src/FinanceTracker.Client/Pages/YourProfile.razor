@@ -52,6 +52,11 @@ else
     </MudTabs>
 }
 
+@* Modules' own sections, e.g. turning AI on, for every user however they sign in *@
+<div class="mt-4">
+    <ModuleSlot Name="@ModuleSlots.Profile"/>
+</div>
+
 @code {
 
     /// <summary>

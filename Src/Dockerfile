@@ -28,6 +28,7 @@ COPY ["Src/Generators/FinanceTracker.Generated.Enums/FinanceTracker.Generated.En
 COPY ["Src/Generators/FinanceTracker.Generated.Shared/FinanceTracker.Generated.Shared.csproj", "Src/Generators/FinanceTracker.Generated.Shared/"]
 COPY ["Src/Modules/Ai/FinanceTracker.Ai/FinanceTracker.Ai.csproj", "Src/Modules/Ai/FinanceTracker.Ai/"]
 COPY ["Src/Modules/Ai/FinanceTracker.Ai.Client/FinanceTracker.Ai.Client.csproj", "Src/Modules/Ai/FinanceTracker.Ai.Client/"]
+COPY ["Src/Modules/Ai/FinanceTracker.Ai.Contracts/FinanceTracker.Ai.Contracts.csproj", "Src/Modules/Ai/FinanceTracker.Ai.Contracts/"]
 RUN dotnet restore "Src/FinanceTracker/FinanceTracker.csproj" -a $TARGETARCH -p:FinTrackAi=$FINTRACK_AI
 
 COPY ["Src/", "Src/"]

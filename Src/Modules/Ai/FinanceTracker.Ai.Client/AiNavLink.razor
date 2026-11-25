@@ -1,0 +1,8 @@
+@* The AI page in the menu, once the user can use it. *@
+@inherits AiStatusComponent
+@attribute [ModuleSlot(ModuleSlots.NavMenu)]
+
+@if (CanUseAi)
+{
+    <MudNavLink Href="Ai" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.AutoAwesome">AI</MudNavLink>
+}

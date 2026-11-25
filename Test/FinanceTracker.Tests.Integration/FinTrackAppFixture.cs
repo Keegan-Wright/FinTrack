@@ -69,8 +69,15 @@ public sealed class FinTrackAppFixture : AspireFixture<Projects.FinanceTracker_A
         "--OpenBanking:TrueLayer:PublicIpAddress=127.0.0.1",
         "--OIDC:Authority=",
         "--OIDC:ClientId=",
-        "--OIDC:ClientSecret="
+        "--OIDC:ClientSecret=",
+        // Nothing calls Ollama yet, so the AI build's tests don't start it, see OllamaEndpoint
+        "--Ollama:Enabled=false"
     ];
+
+    /// <summary>
+    /// A placeholder Ollama address for the AI build, so AI counts as set up without an Ollama running.
+    /// </summary>
+    public const string OllamaEndpoint = "http://ollama.example.test:11434";
 
     protected override TimeSpan ResourceTimeout => TestTimeouts.Startup;
 
@@ -108,6 +115,9 @@ public sealed class FinTrackAppFixture : AspireFixture<Projects.FinanceTracker_A
             .WithEnvironment(FinTrackEnvironment.OidcClientId, FakeOidcProvider.ClientId)
             .WithEnvironment(FinTrackEnvironment.OidcClientSecret, FakeOidcProvider.ClientSecret)
             .WithEnvironment(FinTrackEnvironment.OidcAllowHttp, "true");
+#if FINTRACK_AI
+        builder.CreateResourceBuilder(web).WithEnvironment("OLLAMA_ENDPOINT", OllamaEndpoint);
+#endif
     }
 
     public override async Task InitializeAsync()

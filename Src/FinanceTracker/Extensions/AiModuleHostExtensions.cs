@@ -1,5 +1,6 @@
 #if FINTRACK_AI
 using FinanceTracker.Ai;
+using FinanceTracker.Ai.Contracts;
 using FinanceTracker.Client.Ai;
 using Microsoft.AspNetCore.Components.WebAssembly.Services;
 
@@ -21,6 +22,8 @@ public static class AiModuleHostExtensions
             builder.AddFinTrackAi(builder.Configuration.GetFinTrackDatabaseConnectionString());
             builder.Services.AddScoped<LazyAssemblyLoader>();
             builder.Services.AddScoped<AiModuleLoader>();
+            // The module's components can render on the server, e.g. on an AI page it prerenders
+            builder.Services.AddScoped<AiStatusState>();
             return builder;
         }
     }

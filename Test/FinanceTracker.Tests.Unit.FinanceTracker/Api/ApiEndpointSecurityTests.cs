@@ -1,3 +1,6 @@
+#if FINTRACK_AI
+using FinanceTracker.Ai.Contracts;
+#endif
 using FinanceTracker.Api;
 using FinanceTracker.Contracts.Api;
 using FinanceTracker.Contracts.Auth;
@@ -75,6 +78,28 @@ public class ApiEndpointSecurityTests
         await Assert.That(adminOnly).IsEmpty();
     }
 
+#if FINTRACK_AI
+    [Test]
+    [Category("AiModule")]
+    public async Task AiEndpoints_NeedASignedInUserButNotAnAdmin()
+    {
+        // Arrange
+        List<RouteEndpoint> endpoints = MapApi();
+
+        // Act
+        List<RouteEndpoint> ai = endpoints.Where(static x => Route(x).StartsWith("api/ai", StringComparison.Ordinal))
+            .ToList();
+
+        // Assert
+        using (Assert.Multiple())
+        {
+            await Assert.That(ai.Select(Route)).IsEquivalentTo([AiRoutes.Status, AiRoutes.OptIn]);
+            await Assert.That(ai.All(NeedsSignIn)).IsTrue();
+            await Assert.That(ai.Any(NeedsAnAdmin)).IsFalse();
+        }
+    }
+
+#endif
     /// <summary>
     /// The API's endpoints as the app maps them, with the services they take registered as the app does so each
     /// endpoint builds, nothing is resolved or called.

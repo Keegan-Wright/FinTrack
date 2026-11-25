@@ -1,6 +1,7 @@
 using FinanceTracker.Contracts.Sharing;
 using FinanceTracker.Domain.Notifications;
 using FinanceTracker.Infrastructure;
+using FinanceTracker.Infrastructure.Common;
 using FinanceTracker.Infrastructure.Notifications;
 using FinanceTracker.Infrastructure.Sharing;
 using FinanceTracker.Tests.Unit.Shared;

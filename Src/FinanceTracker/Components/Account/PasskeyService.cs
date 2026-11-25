@@ -2,6 +2,7 @@ using FinanceTracker.Contracts.Profile;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Domain.Identity;
 using FinanceTracker.Infrastructure;
+using FinanceTracker.Infrastructure.Common;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
 

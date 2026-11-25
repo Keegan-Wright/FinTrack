@@ -1,4 +1,5 @@
 using FinanceTracker.Infrastructure;
+using FinanceTracker.Infrastructure.Common;
 using FinanceTracker.Infrastructure.OpenBanking.Transfers;
 using FinanceTracker.Infrastructure.Rules;
 using FinanceTracker.Infrastructure.Sharing;

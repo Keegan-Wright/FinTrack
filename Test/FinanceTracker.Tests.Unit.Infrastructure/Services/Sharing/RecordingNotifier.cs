@@ -1,5 +1,6 @@
 using FinanceTracker.Domain.Notifications;
 using FinanceTracker.Infrastructure;
+using FinanceTracker.Infrastructure.Common;
 using FinanceTracker.Infrastructure.Notifications;
 
 namespace FinanceTracker.Tests.Unit.Infrastructure.Services.Sharing;

@@ -1,13 +1,15 @@
 #if FINTRACK_AI
 using System.Reflection;
+using FinanceTracker.Client.Common.Modules;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.WebAssembly.Services;
 
 namespace FinanceTracker.Client.Ai;
 
 /// <summary>
-/// Loads the AI module's browser assembly once, for its pages and its app bar button. Only built with
-/// FinTrackAi=true. On the server, while prerendering, the assembly is already there and loading just finds it.
+/// Loads the AI module's browser assembly once, for its pages and the components it shows in the app's slots. Only
+/// built with FinTrackAi=true. On the server, while prerendering, the assembly is already there and loading just finds
+/// it.
 /// </summary>
 /// <param name="lazyAssemblyLoader">Fetches assemblies the browser didn't load at start.</param>
 public sealed class AiModuleLoader(LazyAssemblyLoader lazyAssemblyLoader)
@@ -18,11 +20,6 @@ public sealed class AiModuleLoader(LazyAssemblyLoader lazyAssemblyLoader)
     private const string AssemblyFile = "FinanceTracker.Ai.Client.wasm";
 
     /// <summary>
-    /// The module's app bar button, by name, since the app can't refer to its type.
-    /// </summary>
-    private const string AppBarButtonType = "FinanceTracker.Ai.Client.AiAppBarButton";
-
-    /// <summary>
     /// The address the module's pages live under, without the leading slash.
     /// </summary>
     private const string PagePath = "ai";
@@ -30,14 +27,14 @@ public sealed class AiModuleLoader(LazyAssemblyLoader lazyAssemblyLoader)
     private Task<Assembly>? _loading;
 
     /// <summary>
+    /// Raised once the assembly has loaded, so the slots can show the module's components.
+    /// </summary>
+    public event Action? Loaded;
+
+    /// <summary>
     /// The module's assembly once loaded, null before.
     /// </summary>
     public Assembly? Assembly { get; private set; }
-
-    /// <summary>
-    /// The module's app bar button once loaded, null before.
-    /// </summary>
-    public Type? AppBarButton => Assembly?.GetType(AppBarButtonType, throwOnError: true);
 
     /// <summary>
     /// Whether <paramref name="path"/> is one of the module's pages.
@@ -46,6 +43,23 @@ public sealed class AiModuleLoader(LazyAssemblyLoader lazyAssemblyLoader)
     public static bool IsModulePage(string path) =>
         path.Equals(PagePath, StringComparison.OrdinalIgnoreCase) ||
         path.StartsWith($"{PagePath}/", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// The module's components for <paramref name="slot"/>, none before it has loaded.
+    /// </summary>
+    /// <param name="slot">The place in the app, one of <see cref="ModuleSlots"/>.</param>
+    public IReadOnlyList<Type> ComponentsFor(string slot)
+    {
+        if (Assembly is null)
+        {
+            return [];
+        }
+
+        return Assembly.GetExportedTypes()
+            .Where(type => type.GetCustomAttributes<ModuleSlotAttribute>().Any(x => x.Slot == slot))
+            .OrderBy(static type => type.Name, StringComparer.Ordinal)
+            .ToList();
+    }
 
     /// <summary>
     /// Loads the assembly when the app is opening on one of the module's pages.
@@ -66,12 +80,13 @@ public sealed class AiModuleLoader(LazyAssemblyLoader lazyAssemblyLoader)
     public Task<Assembly> LoadAsync() => _loading ??= LoadOnceAsync();
 
     /// <summary>
-    /// Fetches and loads the assembly.
+    /// Fetches and loads the assembly, then tells the slots.
     /// </summary>
     private async Task<Assembly> LoadOnceAsync()
     {
         IEnumerable<Assembly> loaded = await lazyAssemblyLoader.LoadAssembliesAsync([AssemblyFile]);
         Assembly = loaded.Single();
+        Loaded?.Invoke();
         return Assembly;
     }
 }

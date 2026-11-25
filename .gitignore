@@ -19,3 +19,6 @@ coverage*.json
 
 # Per-user IDE settings
 *.user
+
+# This clone's own build settings, see Directory.Build.props
+FinTrack.local.props

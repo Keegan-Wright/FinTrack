@@ -3,6 +3,7 @@ using FinanceTracker.Contracts.Notifications;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
+using FinanceTracker.Infrastructure.Common;
 using FinanceTracker.Infrastructure.Notifications.Email;
 using FinanceTracker.Infrastructure.Notifications.Webhooks;
 using FinanceTracker.Infrastructure.Sharing;

@@ -41,12 +41,42 @@ aspire run
 
 Or `dotnet run --project Src/FinanceTracker.AppHost`, or run the AppHost from your IDE.
 
-To run with the AI module built in, the way the `fintrackweb-ai` image is, set `FinTrackAi`:
+To run with the AI module built in, the way the `fintrackweb-ai` image is, add a `FinTrack.local.props` beside
+`Directory.Build.props`. It's untracked, and every project reads it however it's built, the IDE, the command line or
+Aspire:
 
-```sh
-FinTrackAi=true aspire run
+```xml
+<Project>
+  <PropertyGroup>
+    <FinTrackAi>true</FinTrackAi>
+  </PropertyGroup>
+</Project>
 ```
 
-MSBuild reads it from the environment, so it works with any of the above.
+Delete it to go back to the plain build, or pass `-p:FinTrackAi=false` for one build. For a one-off run without the
+file, `FinTrackAi=true aspire run` works too. An IDE's own MSBuild settings may not reach every project, the browser
+project in particular, so use the file there.
+
+The plain and AI builds share the same output folders. After switching, rebuild the solution, or a stale file can
+leave the app half one build and half the other.
+
+### Ollama
+
+The AI build runs Ollama beside FinTrack, keeps its models in a volume, pulls `qwen3:4b` on first start (about 2.5 GB)
+and passes its address to FinTrack as `OLLAMA_ENDPOINT`. It runs on your GPU when it finds one:
+
+- NVIDIA on Linux, with the NVIDIA Container Toolkit, or on Windows with Docker Desktop's WSL 2 engine.
+- AMD on Linux, through ROCm.
+- Otherwise the CPU. Docker can't pass an AMD card through on Windows, or any GPU on a Mac, so there install Ollama
+  yourself and point FinTrack at it with `Ollama:Endpoint`.
+
+Change it with these AppHost settings, in user secrets or as environment variables, e.g. `Ollama__Gpu=none`:
+
+| Setting | Does |
+|---|---|
+| `Ollama:Gpu` | `nvidia`, `amd` or `none`, instead of looking. `none` when a card's found but Docker can't use it. |
+| `Ollama:Model` | The model to pull, `qwen3:4b` when not set, e.g. `qwen3:8b` for better answers. |
+| `Ollama:Endpoint` | An Ollama you run yourself, e.g. `http://localhost:11434`. No container starts. |
+| `Ollama:Enabled` | `false` to run without Ollama, AI then shows as not set up. The integration tests do this. |
 
 The Aspire dashboard links to the app, its logs and traces, and Mailpit, where any emails end up.

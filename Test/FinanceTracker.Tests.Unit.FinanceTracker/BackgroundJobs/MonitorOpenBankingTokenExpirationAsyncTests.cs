@@ -2,6 +2,7 @@ using FinanceTracker.BackgroundJobs;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Infrastructure;
+using FinanceTracker.Infrastructure.Common;
 using FinanceTracker.Infrastructure.Notifications;
 using FinanceTracker.Telemetry;
 using FinanceTracker.Tests.Unit.Shared;

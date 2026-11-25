@@ -28,8 +28,8 @@ public static class AuthenticationExtensions
     extension(WebApplicationBuilder builder)
     {
         /// <summary>
-        /// ASP.NET Identity with cookie sign in, optional OIDC sign in, and the <see cref="ICurrentUser"/> services
-        /// act for.
+        /// ASP.NET Identity with cookie sign in, optional OIDC sign in, and the
+        /// <see cref="Infrastructure.Common.ICurrentUser"/> services act for.
         /// </summary>
         public WebApplicationBuilder AddFinTrackAuthentication()
         {

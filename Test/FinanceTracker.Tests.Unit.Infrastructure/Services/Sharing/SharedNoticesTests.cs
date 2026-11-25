@@ -5,6 +5,7 @@ using FinanceTracker.Domain.Notifications;
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Infrastructure;
+using FinanceTracker.Infrastructure.Common;
 using FinanceTracker.Infrastructure.HouseholdMembers;
 using FinanceTracker.Infrastructure.Notifications;
 using FinanceTracker.Infrastructure.OpenBanking.Transfers;

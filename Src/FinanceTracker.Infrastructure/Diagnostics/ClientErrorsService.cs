@@ -2,6 +2,7 @@ using FinanceTracker.Contracts.Diagnostics;
 using FinanceTracker.Contracts.Services;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
+using FinanceTracker.Infrastructure.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 

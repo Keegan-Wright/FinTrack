@@ -3,6 +3,7 @@ using FinanceTracker.Contracts.Services;
 using FinanceTracker.Domain.Identity;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Account.Email;
+using FinanceTracker.Infrastructure.Common;
 using FinanceTracker.Infrastructure.Notifications.Email;
 using Microsoft.AspNetCore.Identity;
 

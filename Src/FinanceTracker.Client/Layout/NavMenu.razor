@@ -110,6 +110,8 @@
         </MudNavLink>
 
         @* Configuration, only admins have any so far *@
+        <ModuleSlot Name="@ModuleSlots.NavMenu"/>
+
         <AuthorizeView Roles="@FinTrackRoles.Admin">
             <div class="ft-nav__heading">Settings</div>
             <MudNavLink Href="Automation" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Schedule">Automation

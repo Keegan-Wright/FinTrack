@@ -1,4 +1,7 @@
 using Bunit;
+#if FINTRACK_AI
+using FinanceTracker.Ai.Contracts;
+#endif
 using Bunit.TestDoubles;
 using FinanceTracker.Client;
 using FinanceTracker.Client.Common;
@@ -465,14 +468,30 @@ public class MainLayoutTests : ComponentTestBase
 #if FINTRACK_AI
     [Test]
     [TUnit.Core.Category("AiModule")]
-    public async Task Render_InTheAiBuild_ShowsTheAiButtonOnceLoaded()
+    public async Task Render_UserHasTurnedAiOn_ShowsTheAiButtonOnceLoaded()
     {
+        // Arrange, the test base's AI set up and turned on
+        Services.GetRequiredService<IAiService>().GetStatusAsync(Arg.Any<CancellationToken>())
+            .Returns(new AiStatus { Available = true, OptedIn = true });
+
         // Act
         IRenderedComponent<MainLayout> cut = RenderLayout();
 
         // Assert
         cut.WaitForAssertion(() => cut.Find("[aria-label='Open AI']"));
         await Assert.That(cut.Find("[aria-label='Open AI']").GetAttribute("href")).IsEqualTo("/Ai");
+    }
+
+    [Test]
+    [TUnit.Core.Category("AiModule")]
+    public async Task Render_UserHasNotTurnedAiOn_ShowsNoAiButton()
+    {
+        // Act
+        IRenderedComponent<MainLayout> cut = RenderLayout();
+
+        // Assert, the module has loaded by the time the sync listener is up
+        cut.WaitForState(() => _onSyncStarted is not null);
+        await Assert.That(cut.FindAll("[aria-label='Open AI']")).IsEmpty();
     }
 #else
     [Test]

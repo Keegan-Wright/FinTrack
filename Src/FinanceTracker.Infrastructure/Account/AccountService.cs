@@ -7,6 +7,7 @@ using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
+using FinanceTracker.Infrastructure.Common;
 using FinanceTracker.Infrastructure.Sharing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;

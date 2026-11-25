@@ -22,4 +22,12 @@
     <PackageReference Include="CommunityToolkit.Aspire.Hosting.MailPit" />
   </ItemGroup>
 
+  <!-- Ollama for the AI module, only in the AI build -->
+  <ItemGroup Condition="'$(FinTrackAi)' == 'true'">
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.Ollama" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(FinTrackAi)' != 'true'">
+    <Compile Remove="Ollama/**" />
+  </ItemGroup>
+
 </Project>

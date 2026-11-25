@@ -3,6 +3,7 @@ using FinanceTracker.Domain.Notifications;
 using FinanceTracker.Domain.Sharing;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
+using FinanceTracker.Infrastructure.Common;
 using FinanceTracker.Infrastructure.Notifications;
 using FinanceTracker.Infrastructure.OpenBanking.Transfers;
 using FinanceTracker.Infrastructure.Rules;

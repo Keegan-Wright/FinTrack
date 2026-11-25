@@ -1,4 +1,9 @@
 <Project>
+  <!-- This clone's own settings, untracked, e.g. FinTrackAi=true to build the AI module in everywhere. Read by every
+       project whatever builds it, the IDE, the command line or Aspire -->
+  <Import Project="$(MSBuildThisFileDirectory)FinTrack.local.props"
+          Condition="Exists('$(MSBuildThisFileDirectory)FinTrack.local.props')"/>
+
   <!-- Applies to every project under the repository root -->
   <PropertyGroup>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>

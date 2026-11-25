@@ -1,5 +1,6 @@
 using FinanceTracker.Contracts;
 using FinanceTracker.Infrastructure;
+using FinanceTracker.Infrastructure.Common;
 using FinanceTracker.Infrastructure.Notifications;
 using FinanceTracker.Infrastructure.OpenBanking;
 using FinanceTracker.Infrastructure.OpenBanking.Balances;
