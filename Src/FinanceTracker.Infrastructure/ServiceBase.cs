@@ -1,3 +1,4 @@
+using FinanceTracker.Infrastructure.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 

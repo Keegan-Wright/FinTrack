@@ -1,6 +1,7 @@
 using FinanceTracker.Domain.Sharing;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
+using FinanceTracker.Infrastructure.Common;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.Infrastructure.Sharing;

@@ -5,6 +5,7 @@ using FinanceTracker.Domain.Notifications;
 using FinanceTracker.Domain.PayPeriods;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
+using FinanceTracker.Infrastructure.Common;
 using FinanceTracker.Infrastructure.PayPeriods;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;

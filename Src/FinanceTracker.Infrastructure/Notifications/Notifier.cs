@@ -1,8 +1,9 @@
 using System.Diagnostics;
+using FinanceTracker.Domain.Identity;
 using FinanceTracker.Domain.Notifications;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
-using FinanceTracker.Domain.Identity;
+using FinanceTracker.Infrastructure.Common;
 using FinanceTracker.Infrastructure.Notifications.Email;
 using FinanceTracker.Infrastructure.Notifications.Push;
 using FinanceTracker.Infrastructure.Notifications.Webhooks;

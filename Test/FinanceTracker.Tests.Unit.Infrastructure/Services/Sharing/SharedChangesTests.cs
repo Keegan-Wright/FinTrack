@@ -11,6 +11,7 @@ using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Account;
 using FinanceTracker.Infrastructure.Bills;
 using FinanceTracker.Infrastructure.Classification;
+using FinanceTracker.Infrastructure.Common;
 using FinanceTracker.Infrastructure.Debts;
 using FinanceTracker.Infrastructure.Notifications;
 using FinanceTracker.Infrastructure.OpenBanking.Transfers;

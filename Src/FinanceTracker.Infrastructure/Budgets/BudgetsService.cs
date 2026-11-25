@@ -9,6 +9,7 @@ using FinanceTracker.Domain.PayPeriods;
 using FinanceTracker.Domain.Sharing;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
+using FinanceTracker.Infrastructure.Common;
 using FinanceTracker.Infrastructure.Common.Persistence;
 using FinanceTracker.Infrastructure.PayPeriods;
 using FinanceTracker.Infrastructure.Sharing;

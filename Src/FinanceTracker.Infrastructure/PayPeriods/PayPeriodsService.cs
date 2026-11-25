@@ -6,6 +6,7 @@ using FinanceTracker.Domain.Common;
 using FinanceTracker.Domain.PayPeriods;
 using FinanceTracker.Generated.Attributes;
 using FinanceTracker.Generated.Enums;
+using FinanceTracker.Infrastructure.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using PayPeriod = FinanceTracker.Contracts.PayPeriods.PayPeriod;

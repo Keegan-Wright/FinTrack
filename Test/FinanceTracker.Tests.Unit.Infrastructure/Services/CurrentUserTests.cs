@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using FinanceTracker.Infrastructure;
+using FinanceTracker.Infrastructure.Common;
 using FinanceTracker.Tests.Unit.Shared;
 using Microsoft.Extensions.DependencyInjection;
 

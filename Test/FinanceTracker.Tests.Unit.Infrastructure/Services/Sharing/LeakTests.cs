@@ -9,6 +9,7 @@ using FinanceTracker.Infrastructure.Bills;
 using FinanceTracker.Infrastructure.Budgets;
 using FinanceTracker.Infrastructure.Calendar;
 using FinanceTracker.Infrastructure.Classification;
+using FinanceTracker.Infrastructure.Common;
 using FinanceTracker.Infrastructure.Debts;
 using FinanceTracker.Infrastructure.HouseholdMembers;
 using FinanceTracker.Infrastructure.NetWorth;

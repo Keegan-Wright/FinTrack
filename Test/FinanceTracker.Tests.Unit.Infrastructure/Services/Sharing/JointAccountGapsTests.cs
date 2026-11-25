@@ -11,6 +11,7 @@ using FinanceTracker.Domain.Sharing;
 using FinanceTracker.Infrastructure;
 using FinanceTracker.Infrastructure.Account;
 using FinanceTracker.Infrastructure.Classification;
+using FinanceTracker.Infrastructure.Common;
 using FinanceTracker.Infrastructure.NetWorth;
 using FinanceTracker.Infrastructure.Notifications;
 using FinanceTracker.Infrastructure.OpenBanking.Transfers;
