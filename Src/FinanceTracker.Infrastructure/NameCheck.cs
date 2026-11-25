@@ -1,6 +1,6 @@
 using System.Data.Common;
 using FinanceTracker.Contracts;
-using FinanceTracker.Infrastructure.Persistence;
+using FinanceTracker.Infrastructure.Common.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.Infrastructure;

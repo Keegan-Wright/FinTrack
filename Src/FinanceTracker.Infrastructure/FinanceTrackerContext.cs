@@ -16,7 +16,8 @@ using FinanceTracker.Domain.PayPeriods;
 using FinanceTracker.Domain.Rules;
 using FinanceTracker.Domain.SavingsGoals;
 using FinanceTracker.Domain.Sharing;
-using FinanceTracker.Infrastructure.Encryption;
+using FinanceTracker.Infrastructure.Common.Encryption;
+using FinanceTracker.Infrastructure.Common.Persistence;
 using FinanceTracker.Infrastructure.Notifications.Push;
 using FinanceTracker.Infrastructure.Persistence;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
@@ -37,7 +38,8 @@ namespace FinanceTracker.Infrastructure;
 /// </summary>
 public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, FinanceTrackerRole, Guid>,
     IDesignTimeDbContextFactory<FinanceTrackerContext>,
-    IDataProtectionKeyContext
+    IDataProtectionKeyContext,
+    IEncryptedContext
 {
     /// <summary>
     /// How long a database command may run before it's abandoned.
@@ -46,28 +48,18 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
 
     private readonly IColumnEncryptionService _columnEncryptionService;
 
-    /// <summary>
-    /// Encrypts columns and computes blind indexes, see <see cref="Persistence.BlindIndexInterceptor"/>.
-    /// </summary>
-    internal IColumnEncryptionService EncryptionService => _columnEncryptionService;
+    /// <inheritdoc/>
+    public IColumnEncryptionService EncryptionService => _columnEncryptionService;
 
-    /// <summary>
-    /// The clock <see cref="Persistence.AuditingInterceptor"/> stamps audit times from.
-    /// </summary>
-    internal TimeProvider TimeProvider { get; } = TimeProvider.System;
+    /// <inheritdoc/>
+    /// <remarks>Also what <see cref="AuditingInterceptor"/> stamps audit times from.</remarks>
+    public TimeProvider TimeProvider { get; } = TimeProvider.System;
 
-    /// <summary>
-    /// Loaded rows whose integrity tags cover JSON, checked once it's filled in, see
-    /// <see cref="RowIntegrityQueryCompiler"/>.
-    /// </summary>
-    internal PendingRowIntegrityChecks PendingRowIntegrityChecks { get; } = new();
+    /// <inheritdoc/>
+    public PendingRowIntegrityChecks PendingRowIntegrityChecks { get; } = new();
 
-    /// <summary>
-    /// Whether a row tagged in an older format loads, set only while <see cref="EncryptionKeyRotator"/> tags such rows
-    /// again at startup. Once it has, every row is at the current format, so any other context refuses one that isn't,
-    /// see <see cref="RowIntegrityCheck"/>.
-    /// </summary>
-    internal bool AcceptsOutdatedRowTags { get; set; }
+    /// <inheritdoc/>
+    public bool AcceptsOutdatedRowTags { get; set; }
 
     /// <summary>
     /// Only for the design time tools, to reach <see cref="CreateDbContext"/>.
@@ -247,18 +239,8 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
     /// <inheritdoc/>
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
-        optionsBuilder.AddInterceptors(
-            AuditingInterceptor.Instance,
-            BlindIndexInterceptor.Instance,
-            RowIntegrityInterceptor.Instance,
-            RowIntegrityCheckInterceptor.Instance,
-            ComplexJsonCollectionQueryInterceptor.Instance
-            );
-
-        optionsBuilder.ReplaceService<IModelCacheKeyFactory, EncryptionModelCacheKeyFactory>();
-#pragma warning disable EF1001 // See RowIntegrityQueryCompiler
-        optionsBuilder.ReplaceService<IQueryCompiler, RowIntegrityQueryCompiler>();
-#pragma warning restore EF1001
+        optionsBuilder.AddInterceptors(AuditingInterceptor.Instance);
+        optionsBuilder.UseEncryptedContext();
     }
 
     /// <inheritdoc/>
@@ -270,8 +252,19 @@ public class FinanceTrackerContext : IdentityDbContext<FinanceTrackerUser, Finan
         builder.ApplyConfigurationsFromAssembly(typeof(FinanceTrackerContext).Assembly);
 
         builder.UseEncryption(_columnEncryptionService);
-        builder.UseRowIntegrity();
+        builder.UseRowIntegrity(IsTaggedType);
     }
+
+    /// <summary>
+    /// Whether rows of <paramref name="type"/> carry an integrity tag. The domain's entities, and Identity's tokens
+    /// (the authenticator key, recovery codes) and passkeys, which an attacker could otherwise copy or move to sign in
+    /// as someone. Not Identity's users, which it writes often and partly outside EF's tracking.
+    /// </summary>
+    /// <param name="type">The entity's class.</param>
+    private static bool IsTaggedType(Type type) =>
+        typeof(Domain.Common.Entity).IsAssignableFrom(type)
+        || type == typeof(IdentityUserToken<Guid>)
+        || type == typeof(IdentityUserPasskey<Guid>);
 
     /// <summary>
     /// Stops a context building a model without passkeys, which Identity quietly does when it isn't given the schema

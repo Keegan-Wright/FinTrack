@@ -1,5 +1,5 @@
 using FinanceTracker.Infrastructure;
-using FinanceTracker.Infrastructure.Encryption;
+using FinanceTracker.Infrastructure.Common.Encryption;
 using FinanceTracker.Infrastructure.Persistence;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.Data.Sqlite;

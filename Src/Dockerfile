@@ -19,6 +19,7 @@ COPY ["Src/FinanceTracker.Design/FinanceTracker.Design.csproj", "Src/FinanceTrac
 COPY ["Src/FinanceTracker.Domain/FinanceTracker.Domain.csproj", "Src/FinanceTracker.Domain/"]
 COPY ["Src/FinanceTracker.Emails/FinanceTracker.Emails.csproj", "Src/FinanceTracker.Emails/"]
 COPY ["Src/FinanceTracker.Infrastructure/FinanceTracker.Infrastructure.csproj", "Src/FinanceTracker.Infrastructure/"]
+COPY ["Src/FinanceTracker.Infrastructure.Common/FinanceTracker.Infrastructure.Common.csproj", "Src/FinanceTracker.Infrastructure.Common/"]
 COPY ["Src/FinanceTracker.Infrastructure.Migrations/FinanceTracker.Infrastructure.Migrations.csproj", "Src/FinanceTracker.Infrastructure.Migrations/"]
 COPY ["Src/FinanceTracker.Telemetry/FinanceTracker.Telemetry.csproj", "Src/FinanceTracker.Telemetry/"]
 COPY ["Src/Generators/FinanceTracker.Generated.Attributes/FinanceTracker.Generated.Attributes/FinanceTracker.Generated.Attributes.csproj", "Src/Generators/FinanceTracker.Generated.Attributes/FinanceTracker.Generated.Attributes/"]

@@ -1,5 +1,5 @@
 using FinanceTracker.Infrastructure;
-using FinanceTracker.Infrastructure.Encryption;
+using FinanceTracker.Infrastructure.Common.Encryption;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.Tests.Unit.Shared;

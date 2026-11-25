@@ -1,8 +1,8 @@
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Domain.SavingsGoals;
 using FinanceTracker.Infrastructure;
-using FinanceTracker.Infrastructure.Encryption;
-using FinanceTracker.Infrastructure.Persistence;
+using FinanceTracker.Infrastructure.Common.Encryption;
+using FinanceTracker.Infrastructure.Common.Persistence;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Fakers;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
@@ -26,7 +26,7 @@ public class EncryptionKeyRotatorTests : InfrastructureTestBase
         string before = await ReadRawAsync("SavingsGoals", "Name");
 
         // Act
-        int reencrypted = await new EncryptionKeyRotator(DbContextFactory, NullLogger<EncryptionKeyRotator>.Instance)
+        int reencrypted = await Rotator(DbContextFactory)
             .RotateAsync(CancellationToken);
 
         // Assert
@@ -45,7 +45,7 @@ public class EncryptionKeyRotatorTests : InfrastructureTestBase
         IDbContextFactory<FinanceTrackerContext> rotatedFactory = CreateDbContextFactory(_rotated);
 
         // Act
-        int reencrypted = await new EncryptionKeyRotator(rotatedFactory, NullLogger<EncryptionKeyRotator>.Instance)
+        int reencrypted = await Rotator(rotatedFactory)
             .RotateAsync(CancellationToken);
 
         // Assert
@@ -79,7 +79,7 @@ public class EncryptionKeyRotatorTests : InfrastructureTestBase
         IDbContextFactory<FinanceTrackerContext> rotatedFactory = CreateDbContextFactory(_rotated);
 
         // Act
-        await new EncryptionKeyRotator(rotatedFactory, NullLogger<EncryptionKeyRotator>.Instance)
+        await Rotator(rotatedFactory)
             .RotateAsync(CancellationToken);
 
         // Assert
@@ -108,7 +108,7 @@ public class EncryptionKeyRotatorTests : InfrastructureTestBase
     {
         // Arrange
         await SeedAsync();
-        EncryptionKeyRotator subject = new(CreateDbContextFactory(_rotated), NullLogger<EncryptionKeyRotator>.Instance);
+        EncryptionKeyRotator<FinanceTrackerContext> subject = Rotator(CreateDbContextFactory(_rotated));
         await subject.RotateAsync(CancellationToken);
 
         // Act
@@ -130,7 +130,7 @@ public class EncryptionKeyRotatorTests : InfrastructureTestBase
         IDbContextFactory<FinanceTrackerContext> rotatedFactory = CreateDbContextFactory(_rotated);
 
         // Act
-        await new EncryptionKeyRotator(rotatedFactory, NullLogger<EncryptionKeyRotator>.Instance)
+        await Rotator(rotatedFactory)
             .RotateAsync(CancellationToken);
 
         // Assert
@@ -174,7 +174,7 @@ public class EncryptionKeyRotatorTests : InfrastructureTestBase
         IDbContextFactory<FinanceTrackerContext> rotatedFactory = CreateDbContextFactory(_rotated);
 
         // Act
-        await new EncryptionKeyRotator(rotatedFactory, NullLogger<EncryptionKeyRotator>.Instance)
+        await Rotator(rotatedFactory)
             .RotateAsync(CancellationToken);
 
         // Assert
@@ -208,4 +208,8 @@ public class EncryptionKeyRotatorTests : InfrastructureTestBase
             .SingleAsync(CancellationToken);
 #pragma warning restore EF1002
     }
+
+    private static EncryptionKeyRotator<FinanceTrackerContext> Rotator(
+        IDbContextFactory<FinanceTrackerContext> factory) =>
+        new(factory, NullLogger<EncryptionKeyRotator<FinanceTrackerContext>>.Instance);
 }

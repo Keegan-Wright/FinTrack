@@ -12,7 +12,8 @@ browser as WebAssembly, calling that API.
 | `FinanceTracker.Client.Common` | The shared building blocks pages are made from like headers, sections, stats, money text, the search field, the page and dialog bases with the loading overlay. |
 | `FinanceTracker.Contracts` | What the server and browser share. Requests, responses, routes and service interfaces. |
 | `FinanceTracker.Domain` | The entities and their rules, with no dependencies on the database or web. |
-| `FinanceTracker.Infrastructure` | The services behind the API, the database context, TrueLayer, exports, notifications and encryption. |
+| `FinanceTracker.Infrastructure` | The services behind the API, the database context, TrueLayer, exports and notifications. |
+| `FinanceTracker.Infrastructure.Common` | What any database context can share, the core's or a module's. Column encryption, blind indexes, row integrity tags and key rotation. |
 | `FinanceTracker.Infrastructure.Migrations` | The database migrations. |
 | `FinanceTracker.Emails` | Email templates, rendered from Razor components. |
 | `FinanceTracker.Design` | The theme and money colours, used by both the app and emails. |
@@ -66,7 +67,8 @@ the `fintrackweb-ai` image. The plain `fintrackweb` image has none of its code, 
 - The module's browser assembly is lazy loaded, so the browser only fetches it when it's needed. The app can't refer to
   its types directly, the layout renders its app bar button by name.
 - Its tables live in their own schema, `ai`, with their own migrations history, so moving back to the plain image
-  leaves them alone. Its migrations are made from the module's project on its own:
+  leaves them alone. They're encrypted and tagged like the core's, with the same keys, and rotated at startup after the
+  core's. Its migrations are made from the module's project on its own:
 
   ```sh
   dotnet ef migrations add <Name> --project Src/Modules/Ai/FinanceTracker.Ai \
@@ -76,7 +78,10 @@ the `fintrackweb-ai` image. The plain `fintrackweb` image has none of its code, 
 ## Data
 
 - Postgres through Entity Framework Core. Migrations run when the app starts.
-- Sensitive columns are encrypted, see [Encryption keys](../self-hosting/encryption-keys.md).
+- Sensitive columns are encrypted, see [Encryption keys](../self-hosting/encryption-keys.md). The encryption, blind
+  indexes and row integrity tags live in `FinanceTracker.Infrastructure.Common`. A context gets them by implementing
+  `IEncryptedContext`, calling `UseEncryptedContext()` when it's configured, and `UseEncryption` and
+  `UseRowIntegrity` when its model is built.
 - Each user only sees their own data, plus what's been shared with them.
 
 ## Background jobs

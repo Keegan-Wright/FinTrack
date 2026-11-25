@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using FinanceTracker.Infrastructure;
+using FinanceTracker.Infrastructure.Common.Encryption;
 
 namespace FinanceTracker.Tests.Unit.Shared;
 

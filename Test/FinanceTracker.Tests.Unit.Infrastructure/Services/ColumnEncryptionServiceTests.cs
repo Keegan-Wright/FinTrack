@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
 using FinanceTracker.Infrastructure;
-using FinanceTracker.Infrastructure.Encryption;
+using FinanceTracker.Infrastructure.Common.Encryption;
 using FinanceTracker.Tests.Unit.Shared;
 
 namespace FinanceTracker.Tests.Unit.Infrastructure.Services;

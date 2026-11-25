@@ -43,7 +43,7 @@ internal sealed class AuditingInterceptor : SaveChangesInterceptor
     /// </summary>
     /// <param name="complexProperty">The complex property.</param>
     private static bool IsAppDecision(IComplexProperty complexProperty) =>
-        complexProperty.FindAnnotation(Annotations.AppDecisionAnnotation) is not null;
+        complexProperty.FindAnnotation(AppDecisionBuilderExtensions.AppDecisionAnnotation) is not null;
 
     /// <summary>
     /// Stamps the created and updated times on what's being saved.

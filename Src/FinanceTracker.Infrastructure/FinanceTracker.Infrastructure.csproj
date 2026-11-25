@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\FinanceTracker.Contracts\FinanceTracker.Contracts.csproj"/>
+    <ProjectReference Include="..\FinanceTracker.Infrastructure.Common\FinanceTracker.Infrastructure.Common.csproj"/>
     <ProjectReference Include="..\FinanceTracker.Telemetry\FinanceTracker.Telemetry.csproj"/>
     <ProjectReference Include="..\FinanceTracker.Design\FinanceTracker.Design.csproj"/>
     <ProjectReference Include="..\FinanceTracker.Domain\FinanceTracker.Domain.csproj"/>

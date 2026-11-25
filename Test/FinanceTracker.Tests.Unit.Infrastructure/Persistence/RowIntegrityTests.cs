@@ -2,8 +2,8 @@ using FinanceTracker.Domain.Notifications;
 using FinanceTracker.Domain.OpenBanking.Connections;
 using FinanceTracker.Domain.OpenBanking.Transactions;
 using FinanceTracker.Infrastructure;
-using FinanceTracker.Infrastructure.Encryption;
-using FinanceTracker.Infrastructure.Persistence;
+using FinanceTracker.Infrastructure.Common.Encryption;
+using FinanceTracker.Infrastructure.Common.Persistence;
 using FinanceTracker.Tests.Unit.Shared;
 using FinanceTracker.Tests.Unit.Shared.Scenarios;
 using Microsoft.AspNetCore.Identity;
@@ -286,7 +286,7 @@ public class RowIntegrityTests : InfrastructureTestBase
             CreateDbContextFactory(new ColumnEncryptionService(TestEncryptionKeys.Keyring(currentKeyId: 2, 1, 2)));
 
         // Act
-        await new EncryptionKeyRotator(rotated, NullLogger<EncryptionKeyRotator>.Instance)
+        await Rotator(rotated)
             .RotateAsync(CancellationToken);
 
         // Assert, and they still load under the new key alone
@@ -312,7 +312,7 @@ public class RowIntegrityTests : InfrastructureTestBase
         await AddSettingsAsync(Username, 100m);
         IDbContextFactory<FinanceTrackerContext> rotated =
             CreateDbContextFactory(new ColumnEncryptionService(TestEncryptionKeys.Keyring(currentKeyId: 2, 1, 2)));
-        EncryptionKeyRotator rotator = new(rotated, NullLogger<EncryptionKeyRotator>.Instance);
+        EncryptionKeyRotator<FinanceTrackerContext> rotator = Rotator(rotated);
 
         // Act
         await rotator.RotateAsync(CancellationToken);
@@ -348,7 +348,7 @@ public class RowIntegrityTests : InfrastructureTestBase
         await SqlAsync("""UPDATE "AspNetUserTokens" SET "IntegrityTag" = NULL""");
 
         // Act
-        await new EncryptionKeyRotator(DbContextFactory, NullLogger<EncryptionKeyRotator>.Instance)
+        await Rotator(DbContextFactory)
             .RotateAsync(CancellationToken);
 
         // Assert
@@ -459,7 +459,7 @@ public class RowIntegrityTests : InfrastructureTestBase
         await SqlAsync("""UPDATE "AspNetUserPasskeys" SET "IntegrityTag" = '1:AAAA'""");
 
         // Act
-        await new EncryptionKeyRotator(DbContextFactory, NullLogger<EncryptionKeyRotator>.Instance)
+        await Rotator(DbContextFactory)
             .RotateAsync(CancellationToken);
         await using FinanceTrackerContext context = await DbContextFactory.CreateDbContextAsync(CancellationToken);
         List<string?> tags = await TagsAsync(context, "AspNetUserPasskeys");
@@ -485,7 +485,7 @@ public class RowIntegrityTests : InfrastructureTestBase
         await AddPasskeyAsync(Username, 1, "Placeholder laptop");
         IDbContextFactory<FinanceTrackerContext> rotated =
             CreateDbContextFactory(new ColumnEncryptionService(TestEncryptionKeys.Keyring(currentKeyId: 2, 1, 2)));
-        EncryptionKeyRotator rotator = new(rotated, NullLogger<EncryptionKeyRotator>.Instance);
+        EncryptionKeyRotator<FinanceTrackerContext> rotator = Rotator(rotated);
 
         // Act
         await rotator.RotateAsync(CancellationToken);
@@ -519,7 +519,7 @@ public class RowIntegrityTests : InfrastructureTestBase
         }
 
         // Act
-        await new EncryptionKeyRotator(rotated, NullLogger<EncryptionKeyRotator>.Instance)
+        await Rotator(rotated)
             .RotateAsync(CancellationToken);
 
         // Assert, nothing left under key 1, and it loads under key 2 alone
@@ -547,7 +547,7 @@ public class RowIntegrityTests : InfrastructureTestBase
         // null, so a rewrite clears the "" and the next run has nothing to do
         await AddPasskeyAsync(Username, 1, "Placeholder laptop");
         await SqlAsync("""UPDATE "AspNetUserPasskeys" SET "Data" = json_set("Data", '$.Aaguid', '')""");
-        EncryptionKeyRotator rotator = new(DbContextFactory, NullLogger<EncryptionKeyRotator>.Instance);
+        EncryptionKeyRotator<FinanceTrackerContext> rotator = Rotator(DbContextFactory);
 
         // Act
         int first = await rotator.RotateAsync(CancellationToken);
@@ -650,4 +650,8 @@ public class RowIntegrityTests : InfrastructureTestBase
         context.Database.SqlQueryRaw<string?>($"""SELECT "IntegrityTag" AS "Value" FROM "{table}" """)
             .ToListAsync(CancellationToken);
 #pragma warning restore EF1002
+
+    private static EncryptionKeyRotator<FinanceTrackerContext> Rotator(
+        IDbContextFactory<FinanceTrackerContext> factory) =>
+        new(factory, NullLogger<EncryptionKeyRotator<FinanceTrackerContext>>.Instance);
 }

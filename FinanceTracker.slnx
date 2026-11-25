@@ -4,6 +4,7 @@
     <Project Path="Src/FinanceTracker.AppHost/FinanceTracker.AppHost.csproj"/>
   </Folder>
   <Project Path="Src/FinanceTracker.Infrastructure/FinanceTracker.Infrastructure.csproj"/>
+  <Project Path="Src/FinanceTracker.Infrastructure.Common/FinanceTracker.Infrastructure.Common.csproj"/>
   <Folder Name="/Misc/">
     <File Path=".editorconfig"/>
     <File Path=".gitignore"/>

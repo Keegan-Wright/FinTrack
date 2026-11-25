@@ -1,5 +1,6 @@
 using FinanceTracker.Domain.OpenBanking.Accounts;
 using FinanceTracker.Domain.PayPeriods;
+using FinanceTracker.Infrastructure.Common.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

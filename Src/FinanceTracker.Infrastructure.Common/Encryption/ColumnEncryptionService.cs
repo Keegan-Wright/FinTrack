@@ -1,0 +1,314 @@
+using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
+using FinanceTracker.Generated.Attributes;
+using FinanceTracker.Generated.Enums;
+
+namespace FinanceTracker.Infrastructure.Common.Encryption;
+
+/// <summary>
+/// AES-256-GCM column encryption over a keyring, with keys derived from each keyring key by HKDF-SHA256. Stored values
+/// are <c>{keyId}:{base64(nonce | ciphertext | tag)}</c>. A random nonce per value means equal values don't look equal
+/// when stored at rest. Tag means tampered values fail to decrypt. Blind indexes and row integrity tags are
+/// HMAC-SHA256, each with their own derived key.
+/// </summary>
+[InjectionCategory(InjectionCategoryType.Service, ServiceDestinationType.Server)]
+[Singleton<IColumnEncryptionService>]
+public class ColumnEncryptionService : IColumnEncryptionService
+{
+    /// <summary>
+    /// The AES-GCM nonce's size, in bytes.
+    /// </summary>
+    private const int NonceSize = 12;
+    /// <summary>
+    /// The AES-GCM tag's size, in bytes.
+    /// </summary>
+    private const int TagSize = 16;
+    /// <summary>
+    /// Separates a stored value's key id from its ciphertext.
+    /// </summary>
+    private const char KeyIdSeparator = ':';
+
+    // Separate keys per purpose, derived from each keyring key with HKDF-SHA256
+    private static readonly byte[] EncryptionKeyInfo = "FinTrack column encryption v1"u8.ToArray();
+    private static readonly byte[] BlindIndexKeyInfo = "FinTrack blind index v1"u8.ToArray();
+    private static readonly byte[] RowIntegrityKeyInfo = "FinTrack row integrity v1"u8.ToArray();
+
+    private readonly Dictionary<int, byte[]> _encryptionKeys;
+    private readonly byte[] _blindIndexKey;
+    private readonly Dictionary<int, byte[]> _rowIntegrityKeys;
+
+    /// <param name="encryptionConfiguration">The keyring.</param>
+    public ColumnEncryptionService(EncryptionConfiguration encryptionConfiguration)
+    {
+        ArgumentNullException.ThrowIfNull(encryptionConfiguration);
+
+        if (!encryptionConfiguration.Keys.ContainsKey(encryptionConfiguration.CurrentKeyId))
+        {
+            throw new ArgumentException(
+                $"The current encryption key {encryptionConfiguration.CurrentKeyId} isn't in the keyring.",
+                nameof(encryptionConfiguration));
+        }
+
+        foreach ((int id, byte[] key) in encryptionConfiguration.Keys)
+        {
+            if (key.Length != EncryptionConfiguration.KeySize)
+            {
+                throw new ArgumentException(
+                    $"Encryption key {id} must be {EncryptionConfiguration.KeySize} bytes.",
+                    nameof(encryptionConfiguration));
+            }
+        }
+
+        CurrentKeyId = encryptionConfiguration.CurrentKeyId;
+        _encryptionKeys = encryptionConfiguration.Keys.ToDictionary(
+            static x => x.Key,
+            static x => DeriveKey(x.Value, EncryptionKeyInfo));
+        _blindIndexKey = DeriveKey(encryptionConfiguration.Keys[CurrentKeyId], BlindIndexKeyInfo);
+        _rowIntegrityKeys = encryptionConfiguration.Keys.ToDictionary(
+            static x => x.Key,
+            static x => DeriveKey(x.Value, RowIntegrityKeyInfo));
+        KeyringFingerprint = ComputeFingerprint(encryptionConfiguration);
+    }
+
+    /// <inheritdoc/>
+    public int CurrentKeyId { get; }
+
+    /// <inheritdoc/>
+    public string KeyringFingerprint { get; }
+
+    /// <inheritdoc/>
+    public string Encrypt<T>(T value)
+    {
+        string? plainText = PlainText.From(value);
+        if (string.IsNullOrEmpty(plainText))
+        {
+            return string.Empty;
+        }
+
+        byte[] plainBytes = Encoding.UTF8.GetBytes(plainText);
+        byte[] payload = new byte[NonceSize + plainBytes.Length + TagSize];
+        Span<byte> nonce = payload.AsSpan(0, NonceSize);
+        Span<byte> cipherBytes = payload.AsSpan(NonceSize, plainBytes.Length);
+        Span<byte> tag = payload.AsSpan(NonceSize + plainBytes.Length, TagSize);
+
+        RandomNumberGenerator.Fill(nonce);
+        try
+        {
+            using AesGcm aes = new(_encryptionKeys[CurrentKeyId], TagSize);
+            aes.Encrypt(nonce, plainBytes, cipherBytes, tag);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(plainBytes);
+        }
+
+        return string.Create(CultureInfo.InvariantCulture,
+            $"{CurrentKeyId}{KeyIdSeparator}{Convert.ToBase64String(payload)}");
+    }
+
+    /// <inheritdoc/>
+    public T? Decrypt<T>(string cipherText)
+    {
+        if (string.IsNullOrEmpty(cipherText))
+        {
+            // An empty collection encrypts as [], so an empty value is a column a migration added with an empty
+            // default. Those rows have none rather than null, which the domain's collections never are
+            return IsJsonCollection(typeof(T)) ? FromPlainText<T>("[]") : default;
+        }
+
+        int separator = cipherText.IndexOf(KeyIdSeparator, StringComparison.Ordinal);
+        if (separator <= 0 ||
+            !int.TryParse(cipherText.AsSpan(0, separator), NumberStyles.None, CultureInfo.InvariantCulture,
+                out int keyId))
+        {
+            throw new CryptographicException("The value isn't in the encrypted format.");
+        }
+
+        if (!_encryptionKeys.TryGetValue(keyId, out byte[]? key))
+        {
+            throw new CryptographicException($"The value was encrypted with key {keyId}, which isn't in the keyring.");
+        }
+
+        byte[] payload;
+        try
+        {
+            payload = Convert.FromBase64String(cipherText[(separator + 1)..]);
+        }
+        catch (FormatException ex)
+        {
+            throw new CryptographicException("The value isn't in the encrypted format.", ex);
+        }
+
+        if (payload.Length < NonceSize + TagSize)
+        {
+            throw new CryptographicException("The value isn't in the encrypted format.");
+        }
+
+        int cipherLength = payload.Length - NonceSize - TagSize;
+        byte[] plainBytes = new byte[cipherLength];
+        try
+        {
+            using AesGcm aes = new(key, TagSize);
+            aes.Decrypt(
+                payload.AsSpan(0, NonceSize),
+                payload.AsSpan(NonceSize, cipherLength),
+                payload.AsSpan(NonceSize + cipherLength, TagSize),
+                plainBytes);
+            return FromPlainText<T>(Encoding.UTF8.GetString(plainBytes));
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(plainBytes);
+        }
+    }
+
+    /// <inheritdoc/>
+    public string ComputeBlindIndex(string value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        byte[] valueBytes = Encoding.UTF8.GetBytes(value);
+        try
+        {
+            return Convert.ToBase64String(HMACSHA256.HashData(_blindIndexKey, valueBytes));
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(valueBytes);
+        }
+    }
+
+    /// <inheritdoc/>
+    public string ComputeRowTag(byte[] content)
+    {
+        ArgumentNullException.ThrowIfNull(content);
+        byte[] tag = HMACSHA256.HashData(_rowIntegrityKeys[CurrentKeyId], content);
+        return string.Create(CultureInfo.InvariantCulture,
+            $"{CurrentKeyId}{KeyIdSeparator}{Convert.ToBase64String(tag)}");
+    }
+
+    /// <inheritdoc/>
+    public bool IsRowTagValid(string tag, byte[] content)
+    {
+        ArgumentNullException.ThrowIfNull(tag);
+        ArgumentNullException.ThrowIfNull(content);
+
+        int separator = tag.IndexOf(KeyIdSeparator, StringComparison.Ordinal);
+        if (separator <= 0 ||
+            !int.TryParse(tag.AsSpan(0, separator), NumberStyles.None, CultureInfo.InvariantCulture, out int keyId) ||
+            !_rowIntegrityKeys.TryGetValue(keyId, out byte[]? key))
+        {
+            return false;
+        }
+
+        byte[] given;
+        try
+        {
+            given = Convert.FromBase64String(tag[(separator + 1)..]);
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+
+        return CryptographicOperations.FixedTimeEquals(given, HMACSHA256.HashData(key, content));
+    }
+
+    /// <summary>
+    /// A key for one use derived from a keyring key with HKDF-SHA256, so encryption and blind indexes never share a
+    /// key. No salt, as RFC 5869 allows when the keyring key is already uniformly random.
+    /// </summary>
+    /// <param name="keyringKey">The keyring key.</param>
+    /// <param name="info">What the key is for.</param>
+    private static byte[] DeriveKey(byte[] keyringKey, byte[] info) =>
+        HKDF.DeriveKey(HashAlgorithmName.SHA256, keyringKey, EncryptionConfiguration.KeySize, salt: [], info);
+
+    /// <summary>
+    /// A hash of the keyring, which identifies it without revealing it.
+    /// </summary>
+    /// <param name="configuration">The keyring.</param>
+    private static string ComputeFingerprint(EncryptionConfiguration configuration)
+    {
+        using IncrementalHash hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        hash.AppendData(BitConverter.GetBytes(configuration.CurrentKeyId));
+        foreach ((int id, byte[] key) in configuration.Keys.OrderBy(static x => x.Key))
+        {
+            hash.AppendData(BitConverter.GetBytes(id));
+            hash.AppendData(key);
+        }
+
+        return Convert.ToHexString(hash.GetHashAndReset());
+    }
+
+    /// <summary>
+    /// Whether a type is a collection, stored as JSON.
+    /// </summary>
+    /// <param name="type">The type.</param>
+    private static bool IsJsonCollection(Type type) =>
+        type != typeof(string) && type != typeof(byte[]) &&
+        typeof(System.Collections.IEnumerable).IsAssignableFrom(type);
+
+    /// <summary>
+    /// A decrypted value read back as its type.
+    /// </summary>
+    /// <typeparam name="T">The value's type.</typeparam>
+    /// <param name="plainText">The value as stored before encryption.</param>
+    private static T FromPlainText<T>(string plainText)
+    {
+        if (typeof(T) == typeof(byte[]))
+        {
+            return (T)(object)Convert.FromBase64String(plainText);
+        }
+
+        if (typeof(T) == typeof(string))
+        {
+            return (T)(object)plainText;
+        }
+
+        Type targetType = Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T);
+
+        return (T)ParsePlainText(plainText, targetType);
+    }
+
+    /// <summary>
+    /// A decrypted value parsed as <paramref name="targetType"/>, in the invariant culture.
+    /// </summary>
+    /// <param name="plainText">The value as stored before encryption.</param>
+    /// <param name="targetType">The value's type.</param>
+    private static object ParsePlainText(string plainText, Type targetType)
+    {
+        if (targetType.IsEnum)
+        {
+            return Enum.Parse(targetType, plainText);
+        }
+
+        if (targetType == typeof(DateTime))
+        {
+            return DateTime.Parse(plainText, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
+        }
+
+        if (targetType == typeof(DateTimeOffset))
+        {
+            return DateTimeOffset.Parse(plainText, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
+        }
+
+        if (targetType == typeof(DateOnly))
+        {
+            return DateOnly.ParseExact(plainText, "O", CultureInfo.InvariantCulture);
+        }
+
+        if (targetType.IsArray)
+        {
+            return System.Text.Json.JsonSerializer.Deserialize(plainText, targetType)
+                   ?? Array.CreateInstanceFromArrayType(targetType, 0);
+        }
+
+        if (targetType.IsGenericType || typeof(System.Collections.IEnumerable).IsAssignableFrom(targetType))
+        {
+            return System.Text.Json.JsonSerializer.Deserialize(plainText, targetType)
+                   ?? throw new InvalidOperationException($"Failed to deserialize collection of type {targetType}.");
+        }
+
+        return Convert.ChangeType(plainText, targetType, CultureInfo.InvariantCulture);
+    }
+}
